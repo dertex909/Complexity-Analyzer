@@ -1,0 +1,132 @@
+package org.complexityanalyzer.data;
+
+import net.minecraft.world.item.Item;
+
+public class ItemComplexity {
+    private final Item item;
+    private final double complexity;
+    private final int depth;
+    private final int totalIngredients;
+    private final ComplexityCategory category;
+    private final PathType pathType;
+    private final boolean hasCycle;
+    private final boolean hasRecipe;
+    private final String errorMessage;
+
+    private ItemComplexity(Builder builder) {
+        this.item = builder.item;
+        this.complexity = builder.complexity;
+        this.depth = builder.depth;
+        this.totalIngredients = builder.totalIngredients;
+        this.category = builder.category != null ? builder.category : ComplexityCategory.fromComplexity(builder.complexity);
+        this.pathType = builder.pathType;
+        this.hasCycle = builder.hasCycle;
+        this.hasRecipe = builder.hasRecipe;
+        this.errorMessage = builder.errorMessage;
+    }
+
+    public Item getItem() { return item; }
+    public double getComplexity() { return complexity; }
+    public int getDepth() { return depth; }
+    public int getTotalIngredients() { return totalIngredients; }
+    public ComplexityCategory getCategory() { return category; }
+    public PathType getPathType() { return pathType; }
+    public boolean hasCycle() { return hasCycle; }
+    public boolean hasRecipe() { return hasRecipe; }
+    public String getErrorMessage() { return errorMessage; }
+
+    public boolean isValid() {
+        return errorMessage == null && !hasCycle && complexity >= 0;
+    }
+
+    public static class Builder {
+        private final Item item;
+        private double complexity = 0;
+        private int depth = 0;
+        private int totalIngredients = 0;
+        private ComplexityCategory category;
+        private PathType pathType = PathType.OPTIMAL;
+        private boolean hasCycle = false;
+        private boolean hasRecipe = true;
+        private String errorMessage;
+
+        public Builder(Item item) {
+            this.item = item;
+        }
+
+        public Builder complexity(double complexity) {
+            this.complexity = complexity;
+            return this;
+        }
+
+        public Builder depth(int depth) {
+            this.depth = depth;
+            return this;
+        }
+
+        public Builder totalIngredients(int totalIngredients) {
+            this.totalIngredients = totalIngredients;
+            return this;
+        }
+
+        public Builder category(ComplexityCategory category) {
+            this.category = category;
+            return this;
+        }
+
+        public Builder pathType(PathType pathType) {
+            this.pathType = pathType;
+            return this;
+        }
+
+        public Builder hasCycle(boolean hasCycle) {
+            this.hasCycle = hasCycle;
+            return this;
+        }
+
+        public Builder hasRecipe(boolean hasRecipe) {
+            this.hasRecipe = hasRecipe;
+            return this;
+        }
+
+        public Builder errorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+            return this;
+        }
+
+        public ItemComplexity build() {
+            return new ItemComplexity(this);
+        }
+    }
+
+    public static ItemComplexity error(Item item, String error) {
+        return new Builder(item)
+                .complexity(-1)
+                .category(ComplexityCategory.UNCALCULABLE)
+                .errorMessage(error)
+                .build();
+    }
+
+    public static ItemComplexity cycle(Item item) {
+        return new Builder(item)
+                .complexity(-1)
+                .category(ComplexityCategory.UNCALCULABLE)
+                .hasCycle(true)
+                .errorMessage("Cyclic dependency detected")
+                .build();
+    }
+
+    public static ItemComplexity noRecipe(Item item) {
+        return new Builder(item)
+                .complexity(1.0)
+                .category(ComplexityCategory.TRIVIAL)
+                .hasRecipe(false)
+                .build();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("ItemComplexity{item=%s, complexity=%.2f, depth=%d, category=%s}",
+                item, complexity, depth, category);
+    }
+}

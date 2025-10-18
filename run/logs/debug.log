@@ -1,0 +1,68 @@
+[18окт.2025 18:26:19.540] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
+[18окт.2025 18:26:19.544] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
+[18окт.2025 18:26:19.546] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
+[18окт.2025 18:26:19.579] [main/DEBUG] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Found launch services [minecraft,forgeclient,forgedatauserdev,testharness,forgeserverdev,forgeserveruserdev,forgejunitdev,forgeclientdev,forgeclientuserdev,forgeserver,forgejunituserdev,forgedatadev]
+[18окт.2025 18:26:19.608] [main/DEBUG] [cpw.mods.modlauncher.LaunchPluginHandler/MODLAUNCHER]: Found launch plugins: [mixin,slf4jfixer,runtime_enum_extender,accesstransformer,runtimedistcleaner]
+[18окт.2025 18:26:19.621] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Discovering transformation services
+[18окт.2025 18:26:19.629] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path GAMEDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run
+[18окт.2025 18:26:19.629] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path MODSDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\mods
+[18окт.2025 18:26:19.630] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path CONFIGDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config
+[18окт.2025 18:26:19.630] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path FMLCONFIG is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\fml.toml
+[18окт.2025 18:26:19.686] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Got mod coordinates complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\classes\\java\\main;complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\resources\\main from env
+[18окт.2025 18:26:19.687] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Found supplied mod coordinates [{complexityanalyzer=[C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main, C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\resources\main]}]
+[18окт.2025 18:26:19.691] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Found additional transformation services from discovery services: 
+[18окт.2025 18:26:19.701] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[18окт.2025 18:26:19.857] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[18окт.2025 18:26:20.091] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
+[18окт.2025 18:26:20.169] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Found transformer services : [mixin,fml]
+[18окт.2025 18:26:20.169] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services loading
+[18окт.2025 18:26:20.170] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loading service mixin
+[18окт.2025 18:26:20.170] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loaded service mixin
+[18окт.2025 18:26:20.170] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loading service fml
+[18окт.2025 18:26:20.171] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML 4.0.41 loading
+[18окт.2025 18:26:20.172] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found ModLauncher version : 11.0.5+main.901c6ea8
+[18окт.2025 18:26:20.172] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found AccessTransformer version : 10.0.1+139da711
+[18окт.2025 18:26:20.173] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found EventBus version : null
+[18окт.2025 18:26:20.174] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: Found Runtime Dist Cleaner
+[18окт.2025 18:26:20.174] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loaded service fml
+[18окт.2025 18:26:20.175] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Configuring option handling for services
+[18окт.2025 18:26:20.199] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Received command line version data  : VersionInfo[neoForgeVersion=21.1.209, fmlVersion=4.0.41, mcVersion=1.21.1, neoFormVersion=20240808.144430]
+[18окт.2025 18:26:20.199] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services initializing
+[18окт.2025 18:26:20.200] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformation service mixin
+[18окт.2025 18:26:20.226] [main/DEBUG] [mixin/]: MixinService [ModLauncher] was successfully booted in cpw.mods.cl.ModuleClassLoader@217ed35e
+[18окт.2025 18:26:20.241] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
+[18окт.2025 18:26:20.244] [main/DEBUG] [mixin/]: Initialising Mixin Platform Manager
+[18окт.2025 18:26:20.245] [main/DEBUG] [mixin/]: Adding mixin platform agents for container ModLauncher Root Container(ModLauncher:4f56a0a2)
+[18окт.2025 18:26:20.245] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for ModLauncher Root Container(ModLauncher:4f56a0a2)
+[18окт.2025 18:26:20.246] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container ModLauncher Root Container(ModLauncher:4f56a0a2)
+[18окт.2025 18:26:20.246] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for ModLauncher Root Container(ModLauncher:4f56a0a2)
+[18окт.2025 18:26:20.247] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container ModLauncher Root Container(ModLauncher:4f56a0a2)
+[18окт.2025 18:26:20.249] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformation service mixin
+[18окт.2025 18:26:20.249] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformation service fml
+[18окт.2025 18:26:20.249] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Setting up basic FML game directories
+[18окт.2025 18:26:20.250] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path GAMEDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run
+[18окт.2025 18:26:20.250] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path MODSDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\mods
+[18окт.2025 18:26:20.250] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path CONFIGDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config
+[18окт.2025 18:26:20.250] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path FMLCONFIG is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\fml.toml
+[18окт.2025 18:26:20.251] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Loading configuration
+[18окт.2025 18:26:20.254] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Preparing launch handler
+[18окт.2025 18:26:20.255] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: Using forgeclientdev as launch service
+[18окт.2025 18:26:20.258] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformation service fml
+[18окт.2025 18:26:20.258] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services begin scanning
+[18окт.2025 18:26:20.259] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Beginning scan trigger - transformation service mixin
+[18окт.2025 18:26:20.260] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: End scan trigger - transformation service mixin
+[18окт.2025 18:26:20.260] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Beginning scan trigger - transformation service fml
+[18окт.2025 18:26:20.260] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Initiating mod scan
+[18окт.2025 18:26:20.261] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Got mod coordinates complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\classes\\java\\main;complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\resources\\main from env
+[18окт.2025 18:26:20.261] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Found supplied mod coordinates [{complexityanalyzer=[C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main, C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\resources\main]}]
+[18окт.2025 18:26:20.263] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonDevLaunchHandler/]: Launching with NeoForge from C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
+[18окт.2025 18:26:20.282] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 4 implementations of IModFileCandidateLocator:
+[18окт.2025 18:26:20.283] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - [built-in] net.neoforged.fml.loading.moddiscovery.locators.NeoForgeDevProvider from loader-4.0.41.jar
+[18окт.2025 18:26:20.284] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.ModsFolderLocator from loader-4.0.41.jar
+[18окт.2025 18:26:20.285] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.MavenDirectoryLocator from loader-4.0.41.jar
+[18окт.2025 18:26:20.285] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	   -1000 - [built-in] net.neoforged.fml.loading.moddiscovery.locators.UserdevLocator from loader-4.0.41.jar
+[18окт.2025 18:26:20.288] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 2 implementations of IModFileReader:
+[18окт.2025 18:26:20.289] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader from loader-4.0.41.jar
+[18окт.2025 18:26:20.289] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	   -1000 - net.neoforged.fml.loading.moddiscovery.readers.NestedLibraryModReader from loader-4.0.41.jar
+[18окт.2025 18:26:20.291] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 1 implementations of IDependencyLocator:
+[18окт.2025 18:26:20.292] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator from loader-4.0.41.jar

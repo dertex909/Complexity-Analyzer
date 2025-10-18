@@ -1,0 +1,304 @@
+package org.complexityanalyzer.geoscan.storage;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
+import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.geoscan.data.BiomeDataMapper;
+import org.complexityanalyzer.geoscan.data.BiomeScanData;
+import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
+import org.complexityanalyzer.geoscan.data.ScanMetadata;
+
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+
+public class GeoDataStorage {
+
+    private static final Gson GSON = new GsonBuilder().create();
+    private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    private final Path dataDir;
+    private final Path reconDir;
+    private final Path finalDir;
+    private final Path metadataFile;
+
+    public GeoDataStorage(MinecraftServer server) {
+        this.dataDir = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(ComplexityAnalyzer.MODID);
+        this.reconDir = dataDir.resolve("recon");
+        this.finalDir = dataDir.resolve("final");
+        this.metadataFile = dataDir.resolve("metadata.json");
+    }
+
+    public void ensureDirectoriesExist() {
+        try {
+            Files.createDirectories(this.reconDir);
+            Files.createDirectories(this.finalDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not create world-specific geo-data directories!", e);
+        }
+    }
+
+    public ScanMetadata loadMetadata() {
+        if (!Files.exists(metadataFile)) {
+            return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
+        }
+        try (FileReader reader = new FileReader(metadataFile.toFile())) {
+            ScanMetadata meta = PRETTY_GSON.fromJson(reader, ScanMetadata.class);
+            return meta != null ? meta : new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to read metadata file! Assuming IDLE state.", e);
+            return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
+        }
+    }
+
+    public void saveMetadata(ScanMetadata metadata) {
+        try (FileWriter writer = new FileWriter(metadataFile.toFile())) {
+            PRETTY_GSON.toJson(metadata, writer);
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to write metadata file!", e);
+        }
+    }
+
+    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, List<ChunkSnapshot> newSnapshots) {
+        if (newSnapshots.isEmpty()) return;
+        Path file = getReconFilePath(dimension, biome);
+        try {
+            Files.createDirectories(file.getParent());
+            try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                for (ChunkSnapshot snapshot : newSnapshots) {
+                    writer.write(GSON.toJson(snapshot));
+                    writer.newLine();
+                }
+            }
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
+        }
+    }
+
+    public Map<ResourceLocation, Map<ResourceLocation, Path>> getAllReconFilePaths() {
+        Map<ResourceLocation, Map<ResourceLocation, Path>> allPaths = new HashMap<>();
+        if (!Files.exists(reconDir)) return allPaths;
+
+        try (Stream<Path> dimNamespaces = Files.list(reconDir)) {
+            dimNamespaces.filter(Files::isDirectory).forEach(dimNamespaceDir -> {
+                try (Stream<Path> dimPaths = Files.list(dimNamespaceDir)) {
+                    dimPaths.filter(Files::isDirectory).forEach(dimPathDir -> {
+                        ResourceLocation dimensionId = ResourceLocation.fromNamespaceAndPath(
+                                dimNamespaceDir.getFileName().toString(),
+                                dimPathDir.getFileName().toString()
+                        );
+                        Map<ResourceLocation, Path> biomeFiles = new HashMap<>();
+                        try (Stream<Path> files = Files.list(dimPathDir)) {
+                            files.filter(f -> f.toString().endsWith(".jsonl")).forEach(filePath -> {
+                                String fileName = filePath.getFileName().toString();
+                                String encodedName = fileName.substring(0, fileName.length() - 6);
+                                ResourceLocation biomeId = decodeLocation(encodedName);
+                                biomeFiles.put(biomeId, filePath);
+                            });
+                        } catch (IOException e) {
+                            ComplexityAnalyzer.LOGGER.error("Failed to list biome files in {}", dimPathDir, e);
+                        }
+
+                        if (!biomeFiles.isEmpty()) {
+                            allPaths.put(dimensionId, biomeFiles);
+                        }
+                    });
+                } catch (IOException e) {
+                    ComplexityAnalyzer.LOGGER.error("Failed to list dimension paths in {}", dimNamespaceDir, e);
+                }
+            });
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to list dimension namespaces in recon directory", e);
+        }
+        return allPaths;
+    }
+
+    public Stream<ChunkSnapshot> streamReconFile(Path path) {
+        if (!Files.exists(path)) {
+            return Stream.empty();
+        }
+        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
+            List<ChunkSnapshot> snapshots = lines.map(line -> {
+                        try {
+                            return GSON.fromJson(line, ChunkSnapshot.class);
+                        } catch (JsonSyntaxException e) {
+                            ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .toList();
+            return snapshots.stream();
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to stream recon file {}", path, e);
+            return Stream.empty();
+        }
+    }
+
+    public Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
+        Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
+            BiomeScanData data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
+            if (data != null) {
+                mapper.afterLoad(data);
+            }
+            return data;
+        });
+
+        Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> concurrentData = new ConcurrentHashMap<>();
+        loadedData.forEach((dim, biomeMap) -> concurrentData.put(dim, new ConcurrentHashMap<>(biomeMap)));
+        return concurrentData;
+    }
+
+    public void saveFinalBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data, BiomeDataMapper mapper) {
+        mapper.prepareForSave(data);
+        Path file = getFinalFilePath(dimension, biome);
+        saveJson(file, data);
+    }
+
+    public void deleteAllData() {
+        try {
+            if (Files.exists(dataDir)) {
+                try (Stream<Path> walk = Files.walk(dataDir)) {
+                    walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
+                }
+            }
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to clear geo-data directory.", e);
+        } finally {
+            ensureDirectoriesExist();
+        }
+    }
+
+    public void deleteFinalData() throws IOException {
+        deleteDirectory(finalDir);
+    }
+
+    private void deleteDirectory(Path dir) throws IOException {
+        if (Files.exists(dir)) {
+            try (Stream<Path> walk = Files.walk(dir)) {
+                walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
+            }
+        }
+        Files.createDirectories(dir);
+    }
+
+    private void deletePath(Path path) {
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to delete path: {}", path, e);
+        }
+    }
+
+    private void saveJson(Path file, Object data) {
+        try {
+            Files.createDirectories(file.getParent());
+            try (FileWriter writer = new FileWriter(file.toFile())) {
+                GeoDataStorage.PRETTY_GSON.toJson(data, writer);
+            }
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to save JSON to file {}", file, e);
+        }
+    }
+
+    private <T> Map<ResourceLocation, Map<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
+        Map<ResourceLocation, Map<ResourceLocation, T>> allData = new HashMap<>();
+        if (!Files.exists(rootDir)) {
+            return allData;
+        }
+
+        try (Stream<Path> dimNamespaces = Files.list(rootDir)) {
+            dimNamespaces.filter(Files::isDirectory).forEach(dimNamespaceDir -> {
+                try (Stream<Path> dimPaths = Files.list(dimNamespaceDir)) {
+                    dimPaths.filter(Files::isDirectory).forEach(dimPathDir -> {
+                        ResourceLocation dimensionId = ResourceLocation.fromNamespaceAndPath(
+                                dimNamespaceDir.getFileName().toString(),
+                                dimPathDir.getFileName().toString()
+                        );
+
+                        Map<ResourceLocation, T> biomeData = new HashMap<>();
+                        try (Stream<Path> biomeFiles = Files.list(dimPathDir)) {
+                            biomeFiles.filter(f -> f.toString().endsWith(".json")).forEach(biomeFile -> {
+                                try (FileReader reader = new FileReader(biomeFile.toFile())) {
+                                    T data = fromJson.apply(reader);
+                                    if (data != null) {
+                                        String fileName = biomeFile.getFileName().toString();
+                                        String encodedName = fileName.substring(0, fileName.length() - 5);
+                                        ResourceLocation biomeId = decodeLocation(encodedName);
+                                        biomeData.put(biomeId, data);
+                                    }
+                                } catch (Exception e) {
+                                    ComplexityAnalyzer.LOGGER.error("Failed to load/parse data from file {}", biomeFile, e);
+                                }
+                            });
+                        } catch (IOException e) {
+                            ComplexityAnalyzer.LOGGER.error("Failed to list biome files in {}", dimPathDir, e);
+                        }
+
+                        if (!biomeData.isEmpty()) {
+                            allData.put(dimensionId, biomeData);
+                        }
+                    });
+                } catch (IOException e) {
+                    ComplexityAnalyzer.LOGGER.error("Failed to list dimension paths in {}", dimNamespaceDir, e);
+                }
+            });
+        } catch (IOException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to list dimension namespaces in directory {}", rootDir, e);
+        }
+        return allData;
+    }
+
+    private String encodeLocation(ResourceLocation location) {
+        return location.getNamespace() + "~" + location.getPath().replace('/', '_');
+    }
+
+    private ResourceLocation decodeLocation(String encoded) {
+        String[] parts = encoded.split("~", 2);
+        if (parts.length != 2) {
+            return ResourceLocation.fromNamespaceAndPath("minecraft", encoded.replace('_', '/'));
+        }
+        return ResourceLocation.fromNamespaceAndPath(parts[0], parts[1].replace('_', '/'));
+    }
+
+    private Path getReconFilePath(ResourceLocation dimension, ResourceLocation biome) {
+        String biomeFileName = encodeLocation(biome) + ".jsonl";
+        return reconDir.resolve(dimension.getNamespace()).resolve(dimension.getPath()).resolve(biomeFileName);
+    }
+
+    public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
+        Path path = getReconFilePath(dimension, biome);
+        if (!Files.exists(path)) return 0;
+        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
+            return (int) lines.count();
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    private Path getFinalFilePath(ResourceLocation dimension, ResourceLocation biome) {
+        String biomeFileName = encodeLocation(biome) + ".json";
+        return finalDir.resolve(dimension.getNamespace()).resolve(dimension.getPath()).resolve(biomeFileName);
+    }
+
+    @FunctionalInterface
+    private interface ThrowingFunction<T, R> {
+        R apply(T t) throws Exception;
+    }
+}

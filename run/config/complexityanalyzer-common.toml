@@ -1,0 +1,32 @@
+#Complexity Analyzer Configuration
+[general]
+
+	#Limits and Safety
+	[general.limits]
+		#Maximum crafting depth to prevent infinite recursion
+		# Default: 50
+		# Range: 1 ~ 1000
+		maxDepth = 50
+		#Maximum recursion depth during analysis
+		# Default: 100
+		# Range: 1 ~ 1000
+		maxRecursionDepth = 100
+		#Maximum number of ingredient variants to consider (for tags)
+		# Default: 20
+		# Range: 1 ~ 100
+		maxIngredientVariants = 20
+
+	#Base complexity calculation values
+	[general.calculation]
+		#Base complexity for items without recipes
+		# Default: 1.0
+		# Range: 0.1 ~ 1000.0
+		baseComplexity = 1.0
+		#Multiplier for each depth level
+		# Default: 2.0
+		# Range: 0.1 ~ 100.0
+		depthMultiplier = 2.0
+		#Multiplier for ingredient count
+		# Default: 0.5
+		# Range: 0.0 ~ 10.0
+		ingredientMultiplier = 0.5

@@ -18,6 +18,7 @@ public class IterativeSolver {
 
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
+    private static final double CONVERGENCE_THRESHOLD = 1e-9;
 
     public IterativeSolver(RecipeGraph graph, SourceManager sourceManager) {
         this.graph = graph;
@@ -30,10 +31,8 @@ public class IterativeSolver {
         Map<Item, Double> optimalComplexities = new HashMap<>();
 
         for (Item item : graph.getAllItems()) {
-            if (!graph.hasRecipe(item)) {
-                double baseFactor = getBaseResourceCost(item, optimalComplexities);
-                optimalComplexities.put(item, baseFactor);
-            }
+            double baseFactor = getBaseResourceCost(item, optimalComplexities);
+            optimalComplexities.put(item, baseFactor);
         }
 
         boolean changed;
@@ -42,11 +41,11 @@ public class IterativeSolver {
             changed = false;
             iterations++;
             for (Item item : graph.getAllItems()) {
-                double oldOptimal = optimalComplexities.getOrDefault(item, Double.MAX_VALUE);
+                double oldOptimal = optimalComplexities.get(item);
 
                 double newOptimal = calculateComplexity(item, optimalComplexities);
 
-                if (Math.abs(oldOptimal - newOptimal) > 1e-6) {
+                if (newOptimal < oldOptimal - CONVERGENCE_THRESHOLD) {
                     optimalComplexities.put(item, newOptimal);
                     changed = true;
                 }
@@ -64,14 +63,14 @@ public class IterativeSolver {
     }
 
     private double calculateComplexity(Item item, Map<Item, Double> currentComplexities) {
-        double baseCost = getBaseResourceCost(item, currentComplexities);
+
+        double baseCost = currentComplexities.get(item);
 
         if (!graph.hasRecipe(item)) {
             return baseCost;
         }
 
         List<RecipeNode> allRecipes = graph.getRecipes(item);
-
         List<RecipeNode> primaryRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
                 .toList();
@@ -80,12 +79,12 @@ public class IterativeSolver {
         if (!primaryRecipes.isEmpty()) {
             craftCost = primaryRecipes.stream()
                     .mapToDouble(recipe -> calculateRecipeCost(recipe, currentComplexities))
-                    .min().orElse(Double.MAX_VALUE);
+                    .min().orElse(Double.POSITIVE_INFINITY);
         } else {
             craftCost = allRecipes.stream()
                     .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE && r.getCategory() != RecipeCategory.RECYCLING)
                     .mapToDouble(recipe -> calculateRecipeCost(recipe, currentComplexities))
-                    .min().orElse(Double.MAX_VALUE);
+                    .min().orElse(Double.POSITIVE_INFINITY);
         }
 
         return Math.min(craftCost, baseCost);
@@ -95,8 +94,8 @@ public class IterativeSolver {
         double ingredientsCost = 0;
         for (IngredientSlot slot : recipe.getIngredients()) {
             double slotCost = getSlotCost(slot, currentComplexities);
-            if (slotCost >= BaseResourceData.ResourceSourceType.UNOBTAINABLE.getBaseMultiplier()) {
-                return Double.MAX_VALUE;
+            if (Double.isInfinite(slotCost)) {
+                return Double.POSITIVE_INFINITY;
             }
             ingredientsCost += slotCost * slot.getCount();
         }
@@ -105,17 +104,18 @@ public class IterativeSolver {
 
     private double getSlotCost(IngredientSlot slot, Map<Item, Double> currentComplexities) {
         if (slot.getVariants().isEmpty()) {
-            return Double.MAX_VALUE;
+            return Double.POSITIVE_INFINITY;
         }
 
         return slot.getVariants().stream()
-                .mapToDouble(variant -> currentComplexities.getOrDefault(variant, getBaseResourceCost(variant, currentComplexities)))
+                .mapToDouble(variant -> currentComplexities.getOrDefault(variant, Double.POSITIVE_INFINITY))
                 .min()
-                .orElse(Double.MAX_VALUE);
+                .orElse(Double.POSITIVE_INFINITY);
     }
 
     private double getBaseResourceCost(Item item, Map<Item, Double> currentComplexities) {
         Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
+
         if (dataOpt.isEmpty()) {
             return BaseResourceData.ResourceSourceType.UNOBTAINABLE.getBaseMultiplier();
         }
@@ -129,7 +129,10 @@ public class IterativeSolver {
             for (Map.Entry<Item, Double> entry : data.getSourceItems().entrySet()) {
                 Item sourceItem = entry.getKey();
                 Double amount = entry.getValue();
-                dependencyCost += currentComplexities.getOrDefault(sourceItem, BaseResourceData.ResourceSourceType.UNOBTAINABLE.getBaseMultiplier()) * amount;
+                dependencyCost += currentComplexities.getOrDefault(sourceItem, Double.POSITIVE_INFINITY) * amount;
+            }
+            if (Double.isInfinite(dependencyCost)) {
+                return Double.POSITIVE_INFINITY;
             }
             return data.getBaseFactor() + dependencyCost;
         }

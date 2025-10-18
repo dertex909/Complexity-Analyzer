@@ -13,19 +13,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SourceManager {
-    private final Map<Class<? extends IResourceSource>, IResourceSource> sourcesByType = new HashMap<>();
     private final List<IResourceSource> sources;
     private final Map<Item, Optional<BaseResourceData>> cache = new ConcurrentHashMap<>();
 
     public SourceManager(List<IResourceSource> initialSources) {
         this.sources = new ArrayList<>(initialSources);
-        initialSources.forEach(source -> sourcesByType.put(source.getClass(), source));
         sortSources();
     }
 
     public void removeSourcesByType(Class<? extends IResourceSource> type) {
         boolean removed = sources.removeIf(type::isInstance);
-        sourcesByType.entrySet().removeIf(entry -> type.isAssignableFrom(entry.getKey()));
         if (removed) {
             clearCache();
             ComplexityAnalyzer.LOGGER.info("Removed all sources of type {}", type.getSimpleName());
@@ -40,7 +37,6 @@ public class SourceManager {
         ComplexityAnalyzer.LOGGER.debug("Adding new resource source: {} with priority {}", newSource.getName(), newSource.getPriority());
         sources.removeIf(s -> s.getClass().equals(newSource.getClass()));
         sources.add(newSource);
-        sourcesByType.put(newSource.getClass(), newSource);
         sortSources();
         clearCache();
     }

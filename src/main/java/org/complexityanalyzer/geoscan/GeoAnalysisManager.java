@@ -559,4 +559,13 @@ public class GeoAnalysisManager {
         if (dimension.equals(Level.END)) return BiomeTags.IS_END;
         return null;
     }
+    public void shutdown() {
+        ComplexityAnalyzer.LOGGER.info("Shutting down GeoAnalysisManager...");
+        
+        this.stopRequested.set(true);
+
+        NeoForge.EVENT_BUS.unregister(this);
+
+        ComplexityAnalyzer.LOGGER.info("GeoAnalysisManager has been shut down.");
+    }
 }

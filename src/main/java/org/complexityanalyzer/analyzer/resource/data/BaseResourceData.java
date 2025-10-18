@@ -53,7 +53,7 @@ public class BaseResourceData {
 
         GENERIC_LOOT("Generic Loot", 3.0),
         UNKNOWN("Unknown", 10.0),
-        UNOBTAINABLE("Unobtainable", 999999.0);
+        UNOBTAINABLE("Unobtainable", Double.POSITIVE_INFINITY);
 
         private final String displayName;
         private final double baseMultiplier;
@@ -86,10 +86,7 @@ public class BaseResourceData {
         public Builder sourceType(ResourceSourceType type) { this.sourceType = type; return this; }
         public Builder baseFactor(double factor) { this.baseFactor = factor; return this; }
         public Builder details(String details) { this.details = details; return this; }
-        public Builder sourceItems(Map<Item, Double> items) { this.sourceItems = items; return this; }
-
-        public BaseResourceData build() {
-            return new BaseResourceData(this);
-        }
+        public Builder sourceItems(Map<Item, Double> items) { this.sourceItems = (items == null || items.isEmpty()) ? Collections.emptyMap() : Map.copyOf(items);return this; }
+        public BaseResourceData build() { return new BaseResourceData(this); }
     }
 }

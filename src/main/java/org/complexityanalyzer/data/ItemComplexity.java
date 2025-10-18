@@ -124,6 +124,13 @@ public class ItemComplexity {
                 .build();
     }
 
+    public static ItemComplexity infinite(Item item) {
+        return new Builder(item)
+                .complexity(Double.POSITIVE_INFINITY)
+                .category(ComplexityCategory.ETERNAL)
+                .build();
+    }
+
     @Override
     public String toString() {
         return String.format("ItemComplexity{item=%s, complexity=%.2f, depth=%d, category=%s}",

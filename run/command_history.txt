@@ -1,23 +1,3 @@
-/complexity analyze item minecraft:stone_bricks
-/complexity tree minecraft:stone_bricks
-/complexity analyze item minecraft:stick
-/complexity tree minecraft:stick
-/complexity analyze item minecraft:saddle
-/complexity tree minecraft:stick
-/complexity analyze item minecraft:stone_bricks
-/complexity tree minecraft:stone_bricks
-/complexity analyze item minecraft:stick
-/complexity analyze item minecraft:acacia_button
-/complexity analyze item minecraft:activator_rail
-/locate structure minecraft:mineshaft
-/tp @s 240 ~ -144
-/complexity tps
-/locate structure minecraft:mineshaft
-/complexity analyze item minecraft:activator_rail
-/complexity analyze item minecraft:tropical_fish
-/complexity analyze item minecraft:acacia_log
-/complexity analyze item minecraft:acacia_stairs
-/complexity analyze item minecraft:arrow
 /complexity analyze item minecraft:bow
 /complexity analyze loot 1
 /complexity analyze loot minecraft:chests/bastion_hoglin_stable
@@ -48,3 +28,23 @@
 /complexity analyze item minecraft:acacia_log
 /complexity analyze item minecraft:andesite_wall
 /complexity analyze item minecraft:azalea_leaves
+/complexity analyze item minecraft:andesite_wall
+/complexity analyze item minecraft:andesite
+/complexity analyze item minecraft:diamond
+/complexity analyze item minecraft:gold_ingot
+/complexity analyze item minecraft:diamond
+/complexity analyze item minecraft:gold_ingot
+/complexity analyze item minecraft:diamond
+/complexity analyze item minecraft:gold_ingot
+/complexity tree minecraft:gold_ingot
+/complexity tree minecraft:diamond
+/complexity tree minecraft:gold_ingot
+/complexity analyze item minecraft:gold_ingot
+/complexity analyze item minecraft:diamond
+/complexity analyze item minecraft:andesite
+/complexity analyze item minecraft:diamond
+/complexity analyze item minecraft:gold_ingot
+/fill 223 -25 -145 223 -25 1111 tnt
+/fill 223 -25 -145 223 -25 111 minecraft:tnt
+/fill 223 -25 -145 223 -25 -111 minecraft:tnt
+/fill 223 -25 -145 223 25 -111 minecraft:tnt

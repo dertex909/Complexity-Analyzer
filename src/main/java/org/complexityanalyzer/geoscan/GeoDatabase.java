@@ -38,15 +38,26 @@ public class GeoDatabase {
         this.inMemoryData = new ConcurrentHashMap<>();
     }
 
-    public ScanMetadata.ScanPhase getScanPhase() { return storage.loadMetadata().scanPhase(); }
-    public void setScanPhase(ScanMetadata.ScanPhase phase) { storage.saveMetadata(new ScanMetadata(phase)); }
+    public ScanMetadata.ScanPhase getScanPhase() {
+        return storage.loadMetadata().scanPhase();
+    }
 
-    public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) { return analyzer.analyzeSnapshotForRecon(snapshot); }
-    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, List<ChunkSnapshot> newSnapshots) { storage.appendReconData(dimension, biome, newSnapshots); }
+    public void setScanPhase(ScanMetadata.ScanPhase phase) {
+        storage.saveMetadata(new ScanMetadata(phase));
+    }
+
+    public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) {
+        return analyzer.analyzeSnapshotForRecon(snapshot);
+    }
+
+    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, List<ChunkSnapshot> newSnapshots) {
+        storage.appendReconData(dimension, biome, newSnapshots);
+    }
 
     public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
         return storage.countReconChunks(dimension, biome);
     }
+
     public Map<ResourceLocation, Map<ResourceLocation, Path>> getAllReconFilePaths() {
         return storage.getAllReconFilePaths();
     }
@@ -103,8 +114,14 @@ public class GeoDatabase {
         clearAllData();
     }
 
-    public boolean isLoaded() { return !inMemoryData.isEmpty(); }
-    public Optional<BiomeScanData> getBiomeData(ResourceLocation dim, ResourceLocation biome) { return Optional.ofNullable(inMemoryData.get(dim)).map(dimData -> dimData.get(biome)); }
+    public boolean isLoaded() {
+        return !inMemoryData.isEmpty();
+    }
+
+    public Optional<BiomeScanData> getBiomeData(ResourceLocation dim, ResourceLocation biome) {
+        return Optional.ofNullable(inMemoryData.get(dim)).map(dimData -> dimData.get(biome));
+    }
+
     public double getGlobalRarity(Block block) {
         if (!isLoaded() && analyzer.hasHeuristics()) return 0.0;
         long total = totalBlocksInCache.get();
@@ -131,13 +148,39 @@ public class GeoDatabase {
                 totalBlocksInCache.addAndGet(value);
             });
         }
-        ComplexityAnalyzer.LOGGER.debug("Global cache updated incrementally. Total blocks: {}", totalBlocksInCache.get());
     }
 
     private void rebuildGlobalCache() {
         globalBlockCountsCache.clear();
         totalBlocksInCache.set(0);
-        inMemoryData.values().forEach(dimMap -> dimMap.values().forEach(data -> updateGlobalCache(null, data)));
+
+        long totalItems = inMemoryData.values().stream()
+                .mapToLong(Map::size)
+                .sum();
+
+        if (totalItems == 0) {
+            ComplexityAnalyzer.LOGGER.info("Global block rarity cache is empty (no data loaded).");
+            return;
+        }
+
+        ComplexityAnalyzer.LOGGER.debug("Rebuilding global cache from {} biome data entries...", totalItems);
+
+        long processedItems = 0;
+        int nextLogPercentage = 10;
+
+        for (Map<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values()) {
+            for (BiomeScanData data : dimMap.values()) {
+                updateGlobalCache(null, data);
+                processedItems++;
+
+                double currentPercentage = ((double) processedItems / totalItems) * 100.0;
+                if (currentPercentage >= nextLogPercentage) {
+                    ComplexityAnalyzer.LOGGER.debug("Cache rebuild: {}% complete", nextLogPercentage);
+                    nextLogPercentage += 10;
+                }
+            }
+        }
+
         ComplexityAnalyzer.LOGGER.info("Global block rarity cache rebuilt. Total blocks counted: {}", totalBlocksInCache.get());
     }
 }

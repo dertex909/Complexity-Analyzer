@@ -121,23 +121,28 @@ public class AnalysisEngine {
     }
 
     private void initializeResourceSources(ServerLevel serverLevel) {
-        TheoreticalDistributionProvider theoreticalDistProvider = new TheoreticalDistributionProvider();
-        theoreticalDistProvider.initialize(serverLevel);
-
         List<IResourceSource> initialSources = new ArrayList<>();
+
         if (this.geoDatabase.isLoaded()) {
             initialSources.add(new EmpiricalBlockSource(this.blockPropProvider, this.geoDatabase));
+            ComplexityAnalyzer.LOGGER.info("GeoDatabase loaded, skipping theoretical resources.");
+        } else {
+            TheoreticalDistributionProvider theoreticalDistProvider = new TheoreticalDistributionProvider();
+            theoreticalDistProvider.initialize(serverLevel);
+            initialSources.add(new TheoreticalBlockSource(this.blockPropProvider, theoreticalDistProvider));
         }
-        initialSources.add(new TheoreticalBlockSource(this.blockPropProvider, theoreticalDistProvider));
+
         initialSources.add(new UniversalLootSource());
         initialSources.add(new VillagerTradeSource());
+        initialSources.add(new MobDropSource(this.mobPropProvider));
 
-        this.sourceManager = new SourceManager(new ArrayList<>());
-        initialSources.forEach(sourceManager::addSourceAndRefresh);
+        this.sourceManager = new SourceManager(initialSources);
 
-        ComplexityAnalyzer.LOGGER.info("Initializing all resource sources...");
-        sourceManager.initialize(serverLevel);
+        ComplexityAnalyzer.LOGGER.info("Resource sources configured. Initializing all...");
+        this.sourceManager.initialize(serverLevel);
+        ComplexityAnalyzer.LOGGER.info("All resource sources initialized.");
     }
+
 
     public void recalculateComplexity() {
         if (analysisCancelled.get() || graph == null || sourceManager == null) return;
@@ -168,10 +173,19 @@ public class AnalysisEngine {
             return;
         }
 
-        ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Refreshing resource data...");
+        ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Updating resource sources...");
+
+        // Шаг 1: Удаляем старые теоретические и эмпирические источники.
+        // Это гарантирует, что мы не оставим "хвостов" и не создадим дубликатов.
+        sourceManager.removeSourcesByType(TheoreticalBlockSource.class);
+        sourceManager.removeSourcesByType(EmpiricalBlockSource.class);
+
+        // Шаг 2: Добавляем новый актуальный эмпирический источник.
+        // Метод addSourceAndRefresh сам позаботится о добавлении и обновлении кэша.
         EmpiricalBlockSource empiricalSource = new EmpiricalBlockSource(this.blockPropProvider, this.geoDatabase);
         sourceManager.addSourceAndRefresh(empiricalSource);
 
+        // Шаг 3: Запускаем полный перерасчет сложности с новыми, чистыми данными.
         recalculateComplexity();
     }
 

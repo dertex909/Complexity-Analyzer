@@ -67,6 +67,7 @@ public class EmpiricalBlockSource implements IResourceSource {
                 .build());
     }
 
+    public boolean isReady() { return this.geoDatabase != null && this.geoDatabase.isLoaded(); }
     @Override
     public int getPriority() { return 100000; }
     @Override

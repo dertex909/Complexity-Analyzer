@@ -1,40 +1,3 @@
-/complexity analyze item minecraft:acacia_log
-/complexity analyze item minecraft:andesite_wall
-/complexity analyze item minecraft:azalea_leaves
-/complexity analyze item minecraft:andesite_wall
-/complexity analyze item minecraft:andesite
-/complexity analyze item minecraft:diamond
-/complexity analyze item minecraft:gold_ingot
-/complexity analyze item minecraft:diamond
-/complexity analyze item minecraft:gold_ingot
-/complexity analyze item minecraft:diamond
-/complexity analyze item minecraft:gold_ingot
-/complexity tree minecraft:gold_ingot
-/complexity tree minecraft:diamond
-/complexity tree minecraft:gold_ingot
-/complexity analyze item minecraft:gold_ingot
-/complexity analyze item minecraft:diamond
-/complexity analyze item minecraft:andesite
-/complexity analyze item minecraft:diamond
-/complexity analyze item minecraft:gold_ingot
-/fill 223 -25 -145 223 -25 1111 tnt
-/fill 223 -25 -145 223 -25 111 minecraft:tnt
-/fill 223 -25 -145 223 -25 -111 minecraft:tnt
-/fill 223 -25 -145 223 25 -111 minecraft:tnt
-/complexity status
-/complexity reload
-/complexity status
-/complexity reload
-/complexity status
-/complexity reload
-/complexity status
-/complexity analyze item minecraft:acacia_log
-/complexity analyze item minecraft:diamond
-/complexity analyze item minecraft:iron_ingot
-/complexity analyze item minecraft:coal
-/complexity analyze item minecraft:iron_ingot
-/complexity analyze item minecraft:coal
-/complexity analyze item minecraft:iron_ingot
 /complexity tree minecraft:iron_ingot
 /complexity tree minecraft:acacia_door
 /complexity analyze item minecraft:acacia_door
@@ -48,3 +11,40 @@
 /complexity analyze item minecraft:iron_ingot
 /complexity analyze item minecraft:iron_ore
 /complexity analyze item minecraft:iron_leggings
+/complexity analyze item minecraft:iron_ore
+/complexity analyze item minecraft:iron_leggings
+/complexity analyze item minecraft:acacia_log
+/complexity analyze item minecraft:obsidian
+/complexity analyze item minecraft:activator_rail
+/complexity analyze item minecraft:obsidian
+/complexity analyze item minecraft:acacia_log
+/complexity analyze item minecraft:iron_leggings
+/complexity analyze item minecraft:acacia_log
+/complexity analyze item minecraft:obsidian
+/complexity analyze item minecraft:acacia_door
+/complexity analyze item minecraft:obsidian
+/complexity tree minecraft:acacia_door
+/complexity tree minecraft:acacia_log
+/complexity tree minecraft:andesite
+/complexity tree minecraft:bamboo_fence
+/complexity tree minecraft:brown_carpet
+/complexity tree minecraft:brown_carpe
+/complexity tree
+/complexity status
+/complexity tree
+/complexity tree minecraft:brown_carpet
+/complexity tree minecraft:air
+/complexity tree minecraft:andesite_slab
+/complexity tree minecraft:acacia_button depth 121 mode economic
+/complexity tree minecraft:acacia_button depth 121 mode player
+/complexity geoscan status
+/complexity geoscan start
+/complexity geoscan stop
+/complexity reload
+/complexity geoscan start
+/complexity geoscan status
+/complexity geoscan stop
+/complexity geoscan start 999999999 atomic
+/complexity geoscan status
+/complexity tps
+/complexity geoscan status

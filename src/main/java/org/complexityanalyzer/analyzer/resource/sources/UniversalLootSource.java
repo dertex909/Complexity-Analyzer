@@ -43,14 +43,11 @@ public class UniversalLootSource implements IResourceSource {
 
         try {
             var reloadableRegistries = server.reloadableRegistries();
-
             Set<ResourceKey<LootTable>> allLootTableKeys = getAllLootTableKeys(server);
-
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
 
             for (ResourceKey<LootTable> lootTableKey : allLootTableKeys) {
                 ResourceLocation lootTableId = lootTableKey.location();
-
                 Optional<LootContextDefinition> contextDefOpt = inferContextFromId(lootTableId);
                 if (contextDefOpt.isEmpty()) {
                     tablesSkipped++;
@@ -61,16 +58,13 @@ public class UniversalLootSource implements IResourceSource {
 
                 try {
                     LootTable lootTable = reloadableRegistries.getLootTable(lootTableKey);
-
                     if (lootTable == LootTable.EMPTY) {
                         tablesSkipped++;
                         continue;
                     }
-
                     tablesProcessed++;
 
                     LootParams lootParams = contextDef.createLootParams(serverLevel);
-
                     if (lootParams == null) {
                         ComplexityAnalyzer.LOGGER.debug("[ULS] Failed to create loot params for '{}', skipping.", lootTableId);
                         continue;
@@ -108,11 +102,28 @@ public class UniversalLootSource implements IResourceSource {
                         double baseFactor = (contextDef.baseActionCost / probability) * contextDef.sourceType.getBaseMultiplier();
                         String details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, probability * 100);
 
-                        BaseResourceData data = new BaseResourceData.Builder(item, this)
+                        // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
+                        BaseResourceData.Builder builder = new BaseResourceData.Builder(item, this)
                                 .sourceType(contextDef.sourceType)
                                 .baseFactor(baseFactor)
-                                .details(details)
-                                .build();
+                                .details(details);
+
+                        // Если это торг с пиглином, добавляем стоимость 1 золотого слитка за попытку
+                        if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
+                            // Формула для baseFactor при торге должна быть иной,
+                            // так как цена попытки зависит от цены слитка, а не от константы.
+                            // Поэтому мы обнуляем baseFactor и переносим всю стоимость в sourceItems.
+
+                            // Стоимость одной попытки торга = стоимость 1 золотого слитка
+                            // Стоимость получения 1 предмета = (стоимость 1 попытки) / (среднее кол-во предмета за попытку)
+                            double itemsPerAttempt = probability; // probability - это и есть среднее кол-во за симуляцию
+
+                            builder.baseFactor(contextDef.baseActionCost); // Используем небольшой базовый фактор из inferContextFromId
+                            builder.sourceItems(Map.of(Items.GOLD_INGOT, 1.0 / itemsPerAttempt));
+                        }
+
+                        BaseResourceData data = builder.build();
+                        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
                         allLootData.computeIfAbsent(contextDef.sourceType, k -> new HashMap<>()).put(item, data);
                     }
@@ -127,15 +138,11 @@ public class UniversalLootSource implements IResourceSource {
         }
 
         long duration = System.currentTimeMillis() - startTime;
-
-        int totalItemsFound = allLootData.values().stream()
-                .mapToInt(Map::size)
-                .sum();
+        int totalItemsFound = allLootData.values().stream().mapToInt(Map::size).sum();
 
         ComplexityAnalyzer.LOGGER.info("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
                 duration, tablesProcessed, tablesSkipped, totalItemsFound);
 
-        // Детальная статистика
         for (var entry : allLootData.entrySet()) {
             ComplexityAnalyzer.LOGGER.info("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
         }
@@ -242,9 +249,13 @@ public class UniversalLootSource implements IResourceSource {
         if (path.contains("fishing")) {
             return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.FISHING, 25.0));
         }
+
+        // --- ИСПРАВЛЕНИЕ: Заменяем 0.0 на небольшое ненулевое значение ---
         if (path.contains("piglin_bartering") || path.contains("bartering")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.0));
+            // Эта небольшая стоимость символизирует саму операцию торга
+            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.1));
         }
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
         if (path.startsWith("chests/") || path.contains("chest")) {
             return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.CHEST_LOOT, 100.0));

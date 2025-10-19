@@ -30,10 +30,21 @@ public class IterativeSolver {
         long startTime = System.currentTimeMillis();
         Map<Item, Double> optimalComplexities = new HashMap<>();
 
+        // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ---
+        // 1. Все сложности изначально бесконечны.
         for (Item item : graph.getCorpus()) {
-            double baseFactor = getBaseResourceCost(item, optimalComplexities);
-            optimalComplexities.put(item, baseFactor);
+            optimalComplexities.put(item, Double.POSITIVE_INFINITY);
         }
+
+        // 2. Только для ресурсов, у которых НЕТ зависимостей (sourceItems.isEmpty()),
+        // устанавливаем их базовую стоимость. Это наши "аксиомы" - дерево, камень и т.д.
+        for (Item item : graph.getCorpus()) {
+            Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
+            if (dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty()) {
+                optimalComplexities.put(item, dataOpt.get().getBaseFactor());
+            }
+        }
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ИНИЦИАЛИЗАЦИИ ---
 
         boolean changed;
         int iterations = 0;
@@ -43,6 +54,7 @@ public class IterativeSolver {
             for (Item item : graph.getCorpus()) {
                 double oldOptimal = optimalComplexities.get(item);
 
+                // На каждой итерации пересчитываем сложность всеми возможными путями
                 double newOptimal = calculateComplexity(item, optimalComplexities);
 
                 if (newOptimal < oldOptimal - CONVERGENCE_THRESHOLD) {
@@ -64,30 +76,31 @@ public class IterativeSolver {
 
     private double calculateComplexity(Item item, Map<Item, Double> currentComplexities) {
 
-        double baseCost = currentComplexities.get(item);
+        // --- ИСПРАВЛЕНИЕ: На каждой итерации заново вычисляем стоимость из базового источника ---
+        double sourceCost = getBaseResourceCost(item, currentComplexities);
 
-        if (!graph.hasRecipe(item)) {
-            return baseCost;
+        // Рассчитываем стоимость крафта (если он возможен)
+        double craftCost = Double.POSITIVE_INFINITY;
+        if (graph.hasRecipe(item)) {
+            List<RecipeNode> allRecipes = graph.getRecipes(item);
+            List<RecipeNode> primaryRecipes = allRecipes.stream()
+                    .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
+                    .toList();
+
+            if (!primaryRecipes.isEmpty()) {
+                craftCost = primaryRecipes.stream()
+                        .mapToDouble(recipe -> calculateRecipeCost(recipe, currentComplexities))
+                        .min().orElse(Double.POSITIVE_INFINITY);
+            } else {
+                craftCost = allRecipes.stream()
+                        .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE && r.getCategory() != RecipeCategory.RECYCLING)
+                        .mapToDouble(recipe -> calculateRecipeCost(recipe, currentComplexities))
+                        .min().orElse(Double.POSITIVE_INFINITY);
+            }
         }
 
-        List<RecipeNode> allRecipes = graph.getRecipes(item);
-        List<RecipeNode> primaryRecipes = allRecipes.stream()
-                .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
-                .toList();
-
-        double craftCost;
-        if (!primaryRecipes.isEmpty()) {
-            craftCost = primaryRecipes.stream()
-                    .mapToDouble(recipe -> calculateRecipeCost(recipe, currentComplexities))
-                    .min().orElse(Double.POSITIVE_INFINITY);
-        } else {
-            craftCost = allRecipes.stream()
-                    .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE && r.getCategory() != RecipeCategory.RECYCLING)
-                    .mapToDouble(recipe -> calculateRecipeCost(recipe, currentComplexities))
-                    .min().orElse(Double.POSITIVE_INFINITY);
-        }
-
-        return Math.min(craftCost, baseCost);
+        // Возвращаем минимум из всех возможных путей (источник или крафт)
+        return Math.min(sourceCost, craftCost);
     }
 
     private double calculateRecipeCost(RecipeNode recipe, Map<Item, Double> currentComplexities) {
@@ -129,27 +142,14 @@ public class IterativeSolver {
                 Item sourceItem = entry.getKey();
                 Double amount = entry.getValue();
                 double itemCost = currentComplexities.getOrDefault(sourceItem, Double.POSITIVE_INFINITY);
+                if (Double.isInfinite(itemCost)) {
+                    return Double.POSITIVE_INFINITY; // Если хоть один ингредиент недоступен, вся цепочка недоступна
+                }
                 dependencyCost += itemCost * amount;
             }
 
-            if (Double.isInfinite(dependencyCost)) {
-                return Double.POSITIVE_INFINITY;
-            }
-
-            // ДИАГНОСТИКА ДЛЯ ТРЕЙДОВ
-            if (data.getSourceType() == BaseResourceData.ResourceSourceType.VILLAGER_TRADE) {
-                String itemId = item.toString();
-                if (itemId.contains("leggings")) {  // Поножи
-                    ComplexityAnalyzer.LOGGER.warn("TRADE DEBUG: {} -> baseFactor={}, dependencyCost={}, sourceItems={}",
-                            itemId, data.getBaseFactor(), dependencyCost, data.getSourceItems());
-                }
-                return dependencyCost * data.getBaseFactor();
-            }
-
-            if (data.getSourceType() == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
-                return dependencyCost * data.getBaseFactor();
-            }
-
+            // --- ИСПРАВЛЕНИЕ: Убраны специальные условия, формула теперь единая и правильная ---
+            // Стоимость получения = (стоимость операции) + (стоимость ингредиентов)
             return data.getBaseFactor() + dependencyCost;
         }
     }

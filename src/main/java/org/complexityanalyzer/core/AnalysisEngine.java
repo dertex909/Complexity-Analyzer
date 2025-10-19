@@ -28,10 +28,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,9 +38,12 @@ public class AnalysisEngine {
 
     private final AtomicReference<State> currentState = new AtomicReference<>(State.IDLE);
     private final AtomicReference<ExecutorService> analysisExecutor = new AtomicReference<>(null);
+    private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
     private final AtomicBoolean analysisCancelled = new AtomicBoolean(false);
+    private final AtomicBoolean isReloading = new AtomicBoolean(false);
     private final ReentrantLock stateLock = new ReentrantLock();
     private final ReentrantLock geoManagerLock = new ReentrantLock();
+    private final Object executorLock = new Object();
 
     private final ComplexityCache complexityCache;
 
@@ -55,6 +55,7 @@ public class AnalysisEngine {
     private volatile BlockPropertyProvider blockPropProvider;
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
+    private volatile TheoreticalDistributionProvider theoreticalDistProvider;
 
     private static class InstanceHolder {
         private static final AnalysisEngine INSTANCE = new AnalysisEngine();
@@ -83,36 +84,45 @@ public class AnalysisEngine {
         }
 
         ExecutorService executor = ensureExecutorAvailable();
-        if (executor == null) {
-            currentState.set(State.FAILED);
-            return;
-        }
 
         ComplexityAnalyzer.LOGGER.info("Starting background analysis...");
-        executor.execute(() -> {
+
+        Future<?> task = executor.submit(() -> {
             try {
                 analysisCancelled.set(false);
+
+                if (isInterrupted()) {
+                    restoreIdleState();
+                    return;
+                }
 
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);
 
                 ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] Starting FAST initial analysis ===");
 
+                if (isInterrupted()) {
+                    restoreIdleState();
+                    return;
+                }
+
                 initializeCoreProviders(serverLevel);
-                if (analysisCancelled.get()) {
+
+                if (isInterrupted()) {
                     restoreIdleState();
                     return;
                 }
 
                 initializeResourceSources(serverLevel);
-                if (analysisCancelled.get()) {
+
+                if (isInterrupted()) {
                     restoreIdleState();
                     return;
                 }
 
                 recalculateComplexity();
 
-                if (analysisCancelled.get()) {
+                if (isInterrupted()) {
                     restoreIdleState();
                     return;
                 }
@@ -120,15 +130,29 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
                 currentState.set(State.READY);
 
+                try {
+                    createGeoManager(serverLevel.getServer());
+                    Optional<GeoAnalysisManager> geoMgr = getGeoManager();
+                    geoMgr.ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
+                }
+
                 safeRunCallback(onComplete);
 
             } catch (Exception e) {
-                if (!analysisCancelled.get()) {
+                if (!isInterrupted()) {
                     ComplexityAnalyzer.LOGGER.error("Critical error during analysis initialization", e);
                     currentState.set(State.FAILED);
                 }
             }
         });
+
+        currentAnalysisTask.set(task);
+    }
+
+    private boolean isInterrupted() {
+        return analysisCancelled.get() || Thread.currentThread().isInterrupted();
     }
 
     private static ExecutorService createAnalysisExecutor() {
@@ -142,40 +166,21 @@ public class AnalysisEngine {
     private ExecutorService ensureExecutorAvailable() {
         ExecutorService current = analysisExecutor.get();
 
-        if (current == null || current.isShutdown()) {
-            ComplexityAnalyzer.LOGGER.info("Creating new analysis thread pool.");
-
-            ExecutorService newExecutor = createAnalysisExecutor();
-
-            if (analysisExecutor.compareAndSet(current, newExecutor)) {
-                if (current != null && !current.isTerminated()) {
-                    try {
-                        boolean terminated = current.awaitTermination(100, TimeUnit.MILLISECONDS);
-                        if (!terminated) {
-                            ComplexityAnalyzer.LOGGER.warn("Previous executor did not terminate in time, proceeding anyway");
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        ComplexityAnalyzer.LOGGER.warn("Interrupted while waiting for old executor termination");
-                    }
-                }
-                return newExecutor;
-            } else {
-                newExecutor.shutdown();
-                try {
-                    boolean terminated = newExecutor.awaitTermination(1, TimeUnit.SECONDS);
-                    if (!terminated) {
-                        newExecutor.shutdownNow();
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    newExecutor.shutdownNow();
-                }
-                return analysisExecutor.get();
-            }
+        if (current != null && !current.isShutdown()) {
+            return current;
         }
 
-        return current;
+        synchronized (executorLock) {
+            current = analysisExecutor.get();
+            if (current != null && !current.isShutdown()) {
+                return current;
+            }
+
+            ComplexityAnalyzer.LOGGER.info("Creating new analysis thread pool.");
+            ExecutorService newExecutor = createAnalysisExecutor();
+            analysisExecutor.set(newExecutor);
+            return newExecutor;
+        }
     }
 
     private void safeRunCallback(Runnable callback) {
@@ -201,6 +206,9 @@ public class AnalysisEngine {
 
         this.geoDatabase = new GeoDatabase(serverLevel.getServer());
         this.geoDatabase.loadAll();
+
+        this.theoreticalDistProvider = new TheoreticalDistributionProvider();
+        this.theoreticalDistProvider.initialize(serverLevel);
     }
 
     private void initializeResourceSources(ServerLevel serverLevel) {
@@ -213,9 +221,7 @@ public class AnalysisEngine {
             initialSources.add(new EmpiricalBlockSource(blockProp, geoDB));
             ComplexityAnalyzer.LOGGER.info("GeoDatabase loaded, skipping theoretical resources.");
         } else {
-            TheoreticalDistributionProvider theoreticalDistProvider = new TheoreticalDistributionProvider();
-            theoreticalDistProvider.initialize(serverLevel);
-            initialSources.add(new TheoreticalBlockSource(blockProp, theoreticalDistProvider));
+            initialSources.add(new TheoreticalBlockSource(blockProp, this.theoreticalDistProvider));
         }
 
         initialSources.add(new UniversalLootSource());
@@ -233,7 +239,7 @@ public class AnalysisEngine {
         RecipeGraph currentGraph = this.graph;
         SourceManager currentSourceManager = this.sourceManager;
 
-        if (analysisCancelled.get() || currentGraph == null || currentSourceManager == null) {
+        if (isInterrupted() || currentGraph == null || currentSourceManager == null) {
             return;
         }
 
@@ -244,10 +250,14 @@ public class AnalysisEngine {
         SourcePathAnalyzer pathAnalyzer = new SourcePathAnalyzer(currentGraph, currentSourceManager);
         pathAnalyzer.findItemsWithBasePath();
 
+        if (isInterrupted()) {
+            return;
+        }
+
         IterativeSolver solver = new IterativeSolver(currentGraph, currentSourceManager);
         SolverResult solverResult = solver.solve();
 
-        if (analysisCancelled.get()) {
+        if (isInterrupted()) {
             ComplexityAnalyzer.LOGGER.info("Analysis was cancelled after solver finished.");
             return;
         }
@@ -266,7 +276,7 @@ public class AnalysisEngine {
             GeoDatabase geoDB = this.geoDatabase;
             BlockPropertyProvider blockProp = this.blockPropProvider;
 
-            if (currentSourceManager == null || currentGraph == null || analysisCancelled.get()) {
+            if (currentSourceManager == null || currentGraph == null || isInterrupted()) {
                 ComplexityAnalyzer.LOGGER.warn("onGeoScanFinished called while AnalysisEngine was resetting. Ignoring refresh.");
                 return;
             }
@@ -315,13 +325,33 @@ public class AnalysisEngine {
     }
 
     public void clearGeoDatabase() {
+        if (!isReady()) {
+            ComplexityAnalyzer.LOGGER.warn("Cannot clear GeoDatabase: engine not ready. Current state: {}", currentState.get());
+            return;
+        }
+
         stateLock.lock();
         try {
             GeoDatabase geoDB = this.geoDatabase;
             if (geoDB != null) {
                 geoDB.clear();
-                onGeoScanFinished();
-                ComplexityAnalyzer.LOGGER.info("GeoDatabase cleared by command and engine state refreshed.");
+                ComplexityAnalyzer.LOGGER.info("GeoDatabase cleared. Reverting to theoretical sources...");
+            }
+
+            SourceManager currentSourceManager = this.sourceManager;
+            BlockPropertyProvider blockProp = this.blockPropProvider;
+            TheoreticalDistributionProvider theoreticalDist = this.theoreticalDistProvider;
+
+            if (currentSourceManager != null && blockProp != null && theoreticalDist != null) {
+                currentSourceManager.removeSourcesByType(EmpiricalBlockSource.class);
+
+                TheoreticalBlockSource theoreticalSource = new TheoreticalBlockSource(blockProp, theoreticalDist);
+                currentSourceManager.addSourceAndRefresh(theoreticalSource);
+
+                ComplexityAnalyzer.LOGGER.info("Theoretical block sources restored.");
+                recalculateComplexity();
+            } else {
+                ComplexityAnalyzer.LOGGER.warn("Cannot revert to theoretical sources - providers not initialized.");
             }
         } finally {
             stateLock.unlock();
@@ -379,60 +409,40 @@ public class AnalysisEngine {
     }
 
     public void reloadAsync(Level level) {
-        State current = currentState.get();
-        if (current == State.ANALYZING) {
+        if (isReloading.getAndSet(true)) {
+            ComplexityAnalyzer.LOGGER.warn("Reload is already in progress. Ignoring duplicate request.");
             return;
         }
 
-        ExecutorService executor = ensureExecutorAvailable();
-        if (executor == null) {
-            ComplexityAnalyzer.LOGGER.error("Cannot reload: executor unavailable");
-            return;
-        }
+        ComplexityAnalyzer.LOGGER.info("Reload requested. Scheduling full restart...");
 
-        ComplexityAnalyzer.LOGGER.info("Queueing engine reload task...");
-        executor.execute(() -> {
-            State oldState = currentState.get();
-            while (oldState != State.ANALYZING &&
-                    !currentState.compareAndSet(oldState, State.ANALYZING)) {
-                oldState = currentState.get();
-            }
-
-            if (oldState == State.ANALYZING) {
-                ComplexityAnalyzer.LOGGER.warn("Reload already in progress");
-                return;
-            }
-
+        Thread reloadThread = new Thread(() -> {
             try {
-                analysisCancelled.set(true);
-
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    currentState.set(oldState);
-                    return;
-                }
-
-                stateLock.lock();
-                try {
-                    clearDataInternal();
-                    currentState.set(State.IDLE);
-                } finally {
-                    stateLock.unlock();
-                }
-
-                initializeAsync(level, () -> {});
-
+                shutdown();
+                Thread.sleep(500);
+                initializeAsync(level, () -> ComplexityAnalyzer.LOGGER.info("Reload complete."));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                ComplexityAnalyzer.LOGGER.error("Reload interrupted", e);
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Error during reload", e);
-                currentState.set(State.FAILED);
+            } finally {
+                isReloading.set(false);
             }
-        });
+        }, "Complexity-Reload-Thread");
+
+        reloadThread.setDaemon(true);
+        reloadThread.start();
     }
 
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("Shutdown requested for AnalysisEngine.");
+
+        Future<?> currentTask = currentAnalysisTask.getAndSet(null);
+        if (currentTask != null && !currentTask.isDone()) {
+            analysisCancelled.set(true);
+            currentTask.cancel(true);
+        }
 
         geoManagerLock.lock();
         try {
@@ -521,10 +531,12 @@ public class AnalysisEngine {
         if (!isReady()) {
             return new EngineStats(currentState.get(), 0, 0, 0);
         }
+
         RecipeGraph currentGraph = this.graph;
         if (currentGraph == null) {
             return new EngineStats(currentState.get(), 0, 0, 0);
         }
+
         return new EngineStats(
                 currentState.get(),
                 currentGraph.getAllItems().size(),

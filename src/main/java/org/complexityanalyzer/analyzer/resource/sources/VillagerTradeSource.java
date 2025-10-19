@@ -114,7 +114,22 @@ public class VillagerTradeSource implements IResourceSource {
             return Optional.empty();
         }
 
-        TradeInfo bestTrade = possibleTrades.getFirst();
+        // --- ИСПРАВЛЕНИЕ: Ищем лучшую сделку (по минимальному уровню), а не берем первую ---
+        TradeInfo bestTrade = null;
+        int minLevel = Integer.MAX_VALUE;
+
+        for (TradeInfo currentTrade : possibleTrades) {
+            if (currentTrade.level() < minLevel) {
+                minLevel = currentTrade.level();
+                bestTrade = currentTrade;
+            }
+        }
+        // На случай если список был, но оказался пустым после фильтрации (не наш случай, но для надежности)
+        if (bestTrade == null) {
+            return Optional.empty();
+        }
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
 
         Map<Item, Double> sourceItems = new HashMap<>();
 
@@ -128,7 +143,7 @@ public class VillagerTradeSource implements IResourceSource {
         }
 
         double tradeCost = LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0);
-        String details = String.format("Trade with Lvl %d Villager (1 of %d options)", bestTrade.level(), possibleTrades.size());
+        String details = String.format("Trade with Lvl %d Villager (best of %d options)", bestTrade.level(), possibleTrades.size());
 
         // ДИАГНОСТИКА
         String itemId = item.toString();

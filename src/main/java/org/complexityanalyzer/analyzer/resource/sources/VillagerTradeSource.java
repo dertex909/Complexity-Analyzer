@@ -5,6 +5,7 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
@@ -20,15 +21,28 @@ import java.util.Optional;
 public class VillagerTradeSource implements IResourceSource {
 
     private static final Map<Integer, Double> LEVEL_COST_MAP = Map.of(
-            1, 10.0, 2, 20.0, 3, 40.0, 4, 80.0, 5, 160.0);
+            1, 1.2,
+            2, 1.5,
+            3, 2.0,
+            4, 3.0,
+            5, 5.0
+    );
 
     private final Map<Item, List<TradeInfo>> tradesByResult = new HashMap<>();
+
+    private net.minecraft.world.entity.npc.Villager cachedFakeVillager = null;
+
 
     private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {}
 
     @Override
     public void initialize(Level level) {
         ComplexityAnalyzer.LOGGER.debug("Initializing VillagerTradeSource by analyzing all trades via reflection...");
+
+        cachedFakeVillager = new net.minecraft.world.entity.npc.Villager(
+                net.minecraft.world.entity.EntityType.VILLAGER,
+                level
+        );
 
         for (Map.Entry<VillagerProfession, Int2ObjectMap<VillagerTrades.ItemListing[]>> entry : VillagerTrades.TRADES.entrySet()) {
             for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : entry.getValue().int2ObjectEntrySet()) {
@@ -45,20 +59,25 @@ public class VillagerTradeSource implements IResourceSource {
 
     private Optional<TradeInfo> getTradeInfoFromReflection(VillagerTrades.ItemListing trade, int level) {
         try {
-            ItemStack result = getField(trade, "itemStack", "result", "toSell");
-            ItemStack costA = getField(trade, "price", "costA", "buy");
-            ItemStack costB = getField(trade, "price2", "costB", "buyB");
+            net.minecraft.util.RandomSource randomSource = net.minecraft.util.RandomSource.create();
 
-            if (result == null || result.isEmpty()) {
+            MerchantOffer offer = trade.getOffer(cachedFakeVillager, randomSource);
+            if (offer == null) {
                 return Optional.empty();
             }
 
-            if (costA == null) costA = ItemStack.EMPTY;
-            if (costB == null) costB = ItemStack.EMPTY;
+            ItemStack result = offer.getResult();
+            ItemStack costA = offer.getBaseCostA();
+            ItemStack costB = offer.getCostB();
+
+            if (result.isEmpty()) {
+                return Optional.empty();
+            }
 
             return Optional.of(new TradeInfo(result, costA, costB, level));
 
         } catch (Exception e) {
+            // Если getOffer() требует реального жителя, пропускаем
             return Optional.empty();
         }
     }
@@ -108,8 +127,15 @@ public class VillagerTradeSource implements IResourceSource {
             sourceItems.put(bestTrade.costB().getItem(), amountNeeded);
         }
 
-        double tradeCost = LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 0.0);
+        double tradeCost = LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0);
         String details = String.format("Trade with Lvl %d Villager (1 of %d options)", bestTrade.level(), possibleTrades.size());
+
+        // ДИАГНОСТИКА
+        String itemId = item.toString();
+        if (itemId.contains("legging")) {
+            ComplexityAnalyzer.LOGGER.warn("VILLAGER TRADE ANALYSIS: {} -> baseFactor={}, sourceItems={}, costA={}, costB={}",
+                    itemId, tradeCost, sourceItems, bestTrade.costA(), bestTrade.costB());
+        }
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())

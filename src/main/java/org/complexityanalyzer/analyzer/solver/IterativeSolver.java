@@ -30,7 +30,7 @@ public class IterativeSolver {
         long startTime = System.currentTimeMillis();
         Map<Item, Double> optimalComplexities = new HashMap<>();
 
-        for (Item item : graph.getAllItems()) {
+        for (Item item : graph.getCorpus()) {
             double baseFactor = getBaseResourceCost(item, optimalComplexities);
             optimalComplexities.put(item, baseFactor);
         }
@@ -40,7 +40,7 @@ public class IterativeSolver {
         do {
             changed = false;
             iterations++;
-            for (Item item : graph.getAllItems()) {
+            for (Item item : graph.getCorpus()) {
                 double oldOptimal = optimalComplexities.get(item);
 
                 double newOptimal = calculateComplexity(item, optimalComplexities);
@@ -115,7 +115,6 @@ public class IterativeSolver {
 
     private double getBaseResourceCost(Item item, Map<Item, Double> currentComplexities) {
         Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
-
         if (dataOpt.isEmpty()) {
             return BaseResourceData.ResourceSourceType.UNOBTAINABLE.getBaseMultiplier();
         }
@@ -129,11 +128,28 @@ public class IterativeSolver {
             for (Map.Entry<Item, Double> entry : data.getSourceItems().entrySet()) {
                 Item sourceItem = entry.getKey();
                 Double amount = entry.getValue();
-                dependencyCost += currentComplexities.getOrDefault(sourceItem, Double.POSITIVE_INFINITY) * amount;
+                double itemCost = currentComplexities.getOrDefault(sourceItem, Double.POSITIVE_INFINITY);
+                dependencyCost += itemCost * amount;
             }
+
             if (Double.isInfinite(dependencyCost)) {
                 return Double.POSITIVE_INFINITY;
             }
+
+            // ДИАГНОСТИКА ДЛЯ ТРЕЙДОВ
+            if (data.getSourceType() == BaseResourceData.ResourceSourceType.VILLAGER_TRADE) {
+                String itemId = item.toString();
+                if (itemId.contains("leggings")) {  // Поножи
+                    ComplexityAnalyzer.LOGGER.warn("TRADE DEBUG: {} -> baseFactor={}, dependencyCost={}, sourceItems={}",
+                            itemId, data.getBaseFactor(), dependencyCost, data.getSourceItems());
+                }
+                return dependencyCost * data.getBaseFactor();
+            }
+
+            if (data.getSourceType() == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
+                return dependencyCost * data.getBaseFactor();
+            }
+
             return data.getBaseFactor() + dependencyCost;
         }
     }

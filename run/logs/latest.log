@@ -1,138 +1,149 @@
-[19окт.2025 15:33:34.282] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
-[19окт.2025 15:33:34.288] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
-[19окт.2025 15:33:34.290] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
-[19окт.2025 15:33:34.439] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
-[19окт.2025 15:33:34.576] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
-[19окт.2025 15:33:34.782] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
-[19окт.2025 15:33:34.957] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
-[19окт.2025 15:33:35.292] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: NVIDIA GeForce RTX 4070/PCIe/SSE2 GL version 4.6.0 NVIDIA 581.29, NVIDIA Corporation
-[19окт.2025 15:33:35.425] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
-[19окт.2025 15:33:35.427] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
+[19окт.2025 18:02:37.007] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
+[19окт.2025 18:02:37.013] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
+[19окт.2025 18:02:37.015] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
+[19окт.2025 18:02:37.207] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[19окт.2025 18:02:37.388] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[19окт.2025 18:02:37.570] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
+[19окт.2025 18:02:37.857] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
+[19окт.2025 18:02:38.068] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: NVIDIA GeForce RTX 4070/PCIe/SSE2 GL version 4.6.0 NVIDIA 581.29, NVIDIA Corporation
+[19окт.2025 18:02:38.326] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[19окт.2025 18:02:38.329] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
      Mod List:
 		Name Version (Mod Id)
 
 		Complexity Analyzer 1.0.0 (complexityanalyzer)
 		Minecraft 1.21.1 (minecraft)
 		NeoForge 21.1.209 (neoforge)
-[19окт.2025 15:33:36.361] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.209, --gameDir, ., --assetsDir, C:\Users\xXx\.gradle\caches\neoformruntime\assets, --assetIndex, 17]
-[19окт.2025 15:33:38.389] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 229 Datafixer optimizations took 576 milliseconds
-[19окт.2025 15:33:38.737] [pool-7-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
-[19окт.2025 15:33:44.527] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[19окт.2025 15:33:44.529] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
-[19окт.2025 15:33:44.532] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[19окт.2025 15:33:44.533] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[19окт.2025 15:33:44.534] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[19окт.2025 15:33:44.669] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/assets/.mcassetsroot' uses unexpected schema
-[19окт.2025 15:33:44.669] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/data/.mcassetsroot' uses unexpected schema
-[19окт.2025 15:33:44.701] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[19окт.2025 15:33:44.714] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
-[19окт.2025 15:33:44.812] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
-[19окт.2025 15:33:45.138] [modloading-worker-0/INFO] [Complexity Analyzer/]: === Complexity Analyzer v1.0.0-FINAL ===
-[19окт.2025 15:33:45.170] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.209, for MC 1.21.1
-[19окт.2025 15:33:45.173] [modloading-worker-0/INFO] [Complexity Analyzer/]: Complexity Analyzer initialized successfully.
-[19окт.2025 15:33:46.044] [Render thread/INFO] [net.neoforged.neoforge.gametest.GameTestHooks/]: Enabled Gametest Namespaces: [complexityanalyzer]
-[19окт.2025 15:33:46.188] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources, mod/complexityanalyzer, mod/neoforge
-[19окт.2025 15:33:46.291] [Worker-Main-1/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-15.1.05.hex, loading
-[19окт.2025 15:33:46.430] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-15.1.05.hex, loading
-[19окт.2025 15:33:48.237] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:item.goat_horn.play
-[19окт.2025 15:33:48.238] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
-[19окт.2025 15:33:48.272] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device OpenAL Soft on Динамики (Realtek(R) Audio)
-[19окт.2025 15:33:48.273] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
-[19окт.2025 15:33:48.418] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
-[19окт.2025 15:33:48.429] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
-[19окт.2025 15:33:48.429] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
-[19окт.2025 15:33:48.430] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
-[19окт.2025 15:33:48.430] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
-[19окт.2025 15:33:48.433] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
-[19окт.2025 15:33:48.433] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
-[19окт.2025 15:33:48.433] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
-[19окт.2025 15:33:48.433] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
-[19окт.2025 15:33:48.657] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[19окт.2025 15:33:48.658] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[19окт.2025 15:33:48.659] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
-[19окт.2025 15:33:48.659] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[19окт.2025 15:33:48.659] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[19окт.2025 15:33:48.688] [Render thread/WARN] [net.minecraft.client.renderer.ShaderInstance/]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
-[19окт.2025 15:33:48.754] [Render thread/INFO] [net.neoforged.neoforge.client.entity.animation.json.AnimationLoader/]: Loaded 0 entity animations
-[19окт.2025 15:34:15.331] [Worker-Main-3/INFO] [Complexity Analyzer/]: Registered /complexity command
-[19окт.2025 15:34:15.538] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
-[19окт.2025 15:34:15.716] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
-[19окт.2025 15:34:16.130] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.1
-[19окт.2025 15:34:16.130] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[19окт.2025 15:34:17.146] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
-[19окт.2025 15:34:17.517] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 0%
-[19окт.2025 15:34:17.647] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
-[19окт.2025 15:34:17.652] [Server thread/INFO] [Complexity Analyzer/]: Creating new analysis thread pool.
-[19окт.2025 15:34:17.652] [Server thread/INFO] [Complexity Analyzer/]: Starting background analysis...
-[19окт.2025 15:34:17.653] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph...
-[19окт.2025 15:34:17.654] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 502 ms
-[19окт.2025 15:34:17.655] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph with advanced classification...
-[19окт.2025 15:34:17.696] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recipe graph built: 1279 recipes processed, 11 skipped
-[19окт.2025 15:34:17.696] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: ANALYZING] Starting FAST initial analysis ===
-[19окт.2025 15:34:17.697] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing BlockPropertyProvider...
-[19окт.2025 15:34:17.701] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: BlockPropertyProvider initialized, analyzed 1060 blocks.
-[19окт.2025 15:34:17.702] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing MobPropertyProvider...
-[19окт.2025 15:34:17.704] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobPropertyProvider initialized, analyzed 84 entities.
-[19окт.2025 15:34:17.710] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Loading all final geo-data from disk...
-[19окт.2025 15:34:17.735] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Global block rarity cache rebuilt. Total blocks counted: 52716600
-[19окт.2025 15:34:17.735] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Finished loading geo-data. Found data for 3 dimensions.
-[19окт.2025 15:34:17.736] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase loaded, skipping theoretical resources.
-[19окт.2025 15:34:17.739] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Resource sources configured. Initializing all...
-[19окт.2025 15:34:17.762] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 2, from 10
-[19окт.2025 15:34:17.762] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 5, from 0
-[19окт.2025 15:34:18.606] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:05d2ffc3] logged in with entity id 111 at (212.6202422102734, 20.0, -121.73310311862086)
-[19окт.2025 15:34:18.686] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev присоединился к игре
-[19окт.2025 15:34:18.853] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 67 advancements
-[19окт.2025 15:34:23.424] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: VillagerTradeSource initialized. Found trades for 177 unique items.
-[19окт.2025 15:34:26.672] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_big' after 12 iterations. Skipping.
-[19окт.2025 15:34:26.683] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.684] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.684] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.684] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.684] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.685] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.686] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.686] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.686] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.686] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.687] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.687] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.688] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.689] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:26.689] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
-[19окт.2025 15:34:29.774] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/shipwreck_map' after 5 iterations. Skipping.
-[19окт.2025 15:34:33.389] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_small' after 19 iterations. Skipping.
-[19окт.2025 15:34:33.404] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS] Auto-scan complete in 9980ms. Processed 87 loot tables (1092 skipped), found 388 unique items.
-[19окт.2025 15:34:33.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Chest Loot -> 231 items
-[19окт.2025 15:34:33.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Archaeology -> 63 items
-[19окт.2025 15:34:33.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Piglin Bartering -> 17 items
-[19окт.2025 15:34:33.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Shearing -> 2 items
-[19окт.2025 15:34:33.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Generic Loot -> 54 items
-[19окт.2025 15:34:33.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Fishing -> 21 items
-[19окт.2025 15:34:33.684] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobDropSource initialized. Processed 79 valid entities. Found drop info for 53 unique items.
-[19окт.2025 15:34:33.685] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All resource sources initialized.
-[19окт.2025 15:34:33.685] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recalculating all complexity data...
-[19окт.2025 15:34:33.696] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:iron_leggings -> baseFactor=1.2, sourceItems={minecraft:emerald=7.0}, costA=7 minecraft:emerald, costB=0 minecraft:air
-[19окт.2025 15:34:33.699] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:leather_leggings -> baseFactor=1.2, sourceItems={minecraft:emerald=3.0}, costA=3 minecraft:emerald, costB=0 minecraft:air
-[19окт.2025 15:34:33.702] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:diamond_leggings -> baseFactor=3.0, sourceItems={minecraft:emerald=30.0}, costA=30 minecraft:emerald, costB=0 minecraft:air
-[19окт.2025 15:34:33.704] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:chainmail_leggings -> baseFactor=1.5, sourceItems={minecraft:emerald=3.0}, costA=3 minecraft:emerald, costB=0 minecraft:air
-[19окт.2025 15:34:33.794] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All systems refreshed with new data.
-[19окт.2025 15:34:33.794] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: READY] Analysis complete. Mod is operational. ===
-[19окт.2025 15:34:33.794] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Analysis engine is ready. Triggering initial geo-scan if needed.
+[19окт.2025 18:02:39.196] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.209, --gameDir, ., --assetsDir, C:\Users\xXx\.gradle\caches\neoformruntime\assets, --assetIndex, 17]
+[19окт.2025 18:02:40.953] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 229 Datafixer optimizations took 373 milliseconds
+[19окт.2025 18:02:41.543] [pool-7-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
+[19окт.2025 18:02:47.133] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[19окт.2025 18:02:47.135] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[19окт.2025 18:02:47.138] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[19окт.2025 18:02:47.140] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[19окт.2025 18:02:47.142] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[19окт.2025 18:02:47.438] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/assets/.mcassetsroot' uses unexpected schema
+[19окт.2025 18:02:47.439] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/data/.mcassetsroot' uses unexpected schema
+[19окт.2025 18:02:47.486] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[19окт.2025 18:02:47.501] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
+[19окт.2025 18:02:47.649] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
+[19окт.2025 18:02:48.020] [modloading-worker-0/INFO] [Complexity Analyzer/]: === Complexity Analyzer v1.0.0-FINAL ===
+[19окт.2025 18:02:48.048] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.209, for MC 1.21.1
+[19окт.2025 18:02:48.050] [modloading-worker-0/INFO] [Complexity Analyzer/]: Complexity Analyzer initialized successfully.
+[19окт.2025 18:02:49.055] [Render thread/INFO] [net.neoforged.neoforge.gametest.GameTestHooks/]: Enabled Gametest Namespaces: [complexityanalyzer]
+[19окт.2025 18:02:49.195] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources, mod/complexityanalyzer, mod/neoforge
+[19окт.2025 18:02:49.288] [Worker-Main-8/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-15.1.05.hex, loading
+[19окт.2025 18:02:49.288] [Worker-Main-5/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-15.1.05.hex, loading
+[19окт.2025 18:02:50.817] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:item.goat_horn.play
+[19окт.2025 18:02:50.818] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
+[19окт.2025 18:02:50.859] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device OpenAL Soft on Динамики (Realtek(R) Audio)
+[19окт.2025 18:02:50.861] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
+[19окт.2025 18:02:50.986] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
+[19окт.2025 18:02:50.997] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[19окт.2025 18:02:50.997] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[19окт.2025 18:02:50.997] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[19окт.2025 18:02:50.998] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[19окт.2025 18:02:51.001] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[19окт.2025 18:02:51.001] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[19окт.2025 18:02:51.002] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[19окт.2025 18:02:51.002] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[19окт.2025 18:02:51.265] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[19окт.2025 18:02:51.266] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[19окт.2025 18:02:51.267] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
+[19окт.2025 18:02:51.267] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[19окт.2025 18:02:51.267] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[19окт.2025 18:02:51.326] [Render thread/WARN] [net.minecraft.client.renderer.ShaderInstance/]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
+[19окт.2025 18:02:51.601] [Render thread/INFO] [net.neoforged.neoforge.client.entity.animation.json.AnimationLoader/]: Loaded 0 entity animations
+[19окт.2025 18:02:55.852] [Worker-Main-1/INFO] [Complexity Analyzer/]: Registered /complexity command
+[19окт.2025 18:02:56.058] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
+[19окт.2025 18:02:56.273] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
+[19окт.2025 18:02:56.710] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.1
+[19окт.2025 18:02:56.710] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
+[19окт.2025 18:02:58.023] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
+[19окт.2025 18:02:58.287] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 0%
+[19окт.2025 18:02:58.409] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[19окт.2025 18:02:58.412] [Server thread/INFO] [Complexity Analyzer/]: Creating new analysis thread pool.
+[19окт.2025 18:02:58.412] [Server thread/INFO] [Complexity Analyzer/]: Starting background analysis...
+[19окт.2025 18:02:58.414] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph...
+[19окт.2025 18:02:58.415] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph with advanced classification...
+[19окт.2025 18:02:58.455] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recipe graph built: 1279 recipes processed, 11 skipped
+[19окт.2025 18:02:58.455] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: ANALYZING] Starting FAST initial analysis ===
+[19окт.2025 18:02:58.456] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing BlockPropertyProvider...
+[19окт.2025 18:02:58.459] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: BlockPropertyProvider initialized, analyzed 1060 blocks.
+[19окт.2025 18:02:58.461] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing MobPropertyProvider...
+[19окт.2025 18:02:58.461] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobPropertyProvider initialized, analyzed 84 entities.
+[19окт.2025 18:02:58.468] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Loading all final geo-data from disk...
+[19окт.2025 18:02:58.492] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Global block rarity cache rebuilt. Total blocks counted: 52716600
+[19окт.2025 18:02:58.492] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Finished loading geo-data. Found data for 3 dimensions.
+[19окт.2025 18:02:58.509] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: TheoreticalDistributionProvider initialized: 23 blocks found in worldgen config.
+[19окт.2025 18:02:58.510] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase loaded, skipping theoretical resources.
+[19окт.2025 18:02:58.515] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Resource sources configured. Initializing all...
+[19окт.2025 18:02:58.529] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 2, from 10
+[19окт.2025 18:02:58.530] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 5, from 0
+[19окт.2025 18:02:59.376] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 16%
+[19окт.2025 18:02:59.376] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 16%
+[19окт.2025 18:02:59.378] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 1342 ms
+[19окт.2025 18:02:59.895] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:dca909b8] logged in with entity id 111 at (212.51320595775752, 19.0, -124.58360766270684)
+[19окт.2025 18:02:59.966] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev присоединился к игре
+[19окт.2025 18:03:00.159] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 67 advancements
+[19окт.2025 18:03:04.904] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: VillagerTradeSource initialized. Found trades for 177 unique items.
+[19окт.2025 18:03:04.976] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.976] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.977] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.977] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.978] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.978] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.979] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.979] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.979] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.980] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.981] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.981] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.981] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.982] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.982] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.982] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.982] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.983] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.983] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.983] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.983] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.984] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.984] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.984] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:04.984] [Complexity-Analysis-Thread/WARN] [net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction/]: Couldn't set damage of loot item 1 minecraft:compass
+[19окт.2025 18:03:08.335] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/shipwreck_map' after 5 iterations. Skipping.
+[19окт.2025 18:03:11.940] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_big' after 22 iterations. Skipping.
+[19окт.2025 18:03:15.249] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_small' after 20 iterations. Skipping.
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS] Auto-scan complete in 10366ms. Processed 87 loot tables (1092 skipped), found 388 unique items.
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Piglin Bartering -> 17 items
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Fishing -> 21 items
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Shearing -> 2 items
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Generic Loot -> 54 items
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Chest Loot -> 231 items
+[19окт.2025 18:03:15.273] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Archaeology -> 63 items
+[19окт.2025 18:03:15.578] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobDropSource initialized. Processed 79 valid entities. Found drop info for 53 unique items.
+[19окт.2025 18:03:15.578] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All resource sources initialized.
+[19окт.2025 18:03:15.578] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recalculating all complexity data...
+[19окт.2025 18:03:15.595] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:iron_leggings -> baseFactor=1.2, sourceItems={minecraft:emerald=7.0}, costA=7 minecraft:emerald, costB=0 minecraft:air
+[19окт.2025 18:03:15.597] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:chainmail_leggings -> baseFactor=1.5, sourceItems={minecraft:emerald=3.0}, costA=3 minecraft:emerald, costB=0 minecraft:air
+[19окт.2025 18:03:15.601] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:diamond_leggings -> baseFactor=3.0, sourceItems={minecraft:emerald=32.0}, costA=32 minecraft:emerald, costB=0 minecraft:air
+[19окт.2025 18:03:15.601] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: VILLAGER TRADE ANALYSIS: minecraft:leather_leggings -> baseFactor=1.2, sourceItems={minecraft:emerald=3.0}, costA=3 minecraft:emerald, costB=0 minecraft:air
+[19окт.2025 18:03:15.719] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All systems refreshed with new data.
+[19окт.2025 18:03:15.719] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: READY] Analysis complete. Mod is operational. ===
+[19окт.2025 18:03:15.719] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Analysis engine is ready. Triggering initial geo-scan if needed.
+[19окт.2025 18:03:19.064] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] === Complexity Analyzer Status ===
+[19окт.2025 18:03:19.067] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Engine State: READY
+[19окт.2025 18:03:19.068] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Items with recipes: 838
+[19окт.2025 18:03:19.069] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Total recipes: 1279
+[19окт.2025 18:03:20.414] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Неизвестная или неполная команда; см. ниже, чтобы найти ошибку
+[19окт.2025 18:03:20.414] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ...exity tree<--[ЗДЕСЬ]
+[19окт.2025 18:03:24.195] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] === Crafting Tree (Player View, Depth: 100) ===
+[19окт.2025 18:03:24.195] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Item: Коричневый ковёр
+[19окт.2025 18:03:24.195] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 

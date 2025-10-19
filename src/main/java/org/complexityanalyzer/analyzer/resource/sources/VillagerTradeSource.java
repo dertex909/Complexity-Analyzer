@@ -77,7 +77,6 @@ public class VillagerTradeSource implements IResourceSource {
             return Optional.of(new TradeInfo(result, costA, costB, level));
 
         } catch (Exception e) {
-            // Если getOffer() требует реального жителя, пропускаем
             return Optional.empty();
         }
     }
@@ -114,7 +113,6 @@ public class VillagerTradeSource implements IResourceSource {
             return Optional.empty();
         }
 
-        // --- ИСПРАВЛЕНИЕ: Ищем лучшую сделку (по минимальному уровню), а не берем первую ---
         TradeInfo bestTrade = null;
         int minLevel = Integer.MAX_VALUE;
 
@@ -124,12 +122,10 @@ public class VillagerTradeSource implements IResourceSource {
                 bestTrade = currentTrade;
             }
         }
-        // На случай если список был, но оказался пустым после фильтрации (не наш случай, но для надежности)
+
         if (bestTrade == null) {
             return Optional.empty();
         }
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
-
 
         Map<Item, Double> sourceItems = new HashMap<>();
 
@@ -144,13 +140,6 @@ public class VillagerTradeSource implements IResourceSource {
 
         double tradeCost = LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0);
         String details = String.format("Trade with Lvl %d Villager (best of %d options)", bestTrade.level(), possibleTrades.size());
-
-        // ДИАГНОСТИКА
-        String itemId = item.toString();
-        if (itemId.contains("legging")) {
-            ComplexityAnalyzer.LOGGER.warn("VILLAGER TRADE ANALYSIS: {} -> baseFactor={}, sourceItems={}, costA={}, costB={}",
-                    itemId, tradeCost, sourceItems, bestTrade.costA(), bestTrade.costB());
-        }
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())

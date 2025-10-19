@@ -30,21 +30,16 @@ public class IterativeSolver {
         long startTime = System.currentTimeMillis();
         Map<Item, Double> optimalComplexities = new HashMap<>();
 
-        // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ---
-        // 1. Все сложности изначально бесконечны.
         for (Item item : graph.getCorpus()) {
             optimalComplexities.put(item, Double.POSITIVE_INFINITY);
         }
 
-        // 2. Только для ресурсов, у которых НЕТ зависимостей (sourceItems.isEmpty()),
-        // устанавливаем их базовую стоимость. Это наши "аксиомы" - дерево, камень и т.д.
         for (Item item : graph.getCorpus()) {
             Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
             if (dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty()) {
                 optimalComplexities.put(item, dataOpt.get().getBaseFactor());
             }
         }
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ИНИЦИАЛИЗАЦИИ ---
 
         boolean changed;
         int iterations = 0;
@@ -54,7 +49,6 @@ public class IterativeSolver {
             for (Item item : graph.getCorpus()) {
                 double oldOptimal = optimalComplexities.get(item);
 
-                // На каждой итерации пересчитываем сложность всеми возможными путями
                 double newOptimal = calculateComplexity(item, optimalComplexities);
 
                 if (newOptimal < oldOptimal - CONVERGENCE_THRESHOLD) {
@@ -76,10 +70,8 @@ public class IterativeSolver {
 
     private double calculateComplexity(Item item, Map<Item, Double> currentComplexities) {
 
-        // --- ИСПРАВЛЕНИЕ: На каждой итерации заново вычисляем стоимость из базового источника ---
         double sourceCost = getBaseResourceCost(item, currentComplexities);
 
-        // Рассчитываем стоимость крафта (если он возможен)
         double craftCost = Double.POSITIVE_INFINITY;
         if (graph.hasRecipe(item)) {
             List<RecipeNode> allRecipes = graph.getRecipes(item);
@@ -99,7 +91,6 @@ public class IterativeSolver {
             }
         }
 
-        // Возвращаем минимум из всех возможных путей (источник или крафт)
         return Math.min(sourceCost, craftCost);
     }
 
@@ -143,13 +134,11 @@ public class IterativeSolver {
                 Double amount = entry.getValue();
                 double itemCost = currentComplexities.getOrDefault(sourceItem, Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(itemCost)) {
-                    return Double.POSITIVE_INFINITY; // Если хоть один ингредиент недоступен, вся цепочка недоступна
+                    return Double.POSITIVE_INFINITY;
                 }
                 dependencyCost += itemCost * amount;
             }
 
-            // --- ИСПРАВЛЕНИЕ: Убраны специальные условия, формула теперь единая и правильная ---
-            // Стоимость получения = (стоимость операции) + (стоимость ингредиентов)
             return data.getBaseFactor() + dependencyCost;
         }
     }

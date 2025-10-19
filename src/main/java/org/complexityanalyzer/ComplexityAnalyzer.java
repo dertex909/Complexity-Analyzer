@@ -6,7 +6,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.event.DatapackSyncHandler; // <-- ВОЗВРАЩАЕМ
+import org.complexityanalyzer.event.DatapackSyncHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

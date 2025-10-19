@@ -1,5 +1,3 @@
-/complexity tree minecraft:iron_ingot
-/complexity tree minecraft:acacia_door
 /complexity analyze item minecraft:acacia_door
 /complexity analyze item minecraft:acacia_log
 /complexity analyze item minecraft:acacia_door
@@ -47,4 +45,6 @@
 /complexity geoscan start 999999999 atomic
 /complexity geoscan status
 /complexity tps
+/complexity geoscan status
+/complexity geoscan stop
 /complexity geoscan status

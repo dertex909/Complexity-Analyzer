@@ -88,7 +88,6 @@ public class AnalyzeCommand {
         source.sendSuccess(() -> Component.literal(""), false);
     }
 
-    // Внутренний record для удобства хранения данных и их полной стоимости
     private record SourceWithCost(BaseResourceData data, double fullCost) {}
 
     private static void displaySourceInfo(
@@ -111,11 +110,6 @@ public class AnalyzeCommand {
         if (!allSources.isEmpty()) {
             source.sendSuccess(() -> Component.literal("§7  §eKnown Alternative Sources:"), false);
 
-            // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
-            // 1. Для каждого источника вычисляем его ПОЛНУЮ стоимость
-            // 2. Сортируем по этой полной стоимости
-            // 3. Выводим полную стоимость в чат
-
             allSources.stream()
                     .map(data -> {
                         double fullEstimatedCost = data.getBaseFactor();
@@ -124,12 +118,10 @@ public class AnalyzeCommand {
                                 Item sourceItem = entry.getKey();
                                 double amount = entry.getValue();
 
-                                // Получаем финальную сложность ингредиента из движка
                                 Optional<ItemComplexity> sourceComplexity = engine.getComplexityResult(sourceItem, PathType.OPTIMAL);
                                 if (sourceComplexity.isPresent() && sourceComplexity.get().isValid()) {
                                     fullEstimatedCost += sourceComplexity.get().getComplexity() * amount;
                                 } else {
-                                    // Если ингредиент недоступен, стоимость источника становится бесконечной
                                     fullEstimatedCost = Double.POSITIVE_INFINITY;
                                     break;
                                 }
@@ -137,19 +129,17 @@ public class AnalyzeCommand {
                         }
                         return new SourceWithCost(data, fullEstimatedCost);
                     })
-                    .sorted(Comparator.comparingDouble(SourceWithCost::fullCost)) // Сортируем по полной стоимости
+                    .sorted(Comparator.comparingDouble(SourceWithCost::fullCost))
                     .forEach(swc -> {
-                        // Если стоимость бесконечна, выводим это
                         String costString = Double.isInfinite(swc.fullCost()) ? "§cInfinity" : String.format("§a%.2f", swc.fullCost());
 
                         source.sendSuccess(() -> Component.literal(
                                 String.format("§7    - §f%s (Est. Cost: %s§7): §f%s",
                                         swc.data().getSourceType().getDisplayName(),
-                                        costString, // Выводим полную стоимость
+                                        costString,
                                         swc.data().getDetails())
                         ), false);
                     });
-            // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
         }
 
         source.sendSuccess(() -> Component.literal(""), false);

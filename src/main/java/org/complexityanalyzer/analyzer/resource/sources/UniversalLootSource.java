@@ -96,34 +96,24 @@ public class UniversalLootSource implements IResourceSource {
 
                     for (Map.Entry<Item, Integer> itemEntry : catchCounts.entrySet()) {
                         Item item = itemEntry.getKey();
-                        double probability = (double) itemEntry.getValue() / SIMULATION_COUNT;
-                        if (probability <= 0) continue;
+                        double itemsPerAttempt = (double) itemEntry.getValue() / SIMULATION_COUNT;
+                        if (itemsPerAttempt <= 0) continue;
 
-                        double baseFactor = (contextDef.baseActionCost / probability) * contextDef.sourceType.getBaseMultiplier();
-                        String details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, probability * 100);
+                        double baseFactor = (contextDef.baseActionCost / itemsPerAttempt) * contextDef.sourceType.getBaseMultiplier();
+                        String details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, itemsPerAttempt * 100);
 
-                        // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
                         BaseResourceData.Builder builder = new BaseResourceData.Builder(item, this)
                                 .sourceType(contextDef.sourceType)
                                 .baseFactor(baseFactor)
                                 .details(details);
 
-                        // Если это торг с пиглином, добавляем стоимость 1 золотого слитка за попытку
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
-                            // Формула для baseFactor при торге должна быть иной,
-                            // так как цена попытки зависит от цены слитка, а не от константы.
-                            // Поэтому мы обнуляем baseFactor и переносим всю стоимость в sourceItems.
 
-                            // Стоимость одной попытки торга = стоимость 1 золотого слитка
-                            // Стоимость получения 1 предмета = (стоимость 1 попытки) / (среднее кол-во предмета за попытку)
-                            double itemsPerAttempt = probability; // probability - это и есть среднее кол-во за симуляцию
-
-                            builder.baseFactor(contextDef.baseActionCost); // Используем небольшой базовый фактор из inferContextFromId
+                            builder.baseFactor(contextDef.baseActionCost);
                             builder.sourceItems(Map.of(Items.GOLD_INGOT, 1.0 / itemsPerAttempt));
                         }
 
                         BaseResourceData data = builder.build();
-                        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
                         allLootData.computeIfAbsent(contextDef.sourceType, k -> new HashMap<>()).put(item, data);
                     }
@@ -250,12 +240,9 @@ public class UniversalLootSource implements IResourceSource {
             return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.FISHING, 25.0));
         }
 
-        // --- ИСПРАВЛЕНИЕ: Заменяем 0.0 на небольшое ненулевое значение ---
         if (path.contains("piglin_bartering") || path.contains("bartering")) {
-            // Эта небольшая стоимость символизирует саму операцию торга
             return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.1));
         }
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
         if (path.startsWith("chests/") || path.contains("chest")) {
             return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.CHEST_LOOT, 100.0));

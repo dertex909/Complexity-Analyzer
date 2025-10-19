@@ -1,4 +1,3 @@
-// ФИНАЛЬНАЯ ВЕРСИЯ 5.0: Железобетонная классификация хранения
 package org.complexityanalyzer.graph;
 
 import net.minecraft.core.registries.Registries;

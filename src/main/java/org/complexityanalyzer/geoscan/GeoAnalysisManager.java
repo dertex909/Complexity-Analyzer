@@ -105,7 +105,6 @@ public class GeoAnalysisManager {
             if (phase == ScanMetadata.ScanPhase.COMPLETE) {
                 notifier.logInfo("GeoDatabase is complete. Skipping initial scan.");
                 database.loadAll();
-                analysisEngine.onGeoScanFinished();
                 return;
             }
             if (phase == ScanMetadata.ScanPhase.REFINING) {
@@ -114,8 +113,7 @@ public class GeoAnalysisManager {
                 return;
             }
 
-            notifier.logInfo("GeoDatabase is not complete. Starting initial background scan immediately (LITE profile).");
-            server.execute(() -> startScanImmediately(32, "Server", ScanProfile.LITE));
+            startScanImmediately(32, "Server", ScanProfile.LITE);
         });
     }
 
@@ -142,25 +140,32 @@ public class GeoAnalysisManager {
             long startTime = System.currentTimeMillis();
             notifier.logInfo("[ATOMIC] Starting blocking scan...");
 
-            List<ScanTask> tasks = prepareScanTasks(chunksPerBiome);
-            if (tasks.isEmpty()) {
+            List<ScanTask> preparedTasks = prepareScanTasks(chunksPerBiome);
+            if (preparedTasks.isEmpty()) {
                 server.execute(notifier::notifyDatabaseIsUpToDate);
                 return;
             }
 
             scanPhase = ScanMetadata.ScanPhase.RECONNAISSANCE;
             database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
-            totalTasks = tasks.size();
+            taskQueue.addAll(preparedTasks);
+            totalTasks = taskQueue.size();
             tasksCompleted = 0;
             stopRequested.set(false);
             attemptedChunks.clear();
+            currentTask = null;
 
-            for (ScanTask task : tasks) {
+            while ((this.currentTask = taskQueue.poll()) != null) {
                 if (stopRequested.get()) {
                     notifier.logInfo("[ATOMIC] Stop requested, aborting remaining tasks.");
                     break;
                 }
                 tasksCompleted++;
+
+                pristineSnapshotsForCurrentTask.clear();
+                consecutiveScanFailures = 0;
+
+                ScanTask task = this.currentTask;
 
                 Optional<ChunkPos> startPosOpt = worldScanner.findBiomeLocation(task.dimension(), task.biome(), false);
                 if (startPosOpt.isEmpty()) {
@@ -170,11 +175,10 @@ public class GeoAnalysisManager {
 
                 SpiralChunkSearcher searcher = new SpiralChunkSearcher();
                 searcher.startAt(startPosOpt.get().x, startPosOpt.get().z);
-                List<ChunkSnapshot> foundSnapshots = new ArrayList<>();
                 int attempts = 0;
                 int relocateTries = 0;
 
-                while (foundSnapshots.size() < task.chunksToFind() && attempts < 10000 && relocateTries < 5 && !stopRequested.get()) {
+                while (pristineSnapshotsForCurrentTask.size() < task.chunksToFind() && attempts < 10000 && relocateTries < 5 && !stopRequested.get()) {
                     if (attempts > 0 && attempts % 250 == 0) {
                         Optional<ChunkPos> newStart = worldScanner.findBiomeLocation(task.dimension(), task.biome(), true);
                         if (newStart.isPresent()) {
@@ -198,16 +202,20 @@ public class GeoAnalysisManager {
                     });
 
                     try {
-                        future.get().ifPresent(foundSnapshots::add);
-                    } catch (Exception e) { /* ignore */ }
+                        future.get().ifPresent(pristineSnapshotsForCurrentTask::add);
+                    } catch (Exception e) {
+                        ComplexityAnalyzer.LOGGER.warn("[ATOMIC] Error processing chunk future", e);
+                    }
                     attempts++;
                 }
 
-                if (!foundSnapshots.isEmpty()) {
-                    database.appendReconData(task.dimension().location(), task.biome().location(), foundSnapshots);
-                    notifier.logInfo(String.format("[ATOMIC] Task %d/%d: %s... found %d candidates.", tasksCompleted, totalTasks, task.biome().location().getPath(), foundSnapshots.size()));
+                if (!pristineSnapshotsForCurrentTask.isEmpty()) {
+                    database.appendReconData(task.dimension().location(), task.biome().location(), new ArrayList<>(pristineSnapshotsForCurrentTask));
+                    notifier.logInfo(String.format("[ATOMIC] Task %d/%d: %s... found %d candidates.", tasksCompleted, totalTasks, task.biome().location().getPath(), pristineSnapshotsForCurrentTask.size()));
                 }
             }
+
+            this.currentTask = null;
 
             if (stopRequested.get()) {
                 server.execute(() -> {
@@ -225,24 +233,27 @@ public class GeoAnalysisManager {
     }
 
     public void startScanImmediately(int chunksPerBiome, String initiatorName, ScanProfile profile) {
-        if (isScanning() || isCountdownActive()) {
-            if (initiatorName.equals("Server")) {
-                notifier.logWarn("Scan was requested by the server, but another scan/countdown is already active.");
-            } else {
-                notifier.sendFailure(null, "A scan is already running or scheduled.");
+        server.execute(() -> {
+            if (isScanning() || isCountdownActive()) {
+                if (initiatorName.equals("Server")) {
+                    notifier.logWarn("Scan was requested by the server, but another scan/countdown is already active. Skipping.");
+                } else {
+                    notifier.sendFailure(null, "A scan is already running or scheduled.");
+                }
+                return;
             }
-            return;
-        }
-        if (!initiatorName.equals("Server")) {
-            if (profile == ScanProfile.EXTREME) {
-                notifier.broadcastSevere("!!! FORCED WORLD SCAN IN EXTREME MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
-            } else {
-                notifier.broadcastSevere("Forced world scan started! Severe lag may occur!");
-            }
-        }
-        startScanInternal(chunksPerBiome, initiatorName, profile);
-    }
 
+            if (!initiatorName.equals("Server")) {
+                if (profile == ScanProfile.EXTREME) {
+                    notifier.broadcastSevere("!!! FORCED WORLD SCAN IN EXTREME MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
+                } else {
+                    notifier.broadcastSevere("Forced world scan started! Severe lag may occur!");
+                }
+            }
+
+            startScanInternal(chunksPerBiome, initiatorName, profile);
+        });
+    }
 
     public void stopScan(CommandSourceStack source) {
         if (isScanning()) {
@@ -334,8 +345,13 @@ public class GeoAnalysisManager {
     }
 
     private void startScanInternal(int chunksPerBiome, String initiatorName, ScanProfile profile) {
+
         this.currentProfile = profile;
         this.countdownTicks = -1;
+        this.scanPhase = ScanMetadata.ScanPhase.RECONNAISSANCE;
+        this.stopRequested.set(false);
+        this.currentTask = null;
+
         notifier.notifyScanStarting(chunksPerBiome, initiatorName + " (" + profile.name().toLowerCase() + " mode)");
 
         if (profile == ScanProfile.ATOMIC) {
@@ -344,28 +360,30 @@ public class GeoAnalysisManager {
             Executor executor = analysisEngine.getBackgroundExecutor();
             if (executor == null) {
                 ComplexityAnalyzer.LOGGER.error("Cannot start scan, background executor is not available!");
+                this.scanPhase = ScanMetadata.ScanPhase.IDLE;
                 return;
             }
+
             executor.execute(() -> {
                 List<ScanTask> tasks = prepareScanTasks(chunksPerBiome);
-                if (tasks.isEmpty()) {
-                    server.execute(notifier::notifyDatabaseIsUpToDate);
-                    return;
-                }
+
                 server.execute(() -> {
-                    scanPhase = ScanMetadata.ScanPhase.RECONNAISSANCE;
+                    if (tasks.isEmpty()) {
+                        notifier.notifyDatabaseIsUpToDate();
+                        this.scanPhase = ScanMetadata.ScanPhase.IDLE;
+                        return;
+                    }
+
                     database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
                     taskQueue.addAll(tasks);
                     totalTasks = tasks.size();
                     tasksCompleted = 0;
-                    stopRequested.set(false);
                     attemptedChunks.clear();
                     notifier.notifyScanPreparationComplete(totalTasks);
                 });
             });
         }
     }
-
     private List<ScanTask> prepareScanTasks(int chunksPerBiome) {
         database.loadAll();
         List<ScanTask> tasksToQueue = new ArrayList<>();

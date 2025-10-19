@@ -13,8 +13,8 @@ public class DepthAnalyzer {
     private final Map<Item, Integer> cache;
     private final Map<Item, Optional<RecipeNode>> recipeCache = new ConcurrentHashMap<>();
 
-    private static final int CYCLE_DEPTH = Integer.MAX_VALUE; // Используем большое число, а не -1
-    private static final int IN_PROGRESS = -999; // Специальный маркер, что расчет уже идет
+    private static final int CYCLE_DEPTH = Integer.MAX_VALUE;
+    private static final int IN_PROGRESS = -999;
 
     public DepthAnalyzer(RecipeGraph graph, SourceManager ignoredSourceManager) {
         this.graph = graph;
@@ -22,32 +22,26 @@ public class DepthAnalyzer {
     }
 
     public int getDepth(Item item) {
-        // Мы больше не используем computeIfAbsent, чтобы избежать deadlock
         Integer cachedDepth = cache.get(item);
         if (cachedDepth != null) {
             return cachedDepth;
         }
-        // Запускаем расчет
         return calculateDepth(item);
     }
 
     private int calculateDepth(Item item) {
-        // Проверяем кеш еще раз, на случай если другой поток уже начал считать
         Integer cached = cache.get(item);
         if (cached != null) {
-            // Если мы наткнулись на маркер "в процессе", значит мы нашли цикл.
             if (cached == IN_PROGRESS) {
                 return CYCLE_DEPTH;
             }
             return cached;
         }
 
-        // Ставим маркер, что мы начали расчет для этого предмета
         cache.put(item, IN_PROGRESS);
 
         Optional<RecipeNode> recipeOpt = getRecipeToFollow(item);
         if (recipeOpt.isEmpty()) {
-            // Базовый ресурс, глубина 0
             cache.put(item, 0);
             return 0;
         }
@@ -70,14 +64,12 @@ public class DepthAnalyzer {
         if (cycleDetected) {
             finalDepth = CYCLE_DEPTH;
         } else {
-            // Убедимся, что мы не переполняем Integer
             long calculatedDepth = 1L + maxIngredientDepth;
             finalDepth = (int) Math.min(calculatedDepth, CYCLE_DEPTH);
         }
 
         int limitedDepth = Math.min(finalDepth, ComplexityConfig.MAX_DEPTH.get());
 
-        // Записываем финальный результат в кеш
         cache.put(item, limitedDepth);
         return limitedDepth;
     }
@@ -89,7 +81,7 @@ public class DepthAnalyzer {
 
         int minDepth = CYCLE_DEPTH;
         for (Item variant : slot.getVariants()) {
-            int variantDepth = getDepth(variant); // ВАЖНО: вызываем публичный getDepth, который работает с кешем
+            int variantDepth = getDepth(variant);
             minDepth = Math.min(minDepth, variantDepth);
         }
 

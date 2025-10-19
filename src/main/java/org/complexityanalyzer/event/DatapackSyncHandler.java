@@ -17,8 +17,10 @@ public class DatapackSyncHandler {
         MinecraftServer server = event.getServer();
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
+        engine.createGeoManager(server);
+
         engine.initializeAsync(server.overworld(), () -> {
-            engine.createGeoManager(server);
+            ComplexityAnalyzer.LOGGER.info("Analysis engine is ready. Triggering initial geo-scan if needed.");
             engine.getGeoManager().ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
         });
     }

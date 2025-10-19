@@ -59,7 +59,6 @@ public class GeoAnalysisManager {
     private final MinecraftServer server;
     private final GeoDatabase database;
     private final AnalysisEngine analysisEngine;
-    private final Executor backgroundExecutor;
     private final WorldScanner worldScanner;
     private final ScanNotifier notifier;
 
@@ -89,14 +88,19 @@ public class GeoAnalysisManager {
         this.server = server;
         this.database = database;
         this.analysisEngine = engine;
-        this.backgroundExecutor = engine.getBackgroundExecutor();
         this.worldScanner = new WorldScanner(server);
         this.notifier = new ScanNotifier(server);
         NeoForge.EVENT_BUS.register(this);
     }
 
     public void startInitialScanIfNeeded() {
-        backgroundExecutor.execute(() -> {
+        Executor executor = analysisEngine.getBackgroundExecutor();
+        if (executor == null) {
+            ComplexityAnalyzer.LOGGER.error("Cannot start initial scan, executor is not ready!");
+            return;
+        }
+
+        executor.execute(() -> {
             ScanMetadata.ScanPhase phase = database.getScanPhase();
             if (phase == ScanMetadata.ScanPhase.COMPLETE) {
                 notifier.logInfo("GeoDatabase is complete. Skipping initial scan.");
@@ -110,7 +114,7 @@ public class GeoAnalysisManager {
                 return;
             }
 
-            notifier.logInfo("GeoDatabase is not complete. Starting initial background scan immediately (NORMAL profile).");
+            notifier.logInfo("GeoDatabase is not complete. Starting initial background scan immediately (LITE profile).");
             server.execute(() -> startScanImmediately(32, "Server", ScanProfile.LITE));
         });
     }
@@ -128,7 +132,13 @@ public class GeoAnalysisManager {
     }
 
     private void runAtomicScan(int chunksPerBiome) {
-        backgroundExecutor.execute(() -> {
+        Executor executor = analysisEngine.getBackgroundExecutor();
+        if (executor == null) {
+            ComplexityAnalyzer.LOGGER.error("Cannot run ATOMIC scan, executor is not available!");
+            return;
+        }
+
+        executor.execute(() -> {
             long startTime = System.currentTimeMillis();
             notifier.logInfo("[ATOMIC] Starting blocking scan...");
 
@@ -167,7 +177,7 @@ public class GeoAnalysisManager {
                 while (foundSnapshots.size() < task.chunksToFind() && attempts < 10000 && relocateTries < 5 && !stopRequested.get()) {
                     if (attempts > 0 && attempts % 250 == 0) {
                         Optional<ChunkPos> newStart = worldScanner.findBiomeLocation(task.dimension(), task.biome(), true);
-                        if(newStart.isPresent()){
+                        if (newStart.isPresent()) {
                             searcher.startAt(newStart.get().x, newStart.get().z);
                             relocateTries++;
                         } else {
@@ -293,7 +303,15 @@ public class GeoAnalysisManager {
         if (handleStopRequest()) return;
 
         if (scanPhase != ScanMetadata.ScanPhase.RECONNAISSANCE || isProcessingChunk.get()) return;
-        if (!isServerHealthy() || !isTickScheduled()) return;
+
+        if (isServerHealthy()) {
+            if (tickCounter % 200 == 0) {
+                notifier.logInfo("Server is under heavy load (tick time > " + currentProfile.maxTickTimeMs + "ms). Geo-scan is paused.");
+            }
+            return;
+        }
+
+        if (isServerHealthy() || !isTickScheduled()) return;
 
         if (currentTask == null) {
             if (!startNextTask()) {
@@ -323,7 +341,12 @@ public class GeoAnalysisManager {
         if (profile == ScanProfile.ATOMIC) {
             runAtomicScan(chunksPerBiome);
         } else {
-            backgroundExecutor.execute(() -> {
+            Executor executor = analysisEngine.getBackgroundExecutor();
+            if (executor == null) {
+                ComplexityAnalyzer.LOGGER.error("Cannot start scan, background executor is not available!");
+                return;
+            }
+            executor.execute(() -> {
                 List<ScanTask> tasks = prepareScanTasks(chunksPerBiome);
                 if (tasks.isEmpty()) {
                     server.execute(notifier::notifyDatabaseIsUpToDate);
@@ -463,7 +486,14 @@ public class GeoAnalysisManager {
         database.setScanPhase(ScanMetadata.ScanPhase.REFINING);
         notifier.sendSuccess(source, "Reconnaissance complete! Starting final data refinement in background...");
 
-        backgroundExecutor.execute(() -> {
+        Executor executor = analysisEngine.getBackgroundExecutor();
+        if (executor == null) {
+            ComplexityAnalyzer.LOGGER.error("Cannot begin global refinement, executor is not available!");
+            scanPhase = ScanMetadata.ScanPhase.IDLE;
+            database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
+            return;
+        }
+        executor.execute(() -> {
             try {
                 Map<ResourceLocation, Map<ResourceLocation, Path>> allReconPaths = database.getAllReconFilePaths();
                 if (allReconPaths.isEmpty()) {
@@ -541,7 +571,7 @@ public class GeoAnalysisManager {
     }
 
     private boolean isServerHealthy() {
-        return server.getAverageTickTimeNanos() / 1_000_000.0F <= currentProfile.maxTickTimeMs;
+        return !(server.getAverageTickTimeNanos() / 1_000_000.0F <= currentProfile.maxTickTimeMs);
     }
 
     private boolean isTickScheduled() {

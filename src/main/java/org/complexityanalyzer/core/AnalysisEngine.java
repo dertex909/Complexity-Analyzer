@@ -492,6 +492,8 @@ public class AnalysisEngine {
         stateLock.lock();
         try {
             clearDataInternal();
+            currentState.set(State.IDLE);
+            ComplexityAnalyzer.LOGGER.info("AnalysisEngine state reset to IDLE.");
         } finally {
             stateLock.unlock();
         }

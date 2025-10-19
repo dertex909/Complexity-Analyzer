@@ -81,22 +81,6 @@ public class VillagerTradeSource implements IResourceSource {
         }
     }
 
-    private ItemStack getField(Object target, String... fieldNames) throws IllegalAccessException {
-        for (String fieldName : fieldNames) {
-            try {
-                Field field = target.getClass().getDeclaredField(fieldName);
-                field.setAccessible(true);
-                Object value = field.get(target);
-                if (value instanceof ItemStack) {
-                    return (ItemStack) value;
-                }
-            } catch (NoSuchFieldException e) {
-                //
-            }
-        }
-        return null;
-    }
-
     @Override
     public boolean canProvide(Item item) {
         return tradesByResult.containsKey(item);

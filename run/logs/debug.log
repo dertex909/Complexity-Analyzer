@@ -587,3 +587,71 @@
 [19окт.2025 19:23:00.670] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 2/51: dripstone_caves (25/32)
 [19окт.2025 19:23:15.940] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 2/51: dripstone_caves (27/32)
 [19окт.2025 19:23:31.671] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 2/51: dripstone_caves (31/32)
+[19окт.2025 19:23:46.684] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 2/51: dripstone_caves (31/32)
+[19окт.2025 19:23:58.672] [Server thread/INFO] [Complexity Analyzer/]: Finished reconnaissance for biome minecraft:dripstone_caves, found 32 new candidates. Saving...
+[19окт.2025 19:24:00.701] [Server thread/INFO] [Complexity Analyzer/]: Starting reconnaissance for eroded_badlands (3/51). Chunks to find: 32. Starting at [-116, -130]
+[19окт.2025 19:24:01.766] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-116, -130]. Found 61 unique block types (Threshold: 50)
+[19окт.2025 19:24:01.767] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 3/51: eroded_badlands (0/32)
+[19окт.2025 19:24:02.906] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-115, -129]. Found 55 unique block types (Threshold: 50)
+[19окт.2025 19:24:03.845] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-116, -129]. Found 53 unique block types (Threshold: 50)
+[19окт.2025 19:24:06.039] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-117, -130]. Found 53 unique block types (Threshold: 50)
+[19окт.2025 19:24:07.099] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-117, -131]. Found 55 unique block types (Threshold: 50)
+[19окт.2025 19:24:07.834] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-116, -131]. Found 52 unique block types (Threshold: 50)
+[19окт.2025 19:24:08.882] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-115, -131]. Found 63 unique block types (Threshold: 50)
+[19окт.2025 19:24:17.675] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 3/51: eroded_badlands (4/32)
+[19окт.2025 19:24:17.963] [Server thread/DEBUG] [net.neoforged.neoforge.common.CommonHooks/WP]: Gathered mod list to write to world save тетс
+[19окт.2025 19:24:19.999] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-118, -131]. Found 52 unique block types (Threshold: 50)
+[19окт.2025 19:24:20.971] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-118, -132]. Found 52 unique block types (Threshold: 50)
+[19окт.2025 19:24:21.849] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-117, -132]. Found 58 unique block types (Threshold: 50)
+[19окт.2025 19:24:22.880] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-116, -132]. Found 61 unique block types (Threshold: 50)
+[19окт.2025 19:24:33.676] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 3/51: eroded_badlands (10/32)
+[19окт.2025 19:24:41.898] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-119, -132]. Found 63 unique block types (Threshold: 50)
+[19окт.2025 19:24:44.131] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-118, -133]. Found 60 unique block types (Threshold: 50)
+[19окт.2025 19:24:44.860] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-117, -133]. Found 52 unique block types (Threshold: 50)
+[19окт.2025 19:24:48.829] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 3/51: eroded_badlands (16/32)
+[19окт.2025 19:25:04.743] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 3/51: eroded_badlands (21/32)
+[19окт.2025 19:25:10.824] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-120, -132]. Found 55 unique block types (Threshold: 50)
+[19окт.2025 19:25:19.852] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 3/51: eroded_badlands (31/32)
+[19окт.2025 19:25:21.676] [Server thread/INFO] [Complexity Analyzer/]: Finished reconnaissance for biome minecraft:eroded_badlands, found 32 new candidates. Saving...
+[19окт.2025 19:25:22.846] [Server thread/INFO] [Complexity Analyzer/]: Starting reconnaissance for flower_forest (4/51). Chunks to find: 32. Starting at [-62, -60]
+[19окт.2025 19:25:27.959] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-63, -59]. Found 53 unique block types (Threshold: 50)
+[19окт.2025 19:25:31.863] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-61, -61]. Found 55 unique block types (Threshold: 50)
+[19окт.2025 19:25:34.854] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 4/51: flower_forest (9/32)
+[19окт.2025 19:25:40.039] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-64, -58]. Found 51 unique block types (Threshold: 50)
+[19окт.2025 19:25:41.859] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-64, -60]. Found 55 unique block types (Threshold: 50)
+[19окт.2025 19:25:42.858] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-64, -61]. Found 61 unique block types (Threshold: 50)
+[19окт.2025 19:25:50.680] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 4/51: flower_forest (14/32)
+[19окт.2025 19:26:00.020] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-65, -57]. Found 54 unique block types (Threshold: 50)
+[19окт.2025 19:26:01.913] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-65, -59]. Found 51 unique block types (Threshold: 50)
+[19окт.2025 19:26:02.866] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-65, -60]. Found 52 unique block types (Threshold: 50)
+[19окт.2025 19:26:03.891] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-65, -61]. Found 54 unique block types (Threshold: 50)
+[19окт.2025 19:26:05.931] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 4/51: flower_forest (17/32)
+[19окт.2025 19:26:21.682] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 4/51: flower_forest (21/32)
+[19окт.2025 19:26:30.910] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-66, -59]. Found 51 unique block types (Threshold: 50)
+[19окт.2025 19:26:31.896] [Server thread/DEBUG] [Complexity Analyzer/]: Recon Pass: Skipping chunk [-66, -60]. Found 54 unique block types (Threshold: 50)
+[19окт.2025 19:26:36.684] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 4/51: flower_forest (24/32)
+[19окт.2025 19:26:51.730] [Server thread/INFO] [Complexity Analyzer/]: Phase 1: Reconnaissance. Task 4/51: flower_forest (28/32)
+[19окт.2025 19:26:58.269] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!
+[19окт.2025 19:26:58.283] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Отключение
+[19окт.2025 19:26:58.283] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev покинул игру
+[19окт.2025 19:26:58.293] [Server thread/INFO] [net.minecraft.server.network.ServerCommonPacketListenerImpl/]: Stopping singleplayer server as player logged out
+[19окт.2025 19:26:58.331] [Server thread/INFO] [Complexity Analyzer/]: Shutdown requested for AnalysisEngine.
+[19окт.2025 19:26:58.331] [Server thread/INFO] [Complexity Analyzer/]: Shutting down GeoAnalysisManager...
+[19окт.2025 19:26:58.331] [Server thread/INFO] [Complexity Analyzer/]: GeoAnalysisManager has been shut down.
+[19окт.2025 19:26:58.331] [Server thread/INFO] [Complexity Analyzer/]: Shutting down analysis thread pool gracefully... Attempting to stabilize core.
+[19окт.2025 19:26:58.332] [Server thread/INFO] [Complexity Analyzer/]: Graceful shutdown successful. Analysis core is stable.
+[19окт.2025 19:26:58.332] [Server thread/INFO] [Complexity Analyzer/]: Analysis thread pool is now offline.
+[19окт.2025 19:26:58.333] [Server thread/DEBUG] [Complexity Analyzer/]: ComplexityCache cleared (0 entries removed)
+[19окт.2025 19:26:58.333] [Server thread/INFO] [Complexity Analyzer/]: AnalysisEngine state reset to IDLE.
+[19окт.2025 19:26:58.333] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
+[19окт.2025 19:26:58.334] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
+[19окт.2025 19:26:58.334] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
+[19окт.2025 19:26:58.672] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:overworld
+[19окт.2025 19:26:58.879] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:the_end
+[19окт.2025 19:26:58.886] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:the_nether
+[19окт.2025 19:26:58.893] [Server thread/DEBUG] [net.neoforged.neoforge.common.CommonHooks/WP]: Gathered mod list to write to world save тетс
+[19окт.2025 19:26:58.897] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (тетс (1)): All chunks are saved
+[19окт.2025 19:26:58.897] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[19окт.2025 19:26:58.897] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[19окт.2025 19:26:58.897] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
+[19окт.2025 19:26:59.298] [Server thread/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Unloading configs type SERVER

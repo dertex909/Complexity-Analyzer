@@ -7,7 +7,6 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class DatapackSyncHandler {
@@ -19,10 +18,7 @@ public class DatapackSyncHandler {
 
         engine.createGeoManager(server);
 
-        engine.initializeAsync(server.overworld(), () -> {
-            ComplexityAnalyzer.LOGGER.info("Analysis engine is ready. Triggering initial geo-scan if needed.");
-            engine.getGeoManager().ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
-        });
+        engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("Analysis engine initialization complete."));
     }
 
     @SubscribeEvent

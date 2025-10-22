@@ -1,6 +1,3 @@
-/complexity analyze item minecraft:acacia_door
-/complexity analyze item minecraft:acacia_log
-/complexity analyze item minecraft:acacia_door
 /complexity tree minecraft:acacia_door
 /complexity analyze item minecraft:acacia_door
 /complexity analyze item minecraft:acacia_log
@@ -48,3 +45,6 @@
 /complexity geoscan status
 /complexity geoscan stop
 /complexity geoscan status
+/complexity stats
+/complexity status
+/complexity tree minecraft:activator_rail

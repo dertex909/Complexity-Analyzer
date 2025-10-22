@@ -39,6 +39,7 @@ public class BaseResourceData {
         ORE("Ore/Mining", 1.0),
         EMPIRICAL_BLOCK("Empirical Block", 1.0),
         BLOCK("Block", 1.0),
+        BLOCK_TRANSFORMATION("Block Transformation", 1.0),
 
         RENEWABLE("Renewable", 0.8),
         SHEARING("Shearing", 0.7),

@@ -226,6 +226,7 @@ public class AnalysisEngine {
         initialSources.add(new UniversalLootSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new MobDropSource(this.mobPropProvider));
+        initialSources.add(new BlockBreakAsRecipeSource());
 
         this.sourceManager = new SourceManager(initialSources);
 
@@ -262,6 +263,9 @@ public class AnalysisEngine {
         }
 
         this.depthAnalyzer = new DepthAnalyzer(currentGraph, currentSourceManager);
+
+        this.depthAnalyzer.setOptimalRecipes(solverResult.optimalRecipes());
+
         this.calculator = new ComplexityCalculator(currentGraph, this.depthAnalyzer, solverResult, currentSourceManager);
 
         ComplexityAnalyzer.LOGGER.info("All systems refreshed with new data.");

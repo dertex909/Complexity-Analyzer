@@ -211,13 +211,11 @@ public class IterativeSolver {
             Map<Item, Double> currentComplexities,
             Set<Item> visitedInPath
     ) {
-        // Защита от бесконечной рекурсии
         if (visitedInPath.size() > CYCLE_DETECTION_DEPTH) {
             ComplexityAnalyzer.LOGGER.warn("Cycle detection depth exceeded for item: {}", item);
             return new ComplexityResult(Double.POSITIVE_INFINITY, null);
         }
 
-        // Обнаружение цикла
         if (visitedInPath.contains(item)) {
             ComplexityAnalyzer.LOGGER.debug("Circular dependency detected for item: {}", item);
             return new ComplexityResult(Double.POSITIVE_INFINITY, null);
@@ -226,16 +224,13 @@ public class IterativeSolver {
         visitedInPath.add(item);
 
         try {
-            // Стоимость из базовых ресурсов
             double sourceCost = getBaseResourceCostEnhanced(item, currentComplexities);
 
-            // Стоимость из крафта
             ComplexityResult craftResult = getCraftingCostEnhanced(
                     item,
                     currentComplexities
             );
 
-            // Возвращаем минимальную
             if (sourceCost <= craftResult.complexity) {
                 return new ComplexityResult(sourceCost, null);
             } else {
@@ -247,9 +242,6 @@ public class IterativeSolver {
         }
     }
 
-    /**
-     * Получение стоимости из крафта с кэшированием
-     */
     private ComplexityResult getCraftingCostEnhanced(
             Item item,
             Map<Item, Double> currentComplexities
@@ -290,6 +282,7 @@ public class IterativeSolver {
      * Фильтрация рецептов по приоритету
      */
     private List<RecipeNode> filterRecipes(List<RecipeNode> allRecipes) {
+        // Приоритет 1: PRIMARY рецепты
         List<RecipeNode> primaryRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
                 .toList();
@@ -298,10 +291,22 @@ public class IterativeSolver {
             return primaryRecipes;
         }
 
-        return allRecipes.stream()
+        // Приоритет 2: Исключаем проблемные категории
+        List<RecipeNode> filteredRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
-                        && r.getCategory() != RecipeCategory.RECYCLING)
+                        && r.getCategory() != RecipeCategory.RECYCLING
+                        && r.getCategory() != RecipeCategory.STORAGE_COMPRESSION
+                        && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION)
                 .toList();
+
+        // Если после фильтрации пусто - возвращаем всё кроме UNPROCESSABLE
+        if (filteredRecipes.isEmpty()) {
+            return allRecipes.stream()
+                    .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE)
+                    .toList();
+        }
+
+        return filteredRecipes;
     }
 
     /**
@@ -394,55 +399,72 @@ public class IterativeSolver {
             return cached.cost;
         }
 
-        Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
-        if (dataOpt.isEmpty()) {
+        // =========================================================
+        // ИСПРАВЛЕНИЕ: Получаем ВСЕ доступные источники
+        // =========================================================
+        List<BaseResourceData> allSources = sourceManager.findAllSources(item);
+
+        if (allSources.isEmpty()) {
             return BaseResourceData.ResourceSourceType.UNOBTAINABLE.getBaseMultiplier();
         }
 
-        BaseResourceData data = dataOpt.get();
+        double bestCost = Double.POSITIVE_INFINITY;
+        boolean foundSimpleSource = false;
 
-        // Простой базовый ресурс
-        if (data.getSourceItems().isEmpty()) {
-            double cost = data.getBaseFactor();
-            baseResourceCache.put(item, new BaseResourceCache(cost, true));
-            return cost;
-        }
+        // Проходим по всем источникам и выбираем лучший доступный
+        for (BaseResourceData data : allSources) {
+            double sourceCost;
 
-        // Базовый ресурс с зависимостями
-        double dependencyCost = 0;
-        boolean hasInfiniteDependency = false;
+            // Простой базовый ресурс (без зависимостей)
+            if (data.getSourceItems().isEmpty()) {
+                sourceCost = data.getBaseFactor();
+                foundSimpleSource = true;
+            } else {
+                // Базовый ресурс с зависимостями
+                double dependencyCost = 0;
+                boolean hasInfiniteDependency = false;
 
-        for (Map.Entry<Item, Double> entry : data.getSourceItems().entrySet()) {
-            Item sourceItem = entry.getKey();
-            Double amount = entry.getValue();
+                for (Map.Entry<Item, Double> entry : data.getSourceItems().entrySet()) {
+                    Item sourceItem = entry.getKey();
+                    Double amount = entry.getValue();
 
-            if (amount == null || amount <= EPSILON) {
-                continue;
+                    if (amount == null || amount <= EPSILON) {
+                        continue;
+                    }
+
+                    double itemCost = currentComplexities.getOrDefault(
+                            sourceItem,
+                            Double.POSITIVE_INFINITY
+                    );
+
+                    if (Double.isInfinite(itemCost)) {
+                        hasInfiniteDependency = true;
+                        break;
+                    }
+
+                    dependencyCost += itemCost * amount;
+                }
+
+                // Пропускаем источники с бесконечными зависимостями
+                if (hasInfiniteDependency) {
+                    continue;
+                }
+
+                sourceCost = data.getBaseFactor() + dependencyCost;
             }
 
-            double itemCost = currentComplexities.getOrDefault(
-                    sourceItem,
-                    Double.POSITIVE_INFINITY
-            );
-
-            if (Double.isInfinite(itemCost)) {
-                hasInfiniteDependency = true;
-                break;
+            // Выбираем минимальную стоимость
+            if (sourceCost < bestCost) {
+                bestCost = sourceCost;
             }
-
-            dependencyCost += itemCost * amount;
         }
 
-        if (hasInfiniteDependency) {
-            return Double.POSITIVE_INFINITY;
+        // Кэшируем только простые источники для быстрого доступа
+        if (foundSimpleSource && bestCost < Double.POSITIVE_INFINITY) {
+            baseResourceCache.put(item, new BaseResourceCache(bestCost, true));
         }
 
-        double totalCost = data.getBaseFactor() + dependencyCost;
-
-        // Кэшируем сложные базовые ресурсы
-        baseResourceCache.put(item, new BaseResourceCache(totalCost, false));
-
-        return totalCost;
+        return bestCost;
     }
 
     /**

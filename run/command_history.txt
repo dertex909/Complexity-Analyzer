@@ -1,9 +1,3 @@
-/complexity tree minecraft:acacia_door
-/complexity analyze item minecraft:acacia_door
-/complexity analyze item minecraft:acacia_log
-/complexity analyze item minecraft:iron_hoe
-/complexity analyze item minecraft:iron_leggings
-/complexity analyze item minecraft:iron_ingot
 /complexity analyze item minecraft:iron_ore
 /complexity analyze item minecraft:iron_leggings
 /complexity analyze item minecraft:iron_ore
@@ -48,3 +42,9 @@
 /complexity stats
 /complexity status
 /complexity tree minecraft:activator_rail
+/complexity analyze item minecraft:saddle
+/complexity analyze item minecraft:acacia_fence_gate
+/complexity tree minecraft:acacia_fence_gate
+/complexity tree minecraft:saddle
+/complexity tree minecraft:acacia_fence_gate
+/complexity analyze item minecraft:acacia_fence_gate

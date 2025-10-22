@@ -7,7 +7,6 @@ import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.data.PathType;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -33,15 +32,15 @@ public class ComplexityCalculator {
         this.cache = AnalysisEngine.getInstance().getComplexityCache();
     }
 
-    public Optional<ItemComplexity> getOrCalculateComplexity(Item item, PathType pathType) {
-        Optional<ItemComplexity> cachedResult = cache.get(item, pathType);
+    public Optional<ItemComplexity> getOrCalculateComplexity(Item item) {
+        Optional<ItemComplexity> cachedResult = cache.get(item);
         if (cachedResult.isPresent()) {
             return cachedResult;
         }
 
         try {
-            ItemComplexity result = buildComplexityResult(item, pathType);
-            cache.put(item, pathType, result);
+            ItemComplexity result = buildComplexityResult(item);
+            cache.put(item, result);
             return Optional.of(result);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("Failed to build complexity result for {}", item, e);
@@ -49,8 +48,8 @@ public class ComplexityCalculator {
         }
     }
 
-    private ItemComplexity buildComplexityResult(Item item, PathType pathType) {
-        double complexity = solverResult.getComplexity(item, pathType)
+    private ItemComplexity buildComplexityResult(Item item) {
+        double complexity = solverResult.getComplexity(item)
                 .orElseGet(() -> sourceManager.getBaseFactor(item));
 
         RecipeSelector staticSelector = new RecipeSelector(graph);
@@ -64,7 +63,6 @@ public class ComplexityCalculator {
                 .complexity(complexity)
                 .depth(depth)
                 .totalIngredients(ingredients)
-                .pathType(pathType)
                 .hasRecipe(hasRecipe)
                 .build();
     }

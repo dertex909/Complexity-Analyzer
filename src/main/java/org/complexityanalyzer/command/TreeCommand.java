@@ -9,7 +9,6 @@ import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.data.PathType;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -111,7 +110,7 @@ public class TreeCommand {
             quantityString = neededAmount > 0.001 ? String.format("§e%.2fx §f", neededAmount) : "";
         }
 
-        double complexity = engine.getComplexity(item, PathType.OPTIMAL);
+        double complexity = engine.getComplexity(item);
         Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
 
         if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
@@ -141,7 +140,7 @@ public class TreeCommand {
         Map<Item, Integer> ingredientsForOneCraft = new LinkedHashMap<>();
         for (IngredientSlot slot : recipe.getIngredients()) {
             slot.getVariants().stream()
-                    .min(Comparator.comparingDouble(var -> engine.getComplexity(var, PathType.OPTIMAL)))
+                    .min(Comparator.comparingDouble(engine::getComplexity))
                     .ifPresent(bestVariant -> ingredientsForOneCraft.merge(bestVariant, slot.getCount(), Integer::sum));
         }
 
@@ -180,7 +179,7 @@ public class TreeCommand {
 
         for (IngredientSlot slot : recipe.getIngredients()) {
             Item bestVariant = slot.getVariants().stream()
-                    .min(Comparator.comparingDouble(var -> engine.getComplexity(var, PathType.OPTIMAL)))
+                    .min(Comparator.comparingDouble(engine::getComplexity))
                     .orElse(null);
 
             if (bestVariant != null) {

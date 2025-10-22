@@ -4,7 +4,6 @@ import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.data.PathType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -14,18 +13,17 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ComplexityCache {
-    private final Map<CacheKey, ItemComplexity> cache = new ConcurrentHashMap<>();
+    private final Map<Item, ItemComplexity> cache = new ConcurrentHashMap<>();
     private final Map<Item, ComplexityCategory> categoryCache = new ConcurrentHashMap<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private final AtomicLong hits = new AtomicLong(0);
     private final AtomicLong misses = new AtomicLong(0);
 
-    public ComplexityCache() {
-    }
+    public ComplexityCache() {}
 
-    public Optional<ItemComplexity> get(Item item, PathType pathType) {
-        ItemComplexity result = cache.get(new CacheKey(item, pathType));
+    public Optional<ItemComplexity> get(Item item) {
+        ItemComplexity result = cache.get(item);
 
         if (result != null) {
             hits.incrementAndGet();
@@ -36,14 +34,11 @@ public class ComplexityCache {
         }
     }
 
-    public void put(Item item, PathType pathType, ItemComplexity complexity) {
+    public void put(Item item, ItemComplexity complexity) {
         lock.writeLock().lock();
         try {
-            CacheKey key = new CacheKey(item, pathType);
-            cache.put(key, complexity);
-            if (pathType == PathType.OPTIMAL) {
-                categoryCache.put(item, complexity.getCategory());
-            }
+            cache.put(item, complexity);
+            categoryCache.put(item, complexity.getCategory());
         } finally {
             lock.writeLock().unlock();
         }
@@ -53,37 +48,23 @@ public class ComplexityCache {
         return Optional.ofNullable(categoryCache.get(item));
     }
 
-    public boolean contains(Item item, PathType pathType) {
-        return cache.containsKey(new CacheKey(item, pathType));
+    public boolean contains(Item item) {
+        return cache.containsKey(item);
     }
 
     public Set<Item> getCachedItems() {
         lock.readLock().lock();
         try {
-            Set<Item> items = new HashSet<>();
-            for (CacheKey key : cache.keySet()) {
-                items.add(key.item());
-            }
-            return items;
+            return new HashSet<>(cache.keySet());
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    public Map<PathType, ItemComplexity> getAllForItem(Item item) {
-        Map<PathType, ItemComplexity> results = new EnumMap<>(PathType.class);
-        for (PathType pathType : PathType.values()) {
-            get(item, pathType).ifPresent(complexity -> results.put(pathType, complexity));
-        }
-        return results;
-    }
-
     public void remove(Item item) {
         lock.writeLock().lock();
         try {
-            for (PathType pathType : PathType.values()) {
-                cache.remove(new CacheKey(item, pathType));
-            }
+            cache.remove(item);
             categoryCache.remove(item);
         } finally {
             lock.writeLock().unlock();
@@ -142,8 +123,6 @@ public class ComplexityCache {
             lock.readLock().unlock();
         }
     }
-
-    private record CacheKey(Item item, PathType pathType) {}
 
     public record CacheStats(
             int cacheSize,

@@ -8,7 +8,6 @@ public class ItemComplexity {
     private final int depth;
     private final int totalIngredients;
     private final ComplexityCategory category;
-    private final PathType pathType;
     private final boolean hasCycle;
     private final boolean hasRecipe;
     private final String errorMessage;
@@ -18,8 +17,9 @@ public class ItemComplexity {
         this.complexity = builder.complexity;
         this.depth = builder.depth;
         this.totalIngredients = builder.totalIngredients;
-        this.category = builder.category != null ? builder.category : ComplexityCategory.fromComplexity(builder.complexity);
-        this.pathType = builder.pathType;
+        this.category = builder.category != null
+                ? builder.category
+                : ComplexityCategory.fromComplexity(builder.complexity);
         this.hasCycle = builder.hasCycle;
         this.hasRecipe = builder.hasRecipe;
         this.errorMessage = builder.errorMessage;
@@ -30,7 +30,6 @@ public class ItemComplexity {
     public int getDepth() { return depth; }
     public int getTotalIngredients() { return totalIngredients; }
     public ComplexityCategory getCategory() { return category; }
-    public PathType getPathType() { return pathType; }
     public boolean hasCycle() { return hasCycle; }
     public boolean hasRecipe() { return hasRecipe; }
     public String getErrorMessage() { return errorMessage; }
@@ -45,7 +44,6 @@ public class ItemComplexity {
         private int depth = 0;
         private int totalIngredients = 0;
         private ComplexityCategory category;
-        private PathType pathType = PathType.OPTIMAL;
         private boolean hasCycle = false;
         private boolean hasRecipe = true;
         private String errorMessage;
@@ -71,11 +69,6 @@ public class ItemComplexity {
 
         public Builder category(ComplexityCategory category) {
             this.category = category;
-            return this;
-        }
-
-        public Builder pathType(PathType pathType) {
-            this.pathType = pathType;
             return this;
         }
 

@@ -19,7 +19,6 @@ import org.complexityanalyzer.analyzer.solver.IterativeSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.data.PathType;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.graph.GraphBuilder;
@@ -370,20 +369,20 @@ public class AnalysisEngine {
         return currentState.get();
     }
 
-    public Optional<ItemComplexity> getComplexityResult(Item item, PathType pathType) {
+    public Optional<ItemComplexity> getComplexityResult(Item item) {
         ComplexityCalculator calc = this.calculator;
         if (calc == null || !isReady()) {
             return Optional.empty();
         }
-        return calc.getOrCalculateComplexity(item, pathType);
+        return calc.getOrCalculateComplexity(item);
     }
 
     public Optional<DepthAnalyzer> getDepthAnalyzer() {
         return Optional.ofNullable(this.depthAnalyzer);
     }
 
-    public double getComplexity(Item item, PathType pathType) {
-        return getComplexityResult(item, pathType)
+    public double getComplexity(Item item) {
+        return getComplexityResult(item)
                 .map(ItemComplexity::getComplexity)
                 .orElse(-1.0);
     }

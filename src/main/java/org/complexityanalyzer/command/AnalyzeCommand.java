@@ -10,7 +10,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.data.PathType;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
 import java.util.Comparator;
@@ -37,7 +36,7 @@ public class AnalyzeCommand {
         Item item = itemOpt.get();
 
         try {
-            Optional<ItemComplexity> optimalOpt = engine.getComplexityResult(item, PathType.OPTIMAL);
+            Optional<ItemComplexity> optimalOpt = engine.getComplexityResult(item);
             if (optimalOpt.isEmpty()) {
                 source.sendFailure(Component.literal("§cFailed to analyze item: " + itemId));
                 return 0;
@@ -118,7 +117,7 @@ public class AnalyzeCommand {
                                 Item sourceItem = entry.getKey();
                                 double amount = entry.getValue();
 
-                                Optional<ItemComplexity> sourceComplexity = engine.getComplexityResult(sourceItem, PathType.OPTIMAL);
+                                Optional<ItemComplexity> sourceComplexity = engine.getComplexityResult(sourceItem);
                                 if (sourceComplexity.isPresent() && sourceComplexity.get().isValid()) {
                                     fullEstimatedCost += sourceComplexity.get().getComplexity() * amount;
                                 } else {

@@ -369,6 +369,10 @@ public class AnalysisEngine {
         return this.graph;
     }
 
+    public Optional<SourceManager> getSourceManager() {
+        return Optional.ofNullable(this.sourceManager);
+    }
+
     public State getCurrentState() {
         return currentState.get();
     }

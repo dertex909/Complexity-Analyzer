@@ -147,20 +147,21 @@ public class IterativeSolver {
         Map<Item, Set<Item>> dependents = new HashMap<>();
 
         for (Item item : graph.getCorpus()) {
-            if (!graph.hasRecipe(item)) continue;
-
-            for (RecipeNode recipe : graph.getRecipes(item)) {
-                for (IngredientSlot slot : recipe.getIngredients()) {
-                    for (Item ingredient : slot.getVariants()) {
-                        dependents.computeIfAbsent(ingredient, k -> new HashSet<>())
-                                .add(item);
+            if (graph.hasRecipe(item)) {
+                for (RecipeNode recipe : graph.getRecipes(item)) {
+                    for (IngredientSlot slot : recipe.getIngredients()) {
+                        for (Item ingredient : slot.getVariants()) {
+                            dependents.computeIfAbsent(ingredient, k -> new HashSet<>())
+                                    .add(item);
+                        }
                     }
                 }
             }
 
             Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
             if (dataOpt.isPresent()) {
-                for (Item sourceItem : dataOpt.get().getSourceItems().keySet()) {
+                Map<Item, Double> sourceItems = dataOpt.get().getSourceItems();
+                for (Item sourceItem : sourceItems.keySet()) {
                     dependents.computeIfAbsent(sourceItem, k -> new HashSet<>())
                             .add(item);
                 }

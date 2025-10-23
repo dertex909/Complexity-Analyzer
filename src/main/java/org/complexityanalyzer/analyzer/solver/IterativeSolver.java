@@ -11,29 +11,18 @@ import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.*;
 
-/**
- * Улучшенный итеративный решатель с оптимизациями:
- * - Обработка только изменившихся предметов
- * - Кэширование стоимости рецептов
- * - Обнаружение циклических зависимостей
- * - Топологическая приоритизация
- * - Улучшенная числовая стабильность
- */
 public class IterativeSolver {
 
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
 
-    // Константы
     private static final double CONVERGENCE_THRESHOLD = 1e-9;
-    private static final double EPSILON = 1e-12; // Для сравнения с нулем
+    private static final double EPSILON = 1e-12;
     private static final int CYCLE_DETECTION_DEPTH = 100;
 
-    // Кэши для оптимизации
     private final Map<RecipeNode, RecipeCostCache> recipeCostCache;
     private final Map<Item, BaseResourceCache> baseResourceCache;
 
-    // Метрики
     private int recipeCostCalculations = 0;
     private int cacheHits = 0;
 
@@ -48,20 +37,16 @@ public class IterativeSolver {
         ComplexityAnalyzer.LOGGER.debug("Starting enhanced iterative solver...");
         long startTime = System.currentTimeMillis();
 
-        // Инициализация
         Map<Item, Double> optimalComplexities = initializeComplexities();
         Map<Item, RecipeNode> optimalRecipes;
         optimalRecipes = new HashMap<>();
 
-        // Очередь предметов для обработки (приоритетная)
         PriorityQueue<ItemUpdate> updateQueue = new PriorityQueue<>(
                 Comparator.comparingDouble(ItemUpdate::getPriority)
         );
 
-        // Отслеживание зависимостей (обратные связи)
         Map<Item, Set<Item>> dependents = buildDependencyGraph();
 
-        // Добавляем все предметы в очередь для первой итерации
         for (Item item : graph.getCorpus()) {
             updateQueue.offer(new ItemUpdate(item, 0, optimalComplexities.get(item)));
         }
@@ -70,11 +55,9 @@ public class IterativeSolver {
         int iterations = 0;
         int itemsProcessed = 0;
 
-        // Основной цикл с приоритетной обработкой
         while (!updateQueue.isEmpty() && iterations < SolverConfig.MAX_ITERATIONS) {
             iterations++;
 
-            // Обрабатываем пакет предметов на текущей итерации
             int batchSize = Math.min(updateQueue.size(), 1000);
             List<ItemUpdate> currentBatch = new ArrayList<>(batchSize);
 
@@ -88,7 +71,6 @@ public class IterativeSolver {
                 Item item = update.getItem();
                 double oldComplexity = optimalComplexities.get(item);
 
-                // Вычисляем новую сложность
                 ComplexityResult result = calculateComplexityEnhanced(
                         item,
                         optimalComplexities,
@@ -97,7 +79,6 @@ public class IterativeSolver {
 
                 double newComplexity = result.complexity;
 
-                // Проверяем на значительное изменение
                 if (hasSignificantChange(oldComplexity, newComplexity)) {
                     optimalComplexities.put(item, newComplexity);
 
@@ -105,10 +86,8 @@ public class IterativeSolver {
                         optimalRecipes.put(item, result.recipe);
                     }
 
-                    // Инвалидируем кэш для этого предмета
                     invalidateCache(item);
 
-                    // Добавляем зависимые предметы в очередь
                     Set<Item> deps = dependents.getOrDefault(item, Collections.emptySet());
                     for (Item dependent : deps) {
                         updateQueue.offer(new ItemUpdate(
@@ -123,7 +102,6 @@ public class IterativeSolver {
                 }
             }
 
-            // Если ничего не изменилось, возможно достигли сходимости
             if (!batchChanged && updateQueue.isEmpty()) {
                 break;
             }
@@ -132,24 +110,19 @@ public class IterativeSolver {
         converged = updateQueue.isEmpty();
         long totalTime = System.currentTimeMillis() - startTime;
 
-        // Логирование результатов
         logResults(iterations, totalTime, converged, itemsProcessed);
 
-        // Очистка кэшей
         clearCaches();
 
         return new SolverResult(
                 optimalComplexities,
-                optimalRecipes, // <--- Передаем результат нашей работы
+                optimalRecipes,
                 iterations,
                 totalTime,
                 converged
         );
     }
 
-    /**
-     * Инициализация начальных значений сложности
-     */
     private Map<Item, Double> initializeComplexities() {
         Map<Item, Double> complexities = new HashMap<>();
 
@@ -157,14 +130,12 @@ public class IterativeSolver {
             Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
 
             if (dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty()) {
-                // Базовый ресурс без зависимостей
                 complexities.put(item, dataOpt.get().getBaseFactor());
                 baseResourceCache.put(item, new BaseResourceCache(
                         dataOpt.get().getBaseFactor(),
                         true
                 ));
             } else {
-                // Инициализируем большим значением
                 complexities.put(item, Double.POSITIVE_INFINITY);
             }
         }
@@ -172,9 +143,6 @@ public class IterativeSolver {
         return complexities;
     }
 
-    /**
-     * Построение графа зависимостей (обратные связи)
-     */
     private Map<Item, Set<Item>> buildDependencyGraph() {
         Map<Item, Set<Item>> dependents = new HashMap<>();
 
@@ -190,7 +158,6 @@ public class IterativeSolver {
                 }
             }
 
-            // Также учитываем базовые ресурсы с зависимостями
             Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
             if (dataOpt.isPresent()) {
                 for (Item sourceItem : dataOpt.get().getSourceItems().keySet()) {
@@ -203,9 +170,6 @@ public class IterativeSolver {
         return dependents;
     }
 
-    /**
-     * Улучшенный расчет сложности с обнаружением циклов
-     */
     private ComplexityResult calculateComplexityEnhanced(
             Item item,
             Map<Item, Double> currentComplexities,
@@ -252,14 +216,12 @@ public class IterativeSolver {
 
         List<RecipeNode> allRecipes = graph.getRecipes(item);
 
-        // Фильтруем рецепты по категориям
         List<RecipeNode> recipesToConsider = filterRecipes(allRecipes);
 
         if (recipesToConsider.isEmpty()) {
             return new ComplexityResult(Double.POSITIVE_INFINITY, null);
         }
 
-        // Находим рецепт с минимальной стоимостью
         double minCost = Double.POSITIVE_INFINITY;
         RecipeNode bestRecipe = null;
 
@@ -278,11 +240,7 @@ public class IterativeSolver {
         return new ComplexityResult(minCost, bestRecipe);
     }
 
-    /**
-     * Фильтрация рецептов по приоритету
-     */
     private List<RecipeNode> filterRecipes(List<RecipeNode> allRecipes) {
-        // Приоритет 1: PRIMARY рецепты
         List<RecipeNode> primaryRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
                 .toList();
@@ -291,7 +249,6 @@ public class IterativeSolver {
             return primaryRecipes;
         }
 
-        // Приоритет 2: Исключаем проблемные категории
         List<RecipeNode> filteredRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
                         && r.getCategory() != RecipeCategory.RECYCLING
@@ -299,7 +256,6 @@ public class IterativeSolver {
                         && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION)
                 .toList();
 
-        // Если после фильтрации пусто - возвращаем всё кроме UNPROCESSABLE
         if (filteredRecipes.isEmpty()) {
             return allRecipes.stream()
                     .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE)
@@ -309,23 +265,18 @@ public class IterativeSolver {
         return filteredRecipes;
     }
 
-    /**
-     * Расчет стоимости рецепта с кэшированием
-     */
     private double calculateRecipeCostEnhanced(
             RecipeNode recipe,
             Map<Item, Double> currentComplexities
     ) {
         recipeCostCalculations++;
 
-        // Проверяем кэш
         RecipeCostCache cached = recipeCostCache.get(recipe);
         if (cached != null && cached.isValid(currentComplexities)) {
             cacheHits++;
             return cached.cost;
         }
 
-        // Вычисляем стоимость ингредиентов
         double ingredientsCost = 0;
         Map<Item, Double> usedComplexities = new HashMap<>();
 
@@ -343,11 +294,9 @@ public class IterativeSolver {
             ingredientsCost += slotCost * slot.getCount();
         }
 
-        // Применяем множитель рецепта и делим на количество результата
         double totalCost = (ingredientsCost * recipe.getRecipeMultiplier())
                 / recipe.getResultCount();
 
-        // Кэшируем результат
         recipeCostCache.put(recipe, new RecipeCostCache(
                 totalCost,
                 usedComplexities
@@ -356,9 +305,6 @@ public class IterativeSolver {
         return totalCost;
     }
 
-    /**
-     * Получение стоимости слота с выбором оптимального варианта
-     */
     private double getSlotCostEnhanced(
             IngredientSlot slot,
             Map<Item, Double> currentComplexities,
@@ -386,22 +332,15 @@ public class IterativeSolver {
         return minCost;
     }
 
-    /**
-     * Улучшенный расчет стоимости базового ресурса
-     */
     private double getBaseResourceCostEnhanced(
             Item item,
             Map<Item, Double> currentComplexities
     ) {
-        // Проверяем кэш
         BaseResourceCache cached = baseResourceCache.get(item);
         if (cached != null && cached.isSimple) {
             return cached.cost;
         }
 
-        // =========================================================
-        // ИСПРАВЛЕНИЕ: Получаем ВСЕ доступные источники
-        // =========================================================
         List<BaseResourceData> allSources = sourceManager.findAllSources(item);
 
         if (allSources.isEmpty()) {
@@ -411,16 +350,13 @@ public class IterativeSolver {
         double bestCost = Double.POSITIVE_INFINITY;
         boolean foundSimpleSource = false;
 
-        // Проходим по всем источникам и выбираем лучший доступный
         for (BaseResourceData data : allSources) {
             double sourceCost;
 
-            // Простой базовый ресурс (без зависимостей)
             if (data.getSourceItems().isEmpty()) {
                 sourceCost = data.getBaseFactor();
                 foundSimpleSource = true;
             } else {
-                // Базовый ресурс с зависимостями
                 double dependencyCost = 0;
                 boolean hasInfiniteDependency = false;
 
@@ -445,7 +381,6 @@ public class IterativeSolver {
                     dependencyCost += itemCost * amount;
                 }
 
-                // Пропускаем источники с бесконечными зависимостями
                 if (hasInfiniteDependency) {
                     continue;
                 }
@@ -453,13 +388,11 @@ public class IterativeSolver {
                 sourceCost = data.getBaseFactor() + dependencyCost;
             }
 
-            // Выбираем минимальную стоимость
             if (sourceCost < bestCost) {
                 bestCost = sourceCost;
             }
         }
 
-        // Кэшируем только простые источники для быстрого доступа
         if (foundSimpleSource && bestCost < Double.POSITIVE_INFINITY) {
             baseResourceCache.put(item, new BaseResourceCache(bestCost, true));
         }
@@ -467,9 +400,6 @@ public class IterativeSolver {
         return bestCost;
     }
 
-    /**
-     * Проверка на значительное изменение
-     */
     private boolean hasSignificantChange(double oldValue, double newValue) {
         if (Double.isInfinite(oldValue) && Double.isInfinite(newValue)) {
             return false;
@@ -485,29 +415,19 @@ public class IterativeSolver {
         return delta > CONVERGENCE_THRESHOLD && relative > CONVERGENCE_THRESHOLD;
     }
 
-    /**
-     * Инвалидация кэша для предмета
-     */
     private void invalidateCache(Item item) {
         baseResourceCache.remove(item);
 
-        // Инвалидируем кэш рецептов, которые используют этот предмет
         recipeCostCache.entrySet().removeIf(entry ->
                 entry.getValue().dependsOn(item)
         );
     }
 
-    /**
-     * Очистка всех кэшей
-     */
     private void clearCaches() {
         recipeCostCache.clear();
         baseResourceCache.clear();
     }
 
-    /**
-     * Логирование результатов
-     */
     private void logResults(int iterations, long totalTime, boolean converged, int itemsProcessed) {
         if (!converged) {
             ComplexityAnalyzer.LOGGER.warn(
@@ -533,11 +453,6 @@ public class IterativeSolver {
         }
     }
 
-    // ==================== Вспомогательные классы ====================
-
-    /**
-     * Обновление предмета в очереди
-     */
     private static class ItemUpdate {
         private final Item item;
         private final int iteration;
@@ -554,16 +469,12 @@ public class IterativeSolver {
         }
 
         public double getPriority() {
-            // Приоритет: сначала простые (с меньшей сложностью), потом по итерации
             return Double.isInfinite(currentComplexity)
                     ? Double.MAX_VALUE
                     : currentComplexity * 0.001 + iteration;
         }
     }
 
-    /**
-     * Результат вычисления сложности
-     */
     private static class ComplexityResult {
         final double complexity;
         final RecipeNode recipe;
@@ -574,9 +485,6 @@ public class IterativeSolver {
         }
     }
 
-    /**
-     * Кэш стоимости рецепта
-     */
     private static class RecipeCostCache {
         final double cost;
         final Map<Item, Double> dependencies;
@@ -587,7 +495,6 @@ public class IterativeSolver {
         }
 
         boolean isValid(Map<Item, Double> currentComplexities) {
-            // Проверяем, что зависимости не изменились
             for (Map.Entry<Item, Double> entry : dependencies.entrySet()) {
                 Double currentCost = currentComplexities.get(entry.getKey());
                 if (currentCost == null ||
@@ -603,9 +510,6 @@ public class IterativeSolver {
         }
     }
 
-    /**
-     * Кэш базового ресурса
-     */
     private static class BaseResourceCache {
         final double cost;
         final boolean isSimple;

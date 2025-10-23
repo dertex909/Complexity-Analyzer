@@ -1,6 +1,3 @@
-/complexity status
-/complexity tree
-/complexity tree minecraft:brown_carpet
 /complexity tree minecraft:air
 /complexity tree minecraft:andesite_slab
 /complexity tree minecraft:acacia_button depth 121 mode economic
@@ -48,3 +45,6 @@
 /complexity tree netherite_ingot
 /complexity tree gold_ingot
 /complexity analyze item minecraft:amethyst_cluster
+/complexity export all
+/complexity export category Master
+/complexity export all

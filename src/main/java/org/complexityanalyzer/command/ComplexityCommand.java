@@ -121,6 +121,46 @@ public class ComplexityCommand {
                         )
                         .then(Commands.literal("reload").executes(ComplexityCommand::executeReload))
                         .then(Commands.literal("stats").executes(ComplexityCommand::executeStats))
+                        .then(Commands.literal("export")
+                                .then(Commands.literal("all")
+                                        .executes(ExportCommand::executeAll)
+                                )
+                                .then(Commands.literal("item")
+                                        .then(Commands.argument("item", ResourceLocationArgument.id())
+                                                .suggests(ITEM_SUGGESTIONS)
+                                                .executes(ctx -> ExportCommand.executeSingle(
+                                                        ctx,
+                                                        ResourceLocationArgument.getId(ctx, "item").toString()
+                                                ))
+                                        )
+                                )
+                                .then(Commands.literal("category")
+                                        .then(Commands.argument("category", StringArgumentType.word())
+                                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
+                                                        new String[]{"Trivial", "Simple", "Moderate", "Complex",
+                                                                "Difficult", "Expert", "Master", "Mythical",
+                                                                "Transcendent", "Eternal"},
+                                                        builder
+                                                ))
+                                                .executes(ctx -> ExportCommand.executeCategory(
+                                                        ctx,
+                                                        StringArgumentType.getString(ctx, "category")
+                                                ))
+                                        )
+                                )
+                                .then(Commands.literal("top")
+                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
+                                                .executes(ctx -> ExportCommand.executeTop(
+                                                        ctx,
+                                                        IntegerArgumentType.getInteger(ctx, "count")
+                                                ))
+                                        )
+                                )
+                                .then(Commands.literal("csv")
+                                        .executes(ExportCommand::executeCSV)
+                                )
+                        )
+                        .then(ChunkCommands.register())
                         .then(ChunkCommands.register())
         );
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command");

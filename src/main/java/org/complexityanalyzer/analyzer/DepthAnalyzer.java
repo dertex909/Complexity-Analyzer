@@ -13,7 +13,6 @@ public class DepthAnalyzer {
     private final Map<Item, Integer> cache;
     private final Map<Item, Optional<RecipeNode>> recipeCache = new ConcurrentHashMap<>();
 
-    // ========== ДОБАВЛЕНО ==========
     private Map<Item, RecipeNode> optimalRecipes = new HashMap<>();
 
     private static final int CYCLE_DEPTH = Integer.MAX_VALUE;
@@ -24,13 +23,9 @@ public class DepthAnalyzer {
         this.cache = new ConcurrentHashMap<>();
     }
 
-    // ========== ДОБАВЛЕНО ==========
-    /**
-     * Устанавливает оптимальные рецепты, выбранные Solver
-     */
     public void setOptimalRecipes(Map<Item, RecipeNode> optimalRecipes) {
         this.optimalRecipes = new HashMap<>(optimalRecipes);
-        this.recipeCache.clear(); // Очищаем кэш
+        this.recipeCache.clear();
     }
 
     public int getDepth(Item item) {
@@ -102,14 +97,11 @@ public class DepthAnalyzer {
 
     public Optional<RecipeNode> getRecipeToFollow(Item item) {
         return recipeCache.computeIfAbsent(item, key -> {
-            // ========== ИЗМЕНЕНО ==========
-            // Приоритет 1: Используем выбор Solver
             RecipeNode solverChoice = optimalRecipes.get(key);
             if (solverChoice != null) {
                 return Optional.of(solverChoice);
             }
 
-            // Приоритет 2: Fallback к старой логике
             List<RecipeNode> recipes = graph.getRecipes(key);
             if (recipes.isEmpty()) {
                 return Optional.empty();

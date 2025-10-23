@@ -38,8 +38,7 @@ public class IterativeSolver {
         long startTime = System.currentTimeMillis();
 
         Map<Item, Double> optimalComplexities = initializeComplexities();
-        Map<Item, RecipeNode> optimalRecipes;
-        optimalRecipes = new HashMap<>();
+        Map<Item, RecipeNode> optimalRecipes = new HashMap<>();
 
         PriorityQueue<ItemUpdate> updateQueue = new PriorityQueue<>(
                 Comparator.comparingDouble(ItemUpdate::getPriority)
@@ -84,6 +83,8 @@ public class IterativeSolver {
 
                     if (result.recipe != null) {
                         optimalRecipes.put(item, result.recipe);
+                    } else {
+                        optimalRecipes.remove(item);
                     }
 
                     invalidateCache(item);
@@ -196,7 +197,8 @@ public class IterativeSolver {
                     currentComplexities
             );
 
-            if (sourceCost <= craftResult.complexity) {
+            double biasThreshold = 1.01;
+            if (sourceCost <= craftResult.complexity * biasThreshold) {
                 return new ComplexityResult(sourceCost, null);
             } else {
                 return craftResult;
@@ -242,6 +244,7 @@ public class IterativeSolver {
     }
 
     private List<RecipeNode> filterRecipes(List<RecipeNode> allRecipes) {
+        // Шаг 1: Ищем PRIMARY рецепты
         List<RecipeNode> primaryRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
                 .toList();
@@ -257,13 +260,16 @@ public class IterativeSolver {
                         && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION)
                 .toList();
 
-        if (filteredRecipes.isEmpty()) {
-            return allRecipes.stream()
-                    .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE)
-                    .toList();
+        if (!filteredRecipes.isEmpty()) {
+            return filteredRecipes;
         }
 
-        return filteredRecipes;
+        return allRecipes.stream()
+                .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
+                        && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION
+                        && r.getCategory() != RecipeCategory.RECYCLING
+                        && r.getCategory() != RecipeCategory.STORAGE_COMPRESSION)
+                .toList();
     }
 
     private double calculateRecipeCostEnhanced(

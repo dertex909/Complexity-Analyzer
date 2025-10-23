@@ -1,6 +1,3 @@
-/complexity analyze item minecraft:acacia_fence_gate
-/complexity analyze item minecraft:apple
-/complexity analyze item minecraft:diamond_ore
 /complexity analyze item minecraft:debug_stick
 /complexity analyze item minecraft:ancient_debris
 /complexity analyze item minecraft:diamond
@@ -48,3 +45,6 @@
 /complexity analyze item minecraft:acacia_leaves
 /complexity analyze item minecraft:acacia_hanging_sign
 /complexity tree minecraft:acacia_hanging_sign
+/complexity tree minecraft:iron_ingot
+/complexity tree minecraft:gold_ingot
+/complexity tree minecraft:iron_ingot

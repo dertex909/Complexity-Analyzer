@@ -1,0 +1,479 @@
+package org.complexityanalyzer.analyzer.resource.sources;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.phys.Vec3;
+import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.resource.IResourceSource;
+import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.core.AnalysisEngine;
+
+import java.lang.reflect.Field;
+import java.util.*;
+
+public class BlockBreakAsRecipeSource implements IResourceSource {
+
+    private static final int SAMPLE_COUNT = 100;
+    private static final double BASE_MINING_COST = 2.0;
+
+    // Настройки для renewable блоков
+    private static final double RENEWABLE_THRESHOLD = 5.0;
+    private static final double RENEWABLE_FALLBACK_COST = 0.1;
+
+    // Самообучение: если блок дешёвый и мягкий, вероятно renewable
+    private static final double AUTO_LEARN_COST_THRESHOLD = 0.5;
+    private static final float AUTO_LEARN_HARDNESS_THRESHOLD = 1.0F;
+
+    // Общие теги (c: namespace в NeoForge)
+    private static final TagKey<Block> C_CROPS = TagKey.create(Registries.BLOCK, ResourceLocation.parse("c:crops"));
+    private static final TagKey<Block> C_MUSHROOMS = TagKey.create(Registries.BLOCK, ResourceLocation.parse("c:mushrooms"));
+
+    private final Map<Item, List<BaseResourceData>> allPaths = new HashMap<>();
+    private final Map<Block, Boolean> renewableCache = new HashMap<>(); // Кэш для isLikelyRenewable
+    private static Field randomField = null;
+    private SourceManager sourceManager = null;
+
+    @Override
+    public void initialize(Level level) {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            ComplexityAnalyzer.LOGGER.warn("[{}] requires a ServerLevel. Skipping.", getName());
+            return;
+        }
+
+        // Получаем SourceManager для анализа стоимости блоков
+        Optional<SourceManager> smOpt = AnalysisEngine.getInstance().getSourceManager();
+        if (smOpt.isPresent()) {
+            this.sourceManager = smOpt.get();
+        } else {
+            ComplexityAnalyzer.LOGGER.warn("[{}] Could not get SourceManager, using fallback costs", getName());
+        }
+
+        this.allPaths.clear();
+        this.renewableCache.clear(); // Очищаем кэш при переинициализации
+
+        ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes.", getName());
+        long startTime = System.currentTimeMillis();
+        int pathsFound = 0;
+        int blocksSkipped = 0;
+
+        MinecraftServer server = serverLevel.getServer();
+        List<ItemStack> toolsToTest = createTestTools(serverLevel);
+
+        for (Block blockToMine : BuiltInRegistries.BLOCK) {
+            if (blockToMine == Blocks.AIR || blockToMine == Blocks.CAVE_AIR || blockToMine == Blocks.VOID_AIR) {
+                continue;
+            }
+
+            // ФИЛЬТР: Пропускаем неразрушаемые блоки (bedrock, barrier, command blocks и т.д.)
+            if (blockToMine.defaultDestroyTime() < 0) {
+                blocksSkipped++;
+                continue;
+            }
+
+            BlockState defaultState = blockToMine.defaultBlockState();
+            Item blockAsItem = blockToMine.asItem();
+
+            for (ItemStack toolStack : toolsToTest) {
+                if (defaultState.requiresCorrectToolForDrops() && !toolStack.isCorrectToolForDrops(defaultState)) {
+                    continue;
+                }
+
+                try {
+                    LootTable lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
+                    if (lootTable == LootTable.EMPTY) continue;
+
+                    Map<Item, Double> averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, blockToMine);
+                    if (averageDrop.isEmpty()) continue;
+
+                    for (Map.Entry<Item, Double> entry : averageDrop.entrySet()) {
+                        Item droppedItem = entry.getKey();
+                        double itemsPerAction = entry.getValue();
+                        if (itemsPerAction <= 0) continue;
+
+                        if (blockAsItem != Items.AIR && droppedItem == blockAsItem) {
+                            continue;
+                        }
+
+                        Map<Item, Double> sourceItems = new HashMap<>();
+
+                        if (blockAsItem != Items.AIR) {
+                            double blockCostPerUnit = getSmartBlockCost(blockAsItem, blockToMine);
+                            double blocksNeeded = 1.0 / itemsPerAction;
+                            sourceItems.put(blockAsItem, blocksNeeded * blockCostPerUnit);
+                        }
+
+                        Item toolItem = toolStack.getItem();
+                        if (toolItem != Items.AIR) {
+                            double durability = toolStack.getMaxDamage();
+                            if (durability > 0) {
+                                double toolWearPerDrop = (1.0 / durability) / itemsPerAction;
+                                sourceItems.put(toolItem, toolWearPerDrop);
+                            }
+                        }
+
+                        String toolName = toolStack.isEmpty() ? "Hand" : toolStack.getDisplayName().getString();
+                        String avgFormatted = formatAverage(itemsPerAction);
+
+                        BaseResourceData data = new BaseResourceData.Builder(droppedItem, this)
+                                .sourceType(getSourceType())
+                                .details(String.format("Mined from %s with %s (avg: %s)",
+                                        blockToMine.getName().getString(), toolName, avgFormatted))
+                                .baseFactor(BASE_MINING_COST)
+                                .sourceItems(sourceItems)
+                                .build();
+
+                        allPaths.computeIfAbsent(droppedItem, k -> new ArrayList<>()).add(data);
+                        pathsFound++;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        // Сортируем пути для детерминированности
+        for (List<BaseResourceData> paths : allPaths.values()) {
+            paths.sort((a, b) -> {
+                int typeCompare = Double.compare(
+                        a.getSourceType().getBaseMultiplier(),
+                        b.getSourceType().getBaseMultiplier()
+                );
+                if (typeCompare != 0) return typeCompare;
+
+                int factorCompare = Double.compare(a.getBaseFactor(), b.getBaseFactor());
+                if (factorCompare != 0) return factorCompare;
+
+                int sizeCompare = Integer.compare(
+                        a.getSourceItems().size(),
+                        b.getSourceItems().size()
+                );
+                if (sizeCompare != 0) return sizeCompare;
+
+                double sumA = a.getSourceItems().values().stream().mapToDouble(Double::doubleValue).sum();
+                double sumB = b.getSourceItems().values().stream().mapToDouble(Double::doubleValue).sum();
+                int sumCompare = Double.compare(sumA, sumB);
+                if (sumCompare != 0) return sumCompare;
+
+                return a.getDetails().compareTo(b.getDetails());
+            });
+        }
+
+        ComplexityAnalyzer.LOGGER.info("[{}] Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
+                getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
+    }
+
+    /**
+     * Получает умную стоимость блока с самообучением:
+     * - Для редких renewable блоков использует fallback
+     * - Для обычных использует empirical cost
+     * - Автоматически помечает дешёвые мягкие блоки как renewable
+     */
+    private double getSmartBlockCost(Item blockItem, Block block) {
+        if (sourceManager == null) {
+            return 1.0;
+        }
+
+        Optional<BaseResourceData> blockData = sourceManager.analyze(blockItem);
+
+        if (blockData.isEmpty()) {
+            return 1.0;
+        }
+
+        double empiricalCost = blockData.get().getBaseFactor();
+
+        // САМООБУЧЕНИЕ: если блок дешёвый и мягкий, вероятно renewable
+        if (empiricalCost < AUTO_LEARN_COST_THRESHOLD
+                && block.defaultDestroyTime() > 0
+                && block.defaultDestroyTime() < AUTO_LEARN_HARDNESS_THRESHOLD) {
+
+            // Кэшируем как renewable для будущих проверок
+            renewableCache.put(block, true);
+
+            ComplexityAnalyzer.LOGGER.debug("[{}] Auto-learned renewable: {} (cost: {}, hardness: {})",
+                    getName(), block, empiricalCost, block.defaultDestroyTime());
+
+            return RENEWABLE_FALLBACK_COST;
+        }
+
+        if (empiricalCost > RENEWABLE_THRESHOLD && isLikelyRenewable(block)) {
+            return RENEWABLE_FALLBACK_COST;
+        }
+
+        return empiricalCost;
+    }
+
+    /**
+     * Проверяет renewable с кэшированием результата
+     */
+    private boolean isLikelyRenewable(Block block) {
+        return renewableCache.computeIfAbsent(block, this::computeRenewableStatus);
+    }
+
+    /**
+     * Расширенная проверка на renewable блоки (вызывается только при cache miss):
+     * 1. Minecraft теги (LEAVES, SAPLINGS, CROPS, FLOWERS, LOGS, WOOL, и т.д.)
+     * 2. Классы блоков (BushBlock, CropBlock, BonemealableBlock)
+     * 3. Теги из модов (c:crops, c:mushrooms)
+     * 4. Мягкие блоки (destroyTime < 0.5) как fallback
+     */
+    private boolean computeRenewableStatus(Block block) {
+        BlockState state = block.defaultBlockState();
+
+        // 1. Стандартные Minecraft теги
+        if (state.is(BlockTags.LEAVES)
+                || state.is(BlockTags.SAPLINGS)
+                || state.is(BlockTags.CROPS)
+                || state.is(BlockTags.FLOWERS)
+                || state.is(BlockTags.SMALL_FLOWERS)
+                || state.is(BlockTags.TALL_FLOWERS)
+                || state.is(BlockTags.LOGS)
+                || state.is(BlockTags.WOOL)
+                || state.is(BlockTags.CANDLES)
+        ) {
+            return true;
+        }
+
+        // Дополнительные теги (могут отсутствовать)
+        try {
+            if (state.is(BlockTags.BAMBOO_BLOCKS)) return true;
+        } catch (Exception ignored) {}
+
+        // 2. Проверка классов блоков (работает с модами!)
+        if (block instanceof BushBlock
+                || block instanceof CropBlock
+                || block instanceof SaplingBlock
+                || block instanceof MushroomBlock
+                || block instanceof StemBlock
+                || block instanceof SugarCaneBlock
+                || block instanceof CactusBlock
+                || block instanceof BambooStalkBlock
+                || block instanceof SeagrassBlock
+                || block instanceof KelpBlock
+        ) {
+            return true;
+        }
+
+        // 3. BonemealableBlock - можно вырастить костной мукой
+        if (block instanceof BonemealableBlock) {
+            return true;
+        }
+
+        // 4. Теги из модов (c: namespace)
+        try {
+            if (state.is(C_CROPS) || state.is(C_MUSHROOMS)) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+
+        // 5. Fallback: очень мягкие блоки часто renewable
+        return block.defaultDestroyTime() > 0F && block.defaultDestroyTime() < 0.5F;
+    }
+
+    private List<ItemStack> createTestTools(ServerLevel serverLevel) {
+        List<ItemStack> tools = new ArrayList<>();
+        tools.add(ItemStack.EMPTY);
+        tools.add(new ItemStack(Items.WOODEN_PICKAXE));
+        tools.add(new ItemStack(Items.WOODEN_AXE));
+        tools.add(new ItemStack(Items.WOODEN_SHOVEL));
+        tools.add(new ItemStack(Items.STONE_PICKAXE));
+        tools.add(new ItemStack(Items.STONE_AXE));
+        tools.add(new ItemStack(Items.STONE_SHOVEL));
+        tools.add(new ItemStack(Items.IRON_PICKAXE));
+        tools.add(new ItemStack(Items.IRON_AXE));
+        tools.add(new ItemStack(Items.IRON_SHOVEL));
+        tools.add(new ItemStack(Items.GOLDEN_PICKAXE));
+        tools.add(new ItemStack(Items.GOLDEN_AXE));
+        tools.add(new ItemStack(Items.GOLDEN_SHOVEL));
+        tools.add(new ItemStack(Items.DIAMOND_PICKAXE));
+        tools.add(new ItemStack(Items.DIAMOND_AXE));
+        tools.add(new ItemStack(Items.DIAMOND_SHOVEL));
+        tools.add(new ItemStack(Items.NETHERITE_PICKAXE));
+        tools.add(new ItemStack(Items.NETHERITE_AXE));
+        tools.add(new ItemStack(Items.NETHERITE_SHOVEL));
+        tools.add(new ItemStack(Items.SHEARS));
+
+        ItemStack silkTouchPickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
+        Optional<Holder.Reference<Enchantment>> silkTouchHolder = serverLevel.registryAccess()
+                .registryOrThrow(Registries.ENCHANTMENT)
+                .getHolder(Enchantments.SILK_TOUCH);
+        silkTouchHolder.ifPresent(holder -> silkTouchPickaxe.enchant(holder, 1));
+        tools.add(silkTouchPickaxe);
+
+        return tools;
+    }
+
+    private Map<Item, Double> getStableDrop(LootTable lootTable, ServerLevel level,
+                                            BlockState blockState, ItemStack tool, Block block) {
+        long baseSeed = generateStableSeed(block, tool);
+
+        Map<Item, Long> totalCounts = new HashMap<>();
+        boolean injectionWorked = false;
+
+        for (int i = 0; i < SAMPLE_COUNT; i++) {
+            RandomSource deterministicRandom = RandomSource.create(baseSeed + i);
+
+            ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
+
+            LootParams params = new LootParams.Builder(level)
+                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
+                    .withParameter(LootContextParams.TOOL, tool)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+                    .create(LootContextParamSets.BLOCK);
+
+            LootContext context = new LootContext.Builder(params).create(Optional.empty());
+
+            if (i == 0) {
+                injectionWorked = injectRandomIntoContext(context, deterministicRandom);
+            } else if (injectionWorked) {
+                injectRandomSilently(context, deterministicRandom);
+            }
+
+            lootTable.getRandomItemsRaw(context, drops::add);
+
+            for (ItemStack stack : drops) {
+                if (!stack.isEmpty()) {
+                    totalCounts.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
+                }
+            }
+        }
+
+        Map<Item, Double> averages = new HashMap<>();
+        for (Map.Entry<Item, Long> entry : totalCounts.entrySet()) {
+            averages.put(entry.getKey(), (double) entry.getValue() / SAMPLE_COUNT);
+        }
+
+        return averages;
+    }
+
+    private boolean injectRandomIntoContext(LootContext context, RandomSource random) {
+        if (randomField == null) {
+            randomField = findRandomFieldAggressively(context);
+
+            if (randomField != null) {
+                ComplexityAnalyzer.LOGGER.info("[{}] Successfully found RandomSource field: {}",
+                        getName(), randomField.getName());
+            } else {
+                ComplexityAnalyzer.LOGGER.warn("[{}] Could not find RandomSource field", getName());
+            }
+        }
+
+        return injectRandomSilently(context, random);
+    }
+
+    private boolean injectRandomSilently(LootContext context, RandomSource random) {
+        if (randomField == null) return false;
+
+        try {
+            randomField.set(context, random);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Field findRandomFieldAggressively(LootContext context) {
+        Class<?> clazz = context.getClass();
+
+        while (clazz != null) {
+            for (Field field : clazz.getDeclaredFields()) {
+                if (RandomSource.class.isAssignableFrom(field.getType())) {
+                    field.setAccessible(true);
+                    return field;
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+
+        clazz = context.getClass();
+        String[] possibleNames = {"random", "rand", "randomSource", "rng", "f_79024_"};
+
+        while (clazz != null) {
+            for (String name : possibleNames) {
+                try {
+                    Field field = clazz.getDeclaredField(name);
+                    field.setAccessible(true);
+                    return field;
+                } catch (NoSuchFieldException ignored) {
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+
+        return null;
+    }
+
+    private long generateStableSeed(Block block, ItemStack tool) {
+        long seed = BuiltInRegistries.BLOCK.getKey(block).toString().hashCode();
+
+        if (!tool.isEmpty()) {
+            seed = seed * 31L + BuiltInRegistries.ITEM.getKey(tool.getItem()).toString().hashCode();
+
+            ItemEnchantments enchantments = tool.getEnchantments();
+            if (!enchantments.isEmpty()) {
+                seed = seed * 31L + enchantments.hashCode();
+            }
+        } else {
+            seed = seed * 31L + "empty_hand".hashCode();
+        }
+
+        return seed;
+    }
+
+    private String formatAverage(double value) {
+        if (value < 0.0001) return String.format("%.6f", value);
+        if (value < 0.01) return String.format("%.4f", value);
+        return String.format("%.2f", value);
+    }
+
+    @Override
+    public boolean canProvide(Item item) {
+        return allPaths.containsKey(item);
+    }
+
+    @Override
+    public Optional<BaseResourceData> analyze(Item item) {
+        List<BaseResourceData> paths = allPaths.get(item);
+        if (paths == null || paths.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(paths.getFirst());
+    }
+
+    @Override
+    public int getPriority() {
+        return 25;
+    }
+
+    @Override
+    public String getName() {
+        return "Block Break as Recipe";
+    }
+
+    @Override
+    public BaseResourceData.ResourceSourceType getSourceType() {
+        return BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION;
+    }
+}

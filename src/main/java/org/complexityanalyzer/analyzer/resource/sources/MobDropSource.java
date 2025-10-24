@@ -26,6 +26,11 @@ import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.solver.SolverConfig;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.filter.AbstractFilter;
+
 import java.util.*;
 
 public class MobDropSource implements IResourceSource {
@@ -35,6 +40,29 @@ public class MobDropSource implements IResourceSource {
 
     public MobDropSource(MobPropertyProvider mobProvider) {
         this.mobProvider = mobProvider;
+    }
+
+    private static class LootFunctionFilter extends AbstractFilter {
+        @Override
+        public Result filter(LogEvent event) {
+            if (event == null || event.getLevel() != org.apache.logging.log4j.Level.WARN) {
+                return Result.NEUTRAL;
+            }
+
+            String loggerName = event.getLoggerName();
+            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
+                String message = event.getMessage().getFormattedMessage();
+                if (message != null && (
+                        message.contains("Couldn't set damage") ||
+                                message.contains("Couldn't smelt") ||
+                                message.contains("Couldn't find a compatible enchantment")
+                )) {
+                    return Result.DENY;
+                }
+            }
+
+            return Result.NEUTRAL;
+        }
     }
 
     @Override
@@ -51,64 +79,76 @@ public class MobDropSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         int processedEntities = 0;
 
-        com.mojang.authlib.GameProfile fakePlayerProfile = new com.mojang.authlib.GameProfile(
-                UUID.randomUUID(), "[ComplexityAnalyzer]"
-        );
-        net.minecraft.server.level.ServerPlayer fakePlayer = new net.minecraft.server.level.ServerPlayer(
-                server, serverLevel, fakePlayerProfile,
-                net.minecraft.server.level.ClientInformation.createDefault()
-        );
+        LootFunctionFilter filter = new LootFunctionFilter();
+        Logger rootLogger = (Logger) LogManager.getRootLogger();
+        filter.start();
+        rootLogger.addFilter(filter);
 
-        List<DamageSourceConfig> damageConfigs = createDamageSources(serverLevel, fakePlayer);
+        try {
+            com.mojang.authlib.GameProfile fakePlayerProfile = new com.mojang.authlib.GameProfile(
+                    UUID.randomUUID(), "[ComplexityAnalyzer]"
+            );
+            net.minecraft.server.level.ServerPlayer fakePlayer = new net.minecraft.server.level.ServerPlayer(
+                    server, serverLevel, fakePlayerProfile,
+                    net.minecraft.server.level.ClientInformation.createDefault()
+            );
 
-        for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
-            if (entityType.getCategory() == MobCategory.MISC) {
-                continue;
-            }
+            List<DamageSourceConfig> damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
-            ResourceKey<LootTable> lootTableKey = entityType.getDefaultLootTable();
-            LootTable lootTable = server.reloadableRegistries().getLootTable(lootTableKey);
-
-            if (lootTable == LootTable.EMPTY) {
-                continue;
-            }
-
-            Entity entityInstance = entityType.create(serverLevel);
-            if (entityInstance == null) {
-                continue;
-            }
-            entityInstance.setPos(0, 64, 0);
-
-            Map<Item, DropStatistics> combinedDrops = new HashMap<>();
-
-            for (DamageSourceConfig config : damageConfigs) {
-                if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) {
+            for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
+                if (entityType.getCategory() == MobCategory.MISC) {
                     continue;
                 }
 
-                simulateKillMethod(
-                        serverLevel,
-                        entityInstance,
-                        lootTable,
-                        config,
-                        combinedDrops
-                );
-            }
+                ResourceKey<LootTable> lootTableKey = entityType.getDefaultLootTable();
+                LootTable lootTable = server.reloadableRegistries().getLootTable(lootTableKey);
 
-            for (Map.Entry<Item, DropStatistics> entry : combinedDrops.entrySet()) {
-                Item item = entry.getKey();
-                DropStatistics stats = entry.getValue();
-
-                if (stats.totalDropped > 0) {
-                    double averageYield = stats.getAverageYield();
-                    String method = stats.getBestMethod();
-
-                    dropMap.computeIfAbsent(item, k -> new ArrayList<>())
-                            .add(new MobDropData(item, entityType, averageYield, method));
+                if (lootTable == LootTable.EMPTY) {
+                    continue;
                 }
-            }
 
-            processedEntities++;
+                Entity entityInstance = entityType.create(serverLevel);
+                if (entityInstance == null) {
+                    continue;
+                }
+                entityInstance.setPos(0, 64, 0);
+
+                Map<Item, DropStatistics> combinedDrops = new HashMap<>();
+
+                for (DamageSourceConfig config : damageConfigs) {
+                    if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) {
+                        continue;
+                    }
+
+                    simulateKillMethod(
+                            serverLevel,
+                            entityInstance,
+                            lootTable,
+                            config,
+                            combinedDrops
+                    );
+                }
+
+                for (Map.Entry<Item, DropStatistics> entry : combinedDrops.entrySet()) {
+                    Item item = entry.getKey();
+                    DropStatistics stats = entry.getValue();
+
+                    if (stats.totalDropped > 0) {
+                        double averageYield = stats.getAverageYield();
+                        String method = stats.getBestMethod();
+
+                        dropMap.computeIfAbsent(item, k -> new ArrayList<>())
+                                .add(new MobDropData(item, entityType, averageYield, method));
+                    }
+                }
+
+                processedEntities++;
+            }
+        } finally {
+            try {
+                rootLogger.get().removeFilter(filter);
+                filter.stop();
+            } catch (Exception ignored) {}
         }
 
         long duration = System.currentTimeMillis() - startTime;

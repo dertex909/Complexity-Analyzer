@@ -120,9 +120,6 @@ public class GraphBuilder {
         }
 
         if (ingredients.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.debug("Skipping recipe with no ingredients: {} for {}",
-                    recipe.getClass().getSimpleName(),
-                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(resultItem));
             return null;
         }
 

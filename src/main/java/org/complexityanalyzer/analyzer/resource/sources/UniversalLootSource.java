@@ -17,6 +17,11 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.filter.AbstractFilter;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,6 +31,29 @@ public class UniversalLootSource implements IResourceSource {
     private static final int SIMULATION_TIMEOUT_MS = 3000;
 
     private final Map<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> allLootData = new ConcurrentHashMap<>();
+
+    private static class LootFunctionFilter extends AbstractFilter {
+        @Override
+        public Result filter(LogEvent event) {
+            if (event == null || event.getLevel() != org.apache.logging.log4j.Level.WARN) {
+                return Result.NEUTRAL;
+            }
+
+            String loggerName = event.getLoggerName();
+            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
+                String message = event.getMessage().getFormattedMessage();
+                if (message != null && (
+                        message.contains("Couldn't set damage") ||
+                                message.contains("Couldn't smelt") ||
+                                message.contains("Couldn't find a compatible enchantment")
+                )) {
+                    return Result.DENY;
+                }
+            }
+
+            return Result.NEUTRAL;
+        }
+    }
 
     @Override
     public void initialize(Level level) {
@@ -45,6 +73,11 @@ public class UniversalLootSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         int tablesProcessed = 0;
         int tablesSkipped = 0;
+
+        LootFunctionFilter filter = new LootFunctionFilter();
+        Logger rootLogger = (Logger) LogManager.getRootLogger();
+        filter.start();
+        rootLogger.addFilter(filter);
 
         try {
             var reloadableRegistries = server.reloadableRegistries();
@@ -130,6 +163,11 @@ public class UniversalLootSource implements IResourceSource {
 
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[ULS] Critical error during auto-scan: ", e);
+        } finally {
+            try {
+                rootLogger.get().removeFilter(filter);
+                filter.stop();
+            } catch (Exception ignored) {}
         }
 
         long duration = System.currentTimeMillis() - startTime;

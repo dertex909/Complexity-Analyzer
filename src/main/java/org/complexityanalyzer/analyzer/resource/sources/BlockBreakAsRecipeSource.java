@@ -2,6 +2,7 @@ package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -320,7 +321,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
                 injectRandomSilently(context, deterministicRandom);
             }
 
-            lootTable.getRandomItemsRaw(context, drops::add);
+            lootTable.getRandomItems(context, drops::add);
 
             for (ItemStack stack : drops) {
                 if (!stack.isEmpty()) {
@@ -400,7 +401,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
         if (!tool.isEmpty()) {
             seed = seed * 31L + BuiltInRegistries.ITEM.getKey(tool.getItem()).toString().hashCode();
 
-            ItemEnchantments enchantments = tool.getEnchantments();
+            ItemEnchantments enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
             if (!enchantments.isEmpty()) {
                 seed = seed * 31L + enchantments.hashCode();
             }

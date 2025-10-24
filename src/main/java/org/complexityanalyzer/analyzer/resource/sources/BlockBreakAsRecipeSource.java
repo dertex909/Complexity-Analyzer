@@ -39,20 +39,17 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
     private static final int SAMPLE_COUNT = 100;
     private static final double BASE_MINING_COST = 2.0;
 
-    // Настройки для renewable блоков
     private static final double RENEWABLE_THRESHOLD = 5.0;
     private static final double RENEWABLE_FALLBACK_COST = 0.1;
 
-    // Самообучение: если блок дешёвый и мягкий, вероятно renewable
     private static final double AUTO_LEARN_COST_THRESHOLD = 0.5;
     private static final float AUTO_LEARN_HARDNESS_THRESHOLD = 1.0F;
 
-    // Общие теги (c: namespace в NeoForge)
     private static final TagKey<Block> C_CROPS = TagKey.create(Registries.BLOCK, ResourceLocation.parse("c:crops"));
     private static final TagKey<Block> C_MUSHROOMS = TagKey.create(Registries.BLOCK, ResourceLocation.parse("c:mushrooms"));
 
     private final Map<Item, List<BaseResourceData>> allPaths = new HashMap<>();
-    private final Map<Block, Boolean> renewableCache = new HashMap<>(); // Кэш для isLikelyRenewable
+    private final Map<Block, Boolean> renewableCache = new HashMap<>();
     private static Field randomField = null;
     private SourceManager sourceManager = null;
 
@@ -63,7 +60,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
             return;
         }
 
-        // Получаем SourceManager для анализа стоимости блоков
         Optional<SourceManager> smOpt = AnalysisEngine.getInstance().getSourceManager();
         if (smOpt.isPresent()) {
             this.sourceManager = smOpt.get();
@@ -72,7 +68,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
         }
 
         this.allPaths.clear();
-        this.renewableCache.clear(); // Очищаем кэш при переинициализации
+        this.renewableCache.clear();
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes.", getName());
         long startTime = System.currentTimeMillis();
@@ -87,7 +83,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
                 continue;
             }
 
-            // ФИЛЬТР: Пропускаем неразрушаемые блоки (bedrock, barrier, command blocks и т.д.)
             if (blockToMine.defaultDestroyTime() < 0) {
                 blocksSkipped++;
                 continue;
@@ -153,7 +148,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
             }
         }
 
-        // Сортируем пути для детерминированности
         for (List<BaseResourceData> paths : allPaths.values()) {
             paths.sort((a, b) -> {
                 int typeCompare = Double.compare(
@@ -184,12 +178,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
     }
 
-    /**
-     * Получает умную стоимость блока с самообучением:
-     * - Для редких renewable блоков использует fallback
-     * - Для обычных использует empirical cost
-     * - Автоматически помечает дешёвые мягкие блоки как renewable
-     */
     private double getSmartBlockCost(Item blockItem, Block block) {
         if (sourceManager == null) {
             return 1.0;
@@ -203,12 +191,10 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
 
         double empiricalCost = blockData.get().getBaseFactor();
 
-        // САМООБУЧЕНИЕ: если блок дешёвый и мягкий, вероятно renewable
         if (empiricalCost < AUTO_LEARN_COST_THRESHOLD
                 && block.defaultDestroyTime() > 0
                 && block.defaultDestroyTime() < AUTO_LEARN_HARDNESS_THRESHOLD) {
 
-            // Кэшируем как renewable для будущих проверок
             renewableCache.put(block, true);
 
             ComplexityAnalyzer.LOGGER.debug("[{}] Auto-learned renewable: {} (cost: {}, hardness: {})",
@@ -224,24 +210,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
         return empiricalCost;
     }
 
-    /**
-     * Проверяет renewable с кэшированием результата
-     */
     private boolean isLikelyRenewable(Block block) {
         return renewableCache.computeIfAbsent(block, this::computeRenewableStatus);
     }
 
-    /**
-     * Расширенная проверка на renewable блоки (вызывается только при cache miss):
-     * 1. Minecraft теги (LEAVES, SAPLINGS, CROPS, FLOWERS, LOGS, WOOL, и т.д.)
-     * 2. Классы блоков (BushBlock, CropBlock, BonemealableBlock)
-     * 3. Теги из модов (c:crops, c:mushrooms)
-     * 4. Мягкие блоки (destroyTime < 0.5) как fallback
-     */
     private boolean computeRenewableStatus(Block block) {
         BlockState state = block.defaultBlockState();
 
-        // 1. Стандартные Minecraft теги
         if (state.is(BlockTags.LEAVES)
                 || state.is(BlockTags.SAPLINGS)
                 || state.is(BlockTags.CROPS)
@@ -255,12 +230,10 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
             return true;
         }
 
-        // Дополнительные теги (могут отсутствовать)
         try {
             if (state.is(BlockTags.BAMBOO_BLOCKS)) return true;
         } catch (Exception ignored) {}
 
-        // 2. Проверка классов блоков (работает с модами!)
         if (block instanceof BushBlock
                 || block instanceof CropBlock
                 || block instanceof SaplingBlock
@@ -275,19 +248,16 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
             return true;
         }
 
-        // 3. BonemealableBlock - можно вырастить костной мукой
         if (block instanceof BonemealableBlock) {
             return true;
         }
 
-        // 4. Теги из модов (c: namespace)
         try {
             if (state.is(C_CROPS) || state.is(C_MUSHROOMS)) {
                 return true;
             }
         } catch (Exception ignored) {}
 
-        // 5. Fallback: очень мягкие блоки часто renewable
         return block.defaultDestroyTime() > 0F && block.defaultDestroyTime() < 0.5F;
     }
 

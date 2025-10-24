@@ -10,6 +10,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.monster.Skeleton;
+import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -44,7 +46,6 @@ public class MobDropSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         int processedEntities = 0;
 
-        // Создаём fake player для симуляций
         com.mojang.authlib.GameProfile fakePlayerProfile = new com.mojang.authlib.GameProfile(
                 UUID.randomUUID(), "[ComplexityAnalyzer]"
         );
@@ -53,7 +54,6 @@ public class MobDropSource implements IResourceSource {
                 net.minecraft.server.level.ClientInformation.createDefault()
         );
 
-        // ========== СОЗДАЁМ РАЗНЫЕ ТИПЫ УРОНА ==========
         List<DamageSourceConfig> damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
         for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
@@ -74,22 +74,22 @@ public class MobDropSource implements IResourceSource {
             }
             entityInstance.setPos(0, 64, 0);
 
-            // ========== ТЕСТИРУЕМ ВСЕ ТИПЫ УРОНА ==========
             Map<Item, DropStatistics> combinedDrops = new HashMap<>();
 
             for (DamageSourceConfig config : damageConfigs) {
+                if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) {
+                    continue;
+                }
+
                 simulateKillMethod(
                         serverLevel,
-                        server,
                         entityInstance,
                         lootTable,
                         config,
-                        fakePlayer,
                         combinedDrops
                 );
             }
 
-            // ========== ОБРАБАТЫВАЕМ РЕЗУЛЬТАТЫ ==========
             for (Map.Entry<Item, DropStatistics> entry : combinedDrops.entrySet()) {
                 Item item = entry.getKey();
                 DropStatistics stats = entry.getValue();
@@ -113,104 +113,48 @@ public class MobDropSource implements IResourceSource {
         );
     }
 
-    /**
-     * Создаёт список разных способов убийства
-     */
     private List<DamageSourceConfig> createDamageSources(ServerLevel level, net.minecraft.server.level.ServerPlayer player) {
         List<DamageSourceConfig> configs = new ArrayList<>();
 
-        // 1. Обычное убийство игроком
-        configs.add(new DamageSourceConfig(
-                "Player Attack",
-                level.damageSources().playerAttack(player),
-                false,
-                false,
-                player,
-                null
-        ));
+        configs.add(new DamageSourceConfig("Player Attack", level.damageSources().playerAttack(player), false, player, null));
+        configs.add(new DamageSourceConfig("Fire", level.damageSources().onFire(), true, player, null));
+        configs.add(new DamageSourceConfig("Lava", level.damageSources().lava(), true, player, null));
+        configs.add(new DamageSourceConfig("Magic", level.damageSources().magic(), false, player, null));
+        configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
 
-        // 2. Огонь (для жареного мяса)
-        configs.add(new DamageSourceConfig(
-                "Fire",
-                level.damageSources().onFire(),
-                true,  // onFire = true
-                false,
-                player,
-                null
-        ));
-
-        // 3. Взрыв ЗАРЯЖЕННОГО крипера (для голов мобов)
         Creeper chargedCreeper = EntityType.CREEPER.create(level);
         if (chargedCreeper != null) {
-            // Через NBT устанавливаем powered
             CompoundTag creeperNBT = new CompoundTag();
             creeperNBT.putBoolean("powered", true);
             chargedCreeper.readAdditionalSaveData(creeperNBT);
             chargedCreeper.setPos(0, 64, 0);
-
-            configs.add(new DamageSourceConfig(
-                    "Charged Creeper",
-                    level.damageSources().explosion(chargedCreeper, player),
-                    false,
-                    true,  // isChargedCreeper
-                    player,
-                    chargedCreeper  // Сохраняем ссылку
-            ));
+            configs.add(new DamageSourceConfig("Charged Creeper", level.damageSources().explosion(chargedCreeper, player), false, player, chargedCreeper));
         }
 
-        // 4. Молния
-        configs.add(new DamageSourceConfig(
-                "Lightning",
-                level.damageSources().lightningBolt(),
-                false,
-                false,
-                player,
-                null
-        ));
+        Skeleton skeleton = EntityType.SKELETON.create(level);
+        if (skeleton != null) {
+            Arrow arrow = EntityType.ARROW.create(level);
+            if (arrow != null) {
+                arrow.setOwner(skeleton);
 
-        // 5. Лава
-        configs.add(new DamageSourceConfig(
-                "Lava",
-                level.damageSources().lava(),
-                true,
-                false,
-                player,
-                null
-        ));
-
-        // 6. Магия
-        configs.add(new DamageSourceConfig(
-                "Magic",
-                level.damageSources().magic(),
-                false,
-                false,
-                player,
-                null
-        ));
-
-        // 7. Падение
-        configs.add(new DamageSourceConfig(
-                "Fall Damage",
-                level.damageSources().fall(),
-                false,
-                false,
-                null,
-                null
-        ));
+                configs.add(new DamageSourceConfig(
+                        "Skeleton Arrow",
+                        level.damageSources().arrow(arrow, skeleton),
+                        false,
+                        null,
+                        skeleton
+                ));
+            }
+        }
 
         return configs;
     }
 
-    /**
-     * Симулирует убийство моба определённым способом
-     */
     private void simulateKillMethod(
             ServerLevel level,
-            MinecraftServer ignoredServer,
             Entity entityInstance,
             LootTable lootTable,
             DamageSourceConfig config,
-            net.minecraft.server.level.ServerPlayer ignoredFakePlayer,
             Map<Item, DropStatistics> combinedDrops
     ) {
         for (int i = 0; i < SIMULATION_COUNT; i++) {
@@ -220,34 +164,25 @@ public class MobDropSource implements IResourceSource {
                         .withParameter(LootContextParams.ORIGIN, entityInstance.position())
                         .withParameter(LootContextParams.DAMAGE_SOURCE, config.damageSource);
 
-                // Добавляем killer player если есть
                 if (config.killerPlayer != null) {
                     builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, config.killerPlayer);
                 }
-
-                // ========== СПЕЦИАЛЬНЫЕ УСЛОВИЯ ==========
-
-                // Для заряженного крипера используем сохранённую сущность
-                if (config.isChargedCreeper && config.attackingEntity != null) {
+                if (config.attackingEntity != null) {
                     builder.withParameter(LootContextParams.ATTACKING_ENTITY, config.attackingEntity);
-                    // Дополнительно для некоторых loot tables
-                    builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
+                    if (config.damageSource.getDirectEntity() != null) {
+                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.damageSource.getDirectEntity());
+                    } else {
+                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
+                    }
                 }
 
-                // Для огня/лавы устанавливаем флаг
-                if (config.isOnFire) {
-                    entityInstance.setRemainingFireTicks(100);
-                }
+                if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
 
                 LootParams lootParams = builder.create(LootContextParamSets.ENTITY);
                 List<ItemStack> drops = lootTable.getRandomItems(lootParams);
 
-                // Сбрасываем огонь после симуляции
-                if (config.isOnFire) {
-                    entityInstance.clearFire();
-                }
+                if (config.isOnFire) entityInstance.clearFire();
 
-                // Собираем статистику
                 for (ItemStack stack : drops) {
                     Item item = stack.getItem();
                     int count = stack.getCount();
@@ -256,9 +191,7 @@ public class MobDropSource implements IResourceSource {
                             .addDrop(config.methodName, count);
                 }
 
-            } catch (Exception e) {
-                // Игнорируем ошибки (некоторые мобы могут не поддерживать определённые типы урона)
-            }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -338,23 +271,14 @@ public class MobDropSource implements IResourceSource {
         return "MobDropSource";
     }
 
-    // ========== ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ ==========
-
-    /**
-     * Конфигурация способа убийства
-     */
     private record DamageSourceConfig(
             String methodName,
             DamageSource damageSource,
             boolean isOnFire,
-            boolean isChargedCreeper,
             net.minecraft.server.level.ServerPlayer killerPlayer,
-            Entity attackingEntity  // Для заряженного крипера
+            Entity attackingEntity
     ) {}
 
-    /**
-     * Статистика дропа предмета
-     */
     private static class DropStatistics {
         private final Map<String, Integer> dropsByMethod = new HashMap<>();
         private int totalDropped = 0;

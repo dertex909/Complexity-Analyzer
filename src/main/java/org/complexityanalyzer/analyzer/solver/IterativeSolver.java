@@ -244,7 +244,6 @@ public class IterativeSolver {
     }
 
     private List<RecipeNode> filterRecipes(List<RecipeNode> allRecipes) {
-        // Шаг 1: Ищем PRIMARY рецепты
         List<RecipeNode> primaryRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
                 .toList();

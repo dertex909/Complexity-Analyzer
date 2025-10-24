@@ -97,22 +97,19 @@ public class DepthAnalyzer {
 
     public Optional<RecipeNode> getRecipeToFollow(Item item) {
         return recipeCache.computeIfAbsent(item, key -> {
-            RecipeNode solverChoice = optimalRecipes.get(key);
-            if (solverChoice != null) {
-                return Optional.of(solverChoice);
+            RecipeNode optimalRecipe = optimalRecipes.get(key);
+            if (optimalRecipe != null) {
+                return Optional.of(optimalRecipe);
             }
 
-            List<RecipeNode> recipes = graph.getRecipes(key);
-            if (recipes.isEmpty()) {
-                return Optional.empty();
+            if (graph != null && graph.hasRecipe(key)) {
+                RecipeNode bestFromGraph = graph.getBestRecipe(key);
+                if (bestFromGraph != null && !bestFromGraph.isBaseRecipe()) {
+                    return Optional.of(bestFromGraph);
+                }
             }
 
-            return recipes.stream()
-                    .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
-                            && r.getCategory() != RecipeCategory.STORAGE_COMPRESSION
-                            && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION)
-                    .max(Comparator.comparingInt((RecipeNode r) -> r.getCategory() == RecipeCategory.PRIMARY ? 1 : 0)
-                            .thenComparingInt(RecipeNode::getPriority));
+            return Optional.empty();
         });
     }
 }

@@ -75,6 +75,10 @@ public class GeoAnalysisManager {
     private int totalTasks = 0;
     private int tasksCompleted = 0;
 
+    private long lastPauseLogTime = 0;
+    private static final long LOG_THROTTLE_MS = 5000;
+    private boolean wasPaused = false;
+
     private @Nullable ScanTask currentTask;
     private SpiralChunkSearcher currentSearcher;
     private final List<ChunkSnapshot> pristineSnapshotsForCurrentTask = new ArrayList<>();
@@ -303,7 +307,6 @@ public class GeoAnalysisManager {
         return this.countdownTicks > 0;
     }
 
-
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         if (handleCountdown()) return;
@@ -311,14 +314,27 @@ public class GeoAnalysisManager {
 
         if (scanPhase != ScanMetadata.ScanPhase.RECONNAISSANCE || isProcessingChunk.get()) return;
 
-        if (isServerHealthy()) {
-            if (tickCounter % 200 == 0) {
-                notifier.logInfo("Server is under heavy load (tick time > " + currentProfile.maxTickTimeMs + "ms). Geo-scan is paused.");
+        if (currentProfile != ScanProfile.ATOMIC) {
+            if (isServerUnderLoad()) {
+                long now = System.currentTimeMillis();
+                if (!wasPaused) {
+                    notifier.logInfo("Server is under heavy load (tick time > " + currentProfile.maxTickTimeMs + "ms). Geo-scan is paused.");
+                    wasPaused = true;
+                    lastPauseLogTime = now;
+                } else if (now - lastPauseLogTime > LOG_THROTTLE_MS) {
+                    notifier.logInfo("Geo-scan still paused due to server load.");
+                    lastPauseLogTime = now;
+                }
+                return;
+            } else {
+                if (wasPaused) {
+                    notifier.logInfo("Server load normalized. Geo-scan resumed.");
+                    wasPaused = false;
+                }
             }
-            return;
-        }
 
-        if (isServerHealthy() || !isTickScheduled()) return;
+        }
+        if (isTickScheduled()) return;
 
         if (currentTask == null) {
             if (!startNextTask()) {
@@ -597,17 +613,17 @@ public class GeoAnalysisManager {
         }
     }
 
-    private boolean isServerHealthy() {
-        return !(server.getAverageTickTimeNanos() / 1_000_000.0F <= currentProfile.maxTickTimeMs);
+    private boolean isServerUnderLoad() {
+        return server.getAverageTickTimeNanos() / 1_000_000.0F > currentProfile.maxTickTimeMs;
     }
 
     private boolean isTickScheduled() {
         tickCounter++;
         if (tickCounter >= currentProfile.ticksBetweenScans) {
             tickCounter = 0;
-            return true;
+            return false;
         }
-        return false;
+        return true;
     }
 
     public void shutdown() {

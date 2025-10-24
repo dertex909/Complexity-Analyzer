@@ -81,7 +81,7 @@ public class ResourceCommand {
 
         if (hasRecipe) {
             source.sendSuccess(() -> Component.literal("§7Note: §eThis item also has crafting recipes"), false);
-            source.sendSuccess(() -> Component.literal("§7Use §f/complexity analyze " + itemIdString + " §7for full analysis"), false);
+            source.sendSuccess(() -> Component.literal("§7Use §f/complexity analyze item " + itemIdString + " §7for full analysis"), false);
         } else {
             source.sendSuccess(() -> Component.literal("§7This is a §abase resource §7(no recipes)"), false);
         }

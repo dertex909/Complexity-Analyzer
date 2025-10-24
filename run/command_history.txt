@@ -1,5 +1,3 @@
-/complexity tree minecraft:netherite_ingot
-/complexity analyze item minecraft:dark_oak_leaves
 /complexity analyze item minecraft:apple
 /complexity analyze item minecraft:dandelion
 /complexity analyze item minecraft:acacia_planks
@@ -48,3 +46,5 @@
 /complexity tree minecraft:crossbow
 /complexity tree tnt
 /complexity tree minecraft:glowstone
+/complexity tree minecraft:firework_rocket
+/complexity tree minecraft:netherite_shovel

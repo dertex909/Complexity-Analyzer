@@ -43,12 +43,89 @@ public class GraphBuilder {
         return graph;
     }
 
+    private static RecipeNode buildSmithingNode(
+            net.minecraft.world.item.crafting.SmithingTransformRecipe recipe,
+            Item resultItem,
+            int resultCount
+    ) {
+        RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
+                .resultCount(resultCount)
+                .recipeType(RecipeType.SMITHING)
+                .category(RecipeCategory.PRIMARY);
+
+        try {
+            java.lang.reflect.Field templateField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("template");
+            java.lang.reflect.Field baseField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("base");
+            java.lang.reflect.Field additionField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("addition");
+
+            templateField.setAccessible(true);
+            baseField.setAccessible(true);
+            additionField.setAccessible(true);
+
+            Ingredient template = (Ingredient) templateField.get(recipe);
+            Ingredient base = (Ingredient) baseField.get(recipe);
+            Ingredient addition = (Ingredient) additionField.get(recipe);
+
+            if (!template.isEmpty()) {
+                List<Item> templateVariants = Stream.of(template.getItems())
+                        .map(ItemStack::getItem)
+                        .distinct()
+                        .toList();
+                if (!templateVariants.isEmpty()) {
+                    builder.addIngredient(templateVariants, 1);
+                }
+            }
+
+            if (!base.isEmpty()) {
+                List<Item> baseVariants = Stream.of(base.getItems())
+                        .map(ItemStack::getItem)
+                        .distinct()
+                        .toList();
+                if (!baseVariants.isEmpty()) {
+                    builder.addIngredient(baseVariants, 1);
+                }
+            }
+
+            if (!addition.isEmpty()) {
+                List<Item> additionVariants = Stream.of(addition.getItems())
+                        .map(ItemStack::getItem)
+                        .distinct()
+                        .toList();
+                if (!additionVariants.isEmpty()) {
+                    builder.addIngredient(additionVariants, 1);
+                }
+            }
+
+            builder.priority(2100);
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to process SmithingTransformRecipe for {}: {}",
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(resultItem),
+                    e.getMessage());
+            return null;
+        }
+
+        return builder.build();
+    }
+
     private static RecipeNode buildNode(Recipe<?> recipe, Level level) {
         ItemStack resultStack = recipe.getResultItem(level.registryAccess());
         if (resultStack.isEmpty()) return null;
 
         Item resultItem = resultStack.getItem();
         List<Ingredient> ingredients = recipe.getIngredients();
+
+        if (recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe smithing) {
+            return buildSmithingNode(smithing, resultItem, resultStack.getCount());
+        }
+
+        if (ingredients.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("Skipping recipe with no ingredients: {} for {}",
+                    recipe.getClass().getSimpleName(),
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(resultItem));
+            return null;
+        }
+
         RecipeCategory category = classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 

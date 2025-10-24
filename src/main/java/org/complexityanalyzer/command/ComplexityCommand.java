@@ -45,9 +45,18 @@ public class ComplexityCommand {
 
         dispatcher.register(
                 Commands.literal("complexity")
-                        .requires(source -> source.hasPermission(2))
-                        .then(Commands.literal("status").executes(ComplexityCommand::executeStatus))
-                        .then(Commands.literal("tps").executes(ComplexityCommand::executeTps))
+                        // УБРАЛИ .requires() ОТСЮДА - теперь команда доступна всем!
+
+                        // ===== КОМАНДЫ ДЛЯ ИГРОКОВ (уровень 0) =====
+                        .then(Commands.literal("status")
+                                .executes(ComplexityCommand::executeStatus))
+
+                        .then(Commands.literal("tps")
+                                .executes(ComplexityCommand::executeTps))
+
+                        .then(Commands.literal("stats")
+                                .executes(ComplexityCommand::executeStats))
+
                         .then(Commands.literal("analyze")
                                 .then(Commands.literal("item")
                                         .then(Commands.argument("item", ResourceLocationArgument.id())
@@ -66,11 +75,13 @@ public class ComplexityCommand {
                                         )
                                 )
                         )
+
                         .then(Commands.literal("resource")
                                 .then(Commands.argument("item", ResourceLocationArgument.id())
                                         .suggests(ITEM_SUGGESTIONS)
                                         .executes(cmd -> ResourceCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item")))
                                 ))
+
                         .then(Commands.literal("tree")
                                 .then(Commands.argument("item", ResourceLocationArgument.id())
                                         .suggests(ITEM_SUGGESTIONS)
@@ -119,9 +130,14 @@ public class ComplexityCommand {
                                         )
                                 )
                         )
-                        .then(Commands.literal("reload").executes(ComplexityCommand::executeReload))
-                        .then(Commands.literal("stats").executes(ComplexityCommand::executeStats))
+
+                        // ===== КОМАНДЫ ДЛЯ АДМИНОВ (уровень 2+) =====
+                        .then(Commands.literal("reload")
+                                .requires(source -> source.hasPermission(2)) // ТОЛЬКО АДМИНЫ
+                                .executes(ComplexityCommand::executeReload))
+
                         .then(Commands.literal("export")
+                                .requires(source -> source.hasPermission(2)) // ТОЛЬКО АДМИНЫ
                                 .then(Commands.literal("all")
                                         .executes(ExportCommand::executeAll)
                                 )
@@ -160,10 +176,13 @@ public class ComplexityCommand {
                                         .executes(ExportCommand::executeCSV)
                                 )
                         )
-                        .then(ChunkCommands.register())
-                        .then(ChunkCommands.register())
+
+                        .then(Commands.literal("geoscan")
+                                .requires(source -> source.hasPermission(2)) // ТОЛЬКО АДМИНЫ
+                                .then(ChunkCommands.register())
+                        )
         );
-        ComplexityAnalyzer.LOGGER.info("Registered /complexity command");
+        ComplexityAnalyzer.LOGGER.info("Registered /complexity command with role-based permissions");
     }
 
     private static final SuggestionProvider<CommandSourceStack> LOOT_TABLE_SUGGESTIONS = (context, builder) -> {

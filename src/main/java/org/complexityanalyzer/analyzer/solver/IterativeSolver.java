@@ -443,7 +443,7 @@ public class IterativeSolver {
             );
         }
 
-        ComplexityAnalyzer.LOGGER.debug(
+        ComplexityAnalyzer.LOGGER.info(
                 "Enhanced solver finished: {}ms, {} iterations, {} items processed",
                 totalTime, iterations, itemsProcessed
         );

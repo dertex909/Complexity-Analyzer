@@ -34,7 +34,7 @@ public class OutputManager {
         server.getPlayerList().broadcastSystemMessage(formatted, false);
     }
 
-    public void broadcastSevere(Component message) {
+    public void broadcastSever(Component message) {
         Component formatted = Component.literal("").append(message).withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
         server.getPlayerList().broadcastSystemMessage(formatted, false);
     }

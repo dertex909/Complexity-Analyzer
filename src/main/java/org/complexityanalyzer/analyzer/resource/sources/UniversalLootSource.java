@@ -35,6 +35,11 @@ public class UniversalLootSource implements IResourceSource {
         }
 
         MinecraftServer server = serverLevel.getServer();
+        if (!server.isSameThread()) {
+            server.executeBlocking(() -> initialize(level));
+            return;
+        }
+
         ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
 
         long startTime = System.currentTimeMillis();

@@ -1,13 +1,18 @@
 package org.complexityanalyzer.command;
 
 import com.mojang.brigadier.context.CommandContext;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -21,18 +26,27 @@ public class TreeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId, String mode, int maxDepth) {
         CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
+        // Проверка готовности движка
         if (!engine.isReady() || engine.getDepthAnalyzer().isEmpty()) {
-            source.sendFailure(Component.literal("§cAnalysis engine or Depth Analyzer is not ready yet!"));
+            output.sendFailure(source,
+                    Component.literal("⚠ Analysis engine or Depth Analyzer is not ready!")
+                            .withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        DisplayMode displayMode = "economic".equalsIgnoreCase(mode) ? DisplayMode.ECONOMIC_COST : DisplayMode.PLAYER_INSTRUCTION;
+        DisplayMode displayMode = "economic".equalsIgnoreCase(mode) ?
+                DisplayMode.ECONOMIC_COST : DisplayMode.PLAYER_INSTRUCTION;
 
+        // Проверка существования предмета
         Optional<Item> itemOpt = BuiltInRegistries.ITEM.getOptional(itemId);
         if (itemOpt.isEmpty()) {
-            source.sendFailure(Component.literal("§cItem not found: " + itemId));
+            output.sendFailure(source,
+                    Component.literal("❌ Item not found: ")
+                            .append(Component.literal(itemId.toString())
+                                    .withStyle(ChatFormatting.YELLOW)));
             return 0;
         }
 
@@ -40,94 +54,237 @@ public class TreeCommand {
         DepthAnalyzer depthAnalyzer = engine.getDepthAnalyzer().get();
 
         try {
-            displayTree(source, item, engine, depthAnalyzer, displayMode, maxDepth);
+            displayTree(source, item, engine, depthAnalyzer, displayMode, maxDepth, output, itemId);
             return 1;
         } catch (Exception e) {
-            source.sendFailure(Component.literal("§cError building tree: " + e.getMessage()));
+            output.sendFailure(source,
+                    Component.literal("❌ Error building crafting tree: " + e.getMessage()));
             ComplexityAnalyzer.LOGGER.error("Error building tree for {}", itemId, e);
             return 0;
         }
     }
 
-    private static void displayTree(CommandSourceStack source, Item item, AnalysisEngine engine, DepthAnalyzer depthAnalyzer, DisplayMode displayMode, int maxDepth) {
-        String modeName = displayMode == DisplayMode.PLAYER_INSTRUCTION ? "Player View" : "Economic View";
-        source.sendSuccess(() -> Component.literal("§6§l=== Crafting Tree (" + modeName + ", Depth: " + maxDepth + ") ==="), false);
-        source.sendSuccess(() -> Component.literal("§7Item: §f" + item.getDescription().getString()), false);
-        source.sendSuccess(() -> Component.literal(""), false);
+    private static void displayTree(
+            CommandSourceStack source,
+            Item item,
+            AnalysisEngine engine,
+            DepthAnalyzer depthAnalyzer,
+            DisplayMode displayMode,
+            int maxDepth,
+            OutputManager output,
+            ResourceLocation itemId
+    ) {
+        String itemName = item.getDescription().getString();
+        double complexity = engine.getComplexity(item);
 
+        // === ЗАГОЛОВОК ===
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source,
+                Component.literal("🌳 ")
+                        .withStyle(ChatFormatting.GREEN)
+                        .append(Component.literal("CRAFTING TREE ANALYSIS")
+                                .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
+
+        // === ИНФОРМАЦИЯ О ПРЕДМЕТЕ ===
+        ChatFormatting complexityColor = getComplexityColor(complexity);
+
+        output.sendInfo(source,
+                Component.literal("  🎯 Target: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(itemName)
+                                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("  ⚖ Complexity: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.2f", complexity))
+                                .withStyle(complexityColor, ChatFormatting.BOLD)));
+
+        // === НАСТРОЙКИ ===
+        String modeIcon = displayMode == DisplayMode.PLAYER_INSTRUCTION ? "👤" : "💰";
+        String modeName = displayMode == DisplayMode.PLAYER_INSTRUCTION ? "Player View" : "Economic View";
+        ChatFormatting modeColor = displayMode == DisplayMode.PLAYER_INSTRUCTION ?
+                ChatFormatting.AQUA : ChatFormatting.GOLD;
+
+        output.sendInfo(source,
+                Component.literal("  " + modeIcon + " Mode: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(modeName)
+                                .withStyle(modeColor)));
+
+        output.sendInfo(source,
+                Component.literal("  🔍 Max Depth: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(maxDepth))
+                                .withStyle(ChatFormatting.YELLOW)));
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("  ─────────────────────────────")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
+
+        // === ДЕРЕВО КРАФТА ===
         Map<Item, Double> baseResources = new LinkedHashMap<>();
+        Set<Item> uniqueItems = new HashSet<>();
+        TreeStats stats = new TreeStats();
 
         double initialAmount = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(1.0) : 1.0;
-        displayNodeRecursive(source, item, initialAmount, 0, "", true, new HashSet<>(), engine, depthAnalyzer, baseResources, displayMode, maxDepth);
 
-        if (!baseResources.isEmpty()) {
-            source.sendSuccess(() -> Component.literal(""), false);
+        displayNodeRecursive(source, item, initialAmount, 0, "  ", true, new HashSet<>(),
+                engine, depthAnalyzer, baseResources, displayMode, maxDepth, uniqueItems, stats, output);
 
-            if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
-                source.sendSuccess(() -> Component.literal("§e--- Base Resources Needed ---"), false);
-                source.sendSuccess(() -> Component.literal("§7(Total amount to gather)"), false);
-                baseResources.entrySet().stream()
-                        .sorted(Map.Entry.<Item, Double>comparingByValue().reversed())
-                        .forEach(entry -> {
-                            int amountForPlayer = entry.getValue().intValue();
-                            if (amountForPlayer > 0) {
-                                source.sendSuccess(() -> Component.literal(
-                                        String.format("§f- %s x %d", entry.getKey().getDescription().getString(), amountForPlayer)), false);
-                            }
-                        });
-            } else {
-                source.sendSuccess(() -> Component.literal("§e--- Base Resources Needed (Economic Cost) ---"), false);
-                source.sendSuccess(() -> Component.literal("§7(Precise fractional amount required)"), false);
-                baseResources.entrySet().stream()
-                        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                        .forEach(entry -> source.sendSuccess(() -> Component.literal(
-                                String.format("§f- %s x %.2f", entry.getKey().getDescription().getString(), entry.getValue())), false));
-            }
-        }
+        // === РАЗДЕЛИТЕЛЬ ===
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("  ─────────────────────────────")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
+
+        // === СТАТИСТИКА ===
+        displayStatistics(source, stats, uniqueItems, output);
+
+        // === БАЗОВЫЕ РЕСУРСЫ ===
+        displayBaseResources(source, baseResources, displayMode, engine, output);
+
+        // === СОВЕТЫ ===
+        displayTips(source, displayMode, maxDepth, stats, output, itemId);
+
+        // === НИЖНИЙ РАЗДЕЛИТЕЛЬ ===
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private static void displayNodeRecursive(
-            CommandSourceStack source, Item item, double neededAmount, int depth, String prefix,
-            boolean isLast, Set<Item> visitedOnPath, AnalysisEngine engine, DepthAnalyzer depthAnalyzer,
-            Map<Item, Double> baseResources, DisplayMode displayMode, int maxDepth) {
+            CommandSourceStack source,
+            Item item,
+            double neededAmount,
+            int depth,
+            String prefix,
+            boolean isLast,
+            Set<Item> visitedOnPath,
+            AnalysisEngine engine,
+            DepthAnalyzer depthAnalyzer,
+            Map<Item, Double> baseResources,
+            DisplayMode displayMode,
+            int maxDepth,
+            Set<Item> uniqueItems,
+            TreeStats stats,
+            OutputManager output
+    ) {
+        uniqueItems.add(item);
+        stats.totalNodes++;
 
+        // MAX DEPTH
         if (depth >= maxDepth) {
-            source.sendSuccess(() -> Component.literal(prefix + (isLast ? "└─" : "├─") + " §8... (max depth reached)"), false);
-            calculateBaseResourcesFor(item, neededAmount, new HashSet<>(visitedOnPath), engine, depthAnalyzer, baseResources, displayMode);
+            MutableComponent line = Component.literal(prefix)
+                    .append(Component.literal(isLast ? "└─ " : "├─ ")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("... ")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                    .append(Component.literal("[MAX DEPTH REACHED]")
+                            .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+
+            output.sendInfo(source, line);
+            calculateBaseResourcesFor(item, neededAmount, new HashSet<>(visitedOnPath),
+                    engine, depthAnalyzer, baseResources, displayMode);
             return;
         }
 
+        // CYCLE DETECTION
         if (!visitedOnPath.add(item)) {
-            source.sendSuccess(() -> Component.literal(String.format("%s§8%s §c%s §8[CYCLE]", prefix, isLast ? "└─" : "├─", item.getDescription().getString())), false);
+            stats.cyclesDetected++;
+            MutableComponent line = Component.literal(prefix)
+                    .append(Component.literal(isLast ? "└─ " : "├─ ")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("🔄 ")
+                            .withStyle(ChatFormatting.RED))
+                    .append(Component.literal(item.getDescription().getString())
+                            .withStyle(ChatFormatting.RED))
+                    .append(Component.literal(" [CYCLE]")
+                            .withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
+
+            output.sendInfo(source, line);
             return;
         }
 
+        // КОЛИЧЕСТВО
         String quantityString;
         if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
             int displayAmount = (int) Math.ceil(neededAmount);
-            quantityString = displayAmount >= 1 ? String.format("§e%dx §f", displayAmount) : "";
+            quantityString = displayAmount >= 1 ? displayAmount + "x " : "";
         } else {
-            quantityString = neededAmount > 0.001 ? String.format("§e%.2fx §f", neededAmount) : "";
+            quantityString = neededAmount > 0.001 ? String.format("%.2fx ", neededAmount) : "";
         }
 
         double complexity = engine.getComplexity(item);
+        ChatFormatting complexityColor = getComplexityColor(complexity);
         Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
 
+        // БАЗОВЫЙ РЕСУРС
         if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
-            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(neededAmount) : neededAmount;
+            stats.baseResourcesCount++;
+            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
+                    Math.ceil(neededAmount) : neededAmount;
             baseResources.merge(item, amountToAdd, Double::sum);
 
-            String line = String.format("%s§8%s %s%s §7(%.2f) §a[Base]", prefix, isLast ? "└─" : "├─", quantityString, item.getDescription().getString(), complexity);
-            source.sendSuccess(() -> Component.literal(line), false);
+            MutableComponent line = Component.literal(prefix)
+                    .append(Component.literal(isLast ? "└─ " : "├─ ")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("⛏ ")
+                            .withStyle(ChatFormatting.GREEN))
+                    .append(Component.literal(quantityString)
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                    .append(Component.literal(item.getDescription().getString())
+                            .withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" (")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(String.format("%.2f", complexity))
+                            .withStyle(complexityColor))
+                    .append(Component.literal(") ")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("[BASE]")
+                            .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+
+            output.sendInfo(source, line);
             visitedOnPath.remove(item);
             return;
         }
 
-        String line = String.format("%s%s %s%s §7(%.2f)", prefix, isLast ? "└─" : "├─", quantityString, item.getDescription().getString(), complexity);
-        source.sendSuccess(() -> Component.literal(line), false);
+        // КРАФТОВЫЙ ПРЕДМЕТ
+        stats.craftingSteps++;
 
+        MutableComponent line = Component.literal(prefix)
+                .append(Component.literal(isLast ? "└─ " : "├─ ")
+                        .withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal("🔨 ")
+                        .withStyle(ChatFormatting.GOLD))
+                .append(Component.literal(quantityString)
+                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                .append(Component.literal(item.getDescription().getString())
+                        .withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" (")
+                        .withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal(String.format("%.2f", complexity))
+                        .withStyle(complexityColor))
+                .append(Component.literal(")")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source, line);
+
+        // ИНГРЕДИЕНТЫ
         RecipeNode recipe = recipeOpt.get();
-        String childPrefix = prefix + (isLast ? "   " : "§8│  ");
+        String childPrefix = prefix + (isLast ? "   " : "│  ");
 
         double craftOperations;
         if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
@@ -151,18 +308,233 @@ public class TreeCommand {
             double totalIngredientNeeded = craftOperations * countForOneCraft;
 
             displayNodeRecursive(source, ingredientItem, totalIngredientNeeded, depth + 1, childPrefix,
-                    i == ingredientItems.size() - 1, visitedOnPath, engine, depthAnalyzer, baseResources, displayMode, maxDepth);
+                    i == ingredientItems.size() - 1, visitedOnPath, engine, depthAnalyzer,
+                    baseResources, displayMode, maxDepth, uniqueItems, stats, output);
         }
         visitedOnPath.remove(item);
     }
 
-    private static void calculateBaseResourcesFor(Item item, double neededAmount, Set<Item> visited, AnalysisEngine engine, DepthAnalyzer depthAnalyzer, Map<Item, Double> baseResources, DisplayMode displayMode) {
+    private static void displayStatistics(
+            CommandSourceStack source,
+            TreeStats stats,
+            Set<Item> uniqueItems,
+            OutputManager output
+    ) {
+        output.sendInfo(source,
+                Component.literal("  📊 ")
+                        .withStyle(ChatFormatting.AQUA)
+                        .append(Component.literal("Tree Statistics")
+                                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("    Total Nodes: ")
+                        .withStyle(ChatFormatting.DARK_GRAY)
+                        .append(Component.literal(String.valueOf(stats.totalNodes))
+                                .withStyle(ChatFormatting.WHITE)));
+
+        output.sendInfo(source,
+                Component.literal("    Unique Items: ")
+                        .withStyle(ChatFormatting.DARK_GRAY)
+                        .append(Component.literal(String.valueOf(uniqueItems.size()))
+                                .withStyle(ChatFormatting.AQUA)));
+
+        output.sendInfo(source,
+                Component.literal("    Crafting Steps: ")
+                        .withStyle(ChatFormatting.DARK_GRAY)
+                        .append(Component.literal(String.valueOf(stats.craftingSteps))
+                                .withStyle(ChatFormatting.GOLD)));
+
+        output.sendInfo(source,
+                Component.literal("    Base Resources: ")
+                        .withStyle(ChatFormatting.DARK_GRAY)
+                        .append(Component.literal(String.valueOf(stats.baseResourcesCount))
+                                .withStyle(ChatFormatting.GREEN)));
+
+        if (stats.cyclesDetected > 0) {
+            output.sendInfo(source,
+                    Component.literal("    ⚠ Cycles Detected: ")
+                            .withStyle(ChatFormatting.YELLOW)
+                            .append(Component.literal(String.valueOf(stats.cyclesDetected))
+                                    .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
+        }
+
+        output.sendInfo(source, Component.literal(""));
+    }
+
+    private static void displayBaseResources(
+            CommandSourceStack source,
+            Map<Item, Double> baseResources,
+            DisplayMode displayMode,
+            AnalysisEngine ignoredEngine,
+            OutputManager output
+    ) {
+        if (baseResources.isEmpty()) {
+            output.sendInfo(source,
+                    Component.literal("  ⚠ No base resources needed (item might be unobtainable)")
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
+            return;
+        }
+
+        String title = displayMode == DisplayMode.PLAYER_INSTRUCTION ?
+                "Shopping List (What to Gather)" : "Precise Resource Requirements";
+
+        output.sendInfo(source,
+                Component.literal("  🎒 ")
+                        .withStyle(ChatFormatting.GREEN)
+                        .append(Component.literal(title)
+                                .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)));
+
+        if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
+            output.sendInfo(source,
+                    Component.literal("    (Rounded up for actual gameplay)")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else {
+            output.sendInfo(source,
+                    Component.literal("    (Exact fractional amounts)")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        }
+
+        output.sendInfo(source, Component.literal(""));
+
+        // Сортировка по количеству
+        baseResources.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .forEach(entry -> {
+                    Item item = entry.getKey();
+                    double amount = entry.getValue();
+                    String itemName = item.getDescription().getString();
+
+                    if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
+                        int amountForPlayer = (int) amount;
+                        if (amountForPlayer > 0) {
+                            // ИСПРАВЛЕНО: используем getDefaultInstance()
+                            int maxStackSize = item.getDefaultInstance().getMaxStackSize();
+                            String stackInfo = getStackVisualization(amountForPlayer, maxStackSize);
+
+                            MutableComponent resourceLine = Component.literal("    ✓ ")
+                                    .withStyle(ChatFormatting.GREEN)
+                                    .append(Component.literal(itemName)
+                                            .withStyle(ChatFormatting.WHITE))
+                                    .append(Component.literal(" x")
+                                            .withStyle(ChatFormatting.DARK_GRAY))
+                                    .append(Component.literal(String.valueOf(amountForPlayer))
+                                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                                    .append(Component.literal(" " + stackInfo)
+                                            .withStyle(ChatFormatting.DARK_GRAY));
+
+                            output.sendInfo(source, resourceLine);
+                        }
+                    } else {
+                        MutableComponent resourceLine = Component.literal("    • ")
+                                .withStyle(ChatFormatting.DARK_GRAY)
+                                .append(Component.literal(itemName)
+                                        .withStyle(ChatFormatting.WHITE))
+                                .append(Component.literal(" x")
+                                        .withStyle(ChatFormatting.DARK_GRAY))
+                                .append(Component.literal(String.format("%.2f", amount))
+                                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+
+                        output.sendInfo(source, resourceLine);
+                    }
+                });
+
+        output.sendInfo(source, Component.literal(""));
+    }
+
+    private static void displayTips(
+            CommandSourceStack source,
+            DisplayMode displayMode,
+            int ignoredMaxDepth,
+            TreeStats stats,
+            OutputManager output,
+            ResourceLocation itemId
+    ) {
+        output.sendInfo(source,
+                Component.literal("  💡 ")
+                        .withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal("Tips & Options")
+                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+
+        // Совет о переключении режима
+        if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
+            String economicCommand = "/complexity tree " + itemId + " mode economic";
+            MutableComponent tipLine = Component.literal("    • Try ")
+                    .withStyle(ChatFormatting.DARK_GRAY)
+                    .append(Component.literal("economic mode")
+                            .withStyle(ChatFormatting.GOLD, ChatFormatting.UNDERLINE)
+                            .withStyle(style -> style
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, economicCommand))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                            Component.literal("Click to switch to economic view")
+                                                    .withStyle(ChatFormatting.AQUA)))))
+                    .append(Component.literal(" for precise calculations")
+                            .withStyle(ChatFormatting.DARK_GRAY));
+
+            output.sendInfo(source, tipLine);
+        } else {
+            String playerCommand = "/complexity tree " + itemId + " mode player";
+            MutableComponent tipLine = Component.literal("    • Try ")
+                    .withStyle(ChatFormatting.DARK_GRAY)
+                    .append(Component.literal("player mode")
+                            .withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE)
+                            .withStyle(style -> style
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, playerCommand))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                            Component.literal("Click to switch to player view")
+                                                    .withStyle(ChatFormatting.GREEN)))))
+                    .append(Component.literal(" for gameplay-friendly view")
+                            .withStyle(ChatFormatting.DARK_GRAY));
+
+            output.sendInfo(source, tipLine);
+        }
+
+        // Совет о глубине
+        if (stats.totalNodes > 50) {
+            String depthCommand = "/complexity tree " + itemId + " depth 5";
+            MutableComponent tipLine = Component.literal("    • Complex tree! Use ")
+                    .withStyle(ChatFormatting.DARK_GRAY)
+                    .append(Component.literal("limited depth")
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.UNDERLINE)
+                            .withStyle(style -> style
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, depthCommand))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                            Component.literal("Limit tree depth for better readability")
+                                                    .withStyle(ChatFormatting.GOLD)))))
+                    .append(Component.literal(" for simpler view")
+                            .withStyle(ChatFormatting.DARK_GRAY));
+
+            output.sendInfo(source, tipLine);
+        }
+
+        // Предупреждение о циклах
+        if (stats.cyclesDetected > 0) {
+            output.sendInfo(source,
+                    Component.literal("    ⚠ Cyclic dependencies detected!")
+                            .withStyle(ChatFormatting.RED));
+            output.sendInfo(source,
+                    Component.literal("      This may indicate mod conflicts or loop recipes")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        }
+
+        output.sendInfo(source, Component.literal(""));
+    }
+
+    private static void calculateBaseResourcesFor(
+            Item item,
+            double neededAmount,
+            Set<Item> visited,
+            AnalysisEngine engine,
+            DepthAnalyzer depthAnalyzer,
+            Map<Item, Double> baseResources,
+            DisplayMode displayMode
+    ) {
         if (!visited.add(item)) return;
 
         Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
 
         if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
-            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(neededAmount) : neededAmount;
+            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
+                    Math.ceil(neededAmount) : neededAmount;
             baseResources.merge(item, amountToAdd, Double::sum);
             visited.remove(item);
             return;
@@ -184,9 +556,43 @@ public class TreeCommand {
 
             if (bestVariant != null) {
                 double totalIngredientNeeded = craftOperations * slot.getCount();
-                calculateBaseResourcesFor(bestVariant, totalIngredientNeeded, visited, engine, depthAnalyzer, baseResources, displayMode);
+                calculateBaseResourcesFor(bestVariant, totalIngredientNeeded, visited,
+                        engine, depthAnalyzer, baseResources, displayMode);
             }
         }
         visited.remove(item);
+    }
+
+    // === Вспомогательные классы и методы ===
+
+    private static class TreeStats {
+        int totalNodes = 0;
+        int craftingSteps = 0;
+        int baseResourcesCount = 0;
+        int cyclesDetected = 0;
+    }
+
+    private static ChatFormatting getComplexityColor(double complexity) {
+        if (complexity >= 100) return ChatFormatting.DARK_RED;
+        if (complexity >= 50) return ChatFormatting.RED;
+        if (complexity >= 30) return ChatFormatting.GOLD;
+        if (complexity >= 10) return ChatFormatting.YELLOW;
+        if (complexity >= 5) return ChatFormatting.GREEN;
+        return ChatFormatting.DARK_GREEN;
+    }
+
+    private static String getStackVisualization(int amount, int maxStackSize) {
+        if (maxStackSize <= 0) return "";
+
+        int stacks = amount / maxStackSize;
+        int remainder = amount % maxStackSize;
+
+        if (stacks == 0) {
+            return String.format("(%.0f%%)", (amount / (double) maxStackSize) * 100);
+        } else if (remainder == 0) {
+            return String.format("(%d stacks)", stacks);
+        } else {
+            return String.format("(%d stacks + %d)", stacks, remainder);
+        }
     }
 }

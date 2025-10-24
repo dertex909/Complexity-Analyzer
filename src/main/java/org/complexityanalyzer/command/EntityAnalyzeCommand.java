@@ -1,14 +1,17 @@
 package org.complexityanalyzer.command;
 
 import com.mojang.brigadier.context.CommandContext;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 
 import java.util.Comparator;
@@ -19,74 +22,433 @@ public class EntityAnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation entityId) {
         CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
+        // Проверка готовности движка
         if (!engine.isReady()) {
-            source.sendFailure(Component.literal("§cAnalysis engine is not ready yet!"));
+            output.sendFailure(source,
+                    Component.literal("⚠ Analysis engine is not ready yet!")
+                            .withStyle(ChatFormatting.RED));
             return 0;
         }
 
+        // Проверка существования сущности
         Optional<EntityType<?>> entityTypeOpt = BuiltInRegistries.ENTITY_TYPE.getOptional(entityId);
         if (entityTypeOpt.isEmpty()) {
-            source.sendFailure(Component.literal("§cEntity type not found: " + entityId));
+            output.sendFailure(source,
+                    Component.literal("❌ Entity type not found: ")
+                            .append(Component.literal(entityId.toString())
+                                    .withStyle(ChatFormatting.YELLOW)));
             return 0;
         }
         EntityType<?> entityType = entityTypeOpt.get();
 
+        // Получение провайдеров
         Optional<MobPropertyProvider> mobProviderOpt = engine.getMobPropertyProvider();
         Optional<MobDropSource> mobDropSourceOpt = engine.getMobDropSource();
 
         if (mobProviderOpt.isEmpty()) {
-            source.sendFailure(Component.literal("§cMobPropertyProvider is not initialized."));
+            output.sendFailure(source,
+                    Component.literal("⚠ MobPropertyProvider is not initialized!")
+                            .withStyle(ChatFormatting.RED));
             return 0;
         }
 
+        // Получение свойств моба
         Optional<MobPropertyProvider.MobProperties> propsOpt = mobProviderOpt.get().getProperties(entityType);
         if (propsOpt.isEmpty()) {
-            source.sendFailure(Component.literal("§cEntity is not a living entity or could not be analyzed: " + entityId));
+            output.sendFailure(source,
+                    Component.literal("⚠ This entity cannot be analyzed")
+                            .withStyle(ChatFormatting.RED));
+            output.sendInfo(source,
+                    Component.literal("Entity might not be a living creature: " + entityId)
+                            .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
             return 0;
         }
 
         List<MobDropData> drops = mobDropSourceOpt.map(mds -> mds.getDropsForEntity(entityType)).orElse(List.of());
 
-        displayAnalysis(source, entityType, propsOpt.get(), drops);
+        displayAnalysis(source, entityType, propsOpt.get(), drops, output);
         return 1;
     }
 
-    private static void displayAnalysis(CommandSourceStack source, EntityType<?> type, MobPropertyProvider.MobProperties props, List<MobDropData> drops) {
+    private static void displayAnalysis(
+            CommandSourceStack source,
+            EntityType<?> type,
+            MobPropertyProvider.MobProperties props,
+            List<MobDropData> drops,
+            OutputManager output
+    ) {
         String entityName = type.getDescription().getString();
+
+        // Расчёты
         double survivability = props.maxHealth() * (1 + props.armor() / 5.0);
         double threat = 1 + Math.log1p(props.attackDamage());
         double combatPower = survivability * threat;
 
-        source.sendSuccess(() -> Component.literal("§6§l=== Mob Analysis ==="), false);
-        source.sendSuccess(() -> Component.literal("§7Entity: §f" + entityName), false);
-        source.sendSuccess(() -> Component.literal(""), false);
+        // Заголовок
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
 
-        source.sendSuccess(() -> Component.literal("§e[Base Stats]"), false);
-        source.sendSuccess(() -> Component.literal(String.format("§7  Max Health: §a%.1f", props.maxHealth())), false);
-        source.sendSuccess(() -> Component.literal(String.format("§7  Attack Damage: §c%.1f", props.attackDamage())), false);
-        source.sendSuccess(() -> Component.literal(String.format("§7  Armor: §9%.1f", props.armor())), false);
-        source.sendSuccess(() -> Component.literal("§7  Category: §f" + props.classification().getName()), false);
-        source.sendSuccess(() -> Component.literal("§7  Is Boss: §f" + (props.isBoss() ? "§cYes" : "No")), false);
-        source.sendSuccess(() -> Component.literal(""), false);
+        String mobIcon = getMobIcon(props);
+        output.sendInfo(source,
+                Component.literal(mobIcon + " ")
+                        .withStyle(ChatFormatting.RED)
+                        .append(Component.literal("Mob Analysis")
+                                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
 
-        source.sendSuccess(() -> Component.literal("§e[Calculated Factors]"), false);
-        source.sendSuccess(() -> Component.literal(String.format("§7  Survivability Factor: §a%.2f", survivability)), false);
-        source.sendSuccess(() -> Component.literal(String.format("§7  Threat Factor: §c%.2f", threat)), false);
-        source.sendSuccess(() -> Component.literal(String.format("§7  §lCombat Power: §e§l%.2f", combatPower)), false);
-        source.sendSuccess(() -> Component.literal(""), false);
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
 
-        source.sendSuccess(() -> Component.literal("§e[Notable Drops]"), false);
-        if (drops.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§7  No significant drops found."), false);
+        // Название сущности с категорией
+        MutableComponent nameComponent = Component.literal("Entity: ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(entityName)
+                        .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
+
+        if (props.isBoss()) {
+            nameComponent.append(Component.literal(" 👑")
+                    .withStyle(ChatFormatting.GOLD));
+        }
+
+        output.sendInfo(source, nameComponent);
+
+        // Категория с цветом
+        ChatFormatting categoryColor = getCategoryColor(props.classification().getName());
+        output.sendInfo(source,
+                Component.literal("Category: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(props.classification().getName())
+                                .withStyle(categoryColor, ChatFormatting.BOLD)));
+
+        output.sendInfo(source, Component.literal(""));
+
+        // === BASE STATS ===
+        displayBaseStats(source, props, output);
+
+        // === CALCULATED FACTORS ===
+        displayCalculatedFactors(source, survivability, threat, combatPower, output);
+
+        // === DIFFICULTY RATING ===
+        displayDifficultyRating(source, combatPower, props, output);
+
+        // === DROPS ===
+        displayDrops(source, drops, output);
+
+        // Нижний разделитель
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+    }
+
+    private static void displayBaseStats(
+            CommandSourceStack source,
+            MobPropertyProvider.MobProperties props,
+            OutputManager output
+    ) {
+        output.sendInfo(source,
+                Component.literal("❤ ")
+                        .withStyle(ChatFormatting.RED)
+                        .append(Component.literal("Base Stats")
+                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+
+        // Health с визуальным баром
+        double health = props.maxHealth();
+        ChatFormatting healthColor = getHealthColor(health);
+        String healthBar = getStatBar(health, 100.0);
+
+        output.sendInfo(source,
+                Component.literal("  ❤ Max Health: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.1f", health))
+                                .withStyle(healthColor, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("    " + healthBar)
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        // Attack Damage
+        double attack = props.attackDamage();
+        ChatFormatting attackColor = getAttackColor(attack);
+        String attackBar = getStatBar(attack, 20.0);
+
+        output.sendInfo(source,
+                Component.literal("  ⚔ Attack Damage: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.1f", attack))
+                                .withStyle(attackColor, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("    " + attackBar)
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        // Armor
+        double armor = props.armor();
+        ChatFormatting armorColor = getArmorColor(armor);
+        String armorBar = getStatBar(armor, 20.0);
+
+        output.sendInfo(source,
+                Component.literal("  🛡 Armor: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.1f", armor))
+                                .withStyle(armorColor, ChatFormatting.BOLD)));
+
+        if (armor > 0) {
+            output.sendInfo(source,
+                    Component.literal("    " + armorBar)
+                            .withStyle(ChatFormatting.DARK_GRAY));
+        }
+
+        output.sendInfo(source, Component.literal(""));
+    }
+
+    private static void displayCalculatedFactors(
+            CommandSourceStack source,
+            double survivability,
+            double threat,
+            double combatPower,
+            OutputManager output
+    ) {
+        output.sendInfo(source,
+                Component.literal("⚡ ")
+                        .withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal("Combat Analysis")
+                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+
+        // Survivability
+        ChatFormatting survColor = getFactorColor(survivability, 50.0);
+        output.sendInfo(source,
+                Component.literal("  🛡 Survivability: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.2f", survivability))
+                                .withStyle(survColor)));
+
+        // Threat
+        ChatFormatting threatColor = getFactorColor(threat, 5.0);
+        output.sendInfo(source,
+                Component.literal("  ⚠ Threat Level: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.2f", threat))
+                                .withStyle(threatColor)));
+
+        // Combat Power (главный показатель)
+        ChatFormatting powerColor = getCombatPowerColor(combatPower);
+        output.sendInfo(source,
+                Component.literal("  ⚔ Combat Power: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.2f", combatPower))
+                                .withStyle(powerColor, ChatFormatting.BOLD)));
+
+        String powerBar = getStatBar(combatPower, 200.0);
+        output.sendInfo(source,
+                Component.literal("    " + powerBar)
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source, Component.literal(""));
+    }
+
+    private static void displayDifficultyRating(
+            CommandSourceStack source,
+            double combatPower,
+            MobPropertyProvider.MobProperties props,
+            OutputManager output
+    ) {
+        // Определение сложности
+        String difficulty;
+        String difficultyIcon;
+        ChatFormatting difficultyColor;
+
+        if (props.isBoss()) {
+            difficulty = "BOSS";
+            difficultyIcon = "👑";
+            difficultyColor = ChatFormatting.DARK_PURPLE;
+        } else if (combatPower > 500) {
+            difficulty = "EXTREME";
+            difficultyIcon = "💀";
+            difficultyColor = ChatFormatting.DARK_RED;
+        } else if (combatPower > 200) {
+            difficulty = "HARD";
+            difficultyIcon = "🔥";
+            difficultyColor = ChatFormatting.RED;
+        } else if (combatPower > 100) {
+            difficulty = "MEDIUM";
+            difficultyIcon = "⚠";
+            difficultyColor = ChatFormatting.GOLD;
+        } else if (combatPower > 50) {
+            difficulty = "EASY";
+            difficultyIcon = "✓";
+            difficultyColor = ChatFormatting.YELLOW;
         } else {
+            difficulty = "TRIVIAL";
+            difficultyIcon = "◆";
+            difficultyColor = ChatFormatting.GREEN;
+        }
+
+        output.sendInfo(source,
+                Component.literal("📊 Difficulty Rating: ")
+                        .withStyle(ChatFormatting.AQUA)
+                        .append(Component.literal(difficultyIcon + " " + difficulty)
+                                .withStyle(difficultyColor, ChatFormatting.BOLD)));
+
+        // Рекомендации
+        String recommendation = switch (difficulty) {
+            case "BOSS" -> "Prepare thoroughly! Boss encounter.";
+            case "EXTREME" -> "Extreme danger! Full gear recommended.";
+            case "HARD" -> "Dangerous! Good equipment needed.";
+            case "MEDIUM" -> "Moderate threat. Stay cautious.";
+            case "EASY" -> "Manageable with basic gear.";
+            default -> "Low threat. Safe for beginners.";
+        };
+
+        output.sendInfo(source,
+                Component.literal("  💡 " + recommendation)
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+
+        output.sendInfo(source, Component.literal(""));
+    }
+
+    private static void displayDrops(
+            CommandSourceStack source,
+            List<MobDropData> drops,
+            OutputManager output
+    ) {
+        output.sendInfo(source,
+                Component.literal("💎 ")
+                        .withStyle(ChatFormatting.GREEN)
+                        .append(Component.literal("Notable Drops")
+                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+
+        if (drops.isEmpty()) {
+            output.sendInfo(source,
+                    Component.literal("  No significant drops recorded")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else {
+            // Сортировка по количеству
             drops.sort(Comparator.comparingDouble(MobDropData::averageYield).reversed());
 
             for (MobDropData drop : drops) {
                 String itemName = drop.item().getDescription().getString();
-                source.sendSuccess(() -> Component.literal(String.format("§7  - §f%s: §a~%.2f per kill", itemName, drop.averageYield())), false);
+                double yield = drop.averageYield();
+
+                // Иконка редкости
+                String rarityIcon = getRarityIcon(yield);
+                ChatFormatting rarityColor = getRarityColor(yield);
+
+                MutableComponent dropComponent = Component.literal("  " + rarityIcon + " ")
+                        .withStyle(rarityColor)
+                        .append(Component.literal(itemName)
+                                .withStyle(ChatFormatting.WHITE))
+                        .append(Component.literal(": ")
+                                .withStyle(ChatFormatting.DARK_GRAY))
+                        .append(Component.literal(String.format("~%.2f", yield))
+                                .withStyle(ChatFormatting.AQUA))
+                        .append(Component.literal(" per kill")
+                                .withStyle(ChatFormatting.GRAY));
+
+                output.sendInfo(source, dropComponent);
+            }
+
+            output.sendInfo(source, Component.literal(""));
+            output.sendInfo(source,
+                    Component.literal("  💡 Tip: Higher yield = more common drop")
+                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        }
+    }
+
+    // === Вспомогательные методы ===
+
+    private static String getMobIcon(MobPropertyProvider.MobProperties props) {
+        if (props.isBoss()) return "👑";
+
+        String category = props.classification().getName().toLowerCase();
+        return switch (category) {
+            case "monster", "hostile" -> "⚔";
+            case "creature", "passive" -> "🐾";
+            case "ambient" -> "🦋";
+            case "water_creature" -> "🐟";
+            default -> "👾";
+        };
+    }
+
+    private static ChatFormatting getCategoryColor(String category) {
+        return switch (category.toLowerCase()) {
+            case "monster", "hostile" -> ChatFormatting.RED;
+            case "creature", "passive" -> ChatFormatting.GREEN;
+            case "ambient" -> ChatFormatting.AQUA;
+            case "water_creature" -> ChatFormatting.BLUE;
+            default -> ChatFormatting.WHITE;
+        };
+    }
+
+    private static ChatFormatting getHealthColor(double health) {
+        if (health >= 100) return ChatFormatting.DARK_RED;
+        if (health >= 50) return ChatFormatting.RED;
+        if (health >= 20) return ChatFormatting.GOLD;
+        return ChatFormatting.GREEN;
+    }
+
+    private static ChatFormatting getAttackColor(double attack) {
+        if (attack >= 20) return ChatFormatting.DARK_RED;
+        if (attack >= 10) return ChatFormatting.RED;
+        if (attack >= 5) return ChatFormatting.GOLD;
+        return ChatFormatting.YELLOW;
+    }
+
+    private static ChatFormatting getArmorColor(double armor) {
+        if (armor >= 15) return ChatFormatting.DARK_AQUA;
+        if (armor >= 10) return ChatFormatting.AQUA;
+        if (armor >= 5) return ChatFormatting.BLUE;
+        return ChatFormatting.GRAY;
+    }
+
+    private static ChatFormatting getFactorColor(double value, double threshold) {
+        if (value >= threshold * 2) return ChatFormatting.DARK_RED;
+        if (value >= threshold) return ChatFormatting.RED;
+        if (value >= threshold / 2) return ChatFormatting.GOLD;
+        return ChatFormatting.YELLOW;
+    }
+
+    private static ChatFormatting getCombatPowerColor(double power) {
+        if (power >= 500) return ChatFormatting.DARK_RED;
+        if (power >= 200) return ChatFormatting.RED;
+        if (power >= 100) return ChatFormatting.GOLD;
+        if (power >= 50) return ChatFormatting.YELLOW;
+        return ChatFormatting.GREEN;
+    }
+
+    private static String getStatBar(double value, double max) {
+        int percent = (int) Math.min(100, (value / max) * 100);
+        int filled = percent / 10;
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < 10; i++) {
+            if (i < filled) {
+                bar.append("█");
+            } else {
+                bar.append("░");
             }
         }
+        bar.append("]");
+        return bar.toString();
+    }
+
+    private static String getRarityIcon(double yield) {
+        if (yield >= 2.0) return "🟢"; // Очень частый дроп
+        if (yield >= 1.0) return "🟡"; // Частый
+        if (yield >= 0.5) return "🟠"; // Обычный
+        if (yield >= 0.1) return "🔵"; // Редкий
+        return "🟣"; // Очень редкий
+    }
+
+    private static ChatFormatting getRarityColor(double yield) {
+        if (yield >= 2.0) return ChatFormatting.GREEN;
+        if (yield >= 1.0) return ChatFormatting.YELLOW;
+        if (yield >= 0.5) return ChatFormatting.GOLD;
+        if (yield >= 0.1) return ChatFormatting.AQUA;
+        return ChatFormatting.LIGHT_PURPLE;
     }
 }

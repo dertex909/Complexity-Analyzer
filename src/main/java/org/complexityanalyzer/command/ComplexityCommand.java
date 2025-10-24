@@ -12,6 +12,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -20,6 +21,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.event.DatapackSyncHandler;
 
@@ -177,10 +179,7 @@ public class ComplexityCommand {
                                 )
                         )
 
-                        .then(Commands.literal("geoscan")
-                                .requires(source -> source.hasPermission(2)) // ТОЛЬКО АДМИНЫ
-                                .then(ChunkCommands.register())
-                        )
+                        .then(ChunkCommands.register())
         );
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command with role-based permissions");
     }
@@ -214,95 +213,409 @@ public class ComplexityCommand {
     };
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = DatapackSyncHandler.getEngine();
+
         if (engine == null) {
-            context.getSource().sendFailure(Component.literal("§cEngine not initialized."));
+            output.sendFailure(source,
+                    Component.literal("❌ Analysis Engine is not initialized!")
+                            .withStyle(ChatFormatting.RED));
             return 0;
         }
-        AnalysisEngine.State state = engine.getCurrentState();
-        context.getSource().sendSuccess(() -> Component.literal("§a=== Complexity Analyzer Status ==="), false);
-        context.getSource().sendSuccess(() -> Component.literal("§7Engine State: §f" + state), false);
 
+        AnalysisEngine.State state = engine.getCurrentState();
+
+        // Заголовок
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source,
+                Component.literal("⚙ ")
+                        .withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal("Complexity Analyzer Status")
+                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
+
+        // Статус движка с цветовой индикацией
+        String stateIcon;
+        ChatFormatting stateColor = switch (state.toString()) {
+            case "READY" -> {
+                stateIcon = "✓";
+                yield ChatFormatting.GREEN;
+            }
+            case "LOADING", "INITIALIZING" -> {
+                stateIcon = "⏳";
+                yield ChatFormatting.YELLOW;
+            }
+            case "ERROR", "FAILED" -> {
+                stateIcon = "✗";
+                yield ChatFormatting.RED;
+            }
+            default -> {
+                stateIcon = "◆";
+                yield ChatFormatting.GRAY;
+            }
+        };
+
+        output.sendInfo(source,
+                Component.literal("  Engine State: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(stateIcon + " " + state)
+                                .withStyle(stateColor, ChatFormatting.BOLD)));
+
+        // Если движок готов - показываем статистику
         if (engine.isReady()) {
             var stats = engine.getStats();
-            context.getSource().sendSuccess(() -> Component.literal("§7Items with recipes: §f" + stats.itemCount()), false);
-            context.getSource().sendSuccess(() -> Component.literal("§7Total recipes: §f" + stats.recipeCount()), false);
+
+            output.sendInfo(source, Component.literal(""));
+            output.sendInfo(source,
+                    Component.literal("  📊 Data Overview:")
+                            .withStyle(ChatFormatting.AQUA));
+
+            output.sendInfo(source,
+                    Component.literal("    Items with recipes: ")
+                            .withStyle(ChatFormatting.DARK_GRAY)
+                            .append(Component.literal(String.valueOf(stats.itemCount()))
+                                    .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+            output.sendInfo(source,
+                    Component.literal("    Total recipes: ")
+                            .withStyle(ChatFormatting.DARK_GRAY)
+                            .append(Component.literal(String.valueOf(stats.recipeCount()))
+                                    .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+            output.sendInfo(source,
+                    Component.literal("    Base resources: ")
+                            .withStyle(ChatFormatting.DARK_GRAY)
+                            .append(Component.literal(String.valueOf(stats.baseResourceCount()))
+                                    .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+        } else {
+            output.sendInfo(source, Component.literal(""));
+            output.sendInfo(source,
+                    Component.literal("  ⚠ Engine not ready. Statistics unavailable.")
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
         }
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
         return 1;
     }
 
     private static int executeReload(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
+
         if (engine == null) {
-            context.getSource().sendFailure(Component.literal("§cEngine not initialized."));
+            output.sendFailure(source,
+                    Component.literal("❌ Engine not initialized!"));
             return 0;
         }
-        context.getSource().sendSuccess(() -> Component.literal("§eReloading all analysis systems in the background..."), true);
-        engine.reloadAsync(context.getSource().getLevel());
+
+        String adminName = source.getTextName();
+
+        // Предупреждение всем игрокам
+        output.broadcastWarning(
+                Component.literal("⚠ Analysis system is reloading... Possible lag!"));
+
+        // Уведомить админов
+        output.sendToAdmins(
+                Component.literal("System reload initiated by " + adminName));
+
+        // Подтверждение исполнителю
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("🔄 Reloading Analysis Systems...")
+                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("  This may take a few seconds and cause lag.")
+                        .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+
+        output.sendInfo(source,
+                Component.literal("  Running in background...")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        // Запуск перезагрузки
+        engine.reloadAsync(source.getLevel());
+
         return 1;
     }
 
     private static int executeTps(CommandContext<CommandSourceStack> context) {
-        MinecraftServer server = context.getSource().getServer();
+        CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
+        MinecraftServer server = source.getServer();
 
+        // Вычисления производительности
         double mspt = server.getAverageTickTimeNanos() / 1_000_000.0D;
         double tps = 1000.0 / Math.max(50.0, mspt);
         double finalTps = Math.min(20.0, tps);
 
-        ChatFormatting tpsColor = tps >= 19.0 ? ChatFormatting.GREEN : (tps >= 16.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
-        ChatFormatting msptColor = mspt <= 40.0 ? ChatFormatting.GREEN : (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
+        ChatFormatting tpsColor = tps >= 19.0 ? ChatFormatting.GREEN :
+                (tps >= 16.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
+        ChatFormatting msptColor = mspt <= 40.0 ? ChatFormatting.GREEN :
+                (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
 
+        // Память
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory() / 1024 / 1024;
         long totalMemory = runtime.totalMemory() / 1024 / 1024;
         long freeMemory = runtime.freeMemory() / 1024 / 1024;
         long usedMemory = totalMemory - freeMemory;
 
+        double memoryPercent = (double) usedMemory / totalMemory * 100;
+        ChatFormatting memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN :
+                memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+
+        // Пинг
         double avgPing = server.getPlayerList().getPlayers().stream()
                 .mapToInt(player -> player.connection.latency())
                 .average()
                 .orElse(0.0);
-        ChatFormatting pingColor = avgPing < 100 ? ChatFormatting.GREEN : (avgPing < 200 ? ChatFormatting.YELLOW : ChatFormatting.RED);
+        ChatFormatting pingColor = avgPing < 100 ? ChatFormatting.GREEN :
+                (avgPing < 200 ? ChatFormatting.YELLOW : ChatFormatting.RED);
 
-        context.getSource().sendSuccess(() -> Component.literal("§6§l=== Server Performance ==="), false);
-        context.getSource().sendSuccess(() -> Component.literal(""), false);
+        // Вывод
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
 
-        context.getSource().sendSuccess(() -> Component.literal("§e[Tick Performance]§r ")
-                .append(Component.literal("TPS: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.format("%.2f", finalTps)).withStyle(tpsColor))
-                .append(Component.literal(" MSPT: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.format("%.2f", mspt)).withStyle(msptColor)), false);
+        output.sendInfo(source,
+                Component.literal("📈 ")
+                        .withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal("Server Performance")
+                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
 
-        context.getSource().sendSuccess(() -> Component.literal("§e[Memory Usage (MB)]§r ")
-                .append(Component.literal("Used: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.valueOf(usedMemory)).withStyle(ChatFormatting.GREEN))
-                .append(Component.literal(" / Total: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.valueOf(totalMemory)).withStyle(ChatFormatting.YELLOW))
-                .append(Component.literal(" / Max: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.valueOf(maxMemory)).withStyle(ChatFormatting.RED)), false);
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
 
-        context.getSource().sendSuccess(() -> Component.literal("§e[Network]§r ")
-                .append(Component.literal("Players: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.valueOf(server.getPlayerCount())).withStyle(ChatFormatting.AQUA))
-                .append(Component.literal(" Avg Ping: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.format("%.0fms", avgPing)).withStyle(pingColor)), false);
+        // Tick Performance
+        output.sendInfo(source,
+                Component.literal("  ⚙ Tick Performance")
+                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+
+        MutableComponent tpsComponent = Component.literal("    TPS: ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.format("%.2f", finalTps))
+                        .withStyle(tpsColor, ChatFormatting.BOLD));
+
+        // Добавить иконку состояния
+        String tpsIcon = tps >= 19.0 ? " ✓" : tps >= 16.0 ? " ⚠" : " ✗";
+        tpsComponent.append(Component.literal(tpsIcon).withStyle(tpsColor));
+
+        output.sendInfo(source, tpsComponent);
+
+        output.sendInfo(source,
+                Component.literal("    MSPT: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.format("%.2f ms", mspt))
+                                .withStyle(msptColor)));
+
+        // Прогресс-бар для MSPT (0-50ms)
+        String msptBar = getPerformanceBar(mspt);
+        output.sendInfo(source,
+                Component.literal("    " + msptBar)
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source, Component.literal(""));
+
+        // Memory Usage
+        output.sendInfo(source,
+                Component.literal("  💾 Memory Usage")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("    Used: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(usedMemory + " MB")
+                                .withStyle(memoryColor))
+                        .append(Component.literal(" / ")
+                                .withStyle(ChatFormatting.DARK_GRAY))
+                        .append(Component.literal(totalMemory + " MB")
+                                .withStyle(ChatFormatting.WHITE)));
+
+        output.sendInfo(source,
+                Component.literal("    Max Available: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(maxMemory + " MB")
+                                .withStyle(ChatFormatting.YELLOW)));
+
+        // Прогресс-бар памяти
+        String memoryBar = getMemoryBar(usedMemory, totalMemory);
+        output.sendInfo(source,
+                Component.literal("    " + memoryBar + " ")
+                        .withStyle(ChatFormatting.DARK_GRAY)
+                        .append(Component.literal(String.format("%.1f%%", memoryPercent))
+                                .withStyle(memoryColor)));
+
+        output.sendInfo(source, Component.literal(""));
+
+        // Network
+        output.sendInfo(source,
+                Component.literal("  🌐 Network")
+                        .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("    Players Online: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(server.getPlayerCount()))
+                                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+
+        if (server.getPlayerCount() > 0) {
+            output.sendInfo(source,
+                    Component.literal("    Avg Ping: ")
+                            .withStyle(ChatFormatting.GRAY)
+                            .append(Component.literal(String.format("%.0f ms", avgPing))
+                                    .withStyle(pingColor)));
+        }
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
 
         return 1;
     }
 
     private static int executeStats(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
+
         if (!engine.isReady()) {
-            context.getSource().sendFailure(Component.literal("§cEngine is not ready! Current state: " + engine.getCurrentState()));
+            output.sendFailure(source,
+                    Component.literal("⚠ Engine is not ready!")
+                            .withStyle(ChatFormatting.RED));
+            output.sendInfo(source,
+                    Component.literal("Current state: " + engine.getCurrentState())
+                            .withStyle(ChatFormatting.GRAY));
             return 0;
         }
+
         var stats = engine.getStats();
-        context.getSource().sendSuccess(() -> Component.literal("§a=== Detailed Statistics ==="), false);
-        context.getSource().sendSuccess(() -> Component.literal("§e[Graph]"), false);
-        context.getSource().sendSuccess(() -> Component.literal("§7  Items: §f" + stats.itemCount()), false);
-        context.getSource().sendSuccess(() -> Component.literal("§7  Recipes: §f" + stats.recipeCount()), false);
-        context.getSource().sendSuccess(() -> Component.literal("§e[Base Resources]"), false);
-        context.getSource().sendSuccess(() -> Component.literal("§7  Cached items: §f" + stats.baseResourceCount()), false);
+
+        // Заголовок
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source,
+                Component.literal("📊 ")
+                        .withStyle(ChatFormatting.GREEN)
+                        .append(Component.literal("Detailed Statistics")
+                                .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
+
+        // Recipe Graph
+        output.sendInfo(source,
+                Component.literal("  🔗 Recipe Graph")
+                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("    Items: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.itemCount()))
+                                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("    Recipes: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.recipeCount()))
+                                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        // Средняя сложность рецептов (если есть данные)
+        if (stats.itemCount() > 0) {
+            double avgRecipesPerItem = (double) stats.recipeCount() / stats.itemCount();
+            output.sendInfo(source,
+                    Component.literal("    Avg Recipes/Item: ")
+                            .withStyle(ChatFormatting.GRAY)
+                            .append(Component.literal(String.format("%.2f", avgRecipesPerItem))
+                                    .withStyle(ChatFormatting.AQUA)));
+        }
+
+        output.sendInfo(source, Component.literal(""));
+
+        // Base Resources
+        output.sendInfo(source,
+                Component.literal("  ⛏ Base Resources")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("    Cached Items: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.baseResourceCount()))
+                                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("    (Mining, Loot, Mobs, etc.)")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+
+        output.sendInfo(source, Component.literal(""));
+
+        // Database Size
+        long totalEntries = stats.itemCount() + stats.baseResourceCount();
+        output.sendInfo(source,
+                Component.literal("  💿 Total Database Entries: ")
+                        .withStyle(ChatFormatting.AQUA)
+                        .append(Component.literal(String.valueOf(totalEntries))
+                                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
         return 1;
+    }
+
+    // === Вспомогательные методы ===
+
+    private static String getPerformanceBar(double current) {
+        int percent = (int) Math.min(100, (current / 50.0) * 100);
+        int filled = percent / 10;
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < 10; i++) {
+            if (i < filled) {
+                bar.append("█");
+            } else {
+                bar.append("░");
+            }
+        }
+        bar.append("]");
+        return bar.toString();
+    }
+
+    private static String getMemoryBar(long used, long total) {
+        int percent = (int) ((double) used / total * 100);
+        int filled = percent / 10;
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < 10; i++) {
+            if (i < filled) {
+                bar.append("█");
+            } else {
+                bar.append("░");
+            }
+        }
+        bar.append("]");
+        return bar.toString();
     }
 }

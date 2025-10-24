@@ -1,26 +1,3 @@
-/complexity analyze item minecraft:apple
-/complexity analyze item minecraft:dandelion
-/complexity analyze item minecraft:acacia_planks
-/complexity analyze item minecraft:acacia_door
-/complexity analyze item minecraft:iron_leggings
-/complexity resource minecraft:acacia_boat
-/complexity resource minecraft:acacia_hanging_sign
-/complexity resource minecraft:acacia_leaves
-/complexity analyze item minecraft:acacia_leaves
-/complexity analyze item minecraft:acacia_hanging_sign
-/complexity tree minecraft:acacia_hanging_sign
-/complexity tree minecraft:iron_ingot
-/complexity tree minecraft:gold_ingot
-/complexity tree minecraft:iron_ingot
-/complexity tree minecraft:gold_ingot
-/complexity tree minecraft:iron_ingot
-/complexity tree minecraft:acacia_planks
-/complexity tree minecraft:acacia_fence_gate
-/complexity tree minecraft:stick
-/complexity tree minecraft:oak_log
-/complexity tree minecraft:music_disc_11
-/complexity analyze minecraft:music_disc_11
-/complexity analyze item minecraft:music_disc_11
 /complexity analyze item minecraft:arrow
 /complexity analyze item minecraft:zombie_head
 /complexity analyze item minecraft:arrow
@@ -48,3 +25,26 @@
 /complexity tree minecraft:glowstone
 /complexity tree minecraft:firework_rocket
 /complexity tree minecraft:netherite_shovel
+/complexity status
+/complexity geoscan status
+/complexity tree minecraft:acacia_boat depth 12 mode economic
+/complexity analyze item minecraft:acacia_fence_gate
+/complexity tree minecraft:acacia_fence_gate
+/complexity analyze item minecraft:acacia_fence_gate
+/complexity geoscan geoscan status
+/complexity tps
+/complexity status
+/complexity tps
+/complexity status
+/complexity geoscan status
+/complexity analyze entity minecraft:bee
+/complexity analyze entity minecraft:blaze
+/complexity analyze entity minecraft:ender_dragon
+/complexity analyze entity minecraft:elder_guardian
+/complexity analyze entity minecraft:fox
+/complexity export csv
+/complexity export top 1
+/complexity export csv
+/complexity export category Mythical
+/complexity resource minecraft:acacia_boat
+/complexity resource minecraft:acacia_leaves

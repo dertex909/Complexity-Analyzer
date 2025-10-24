@@ -1,12 +1,17 @@
 package org.complexityanalyzer.command;
 
 import com.mojang.brigadier.context.CommandContext;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
@@ -20,16 +25,25 @@ public class AnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {
         CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
+        // Проверка готовности движка
         if (!engine.isReady()) {
-            source.sendFailure(Component.literal("§cAnalysis engine is not ready yet! Current state: " + engine.getCurrentState()));
+            output.sendFailure(source,
+                    Component.literal("⚠ Analysis engine is not ready yet!")
+                            .append(Component.literal("\nCurrent state: " + engine.getCurrentState())
+                                    .withStyle(ChatFormatting.GRAY)));
             return 0;
         }
 
+        // Проверка существования предмета
         Optional<Item> itemOpt = BuiltInRegistries.ITEM.getOptional(itemId);
         if (itemOpt.isEmpty()) {
-            source.sendFailure(Component.literal("§cItem not found: " + itemId));
+            output.sendFailure(source,
+                    Component.literal("❌ Item not found: ")
+                            .append(Component.literal(itemId.toString())
+                                    .withStyle(ChatFormatting.YELLOW)));
             return 0;
         }
 
@@ -38,15 +52,17 @@ public class AnalyzeCommand {
         try {
             Optional<ItemComplexity> optimalOpt = engine.getComplexityResult(item);
             if (optimalOpt.isEmpty()) {
-                source.sendFailure(Component.literal("§cFailed to analyze item: " + itemId));
+                output.sendFailure(source,
+                        Component.literal("❌ Failed to analyze item: " + itemId));
                 return 0;
             }
 
-            displayAnalysis(source, item, optimalOpt.get(), engine);
+            displayAnalysis(source, item, optimalOpt.get(), engine, output, itemId);
             return 1;
 
         } catch (Exception e) {
-            source.sendFailure(Component.literal("§cError analyzing item: " + e.getMessage()));
+            output.sendFailure(source,
+                    Component.literal("⚠ Error analyzing item: " + e.getMessage()));
             ComplexityAnalyzer.LOGGER.error("Error analyzing item {}", itemId, e);
             return 0;
         }
@@ -56,35 +72,81 @@ public class AnalyzeCommand {
             CommandSourceStack source,
             Item item,
             ItemComplexity optimal,
-            AnalysisEngine engine
+            AnalysisEngine engine,
+            OutputManager output,
+            ResourceLocation itemId
     ) {
         String itemName = item.getDescription().getString();
 
-        source.sendSuccess(() -> Component.literal("§6§l=== Complexity Analysis ==="), false);
-        source.sendSuccess(() -> Component.literal("§7Item: §f" + itemName), false);
-        source.sendSuccess(() -> Component.literal(""), false);
+        // Заголовок с разделителем
+        output.sendInfo(source,
+                Component.literal("").withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal("═══════════════════════════════")
+                                .withStyle(ChatFormatting.DARK_GRAY)));
 
-        displayMainInfo(source, optimal);
-        displaySourceInfo(source, item, optimal, engine);
-        displayStatus(source, optimal);
+        output.sendInfo(source,
+                Component.literal("📊 ")
+                        .withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal("Complexity Analysis")
+                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+
+        // Название предмета (цветное)
+        MutableComponent itemComponent = Component.literal("Item: ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(itemName)
+                        .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
+        output.sendInfo(source, itemComponent);
+
+        output.sendInfo(source, Component.literal(""));
+
+        displayMainInfo(source, optimal, output);
+        displaySourceInfo(source, item, optimal, engine, output);
+        displayStatus(source, optimal, output, itemId);
+
+        // Нижний разделитель
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
     }
 
-    private static void displayMainInfo(CommandSourceStack source, ItemComplexity optimal) {
+    private static void displayMainInfo(CommandSourceStack source, ItemComplexity optimal, OutputManager output) {
         ComplexityCategory category = optimal.getCategory();
+        double complexity = optimal.getComplexity();
 
-        source.sendSuccess(() -> Component.literal("§e[Complexity]"), false);
+        // Секция сложности
+        output.sendInfo(source,
+                Component.literal("⚙ ")
+                        .withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal("Complexity")
+                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
-        String categoryText = String.format("§7  Category: %s%s",
-                category.getColor(),
-                category.getDisplayName()
-        );
-        source.sendSuccess(() -> Component.literal(categoryText), false);
+        // Категория с цветом и иконкой
+        String icon = getCategoryIcon(category);
 
-        source.sendSuccess(() -> Component.literal(String.format(
-                "§7  Value: §a%.2f", optimal.getComplexity()
-        )), false);
+        // ИСПРАВЛЕНО: убрал getChatFormatting, используем напрямую category.getColor()
+        MutableComponent categoryComponent = Component.literal("  Category: ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(icon + " " + category.getDisplayName())
+                        .withStyle(category.getColor())); // <- ЗДЕСЬ ИСПРАВЛЕНИЕ
 
-        source.sendSuccess(() -> Component.literal(""), false);
+        output.sendInfo(source, categoryComponent);
+
+        // Значение сложности с цветовой индикацией
+        ChatFormatting valueColor = getComplexityColor(complexity);
+        MutableComponent valueComponent = Component.literal("  Value: ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.format("%.2f", complexity))
+                        .withStyle(valueColor, ChatFormatting.BOLD));
+
+        output.sendInfo(source, valueComponent);
+
+        // Уровень сложности визуально
+        String progressBar = getComplexityBar(complexity);
+        output.sendInfo(source,
+                Component.literal("  " + progressBar)
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source, Component.literal(""));
     }
 
     private record SourceWithCost(BaseResourceData data, double fullCost) {}
@@ -93,21 +155,59 @@ public class AnalyzeCommand {
             CommandSourceStack source,
             Item item,
             ItemComplexity optimal,
-            AnalysisEngine engine
+            AnalysisEngine engine,
+            OutputManager output
     ) {
-        source.sendSuccess(() -> Component.literal("§e[Source Info]"), false);
+        output.sendInfo(source,
+                Component.literal("📦 ")
+                        .withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal("Source Information")
+                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
         if (optimal.hasRecipe()) {
-            source.sendSuccess(() -> Component.literal("§7  §aHas Recipe:§f Yes"), false);
-            source.sendSuccess(() -> Component.literal(String.format("§7    Crafting Depth: §f%d", optimal.getDepth())), false);
-            source.sendSuccess(() -> Component.literal(String.format("§7    Used in Recipes: §f%d", engine.getUsageCount(item))), false);
+            // Есть рецепт
+            output.sendInfo(source,
+                    Component.literal("  ✓ ")
+                            .withStyle(ChatFormatting.GREEN)
+                            .append(Component.literal("Has Recipe: ")
+                                    .withStyle(ChatFormatting.GRAY))
+                            .append(Component.literal("Yes")
+                                    .withStyle(ChatFormatting.WHITE)));
+
+            // Глубина крафта
+            int depth = optimal.getDepth();
+            ChatFormatting depthColor = depth <= 2 ? ChatFormatting.GREEN :
+                    depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+            output.sendInfo(source,
+                    Component.literal("    Crafting Depth: ")
+                            .withStyle(ChatFormatting.GRAY)
+                            .append(Component.literal(String.valueOf(depth))
+                                    .withStyle(depthColor)));
+
+            // Использование в других рецептах
+            int usageCount = engine.getUsageCount(item);
+            output.sendInfo(source,
+                    Component.literal("    Used in Recipes: ")
+                            .withStyle(ChatFormatting.GRAY)
+                            .append(Component.literal(String.valueOf(usageCount))
+                                    .withStyle(ChatFormatting.AQUA)));
         } else {
-            source.sendSuccess(() -> Component.literal("§7  §cHas Recipe:§f No (Base Resource)"), false);
+            // Базовый ресурс
+            output.sendInfo(source,
+                    Component.literal("  ⛏ ")
+                            .withStyle(ChatFormatting.GOLD)
+                            .append(Component.literal("Base Resource ")
+                                    .withStyle(ChatFormatting.GRAY))
+                            .append(Component.literal("(No crafting recipe)")
+                                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
         }
 
+        // Альтернативные источники
         List<BaseResourceData> allSources = engine.findAllSourcesForItem(item);
         if (!allSources.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§7  §eKnown Alternative Sources:"), false);
+            output.sendInfo(source,
+                    Component.literal("  🔍 Alternative Sources:")
+                            .withStyle(ChatFormatting.YELLOW));
 
             allSources.stream()
                     .map(data -> {
@@ -130,39 +230,139 @@ public class AnalyzeCommand {
                     })
                     .sorted(Comparator.comparingDouble(SourceWithCost::fullCost))
                     .forEach(swc -> {
-                        String costString = Double.isInfinite(swc.fullCost()) ? "§cInfinity" : String.format("§a%.2f", swc.fullCost());
+                        String icon = getSourceIcon(swc.data().getSourceType());
+                        String costString = Double.isInfinite(swc.fullCost()) ?
+                                "∞" : String.format("%.2f", swc.fullCost());
 
-                        source.sendSuccess(() -> Component.literal(
-                                String.format("§7    - §f%s (Est. Cost: %s§7): §f%s",
-                                        swc.data().getSourceType().getDisplayName(),
-                                        costString,
-                                        swc.data().getDetails())
-                        ), false);
+                        ChatFormatting costColor = Double.isInfinite(swc.fullCost()) ?
+                                ChatFormatting.RED :
+                                swc.fullCost() < 10 ? ChatFormatting.GREEN :
+                                        swc.fullCost() < 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+
+                        MutableComponent sourceComponent = Component.literal("    " + icon + " ")
+                                .withStyle(ChatFormatting.WHITE)
+                                .append(Component.literal(swc.data().getSourceType().getDisplayName())
+                                        .withStyle(ChatFormatting.WHITE))
+                                .append(Component.literal(" (Cost: ")
+                                        .withStyle(ChatFormatting.DARK_GRAY))
+                                .append(Component.literal(costString)
+                                        .withStyle(costColor, ChatFormatting.BOLD))
+                                .append(Component.literal(")")
+                                        .withStyle(ChatFormatting.DARK_GRAY));
+
+                        output.sendInfo(source, sourceComponent);
+
+                        // Детали на следующей строке
+                        output.sendInfo(source,
+                                Component.literal("      → " + swc.data().getDetails())
+                                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
                     });
         }
 
-        source.sendSuccess(() -> Component.literal(""), false);
+        output.sendInfo(source, Component.literal(""));
     }
 
-    private static void displayStatus(CommandSourceStack source, ItemComplexity optimal) {
-        source.sendSuccess(() -> Component.literal("§e[Status]"), false);
+    private static void displayStatus(CommandSourceStack source, ItemComplexity optimal, OutputManager output, ResourceLocation itemId) {
+        output.sendInfo(source,
+                Component.literal("ℹ ")
+                        .withStyle(ChatFormatting.AQUA)
+                        .append(Component.literal("Status")
+                                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
 
+        // Валидность
         boolean isValid = optimal.isValid();
-        source.sendSuccess(() -> Component.literal(String.format(
-                "§7  Valid: %s", isValid ? "§aYes" : "§cNo"
-        )), false);
+        output.sendInfo(source,
+                Component.literal("  Valid: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(isValid ? "✓ Yes" : "✗ No")
+                                .withStyle(isValid ? ChatFormatting.GREEN : ChatFormatting.RED)));
 
+        // Предупреждения
         if (optimal.hasCycle()) {
-            source.sendSuccess(() -> Component.literal("§7  Warning: §cCyclic dependency detected!"), false);
+            output.sendInfo(source,
+                    Component.literal("  ⚠ Warning: ")
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)
+                            .append(Component.literal("Cyclic dependency detected!")
+                                    .withStyle(ChatFormatting.RED)));
         }
 
         if (optimal.getErrorMessage() != null) {
-            source.sendSuccess(() -> Component.literal("§7  Error: §c" + optimal.getErrorMessage()), false);
+            output.sendInfo(source,
+                    Component.literal("  ❌ Error: ")
+                            .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
+                            .append(Component.literal(optimal.getErrorMessage())
+                                    .withStyle(ChatFormatting.RED)));
         }
 
+        // Подсказка с кликабельной командой
         if (optimal.hasRecipe()) {
-            source.sendSuccess(() -> Component.literal(""), false);
-            source.sendSuccess(() -> Component.literal("§7Tip: Use §f/complexity tree <item> §7to see crafting tree"), false);
+            output.sendInfo(source, Component.literal(""));
+
+            String treeCommand = "/complexity tree " + itemId;
+            MutableComponent tipComponent = Component.literal("💡 Tip: ")
+                    .withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal("Click here")
+                            .withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE)
+                            .withStyle(style -> style
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, treeCommand))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                            Component.literal("Click to view crafting tree")
+                                                    .withStyle(ChatFormatting.GREEN)))))
+                    .append(Component.literal(" to see full crafting tree")
+                            .withStyle(ChatFormatting.GRAY));
+
+            output.sendInfo(source, tipComponent);
         }
+    }
+
+    // === Вспомогательные методы ===
+
+    private static String getCategoryIcon(ComplexityCategory category) {
+        return switch (category.name()) {
+            case "TRIVIAL" -> "⬜";
+            case "SIMPLE" -> "🟩";
+            case "MODERATE" -> "🟨";
+            case "COMPLEX" -> "🟧";
+            case "DIFFICULT" -> "🟥";
+            case "EXPERT" -> "🟪";
+            case "MASTER" -> "⭐";
+            case "MYTHICAL" -> "💎";
+            case "TRANSCENDENT" -> "👑";
+            case "ETERNAL" -> "🔥";
+            default -> "❓";
+        };
+    }
+
+    private static ChatFormatting getComplexityColor(double complexity) {
+        if (complexity < 10) return ChatFormatting.GREEN;
+        if (complexity < 30) return ChatFormatting.YELLOW;
+        if (complexity < 50) return ChatFormatting.GOLD;
+        if (complexity < 100) return ChatFormatting.RED;
+        return ChatFormatting.DARK_RED;
+    }
+
+    private static String getComplexityBar(double complexity) {
+        int bars = Math.min(10, (int) (complexity / 10));
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < 10; i++) {
+            if (i < bars) {
+                sb.append("█");
+            } else {
+                sb.append("░");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private static String getSourceIcon(BaseResourceData.ResourceSourceType sourceType) {
+        return switch (sourceType.name()) {
+            case "MOB_DROP" -> "⚔";
+            case "CHEST_LOOT" -> "📦";
+            case "FISHING" -> "🎣";
+            case "MINING" -> "⛏";
+            case "TRADING" -> "💰";
+            default -> "•";
+        };
     }
 }

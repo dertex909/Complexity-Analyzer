@@ -1,14 +1,10 @@
 package org.complexityanalyzer.geoscan;
 
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BiomeTags;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -384,33 +380,46 @@ public class GeoAnalysisManager {
             });
         }
     }
+
     private List<ScanTask> prepareScanTasks(int chunksPerBiome) {
         database.loadAll();
         List<ScanTask> tasksToQueue = new ArrayList<>();
-        var biomeRegistry = server.registryAccess().registryOrThrow(Registries.BIOME);
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Starting to build scan tasks. Chunks per biome: {}", chunksPerBiome);
 
         for (ServerLevel level : server.getAllLevels()) {
             if (stopRequested.get()) break;
-            TagKey<Biome> dimensionTag = getTagForDimension(level.dimension());
-            if (dimensionTag == null) continue;
+            ResourceKey<Level> dimension = level.dimension();
 
-            for (Holder.Reference<Biome> biomeHolder : biomeRegistry.holders().toList()) {
-                if (biomeHolder.is(dimensionTag)) {
-                    ResourceKey<Biome> biomeKey = biomeHolder.key();
-                    int finalChunks = database.getBiomeData(level.dimension().location(), biomeKey.location()).map(BiomeScanData::getChunksScanned).orElse(0);
-                    int reconChunks = database.countReconChunks(level.dimension().location(), biomeKey.location());
-                    int chunksNeeded = chunksPerBiome - Math.max(finalChunks, reconChunks);
-                    if (chunksNeeded > 0) {
-                        tasksToQueue.add(new ScanTask(level.dimension(), biomeKey, chunksNeeded));
-                    }
+            ComplexityAnalyzer.LOGGER.info("Scanning dimension: {}", dimension.location());
+
+            Set<ResourceKey<Biome>> biomesToScan = getBiomesForDimension(level);
+
+            ComplexityAnalyzer.LOGGER.debug("Found {} biomes in dimension {}", biomesToScan.size(), dimension.location());
+
+            for (ResourceKey<Biome> biomeKey : biomesToScan) {
+                int finalChunks = database.getBiomeData(dimension.location(), biomeKey.location())
+                        .map(BiomeScanData::getChunksScanned).orElse(0);
+                int reconChunks = database.countReconChunks(dimension.location(), biomeKey.location());
+                int chunksNeeded = chunksPerBiome - Math.max(finalChunks, reconChunks);
+
+                if (chunksNeeded > 0) {
+                    tasksToQueue.add(new ScanTask(dimension, biomeKey, chunksNeeded));
                 }
             }
         }
 
-        ComplexityAnalyzer.LOGGER.debug("[Prepare] Found {} potential tasks. Reachability will be checked on the fly.", tasksToQueue.size());
+        ComplexityAnalyzer.LOGGER.debug("[Prepare] Found {} total scan tasks.", tasksToQueue.size());
         tasksToQueue.sort(Comparator.naturalOrder());
         return tasksToQueue;
+    }
+
+    private Set<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
+        Set<ResourceKey<Biome>> biomes = new HashSet<>();
+
+        var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
+        biomeSource.possibleBiomes().forEach(holder -> holder.unwrapKey().ifPresent(biomes::add));
+
+        return biomes;
     }
 
     private boolean startNextTask() {
@@ -601,12 +610,6 @@ public class GeoAnalysisManager {
         return false;
     }
 
-    private TagKey<Biome> getTagForDimension(ResourceKey<Level> dimension) {
-        if (dimension.equals(Level.OVERWORLD)) return BiomeTags.IS_OVERWORLD;
-        if (dimension.equals(Level.NETHER)) return BiomeTags.IS_NETHER;
-        if (dimension.equals(Level.END)) return BiomeTags.IS_END;
-        return null;
-    }
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("Shutting down GeoAnalysisManager...");
         

@@ -29,7 +29,7 @@ public class ExportCommand {
             Path exportPath = ComplexityExporter.exportAll(server, engine);
 
             source.sendSuccess(() -> Component.literal("§a[Export] ✓ Successfully exported all items!"), true);
-            source.sendSuccess(() -> Component.literal("§7Path: §f" + exportPath.toString()), false);
+            source.sendSuccess(() -> Component.literal("§7Path: §f" + exportPath), false);
 
             return 1;
 

@@ -42,6 +42,11 @@ public class MobDropSource implements IResourceSource {
         if (!(level instanceof ServerLevel serverLevel)) return;
         MinecraftServer server = serverLevel.getServer();
 
+        if (!server.isSameThread()) {
+            server.executeBlocking(() -> initialize(level));
+            return;
+        }
+
         ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating all mob loot tables...");
         long startTime = System.currentTimeMillis();
         int processedEntities = 0;

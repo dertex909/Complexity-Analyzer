@@ -45,7 +45,6 @@ public class BlockPropertyProvider {
             explosionResistance = block.defaultBlockState().getExplosionResistance(null, null, null);
         } catch (NullPointerException e) {
             explosionResistance = 0.0f;
-            ComplexityAnalyzer.LOGGER.warn("Could not determine explosion resistance for block '{}'. It may not handle null world/pos contexts correctly. Defaulting to 0.", BuiltInRegistries.BLOCK.getKey(block));
         }
 
         return new BlockProperties(hardness, requiredTier, canHarvestByHand, explosionResistance);

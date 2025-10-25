@@ -47,9 +47,6 @@ public class ComplexityCommand {
 
         dispatcher.register(
                 Commands.literal("complexity")
-                        // УБРАЛИ .requires() ОТСЮДА - теперь команда доступна всем!
-
-                        // ===== КОМАНДЫ ДЛЯ ИГРОКОВ (уровень 0) =====
                         .then(Commands.literal("status")
                                 .executes(ComplexityCommand::executeStatus))
 
@@ -133,13 +130,12 @@ public class ComplexityCommand {
                                 )
                         )
 
-                        // ===== КОМАНДЫ ДЛЯ АДМИНОВ (уровень 2+) =====
                         .then(Commands.literal("reload")
-                                .requires(source -> source.hasPermission(2)) // ТОЛЬКО АДМИНЫ
+                                .requires(source -> source.hasPermission(2))
                                 .executes(ComplexityCommand::executeReload))
 
                         .then(Commands.literal("export")
-                                .requires(source -> source.hasPermission(2)) // ТОЛЬКО АДМИНЫ
+                                .requires(source -> source.hasPermission(2))
                                 .then(Commands.literal("all")
                                         .executes(ExportCommand::executeAll)
                                 )
@@ -226,7 +222,6 @@ public class ComplexityCommand {
 
         AnalysisEngine.State state = engine.getCurrentState();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -243,7 +238,6 @@ public class ComplexityCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Статус движка с цветовой индикацией
         String stateIcon;
         ChatFormatting stateColor = switch (state.toString()) {
             case "READY" -> {
@@ -270,7 +264,6 @@ public class ComplexityCommand {
                         .append(Component.literal(stateIcon + " " + state)
                                 .withStyle(stateColor, ChatFormatting.BOLD)));
 
-        // Если движок готов - показываем статистику
         if (engine.isReady()) {
             var stats = engine.getStats();
 
@@ -324,15 +317,12 @@ public class ComplexityCommand {
 
         String adminName = source.getTextName();
 
-        // Предупреждение всем игрокам
         output.broadcastWarning(
                 Component.literal("⚠ Analysis system is reloading... Possible lag!"));
 
-        // Уведомить админов
         output.sendToAdmins(
                 Component.literal("System reload initiated by " + adminName));
 
-        // Подтверждение исполнителю
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("🔄 Reloading Analysis Systems...")
@@ -346,7 +336,6 @@ public class ComplexityCommand {
                 Component.literal("  Running in background...")
                         .withStyle(ChatFormatting.DARK_GRAY));
 
-        // Запуск перезагрузки
         engine.reloadAsync(source.getLevel());
 
         return 1;
@@ -357,7 +346,6 @@ public class ComplexityCommand {
         OutputManager output = new OutputManager(source.getServer());
         MinecraftServer server = source.getServer();
 
-        // Вычисления производительности
         double mspt = server.getAverageTickTimeNanos() / 1_000_000.0D;
         double tps = 1000.0 / Math.max(50.0, mspt);
         double finalTps = Math.min(20.0, tps);
@@ -367,7 +355,6 @@ public class ComplexityCommand {
         ChatFormatting msptColor = mspt <= 40.0 ? ChatFormatting.GREEN :
                 (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
 
-        // Память
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory() / 1024 / 1024;
         long totalMemory = runtime.totalMemory() / 1024 / 1024;
@@ -378,7 +365,6 @@ public class ComplexityCommand {
         ChatFormatting memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN :
                 memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED;
 
-        // Пинг
         double avgPing = server.getPlayerList().getPlayers().stream()
                 .mapToInt(player -> player.connection.latency())
                 .average()
@@ -386,7 +372,6 @@ public class ComplexityCommand {
         ChatFormatting pingColor = avgPing < 100 ? ChatFormatting.GREEN :
                 (avgPing < 200 ? ChatFormatting.YELLOW : ChatFormatting.RED);
 
-        // Вывод
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -403,7 +388,6 @@ public class ComplexityCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Tick Performance
         output.sendInfo(source,
                 Component.literal("  ⚙ Tick Performance")
                         .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
@@ -413,7 +397,6 @@ public class ComplexityCommand {
                 .append(Component.literal(String.format("%.2f", finalTps))
                         .withStyle(tpsColor, ChatFormatting.BOLD));
 
-        // Добавить иконку состояния
         String tpsIcon = tps >= 19.0 ? " ✓" : tps >= 16.0 ? " ⚠" : " ✗";
         tpsComponent.append(Component.literal(tpsIcon).withStyle(tpsColor));
 
@@ -425,7 +408,6 @@ public class ComplexityCommand {
                         .append(Component.literal(String.format("%.2f ms", mspt))
                                 .withStyle(msptColor)));
 
-        // Прогресс-бар для MSPT (0-50ms)
         String msptBar = getPerformanceBar(mspt);
         output.sendInfo(source,
                 Component.literal("    " + msptBar)
@@ -433,7 +415,6 @@ public class ComplexityCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Memory Usage
         output.sendInfo(source,
                 Component.literal("  💾 Memory Usage")
                         .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
@@ -454,7 +435,6 @@ public class ComplexityCommand {
                         .append(Component.literal(maxMemory + " MB")
                                 .withStyle(ChatFormatting.YELLOW)));
 
-        // Прогресс-бар памяти
         String memoryBar = getMemoryBar(usedMemory, totalMemory);
         output.sendInfo(source,
                 Component.literal("    " + memoryBar + " ")
@@ -464,7 +444,6 @@ public class ComplexityCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Network
         output.sendInfo(source,
                 Component.literal("  🌐 Network")
                         .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
@@ -508,7 +487,6 @@ public class ComplexityCommand {
 
         var stats = engine.getStats();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -525,7 +503,6 @@ public class ComplexityCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Recipe Graph
         output.sendInfo(source,
                 Component.literal("  🔗 Recipe Graph")
                         .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
@@ -542,7 +519,6 @@ public class ComplexityCommand {
                         .append(Component.literal(String.valueOf(stats.recipeCount()))
                                 .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
 
-        // Средняя сложность рецептов (если есть данные)
         if (stats.itemCount() > 0) {
             double avgRecipesPerItem = (double) stats.recipeCount() / stats.itemCount();
             output.sendInfo(source,
@@ -554,7 +530,6 @@ public class ComplexityCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Base Resources
         output.sendInfo(source,
                 Component.literal("  ⛏ Base Resources")
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
@@ -571,7 +546,6 @@ public class ComplexityCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Database Size
         long totalEntries = stats.itemCount() + stats.baseResourceCount();
         output.sendInfo(source,
                 Component.literal("  💿 Total Database Entries: ")
@@ -586,8 +560,6 @@ public class ComplexityCommand {
 
         return 1;
     }
-
-    // === Вспомогательные методы ===
 
     private static String getPerformanceBar(double current) {
         int percent = (int) Math.min(100, (current / 50.0) * 100);

@@ -255,7 +255,6 @@ public class IterativeSolver {
         List<RecipeNode> filteredRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
                         && r.getCategory() != RecipeCategory.RECYCLING
-                        && r.getCategory() != RecipeCategory.STORAGE_COMPRESSION
                         && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION)
                 .toList();
 
@@ -266,8 +265,7 @@ public class IterativeSolver {
         return allRecipes.stream()
                 .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
                         && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION
-                        && r.getCategory() != RecipeCategory.RECYCLING
-                        && r.getCategory() != RecipeCategory.STORAGE_COMPRESSION)
+                        && r.getCategory() != RecipeCategory.RECYCLING)
                 .toList();
     }
 

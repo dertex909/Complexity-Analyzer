@@ -57,6 +57,28 @@ public class RecipeGraph {
             return recipes.getFirst();
         }
 
+        List<RecipeNode> primaryRecipes = recipes.stream()
+                .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
+                .toList();
+
+        if (!primaryRecipes.isEmpty()) {
+            return primaryRecipes.stream()
+                    .max(Comparator.comparingInt(RecipeNode::getPriority))
+                    .orElse(primaryRecipes.getFirst());
+        }
+
+        List<RecipeNode> goodRecipes = recipes.stream()
+                .filter(r -> r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION
+                        && r.getCategory() != RecipeCategory.RECYCLING
+                        && r.getCategory() != RecipeCategory.UNPROCESSABLE)
+                .toList();
+
+        if (!goodRecipes.isEmpty()) {
+            return goodRecipes.stream()
+                    .max(Comparator.comparingInt(RecipeNode::getPriority))
+                    .orElse(goodRecipes.getFirst());
+        }
+
         return recipes.stream()
                 .max(Comparator.comparingInt(RecipeNode::getPriority))
                 .orElse(recipes.getFirst());

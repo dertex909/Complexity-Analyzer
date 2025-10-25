@@ -48,7 +48,6 @@ public class ChunkCommands {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
 
-        // Валидация профиля
         final GeoAnalysisManager.ScanProfile profile;
         try {
             profile = GeoAnalysisManager.ScanProfile.valueOf(profileName.toUpperCase());
@@ -62,7 +61,6 @@ public class ChunkCommands {
                     Component.literal("Available profiles:")
                             .withStyle(ChatFormatting.GRAY));
 
-            // Список профилей с описанием
             output.sendInfo(source,
                     Component.literal("  🟢 lite")
                             .withStyle(ChatFormatting.GREEN)
@@ -89,7 +87,6 @@ public class ChunkCommands {
 
         AnalysisEngine.getInstance().getGeoManager().ifPresentOrElse(
                 manager -> {
-                    // Проверка уже идущего скана
                     if (manager.isScanning() || manager.isCountdownActive()) {
                         output.sendFailure(source,
                                 Component.literal("⚠ A scan is already in progress!")
@@ -110,7 +107,6 @@ public class ChunkCommands {
                     ChatFormatting profileColor = getProfileColor(profile);
 
                     if (force) {
-                        // FORCE START - критическое оповещение
                         output.sendInfo(source, Component.literal(""));
                         output.sendInfo(source,
                                 Component.literal("═══════════════════════════════")
@@ -144,7 +140,6 @@ public class ChunkCommands {
                                         .withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
                         output.sendInfo(source, Component.literal(""));
 
-                        // Broadcast ВСЕМ игрокам (критическое предупреждение)
                         if (profile == GeoAnalysisManager.ScanProfile.EXTREME ||
                                 profile == GeoAnalysisManager.ScanProfile.ATOMIC) {
                             output.broadcastSever(
@@ -156,7 +151,6 @@ public class ChunkCommands {
                                     Component.literal("⚡ Geo-scan started. Possible lag!"));
                         }
 
-                        // Уведомить других админов
                         output.sendToAdmins(
                                 Component.literal("Force geo-scan initiated by " + initiatorName)
                                         .append(Component.literal(" | Chunks: " + chunks + " | Profile: " + profileName)));
@@ -164,7 +158,6 @@ public class ChunkCommands {
                         manager.startScanImmediately(chunks, initiatorName, profile);
 
                     } else {
-                        // SCHEDULED START - обычный запуск с обратным отсчётом
                         output.sendInfo(source, Component.literal(""));
                         output.sendInfo(source,
                                 Component.literal("═══════════════════════════════")
@@ -198,7 +191,6 @@ public class ChunkCommands {
                                         .withStyle(ChatFormatting.DARK_GRAY));
                         output.sendInfo(source, Component.literal(""));
 
-                        // Предупреждение всем игрокам (если профиль опасный)
                         if (profile == GeoAnalysisManager.ScanProfile.EXTREME ||
                                 profile == GeoAnalysisManager.ScanProfile.ATOMIC) {
                             output.broadcastWarning(
@@ -208,7 +200,6 @@ public class ChunkCommands {
                                     Component.literal("📊 Geo-scan starting soon..."));
                         }
 
-                        // Уведомить админов
                         output.sendToAdmins(
                                 Component.literal("Geo-scan scheduled by " + initiatorName)
                                         .append(Component.literal(" | " + chunks + " chunks | " + profileName)));
@@ -240,12 +231,10 @@ public class ChunkCommands {
 
                     manager.stopScan(source);
 
-                    // Уведомить всех игроков
                     output.broadcast(
                             Component.literal("✓ Geo-scan stopped by admin")
                                     .withStyle(ChatFormatting.GREEN));
 
-                    // Уведомить админов
                     output.sendToAdmins(
                             Component.literal("Scan stopped by " + source.getTextName()));
                 },
@@ -274,7 +263,6 @@ public class ChunkCommands {
 
                     output.sendInfo(source, Component.literal(""));
 
-                    // Парсим статус и красиво выводим
                     if (status.contains("IDLE") || status.contains("idle")) {
                         output.sendInfo(source,
                                 Component.literal("  Status: ")
@@ -292,7 +280,6 @@ public class ChunkCommands {
                                         .append(Component.literal("⚙ SCANNING")
                                                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
-                        // Попытка извлечь процент
                         try {
                             if (status.contains("%")) {
                                 String percent = status.substring(status.indexOf("(") + 1, status.indexOf("%"));
@@ -310,7 +297,6 @@ public class ChunkCommands {
                                                 .withStyle(ChatFormatting.DARK_GRAY));
                             }
                         } catch (Exception e) {
-                            // Если не удалось распарсить, просто показываем статус
                             output.sendInfo(source,
                                     Component.literal("  " + status)
                                             .withStyle(ChatFormatting.WHITE));
@@ -327,7 +313,6 @@ public class ChunkCommands {
                                         .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
 
                     } else {
-                        // Неизвестный статус - показываем как есть
                         output.sendInfo(source,
                                 Component.literal("  Status: ")
                                         .withStyle(ChatFormatting.GRAY)
@@ -376,13 +361,11 @@ public class ChunkCommands {
                                 Component.literal("✓ Geo-database has been cleared!")
                                         .withStyle(ChatFormatting.GREEN));
 
-                        // Уведомить админов
                         output.sendToAdmins(
                                 Component.literal("Geo-database cleared by " + source.getTextName()));
                     }
                 },
                 () -> {
-                    // Если менеджера нет, всё равно можем очистить
                     output.sendInfo(source,
                             Component.literal("🗑 Clearing geo-database...")
                                     .withStyle(ChatFormatting.YELLOW));
@@ -396,8 +379,6 @@ public class ChunkCommands {
         );
         return 1;
     }
-
-    // === Вспомогательные методы ===
 
     private static String getProfileIcon(GeoAnalysisManager.ScanProfile profile) {
         return switch (profile) {

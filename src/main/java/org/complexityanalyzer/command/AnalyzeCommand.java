@@ -28,7 +28,6 @@ public class AnalyzeCommand {
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
-        // Проверка готовности движка
         if (!engine.isReady()) {
             output.sendFailure(source,
                     Component.literal("⚠ Analysis engine is not ready yet!")
@@ -37,7 +36,6 @@ public class AnalyzeCommand {
             return 0;
         }
 
-        // Проверка существования предмета
         Optional<Item> itemOpt = BuiltInRegistries.ITEM.getOptional(itemId);
         if (itemOpt.isEmpty()) {
             output.sendFailure(source,
@@ -78,7 +76,6 @@ public class AnalyzeCommand {
     ) {
         String itemName = item.getDescription().getString();
 
-        // Заголовок с разделителем
         output.sendInfo(source,
                 Component.literal("").withStyle(ChatFormatting.GRAY)
                         .append(Component.literal("═══════════════════════════════")
@@ -90,7 +87,6 @@ public class AnalyzeCommand {
                         .append(Component.literal("Complexity Analysis")
                                 .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
 
-        // Название предмета (цветное)
         MutableComponent itemComponent = Component.literal("Item: ")
                 .withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(itemName)
@@ -103,7 +99,6 @@ public class AnalyzeCommand {
         displaySourceInfo(source, item, optimal, engine, output);
         displayStatus(source, optimal, output, itemId);
 
-        // Нижний разделитель
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
                         .withStyle(ChatFormatting.DARK_GRAY));
@@ -113,25 +108,21 @@ public class AnalyzeCommand {
         ComplexityCategory category = optimal.getCategory();
         double complexity = optimal.getComplexity();
 
-        // Секция сложности
         output.sendInfo(source,
                 Component.literal("⚙ ")
                         .withStyle(ChatFormatting.YELLOW)
                         .append(Component.literal("Complexity")
                                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
-        // Категория с цветом и иконкой
         String icon = getCategoryIcon(category);
 
-        // ИСПРАВЛЕНО: убрал getChatFormatting, используем напрямую category.getColor()
         MutableComponent categoryComponent = Component.literal("  Category: ")
                 .withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(icon + " " + category.getDisplayName())
-                        .withStyle(category.getColor())); // <- ЗДЕСЬ ИСПРАВЛЕНИЕ
+                        .withStyle(category.getColor()));
 
         output.sendInfo(source, categoryComponent);
 
-        // Значение сложности с цветовой индикацией
         ChatFormatting valueColor = getComplexityColor(complexity);
         MutableComponent valueComponent = Component.literal("  Value: ")
                 .withStyle(ChatFormatting.GRAY)
@@ -140,7 +131,6 @@ public class AnalyzeCommand {
 
         output.sendInfo(source, valueComponent);
 
-        // Уровень сложности визуально
         String progressBar = getComplexityBar(complexity);
         output.sendInfo(source,
                 Component.literal("  " + progressBar)
@@ -165,7 +155,6 @@ public class AnalyzeCommand {
                                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
         if (optimal.hasRecipe()) {
-            // Есть рецепт
             output.sendInfo(source,
                     Component.literal("  ✓ ")
                             .withStyle(ChatFormatting.GREEN)
@@ -174,7 +163,6 @@ public class AnalyzeCommand {
                             .append(Component.literal("Yes")
                                     .withStyle(ChatFormatting.WHITE)));
 
-            // Глубина крафта
             int depth = optimal.getDepth();
             ChatFormatting depthColor = depth <= 2 ? ChatFormatting.GREEN :
                     depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
@@ -184,7 +172,6 @@ public class AnalyzeCommand {
                             .append(Component.literal(String.valueOf(depth))
                                     .withStyle(depthColor)));
 
-            // Использование в других рецептах
             int usageCount = engine.getUsageCount(item);
             output.sendInfo(source,
                     Component.literal("    Used in Recipes: ")
@@ -192,7 +179,6 @@ public class AnalyzeCommand {
                             .append(Component.literal(String.valueOf(usageCount))
                                     .withStyle(ChatFormatting.AQUA)));
         } else {
-            // Базовый ресурс
             output.sendInfo(source,
                     Component.literal("  ⛏ ")
                             .withStyle(ChatFormatting.GOLD)
@@ -202,7 +188,6 @@ public class AnalyzeCommand {
                                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
         }
 
-        // Альтернативные источники
         List<BaseResourceData> allSources = engine.findAllSourcesForItem(item);
         if (!allSources.isEmpty()) {
             output.sendInfo(source,
@@ -252,7 +237,6 @@ public class AnalyzeCommand {
 
                         output.sendInfo(source, sourceComponent);
 
-                        // Детали на следующей строке
                         output.sendInfo(source,
                                 Component.literal("      → " + swc.data().getDetails())
                                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
@@ -269,7 +253,6 @@ public class AnalyzeCommand {
                         .append(Component.literal("Status")
                                 .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
 
-        // Валидность
         boolean isValid = optimal.isValid();
         output.sendInfo(source,
                 Component.literal("  Valid: ")
@@ -277,7 +260,6 @@ public class AnalyzeCommand {
                         .append(Component.literal(isValid ? "✓ Yes" : "✗ No")
                                 .withStyle(isValid ? ChatFormatting.GREEN : ChatFormatting.RED)));
 
-        // Предупреждения
         if (optimal.hasCycle()) {
             output.sendInfo(source,
                     Component.literal("  ⚠ Warning: ")
@@ -294,7 +276,6 @@ public class AnalyzeCommand {
                                     .withStyle(ChatFormatting.RED)));
         }
 
-        // Подсказка с кликабельной командой
         if (optimal.hasRecipe()) {
             output.sendInfo(source, Component.literal(""));
 
@@ -314,8 +295,6 @@ public class AnalyzeCommand {
             output.sendInfo(source, tipComponent);
         }
     }
-
-    // === Вспомогательные методы ===
 
     private static String getCategoryIcon(ComplexityCategory category) {
         return switch (category.name()) {

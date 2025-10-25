@@ -38,6 +38,11 @@ public class MobDropSource implements IResourceSource {
     private final Map<Item, List<MobDropData>> dropMap = new HashMap<>();
     private static final int SIMULATION_COUNT = 500;
 
+    private static final Set<EntityType<?>> HARDCODED_BOSSES = Set.of(
+            EntityType.WITHER,
+            EntityType.ENDER_DRAGON
+    );
+
     public MobDropSource(MobPropertyProvider mobProvider) {
         this.mobProvider = mobProvider;
     }
@@ -79,6 +84,8 @@ public class MobDropSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         int processedEntities = 0;
 
+        registerHardcodedBossDrops();
+
         LootFunctionFilter filter = new LootFunctionFilter();
         Logger rootLogger = (Logger) LogManager.getRootLogger();
         filter.start();
@@ -96,7 +103,7 @@ public class MobDropSource implements IResourceSource {
             List<DamageSourceConfig> damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
             for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
-                if (entityType.getCategory() == MobCategory.MISC) {
+                if (entityType.getCategory() == MobCategory.MISC || HARDCODED_BOSSES.contains(entityType)) {
                     continue;
                 }
 
@@ -343,5 +350,27 @@ public class MobDropSource implements IResourceSource {
                     .map(Map.Entry::getKey)
                     .orElse("Unknown");
         }
+    }
+
+
+    private void registerHardcodedBossDrops() {
+        ComplexityAnalyzer.LOGGER.info("Registering hardcoded boss drops...");
+
+        registerBossDrop(
+                EntityType.WITHER,
+                net.minecraft.world.item.Items.NETHER_STAR
+        );
+
+        registerBossDrop(
+                EntityType.ENDER_DRAGON,
+                net.minecraft.world.item.Items.DRAGON_EGG
+        );
+
+        ComplexityAnalyzer.LOGGER.info("Registered {} hardcoded boss drops.", HARDCODED_BOSSES.size());
+    }
+
+    private void registerBossDrop(EntityType<?> bossType, Item item) {
+        MobDropData dropData = new MobDropData(item, bossType, 1.0, "Boss Kill");
+        dropMap.computeIfAbsent(item, k -> new ArrayList<>()).add(dropData);
     }
 }

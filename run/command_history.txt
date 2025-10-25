@@ -1,21 +1,3 @@
-/complexity analyze item minecraft:arrow
-/complexity analyze item minecraft:zombie_head
-/complexity analyze item minecraft:arrow
-/complexity analyze item minecraft:music_disc_11
-/complexity analyze item minecraft:arrow
-/complexity analyze item minecraft:zombie_head
-/complexity analyze item minecraft:arrow
-/complexity tree chest
-/complexity analyze item minecraft:arrow
-/complexity analyze item minecraft:chest
-/complexity tree minecraft:chest
-/complexity geoscan stop
-/complexity reload
-/complexity tree minecraft:chest
-/complexity tree minecraft:firework_star
-/complexity tree minecraft:firework_rocket
-/complexity analyze minecraft:firework_rocket
-/complexity analyze item minecraft:firework_rocket
 /complexity tree minecraft:chest
 /complexity analyze item minecraft:firework_rocket
 /complexity tree minecraft:firework_rocket
@@ -48,3 +30,21 @@
 /complexity export category Mythical
 /complexity resource minecraft:acacia_boat
 /complexity resource minecraft:acacia_leaves
+/complexity resource minecraft:netherite_boots
+/complexity resource minecraft:netherite_blocks
+/complexity resource minecraft:netherite_block
+/complexity analyze item minecraft:netherite_block
+/complexity tree minecraft:netherite_block
+/complexity tree minecraft:nether_star
+/complexity analyze entity minecraft:wither
+/complexity tree minecraft:nether_star
+/complexity tree minecraft:nether_star mode economic
+/complexity tree minecraft:gravel
+/complexity tree minecraft:gravel mode economic
+/complexity tree minecraft:gravel mode player
+/complexity tree minecraft:nether_star
+/complexity analyze entity minecraft:wither
+/complexity analyze item minecraft:wither_rose
+/complexity analyze item minecraft:nether_star
+/complexity analyze item minecraft:egg
+/complexity analyze item minecraft:bedrock

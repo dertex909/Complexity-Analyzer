@@ -32,7 +32,6 @@ public class ExportCommand {
         MinecraftServer server = source.getServer();
         String adminName = source.getTextName();
 
-        // Заголовок экспорта
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -49,7 +48,6 @@ public class ExportCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Информация о экспорте
         var stats = engine.getStats();
         output.sendInfo(source,
                 Component.literal("  📊 Items to export: ")
@@ -63,7 +61,6 @@ public class ExportCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Уведомить других админов
         output.sendToAdmins(
                 Component.literal("Full export initiated by " + adminName +
                         " (" + stats.itemCount() + " items)"));
@@ -71,14 +68,12 @@ public class ExportCommand {
         try {
             Path exportPath = ComplexityExporter.exportAll(server, engine);
 
-            // Успешное завершение
             output.sendInfo(source,
                     Component.literal("  ✓ Export completed successfully!")
                             .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
 
             output.sendInfo(source, Component.literal(""));
 
-            // Информация о файле
             output.sendInfo(source,
                     Component.literal("  📁 File Information:")
                             .withStyle(ChatFormatting.AQUA));
@@ -100,14 +95,12 @@ public class ExportCommand {
                     Component.literal("═══════════════════════════════")
                             .withStyle(ChatFormatting.DARK_GRAY));
 
-            // Уведомить админов об успехе
             output.sendToAdmins(
                     Component.literal("✓ Export completed: " + exportPath.getFileName()));
 
             return 1;
 
         } catch (Exception e) {
-            // Ошибка экспорта
             output.sendFailure(source,
                     Component.literal("❌ Export failed!")
                             .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
@@ -121,7 +114,6 @@ public class ExportCommand {
                     Component.literal("═══════════════════════════════")
                             .withStyle(ChatFormatting.DARK_GRAY));
 
-            // Критическая ошибка - уведомить всех админов
             output.sendToAdmins(
                     Component.literal("⚠ Export FAILED: " + e.getMessage())
                             .withStyle(ChatFormatting.RED));
@@ -145,7 +137,6 @@ public class ExportCommand {
         MinecraftServer server = source.getServer();
         String adminName = source.getTextName();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -162,7 +153,6 @@ public class ExportCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Информация
         output.sendInfo(source,
                 Component.literal("  📋 Category: ")
                         .withStyle(ChatFormatting.GRAY)
@@ -175,14 +165,12 @@ public class ExportCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Уведомить админов
         output.sendToAdmins(
                 Component.literal("Category export started: " + categoryName + " by " + adminName));
 
         try {
             Path exportPath = ComplexityExporter.exportCategory(server, engine, categoryName);
 
-            // Успех
             output.sendInfo(source,
                     Component.literal("  ✓ Export successful!")
                             .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
@@ -235,7 +223,6 @@ public class ExportCommand {
         MinecraftServer server = source.getServer();
         String adminName = source.getTextName();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -252,7 +239,6 @@ public class ExportCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Информация
         output.sendInfo(source,
                 Component.literal("  🔢 Count: ")
                         .withStyle(ChatFormatting.GRAY)
@@ -273,7 +259,6 @@ public class ExportCommand {
         try {
             Path exportPath = ComplexityExporter.exportTop(server, engine, count);
 
-            // Успех
             output.sendInfo(source,
                     Component.literal("  ✓ Export successful!")
                             .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
@@ -324,7 +309,6 @@ public class ExportCommand {
         MinecraftServer server = source.getServer();
         String adminName = source.getTextName();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -341,7 +325,6 @@ public class ExportCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Информация
         var stats = engine.getStats();
         output.sendInfo(source,
                 Component.literal("  📋 Format: ")
@@ -367,7 +350,6 @@ public class ExportCommand {
         try {
             Path exportPath = ComplexityExporter.exportCSV(server, engine);
 
-            // Успех
             output.sendInfo(source,
                     Component.literal("  ✓ CSV export successful!")
                             .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
@@ -420,7 +402,6 @@ public class ExportCommand {
 
         MinecraftServer server = source.getServer();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -437,7 +418,6 @@ public class ExportCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Информация
         output.sendInfo(source,
                 Component.literal("  🏷 Item: ")
                         .withStyle(ChatFormatting.GRAY)
@@ -453,7 +433,6 @@ public class ExportCommand {
         try {
             Path exportPath = ComplexityExporter.exportSingle(server, engine, itemId);
 
-            // Успех
             output.sendInfo(source,
                     Component.literal("  ✓ Export successful!")
                             .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));

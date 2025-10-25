@@ -27,7 +27,6 @@ public class ResourceCommand {
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = DatapackSyncHandler.getEngine();
 
-        // Проверка готовности движка
         if (!engine.isReady()) {
             output.sendFailure(source,
                     Component.literal("⚠ Analysis engine is not ready yet!")
@@ -35,7 +34,6 @@ public class ResourceCommand {
             return 0;
         }
 
-        // Проверка существования предмета
         Optional<Item> itemOpt = BuiltInRegistries.ITEM.getOptional(itemId);
         if (itemOpt.isEmpty()) {
             output.sendFailure(source,
@@ -92,7 +90,6 @@ public class ResourceCommand {
     ) {
         String itemName = item.getDescription().getString();
 
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -110,7 +107,6 @@ public class ResourceCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Название предмета
         output.sendInfo(source,
                 Component.literal("  Item: ")
                         .withStyle(ChatFormatting.GRAY)
@@ -119,19 +115,14 @@ public class ResourceCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // === SOURCE INFORMATION ===
         displaySourceInfo(source, data, output);
 
-        // === BASE FACTOR ===
         displayBaseFactor(source, data, output);
 
-        // === SOURCE ITEMS (если есть) ===
         displaySourceItems(source, data, engine, output);
 
-        // === ADDITIONAL INFO ===
         displayAdditionalInfo(source, item, engine, itemId, output);
 
-        // Нижний разделитель
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
                         .withStyle(ChatFormatting.DARK_GRAY));
@@ -155,7 +146,6 @@ public class ResourceCommand {
                         .append(Component.literal(data.getSourceType().getDisplayName())
                                 .withStyle(sourceColor, ChatFormatting.BOLD)));
 
-        // Детали источника
         if (!data.getDetails().isEmpty()) {
             output.sendInfo(source,
                     Component.literal("    Details: ")
@@ -186,13 +176,11 @@ public class ResourceCommand {
                         .append(Component.literal(String.format("%.2f", baseFactor))
                                 .withStyle(factorColor, ChatFormatting.BOLD)));
 
-        // Визуальный бар сложности добычи
         String factorBar = getFactorBar(baseFactor);
         output.sendInfo(source,
                 Component.literal("    " + factorBar)
                         .withStyle(ChatFormatting.DARK_GRAY));
 
-        // Интерпретация сложности
         output.sendInfo(source,
                 Component.literal("    Difficulty: ")
                         .withStyle(ChatFormatting.GRAY)
@@ -211,7 +199,6 @@ public class ResourceCommand {
         Map<Item, Double> sourceItems = data.getSourceItems();
 
         if (sourceItems.isEmpty()) {
-            return; // Нет дополнительных предметов для получения
         }
 
         output.sendInfo(source,
@@ -227,7 +214,6 @@ public class ResourceCommand {
             double amount = entry.getValue();
             String sourceItemName = sourceItem.getDescription().getString();
 
-            // Получаем сложность исходного предмета
             Optional<Double> sourceComplexity = engine.getComplexityResult(sourceItem)
                     .map(ItemComplexity::getComplexity);
 
@@ -276,7 +262,6 @@ public class ResourceCommand {
 
             output.sendInfo(source, Component.literal(""));
 
-            // Кликабельная ссылка на полный анализ
             String analyzeCommand = "/complexity analyze item " + itemId;
             MutableComponent clickableLink = Component.literal("    💡 ")
                     .withStyle(ChatFormatting.GRAY)
@@ -304,8 +289,6 @@ public class ResourceCommand {
 
         output.sendInfo(source, Component.literal(""));
     }
-
-    // === Вспомогательные методы ===
 
     private static String getSourceIcon(BaseResourceData.ResourceSourceType sourceType) {
         return switch (sourceType.name()) {
@@ -351,7 +334,6 @@ public class ResourceCommand {
     }
 
     private static String getFactorBar(double baseFactor) {
-        // Масштаб: 0-25 = 10 блоков
         int filled = (int) Math.min(10, Math.ceil(baseFactor / 2.5));
         StringBuilder bar = new StringBuilder("[");
         for (int i = 0; i < 10; i++) {

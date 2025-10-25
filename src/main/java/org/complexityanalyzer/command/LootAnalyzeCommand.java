@@ -21,7 +21,6 @@ public class LootAnalyzeCommand {
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
-        // Проверка готовности движка
         if (!engine.isReady()) {
             output.sendFailure(source,
                     Component.literal("⚠ Analysis engine is not ready!")
@@ -29,7 +28,6 @@ public class LootAnalyzeCommand {
             return 0;
         }
 
-        // Проверка UniversalLootSource
         Optional<UniversalLootSource> ulsOpt = engine.getSourceByType(UniversalLootSource.class);
         if (ulsOpt.isEmpty()) {
             output.sendFailure(source,
@@ -42,7 +40,6 @@ public class LootAnalyzeCommand {
         }
         UniversalLootSource uls = ulsOpt.get();
 
-        // Поиск предметов из таблицы
         List<BaseResourceData> itemsFromTable = new ArrayList<>();
         for (Map.Entry<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> typeEntry : uls.getAllLootData().entrySet()) {
             for (BaseResourceData data : typeEntry.getValue().values()) {
@@ -52,7 +49,6 @@ public class LootAnalyzeCommand {
             }
         }
 
-        // Проверка результатов
         if (itemsFromTable.isEmpty()) {
             output.sendFailure(source,
                     Component.literal("❌ No items found for loot table")
@@ -81,7 +77,6 @@ public class LootAnalyzeCommand {
             return 0;
         }
 
-        // Сортировка по шансу (от высокого к низкому)
         itemsFromTable.sort(Comparator.comparingDouble(LootAnalyzeCommand::extractChance).reversed());
 
         displayLootAnalysis(source, lootTableId, itemsFromTable, output);
@@ -94,7 +89,6 @@ public class LootAnalyzeCommand {
             List<BaseResourceData> items,
             OutputManager output
     ) {
-        // Заголовок
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -112,7 +106,6 @@ public class LootAnalyzeCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // Информация о таблице
         String tablePath = lootTableId.toString();
         String tableType = getLootTableType(tablePath);
         ChatFormatting typeColor = getTableTypeColor(tableType);
@@ -137,13 +130,10 @@ public class LootAnalyzeCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Статистика
         displayStatistics(source, items, output);
 
-        // Разделение по редкости
         displayItemsByRarity(source, items, output);
 
-        // Нижний разделитель
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
                         .withStyle(ChatFormatting.DARK_GRAY));
@@ -197,12 +187,11 @@ public class LootAnalyzeCommand {
             List<BaseResourceData> items,
             OutputManager output
     ) {
-        // Разделяем предметы по категориям редкости
-        List<BaseResourceData> common = new ArrayList<>();      // > 20%
-        List<BaseResourceData> uncommon = new ArrayList<>();    // 10-20%
-        List<BaseResourceData> rare = new ArrayList<>();        // 5-10%
-        List<BaseResourceData> veryRare = new ArrayList<>();    // 1-5%
-        List<BaseResourceData> legendary = new ArrayList<>();   // < 1%
+        List<BaseResourceData> common = new ArrayList<>();
+        List<BaseResourceData> uncommon = new ArrayList<>();
+        List<BaseResourceData> rare = new ArrayList<>();
+        List<BaseResourceData> veryRare = new ArrayList<>();
+        List<BaseResourceData> legendary = new ArrayList<>();
 
         for (BaseResourceData data : items) {
             double chance = extractChance(data);
@@ -224,7 +213,6 @@ public class LootAnalyzeCommand {
                         .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
         output.sendInfo(source, Component.literal(""));
 
-        // Показываем категории (только если есть предметы)
         if (!common.isEmpty()) {
             displayRarityCategory(source, "Common", "🟢", ChatFormatting.GREEN, common, output);
         }
@@ -271,13 +259,10 @@ public class LootAnalyzeCommand {
         Component itemComponent = data.getItem().getDescription().copy();
         double chance = extractChance(data);
 
-        // Определяем цвет шанса
         ChatFormatting chanceColor = getChanceColor(chance);
 
-        // Прогресс-бар для визуализации шанса
         String chanceBar = getChanceBar(chance);
 
-        // Строка с предметом
         MutableComponent itemLine = Component.literal("    • ")
                 .withStyle(ChatFormatting.DARK_GRAY)
                 .append(itemComponent.copy().withStyle(ChatFormatting.WHITE))
@@ -288,13 +273,10 @@ public class LootAnalyzeCommand {
 
         output.sendInfo(source, itemLine);
 
-        // Визуальный бар под предметом
         output.sendInfo(source,
                 Component.literal("      " + chanceBar)
                         .withStyle(ChatFormatting.DARK_GRAY));
     }
-
-    // === Вспомогательные методы ===
 
     private static String getLootTableIcon(ResourceLocation lootTableId) {
         String path = lootTableId.getPath().toLowerCase();
@@ -340,7 +322,6 @@ public class LootAnalyzeCommand {
     }
 
     private static String getChanceBar(double chance) {
-        // Масштабируем до 100% = 10 блоков
         int filled = (int) Math.min(10, Math.ceil(chance / 10.0));
         StringBuilder bar = new StringBuilder("[");
         for (int i = 0; i < 10; i++) {

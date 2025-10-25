@@ -29,7 +29,6 @@ public class TreeCommand {
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
-        // Проверка готовности движка
         if (!engine.isReady() || engine.getDepthAnalyzer().isEmpty()) {
             output.sendFailure(source,
                     Component.literal("⚠ Analysis engine or Depth Analyzer is not ready!")
@@ -40,7 +39,6 @@ public class TreeCommand {
         DisplayMode displayMode = "economic".equalsIgnoreCase(mode) ?
                 DisplayMode.ECONOMIC_COST : DisplayMode.PLAYER_INSTRUCTION;
 
-        // Проверка существования предмета
         Optional<Item> itemOpt = BuiltInRegistries.ITEM.getOptional(itemId);
         if (itemOpt.isEmpty()) {
             output.sendFailure(source,
@@ -77,7 +75,6 @@ public class TreeCommand {
         String itemName = item.getDescription().getString();
         double complexity = engine.getComplexity(item);
 
-        // === ЗАГОЛОВОК ===
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
@@ -94,7 +91,6 @@ public class TreeCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // === ИНФОРМАЦИЯ О ПРЕДМЕТЕ ===
         ChatFormatting complexityColor = getComplexityColor(complexity);
 
         output.sendInfo(source,
@@ -109,7 +105,6 @@ public class TreeCommand {
                         .append(Component.literal(String.format("%.2f", complexity))
                                 .withStyle(complexityColor, ChatFormatting.BOLD)));
 
-        // === НАСТРОЙКИ ===
         String modeIcon = displayMode == DisplayMode.PLAYER_INSTRUCTION ? "👤" : "💰";
         String modeName = displayMode == DisplayMode.PLAYER_INSTRUCTION ? "Player View" : "Economic View";
         ChatFormatting modeColor = displayMode == DisplayMode.PLAYER_INSTRUCTION ?
@@ -133,7 +128,6 @@ public class TreeCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // === ДЕРЕВО КРАФТА ===
         Map<Item, Double> baseResources = new LinkedHashMap<>();
         Set<Item> uniqueItems = new HashSet<>();
         TreeStats stats = new TreeStats();
@@ -143,23 +137,18 @@ public class TreeCommand {
         displayNodeRecursive(source, item, initialAmount, 0, "  ", true, new HashSet<>(),
                 engine, depthAnalyzer, baseResources, displayMode, maxDepth, uniqueItems, stats, output);
 
-        // === РАЗДЕЛИТЕЛЬ ===
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("  ─────────────────────────────")
                         .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
-        // === СТАТИСТИКА ===
         displayStatistics(source, stats, uniqueItems, output);
 
-        // === БАЗОВЫЕ РЕСУРСЫ ===
         displayBaseResources(source, baseResources, displayMode, engine, output);
 
-        // === СОВЕТЫ ===
         displayTips(source, displayMode, maxDepth, stats, output, itemId);
 
-        // === НИЖНИЙ РАЗДЕЛИТЕЛЬ ===
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
                         .withStyle(ChatFormatting.DARK_GRAY));
@@ -185,7 +174,6 @@ public class TreeCommand {
         uniqueItems.add(item);
         stats.totalNodes++;
 
-        // MAX DEPTH
         if (depth >= maxDepth) {
             MutableComponent line = Component.literal(prefix)
                     .append(Component.literal(isLast ? "└─ " : "├─ ")
@@ -201,7 +189,6 @@ public class TreeCommand {
             return;
         }
 
-        // CYCLE DETECTION
         if (!visitedOnPath.add(item)) {
             stats.cyclesDetected++;
             MutableComponent line = Component.literal(prefix)
@@ -218,7 +205,6 @@ public class TreeCommand {
             return;
         }
 
-        // КОЛИЧЕСТВО
         String quantityString;
         if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
             int displayAmount = (int) Math.ceil(neededAmount);
@@ -231,7 +217,6 @@ public class TreeCommand {
         ChatFormatting complexityColor = getComplexityColor(complexity);
         Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
 
-        // БАЗОВЫЙ РЕСУРС
         if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
             stats.baseResourcesCount++;
             double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
@@ -261,7 +246,6 @@ public class TreeCommand {
             return;
         }
 
-        // КРАФТОВЫЙ ПРЕДМЕТ
         stats.craftingSteps++;
 
         MutableComponent line = Component.literal(prefix)
@@ -282,7 +266,6 @@ public class TreeCommand {
 
         output.sendInfo(source, line);
 
-        // ИНГРЕДИЕНТЫ
         RecipeNode recipe = recipeOpt.get();
         String childPrefix = prefix + (isLast ? "   " : "│  ");
 
@@ -396,7 +379,6 @@ public class TreeCommand {
 
         output.sendInfo(source, Component.literal(""));
 
-        // Сортировка по количеству
         baseResources.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                 .forEach(entry -> {
@@ -407,7 +389,6 @@ public class TreeCommand {
                     if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
                         int amountForPlayer = (int) amount;
                         if (amountForPlayer > 0) {
-                            // ИСПРАВЛЕНО: используем getDefaultInstance()
                             int maxStackSize = item.getDefaultInstance().getMaxStackSize();
                             String stackInfo = getStackVisualization(amountForPlayer, maxStackSize);
 
@@ -455,7 +436,6 @@ public class TreeCommand {
                         .append(Component.literal("Tips & Options")
                                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
-        // Совет о переключении режима
         if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
             String economicCommand = "/complexity tree " + itemId + " mode economic";
             MutableComponent tipLine = Component.literal("    • Try ")
@@ -488,7 +468,6 @@ public class TreeCommand {
             output.sendInfo(source, tipLine);
         }
 
-        // Совет о глубине
         if (stats.totalNodes > 50) {
             String depthCommand = "/complexity tree " + itemId + " depth 5";
             MutableComponent tipLine = Component.literal("    • Complex tree! Use ")
@@ -506,7 +485,6 @@ public class TreeCommand {
             output.sendInfo(source, tipLine);
         }
 
-        // Предупреждение о циклах
         if (stats.cyclesDetected > 0) {
             output.sendInfo(source,
                     Component.literal("    ⚠ Cyclic dependencies detected!")
@@ -562,8 +540,6 @@ public class TreeCommand {
         }
         visited.remove(item);
     }
-
-    // === Вспомогательные классы и методы ===
 
     private static class TreeStats {
         int totalNodes = 0;

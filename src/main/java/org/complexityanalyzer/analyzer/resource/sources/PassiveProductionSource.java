@@ -5,6 +5,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.config.ComplexityConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,21 +13,29 @@ import java.util.Optional;
 
 public class PassiveProductionSource implements IResourceSource {
 
-    private final Map<Item, PassiveDropInfo> productionMap = new HashMap<>();
+    private final Map<Item, ProductionInfo> productionMap = new HashMap<>();
 
-    private record PassiveDropInfo(EntityType<?> sourceType, double ticksPerItem, String method) {}
+    private record ProductionInfo(EntityType<?> sourceType, double ticksPerItem, String method) {}
 
     @Override
     public void initialize(net.minecraft.world.level.Level level) {
-        productionMap.put(Items.EGG, new PassiveDropInfo(EntityType.CHICKEN, 9000.0, "Passive (lays egg)"));
-
-        productionMap.put(Items.WHITE_WOOL, new PassiveDropInfo(EntityType.SHEEP, 2400.0, "Shearing"));
-
-        productionMap.put(Items.TURTLE_SCUTE, new PassiveDropInfo(EntityType.TURTLE, 24000.0, "Grows Up"));
-
-        productionMap.put(Items.MILK_BUCKET, new PassiveDropInfo(EntityType.COW, 20.0, "Milking"));
-
-        productionMap.put(Items.MUSHROOM_STEW, new PassiveDropInfo(EntityType.MOOSHROOM, 20.0, "Milking with Bowl"));
+        productionMap.put(Items.EGG, new ProductionInfo(EntityType.CHICKEN, 9000.0, "Passive (lays egg)"));
+        productionMap.put(Items.ARMADILLO_SCUTE, new ProductionInfo(EntityType.ARMADILLO, 9000.0, "Brushing / Passive"));
+        productionMap.put(Items.TURTLE_SCUTE, new ProductionInfo(EntityType.TURTLE, 24000.0, "Grows Up"));
+        productionMap.put(Items.TADPOLE_BUCKET, new ProductionInfo(EntityType.FROG, 1200.0, "Hatches from Frogspawn"));
+        productionMap.put(Items.WHITE_WOOL, new ProductionInfo(EntityType.SHEEP, 2400.0, "Shearing"));
+        productionMap.put(Items.MILK_BUCKET, new ProductionInfo(EntityType.COW, 20.0, "Milking"));
+        productionMap.put(Items.MUSHROOM_STEW, new ProductionInfo(EntityType.MOOSHROOM, 20.0, "Milking with Bowl"));
+        productionMap.put(Items.GOAT_HORN, new ProductionInfo(EntityType.GOAT, 6300.0, "Rams a block"));
+        productionMap.put(Items.OCHRE_FROGLIGHT, new ProductionInfo(EntityType.FROG, 200.0, "Eats Magma Cube"));
+        productionMap.put(Items.VERDANT_FROGLIGHT, new ProductionInfo(EntityType.FROG, 200.0, "Eats Magma Cube"));
+        productionMap.put(Items.PEARLESCENT_FROGLIGHT, new ProductionInfo(EntityType.FROG, 200.0, "Eats Magma Cube"));
+        productionMap.put(Items.CHORUS_FRUIT, new ProductionInfo(EntityType.SHULKER, 6000.0, "Grows on Chorus Plant"));
+        productionMap.put(Items.PITCHER_POD, new ProductionInfo(EntityType.SNIFFER, 4800.0, "Dug up by Sniffer"));
+        productionMap.put(Items.TORCHFLOWER_SEEDS, new ProductionInfo(EntityType.SNIFFER, 4800.0, "Dug up by Sniffer"));
+        productionMap.put(Items.BEETROOT, new ProductionInfo(null, 4800.0, "Farming"));
+        productionMap.put(Items.FROGSPAWN, new ProductionInfo(EntityType.FROG, 12000.0, "Breeding"));
+        productionMap.put(Items.TURTLE_EGG, new ProductionInfo(EntityType.TURTLE, 12000.0, "Breeding"));
     }
 
     @Override
@@ -36,21 +45,13 @@ public class PassiveProductionSource implements IResourceSource {
 
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
-        if (!canProvide(item)) {
-            return Optional.empty();
-        }
+        if (!canProvide(item)) return Optional.empty();
+        ProductionInfo info = productionMap.get(item);
 
-        PassiveDropInfo info = productionMap.get(item);
+        double complexity = (info.ticksPerItem() * ComplexityConfig.TIME_COST_MULTIPLIER.get()) + ComplexityConfig.BASE_ACTION_COST.get();
 
-        final double UPKEEP_COST_PER_TICK = 0.001;
-        double complexity = info.ticksPerItem() * UPKEEP_COST_PER_TICK;
-
-        complexity += 0.1;
-
-        String details = String.format("From %s (Avg. %d ticks, Method: %s)",
-                info.sourceType().getDescription().getString(),
-                (int)info.ticksPerItem(),
-                info.method());
+        String sourceName = (info.sourceType() != null) ? info.sourceType().getDescription().getString() : "the environment";
+        String details = String.format("From %s (Avg. ~%d ticks, Method: %s)", sourceName, (int)info.ticksPerItem(), info.method());
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.FARMING)

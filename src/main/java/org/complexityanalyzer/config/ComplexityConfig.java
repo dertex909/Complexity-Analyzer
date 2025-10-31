@@ -8,47 +8,56 @@ public class ComplexityConfig {
     public static final ModConfigSpec.IntValue MAX_DEPTH;
     public static final ModConfigSpec.IntValue MAX_RECURSION_DEPTH;
     public static final ModConfigSpec.IntValue MAX_INGREDIENT_VARIANTS;
+    public static final ModConfigSpec.IntValue MAX_ITERATIONS;
+    public static final ModConfigSpec.IntValue CYCLE_DETECTION_DEPTH;
 
     public static final ModConfigSpec.DoubleValue BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue DEPTH_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue INGREDIENT_MULTIPLIER;
 
+    public static final ModConfigSpec.DoubleValue MOB_DIFFICULTY_SCALER;
+    public static final ModConfigSpec.DoubleValue BOSS_RARITY_MULTIPLIER;
+
+    public static final ModConfigSpec.DoubleValue TIME_COST_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue BASE_ACTION_COST;
+
+    public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue SOURCE_BIAS_THRESHOLD;
+
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
-        builder.comment("Complexity Analyzer Configuration").push("general");
+        builder.push("general");
 
-        builder.comment("Limits and Safety").push("limits");
-
-        MAX_DEPTH = builder
-                .comment("Maximum crafting depth to prevent infinite recursion")
-                .defineInRange("maxDepth", 50, 1, 1000);
-
-        MAX_RECURSION_DEPTH = builder
-                .comment("Maximum recursion depth during analysis")
-                .defineInRange("maxRecursionDepth", 100, 1, 1000);
-
-        MAX_INGREDIENT_VARIANTS = builder
-                .comment("Maximum number of ingredient variants to consider (for tags)")
-                .defineInRange("maxIngredientVariants", 20, 1, 100);
-
+        builder.push("limits");
+        MAX_DEPTH = builder.defineInRange("maxDepth", 50, 1, 1000);
+        MAX_RECURSION_DEPTH = builder.defineInRange("maxRecursionDepth", 100, 1, 1000);
+        MAX_INGREDIENT_VARIANTS = builder.defineInRange("maxIngredientVariants", 20, 1, 100);
+        MAX_ITERATIONS = builder.defineInRange("maxIterations", 1000, 10, 10000);
+        CYCLE_DETECTION_DEPTH = builder.defineInRange("cycleDetectionDepth", 100, 10, 500);
         builder.pop();
 
-        builder.comment("Base complexity calculation values").push("calculation");
-
-        BASE_COMPLEXITY = builder
-                .comment("Base complexity for items without recipes")
-                .defineInRange("baseComplexity", 1.0, 0.1, 1000.0);
-
-        DEPTH_MULTIPLIER = builder
-                .comment("Multiplier for each depth level")
-                .defineInRange("depthMultiplier", 2.0, 0.1, 100.0);
-
-        INGREDIENT_MULTIPLIER = builder
-                .comment("Multiplier for ingredient count")
-                .defineInRange("ingredientMultiplier", 0.5, 0.0, 10.0);
-
+        builder.push("crafting");
+        BASE_COMPLEXITY = builder.defineInRange("baseComplexity", 1.0, 0.1, 1000.0);
+        DEPTH_MULTIPLIER = builder.defineInRange("depthMultiplier", 2.0, 0.1, 100.0);
+        INGREDIENT_MULTIPLIER = builder.defineInRange("ingredientMultiplier", 0.5, 0.0, 10.0);
         builder.pop();
+
+        builder.push("mob_drops");
+        MOB_DIFFICULTY_SCALER = builder.defineInRange("mobDifficultyScaler", 0.1, 0.0, 100.0);
+        BOSS_RARITY_MULTIPLIER = builder.defineInRange("bossRarityMultiplier", 20.0, 1.0, 500.0);
+        builder.pop();
+
+        builder.push("passive_generation");
+        TIME_COST_MULTIPLIER = builder.defineInRange("timeCostMultiplier", 0.01, 0.0, 1.0);
+        BASE_ACTION_COST = builder.defineInRange("baseActionCost", 10.0, 0.0, 1000.0);
+        builder.pop();
+
+        builder.push("solver_internals");
+        CONVERGENCE_THRESHOLD = builder.defineInRange("convergenceThreshold", 1.0E-9, 1.0E-12, 1.0E-3);
+        SOURCE_BIAS_THRESHOLD = builder.defineInRange("sourceBiasThreshold", 1.01, 1.0, 2.0);
+        builder.pop();
+
         builder.pop();
 
         SPEC = builder.build();

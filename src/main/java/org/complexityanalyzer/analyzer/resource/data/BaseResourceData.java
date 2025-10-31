@@ -3,7 +3,7 @@ package org.complexityanalyzer.analyzer.resource.data;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class BaseResourceData {
@@ -20,7 +20,8 @@ public class BaseResourceData {
         this.baseFactor = builder.baseFactor;
         this.details = builder.details;
         this.sourceName = builder.sourceName;
-        this.sourceItems = builder.sourceItems;
+        // Мы копируем карту, чтобы сделать финальный объект неизменяемым (immutable)
+        this.sourceItems = Map.copyOf(builder.sourceItems);
     }
 
     public Item getItem() { return item; }
@@ -72,7 +73,8 @@ public class BaseResourceData {
         private ResourceSourceType sourceType = ResourceSourceType.UNKNOWN;
         private double baseFactor = 1.0;
         private String details = "";
-        private Map<Item, Double> sourceItems = Collections.emptyMap();
+        // --- ИЗМЕНЕНИЕ 1: Карта теперь изменяемая (mutable), чтобы можно было добавлять элементы ---
+        private final Map<Item, Double> sourceItems = new HashMap<>();
 
         public Builder(Item item, IResourceSource source) {
             this.item = item;
@@ -87,7 +89,20 @@ public class BaseResourceData {
         public Builder sourceType(ResourceSourceType type) { this.sourceType = type; return this; }
         public Builder baseFactor(double factor) { this.baseFactor = factor; return this; }
         public Builder details(String details) { this.details = details; return this; }
-        public Builder sourceItems(Map<Item, Double> items) { this.sourceItems = (items == null || items.isEmpty()) ? Collections.emptyMap() : Map.copyOf(items);return this; }
+
+        // --- ИЗМЕНЕНИЕ 2: Метод теперь добавляет элементы в карту, а не заменяет ее ---
+        public Builder sourceItems(Map<Item, Double> items) {
+            if (items != null) {
+                this.sourceItems.putAll(items);
+            }
+            return this;
+        }
+
+        // --- ИЗМЕНЕНИЕ 3: Добавлен новый метод, которого не хватало ---
+        public void addSourceItem(Item item, double amount) {
+            this.sourceItems.put(item, amount);
+        }
+
         public BaseResourceData build() { return new BaseResourceData(this); }
     }
 }

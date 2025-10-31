@@ -1,12 +1,3 @@
-/complexity tree minecraft:firework_rocket
-/complexity tree minecraft:netherite_shovel
-/complexity status
-/complexity geoscan status
-/complexity tree minecraft:acacia_boat depth 12 mode economic
-/complexity analyze item minecraft:acacia_fence_gate
-/complexity tree minecraft:acacia_fence_gate
-/complexity analyze item minecraft:acacia_fence_gate
-/complexity geoscan geoscan status
 /complexity tps
 /complexity status
 /complexity tps
@@ -48,3 +39,12 @@
 /complexity tree minecraft:dragon_egg
 /complexity analyze item minecraft:egg
 /complexity analyze item minecraft:turtle_scute
+/weather clear
+/time set day
+/complexity analyze item minecraft:turtle_scute
+/complexity tree minecraft:nether_star
+/complexity analyze item minecraft:turtle_scute
+/complexity export all
+/complexity export csv
+/complexity tps
+/complexity export csv

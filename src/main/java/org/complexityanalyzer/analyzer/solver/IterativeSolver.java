@@ -4,6 +4,7 @@ import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
@@ -18,7 +19,6 @@ public class IterativeSolver {
 
     private static final double CONVERGENCE_THRESHOLD = 1e-9;
     private static final double EPSILON = 1e-12;
-    private static final int CYCLE_DETECTION_DEPTH = 100;
 
     private final Map<RecipeNode, RecipeCostCache> recipeCostCache;
     private final Map<Item, BaseResourceCache> baseResourceCache;
@@ -54,7 +54,7 @@ public class IterativeSolver {
         int iterations = 0;
         int itemsProcessed = 0;
 
-        while (!updateQueue.isEmpty() && iterations < SolverConfig.MAX_ITERATIONS) {
+        while (!updateQueue.isEmpty() && iterations < ComplexityConfig.MAX_ITERATIONS.get()) {
             iterations++;
 
             int batchSize = Math.min(updateQueue.size(), 1000);
@@ -177,7 +177,7 @@ public class IterativeSolver {
             Map<Item, Double> currentComplexities,
             Set<Item> visitedInPath
     ) {
-        if (visitedInPath.size() > CYCLE_DETECTION_DEPTH) {
+        if (visitedInPath.size() > ComplexityConfig.CYCLE_DETECTION_DEPTH.get()) {
             ComplexityAnalyzer.LOGGER.warn("Cycle detection depth exceeded for item: {}", item);
             return new ComplexityResult(Double.POSITIVE_INFINITY, null);
         }
@@ -197,7 +197,7 @@ public class IterativeSolver {
                     currentComplexities
             );
 
-            double biasThreshold = 1.01;
+            double biasThreshold = ComplexityConfig.SOURCE_BIAS_THRESHOLD.get();
             if (sourceCost <= craftResult.complexity * biasThreshold) {
                 return new ComplexityResult(sourceCost, null);
             } else {
@@ -437,7 +437,7 @@ public class IterativeSolver {
             ComplexityAnalyzer.LOGGER.warn(
                     "Enhanced solver did NOT converge after {} iterations. " +
                             "Results may be approximate.",
-                    SolverConfig.MAX_ITERATIONS
+                    ComplexityConfig.MAX_ITERATIONS.get()
             );
         }
 
@@ -502,7 +502,7 @@ public class IterativeSolver {
             for (Map.Entry<Item, Double> entry : dependencies.entrySet()) {
                 Double currentCost = currentComplexities.get(entry.getKey());
                 if (currentCost == null ||
-                        Math.abs(currentCost - entry.getValue()) > CONVERGENCE_THRESHOLD) {
+                        Math.abs(currentCost - entry.getValue()) > ComplexityConfig.CONVERGENCE_THRESHOLD.get()) {
                     return false;
                 }
             }

@@ -228,6 +228,7 @@ public class AnalysisEngine {
         initialSources.add(new BlockBreakAsRecipeSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
+        initialSources.add(new WorldInteractionSource());
 
         this.sourceManager = new SourceManager(initialSources);
 

@@ -42,7 +42,6 @@ public class BaseResourceData {
         BLOCK_TRANSFORMATION("Block Transformation", 1.0),
         FARMING("Farming", 0.8),
 
-
         RENEWABLE("Renewable", 0.8),
         SHEARING("Shearing", 0.7),
         FISHING("Fishing", 1.2),

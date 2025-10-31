@@ -227,6 +227,7 @@ public class AnalysisEngine {
         initialSources.add(new MobDropSource(this.mobPropProvider));
         initialSources.add(new BlockBreakAsRecipeSource());
         initialSources.add(new VillagerTradeSource());
+        initialSources.add(new PassiveProductionSource());
 
         this.sourceManager = new SourceManager(initialSources);
 

@@ -40,12 +40,13 @@ public class BaseResourceData {
         EMPIRICAL_BLOCK("Empirical Block", 1.0),
         BLOCK("Block", 1.0),
         BLOCK_TRANSFORMATION("Block Transformation", 1.0),
+        FARMING("Farming", 0.8),
+
 
         RENEWABLE("Renewable", 0.8),
         SHEARING("Shearing", 0.7),
         FISHING("Fishing", 1.2),
 
-        BLOCK_DROP("Block Drop", 1.5),
         MOB_DROP("Mob Drop", 1.8),
         VILLAGER_TRADE("Villager Trade", 2.0),
         PIGLIN_BARTERING("Piglin Bartering", 2.2),

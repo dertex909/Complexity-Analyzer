@@ -14,22 +14,22 @@ import net.minecraft.world.entity.monster.Skeleton;
 import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.solver.SolverConfig;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.filter.AbstractFilter;
 
 import java.util.*;
 
@@ -38,9 +38,15 @@ public class MobDropSource implements IResourceSource {
     private final Map<Item, List<MobDropData>> dropMap = new HashMap<>();
     private static final int SIMULATION_COUNT = 500;
 
-    private static final Set<EntityType<?>> HARDCODED_BOSSES = Set.of(
+    private static final Set<EntityType<?>> SPECIAL_HANDLING_ENTITIES = Set.of(
             EntityType.WITHER,
-            EntityType.ENDER_DRAGON
+            EntityType.ENDER_DRAGON,
+            EntityType.CHICKEN,
+            EntityType.TURTLE,
+            EntityType.SHEEP,
+            EntityType.COW,
+            EntityType.GOAT,
+            EntityType.MOOSHROOM
     );
 
     public MobDropSource(MobPropertyProvider mobProvider) {
@@ -53,7 +59,6 @@ public class MobDropSource implements IResourceSource {
             if (event == null || event.getLevel() != org.apache.logging.log4j.Level.WARN) {
                 return Result.NEUTRAL;
             }
-
             String loggerName = event.getLoggerName();
             if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
                 String message = event.getMessage().getFormattedMessage();
@@ -65,7 +70,6 @@ public class MobDropSource implements IResourceSource {
                     return Result.DENY;
                 }
             }
-
             return Result.NEUTRAL;
         }
     }
@@ -84,7 +88,7 @@ public class MobDropSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         int processedEntities = 0;
 
-        registerHardcodedBossDrops();
+        registerSpecialVanillaDrops();
 
         LootFunctionFilter filter = new LootFunctionFilter();
         Logger rootLogger = (Logger) LogManager.getRootLogger();
@@ -103,7 +107,7 @@ public class MobDropSource implements IResourceSource {
             List<DamageSourceConfig> damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
             for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
-                if (entityType.getCategory() == MobCategory.MISC || HARDCODED_BOSSES.contains(entityType)) {
+                if (entityType.getCategory() == MobCategory.MISC || SPECIAL_HANDLING_ENTITIES.contains(entityType)) {
                     continue;
                 }
 
@@ -167,13 +171,11 @@ public class MobDropSource implements IResourceSource {
 
     private List<DamageSourceConfig> createDamageSources(ServerLevel level, net.minecraft.server.level.ServerPlayer player) {
         List<DamageSourceConfig> configs = new ArrayList<>();
-
         configs.add(new DamageSourceConfig("Player Attack", level.damageSources().playerAttack(player), false, player, null));
         configs.add(new DamageSourceConfig("Fire", level.damageSources().onFire(), true, player, null));
         configs.add(new DamageSourceConfig("Lava", level.damageSources().lava(), true, player, null));
         configs.add(new DamageSourceConfig("Magic", level.damageSources().magic(), false, player, null));
         configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
-
         Creeper chargedCreeper = EntityType.CREEPER.create(level);
         if (chargedCreeper != null) {
             CompoundTag creeperNBT = new CompoundTag();
@@ -182,13 +184,11 @@ public class MobDropSource implements IResourceSource {
             chargedCreeper.setPos(0, 64, 0);
             configs.add(new DamageSourceConfig("Charged Creeper", level.damageSources().explosion(chargedCreeper, player), false, player, chargedCreeper));
         }
-
         Skeleton skeleton = EntityType.SKELETON.create(level);
         if (skeleton != null) {
             Arrow arrow = EntityType.ARROW.create(level);
             if (arrow != null) {
                 arrow.setOwner(skeleton);
-
                 configs.add(new DamageSourceConfig(
                         "Skeleton Arrow",
                         level.damageSources().arrow(arrow, skeleton),
@@ -198,17 +198,10 @@ public class MobDropSource implements IResourceSource {
                 ));
             }
         }
-
         return configs;
     }
 
-    private void simulateKillMethod(
-            ServerLevel level,
-            Entity entityInstance,
-            LootTable lootTable,
-            DamageSourceConfig config,
-            Map<Item, DropStatistics> combinedDrops
-    ) {
+    private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable, DamageSourceConfig config, Map<Item, DropStatistics> combinedDrops) {
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
                 LootParams.Builder builder = new LootParams.Builder(level)
@@ -229,20 +222,16 @@ public class MobDropSource implements IResourceSource {
                 }
 
                 if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
-
                 LootParams lootParams = builder.create(LootContextParamSets.ENTITY);
                 List<ItemStack> drops = lootTable.getRandomItems(lootParams);
-
                 if (config.isOnFire) entityInstance.clearFire();
 
                 for (ItemStack stack : drops) {
                     Item item = stack.getItem();
                     int count = stack.getCount();
-
                     combinedDrops.computeIfAbsent(item, k -> new DropStatistics())
                             .addDrop(config.methodName, count);
                 }
-
             } catch (Exception ignored) {}
         }
     }
@@ -257,9 +246,7 @@ public class MobDropSource implements IResourceSource {
         if (!canProvide(item)) {
             return Optional.empty();
         }
-
         List<MobDropData> possibleSources = dropMap.get(item);
-
         return possibleSources.stream()
                 .map(dropData -> calculateComplexityForDrop(item, dropData))
                 .filter(Optional::isPresent)
@@ -285,22 +272,17 @@ public class MobDropSource implements IResourceSource {
         if (mobPropsOpt.isEmpty()) {
             return Optional.empty();
         }
-
         var props = mobPropsOpt.get();
         double survivability = props.maxHealth() * (1 + props.armor() / 5.0);
         double threat = 1 + Math.log1p(props.attackDamage());
         double combatPower = survivability * threat;
-
         double spawnRarityMultiplier = props.isBoss() ? 20.0 : 1.0;
-
         double finalComplexity = ((combatPower * spawnRarityMultiplier) / data.averageYield())
                 * SolverConfig.MOB_DIFFICULTY_SCALER;
-
         String details = String.format("From %s (Yield: %.2f/kill, Method: %s)",
                 mobType.getDescription().getString(),
                 data.averageYield(),
                 data.killMethod() != null ? data.killMethod() : "Any");
-
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.MOB_DROP)
                 .baseFactor(finalComplexity)
@@ -323,25 +305,22 @@ public class MobDropSource implements IResourceSource {
         return "MobDropSource";
     }
 
-    private record DamageSourceConfig(
-            String methodName,
-            DamageSource damageSource,
-            boolean isOnFire,
-            net.minecraft.server.level.ServerPlayer killerPlayer,
-            Entity attackingEntity
-    ) {}
+    private record DamageSourceConfig(String methodName, DamageSource damageSource, boolean isOnFire, net.minecraft.server.level.ServerPlayer killerPlayer, Entity attackingEntity) {}
 
     private static class DropStatistics {
         private final Map<String, Integer> dropsByMethod = new HashMap<>();
         private int totalDropped = 0;
+        private int simulationCount = 0;
 
         public void addDrop(String method, int count) {
             dropsByMethod.merge(method, count, Integer::sum);
             totalDropped += count;
+            simulationCount++;
         }
 
         public double getAverageYield() {
-            return (double) totalDropped / SIMULATION_COUNT;
+            if (simulationCount == 0) return 0.0;
+            return (double) totalDropped / simulationCount;
         }
 
         public String getBestMethod() {
@@ -352,25 +331,46 @@ public class MobDropSource implements IResourceSource {
         }
     }
 
+    private void registerSpecialVanillaDrops() {
+        ComplexityAnalyzer.LOGGER.info("Registering special vanilla drops (bosses, timed drops, etc.)...");
+        int count = 0;
 
-    private void registerHardcodedBossDrops() {
-        ComplexityAnalyzer.LOGGER.info("Registering hardcoded boss drops...");
+        registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
+        count++;
+        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
+        count++;
 
-        registerBossDrop(
-                EntityType.WITHER,
-                net.minecraft.world.item.Items.NETHER_STAR
-        );
+        final double MUSIC_DISC_YIELD = 0.083;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_11, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_13, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_BLOCKS, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CAT, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CHIRP, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_FAR, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MALL, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MELLOHI, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STAL, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STRAD, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WAIT, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WARD, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
 
-        registerBossDrop(
-                EntityType.ENDER_DRAGON,
-                net.minecraft.world.item.Items.DRAGON_EGG
-        );
-
-        ComplexityAnalyzer.LOGGER.info("Registered {} hardcoded boss drops.", HARDCODED_BOSSES.size());
+        ComplexityAnalyzer.LOGGER.info("Registered {} special drop entries.", count);
     }
 
-    private void registerBossDrop(EntityType<?> bossType, Item item) {
-        MobDropData dropData = new MobDropData(item, bossType, 1.0, "Boss Kill");
+    private void registerDrop(EntityType<?> entityType, Item item, double averageYield, String method) {
+        MobDropData dropData = new MobDropData(item, entityType, averageYield, method);
         dropMap.computeIfAbsent(item, k -> new ArrayList<>()).add(dropData);
     }
 }

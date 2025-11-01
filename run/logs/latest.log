@@ -1,132 +1,155 @@
-[01нояб.2025 14:09:05.419] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
-[01нояб.2025 14:09:05.422] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
-[01нояб.2025 14:09:05.424] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
-[01нояб.2025 14:09:05.554] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
-[01нояб.2025 14:09:05.681] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
-[01нояб.2025 14:09:05.838] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
-[01нояб.2025 14:09:05.974] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
-[01нояб.2025 14:09:06.242] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: NVIDIA GeForce RTX 4070/PCIe/SSE2 GL version 4.6.0 NVIDIA 581.29, NVIDIA Corporation
-[01нояб.2025 14:09:06.384] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
-[01нояб.2025 14:09:06.386] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
+[01нояб.2025 15:03:04.937] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
+[01нояб.2025 15:03:04.941] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
+[01нояб.2025 15:03:04.943] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
+[01нояб.2025 15:03:05.085] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[01нояб.2025 15:03:05.209] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[01нояб.2025 15:03:05.383] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
+[01нояб.2025 15:03:05.498] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
+[01нояб.2025 15:03:05.747] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: NVIDIA GeForce RTX 4070/PCIe/SSE2 GL version 4.6.0 NVIDIA 581.29, NVIDIA Corporation
+[01нояб.2025 15:03:05.918] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[01нояб.2025 15:03:05.920] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
      Mod List:
 		Name Version (Mod Id)
 
 		Complexity Analyzer 1.0.0 (complexityanalyzer)
 		Minecraft 1.21.1 (minecraft)
 		NeoForge 21.1.209 (neoforge)
-[01нояб.2025 14:09:07.226] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.209, --gameDir, ., --assetsDir, C:\Users\xXx\.gradle\caches\neoformruntime\assets, --assetIndex, 17]
-[01нояб.2025 14:09:08.990] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 229 Datafixer optimizations took 425 milliseconds
-[01нояб.2025 14:09:09.296] [pool-7-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
-[01нояб.2025 14:09:14.595] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[01нояб.2025 14:09:14.596] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
-[01нояб.2025 14:09:14.598] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[01нояб.2025 14:09:14.600] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[01нояб.2025 14:09:14.601] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[01нояб.2025 14:09:14.720] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/assets/.mcassetsroot' uses unexpected schema
-[01нояб.2025 14:09:14.721] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/data/.mcassetsroot' uses unexpected schema
-[01нояб.2025 14:09:14.747] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[01нояб.2025 14:09:14.758] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
-[01нояб.2025 14:09:14.864] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
-[01нояб.2025 14:09:15.131] [modloading-worker-0/INFO] [Complexity Analyzer/]: === Complexity Analyzer v1.0.0-FINAL ===
-[01нояб.2025 14:09:15.149] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.209, for MC 1.21.1
-[01нояб.2025 14:09:15.157] [modloading-worker-0/INFO] [Complexity Analyzer/]: Complexity Analyzer initialized successfully.
-[01нояб.2025 14:09:16.007] [Render thread/INFO] [net.neoforged.neoforge.gametest.GameTestHooks/]: Enabled Gametest Namespaces: [complexityanalyzer]
-[01нояб.2025 14:09:16.139] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources, mod/complexityanalyzer, mod/neoforge
-[01нояб.2025 14:09:16.244] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-15.1.05.hex, loading
-[01нояб.2025 14:09:16.394] [Worker-Main-10/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-15.1.05.hex, loading
-[01нояб.2025 14:09:17.709] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:item.goat_horn.play
-[01нояб.2025 14:09:17.710] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
-[01нояб.2025 14:09:17.743] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device OpenAL Soft on Динамики (Realtek(R) Audio)
-[01нояб.2025 14:09:17.744] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
-[01нояб.2025 14:09:17.873] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
-[01нояб.2025 14:09:17.882] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
-[01нояб.2025 14:09:17.883] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
-[01нояб.2025 14:09:17.884] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
-[01нояб.2025 14:09:17.884] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
-[01нояб.2025 14:09:17.887] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
-[01нояб.2025 14:09:17.887] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
-[01нояб.2025 14:09:17.887] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
-[01нояб.2025 14:09:17.888] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
-[01нояб.2025 14:09:18.130] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[01нояб.2025 14:09:18.132] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[01нояб.2025 14:09:18.132] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
-[01нояб.2025 14:09:18.132] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[01нояб.2025 14:09:18.133] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[01нояб.2025 14:09:18.166] [Render thread/WARN] [net.minecraft.client.renderer.ShaderInstance/]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
-[01нояб.2025 14:09:18.255] [Render thread/INFO] [net.neoforged.neoforge.client.entity.animation.json.AnimationLoader/]: Loaded 0 entity animations
-[01нояб.2025 14:09:22.585] [Worker-Main-8/INFO] [Complexity Analyzer/]: Registered /complexity command with role-based permissions
-[01нояб.2025 14:09:22.862] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
-[01нояб.2025 14:09:23.051] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
-[01нояб.2025 14:09:23.466] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.1
-[01нояб.2025 14:09:23.466] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[01нояб.2025 14:09:24.600] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
-[01нояб.2025 14:09:24.893] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 0%
-[01нояб.2025 14:09:25.026] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 411 ms
-[01нояб.2025 14:09:25.027] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
-[01нояб.2025 14:09:25.032] [Server thread/INFO] [Complexity Analyzer/]: Creating new analysis thread pool.
-[01нояб.2025 14:09:25.032] [Server thread/INFO] [Complexity Analyzer/]: Starting background analysis...
-[01нояб.2025 14:09:25.033] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph...
-[01нояб.2025 14:09:25.034] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph with advanced classification...
-[01нояб.2025 14:09:25.076] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recipe graph built: 1259 recipes processed, 31 skipped
-[01нояб.2025 14:09:25.076] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: ANALYZING] Starting FAST initial analysis ===
-[01нояб.2025 14:09:25.077] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing BlockPropertyProvider...
-[01нояб.2025 14:09:25.079] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: BlockPropertyProvider initialized, analyzed 1060 blocks.
-[01нояб.2025 14:09:25.080] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing MobPropertyProvider...
-[01нояб.2025 14:09:25.082] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobPropertyProvider initialized, analyzed 84 entities.
-[01нояб.2025 14:09:25.088] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Loading all final geo-data from disk...
-[01нояб.2025 14:09:25.113] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Global block rarity cache rebuilt. Total blocks counted: 191046674
-[01нояб.2025 14:09:25.113] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Finished loading geo-data. Found data for 3 dimensions.
-[01нояб.2025 14:09:25.127] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: TheoreticalDistributionProvider initialized: 23 blocks found in worldgen config.
-[01нояб.2025 14:09:25.129] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase loaded, skipping theoretical resources.
-[01нояб.2025 14:09:25.136] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Resource sources configured. Initializing all...
-[01нояб.2025 14:09:25.146] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 2, from 10
-[01нояб.2025 14:09:25.147] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 5, from 0
-[01нояб.2025 14:09:25.962] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:23292578] logged in with entity id 134 at (-567.9947411737202, 72.0, -722.3906477841969)
-[01нояб.2025 14:09:26.046] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev присоединился к игре
-[01нояб.2025 14:09:26.232] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 32 advancements
-[01нояб.2025 14:10:38.732] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: VillagerTradeSource initialized. Found trades for 177 unique items.
-[01нояб.2025 14:10:42.040] [Server thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_small' after 25 iterations. Skipping.
-[01нояб.2025 14:10:45.256] [Server thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/shipwreck_map' after 15 iterations. Skipping.
-[01нояб.2025 14:10:48.513] [Server thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_big' after 31 iterations. Skipping.
-[01нояб.2025 14:10:48.525] [Server thread/INFO] [Complexity Analyzer/]: [ULS] Auto-scan complete in 9790ms. Processed 87 loot tables (1092 skipped), found 388 unique items.
-[01нояб.2025 14:10:48.525] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Fishing -> 21 items
-[01нояб.2025 14:10:48.525] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Archaeology -> 63 items
-[01нояб.2025 14:10:48.526] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Shearing -> 2 items
-[01нояб.2025 14:10:48.526] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Piglin Bartering -> 17 items
-[01нояб.2025 14:10:48.526] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Generic Loot -> 54 items
-[01нояб.2025 14:10:48.526] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Chest Loot -> 231 items
-[01нояб.2025 14:10:48.527] [Server thread/WARN] [net.minecraft.server.MinecraftServer/]: Can't keep up! Is the server overloaded? Running 9790ms or 195 ticks behind
-[01нояб.2025 14:10:48.527] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Initializing... Analyzing all block drop recipes.
-[01нояб.2025 14:10:48.530] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Successfully found RandomSource field: random
-[01нояб.2025 14:10:50.055] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Initialization complete in 1526ms. Found 2550 block drop paths for 98 unique items. Skipped 13 indestructible blocks.
-[01нояб.2025 14:10:50.056] [Server thread/INFO] [Complexity Analyzer/]: Registering special kill-based drops...
-[01нояб.2025 14:10:50.059] [Server thread/INFO] [Complexity Analyzer/]: Registered 16 special kill-based drop entries.
-[01нояб.2025 14:10:50.533] [Server thread/INFO] [Complexity Analyzer/]: MobDropSource initialized. Processed 76 valid entities. Found drop info for 76 unique items. Time: 477ms
-[01нояб.2025 14:10:50.540] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All resource sources initialized.
-[01нояб.2025 14:10:50.541] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recalculating all complexity data...
-[01нояб.2025 14:10:50.685] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Enhanced solver finished: 138ms, 34 iterations, 1975 items processed
-[01нояб.2025 14:10:50.688] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All systems refreshed with new data.
-[01нояб.2025 14:10:50.689] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: READY] Analysis complete. Mod is operational. ===
-[01нояб.2025 14:10:50.695] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Analysis engine initialization complete.
-[01нояб.2025 14:10:50.698] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase is complete. Skipping initial scan.
-[01нояб.2025 14:13:50.054] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!
-[01нояб.2025 14:13:50.096] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Отключение
-[01нояб.2025 14:13:50.097] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev покинул игру
-[01нояб.2025 14:13:50.121] [Server thread/INFO] [net.minecraft.server.network.ServerCommonPacketListenerImpl/]: Stopping singleplayer server as player logged out
-[01нояб.2025 14:13:50.147] [Server thread/INFO] [Complexity Analyzer/]: Shutdown requested for AnalysisEngine.
-[01нояб.2025 14:13:50.147] [Server thread/INFO] [Complexity Analyzer/]: Shutting down GeoAnalysisManager...
-[01нояб.2025 14:13:50.149] [Server thread/INFO] [Complexity Analyzer/]: GeoAnalysisManager has been shut down.
-[01нояб.2025 14:13:50.149] [Server thread/INFO] [Complexity Analyzer/]: Shutting down analysis thread pool gracefully... Attempting to stabilize core.
-[01нояб.2025 14:13:50.150] [Server thread/INFO] [Complexity Analyzer/]: Graceful shutdown successful. Analysis core is stable.
-[01нояб.2025 14:13:50.150] [Server thread/INFO] [Complexity Analyzer/]: Analysis thread pool is now offline.
-[01нояб.2025 14:13:50.150] [Server thread/INFO] [Complexity Analyzer/]: AnalysisEngine state reset to IDLE.
-[01нояб.2025 14:13:50.151] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
-[01нояб.2025 14:13:50.152] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
-[01нояб.2025 14:13:50.152] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
-[01нояб.2025 14:13:50.972] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:overworld
-[01нояб.2025 14:13:51.283] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:the_end
-[01нояб.2025 14:13:51.299] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:the_nether
-[01нояб.2025 14:13:51.354] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (тетс (1)): All chunks are saved
-[01нояб.2025 14:13:51.354] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[01нояб.2025 14:13:51.354] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[01нояб.2025 14:13:51.354] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
+[01нояб.2025 15:03:06.774] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.209, --gameDir, ., --assetsDir, C:\Users\xXx\.gradle\caches\neoformruntime\assets, --assetIndex, 17]
+[01нояб.2025 15:03:09.379] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 229 Datafixer optimizations took 692 milliseconds
+[01нояб.2025 15:03:09.859] [pool-7-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
+[01нояб.2025 15:03:14.828] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[01нояб.2025 15:03:14.830] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[01нояб.2025 15:03:14.832] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[01нояб.2025 15:03:14.833] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[01нояб.2025 15:03:14.834] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[01нояб.2025 15:03:14.961] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/assets/.mcassetsroot' uses unexpected schema
+[01нояб.2025 15:03:14.961] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/data/.mcassetsroot' uses unexpected schema
+[01нояб.2025 15:03:14.987] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[01нояб.2025 15:03:15.000] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
+[01нояб.2025 15:03:15.124] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
+[01нояб.2025 15:03:15.374] [modloading-worker-0/INFO] [Complexity Analyzer/]: === Complexity Analyzer v1.0.0-FINAL ===
+[01нояб.2025 15:03:15.399] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.209, for MC 1.21.1
+[01нояб.2025 15:03:15.408] [modloading-worker-0/INFO] [Complexity Analyzer/]: Complexity Analyzer initialized successfully.
+[01нояб.2025 15:03:16.238] [Render thread/INFO] [net.neoforged.neoforge.gametest.GameTestHooks/]: Enabled Gametest Namespaces: [complexityanalyzer]
+[01нояб.2025 15:03:16.358] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources, mod/complexityanalyzer, mod/neoforge
+[01нояб.2025 15:03:16.438] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-15.1.05.hex, loading
+[01нояб.2025 15:03:16.528] [Worker-Main-6/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-15.1.05.hex, loading
+[01нояб.2025 15:03:17.726] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:item.goat_horn.play
+[01нояб.2025 15:03:17.726] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
+[01нояб.2025 15:03:17.763] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device OpenAL Soft on Динамики (Realtek(R) Audio)
+[01нояб.2025 15:03:17.763] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
+[01нояб.2025 15:03:17.920] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
+[01нояб.2025 15:03:17.941] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[01нояб.2025 15:03:17.941] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[01нояб.2025 15:03:17.942] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[01нояб.2025 15:03:17.942] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[01нояб.2025 15:03:17.945] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[01нояб.2025 15:03:17.946] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[01нояб.2025 15:03:17.947] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[01нояб.2025 15:03:17.947] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[01нояб.2025 15:03:18.164] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[01нояб.2025 15:03:18.166] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[01нояб.2025 15:03:18.166] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
+[01нояб.2025 15:03:18.167] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[01нояб.2025 15:03:18.167] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[01нояб.2025 15:03:18.197] [Render thread/WARN] [net.minecraft.client.renderer.ShaderInstance/]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
+[01нояб.2025 15:03:18.259] [Render thread/INFO] [net.neoforged.neoforge.client.entity.animation.json.AnimationLoader/]: Loaded 0 entity animations
+[01нояб.2025 15:03:32.361] [Worker-Main-7/INFO] [Complexity Analyzer/]: Registered /complexity command with role-based permissions
+[01нояб.2025 15:03:32.520] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
+[01нояб.2025 15:03:32.672] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
+[01нояб.2025 15:03:33.043] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.1
+[01нояб.2025 15:03:33.043] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
+[01нояб.2025 15:03:33.934] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
+[01нояб.2025 15:03:34.194] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 0%
+[01нояб.2025 15:03:34.314] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[01нояб.2025 15:03:34.318] [Server thread/INFO] [Complexity Analyzer/]: Creating new analysis thread pool.
+[01нояб.2025 15:03:34.318] [Server thread/INFO] [Complexity Analyzer/]: Starting background analysis...
+[01нояб.2025 15:03:34.319] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph...
+[01нояб.2025 15:03:34.321] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph with advanced classification...
+[01нояб.2025 15:03:34.326] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 383 ms
+[01нояб.2025 15:03:34.352] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Found ShulkerBoxColoring recipe! Ingredients: 0
+[01нояб.2025 15:03:34.352] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building synthetic shulker box coloring recipes...
+[01нояб.2025 15:03:34.353] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Added 16 shulker box coloring recipes
+[01нояб.2025 15:03:34.354] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recipe graph built: 1275 recipes processed, 30 skipped
+[01нояб.2025 15:03:34.354] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: ANALYZING] Starting FAST initial analysis ===
+[01нояб.2025 15:03:34.355] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing BlockPropertyProvider...
+[01нояб.2025 15:03:34.359] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: BlockPropertyProvider initialized, analyzed 1060 blocks.
+[01нояб.2025 15:03:34.360] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing MobPropertyProvider...
+[01нояб.2025 15:03:34.361] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobPropertyProvider initialized, analyzed 84 entities.
+[01нояб.2025 15:03:34.369] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Loading all final geo-data from disk...
+[01нояб.2025 15:03:34.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Global block rarity cache rebuilt. Total blocks counted: 191046674
+[01нояб.2025 15:03:34.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Finished loading geo-data. Found data for 3 dimensions.
+[01нояб.2025 15:03:34.425] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: TheoreticalDistributionProvider initialized: 23 blocks found in worldgen config.
+[01нояб.2025 15:03:34.426] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase loaded, skipping theoretical resources.
+[01нояб.2025 15:03:34.438] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Resource sources configured. Initializing all...
+[01нояб.2025 15:03:34.448] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 2, from 10
+[01нояб.2025 15:03:34.448] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 5, from 0
+[01нояб.2025 15:03:35.155] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:6d0da1b5] logged in with entity id 134 at (-567.9947411737202, 72.0, -722.3906477841969)
+[01нояб.2025 15:03:35.226] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev присоединился к игре
+[01нояб.2025 15:03:35.508] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 45 advancements
+[01нояб.2025 15:04:51.483] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: VillagerTradeSource initialized. Found trades for 177 unique items.
+[01нояб.2025 15:04:54.786] [Server thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/shipwreck_map' after 10 iterations. Skipping.
+[01нояб.2025 15:04:57.816] [Server thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_big' after 31 iterations. Skipping.
+[01нояб.2025 15:05:00.955] [Server thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_small' after 45 iterations. Skipping.
+[01нояб.2025 15:05:00.962] [Server thread/INFO] [Complexity Analyzer/]: [ULS] Auto-scan complete in 9477ms. Processed 87 loot tables (1092 skipped), found 387 unique items.
+[01нояб.2025 15:05:00.962] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Generic Loot -> 54 items
+[01нояб.2025 15:05:00.962] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Archaeology -> 63 items
+[01нояб.2025 15:05:00.963] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Piglin Bartering -> 17 items
+[01нояб.2025 15:05:00.963] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Fishing -> 20 items
+[01нояб.2025 15:05:00.963] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Shearing -> 2 items
+[01нояб.2025 15:05:00.963] [Server thread/INFO] [Complexity Analyzer/]: [ULS]   Chest Loot -> 231 items
+[01нояб.2025 15:05:00.963] [Server thread/WARN] [net.minecraft.server.MinecraftServer/]: Can't keep up! Is the server overloaded? Running 9438ms or 188 ticks behind
+[01нояб.2025 15:05:00.963] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Initializing... Analyzing all block drop recipes.
+[01нояб.2025 15:05:00.964] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Successfully found RandomSource field: random
+[01нояб.2025 15:05:02.232] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Initialization complete in 1269ms. Found 2552 block drop paths for 98 unique items. Skipped 13 indestructible blocks.
+[01нояб.2025 15:05:02.233] [Server thread/INFO] [Complexity Analyzer/]: Registering special kill-based drops...
+[01нояб.2025 15:05:02.235] [Server thread/INFO] [Complexity Analyzer/]: Registered 16 special kill-based drop entries.
+[01нояб.2025 15:05:02.621] [Server thread/INFO] [Complexity Analyzer/]: MobDropSource initialized. Processed 76 valid entities. Found drop info for 76 unique items. Time: 388ms
+[01нояб.2025 15:05:02.625] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All resource sources initialized.
+[01нояб.2025 15:05:02.625] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recalculating all complexity data...
+[01нояб.2025 15:05:02.753] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Enhanced solver finished: 123ms, 34 iterations, 1717 items processed
+[01нояб.2025 15:05:02.756] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All systems refreshed with new data.
+[01нояб.2025 15:05:02.756] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: READY] Analysis complete. Mod is operational. ===
+[01нояб.2025 15:05:02.763] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Analysis engine initialization complete.
+[01нояб.2025 15:05:02.765] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase is complete. Skipping initial scan.
+[01нояб.2025 15:05:51.572] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ADMIN] CSV export initiated by Dev
+[01нояб.2025 15:05:51.588] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
+[01нояб.2025 15:05:51.593] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
+[01нояб.2025 15:05:51.594] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 📊 CSV EXPORT
+[01нояб.2025 15:05:51.595] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
+[01нояб.2025 15:05:51.595] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
+[01нояб.2025 15:05:51.595] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📋 Format: CSV (Comma-Separated Values)
+[01нояб.2025 15:05:51.596] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📊 Items: 853
+[01нояб.2025 15:05:51.596] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   🔄 Exporting...
+[01нояб.2025 15:05:51.596] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
+[01нояб.2025 15:05:51.596] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] [ADMIN] CSV export initiated by Dev
+[01нояб.2025 15:05:51.603] [Server thread/INFO] [Complexity Analyzer/]: Exported 1333 items to CSV
+[01нояб.2025 15:05:51.604] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ADMIN] ✓ CSV export completed
+[01нояб.2025 15:05:51.611] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   ✓ CSV export successful!
+[01нояб.2025 15:05:51.611] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
+[01нояб.2025 15:05:51.611] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📁 File: complexity_export_2025-11-01_15-05-51.csv
+[01нояб.2025 15:05:51.611] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   💡 Use spreadsheet software to open
+[01нояб.2025 15:05:51.612] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
+[01нояб.2025 15:05:51.612] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
+[01нояб.2025 15:05:51.612] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] [ADMIN] ✓ CSV export completed
+[01нояб.2025 15:10:21.112] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!
+[01нояб.2025 15:10:21.146] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Отключение
+[01нояб.2025 15:10:21.147] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev покинул игру
+[01нояб.2025 15:10:21.163] [Server thread/INFO] [net.minecraft.server.network.ServerCommonPacketListenerImpl/]: Stopping singleplayer server as player logged out
+[01нояб.2025 15:10:21.202] [Server thread/INFO] [Complexity Analyzer/]: Shutdown requested for AnalysisEngine.
+[01нояб.2025 15:10:21.202] [Server thread/INFO] [Complexity Analyzer/]: Shutting down GeoAnalysisManager...
+[01нояб.2025 15:10:21.203] [Server thread/INFO] [Complexity Analyzer/]: GeoAnalysisManager has been shut down.
+[01нояб.2025 15:10:21.203] [Server thread/INFO] [Complexity Analyzer/]: Shutting down analysis thread pool gracefully... Attempting to stabilize core.
+[01нояб.2025 15:10:21.203] [Server thread/INFO] [Complexity Analyzer/]: Graceful shutdown successful. Analysis core is stable.
+[01нояб.2025 15:10:21.203] [Server thread/INFO] [Complexity Analyzer/]: Analysis thread pool is now offline.
+[01нояб.2025 15:10:21.204] [Server thread/INFO] [Complexity Analyzer/]: AnalysisEngine state reset to IDLE.
+[01нояб.2025 15:10:21.204] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
+[01нояб.2025 15:10:21.205] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
+[01нояб.2025 15:10:21.205] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
+[01нояб.2025 15:10:21.310] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:overworld
+[01нояб.2025 15:10:21.506] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:the_nether
+[01нояб.2025 15:10:21.514] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[тетс]'/minecraft:the_end
+[01нояб.2025 15:10:21.529] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (тетс (1)): All chunks are saved
+[01нояб.2025 15:10:21.529] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[01нояб.2025 15:10:21.530] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[01нояб.2025 15:10:21.530] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved

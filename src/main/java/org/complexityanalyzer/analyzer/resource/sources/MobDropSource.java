@@ -45,7 +45,8 @@ public class MobDropSource implements IResourceSource {
 
     private static final Set<EntityType<?>> SPECIAL_KILL_ENTITIES = Set.of(
             EntityType.WITHER,
-            EntityType.ENDER_DRAGON
+            EntityType.ENDER_DRAGON,
+            EntityType.SHULKER
     );
 
     public MobDropSource(MobPropertyProvider mobProvider) {
@@ -267,8 +268,11 @@ public class MobDropSource implements IResourceSource {
         int count = 0;
 
         registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill"); count++;
+
         registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill"); count++;
         registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot"); count++;
+
+        registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob"); count++;
 
         final double MUSIC_DISC_YIELD = 0.083;
         registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_11, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;

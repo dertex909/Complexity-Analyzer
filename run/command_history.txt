@@ -1,8 +1,3 @@
-/complexity tps
-/complexity status
-/complexity tps
-/complexity status
-/complexity geoscan status
 /complexity analyze entity minecraft:bee
 /complexity analyze entity minecraft:blaze
 /complexity analyze entity minecraft:ender_dragon
@@ -47,4 +42,9 @@
 /complexity export all
 /complexity export csv
 /complexity tps
+/complexity export csv
+/complexity tps
+/complexity export csv
+/complexity analyze item minecraft:shulker_box
+/complexity analyze item minecraft:shulker_shell
 /complexity export csv

@@ -36,6 +36,7 @@ public class PassiveProductionSource implements IResourceSource {
         productionMap.put(Items.BEETROOT, new ProductionInfo(null, 4800.0, "Farming"));
         productionMap.put(Items.FROGSPAWN, new ProductionInfo(EntityType.FROG, 12000.0, "Breeding"));
         productionMap.put(Items.TURTLE_EGG, new ProductionInfo(EntityType.TURTLE, 12000.0, "Breeding"));
+        productionMap.put(Items.PITCHER_PLANT, new ProductionInfo(null, 24000.0, "Grows from Pod"));
     }
 
     @Override

@@ -1,10 +1,12 @@
 package org.complexityanalyzer.analyzer.resource.providers;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.Tiers;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.util.HashMap;
@@ -27,7 +29,7 @@ public class BlockPropertyProvider {
                 propertiesCache.put(block, props);
                 analyzed++;
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("Failed to analyze block {}: {}", block, e.getMessage());
+                ComplexityAnalyzer.LOGGER.warn("Failed to analyze block {}: {}", BuiltInRegistries.BLOCK.getKey(block), e.getMessage());
             }
         }
 
@@ -37,31 +39,34 @@ public class BlockPropertyProvider {
 
     private BlockProperties analyzeBlock(Block block) {
         float hardness = block.defaultDestroyTime();
-        Tier requiredTier = determineRequiredTier(block, hardness);
-        boolean canHarvestByHand = hardness >= 0 && requiredTier == Tiers.WOOD;
+        Tier requiredTier = determineRequiredTier(block);
+        boolean canHarvestByHand = hardness >= 0 && requiredTier == Tiers.WOOD && !block.defaultBlockState().requiresCorrectToolForDrops();
 
         float explosionResistance;
         try {
-            explosionResistance = block.defaultBlockState().getExplosionResistance(null, null, null);
-        } catch (NullPointerException e) {
+            // Null-safe way to get explosion resistance
+            explosionResistance = block.getExplosionResistance();
+        } catch (Exception e) {
             explosionResistance = 0.0f;
         }
 
         return new BlockProperties(hardness, requiredTier, canHarvestByHand, explosionResistance);
     }
 
-    private Tier determineRequiredTier(Block block, float hardness) {
-        String blockId = BuiltInRegistries.BLOCK.getKey(block).toString();
-        if (hardness < 0) return Tiers.NETHERITE;
-        if (blockId.contains("obsidian")) return Tiers.DIAMOND;
-        if (blockId.contains("ancient_debris") || blockId.contains("netherite")) return Tiers.DIAMOND;
-        if (blockId.contains("diamond_ore")) return Tiers.IRON;
-        if ((blockId.contains("gold_ore") || blockId.contains("redstone_ore"))) return Tiers.IRON;
-        if ((blockId.contains("iron_ore") || blockId.contains("copper_ore") || blockId.contains("lapis_ore"))) return Tiers.STONE;
-        if (blockId.contains("stone") || blockId.contains("deepslate")) return Tiers.WOOD;
-        if (hardness > 30.0f) return Tiers.DIAMOND;
-        if (hardness > 5.0f) return Tiers.IRON;
-        if (hardness > 2.0f) return Tiers.STONE;
+    // --- УЛУЧШЕННЫЙ МЕТОД ---
+    private Tier determineRequiredTier(Block block) {
+        BlockState state = block.defaultBlockState();
+        // Используем теги - это правильный способ
+        if (state.is(BlockTags.NEEDS_DIAMOND_TOOL)) {
+            return Tiers.DIAMOND;
+        }
+        if (state.is(BlockTags.NEEDS_IRON_TOOL)) {
+            return Tiers.IRON;
+        }
+        if (state.is(BlockTags.NEEDS_STONE_TOOL)) {
+            return Tiers.STONE;
+        }
+        // Все остальное можно сломать деревянным инструментом или рукой
         return Tiers.WOOD;
     }
 
@@ -89,31 +94,26 @@ public class BlockPropertyProvider {
         public double getHardnessMultiplier() {
             if (hardness < 0) return 10.0;
             if (hardness == 0) return 0.1;
-            if (hardness < 1.0f) return 0.5;
-            if (hardness < 3.0f) return 1.0;
-            if (hardness < 10.0f) return 1.5;
-            if (hardness < 30.0f) return 2.0;
-            return 3.0;
+            return 1.0 + Math.log1p(hardness); // Более плавная формула
         }
 
         public double getToolMultiplier() {
             if (requiredTier == Tiers.WOOD) return 1.0;
             if (requiredTier == Tiers.STONE) return 1.5;
             if (requiredTier == Tiers.IRON) return 2.5;
-            if (requiredTier == Tiers.GOLD) return 2.0;
             if (requiredTier == Tiers.DIAMOND) return 4.0;
             if (requiredTier == Tiers.NETHERITE) return 5.0;
-            return 1.0;
+            return 1.0; // По умолчанию для руки
         }
 
         public String getTierName() {
+            if (canHarvestByHand) return "HAND";
             if (requiredTier == Tiers.WOOD) return "WOOD";
             if (requiredTier == Tiers.STONE) return "STONE";
             if (requiredTier == Tiers.IRON) return "IRON";
-            if (requiredTier == Tiers.GOLD) return "GOLD";
             if (requiredTier == Tiers.DIAMOND) return "DIAMOND";
             if (requiredTier == Tiers.NETHERITE) return "NETHERITE";
-            return "HAND";
+            return "UNKNOWN";
         }
     }
 }

@@ -1,11 +1,16 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -133,14 +138,19 @@ public class MobDropSource implements IResourceSource {
         configs.add(new DamageSourceConfig("Lava", level.damageSources().lava(), true, player, null));
         configs.add(new DamageSourceConfig("Magic", level.damageSources().magic(), false, player, null));
         configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
+
         Creeper chargedCreeper = EntityType.CREEPER.create(level);
         if (chargedCreeper != null) {
             CompoundTag creeperNBT = new CompoundTag();
             creeperNBT.putBoolean("powered", true);
             chargedCreeper.readAdditionalSaveData(creeperNBT);
             chargedCreeper.setPos(0, 64, 0);
-            configs.add(new DamageSourceConfig("Charged Creeper", level.damageSources().explosion(chargedCreeper, player), false, player, chargedCreeper));
+
+            Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+            Holder<DamageType> explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);            DamageSource creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
+            configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false, null, chargedCreeper));
         }
+
         Skeleton skeleton = EntityType.SKELETON.create(level);
         if (skeleton != null) {
             Arrow arrow = EntityType.ARROW.create(level);
@@ -151,16 +161,6 @@ public class MobDropSource implements IResourceSource {
         }
         return configs;
     }
-
-    private static final Set<EntityType<?>> DEBUG_MOBS = Set.of(
-            EntityType.CREEPER,
-            EntityType.ZOMBIE,
-            EntityType.SKELETON,
-            EntityType.SHULKER,
-            EntityType.PIGLIN
-    );
-
-// MobDropSource.java
 
     private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable, DamageSourceConfig config, Map<Item, DropStatistics> combinedDrops) {
         for (int i = 0; i < SIMULATION_COUNT; i++) {
@@ -182,24 +182,9 @@ public class MobDropSource implements IResourceSource {
                 List<ItemStack> drops = lootTable.getRandomItems(lootParams);
                 if (config.isOnFire) entityInstance.clearFire();
 
-                // Сначала обрабатываем дроп для всех, как и раньше
                 for (ItemStack stack : drops) {
                     combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(config.methodName, stack.getCount());
                 }
-
-                // А теперь логируем ТОЛЬКО для интересующих нас мобов
-                if (DEBUG_MOBS.contains(entityInstance.getType())) {
-                    String entityName = entityInstance.getType().getDescription().getString();
-                    if (drops.isEmpty()) {
-                        ComplexityAnalyzer.LOGGER.info("[DEBUG-DROP] {} killed by '{}' dropped NOTHING", entityName, config.methodName);
-                    } else {
-                        for (ItemStack stack : drops) {
-                            ComplexityAnalyzer.LOGGER.info("[DEBUG-DROP] {} killed by '{}' dropped {}x {}",
-                                    entityName, config.methodName, stack.getCount(), stack.getItem().getDescription().getString());
-                        }
-                    }
-                }
-
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Exception during loot simulation for {} with method {}",
                         entityInstance.getType().getDescriptionId(), config.methodName, e);
@@ -284,7 +269,6 @@ public class MobDropSource implements IResourceSource {
         registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill"); count++;
         registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill"); count++;
         registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot"); count++;
-
 
         final double MUSIC_DISC_YIELD = 0.083;
         registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_11, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;

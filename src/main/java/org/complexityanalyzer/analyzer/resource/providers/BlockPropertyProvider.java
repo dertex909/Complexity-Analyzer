@@ -38,13 +38,14 @@ public class BlockPropertyProvider {
     }
 
     private BlockProperties analyzeBlock(Block block) {
+        BlockState state = block.defaultBlockState();
         float hardness = block.defaultDestroyTime();
         Tier requiredTier = determineRequiredTier(block);
-        boolean canHarvestByHand = hardness >= 0 && requiredTier == Tiers.WOOD && !block.defaultBlockState().requiresCorrectToolForDrops();
+        boolean canHarvestByHand = hardness >= 0 && requiredTier == Tiers.WOOD && !state.requiresCorrectToolForDrops();
 
         float explosionResistance;
         try {
-            explosionResistance = block.getExplosionResistance();
+            explosionResistance = state.getExplosionResistance(null, null, null);
         } catch (Exception e) {
             explosionResistance = 0.0f;
         }

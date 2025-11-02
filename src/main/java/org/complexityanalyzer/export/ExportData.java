@@ -29,7 +29,6 @@ public record ExportData(
             Map<String, Double> requiredItems
     ) {}
 
-    // --- НОВЫЕ ЗАПИСИ ДЛЯ МОБОВ ---
     public record MobData(
             String name,
             String id,

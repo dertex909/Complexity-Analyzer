@@ -136,8 +136,6 @@ public class ExportCommand {
         }
     }
 
-    // --- НОВЫЕ МЕТОДЫ ДЛЯ ЭКСПОРТА МОБОВ ---
-
     public static int executeAllMobs(CommandContext<CommandSourceStack> context, String format) {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
@@ -243,7 +241,6 @@ public class ExportCommand {
         }
     }
 
-    // --- ХЕЛПЕРЫ ДЛЯ ВЫВОДА В ЧАТ ---
 
     private static int sendEngineNotReady(OutputManager output, CommandSourceStack source, AnalysisEngine engine) {
         output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!").withStyle(ChatFormatting.RED));

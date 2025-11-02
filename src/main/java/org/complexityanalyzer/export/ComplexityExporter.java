@@ -190,27 +190,20 @@ public class ComplexityExporter {
         return exportFile;
     }
 
-    // --- ПРИВАТНЫЕ ХЕЛПЕРЫ ---
-
     private record CsvRow(String itemId, String displayName, double complexity, String category, boolean hasRecipe, int craftingDepth, int usedInRecipes, boolean isValid, boolean hasCycle) {}
 
     private static Path getExportDirectory(MinecraftServer server) throws IOException {
-        // Используем ваш правильный и элегантный подход.
-        // server.getWorldPath() возвращает Path, и мы просто продолжаем с ним работать.
         Path dir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
                 .resolve("data")
                 .resolve("complexityanalyzer")
                 .resolve("export");
 
-        // Нормализуем путь, чтобы он был "чистым"
         dir = dir.toAbsolutePath().normalize();
 
-        // Создаем директорию, если ее нет
         if (!Files.exists(dir)) {
             Files.createDirectories(dir);
         }
 
-        // Логирование для проверки
         ComplexityAnalyzer.LOGGER.info("[Exporter] Resolved export directory to absolute path: {}", dir);
 
         return dir;
@@ -249,8 +242,6 @@ public class ComplexityExporter {
     private static Path exportMobsAs(MinecraftServer server, AnalysisEngine engine, String format, String categoryFilter, int topN, String fileSuffix) throws IOException {
         List<MobData> mobDataList = new ArrayList<>();
         for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
-            // ❌ БЫЛО: if (!type.getCategory().isPersistent()) continue;
-            // ✅ СТАЛО:
             if (type.getCategory() == MobCategory.MISC) continue;
 
             if (categoryFilter != null && !type.getCategory().getName().equalsIgnoreCase(categoryFilter)) continue;
@@ -277,7 +268,7 @@ public class ComplexityExporter {
                             data.isBoss(), data.isMiniBoss(), drops.isEmpty() ? "None" : drops));
                 }
             }
-        } else { // JSON
+        } else {
             Files.writeString(exportPath, GSON.toJson(mobDataList));
         }
         return exportPath;

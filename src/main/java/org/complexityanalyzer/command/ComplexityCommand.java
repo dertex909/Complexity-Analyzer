@@ -163,11 +163,9 @@ public class ComplexityCommand {
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ComplexityCommand::executeReload))
 
-                        // --- НАЧАЛО НОВОГО БЛОКА EXPORT ---
                         .then(Commands.literal("export")
                                 .requires(source -> source.hasPermission(2))
 
-                                // === ГРУППА ДЛЯ ПРЕДМЕТОВ (ITEMS) ===
                                 .then(Commands.literal("items")
                                         .then(Commands.literal("all")
                                                 .executes(ExportCommand::executeAllItems)
@@ -195,7 +193,6 @@ public class ComplexityCommand {
                                         )
                                 )
 
-                                // === ГРУППА ДЛЯ МОБОВ (MOBS) ===
                                 .then(Commands.literal("mobs")
                                         .then(Commands.literal("all")
                                                 .executes(ctx -> ExportCommand.executeAllMobs(ctx, "json"))
@@ -228,7 +225,6 @@ public class ComplexityCommand {
                                         )
                                 )
                         )
-                        // --- КОНЕЦ НОВОГО БЛОКА EXPORT ---
 
                         .then(ChunkCommands.register())
         );

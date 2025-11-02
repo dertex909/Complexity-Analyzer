@@ -55,32 +55,20 @@ public class MobRarityCalculator {
         this.dimensionAnalyzer = dimensionAnalyzer;
     }
 
-    /**
-     * ПУБЛИЧНЫЙ МЕТОД: Проверяет, является ли моб боссом
-     */
     public boolean isBoss(EntityType<?> entityType) {
         BossLevel level = detectBossLevel(entityType);
         return level == BossLevel.BOSS;
     }
 
-    /**
-     * ПУБЛИЧНЫЙ МЕТОД: Проверяет, является ли моб мини-боссом
-     */
     public boolean isMiniBoss(EntityType<?> entityType) {
         BossLevel level = detectBossLevel(entityType);
         return level == BossLevel.MINI_BOSS;
     }
 
-    /**
-     * Вычисляет редкость моба с кэшированием
-     */
     public double calculateRarity(EntityType<?> entityType) {
         return rarityCache.computeIfAbsent(entityType, this::calculateRarityInternal);
     }
 
-    /**
-     * Внутренняя логика расчета редкости
-     */
     private double calculateRarityInternal(EntityType<?> entityType) {
         boolean isModded = isModdedEntity(entityType);
 

@@ -1,825 +1,192 @@
-[02нояб.2025 11:54:14.240] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
-[02нояб.2025 11:54:14.244] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
-[02нояб.2025 11:54:14.246] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
-[02нояб.2025 11:54:14.273] [main/DEBUG] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Found launch services [minecraft,forgeclient,forgedatauserdev,testharness,forgeserverdev,forgeserveruserdev,forgejunitdev,forgeclientdev,forgeclientuserdev,forgeserver,forgejunituserdev,forgedatadev]
-[02нояб.2025 11:54:14.297] [main/DEBUG] [cpw.mods.modlauncher.LaunchPluginHandler/MODLAUNCHER]: Found launch plugins: [mixin,slf4jfixer,runtime_enum_extender,accesstransformer,runtimedistcleaner]
-[02нояб.2025 11:54:14.310] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Discovering transformation services
-[02нояб.2025 11:54:14.316] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path GAMEDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run
-[02нояб.2025 11:54:14.317] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path MODSDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\mods
-[02нояб.2025 11:54:14.317] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path CONFIGDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config
-[02нояб.2025 11:54:14.317] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path FMLCONFIG is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\fml.toml
-[02нояб.2025 11:54:14.361] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Got mod coordinates complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\classes\\java\\main;complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\resources\\main from env
-[02нояб.2025 11:54:14.363] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Found supplied mod coordinates [{complexityanalyzer=[C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main, C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\resources\main]}]
-[02нояб.2025 11:54:14.366] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Found additional transformation services from discovery services: 
-[02нояб.2025 11:54:14.373] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
-[02нояб.2025 11:54:14.519] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
-[02нояб.2025 11:54:14.689] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
-[02нояб.2025 11:54:14.749] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Found transformer services : [mixin,fml]
-[02нояб.2025 11:54:14.749] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services loading
-[02нояб.2025 11:54:14.750] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loading service mixin
-[02нояб.2025 11:54:14.751] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loaded service mixin
-[02нояб.2025 11:54:14.751] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loading service fml
-[02нояб.2025 11:54:14.752] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML 4.0.41 loading
-[02нояб.2025 11:54:14.752] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found ModLauncher version : 11.0.5+main.901c6ea8
-[02нояб.2025 11:54:14.753] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found AccessTransformer version : 10.0.1+139da711
-[02нояб.2025 11:54:14.753] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found EventBus version : null
-[02нояб.2025 11:54:14.754] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: Found Runtime Dist Cleaner
-[02нояб.2025 11:54:14.754] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loaded service fml
-[02нояб.2025 11:54:14.755] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Configuring option handling for services
-[02нояб.2025 11:54:14.775] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Received command line version data  : VersionInfo[neoForgeVersion=21.1.209, fmlVersion=4.0.41, mcVersion=1.21.1, neoFormVersion=20240808.144430]
-[02нояб.2025 11:54:14.775] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services initializing
-[02нояб.2025 11:54:14.776] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformation service mixin
-[02нояб.2025 11:54:14.799] [main/DEBUG] [mixin/]: MixinService [ModLauncher] was successfully booted in cpw.mods.cl.ModuleClassLoader@6743e411
-[02нояб.2025 11:54:14.818] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
-[02нояб.2025 11:54:14.822] [main/DEBUG] [mixin/]: Initialising Mixin Platform Manager
-[02нояб.2025 11:54:14.822] [main/DEBUG] [mixin/]: Adding mixin platform agents for container ModLauncher Root Container(ModLauncher:4f56a0a2)
-[02нояб.2025 11:54:14.823] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for ModLauncher Root Container(ModLauncher:4f56a0a2)
-[02нояб.2025 11:54:14.824] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container ModLauncher Root Container(ModLauncher:4f56a0a2)
-[02нояб.2025 11:54:14.825] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for ModLauncher Root Container(ModLauncher:4f56a0a2)
-[02нояб.2025 11:54:14.825] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container ModLauncher Root Container(ModLauncher:4f56a0a2)
-[02нояб.2025 11:54:14.827] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformation service mixin
-[02нояб.2025 11:54:14.828] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformation service fml
-[02нояб.2025 11:54:14.828] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Setting up basic FML game directories
-[02нояб.2025 11:54:14.828] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path GAMEDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run
-[02нояб.2025 11:54:14.829] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path MODSDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\mods
-[02нояб.2025 11:54:14.829] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path CONFIGDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config
-[02нояб.2025 11:54:14.829] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path FMLCONFIG is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\fml.toml
-[02нояб.2025 11:54:14.830] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Loading configuration
-[02нояб.2025 11:54:14.834] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Preparing launch handler
-[02нояб.2025 11:54:14.834] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: Using forgeclientdev as launch service
-[02нояб.2025 11:54:14.837] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformation service fml
-[02нояб.2025 11:54:14.837] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services begin scanning
-[02нояб.2025 11:54:14.838] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Beginning scan trigger - transformation service mixin
-[02нояб.2025 11:54:14.839] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: End scan trigger - transformation service mixin
-[02нояб.2025 11:54:14.839] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Beginning scan trigger - transformation service fml
-[02нояб.2025 11:54:14.839] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Initiating mod scan
-[02нояб.2025 11:54:14.840] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Got mod coordinates complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\classes\\java\\main;complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\resources\\main from env
-[02нояб.2025 11:54:14.840] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Found supplied mod coordinates [{complexityanalyzer=[C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main, C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\resources\main]}]
-[02нояб.2025 11:54:14.842] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonDevLaunchHandler/]: Launching with NeoForge from C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
-[02нояб.2025 11:54:14.861] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 4 implementations of IModFileCandidateLocator:
-[02нояб.2025 11:54:14.862] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - [built-in] net.neoforged.fml.loading.moddiscovery.locators.NeoForgeDevProvider from loader-4.0.41.jar
-[02нояб.2025 11:54:14.862] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.ModsFolderLocator from loader-4.0.41.jar
-[02нояб.2025 11:54:14.863] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.MavenDirectoryLocator from loader-4.0.41.jar
-[02нояб.2025 11:54:14.863] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	   -1000 - [built-in] net.neoforged.fml.loading.moddiscovery.locators.UserdevLocator from loader-4.0.41.jar
-[02нояб.2025 11:54:14.866] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 2 implementations of IModFileReader:
-[02нояб.2025 11:54:14.866] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader from loader-4.0.41.jar
-[02нояб.2025 11:54:14.866] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	   -1000 - net.neoforged.fml.loading.moddiscovery.readers.NestedLibraryModReader from loader-4.0.41.jar
-[02нояб.2025 11:54:14.869] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 1 implementations of IDependencyLocator:
-[02нояб.2025 11:54:14.869] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator from loader-4.0.41.jar
-[02нояб.2025 11:54:14.975] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {minecraft} mods - versions {1.21.1}
-[02нояб.2025 11:54:14.985] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
-[02нояб.2025 11:54:15.004] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {neoforge} mods - versions {21.1.209}
-[02нояб.2025 11:54:15.010] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModListHandler/CORE]: Found mod coordinates from lists: []
-[02нояб.2025 11:54:15.013] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main
-[02нояб.2025 11:54:15.018] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file main with {complexityanalyzer} mods - versions {1.0.0}
-[02нояб.2025 11:54:15.030] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
-[02нояб.2025 11:54:15.032] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {neoforge} mods - versions {21.1.209}
-[02нояб.2025 11:54:15.052] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged.fancymodloader\earlydisplay\4.0.41\53dfbd387ed1b88c7d144bdb6551b7f57d5da6d7\earlydisplay-4.0.41.jar because it was already located earlier
-[02нояб.2025 11:54:15.053] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged.fancymodloader\loader\4.0.41\3aebc81b9347fa87bb629ffaed20276f2a4c944e\loader-4.0.41.jar because it was already located earlier
-[02нояб.2025 11:54:15.053] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged.accesstransformers\at-modlauncher\10.0.1\5aba50202aceead086bc09fbc2751c9f05cb4890\at-modlauncher-10.0.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.053] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\accesstransformers\10.0.1\fd83b5725f76eae9115e9355fa1c456a6a441400\accesstransformers-10.0.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.053] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\bus\8.0.5\5b2d33285ab5d1554e9798ad98c40d6ea3868bd5\bus-8.0.5.jar because it was already located earlier
-[02нояб.2025 11:54:15.053] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\coremods\7.0.3\9147e6f638b4272b3bd5fc8f92ad37802512c6c\coremods-7.0.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.053] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\cpw.mods\modlauncher\11.0.5\b8f0d49294f733fdb6173931b263553e943dc950\modlauncher-11.0.5.jar because it was already located earlier
-[02нояб.2025 11:54:15.054] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\mergetool\2.0.0\52fe1949be64e3303aabaaa21e315f551db9c9f4\mergetool-2.0.0-api.jar because it was already located earlier
-[02нояб.2025 11:54:15.054] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.electronwill.night-config\toml\3.8.3\90b2fd6efcb4a7d5b9810cf78f9d824994d717f2\toml-3.8.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.054] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.electronwill.night-config\core\3.8.3\b442a95f09e349927f5a945ecb594455870fcf4f\core-3.8.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.054] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\JarJarSelector\0.4.1\fb3cc7a58af22ad2880adb98af6d518128c47dae\JarJarSelector-0.4.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.054] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\JarJarMetadata\0.4.1\f8da03683dc81694556dc3e177c5e3bb77ae6fcb\JarJarMetadata-0.4.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.055] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.maven\maven-artifact\3.8.5\4433f50c07debefaed0553bd0068f4f48d449313\maven-artifact-3.8.5.jar because it was already located earlier
-[02нояб.2025 11:54:15.055] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.jodah\typetools\0.6.3\a01aaa6ddaea9ec07ec4f209487b7a46a526283a\typetools-0.6.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.055] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.minecrell\terminalconsoleappender\1.3.0\b562e9bb61235c9520e26282cdee71f8f802d1fc\terminalconsoleappender-1.3.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.055] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.15.2+mixin.0.8.7\2af2f021d8e02a0220dc27a7a72b4666d66d44ca\sponge-mixin-0.15.2+mixin.0.8.7.jar because it was already located earlier
-[02нояб.2025 11:54:15.055] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.openjdk.nashorn\nashorn-core\15.4\f67f5ffaa5f5130cf6fb9b133da00c7df3b532a5\nashorn-core-15.4.jar because it was already located earlier
-[02нояб.2025 11:54:15.055] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.14.0\1ed471194b02f2c6cb734a0cd6f6f107c673afae\commons-lang3-3.14.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.15.1\f11560da189ab563a5c8e351941415430e9304ea\commons-io-2.15.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.2.7\24cb95ffb0e3433fd6e844c04e68009e504ca1c0\logging-1.2.7.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.22.1\d7e6693c2606cb7e7335047d7bb96dec52db5665\log4j-slf4j2-impl-2.22.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.22.1\7183a25510a02ad00cc6a95d3b3d2a7d3c5a8dc4\log4j-core-2.22.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.22.1\bea6fede6328fabafd7e68363161a7ea6605abd1\log4j-api-2.22.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.056] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.9\7cf2726fdcfbc8610f9a71fb3ed639871f315340\slf4j-api-2.0.9.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.antlr\antlr4-runtime\4.13.1\17125bae1d965624e265ef49552f6465a2bfa307\antlr4-runtime-4.13.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.minecraftforge\srgutils\0.4.15\ca408b131759478f164e010fae0d73997e125fb5\srgutils-0.4.15.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.codehaus.plexus\plexus-utils\3.3.0\cf43b5391de623b36fe066a21127baef82c64022\plexus-utils-3.3.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.jline\jline-reader\3.20.0\8f15415b022a25b473e8e16c28ae913186ffb9c4\jline-reader-3.20.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.057] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.machinezoo.noexception\noexception\1.7.1\b65330c98e38a1f915fa54a6e5eca496505e3f0a\noexception-1.7.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.10\b1d8ab82d11d92fd639b56d639f8f46f739dd5fa\oshi-core-6.4.10.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.54\de8bc95660e1b2fe8793fd427a7a10dcec5b3ea7\authlib-6.0.54.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.3.10\d15b53a14cf20fdcaa98f731af5dda654452c010\brigadier-1.3.10.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\8.0.16\67d4de6d7f95d89bcf5862995fb854ebaec02a34\datafixerupper-8.0.16.jar because it was already located earlier
-[02нояб.2025 11:54:15.058] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.059] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.14.0\28934d48aed814f11e4c584da55c49fa7032b31b\jna-platform-5.14.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.14.0\67bf3eaea4f0718cb376a181a629e5f88fa1c9dd\jna-5.14.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.060] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.26.0\659feffdd12280201c8aacb8f7be94f9a883c824\commons-compress-1.26.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.061] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar because it was already located earlier
-[02нояб.2025 11:54:15.061] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar because it was already located earlier
-[02нояб.2025 11:54:15.061] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.jcraft\jorbis\0.0.17\8872d22b293e8f5d7d56ff92be966e6dc28ebdc6\jorbis-0.0.17.jar because it was already located earlier
-[02нояб.2025 11:54:15.061] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar because it was already located earlier
-[02нояб.2025 11:54:15.061] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-freetype\3.3.3\a0db6c84a8becc8ca05f9dbfa985edc348a824c7\lwjgl-freetype-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.066] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-freetype\3.3.3\15a8c1de7f51d07a92eae7ce1222557073a0c0c3\lwjgl-freetype-3.3.3-natives-windows-x86.jar because it was already located earlier
-[02нояб.2025 11:54:15.066] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.3\efa1eb78c5ccd840e9f329717109b5e892d72f8e\lwjgl-glfw-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.070] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.3\32334f3fd5270a59bad9939a93115acb6de36dcf\lwjgl-glfw-3.3.3-natives-windows-x86.jar because it was already located earlier
-[02нояб.2025 11:54:15.071] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.3\b543467b7ff3c6920539a88ee602d34098628be5\lwjgl-jemalloc-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.071] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.3\426222fc027602a5f21b9c0fe79cde6a4c7a011f\lwjgl-jemalloc-3.3.3-natives-windows.jar because it was already located earlier
-[02нояб.2025 11:54:15.075] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.3\daada81ceb5fc0c291fbfdd4433cb8d9423577f2\lwjgl-openal-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.079] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.3\87b8d5050e3adb46bb58fe1cb2669a4a48fce10d\lwjgl-openal-3.3.3-natives-windows-x86.jar because it was already located earlier
-[02нояб.2025 11:54:15.079] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.3\2f6b0147078396a58979125a4c947664e98293a\lwjgl-opengl-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.081] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.3\65e956d3735a1abdc82eff4baec1b61174697d4b\lwjgl-opengl-3.3.3-natives-windows-arm64.jar because it was already located earlier
-[02нояб.2025 11:54:15.084] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.3\25dd6161988d7e65f71d5065c99902402ee32746\lwjgl-stb-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.084] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.3\1d9facdf6541de114b0f963be33505b7679c78cb\lwjgl-stb-3.3.3-natives-windows.jar because it was already located earlier
-[02нояб.2025 11:54:15.088] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.3\82d755ca94b102e9ca77283b9e2dc46d1b15fbe5\lwjgl-tinyfd-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.089] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.3\a6697981b0449a5087c1d546fc08b4f73e8f98c9\lwjgl-tinyfd-3.3.3-natives-windows.jar because it was already located earlier
-[02нояб.2025 11:54:15.093] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.3\29589b5f87ed335a6c7e7ee6a5775f81f97ecb84\lwjgl-3.3.3.jar because it was already located earlier
-[02нояб.2025 11:54:15.096] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.3\9e670718e050aeaeea0c2d5b907cffb142f2e58f\lwjgl-3.3.3-natives-windows-x86.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lz4\lz4-java\1.8.0\4b986a99445e49ea5fbf5d149c4b63f6ed6c6780\lz4-java-1.8.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.jline\jline-terminal\3.20.0\d0ddcc708ddf527a3454c941b7b9225cc83a15ff\jline-terminal-3.20.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.guava\listenablefuture\9999.0-empty-to-avoid-conflict-with-guava\b421526c5f297295adef1c886e5246c39d4ac629\listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.code.findbugs\jsr305\3.0.2\25ea2e8b0c338a877313bd4672d3fe056ea78f0d\jsr305-3.0.2.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.checkerframework\checker-qual\3.33.0\de2b60b62da487644fc11f734e73c8b0b431238f\checker-qual-3.33.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.errorprone\error_prone_annotations\2.18.0\89b684257096f548fa39a7df9fdaa409d4d4df91\error_prone_annotations-2.18.0.jar because it was already located earlier
-[02нояб.2025 11:54:15.097] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.j2objc\j2objc-annotations\2.8\c85270e307e7b822f1086b93689124b89768e273\j2objc-annotations-2.8.jar because it was already located earlier
-[02нояб.2025 11:54:15.099] [main/DEBUG] [net.neoforged.fml.loading.UniqueModListBuilder/]: Found 2 mods for first modid neoforge, selecting most recent based on version data
-[02нояб.2025 11:54:15.100] [main/DEBUG] [net.neoforged.fml.loading.UniqueModListBuilder/]: Selected file neoforge-21.1.209.jar for modid neoforge with version 21.1.209
-[02нояб.2025 11:54:15.108] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: NVIDIA GeForce RTX 4070/PCIe/SSE2 GL version 4.6.0 NVIDIA 581.29, NVIDIA Corporation
-[02нояб.2025 11:54:15.240] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
-[02нояб.2025 11:54:15.242] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
+[02нояб.2025 13:36:50.936] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.209, --assetIndex, 17, --assetsDir, C:\\Users\\xXx\\.gradle\\caches\\neoformruntime\\assets, --gameDir, ., --fml.fmlVersion, 4.0.41, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.209, --fml.neoFormVersion, 20240808.144430]
+[02нояб.2025 13:36:50.940] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.8+9-LTS
+[02нояб.2025 13:36:50.941] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.8 by Eclipse Adoptium; OS Windows 11 arch amd64 version 10.0
+[02нояб.2025 13:36:50.966] [main/DEBUG] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Found launch services [minecraft,forgeclient,forgedatauserdev,testharness,forgeserverdev,forgeserveruserdev,forgejunitdev,forgeclientdev,forgeclientuserdev,forgeserver,forgejunituserdev,forgedatadev]
+[02нояб.2025 13:36:50.990] [main/DEBUG] [cpw.mods.modlauncher.LaunchPluginHandler/MODLAUNCHER]: Found launch plugins: [mixin,slf4jfixer,runtime_enum_extender,accesstransformer,runtimedistcleaner]
+[02нояб.2025 13:36:51.002] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Discovering transformation services
+[02нояб.2025 13:36:51.008] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path GAMEDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run
+[02нояб.2025 13:36:51.008] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path MODSDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\mods
+[02нояб.2025 13:36:51.009] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path CONFIGDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config
+[02нояб.2025 13:36:51.009] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path FMLCONFIG is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\fml.toml
+[02нояб.2025 13:36:51.059] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Got mod coordinates complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\classes\\java\\main;complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\resources\\main from env
+[02нояб.2025 13:36:51.061] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Found supplied mod coordinates [{complexityanalyzer=[C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main, C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\resources\main]}]
+[02нояб.2025 13:36:51.065] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Found additional transformation services from discovery services: 
+[02нояб.2025 13:36:51.073] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[02нояб.2025 13:36:51.212] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[02нояб.2025 13:36:51.397] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.6 got version 4.6
+[02нояб.2025 13:36:51.473] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Found transformer services : [mixin,fml]
+[02нояб.2025 13:36:51.474] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services loading
+[02нояб.2025 13:36:51.474] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loading service mixin
+[02нояб.2025 13:36:51.475] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loaded service mixin
+[02нояб.2025 13:36:51.475] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loading service fml
+[02нояб.2025 13:36:51.476] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML 4.0.41 loading
+[02нояб.2025 13:36:51.476] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found ModLauncher version : 11.0.5+main.901c6ea8
+[02нояб.2025 13:36:51.477] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found AccessTransformer version : 10.0.1+139da711
+[02нояб.2025 13:36:51.477] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: FML found EventBus version : null
+[02нояб.2025 13:36:51.478] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: Found Runtime Dist Cleaner
+[02нояб.2025 13:36:51.478] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Loaded service fml
+[02нояб.2025 13:36:51.479] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Configuring option handling for services
+[02нояб.2025 13:36:51.500] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Received command line version data  : VersionInfo[neoForgeVersion=21.1.209, fmlVersion=4.0.41, mcVersion=1.21.1, neoFormVersion=20240808.144430]
+[02нояб.2025 13:36:51.501] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services initializing
+[02нояб.2025 13:36:51.502] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformation service mixin
+[02нояб.2025 13:36:51.529] [main/DEBUG] [mixin/]: MixinService [ModLauncher] was successfully booted in cpw.mods.cl.ModuleClassLoader@229f66ed
+[02нояб.2025 13:36:51.541] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/C:/Users/xXx/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23138!/ Service=ModLauncher Env=CLIENT
+[02нояб.2025 13:36:51.543] [main/DEBUG] [mixin/]: Initialising Mixin Platform Manager
+[02нояб.2025 13:36:51.543] [main/DEBUG] [mixin/]: Adding mixin platform agents for container ModLauncher Root Container(ModLauncher:4f56a0a2)
+[02нояб.2025 13:36:51.545] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for ModLauncher Root Container(ModLauncher:4f56a0a2)
+[02нояб.2025 13:36:51.545] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container ModLauncher Root Container(ModLauncher:4f56a0a2)
+[02нояб.2025 13:36:51.545] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for ModLauncher Root Container(ModLauncher:4f56a0a2)
+[02нояб.2025 13:36:51.546] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container ModLauncher Root Container(ModLauncher:4f56a0a2)
+[02нояб.2025 13:36:51.547] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformation service mixin
+[02нояб.2025 13:36:51.548] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformation service fml
+[02нояб.2025 13:36:51.548] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Setting up basic FML game directories
+[02нояб.2025 13:36:51.548] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path GAMEDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run
+[02нояб.2025 13:36:51.548] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path MODSDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\mods
+[02нояб.2025 13:36:51.549] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path CONFIGDIR is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config
+[02нояб.2025 13:36:51.549] [main/DEBUG] [net.neoforged.fml.loading.FMLPaths/CORE]: Path FMLCONFIG is C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\fml.toml
+[02нояб.2025 13:36:51.549] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Loading configuration
+[02нояб.2025 13:36:51.553] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Preparing launch handler
+[02нояб.2025 13:36:51.554] [main/DEBUG] [net.neoforged.fml.loading.FMLLoader/CORE]: Using forgeclientdev as launch service
+[02нояб.2025 13:36:51.556] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformation service fml
+[02нояб.2025 13:36:51.556] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services begin scanning
+[02нояб.2025 13:36:51.556] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Beginning scan trigger - transformation service mixin
+[02нояб.2025 13:36:51.557] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: End scan trigger - transformation service mixin
+[02нояб.2025 13:36:51.557] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Beginning scan trigger - transformation service fml
+[02нояб.2025 13:36:51.557] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Initiating mod scan
+[02нояб.2025 13:36:51.557] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Got mod coordinates complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\classes\\java\\main;complexityanalyzer%%C:\\Users\\xXx\\Desktop\\Mods_Sources\\ComplexityAnalyzer\\build\\resources\\main from env
+[02нояб.2025 13:36:51.558] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonLaunchHandler/CORE]: Found supplied mod coordinates [{complexityanalyzer=[C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main, C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\resources\main]}]
+[02нояб.2025 13:36:51.559] [main/DEBUG] [net.neoforged.fml.loading.targets.CommonDevLaunchHandler/]: Launching with NeoForge from C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
+[02нояб.2025 13:36:51.575] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 4 implementations of IModFileCandidateLocator:
+[02нояб.2025 13:36:51.576] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - [built-in] net.neoforged.fml.loading.moddiscovery.locators.NeoForgeDevProvider from loader-4.0.41.jar
+[02нояб.2025 13:36:51.576] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.ModsFolderLocator from loader-4.0.41.jar
+[02нояб.2025 13:36:51.576] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.MavenDirectoryLocator from loader-4.0.41.jar
+[02нояб.2025 13:36:51.577] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	   -1000 - [built-in] net.neoforged.fml.loading.moddiscovery.locators.UserdevLocator from loader-4.0.41.jar
+[02нояб.2025 13:36:51.579] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 2 implementations of IModFileReader:
+[02нояб.2025 13:36:51.579] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader from loader-4.0.41.jar
+[02нояб.2025 13:36:51.579] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	   -1000 - net.neoforged.fml.loading.moddiscovery.readers.NestedLibraryModReader from loader-4.0.41.jar
+[02нояб.2025 13:36:51.581] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 1 implementations of IDependencyLocator:
+[02нояб.2025 13:36:51.582] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	       0 - net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator from loader-4.0.41.jar
+[02нояб.2025 13:36:51.684] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {minecraft} mods - versions {1.21.1}
+[02нояб.2025 13:36:51.692] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
+[02нояб.2025 13:36:51.712] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {neoforge} mods - versions {21.1.209}
+[02нояб.2025 13:36:51.716] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModListHandler/CORE]: Found mod coordinates from lists: []
+[02нояб.2025 13:36:51.718] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main
+[02нояб.2025 13:36:51.724] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file main with {complexityanalyzer} mods - versions {1.0.0}
+[02нояб.2025 13:36:51.733] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
+[02нояб.2025 13:36:51.734] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {neoforge} mods - versions {21.1.209}
+[02нояб.2025 13:36:51.750] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged.fancymodloader\earlydisplay\4.0.41\53dfbd387ed1b88c7d144bdb6551b7f57d5da6d7\earlydisplay-4.0.41.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged.fancymodloader\loader\4.0.41\3aebc81b9347fa87bb629ffaed20276f2a4c944e\loader-4.0.41.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged.accesstransformers\at-modlauncher\10.0.1\5aba50202aceead086bc09fbc2751c9f05cb4890\at-modlauncher-10.0.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\accesstransformers\10.0.1\fd83b5725f76eae9115e9355fa1c456a6a441400\accesstransformers-10.0.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\bus\8.0.5\5b2d33285ab5d1554e9798ad98c40d6ea3868bd5\bus-8.0.5.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\coremods\7.0.3\9147e6f638b4272b3bd5fc8f92ad37802512c6c\coremods-7.0.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\cpw.mods\modlauncher\11.0.5\b8f0d49294f733fdb6173931b263553e943dc950\modlauncher-11.0.5.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\mergetool\2.0.0\52fe1949be64e3303aabaaa21e315f551db9c9f4\mergetool-2.0.0-api.jar because it was already located earlier
+[02нояб.2025 13:36:51.751] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.electronwill.night-config\toml\3.8.3\90b2fd6efcb4a7d5b9810cf78f9d824994d717f2\toml-3.8.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.752] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.electronwill.night-config\core\3.8.3\b442a95f09e349927f5a945ecb594455870fcf4f\core-3.8.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.752] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\JarJarSelector\0.4.1\fb3cc7a58af22ad2880adb98af6d518128c47dae\JarJarSelector-0.4.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.752] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.neoforged\JarJarMetadata\0.4.1\f8da03683dc81694556dc3e177c5e3bb77ae6fcb\JarJarMetadata-0.4.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.753] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.maven\maven-artifact\3.8.5\4433f50c07debefaed0553bd0068f4f48d449313\maven-artifact-3.8.5.jar because it was already located earlier
+[02нояб.2025 13:36:51.753] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.jodah\typetools\0.6.3\a01aaa6ddaea9ec07ec4f209487b7a46a526283a\typetools-0.6.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.753] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.minecrell\terminalconsoleappender\1.3.0\b562e9bb61235c9520e26282cdee71f8f802d1fc\terminalconsoleappender-1.3.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.753] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.15.2+mixin.0.8.7\2af2f021d8e02a0220dc27a7a72b4666d66d44ca\sponge-mixin-0.15.2+mixin.0.8.7.jar because it was already located earlier
+[02нояб.2025 13:36:51.753] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.openjdk.nashorn\nashorn-core\15.4\f67f5ffaa5f5130cf6fb9b133da00c7df3b532a5\nashorn-core-15.4.jar because it was already located earlier
+[02нояб.2025 13:36:51.753] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.14.0\1ed471194b02f2c6cb734a0cd6f6f107c673afae\commons-lang3-3.14.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.754] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar because it was already located earlier
+[02нояб.2025 13:36:51.754] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.15.1\f11560da189ab563a5c8e351941415430e9304ea\commons-io-2.15.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.754] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.2.7\24cb95ffb0e3433fd6e844c04e68009e504ca1c0\logging-1.2.7.jar because it was already located earlier
+[02нояб.2025 13:36:51.754] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.22.1\d7e6693c2606cb7e7335047d7bb96dec52db5665\log4j-slf4j2-impl-2.22.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.22.1\7183a25510a02ad00cc6a95d3b3d2a7d3c5a8dc4\log4j-core-2.22.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.22.1\bea6fede6328fabafd7e68363161a7ea6605abd1\log4j-api-2.22.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.9\7cf2726fdcfbc8610f9a71fb3ed639871f315340\slf4j-api-2.0.9.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.antlr\antlr4-runtime\4.13.1\17125bae1d965624e265ef49552f6465a2bfa307\antlr4-runtime-4.13.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.755] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.minecraftforge\srgutils\0.4.15\ca408b131759478f164e010fae0d73997e125fb5\srgutils-0.4.15.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.codehaus.plexus\plexus-utils\3.3.0\cf43b5391de623b36fe066a21127baef82c64022\plexus-utils-3.3.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.jline\jline-reader\3.20.0\8f15415b022a25b473e8e16c28ae913186ffb9c4\jline-reader-3.20.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.machinezoo.noexception\noexception\1.7.1\b65330c98e38a1f915fa54a6e5eca496505e3f0a\noexception-1.7.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.10\b1d8ab82d11d92fd639b56d639f8f46f739dd5fa\oshi-core-6.4.10.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar because it was already located earlier
+[02нояб.2025 13:36:51.756] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.54\de8bc95660e1b2fe8793fd427a7a10dcec5b3ea7\authlib-6.0.54.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.3.10\d15b53a14cf20fdcaa98f731af5dda654452c010\brigadier-1.3.10.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\8.0.16\67d4de6d7f95d89bcf5862995fb854ebaec02a34\datafixerupper-8.0.16.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.757] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.758] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.14.0\28934d48aed814f11e4c584da55c49fa7032b31b\jna-platform-5.14.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.14.0\67bf3eaea4f0718cb376a181a629e5f88fa1c9dd\jna-5.14.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.26.0\659feffdd12280201c8aacb8f7be94f9a883c824\commons-compress-1.26.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar because it was already located earlier
+[02нояб.2025 13:36:51.759] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.jcraft\jorbis\0.0.17\8872d22b293e8f5d7d56ff92be966e6dc28ebdc6\jorbis-0.0.17.jar because it was already located earlier
+[02нояб.2025 13:36:51.760] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar because it was already located earlier
+[02нояб.2025 13:36:51.760] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-freetype\3.3.3\a0db6c84a8becc8ca05f9dbfa985edc348a824c7\lwjgl-freetype-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.763] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-freetype\3.3.3\15a8c1de7f51d07a92eae7ce1222557073a0c0c3\lwjgl-freetype-3.3.3-natives-windows-x86.jar because it was already located earlier
+[02нояб.2025 13:36:51.763] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.3\efa1eb78c5ccd840e9f329717109b5e892d72f8e\lwjgl-glfw-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.766] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.3\32334f3fd5270a59bad9939a93115acb6de36dcf\lwjgl-glfw-3.3.3-natives-windows-x86.jar because it was already located earlier
+[02нояб.2025 13:36:51.766] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.3\b543467b7ff3c6920539a88ee602d34098628be5\lwjgl-jemalloc-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.766] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.3\426222fc027602a5f21b9c0fe79cde6a4c7a011f\lwjgl-jemalloc-3.3.3-natives-windows.jar because it was already located earlier
+[02нояб.2025 13:36:51.771] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.3\daada81ceb5fc0c291fbfdd4433cb8d9423577f2\lwjgl-openal-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.776] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.3\87b8d5050e3adb46bb58fe1cb2669a4a48fce10d\lwjgl-openal-3.3.3-natives-windows-x86.jar because it was already located earlier
+[02нояб.2025 13:36:51.776] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.3\2f6b0147078396a58979125a4c947664e98293a\lwjgl-opengl-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.776] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: NVIDIA GeForce RTX 4070/PCIe/SSE2 GL version 4.6.0 NVIDIA 581.29, NVIDIA Corporation
+[02нояб.2025 13:36:51.779] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.3\65e956d3735a1abdc82eff4baec1b61174697d4b\lwjgl-opengl-3.3.3-natives-windows-arm64.jar because it was already located earlier
+[02нояб.2025 13:36:51.781] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.3\25dd6161988d7e65f71d5065c99902402ee32746\lwjgl-stb-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.781] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.3\1d9facdf6541de114b0f963be33505b7679c78cb\lwjgl-stb-3.3.3-natives-windows.jar because it was already located earlier
+[02нояб.2025 13:36:51.785] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.3\82d755ca94b102e9ca77283b9e2dc46d1b15fbe5\lwjgl-tinyfd-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.786] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.3\a6697981b0449a5087c1d546fc08b4f73e8f98c9\lwjgl-tinyfd-3.3.3-natives-windows.jar because it was already located earlier
+[02нояб.2025 13:36:51.790] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.3\29589b5f87ed335a6c7e7ee6a5775f81f97ecb84\lwjgl-3.3.3.jar because it was already located earlier
+[02нояб.2025 13:36:51.794] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.3\9e670718e050aeaeea0c2d5b907cffb142f2e58f\lwjgl-3.3.3-natives-windows-x86.jar because it was already located earlier
+[02нояб.2025 13:36:51.794] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.lz4\lz4-java\1.8.0\4b986a99445e49ea5fbf5d149c4b63f6ed6c6780\lz4-java-1.8.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.795] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.jline\jline-terminal\3.20.0\d0ddcc708ddf527a3454c941b7b9225cc83a15ff\jline-terminal-3.20.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.795] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.guava\listenablefuture\9999.0-empty-to-avoid-conflict-with-guava\b421526c5f297295adef1c886e5246c39d4ac629\listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar because it was already located earlier
+[02нояб.2025 13:36:51.795] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.code.findbugs\jsr305\3.0.2\25ea2e8b0c338a877313bd4672d3fe056ea78f0d\jsr305-3.0.2.jar because it was already located earlier
+[02нояб.2025 13:36:51.795] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\org.checkerframework\checker-qual\3.33.0\de2b60b62da487644fc11f734e73c8b0b431238f\checker-qual-3.33.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.795] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.errorprone\error_prone_annotations\2.18.0\89b684257096f548fa39a7df9fdaa409d4d4df91\error_prone_annotations-2.18.0.jar because it was already located earlier
+[02нояб.2025 13:36:51.795] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: Skipping C:\Users\xXx\.gradle\caches\modules-2\files-2.1\com.google.j2objc\j2objc-annotations\2.8\c85270e307e7b822f1086b93689124b89768e273\j2objc-annotations-2.8.jar because it was already located earlier
+[02нояб.2025 13:36:51.798] [main/DEBUG] [net.neoforged.fml.loading.UniqueModListBuilder/]: Found 2 mods for first modid neoforge, selecting most recent based on version data
+[02нояб.2025 13:36:51.799] [main/DEBUG] [net.neoforged.fml.loading.UniqueModListBuilder/]: Selected file neoforge-21.1.209.jar for modid neoforge with version 21.1.209
+[02нояб.2025 13:36:51.943] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[02нояб.2025 13:36:51.945] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
      Mod List:
 		Name Version (Mod Id)
 
 		Complexity Analyzer 1.0.0 (complexityanalyzer)
 		Minecraft 1.21.1 (minecraft)
 		NeoForge 21.1.209 (neoforge)
-[02нояб.2025 11:54:15.243] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {minecraft} mods - versions {1.21.1}
-[02нояб.2025 11:54:15.246] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar with languages [LanguageSpec[languageName=minecraft, acceptedVersions=1]]
-[02нояб.2025 11:54:15.248] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main
-[02нояб.2025 11:54:15.250] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file main with {complexityanalyzer} mods - versions {1.0.0}
-[02нояб.2025 11:54:15.250] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main with languages [LanguageSpec[languageName=javafml, acceptedVersions=[4,)]]
-[02нояб.2025 11:54:15.250] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
-[02нояб.2025 11:54:15.252] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {neoforge} mods - versions {21.1.209}
-[02нояб.2025 11:54:15.252] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar with languages [LanguageSpec[languageName=javafml, acceptedVersions=[3,]]]
-[02нояб.2025 11:54:15.254] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Found mixin config MixinConfig[config=neoforge.mixins.json, requiredMods=[]]
-[02нояб.2025 11:54:15.254] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file  with languages []
-[02нояб.2025 11:54:15.255] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: End scan trigger - transformation service fml
-[02нояб.2025 11:54:15.267] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 3 implementations of IModLanguageLoader:
-[02нояб.2025 11:54:15.268] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.fml.javafmlmod.FMLJavaModLanguageProvider from loader-4.0.41.jar
-[02нояб.2025 11:54:15.268] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.fml.lowcodemod.LowCodeModLanguageProvider from loader-4.0.41.jar
-[02нояб.2025 11:54:15.268] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.fml.mclanguageprovider.MinecraftModLanguageProvider from loader-4.0.41.jar
-[02нояб.2025 11:54:15.269] [main/DEBUG] [net.neoforged.fml.loading.LanguageProviderLoader/CORE]: Found language provider javafml, version 4.0.41
-[02нояб.2025 11:54:15.270] [main/DEBUG] [net.neoforged.fml.loading.LanguageProviderLoader/CORE]: Found language provider lowcodefml, version 4.0.41
-[02нояб.2025 11:54:15.270] [main/DEBUG] [net.neoforged.fml.loading.LanguageProviderLoader/CORE]: Found language provider minecraft, version 4.0.41
-[02нояб.2025 11:54:15.278] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/]: Configured system mods: [minecraft, neoforge]
-[02нояб.2025 11:54:15.279] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/]: Found system mod: minecraft
-[02нояб.2025 11:54:15.279] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/]: Found system mod: neoforge
-[02нояб.2025 11:54:15.283] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/LOADING]: Found 2 mod requirements (2 mandatory, 0 optional)
-[02нояб.2025 11:54:15.284] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/LOADING]: Found 0 mod requirements missing (0 mandatory, 0 optional)
-[02нояб.2025 11:54:15.434] [main/DEBUG] [mixin/]: Adding mixin platform agents for container net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.434] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.434] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.434] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.435] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.435] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.435] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent accepted container net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e
-[02нояб.2025 11:54:15.446] [main/DEBUG] [cpw.mods.modlauncher.TransformationServicesHandler/MODLAUNCHER]: Transformation services loading transformers
-[02нояб.2025 11:54:15.447] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformers for transformation service mixin
-[02нояб.2025 11:54:15.448] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformers for transformation service mixin
-[02нояб.2025 11:54:15.448] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initializing transformers for transformation service fml
-[02нояб.2025 11:54:15.448] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/LOADING]: Loading coremod transformers
-[02нояб.2025 11:54:15.448] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Not loading coremod script-engine since no mod requested it
-[02нояб.2025 11:54:15.449] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 1 implementations of ICoreMod:
-[02нояб.2025 11:54:15.450] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.neoforge.coremods.NeoForgeCoreMod from neoforge-21.1.209.jar > net.neoforged.neoforge-coremods-21.1.209.jar
-[02нояб.2025 11:54:15.463] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Adding [Target[className=net.minecraft.world.level.biome.Biome, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550]] transformer from core-mod net.neoforged.neoforge.coremods.NeoForgeCoreMod@3ae9d1e2 in neoforge-21.1.209.jar > net.neoforged.neoforge-coremods-21.1.209.jar
-[02нояб.2025 11:54:15.464] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Adding [Target[className=net.minecraft.world.level.levelgen.structure.Structure, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550]] transformer from core-mod net.neoforged.neoforge.coremods.NeoForgeCoreMod@3ae9d1e2 in neoforge-21.1.209.jar > net.neoforged.neoforge-coremods-21.1.209.jar
-[02нояб.2025 11:54:15.464] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Adding [Target[className=net.minecraft.world.level.block.FlowerPotBlock, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550]] transformer from core-mod net.neoforged.neoforge.coremods.NeoForgeCoreMod@3ae9d1e2 in neoforge-21.1.209.jar > net.neoforged.neoforge-coremods-21.1.209.jar
-[02нояб.2025 11:54:15.464] [main/DEBUG] [net.neoforged.fml.loading.FMLServiceProvider/CORE]: Adding [Target[className=net/minecraft/world/level/levelgen/PatrolSpawner, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/server/commands/RaidCommand, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/monster/Evoker$EvokerSummonSpellGoal, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/levelgen/structure/structures/OceanMonumentPieces$OceanMonumentPiece, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/monster/ZombieVillager, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/npc/Villager, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/animal/frog/Tadpole, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/levelgen/structure/structures/SwampHutPiece, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/levelgen/PhantomSpawner, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/monster/Zombie, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/monster/Spider, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/npc/CatSpawner, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/levelgen/structure/structures/OceanRuinPieces$OceanRuinPiece, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/monster/Strider, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/ai/village/VillageSiege, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/raid/Raid, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/NaturalSpawner, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/EntityType, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/entity/animal/horse/SkeletonTrapGoal, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/server/commands/SummonCommand, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550], Target[className=net/minecraft/world/level/levelgen/structure/structures/WoodlandMansionPieces$WoodlandMansionPiece, elementName=, elementDescriptor=, targetType=cpw.mods.modlauncher.api.TargetType@7caa550]] transformer from core-mod net.neoforged.neoforge.coremods.NeoForgeCoreMod@3ae9d1e2 in neoforge-21.1.209.jar > net.neoforged.neoforge-coremods-21.1.209.jar
-[02нояб.2025 11:54:15.468] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.ReplaceFieldWithGetterAccess@81b5db0 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/biome/Biome;} {} {V}
-[02нояб.2025 11:54:15.469] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.ReplaceFieldWithGetterAccess@3e17a0a1 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/structure/Structure;} {} {V}
-[02нояб.2025 11:54:15.469] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.ReplaceFieldWithGetterAccess@790a251b to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/block/FlowerPotBlock;} {} {V}
-[02нояб.2025 11:54:15.470] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/PatrolSpawner;} {} {V}
-[02нояб.2025 11:54:15.470] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/server/commands/RaidCommand;} {} {V}
-[02нояб.2025 11:54:15.470] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/monster/Evoker$EvokerSummonSpellGoal;} {} {V}
-[02нояб.2025 11:54:15.470] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/structure/structures/OceanMonumentPieces$OceanMonumentPiece;} {} {V}
-[02нояб.2025 11:54:15.470] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/monster/ZombieVillager;} {} {V}
-[02нояб.2025 11:54:15.470] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/npc/Villager;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/animal/frog/Tadpole;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/structure/structures/SwampHutPiece;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/PhantomSpawner;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/monster/Zombie;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/monster/Spider;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/npc/CatSpawner;} {} {V}
-[02нояб.2025 11:54:15.471] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/structure/structures/OceanRuinPieces$OceanRuinPiece;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/monster/Strider;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/ai/village/VillageSiege;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/raid/Raid;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/NaturalSpawner;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/EntityType;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/entity/animal/horse/SkeletonTrapGoal;} {} {V}
-[02нояб.2025 11:54:15.472] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/server/commands/SummonCommand;} {} {V}
-[02нояб.2025 11:54:15.473] [main/DEBUG] [cpw.mods.modlauncher.TransformStore/MODLAUNCHER]: Adding transformer net.neoforged.neoforge.coremods.MethodRedirector@4d8286c4 to Target : cpw.mods.modlauncher.api.TargetType@7caa550 {Lnet/minecraft/world/level/levelgen/structure/structures/WoodlandMansionPieces$WoodlandMansionPiece;} {} {V}
-[02нояб.2025 11:54:15.473] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: Initialized transformers for transformation service fml
-[02нояб.2025 11:54:16.021] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:ModLauncher Root Container(ModLauncher:4f56a0a2)]
-[02нояб.2025 11:54:16.022] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e]
-[02нояб.2025 11:54:16.022] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[FMLMixinPlatformAgent:null]
-[02нояб.2025 11:54:16.064] [main/DEBUG] [mixin/]: Processing launch tasks for PlatformAgent[MixinPlatformAgentDefault:ModLauncher Root Container(ModLauncher:4f56a0a2)]
-[02нояб.2025 11:54:16.065] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.065] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.065] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.065] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.065] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(mixin_synthetic)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(mixin_synthetic)]
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.066] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(minecraft)
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(minecraft)]
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.067] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(complexityanalyzer)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(complexityanalyzer)]
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.068] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.069] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.069] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(mixinextras.neoforge)]
-[02нояб.2025 11:54:16.069] [main/DEBUG] [mixin/]: Registering mixin config: mixinextras.init.mixins.json source=SecureJarResource(mixinextras.neoforge)
-[02нояб.2025 11:54:16.070] [main/DEBUG] [mixin/]: inject() running with 6 agents
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:ModLauncher Root Container(ModLauncher:4f56a0a2)]
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:net.neoforged.fml.loading.mixin.FMLMixinContainerHandle@341672e]
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[FMLMixinPlatformAgent:null]
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(mixin_synthetic)]
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(minecraft)]
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(complexityanalyzer)]
-[02нояб.2025 11:54:16.071] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(mixinextras.neoforge)]
-[02нояб.2025 11:54:16.072] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.209, --gameDir, ., --assetsDir, C:\Users\xXx\.gradle\caches\neoformruntime\assets, --assetIndex, 17]
-[02нояб.2025 11:54:16.119] [main/DEBUG] [mixin/]: Preparing mixins for MixinEnvironment[DEFAULT]
-[02нояб.2025 11:54:16.120] [main/DEBUG] [mixin/]: Selecting config neoforge.mixins.json
-[02нояб.2025 11:54:16.125] [main/DEBUG] [mixin/]: Selecting config mixinextras.init.mixins.json
-[02нояб.2025 11:54:16.165] [main/DEBUG] [MixinExtras|Service/]: com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0) is taking over from null
-[02нояб.2025 11:54:16.195] [main/DEBUG] [mixin/]: Registering new injector for @Inject with org.spongepowered.asm.mixin.injection.struct.CallbackInjectionInfo
-[02нояб.2025 11:54:16.197] [main/DEBUG] [mixin/]: Registering new injector for @ModifyArg with org.spongepowered.asm.mixin.injection.struct.ModifyArgInjectionInfo
-[02нояб.2025 11:54:16.198] [main/DEBUG] [mixin/]: Registering new injector for @ModifyArgs with org.spongepowered.asm.mixin.injection.struct.ModifyArgsInjectionInfo
-[02нояб.2025 11:54:16.200] [main/DEBUG] [mixin/]: Registering new injector for @Redirect with org.spongepowered.asm.mixin.injection.struct.RedirectInjectionInfo
-[02нояб.2025 11:54:16.201] [main/DEBUG] [mixin/]: Registering new injector for @ModifyVariable with org.spongepowered.asm.mixin.injection.struct.ModifyVariableInjectionInfo
-[02нояб.2025 11:54:16.203] [main/DEBUG] [mixin/]: Registering new injector for @ModifyConstant with org.spongepowered.asm.mixin.injection.struct.ModifyConstantInjectionInfo
-[02нояб.2025 11:54:16.217] [main/DEBUG] [mixin/]: Preparing neoforge.mixins.json (2)
-[02нояб.2025 11:54:16.260] [main/DEBUG] [mixin/]: Preparing mixinextras.init.mixins.json (0)
-[02нояб.2025 11:54:16.433] [main/DEBUG] [io.netty.util.internal.logging.InternalLoggerFactory/]: Using SLF4J as the default logging framework
-[02нояб.2025 11:54:16.436] [main/DEBUG] [io.netty.util.ResourceLeakDetector/]: -Dio.netty.leakDetection.level: simple
-[02нояб.2025 11:54:16.436] [main/DEBUG] [io.netty.util.ResourceLeakDetector/]: -Dio.netty.leakDetection.targetRecords: 4
-[02нояб.2025 11:54:17.346] [main/DEBUG] [oshi.util.FileUtil/]: No oshi.properties file found from ClassLoader cpw.mods.modlauncher.TransformingClassLoader@79d9214d
-[02нояб.2025 11:54:17.803] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 229 Datafixer optimizations took 488 milliseconds
-[02нояб.2025 11:54:17.882] [main/DEBUG] [oshi.util.FileUtil/]: No oshi.architecture.properties file found from ClassLoader cpw.mods.modlauncher.TransformingClassLoader@79d9214d
-[02нояб.2025 11:54:18.154] [pool-7-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
-[02нояб.2025 11:54:18.156] [pool-7-thread-1/DEBUG] [mixin/]: Registering new injector for @SugarWrapper with com.llamalad7.mixinextras.sugar.impl.SugarWrapperInjectionInfo
-[02нояб.2025 11:54:18.156] [pool-7-thread-1/DEBUG] [mixin/]: Registering new injector for @FactoryRedirectWrapper with com.llamalad7.mixinextras.wrapper.factory.FactoryRedirectWrapperInjectionInfo
-[02нояб.2025 11:54:18.157] [pool-7-thread-1/DEBUG] [mixin/]: Registering new injector for @ExpressionInjectorWrapper with com.llamalad7.mixinextras.expression.impl.wrapper.ExpressionInjectorWrapperInjectionInfo
-[02нояб.2025 11:54:18.167] [pool-7-thread-1/DEBUG] [mixin/]: Mixing MappedRegistryAccessor from neoforge.mixins.json into net.minecraft.core.MappedRegistry
-[02нояб.2025 11:54:18.171] [pool-7-thread-1/DEBUG] [mixin/]: neoforge.mixins.json:MappedRegistryAccessor from mod neoforge: Class version 65 required is higher than the class version supported by the current version of Mixin (JAVA_16 supports class version 60)
-[02нояб.2025 11:54:19.336] [pool-7-thread-1/DEBUG] [mixin/]: Mixing BlockEntityTypeAccessor from neoforge.mixins.json into net.minecraft.world.level.block.entity.BlockEntityType
-[02нояб.2025 11:54:19.337] [pool-7-thread-1/DEBUG] [mixin/]: neoforge.mixins.json:BlockEntityTypeAccessor from mod neoforge: Class version 65 required is higher than the class version supported by the current version of Mixin (JAVA_16 supports class version 60)
-[02нояб.2025 11:54:20.678] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: -Dio.netty.noUnsafe: false
-[02нояб.2025 11:54:20.679] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: Java version: 21
-[02нояб.2025 11:54:20.680] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: sun.misc.Unsafe.theUnsafe: available
-[02нояб.2025 11:54:20.681] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: sun.misc.Unsafe.copyMemory: available
-[02нояб.2025 11:54:20.683] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: sun.misc.Unsafe.storeFence: available
-[02нояб.2025 11:54:20.683] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: java.nio.Buffer.address: available
-[02нояб.2025 11:54:20.685] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: direct buffer constructor: unavailable: Reflective setAccessible(true) disabled
-[02нояб.2025 11:54:20.686] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: java.nio.Bits.unaligned: available, true
-[02нояб.2025 11:54:20.688] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: jdk.internal.misc.Unsafe.allocateUninitializedArray(int): unavailable: class io.netty.util.internal.PlatformDependent0$7 (in module io.netty.common) cannot access class jdk.internal.misc.Unsafe (in module java.base) because module java.base does not export jdk.internal.misc to module io.netty.common
-[02нояб.2025 11:54:20.689] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent0/]: java.nio.DirectByteBuffer.<init>(long, {int,long}): unavailable
-[02нояб.2025 11:54:20.689] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: sun.misc.Unsafe: available
-[02нояб.2025 11:54:20.691] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: maxDirectMemory: 8547991552 bytes (maybe)
-[02нояб.2025 11:54:20.691] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: -Dio.netty.tmpdir: C:\Users\xXx\AppData\Local\Temp (java.io.tmpdir)
-[02нояб.2025 11:54:20.691] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: -Dio.netty.bitMode: 64 (sun.arch.data.model)
-[02нояб.2025 11:54:20.692] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: Platform: Windows
-[02нояб.2025 11:54:20.693] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: -Dio.netty.maxDirectMemory: -1 bytes
-[02нояб.2025 11:54:20.693] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: -Dio.netty.uninitializedArrayAllocationThreshold: -1
-[02нояб.2025 11:54:20.696] [pool-7-thread-1/DEBUG] [io.netty.util.internal.CleanerJava9/]: java.nio.ByteBuffer.cleaner(): available
-[02нояб.2025 11:54:20.696] [pool-7-thread-1/DEBUG] [io.netty.util.internal.PlatformDependent/]: -Dio.netty.noPreferDirect: false
-[02нояб.2025 11:54:23.734] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[02нояб.2025 11:54:23.735] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
-[02нояб.2025 11:54:23.738] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[02нояб.2025 11:54:23.740] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
-[02нояб.2025 11:54:23.741] [main/WARN] [net.minecraft.commands.Commands/]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
-[02нояб.2025 11:54:23.877] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/assets/.mcassetsroot' uses unexpected schema
-[02нояб.2025 11:54:23.878] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/C:/Users/xXx/Desktop/Mods_Sources/ComplexityAnalyzer/build/moddev/artifacts/neoforge-21.1.209.jar%23189!/data/.mcassetsroot' uses unexpected schema
-[02нояб.2025 11:54:23.907] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[02нояб.2025 11:54:23.919] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
-[02нояб.2025 11:54:24.022] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
-[02нояб.2025 11:54:24.305] [Render thread/DEBUG] [net.neoforged.fml.ModWorkManager/LOADING]: Using 12 threads for parallel mod-loading
-[02нояб.2025 11:54:24.323] [Render thread/DEBUG] [net.neoforged.fml.javafmlmod.FMLModContainer/LOADING]: Creating FMLModContainer instance for [org.complexityanalyzer.ComplexityAnalyzer]
-[02нояб.2025 11:54:24.327] [Render thread/DEBUG] [net.neoforged.fml.javafmlmod.FMLModContainer/LOADING]: Creating FMLModContainer instance for [net.neoforged.neoforge.common.NeoForgeMod, net.neoforged.neoforge.client.ClientNeoForgeMod]
-[02нояб.2025 11:54:24.337] [modloading-worker-0/INFO] [Complexity Analyzer/]: === Complexity Analyzer v1.0.0-FINAL ===
-[02нояб.2025 11:54:24.356] [modloading-worker-0/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Config file complexityanalyzer-common.toml for complexityanalyzer tracking
-[02нояб.2025 11:54:24.360] [modloading-worker-0/DEBUG] [net.neoforged.neoforge.internal.versions.neoforge.NeoForgeVersion/CORE]: Found NeoForge version 21.1.209
-[02нояб.2025 11:54:24.361] [modloading-worker-0/DEBUG] [net.neoforged.neoforge.internal.versions.neoforge.NeoForgeVersion/CORE]: Found FML version 4.0.41
-[02нояб.2025 11:54:24.361] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.209, for MC 1.21.1
-[02нояб.2025 11:54:24.368] [modloading-worker-0/INFO] [Complexity Analyzer/]: Complexity Analyzer initialized successfully.
-[02нояб.2025 11:54:24.368] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Attempting to inject @EventBusSubscriber classes into the eventbus for complexityanalyzer
-[02нояб.2025 11:54:24.370] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class org.complexityanalyzer.command.ComplexityCommand for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.378] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lorg/complexityanalyzer/command/ComplexityCommand; to the game event bus
-[02нояб.2025 11:54:24.379] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class org.complexityanalyzer.event.DatapackSyncHandler for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.379] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lorg/complexityanalyzer/event/DatapackSyncHandler; to the game event bus
-[02нояб.2025 11:54:24.385] [modloading-worker-0/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Config file neoforge-client.toml for neoforge tracking
-[02нояб.2025 11:54:24.386] [modloading-worker-0/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Config file neoforge-server.toml for neoforge tracking
-[02нояб.2025 11:54:24.386] [modloading-worker-0/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Config file neoforge-common.toml for neoforge tracking
-[02нояб.2025 11:54:24.461] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Attempting to inject @EventBusSubscriber classes into the eventbus for neoforge
-[02нояб.2025 11:54:24.461] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.server.command.ConfigCommand for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.462] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/server/command/ConfigCommand; to the game event bus
-[02нояб.2025 11:54:24.463] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.network.filters.GenericPacketSplitter for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.492] [modloading-worker-0/DEBUG] [io.netty.buffer.AbstractByteBuf/]: -Dio.netty.buffer.checkAccessible: true
-[02нояб.2025 11:54:24.492] [modloading-worker-0/DEBUG] [io.netty.buffer.AbstractByteBuf/]: -Dio.netty.buffer.checkBounds: true
-[02нояб.2025 11:54:24.493] [modloading-worker-0/DEBUG] [io.netty.util.ResourceLeakDetectorFactory/]: Loaded default ResourceLeakDetector: io.netty.util.ResourceLeakDetector@27a2de04
-[02нояб.2025 11:54:24.502] [modloading-worker-0/DEBUG] [io.netty.util.internal.InternalThreadLocalMap/]: -Dio.netty.threadLocalMap.stringBuilder.initialSize: 1024
-[02нояб.2025 11:54:24.502] [modloading-worker-0/DEBUG] [io.netty.util.internal.InternalThreadLocalMap/]: -Dio.netty.threadLocalMap.stringBuilder.maxSize: 4096
-[02нояб.2025 11:54:24.505] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.numHeapArenas: 24
-[02нояб.2025 11:54:24.505] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.numDirectArenas: 24
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.pageSize: 8192
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.maxOrder: 9
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.chunkSize: 4194304
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.smallCacheSize: 256
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.normalCacheSize: 64
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.maxCachedBufferCapacity: 32768
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.cacheTrimInterval: 8192
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.cacheTrimIntervalMillis: 0
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.useCacheForAllThreads: false
-[02нояб.2025 11:54:24.506] [modloading-worker-0/DEBUG] [io.netty.buffer.PooledByteBufAllocator/]: -Dio.netty.allocator.maxCachedByteBuffersPerChunk: 1023
-[02нояб.2025 11:54:24.517] [modloading-worker-0/DEBUG] [io.netty.buffer.ByteBufUtil/]: -Dio.netty.allocator.type: pooled
-[02нояб.2025 11:54:24.517] [modloading-worker-0/DEBUG] [io.netty.buffer.ByteBufUtil/]: -Dio.netty.threadLocalDirectBufferSize: 0
-[02нояб.2025 11:54:24.517] [modloading-worker-0/DEBUG] [io.netty.buffer.ByteBufUtil/]: -Dio.netty.maxThreadLocalCharBufferSize: 16384
-[02нояб.2025 11:54:24.525] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/network/filters/GenericPacketSplitter; to the mod event bus of mod neoforge
-[02нояб.2025 11:54:24.528] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.network.NetworkInitialization for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.529] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/network/NetworkInitialization; to the mod event bus of mod neoforge
-[02нояб.2025 11:54:24.530] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.network.ConfigurationInitialization for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.534] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/network/ConfigurationInitialization; to the mod event bus of mod neoforge
-[02нояб.2025 11:54:24.534] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.common.MonsterRoomHooks for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.536] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/common/MonsterRoomHooks; to the game event bus
-[02нояб.2025 11:54:24.537] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.common.DeferredSpawnEggItem$CommonHandler for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.538] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/common/DeferredSpawnEggItem$CommonHandler; to the mod event bus of mod neoforge
-[02нояб.2025 11:54:24.539] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.common.DeferredSpawnEggItem$ColorRegisterHandler for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.540] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/common/DeferredSpawnEggItem$ColorRegisterHandler; to the mod event bus of mod neoforge
-[02нояб.2025 11:54:24.542] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.client.model.data.ModelDataManager for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.545] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/client/model/data/ModelDataManager; to the game event bus
-[02нояб.2025 11:54:24.545] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.client.ParticleBoundsDebugRenderer for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.549] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/client/ParticleBoundsDebugRenderer; to the game event bus
-[02нояб.2025 11:54:24.550] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.client.ClientHooks$ClientEvents for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.553] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/client/ClientHooks$ClientEvents; to the mod event bus of mod neoforge
-[02нояб.2025 11:54:24.553] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.client.BlockEntityRenderBoundsDebugRenderer for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.554] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/client/BlockEntityRenderBoundsDebugRenderer; to the game event bus
-[02нояб.2025 11:54:24.555] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.attachment.AttachmentSync for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.561] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/attachment/AttachmentSync; to the game event bus
-[02нояб.2025 11:54:24.562] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Scanning class net.neoforged.neoforge.attachment.AttachmentInternals for @SubscribeEvent-annotated methods
-[02нояб.2025 11:54:24.563] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/]: Subscribing @EventBusSubscriber class Lnet/neoforged/neoforge/attachment/AttachmentInternals; to the game event bus
-[02нояб.2025 11:54:24.757] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loading configs type CLIENT
-[02нояб.2025 11:54:24.771] [modloading-sync-worker/DEBUG] [net.neoforged.neoforge.common.NeoForgeConfig/FORGEMOD]: Loaded NeoForge config file neoforge-client.toml
-[02нояб.2025 11:54:24.772] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loaded TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\neoforge-client.toml
-[02нояб.2025 11:54:24.780] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Watching TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\neoforge-client.toml for changes
-[02нояб.2025 11:54:24.780] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loading configs type COMMON
-[02нояб.2025 11:54:24.782] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loaded TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\complexityanalyzer-common.toml
-[02нояб.2025 11:54:24.783] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Watching TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\complexityanalyzer-common.toml for changes
-[02нояб.2025 11:54:24.784] [modloading-sync-worker/DEBUG] [net.neoforged.neoforge.common.NeoForgeConfig/FORGEMOD]: Loaded NeoForge config file neoforge-common.toml
-[02нояб.2025 11:54:24.784] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loaded TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\neoforge-common.toml
-[02нояб.2025 11:54:24.785] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Watching TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\neoforge-common.toml for changes
-[02нояб.2025 11:54:25.289] [Render thread/INFO] [net.neoforged.neoforge.gametest.GameTestHooks/]: Enabled Gametest Namespaces: [complexityanalyzer]
-[02нояб.2025 11:54:25.449] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources, mod/complexityanalyzer, mod/neoforge
-[02нояб.2025 11:54:25.512] [Render thread/DEBUG] [net.neoforged.fml.DeferredWorkQueue/LOADING]: Dispatching synchronous work for work queue Common setup: 1 jobs
-[02нояб.2025 11:54:25.517] [Render thread/DEBUG] [net.neoforged.fml.DeferredWorkQueue/LOADING]: Synchronous work queue completed in 3.749 ms
-[02нояб.2025 11:54:25.541] [Worker-Main-1/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-15.1.05.hex, loading
-[02нояб.2025 11:54:25.669] [Worker-Main-8/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-15.1.05.hex, loading
-[02нояб.2025 11:54:27.113] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:item.goat_horn.play
-[02нояб.2025 11:54:27.114] [Render thread/WARN] [net.minecraft.client.sounds.SoundEngine/]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
-[02нояб.2025 11:54:27.189] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device OpenAL Soft on Динамики (Realtek(R) Audio)
-[02нояб.2025 11:54:27.190] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
-[02нояб.2025 11:54:27.347] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
-[02нояб.2025 11:54:27.357] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
-[02нояб.2025 11:54:27.358] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
-[02нояб.2025 11:54:27.359] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
-[02нояб.2025 11:54:27.359] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
-[02нояб.2025 11:54:27.362] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
-[02нояб.2025 11:54:27.362] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
-[02нояб.2025 11:54:27.362] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
-[02нояб.2025 11:54:27.363] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
-[02нояб.2025 11:54:27.640] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[02нояб.2025 11:54:27.642] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[02нояб.2025 11:54:27.642] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
-[02нояб.2025 11:54:27.642] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[02нояб.2025 11:54:27.643] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[02нояб.2025 11:54:27.688] [Render thread/WARN] [net.minecraft.client.renderer.ShaderInstance/]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
-[02нояб.2025 11:54:27.774] [Render thread/INFO] [net.neoforged.neoforge.client.entity.animation.json.AnimationLoader/]: Loaded 0 entity animations
-[02нояб.2025 11:55:50.571] [Worker-Main-4/INFO] [Complexity Analyzer/]: Registered /complexity command with role-based permissions
-[02нояб.2025 11:55:50.759] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
-[02нояб.2025 11:55:50.949] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
-[02нояб.2025 11:55:51.311] [Render thread/DEBUG] [net.neoforged.neoforge.common.CommonHooks/WP]: Gathered mod list to write to world save тетс
-[02нояб.2025 11:55:51.352] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.1
-[02нояб.2025 11:55:51.352] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[02нояб.2025 11:55:51.414] [Server thread/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loading configs type SERVER
-[02нояб.2025 11:55:51.415] [Server thread/DEBUG] [net.neoforged.neoforge.common.NeoForgeConfig/FORGEMOD]: Loaded NeoForge config file neoforge-server.toml
-[02нояб.2025 11:55:51.415] [Server thread/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loaded TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\neoforge-server.toml
-[02нояб.2025 11:55:51.415] [Server thread/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Watching TOML config file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\config\neoforge-server.toml for changes
-[02нояб.2025 11:55:52.410] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
-[02нояб.2025 11:55:52.731] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Подготовка области возрождения: 0%
-[02нояб.2025 11:55:52.866] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
-[02нояб.2025 11:55:52.866] [progressListener/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 453 ms
-[02нояб.2025 11:55:52.870] [Server thread/INFO] [Complexity Analyzer/]: Creating new analysis thread pool.
-[02нояб.2025 11:55:52.870] [Server thread/INFO] [Complexity Analyzer/]: Starting background analysis...
-[02нояб.2025 11:55:52.871] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph...
-[02нояб.2025 11:55:52.873] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building recipe graph with advanced classification...
-[02нояб.2025 11:55:52.912] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recipe graph built: 1259 recipes processed, 31 skipped
-[02нояб.2025 11:55:52.912] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: ANALYZING] Starting FAST initial analysis ===
-[02нояб.2025 11:55:52.913] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing BlockPropertyProvider...
-[02нояб.2025 11:55:52.915] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: BlockPropertyProvider initialized, analyzed 1060 blocks.
-[02нояб.2025 11:55:52.917] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Initializing MobPropertyProvider...
-[02нояб.2025 11:55:52.917] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobPropertyProvider initialized. Analyzed 77 entities via reflection, 7 entities were manually overridden.
-[02нояб.2025 11:55:52.926] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Loading all final geo-data from disk...
-[02нояб.2025 11:55:52.948] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Rebuilding global cache from 63 biome data entries...
-[02нояб.2025 11:55:52.950] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 10% complete
-[02нояб.2025 11:55:52.950] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 20% complete
-[02нояб.2025 11:55:52.950] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 30% complete
-[02нояб.2025 11:55:52.950] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 40% complete
-[02нояб.2025 11:55:52.950] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 50% complete
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 60% complete
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 70% complete
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 80% complete
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 90% complete
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache rebuild: 100% complete
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Global block rarity cache rebuilt. Total blocks counted: 191046674
-[02нояб.2025 11:55:52.951] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Finished loading geo-data. Found data for 3 dimensions.
-[02нояб.2025 11:55:52.952] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initializing TheoreticalDistributionProvider (WorldGen Analysis)...
-[02нояб.2025 11:55:52.965] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: TheoreticalDistributionProvider initialized: 23 blocks found in worldgen config.
-[02нояб.2025 11:55:52.966] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase loaded, skipping theoretical resources.
-[02нояб.2025 11:55:52.970] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Analyzing structure spawns for dimension detection...
-[02нояб.2025 11:55:52.971] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Structure spawn analysis complete: 6 structures, 9 unique mob types
-[02нояб.2025 11:55:52.971] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Building biome-to-dimension map from loaded levels...
-[02нояб.2025 11:55:52.971] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Found dimension: minecraft:overworld
-[02нояб.2025 11:55:52.971] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Found dimension: minecraft:the_end
-[02нояб.2025 11:55:52.971] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Found dimension: minecraft:the_nether
-[02нояб.2025 11:55:52.971] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Found 3 dimensions
-[02нояб.2025 11:55:52.979] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Resource sources configured. Initializing all...
-[02нояб.2025 11:55:52.979] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: EmpiricalBlockSource
-[02нояб.2025 11:55:52.979] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initializing VillagerTradeSource by analyzing all trades via reflection...
-[02нояб.2025 11:55:52.980] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 2, from 10
-[02нояб.2025 11:55:52.980] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 5, from 0
-[02нояб.2025 11:55:53.008] [Render thread/DEBUG] [io.netty.channel.MultithreadEventLoopGroup/]: -Dio.netty.eventLoopThreads: 24
-[02нояб.2025 11:55:53.020] [Render thread/DEBUG] [io.netty.util.concurrent.GlobalEventExecutor/]: -Dio.netty.globalEventExecutor.quietPeriodSeconds: 1
-[02нояб.2025 11:55:53.033] [Render thread/DEBUG] [io.netty.channel.nio.NioEventLoop/]: -Dio.netty.noKeySetOptimization: false
-[02нояб.2025 11:55:53.033] [Render thread/DEBUG] [io.netty.channel.nio.NioEventLoop/]: -Dio.netty.selectorAutoRebuildThreshold: 512
-[02нояб.2025 11:55:53.043] [Render thread/DEBUG] [io.netty.util.internal.PlatformDependent/]: org.jctools-core.MpscChunkedArrayQueue: available
-[02нояб.2025 11:55:53.084] [Render thread/DEBUG] [io.netty.channel.DefaultChannelId/]: -Dio.netty.processId: 346424 (auto-detected)
-[02нояб.2025 11:55:53.086] [Render thread/DEBUG] [io.netty.util.NetUtil/]: -Djava.net.preferIPv4Stack: false
-[02нояб.2025 11:55:53.086] [Render thread/DEBUG] [io.netty.util.NetUtil/]: -Djava.net.preferIPv6Addresses: system
-[02нояб.2025 11:55:53.091] [Render thread/DEBUG] [io.netty.util.NetUtilInitializations/]: Loopback interface: loopback_0 (Software Loopback Interface 1, 0:0:0:0:0:0:0:1)
-[02нояб.2025 11:55:53.092] [Render thread/DEBUG] [io.netty.util.NetUtil/]: Failed to get SOMAXCONN from sysctl and file \proc\sys\net\core\somaxconn. Default: 200
-[02нояб.2025 11:55:53.094] [Render thread/DEBUG] [io.netty.channel.DefaultChannelId/]: -Dio.netty.machineId: 10:ff:e0:ff:fe:a1:61:b7 (auto-detected)
-[02нояб.2025 11:55:53.187] [Render thread/DEBUG] [io.netty.util.Recycler/]: -Dio.netty.recycler.maxCapacityPerThread: 4096
-[02нояб.2025 11:55:53.188] [Render thread/DEBUG] [io.netty.util.Recycler/]: -Dio.netty.recycler.ratio: 8
-[02нояб.2025 11:55:53.188] [Render thread/DEBUG] [io.netty.util.Recycler/]: -Dio.netty.recycler.chunkSize: 32
-[02нояб.2025 11:55:53.188] [Render thread/DEBUG] [io.netty.util.Recycler/]: -Dio.netty.recycler.blocking: false
-[02нояб.2025 11:55:53.188] [Render thread/DEBUG] [io.netty.util.Recycler/]: -Dio.netty.recycler.batchFastThreadLocalOnly: true
-[02нояб.2025 11:55:53.392] [Netty Server IO #1/DEBUG] [net.neoforged.neoforge.network.filters.NetworkFilters/]: Injected net.neoforged.neoforge.network.filters.GenericPacketSplitter@5d3de3f3 into net.minecraft.network.Connection@4add182c
-[02нояб.2025 11:55:53.398] [Netty Local Client IO #0/DEBUG] [net.neoforged.neoforge.network.filters.NetworkFilters/]: Injected net.neoforged.neoforge.network.filters.GenericPacketSplitter@3568ab91 into net.minecraft.network.Connection@7ab26401
-[02нояб.2025 11:55:53.678] [Netty Server IO #1/DEBUG] [net.neoforged.neoforge.network.filters.NetworkFilters/]: Injected net.neoforged.neoforge.network.filters.GenericPacketSplitter@1b210b22 into net.minecraft.network.Connection@4add182c
-[02нояб.2025 11:55:53.742] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:6260aafe] logged in with entity id 134 at (-558.8114085937592, 95.0, -703.6008343539793)
-[02нояб.2025 11:55:53.819] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev присоединился к игре
-[02нояб.2025 11:55:54.006] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 47 advancements
-[02нояб.2025 11:56:55.077] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:56:55.085] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:56:55.087] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ⚙ Complexity Analyzer Status
-[02нояб.2025 11:56:55.089] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:56:55.090] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:56:55.090] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   Engine State: ◆ ANALYZING
-[02нояб.2025 11:56:55.091] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:56:55.091] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   ⚠ Engine not ready. Statistics unavailable.
-[02нояб.2025 11:56:55.092] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:56:55.092] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:57:37.577] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: VillagerTradeSource initialized. Found trades for 177 unique items.
-[02нояб.2025 11:57:37.578] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: VillagerTradeSource
-[02нояб.2025 11:57:37.580] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: PassiveProductionSource
-[02нояб.2025 11:57:37.582] [Server thread/DEBUG] [Complexity Analyzer/]: [ULS] Found 1179 loot tables via reloadableRegistries.
-[02нояб.2025 11:57:37.582] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [ULS] Auto-scanning ALL loot tables (including mods)...
-[02нояб.2025 11:57:37.585] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [ULS] Found 1179 total loot tables to analyze.
-[02нояб.2025 11:57:41.115] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_small' after 7 iterations. Skipping.
-[02нояб.2025 11:57:44.352] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/shipwreck_map' after 5 iterations. Skipping.
-[02нояб.2025 11:57:47.453] [Complexity-Analysis-Thread/WARN] [Complexity Analyzer/]: [ULS] Simulation timeout for 'minecraft:chests/underwater_ruin_big' after 17 iterations. Skipping.
-[02нояб.2025 11:57:47.506] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS] Auto-scan complete in 9923ms. Processed 87 loot tables (1092 skipped), found 388 unique items.
-[02нояб.2025 11:57:47.506] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Chest Loot -> 231 items
-[02нояб.2025 11:57:47.506] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Shearing -> 2 items
-[02нояб.2025 11:57:47.507] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Generic Loot -> 54 items
-[02нояб.2025 11:57:47.507] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Fishing -> 21 items
-[02нояб.2025 11:57:47.507] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Archaeology -> 63 items
-[02нояб.2025 11:57:47.507] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [ULS]   Piglin Bartering -> 17 items
-[02нояб.2025 11:57:47.508] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: UniversalLootSource
-[02нояб.2025 11:57:47.508] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Initializing... Analyzing all block drop recipes.
-[02нояб.2025 11:57:47.509] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Successfully found RandomSource field: random
-[02нояб.2025 11:57:47.608] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Block Break as Recipe] Auto-learned renewable: Block{minecraft:gravel} (cost: 0.1, hardness: 0.6)
-[02нояб.2025 11:57:48.803] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Block Break as Recipe] Initialization complete in 1295ms. Found 2551 block drop paths for 98 unique items. Skipped 13 indestructible blocks.
-[02нояб.2025 11:57:48.803] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: Block Break as Recipe
-[02нояб.2025 11:57:48.805] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initializing MobDropSource by simulating mob loot tables...
-[02нояб.2025 11:57:48.805] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Registering special kill-based drops...
-[02нояб.2025 11:57:48.807] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Registered 19 special kill-based drop entries.
-[02нояб.2025 11:57:48.852] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:allay
-[02нояб.2025 11:57:48.868] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:armadillo
-[02нояб.2025 11:57:48.883] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:axolotl
-[02нояб.2025 11:57:48.886] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:bat
-[02нояб.2025 11:57:48.888] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:bee
-[02нояб.2025 11:57:48.890] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:blaze
-[02нояб.2025 11:57:48.898] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:bogged
-[02нояб.2025 11:57:48.917] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:breeze
-[02нояб.2025 11:57:48.925] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:camel
-[02нояб.2025 11:57:48.940] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:cat
-[02нояб.2025 11:57:48.943] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:cave_spider
-[02нояб.2025 11:57:48.948] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:chicken
-[02нояб.2025 11:57:48.979] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:cod
-[02нояб.2025 11:57:48.987] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:cow
-[02нояб.2025 11:57:48.995] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:creeper
-[02нояб.2025 11:57:49.012] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:dolphin
-[02нояб.2025 11:57:49.022] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:donkey
-[02нояб.2025 11:57:49.037] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:drowned
-[02нояб.2025 11:57:49.071] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:elder_guardian
-[02нояб.2025 11:57:49.086] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:enderman
-[02нояб.2025 11:57:49.091] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:endermite
-[02нояб.2025 11:57:49.096] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:evoker
-[02нояб.2025 11:57:49.102] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:fox
-[02нояб.2025 11:57:49.119] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:frog
-[02нояб.2025 11:57:49.122] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:ghast
-[02нояб.2025 11:57:49.129] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:giant
-[02нояб.2025 11:57:49.131] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:glow_squid
-[02нояб.2025 11:57:49.149] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:goat
-[02нояб.2025 11:57:49.152] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:guardian
-[02нояб.2025 11:57:49.164] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:hoglin
-[02нояб.2025 11:57:49.172] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:horse
-[02нояб.2025 11:57:49.176] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:husk
-[02нояб.2025 11:57:49.182] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:illusioner
-[02нояб.2025 11:57:49.187] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:llama
-[02нояб.2025 11:57:49.191] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:magma_cube
-[02нояб.2025 11:57:49.195] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:mooshroom
-[02нояб.2025 11:57:49.204] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:mule
-[02нояб.2025 11:57:49.207] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:ocelot
-[02нояб.2025 11:57:49.210] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:panda
-[02нояб.2025 11:57:49.213] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:parrot
-[02нояб.2025 11:57:49.218] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:phantom
-[02нояб.2025 11:57:49.221] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:pig
-[02нояб.2025 11:57:49.227] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:piglin
-[02нояб.2025 11:57:49.231] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:piglin_brute
-[02нояб.2025 11:57:49.233] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:pillager
-[02нояб.2025 11:57:49.238] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:polar_bear
-[02нояб.2025 11:57:49.245] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:pufferfish
-[02нояб.2025 11:57:49.250] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:rabbit
-[02нояб.2025 11:57:49.257] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:ravager
-[02нояб.2025 11:57:49.260] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:salmon
-[02нояб.2025 11:57:49.264] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:sheep
-[02нояб.2025 11:57:49.270] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:silverfish
-[02нояб.2025 11:57:49.271] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:skeleton
-[02нояб.2025 11:57:49.275] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:skeleton_horse
-[02нояб.2025 11:57:49.278] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:slime
-[02нояб.2025 11:57:49.287] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:sniffer
-[02нояб.2025 11:57:49.289] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:spider
-[02нояб.2025 11:57:49.291] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:squid
-[02нояб.2025 11:57:49.294] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:stray
-[02нояб.2025 11:57:49.300] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:strider
-[02нояб.2025 11:57:49.306] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:tadpole
-[02нояб.2025 11:57:49.308] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:trader_llama
-[02нояб.2025 11:57:49.311] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:tropical_fish
-[02нояб.2025 11:57:49.315] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:turtle
-[02нояб.2025 11:57:49.318] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:vex
-[02нояб.2025 11:57:49.321] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:vindicator
-[02нояб.2025 11:57:49.324] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:wandering_trader
-[02нояб.2025 11:57:49.347] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:warden
-[02нояб.2025 11:57:49.351] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:witch
-[02нояб.2025 11:57:49.358] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:wither_skeleton
-[02нояб.2025 11:57:49.364] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:wolf
-[02нояб.2025 11:57:49.367] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:zoglin
-[02нояб.2025 11:57:49.371] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:zombie
-[02нояб.2025 11:57:49.376] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:zombie_horse
-[02нояб.2025 11:57:49.379] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:zombie_villager
-[02нояб.2025 11:57:49.382] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [MobDropSource] Processing: minecraft:zombified_piglin
-[02нояб.2025 11:57:49.384] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: MobDropSource initialized. Processed 76 valid entities. Found drop info for 78 unique items. Time: 579ms
-[02нояб.2025 11:57:49.384] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: MobDropSource
-[02нояб.2025 11:57:49.387] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Initialized resource source: WorldInteractionSource
-[02нояб.2025 11:57:49.387] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All resource sources initialized.
-[02нояб.2025 11:57:49.387] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Recalculating all complexity data...
-[02нояб.2025 11:57:49.387] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: ComplexityCache cleared (0 entries removed)
-[02нояб.2025 11:57:49.394] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Starting enhanced iterative solver...
-[02нояб.2025 11:57:49.398] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.399] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Кадавр: 1.0x
-[02нояб.2025 11:57:49.399] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Зомби: 1.0x
-[02нояб.2025 11:57:49.399] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.399] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Крестьянин-зомби: 1.0x
-[02нояб.2025 11:57:49.399] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Structure spawn bonus: 1.0x
-[02нояб.2025 11:57:49.399] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Ведьма: 1.0x
-[02нояб.2025 11:57:49.400] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.400] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Кролик: 1.0x
-[02нояб.2025 11:57:49.402] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:57:49.402] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Пещерный паук: 1.0x
-[02нояб.2025 11:57:49.402] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Паук: 1.0x
-[02нояб.2025 11:57:49.402] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Курица: 1.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Попугай: 1.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Древний страж: 30.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Страж: 8.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.403] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Белый медведь: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лосось: 4.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Болотник: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Скелет: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лошадь-скелет: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Зимогор: 1.0x
-[02нояб.2025 11:57:49.404] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Визер-скелет: 10.0x
-[02нояб.2025 11:57:49.405] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 3.0x
-[02нояб.2025 11:57:49.405] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Хоглин: 6.0x
-[02нояб.2025 11:57:49.406] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.406] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Свинья: 1.0x
-[02нояб.2025 11:57:49.406] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Structure spawn bonus: 1.0x
-[02нояб.2025 11:57:49.406] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Кошка: 1.0x
-[02нояб.2025 11:57:49.407] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 3.0x
-[02нояб.2025 11:57:49.407] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лавомерка: 6.0x
-[02нояб.2025 11:57:49.407] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Structure spawn bonus: 3.0x
-[02нояб.2025 11:57:49.408] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Зомбифицированный пиглин: 3.0x
-[02нояб.2025 11:57:49.408] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.408] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Треска: 4.0x
-[02нояб.2025 11:57:49.408] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.408] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Дельфин: 3.0x
-[02нояб.2025 11:57:49.409] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Крипер: 1.0x
-[02нояб.2025 11:57:49.409] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.409] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Овца: 1.0x
-[02нояб.2025 11:57:49.409] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Гаст: 7.0x
-[02нояб.2025 11:57:49.411] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Визер: 80.0x
-[02нояб.2025 11:57:49.411] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Заклинатель: 15.0x
-[02нояб.2025 11:57:49.411] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Поборник: 12.0x
-[02нояб.2025 11:57:49.412] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.412] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Корова: 1.0x
-[02нояб.2025 11:57:49.412] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.412] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Муушрум: 1.0x
-[02нояб.2025 11:57:49.413] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:57:49.413] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Вихрь: 1.0x
-[02нояб.2025 11:57:49.414] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 10.0x
-[02нояб.2025 11:57:49.414] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Эндермен: 10.0x
-[02нояб.2025 11:57:49.415] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Шалкер: 20.0x
-[02нояб.2025 11:57:49.415] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Всполох: 10.0x
-[02нояб.2025 11:57:49.416] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.416] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Иглобрюх: 4.0x
-[02нояб.2025 11:57:49.416] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.416] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Тропическая рыба: 4.0x
-[02нояб.2025 11:57:49.416] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.416] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Спрут: 3.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] High health (53.0): +5.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Осёл: 6.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] High health (53.0): +5.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лошадь: 6.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] High health (53.0): +5.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лама: 6.0x
-[02нояб.2025 11:57:49.417] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] High health (53.0): +5.0x
-[02нояб.2025 11:57:49.418] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Мул: 5.0x
-[02нояб.2025 11:57:49.418] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] High health (53.0): +5.0x
-[02нояб.2025 11:57:49.418] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лама торговца: 5.0x
-[02нояб.2025 11:57:49.418] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.418] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Утопленник: 1.0x
-[02нояб.2025 11:57:49.419] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.419] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Светящийся спрут: 5.0x
-[02нояб.2025 11:57:49.419] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:57:49.419] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Панда: 1.0x
-[02нояб.2025 11:57:49.522] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Enhanced solver finished: 128ms, 37 iterations, 1992 items processed
-[02нояб.2025 11:57:49.522] [Complexity-Analysis-Thread/DEBUG] [Complexity Analyzer/]: Cache stats: 9998 recipe calculations, 6403 cache hits (64,04% hit rate)
-[02нояб.2025 11:57:49.524] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: All systems refreshed with new data.
-[02нояб.2025 11:57:49.524] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: === [State: READY] Analysis complete. Mod is operational. ===
-[02нояб.2025 11:57:49.532] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: Analysis engine initialization complete.
-[02нояб.2025 11:57:49.534] [Complexity-Analysis-Thread/INFO] [Complexity Analyzer/]: GeoDatabase is complete. Skipping initial scan.
-[02нояб.2025 11:58:12.822] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:12.823] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:12.824] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ⚙ Complexity Analyzer Status
-[02нояб.2025 11:58:12.824] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:12.825] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:12.825] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   Engine State: ✓ READY
-[02нояб.2025 11:58:12.825] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:12.825] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📊 Data Overview:
-[02нояб.2025 11:58:12.826] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]     Items with recipes: 837
-[02нояб.2025 11:58:12.826] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]     Total recipes: 1259
-[02нояб.2025 11:58:12.827] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]     Base resources: 0
-[02нояб.2025 11:58:12.827] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:12.827] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:15.326] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:15.326] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:15.327] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 🧟 ALL MOBS EXPORT
-[02нояб.2025 11:58:15.327] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:15.327] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:15.327] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📋 Format: JSON
-[02нояб.2025 11:58:15.328] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   🔄 Exporting...
-[02нояб.2025 11:58:15.328] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:15.329] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.329] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Тихоня: 1.0x
-[02нояб.2025 11:58:15.330] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.330] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Броненосец: 1.0x
-[02нояб.2025 11:58:15.330] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.330] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Аксолотль: 7.0x
-[02нояб.2025 11:58:15.330] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.330] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Летучая мышь: 3.0x
-[02нояб.2025 11:58:15.330] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.330] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Пчела: 1.0x
-[02нояб.2025 11:58:15.331] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.331] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Верблюд: 1.0x
-[02нояб.2025 11:58:15.331] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Эндер-дракон: 100.0x
-[02нояб.2025 11:58:15.331] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Эндермит: 5.0x
-[02нояб.2025 11:58:15.332] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.332] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лисица: 1.0x
-[02нояб.2025 11:58:15.332] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.332] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лягушка: 1.0x
-[02нояб.2025 11:58:15.332] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Detected as MINI-BOSS: 15.0x
-[02нояб.2025 11:58:15.332] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Гигант: 15.0x
-[02нояб.2025 11:58:15.332] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.332] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Коза: 1.0x
-[02нояб.2025 11:58:15.333] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.333] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Иллюзор: 1.0x
-[02нояб.2025 11:58:15.333] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Structure spawn bonus: 3.0x
-[02нояб.2025 11:58:15.333] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Магмовый куб: 6.0x
-[02нояб.2025 11:58:15.333] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.333] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Оцелот: 1.0x
-[02нояб.2025 11:58:15.333] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Фантом: 2.0x
-[02нояб.2025 11:58:15.334] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 3.0x
-[02нояб.2025 11:58:15.334] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Пиглин: 6.0x
-[02нояб.2025 11:58:15.334] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Брутальный пиглин: 12.0x
-[02нояб.2025 11:58:15.334] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Structure spawn bonus: 1.0x
-[02нояб.2025 11:58:15.334] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Разбойник: 1.0x
-[02нояб.2025 11:58:15.334] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Разоритель: 18.0x
-[02нояб.2025 11:58:15.334] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.334] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Чешуйница: 1.0x
-[02нояб.2025 11:58:15.335] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.335] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Слизень: 1.0x
-[02нояб.2025 11:58:15.335] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.335] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Нюхач: 1.0x
-[02нояб.2025 11:58:15.335] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.335] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Головастик: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Черепаха: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Вредина: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Странствующий торговец: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Using hardcoded rarity for Хранитель: 50.0x
-[02нояб.2025 11:58:15.336] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] Biome spawn bonus: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Волк: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.336] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Зоглин: 1.0x
-[02нояб.2025 11:58:15.337] [Server thread/DEBUG] [Complexity Analyzer/]: [Vanilla] No special rarity data, using fallback: 1.0x
-[02нояб.2025 11:58:15.337] [Server thread/INFO] [Complexity Analyzer/]: [Vanilla] Final rarity for Лошадь-зомби: 1.0x
-[02нояб.2025 11:58:15.338] [Server thread/INFO] [Complexity Analyzer/]: [Exporter] Resolved export directory to absolute path: C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\saves\тетс (1)\data\complexityanalyzer\export
-[02нояб.2025 11:58:15.351] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   ✓ Export successful!
-[02нояб.2025 11:58:15.351] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:15.351] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📁 File: mobs_all_2025-11-02_11-58-15.json
-[02нояб.2025 11:58:15.352] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:15.352] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:15.352] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ADMIN] ✓ All mobs export completed.
-[02нояб.2025 11:58:15.376] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] [ADMIN] ✓ All mobs export completed.
-[02нояб.2025 11:58:16.999] [Server thread/INFO] [Complexity Analyzer/]: [Exporter] Resolved export directory to absolute path: C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\saves\тетс (1)\data\complexityanalyzer\export
-[02нояб.2025 11:58:17.002] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:17.003] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:17.003] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 🧟 ALL MOBS EXPORT
-[02нояб.2025 11:58:17.003] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:17.003] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:17.003] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📋 Format: CSV
-[02нояб.2025 11:58:17.004] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   🔄 Exporting...
-[02нояб.2025 11:58:17.004] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:17.005] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ADMIN] ✓ All mobs export completed.
-[02нояб.2025 11:58:17.027] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   ✓ Export successful!
-[02нояб.2025 11:58:17.028] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:17.028] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT]   📁 File: mobs_all_2025-11-02_11-58-16.csv
-[02нояб.2025 11:58:17.028] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] 
-[02нояб.2025 11:58:17.028] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ═══════════════════════════════
-[02нояб.2025 11:58:17.028] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] [ADMIN] ✓ All mobs export completed.
-[02нояб.2025 12:00:52.896] [Server thread/DEBUG] [net.neoforged.neoforge.common.CommonHooks/WP]: Gathered mod list to write to world save тетс
+[02нояб.2025 13:36:51.946] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {minecraft} mods - versions {1.21.1}
+[02нояб.2025 13:36:51.949] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar with languages [LanguageSpec[languageName=minecraft, acceptedVersions=1]]
+[02нояб.2025 13:36:51.951] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main
+[02нояб.2025 13:36:51.953] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file main with {complexityanalyzer} mods - versions {1.0.0}
+[02нояб.2025 13:36:51.953] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\classes\java\main with languages [LanguageSpec[languageName=javafml, acceptedVersions=[4,)]]
+[02нояб.2025 13:36:51.953] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar
+[02нояб.2025 13:36:51.955] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file neoforge-21.1.209.jar with {neoforge} mods - versions {21.1.209}
+[02нояб.2025 13:36:51.956] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\build\moddev\artifacts\neoforge-21.1.209.jar with languages [LanguageSpec[languageName=javafml, acceptedVersions=[3,]]]
+[02нояб.2025 13:36:51.958] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Found mixin config MixinConfig[config=neoforge.mixins.json, requiredMods=[]]
+[02нояб.2025 13:36:51.959] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file  with languages []
+[02нояб.2025 13:36:51.960] [main/DEBUG] [cpw.mods.modlauncher.TransformationServiceDecorator/MODLAUNCHER]: End scan trigger - transformation service fml
+[02нояб.2025 13:36:51.972] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: Found 3 implementations of IModLanguageLoader:
+[02нояб.2025 13:36:51.972] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.fml.javafmlmod.FMLJavaModLanguageProvider from loader-4.0.41.jar
+[02нояб.2025 13:36:51.973] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.fml.lowcodemod.LowCodeModLanguageProvider from loader-4.0.41.jar
+[02нояб.2025 13:36:51.973] [main/DEBUG] [net.neoforged.fml.util.ServiceLoaderUtil/CORE]: 	net.neoforged.fml.mclanguageprovider.MinecraftModLanguageProvider from loader-4.0.41.jar
+[02нояб.2025 13:36:51.973] [main/DEBUG] [net.neoforged.fml.loading.LanguageProviderLoader/CORE]: Found language provider javafml, version 4.0.41
+[02нояб.2025 13:36:51.974] [main/DEBUG] [net.neoforged.fml.loading.LanguageProviderLoader/CORE]: Found language provider lowcodefml, version 4.0.41
+[02нояб.2025 13:36:51.974] [main/DEBUG] [net.neoforged.fml.loading.LanguageProviderLoader/CORE]: Found language provider minecraft, version 4.0.41
+[02нояб.2025 13:36:51.979] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/]: Configured system mods: [minecraft, neoforge]
+[02нояб.2025 13:36:51.980] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/]: Found system mod: minecraft
+[02нояб.2025 13:36:51.980] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/]: Found system mod: neoforge
+[02нояб.2025 13:36:51.982] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/LOADING]: Found 2 mod requirements (2 mandatory, 0 optional)
+[02нояб.2025 13:36:51.983] [main/DEBUG] [net.neoforged.fml.loading.ModSorter/LOADING]: Found 0 mod requirements missing (0 mandatory, 0 optional)

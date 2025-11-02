@@ -52,7 +52,7 @@ public class EntityAnalyzeCommand {
             return 0;
         }
 
-        MobPropertyProvider mobProvider = mobProviderOpt.get(); // Сохраняем провайдер
+        MobPropertyProvider mobProvider = mobProviderOpt.get();
 
         Optional<MobPropertyProvider.MobProperties> propsOpt = mobProvider.getProperties(entityType);
         if (propsOpt.isEmpty()) {
@@ -67,7 +67,6 @@ public class EntityAnalyzeCommand {
 
         List<MobDropData> drops = mobDropSourceOpt.map(mds -> mds.getDropsForEntity(entityType)).orElse(List.of());
 
-        // Передаем mobProvider в displayAnalysis
         displayAnalysis(source, entityType, propsOpt.get(), drops, mobProvider, output);
         return 1;
     }
@@ -77,12 +76,11 @@ public class EntityAnalyzeCommand {
             EntityType<?> type,
             MobPropertyProvider.MobProperties props,
             List<MobDropData> drops,
-            MobPropertyProvider mobProvider, // ДОБАВЛЕНО
+            MobPropertyProvider mobProvider,
             OutputManager output
     ) {
         String entityName = type.getDescription().getString();
 
-        // Используем новые методы из MobProperties
         double survivability = props.calculateSurvivability();
         double threat = props.calculateThreat();
         double combatPower = props.calculateCombatPower();
@@ -92,7 +90,7 @@ public class EntityAnalyzeCommand {
                 Component.literal("═══════════════════════════════")
                         .withStyle(ChatFormatting.DARK_GRAY));
 
-        String mobIcon = getMobIcon(type, props, mobProvider); // Передаем mobProvider
+        String mobIcon = getMobIcon(type, props, mobProvider);
         output.sendInfo(source,
                 Component.literal(mobIcon + " ")
                         .withStyle(ChatFormatting.RED)
@@ -109,7 +107,6 @@ public class EntityAnalyzeCommand {
                 .append(Component.literal(entityName)
                         .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
 
-        // ИСПРАВЛЕНО: используем mobProvider.isBoss(type)
         if (mobProvider.isBoss(type)) {
             nameComponent.append(Component.literal(" 👑")
                     .withStyle(ChatFormatting.GOLD));
@@ -133,7 +130,7 @@ public class EntityAnalyzeCommand {
 
         displayCalculatedFactors(source, survivability, threat, combatPower, output);
 
-        displayDifficultyRating(source, type, combatPower, mobProvider, output); // Передаем type и mobProvider
+        displayDifficultyRating(source, type, combatPower, mobProvider, output);
 
         displayDrops(source, drops, output);
 
@@ -244,16 +241,15 @@ public class EntityAnalyzeCommand {
 
     private static void displayDifficultyRating(
             CommandSourceStack source,
-            EntityType<?> type, // ДОБАВЛЕНО
+            EntityType<?> type,
             double combatPower,
-            MobPropertyProvider mobProvider, // ДОБАВЛЕНО
+            MobPropertyProvider mobProvider,
             OutputManager output
     ) {
         String difficulty;
         String difficultyIcon;
         ChatFormatting difficultyColor;
 
-        // ИСПРАВЛЕНО: используем mobProvider.isBoss(type)
         if (mobProvider.isBoss(type)) {
             difficulty = "BOSS";
             difficultyIcon = "👑";
@@ -353,7 +349,6 @@ public class EntityAnalyzeCommand {
         }
     }
 
-    // ИСПРАВЛЕНО: добавлены параметры type и mobProvider
     private static String getMobIcon(
             EntityType<?> type,
             MobPropertyProvider.MobProperties props,

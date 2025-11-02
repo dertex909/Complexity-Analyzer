@@ -84,7 +84,6 @@ public class DimensionRarityAnalyzer {
             ResourceKey<Level> dimensionKey = dimension.dimension();
             dimensionsFound++;
 
-            // Пока просто логируем измерения
             ComplexityAnalyzer.LOGGER.debug("Found dimension: {}", dimensionKey.location());
         }
 

@@ -17,7 +17,6 @@ public class WorldInteractionSource implements IResourceSource {
 
     @Override
     public void initialize(net.minecraft.world.level.Level level) {
-        // Обтесывание
         addStrippingRule(Items.OAK_LOG, Items.STRIPPED_OAK_LOG);
         addStrippingRule(Items.SPRUCE_LOG, Items.STRIPPED_SPRUCE_LOG);
         addStrippingRule(Items.BIRCH_LOG, Items.STRIPPED_BIRCH_LOG);
@@ -40,13 +39,10 @@ public class WorldInteractionSource implements IResourceSource {
         addStrippingRule(Items.CRIMSON_HYPHAE, Items.STRIPPED_CRIMSON_HYPHAE);
         addStrippingRule(Items.WARPED_HYPHAE, Items.STRIPPED_WARPED_HYPHAE);
 
-        // Вырезание тыквы
         interactionMap.put(Items.CARVED_PUMPKIN, new InteractionRule(Items.PUMPKIN, Items.SHEARS, 1.0, "Carving"));
 
-        // Создание пашни
         interactionMap.put(Items.FARMLAND, new InteractionRule(Items.DIRT, Items.WOODEN_HOE, 1.0, "Tilling"));
 
-        // Затвердевание бетона
         addConcreteRule(Items.WHITE_CONCRETE_POWDER, Items.WHITE_CONCRETE);
         addConcreteRule(Items.ORANGE_CONCRETE_POWDER, Items.ORANGE_CONCRETE);
         addConcreteRule(Items.MAGENTA_CONCRETE_POWDER, Items.MAGENTA_CONCRETE);
@@ -64,16 +60,13 @@ public class WorldInteractionSource implements IResourceSource {
         addConcreteRule(Items.RED_CONCRETE_POWDER, Items.RED_CONCRETE);
         addConcreteRule(Items.BLACK_CONCRETE_POWDER, Items.BLACK_CONCRETE);
 
-        // Окисление меди (блоки)
         addOxidationRule(Items.COPPER_BLOCK, Items.EXPOSED_COPPER);
         addOxidationRule(Items.EXPOSED_COPPER, Items.WEATHERED_COPPER);
         addOxidationRule(Items.WEATHERED_COPPER, Items.OXIDIZED_COPPER);
 
-        // Повреждение наковален
         interactionMap.put(Items.CHIPPED_ANVIL, new InteractionRule(Items.ANVIL, null, 0, "Usage"));
         interactionMap.put(Items.DAMAGED_ANVIL, new InteractionRule(Items.CHIPPED_ANVIL, null, 0, "Usage"));
 
-        // "Смерть" кораллов
         addDeadCoralRule(Items.TUBE_CORAL_BLOCK, Items.DEAD_TUBE_CORAL_BLOCK);
         addDeadCoralRule(Items.BRAIN_CORAL_BLOCK, Items.DEAD_BRAIN_CORAL_BLOCK);
         addDeadCoralRule(Items.BUBBLE_CORAL_BLOCK, Items.DEAD_BUBBLE_CORAL_BLOCK);
@@ -85,7 +78,6 @@ public class WorldInteractionSource implements IResourceSource {
         addDeadCoralRule(Items.FIRE_CORAL_FAN, Items.DEAD_FIRE_CORAL_FAN);
         addDeadCoralRule(Items.HORN_CORAL_FAN, Items.DEAD_HORN_CORAL_FAN);
 
-        // Окисление медных дверей и люков
         addOxidationRule(Items.COPPER_DOOR, Items.EXPOSED_COPPER_DOOR);
         addOxidationRule(Items.EXPOSED_COPPER_DOOR, Items.WEATHERED_COPPER_DOOR);
         addOxidationRule(Items.WEATHERED_COPPER_DOOR, Items.OXIDIZED_COPPER_DOOR);
@@ -93,7 +85,6 @@ public class WorldInteractionSource implements IResourceSource {
         addOxidationRule(Items.EXPOSED_COPPER_TRAPDOOR, Items.WEATHERED_COPPER_TRAPDOOR);
         addOxidationRule(Items.WEATHERED_COPPER_TRAPDOOR, Items.OXIDIZED_COPPER_TRAPDOOR);
 
-        // Дерево азалии из мха
         interactionMap.put(Items.ROOTED_DIRT, new InteractionRule(Items.MOSS_BLOCK, Items.BONE_MEAL, 2.0, "Bonemeal on Moss"));
         interactionMap.put(Items.AZALEA_LEAVES, new InteractionRule(Items.MOSS_BLOCK, Items.BONE_MEAL, 1.0, "Bonemeal on Moss"));
         interactionMap.put(Items.FLOWERING_AZALEA_LEAVES, new InteractionRule(Items.MOSS_BLOCK, Items.BONE_MEAL, 1.0, "Bonemeal on Moss"));

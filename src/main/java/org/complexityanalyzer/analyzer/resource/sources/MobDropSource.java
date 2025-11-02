@@ -259,16 +259,36 @@ public class MobDropSource implements IResourceSource {
     }
 
     private Optional<BaseResourceData> calculateComplexityForDrop(Item item, MobDropData data) {
-        EntityType<?> mobType = data.sourceMob();
-        Optional<MobPropertyProvider.MobProperties> mobPropsOpt = mobProvider.getProperties(mobType);
-        if (mobPropsOpt.isEmpty()) return Optional.empty();
-        var props = mobPropsOpt.get();
-        double combatPower = props.calculateCombatPower();
-        double rarityMultiplier = mobProvider.getRarity(mobType);
-        double finalComplexity = ((combatPower * rarityMultiplier) / data.averageYield()) * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
+        EntityType<?> victimMobType = data.sourceMob();
+        Optional<MobPropertyProvider.MobProperties> victimPropsOpt = mobProvider.getProperties(victimMobType);
+        if (victimPropsOpt.isEmpty()) return Optional.empty();
+
+        var victimProps = victimPropsOpt.get();
+        double victimCombatPower = victimProps.calculateCombatPower();
+        double victimRarityMultiplier = mobProvider.getRarity(victimMobType);
+
+        double specialConditionCost = 0.0;
+        if ("Killed by Charged Creeper".equals(data.killMethod())) {
+            Optional<MobPropertyProvider.MobProperties> creeperPropsOpt = mobProvider.getProperties(EntityType.CREEPER);
+
+            if (creeperPropsOpt.isPresent()) {
+                var creeperProps = creeperPropsOpt.get();
+                double creeperCombatPower = creeperProps.calculateCombatPower();
+                double creeperRarity = mobProvider.getRarity(EntityType.CREEPER);
+
+                specialConditionCost = (creeperCombatPower * creeperRarity) * 200.0;
+            } else {
+                specialConditionCost = 50000.0;
+            }
+        }
+
+        double baseKillComplexity = (victimCombatPower * victimRarityMultiplier) / data.averageYield();
+        double finalComplexity = (baseKillComplexity + specialConditionCost) * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
+
         String details = String.format("From %s (Yield: %.2f/kill, Rarity: %.1fx, Method: %s)",
-                mobType.getDescription().getString(), data.averageYield(), rarityMultiplier,
+                victimMobType.getDescription().getString(), data.averageYield(), victimRarityMultiplier,
                 data.killMethod() != null ? data.killMethod() : "Any");
+
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.MOB_DROP)
                 .baseFactor(finalComplexity)
@@ -303,6 +323,11 @@ public class MobDropSource implements IResourceSource {
     private void registerSpecialKillDrops() {
         ComplexityAnalyzer.LOGGER.info("Registering special kill-based drops...");
         int count = 0;
+
+        registerDrop(EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper"); count++;
+        registerDrop(EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper"); count++;
+        registerDrop(EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper"); count++;
+        registerDrop(EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper"); count++;
 
         registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill"); count++;
         registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill"); count++;

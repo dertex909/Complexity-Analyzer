@@ -17,6 +17,24 @@ public class WorldInteractionSource implements IResourceSource {
 
     @Override
     public void initialize(net.minecraft.world.level.Level level) {
+        addDeadCoralRule(Items.TUBE_CORAL_BLOCK, Items.DEAD_TUBE_CORAL_BLOCK);
+        addDeadCoralRule(Items.BRAIN_CORAL_BLOCK, Items.DEAD_BRAIN_CORAL_BLOCK);
+        addDeadCoralRule(Items.BUBBLE_CORAL_BLOCK, Items.DEAD_BUBBLE_CORAL_BLOCK);
+        addDeadCoralRule(Items.FIRE_CORAL_BLOCK, Items.DEAD_FIRE_CORAL_BLOCK);
+        addDeadCoralRule(Items.HORN_CORAL_BLOCK, Items.DEAD_HORN_CORAL_BLOCK);
+
+        addDeadCoralRule(Items.TUBE_CORAL, Items.DEAD_TUBE_CORAL);
+        addDeadCoralRule(Items.BRAIN_CORAL, Items.DEAD_BRAIN_CORAL);
+        addDeadCoralRule(Items.BUBBLE_CORAL, Items.DEAD_BUBBLE_CORAL);
+        addDeadCoralRule(Items.FIRE_CORAL, Items.DEAD_FIRE_CORAL);
+        addDeadCoralRule(Items.HORN_CORAL, Items.DEAD_HORN_CORAL);
+
+        addDeadCoralRule(Items.TUBE_CORAL_FAN, Items.DEAD_TUBE_CORAL_FAN);
+        addDeadCoralRule(Items.BRAIN_CORAL_FAN, Items.DEAD_BRAIN_CORAL_FAN);
+        addDeadCoralRule(Items.BUBBLE_CORAL_FAN, Items.DEAD_BUBBLE_CORAL_FAN);
+        addDeadCoralRule(Items.FIRE_CORAL_FAN, Items.DEAD_FIRE_CORAL_FAN);
+        addDeadCoralRule(Items.HORN_CORAL_FAN, Items.DEAD_HORN_CORAL_FAN);
+
         addStrippingRule(Items.OAK_LOG, Items.STRIPPED_OAK_LOG);
         addStrippingRule(Items.SPRUCE_LOG, Items.STRIPPED_SPRUCE_LOG);
         addStrippingRule(Items.BIRCH_LOG, Items.STRIPPED_BIRCH_LOG);
@@ -66,17 +84,6 @@ public class WorldInteractionSource implements IResourceSource {
 
         interactionMap.put(Items.CHIPPED_ANVIL, new InteractionRule(Items.ANVIL, null, 0, "Usage"));
         interactionMap.put(Items.DAMAGED_ANVIL, new InteractionRule(Items.CHIPPED_ANVIL, null, 0, "Usage"));
-
-        addDeadCoralRule(Items.TUBE_CORAL_BLOCK, Items.DEAD_TUBE_CORAL_BLOCK);
-        addDeadCoralRule(Items.BRAIN_CORAL_BLOCK, Items.DEAD_BRAIN_CORAL_BLOCK);
-        addDeadCoralRule(Items.BUBBLE_CORAL_BLOCK, Items.DEAD_BUBBLE_CORAL_BLOCK);
-        addDeadCoralRule(Items.FIRE_CORAL_BLOCK, Items.DEAD_FIRE_CORAL_BLOCK);
-        addDeadCoralRule(Items.HORN_CORAL_BLOCK, Items.DEAD_HORN_CORAL_BLOCK);
-        addDeadCoralRule(Items.TUBE_CORAL_FAN, Items.DEAD_TUBE_CORAL_FAN);
-        addDeadCoralRule(Items.BRAIN_CORAL_FAN, Items.DEAD_BRAIN_CORAL_FAN);
-        addDeadCoralRule(Items.BUBBLE_CORAL_FAN, Items.DEAD_BUBBLE_CORAL_FAN);
-        addDeadCoralRule(Items.FIRE_CORAL_FAN, Items.DEAD_FIRE_CORAL_FAN);
-        addDeadCoralRule(Items.HORN_CORAL_FAN, Items.DEAD_HORN_CORAL_FAN);
 
         addOxidationRule(Items.COPPER_DOOR, Items.EXPOSED_COPPER_DOOR);
         addOxidationRule(Items.EXPOSED_COPPER_DOOR, Items.WEATHERED_COPPER_DOOR);

@@ -2,6 +2,6 @@
 /.gradle/
 /build/
 /.idea/
-/run/logs/
 /todo.md
 /VERSIONING.md
+/run/

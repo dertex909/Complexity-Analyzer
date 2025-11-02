@@ -149,8 +149,6 @@ public class MobDropSource implements IResourceSource {
                     continue;
                 }
 
-                ComplexityAnalyzer.LOGGER.info("[MobDropSource] Processing: {}", BuiltInRegistries.ENTITY_TYPE.getKey(entityType));
-
                 Map<Item, DropStatistics> combinedDrops = new HashMap<>();
                 for (DamageSourceConfig config : damageConfigs) {
                     if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) continue;

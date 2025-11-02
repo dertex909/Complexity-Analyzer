@@ -75,8 +75,6 @@ public class MobRarityCalculator {
         if (!isModded) {
             Double hardcoded = getHardcodedRarity(entityType);
             if (hardcoded != null) {
-                ComplexityAnalyzer.LOGGER.debug("[Vanilla] Using hardcoded rarity for {}: {}x",
-                        getEntityName(entityType), hardcoded);
                 return hardcoded;
             }
         }
@@ -116,12 +114,8 @@ public class MobRarityCalculator {
         double health = getEntityHealth(entityType);
         if (health >= BOSS_HEALTH_THRESHOLD && bossLevel != BossLevel.BOSS) {
             rarity += VERY_HIGH_HEALTH_BONUS;
-            ComplexityAnalyzer.LOGGER.debug("[{}] Very high health ({}): +{}x",
-                    isModded ? "Modded" : "Vanilla", health, VERY_HIGH_HEALTH_BONUS);
         } else if (health >= HIGH_HEALTH_THRESHOLD && bossLevel == BossLevel.NONE) {
             rarity += HIGH_HEALTH_BONUS;
-            ComplexityAnalyzer.LOGGER.debug("[{}] High health ({}): +{}x",
-                    isModded ? "Modded" : "Vanilla", health, HIGH_HEALTH_BONUS);
         }
 
         double categoryBonus = analyzeMobCategory(entityType);
@@ -153,8 +147,6 @@ public class MobRarityCalculator {
                     isModded ? "Modded" : "Vanilla", FALLBACK_RARITY);
         }
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Final rarity for {}: {}x",
-                isModded ? "Modded" : "Vanilla", getEntityName(entityType), rarity);
         return rarity;
     }
 

@@ -1,7 +1,8 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import net.minecraft.world.entity.npc.VillagerProfession;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -11,9 +12,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,56 +26,62 @@ public class VillagerTradeSource implements IResourceSource {
             5, 5.0
     );
 
-    private final Map<Item, List<TradeInfo>> tradesByResult = new HashMap<>();
+    // Используем fastutil - быстрее стандартных HashMap/ArrayList
+    private final Map<Item, List<TradeInfo>> tradesByResult = new Object2ObjectOpenHashMap<>();
 
-    private net.minecraft.world.entity.npc.Villager cachedFakeVillager = null;
-
+    private net.minecraft.world.entity.npc.Villager cachedFakeVillager;
+    private net.minecraft.util.RandomSource cachedRandomSource;
 
     private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {}
 
     @Override
     public void initialize(Level level) {
-        ComplexityAnalyzer.LOGGER.debug("Initializing VillagerTradeSource by analyzing all trades via reflection...");
+        ComplexityAnalyzer.LOGGER.debug("Initializing VillagerTradeSource...");
 
+        // Кэшируем villager и RandomSource - не создаем каждый раз
         cachedFakeVillager = new net.minecraft.world.entity.npc.Villager(
                 net.minecraft.world.entity.EntityType.VILLAGER,
                 level
         );
+        cachedRandomSource = net.minecraft.util.RandomSource.create();
 
-        for (Map.Entry<VillagerProfession, Int2ObjectMap<VillagerTrades.ItemListing[]>> entry : VillagerTrades.TRADES.entrySet()) {
-            for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : entry.getValue().int2ObjectEntrySet()) {
+        // Проходим по всем трейдам
+        for (Int2ObjectMap<VillagerTrades.ItemListing[]> professionTrades : VillagerTrades.TRADES.values()) {
+            for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : professionTrades.int2ObjectEntrySet()) {
                 int tradeLevel = levelEntry.getIntKey();
-                for (VillagerTrades.ItemListing trade : levelEntry.getValue()) {
-                    getTradeInfoFromReflection(trade, tradeLevel).ifPresent(tradeInfo ->
-                            tradesByResult.computeIfAbsent(tradeInfo.result.getItem(), k -> new ArrayList<>()).add(tradeInfo)
-                    );
+                VillagerTrades.ItemListing[] listings = levelEntry.getValue();
+
+                for (VillagerTrades.ItemListing trade : listings) {
+                    TradeInfo tradeInfo = extractTradeInfo(trade, tradeLevel);
+                    if (tradeInfo != null) {
+                        // computeIfAbsent создает лямбду каждый раз - избегаем этого
+                        List<TradeInfo> trades = tradesByResult.computeIfAbsent(tradeInfo.result.getItem(), k -> new ObjectArrayList<>(2));
+                        trades.add(tradeInfo);
+                    }
                 }
             }
         }
+
         ComplexityAnalyzer.LOGGER.info("VillagerTradeSource initialized. Found trades for {} unique items.", tradesByResult.size());
+
+        // Освобождаем память после инициализации
+        cachedFakeVillager = null;
+        cachedRandomSource = null;
     }
 
-    private Optional<TradeInfo> getTradeInfoFromReflection(VillagerTrades.ItemListing trade, int level) {
+    // Убрали Optional - возвращаем null напрямую (быстрее)
+    private TradeInfo extractTradeInfo(VillagerTrades.ItemListing trade, int level) {
         try {
-            net.minecraft.util.RandomSource randomSource = net.minecraft.util.RandomSource.create();
-
-            MerchantOffer offer = trade.getOffer(cachedFakeVillager, randomSource);
-            if (offer == null) {
-                return Optional.empty();
-            }
+            MerchantOffer offer = trade.getOffer(cachedFakeVillager, cachedRandomSource);
+            if (offer == null) return null;
 
             ItemStack result = offer.getResult();
-            ItemStack costA = offer.getBaseCostA();
-            ItemStack costB = offer.getCostB();
+            if (result.isEmpty()) return null;
 
-            if (result.isEmpty()) {
-                return Optional.empty();
-            }
-
-            return Optional.of(new TradeInfo(result, costA, costB, level));
+            return new TradeInfo(result, offer.getBaseCostA(), offer.getCostB(), level);
 
         } catch (Exception e) {
-            return Optional.empty();
+            return null;
         }
     }
 
@@ -88,42 +92,39 @@ public class VillagerTradeSource implements IResourceSource {
 
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
-        if (!canProvide(item)) {
-            return Optional.empty();
-        }
-
         List<TradeInfo> possibleTrades = tradesByResult.get(item);
-        if (possibleTrades.isEmpty()) {
+        if (possibleTrades == null || possibleTrades.isEmpty()) {
             return Optional.empty();
         }
 
-        TradeInfo bestTrade = null;
-        int minLevel = Integer.MAX_VALUE;
+        // Находим лучший трейд (с минимальным уровнем)
+        TradeInfo bestTrade = possibleTrades.getFirst();
+        int minLevel = bestTrade.level();
 
-        for (TradeInfo currentTrade : possibleTrades) {
+        for (int i = 1; i < possibleTrades.size(); i++) {
+            TradeInfo currentTrade = possibleTrades.get(i);
             if (currentTrade.level() < minLevel) {
                 minLevel = currentTrade.level();
                 bestTrade = currentTrade;
             }
         }
 
-        if (bestTrade == null) {
-            return Optional.empty();
+        // Используем fastutil и указываем начальную емкость
+        Map<Item, Double> sourceItems = new Object2ObjectOpenHashMap<>(2);
+
+        ItemStack costA = bestTrade.costA();
+        if (!costA.isEmpty()) {
+            sourceItems.put(costA.getItem(), (double) costA.getCount() / bestTrade.result().getCount());
         }
 
-        Map<Item, Double> sourceItems = new HashMap<>();
-
-        if (!bestTrade.costA().isEmpty()) {
-            double amountNeeded = (double) bestTrade.costA().getCount() / bestTrade.result().getCount();
-            sourceItems.put(bestTrade.costA().getItem(), amountNeeded);
-        }
-        if (!bestTrade.costB().isEmpty()) {
-            double amountNeeded = (double) bestTrade.costB().getCount() / bestTrade.result().getCount();
-            sourceItems.put(bestTrade.costB().getItem(), amountNeeded);
+        ItemStack costB = bestTrade.costB();
+        if (!costB.isEmpty()) {
+            sourceItems.put(costB.getItem(), (double) costB.getCount() / bestTrade.result().getCount());
         }
 
         double tradeCost = LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0);
-        String details = String.format("Trade with Lvl %d Villager (best of %d options)", bestTrade.level(), possibleTrades.size());
+        String details = String.format("Trade with Lvl %d Villager (best of %d options)",
+                bestTrade.level(), possibleTrades.size());
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())
@@ -140,5 +141,7 @@ public class VillagerTradeSource implements IResourceSource {
     public String getName() { return "VillagerTradeSource"; }
 
     @Override
-    public BaseResourceData.ResourceSourceType getSourceType() { return BaseResourceData.ResourceSourceType.VILLAGER_TRADE; }
+    public BaseResourceData.ResourceSourceType getSourceType() {
+        return BaseResourceData.ResourceSourceType.VILLAGER_TRADE;
+    }
 }

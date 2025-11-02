@@ -9,7 +9,6 @@ import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SourceManager {
@@ -81,11 +80,20 @@ public class SourceManager {
     }
 
     public List<BaseResourceData> findAllSources(Item item) {
-        return sources.stream()
-                .filter(source -> source.canProvide(item))
-                .map(source -> source.analyze(item))
-                .flatMap(Optional::stream)
-                .collect(Collectors.toList());
+        List<BaseResourceData> results = new ArrayList<>();
+
+        for (IResourceSource source : sources) {
+            if (source.canProvide(item)) {
+                if (source instanceof IMultiSourceProvider multiSource) {
+                    results.addAll(multiSource.findAllSources(item));
+                }
+                else {
+                    source.analyze(item).ifPresent(results::add);
+                }
+            }
+        }
+
+        return results;
     }
 
     public void clearCache() {

@@ -337,7 +337,7 @@ public class IterativeSolver {
     }
 
     private double getBaseResourceCostEnhanced(
-            Item item,
+                    Item item,
             Map<Item, Double> currentComplexities
     ) {
         BaseResourceCache cached = baseResourceCache.get(item);
@@ -361,6 +361,23 @@ public class IterativeSolver {
                 sourceCost = data.getBaseFactor();
                 foundSimpleSource = true;
             } else {
+                if (graph.hasRecipe(item)) {
+                    boolean isDecompressionSource = graph.getRecipes(item).stream()
+                            .anyMatch(r -> {
+                                if (r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION) {
+                                    return false;
+                                }
+                                Set<Item> recipeIngredients = new HashSet<>();
+                                r.getIngredients().forEach(slot -> recipeIngredients.addAll(slot.getVariants()));
+                                return recipeIngredients.equals(data.getSourceItems().keySet());
+                            });
+
+                    if (isDecompressionSource) {
+                        continue;
+                    }
+                }
+
+
                 double dependencyCost = 0;
                 boolean hasInfiniteDependency = false;
 

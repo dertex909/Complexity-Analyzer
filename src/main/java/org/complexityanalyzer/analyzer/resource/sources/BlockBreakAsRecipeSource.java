@@ -27,6 +27,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
@@ -35,7 +36,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import java.lang.reflect.Field;
 import java.util.*;
 
-public class BlockBreakAsRecipeSource implements IResourceSource {
+public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
 
     private static final int SAMPLE_COUNT = 100;
     private static final double BASE_MINING_COST = 2.0;
@@ -116,9 +117,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
                         Map<Item, Double> sourceItems = new HashMap<>();
 
                         if (blockAsItem != Items.AIR) {
-                            double blockCostPerUnit = getSmartBlockCost(blockAsItem, blockToMine);
-                            double blocksNeeded = 1.0 / itemsPerAction;
-                            sourceItems.put(blockAsItem, blocksNeeded * blockCostPerUnit);
+                            sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
                         }
 
                         Item toolItem = toolStack.getItem();
@@ -431,6 +430,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource {
         }
 
         return Optional.of(paths.getFirst());
+    }
+
+    @Override
+    public List<BaseResourceData> findAllSources(Item item) {
+        return allPaths.getOrDefault(item, Collections.emptyList());
     }
 
     @Override

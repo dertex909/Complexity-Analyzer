@@ -5,13 +5,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -30,8 +28,6 @@ public class GraphBuilder {
 
         for (RecipeHolder<?> holder : recipeManager.getRecipes()) {
             try {
-                Recipe<?> recipe = holder.value();
-
                 RecipeNode node = buildNode(holder.value(), level);
                 if (node != null) {
                     graph.addRecipe(node);

@@ -83,31 +83,19 @@ public class MobRarityCalculator {
 
         BossLevel bossLevel = detectBossLevel(entityType);
         switch (bossLevel) {
-            case BOSS -> {
-                rarity += BOSS_RARITY;
-                ComplexityAnalyzer.LOGGER.debug("[{}] Detected as BOSS: {}x",
-                        isModded ? "Modded" : "Vanilla", BOSS_RARITY);
-            }
-            case MINI_BOSS -> {
-                rarity += MINI_BOSS_RARITY;
-                ComplexityAnalyzer.LOGGER.debug("[{}] Detected as MINI-BOSS: {}x",
-                        isModded ? "Modded" : "Vanilla", MINI_BOSS_RARITY);
-            }
+            case BOSS -> rarity += BOSS_RARITY;
+            case MINI_BOSS -> rarity += MINI_BOSS_RARITY;
         }
 
         double structRarity = dimensionAnalyzer.getStructureMultiplier(entityType);
         if (structRarity > 0) {
             rarity += structRarity;
-            ComplexityAnalyzer.LOGGER.debug("[{}] Structure spawn bonus: {}x",
-                    isModded ? "Modded" : "Vanilla", structRarity);
         }
 
         if (structRarity == 0) {
             double biomeRarity = dimensionAnalyzer.getBiomeMultiplier(entityType);
             if (biomeRarity > 0) {
                 rarity += biomeRarity;
-                ComplexityAnalyzer.LOGGER.debug("[{}] Biome spawn bonus: {}x",
-                        isModded ? "Modded" : "Vanilla", biomeRarity);
             }
         }
 
@@ -143,8 +131,6 @@ public class MobRarityCalculator {
 
         if (rarity == 0) {
             rarity = FALLBACK_RARITY;
-            ComplexityAnalyzer.LOGGER.debug("[{}] No special rarity data, using fallback: {}x",
-                    isModded ? "Modded" : "Vanilla", FALLBACK_RARITY);
         }
 
         return rarity;

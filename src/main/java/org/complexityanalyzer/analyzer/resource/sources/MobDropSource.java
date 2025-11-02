@@ -14,7 +14,6 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Skeleton;
 import net.minecraft.world.entity.projectile.Arrow;
@@ -115,10 +114,12 @@ public class MobDropSource implements IResourceSource {
         filter.start();
         rootLogger.addFilter(filter);
 
+        List<DamageSourceConfig> damageConfigs = null;
+
         try {
             com.mojang.authlib.GameProfile fakePlayerProfile = new com.mojang.authlib.GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
             net.minecraft.server.level.ServerPlayer fakePlayer = new net.minecraft.server.level.ServerPlayer(server, serverLevel, fakePlayerProfile, net.minecraft.server.level.ClientInformation.createDefault());
-            List<DamageSourceConfig> damageConfigs = createDamageSources(serverLevel, fakePlayer);
+            damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
             for (EntityType<?> entityType : entityTypes) {
                 if (SPECIAL_KILL_ENTITIES.contains(entityType)) {
@@ -137,15 +138,15 @@ public class MobDropSource implements IResourceSource {
 
                 Entity entityInstance;
                 try {
-                    entityInstance = entityType.spawn(serverLevel, null, null,
-                            net.minecraft.core.BlockPos.ZERO, MobSpawnType.COMMAND, false, false);
+                    // ИСПРАВЛЕНО: создаём БЕЗ spawn (не добавляем в мир)
+                    entityInstance = entityType.create(serverLevel);
                 } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to spawn entity {} for simulation: {}", BuiltInRegistries.ENTITY_TYPE.getKey(entityType), e.getMessage());
+                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}", BuiltInRegistries.ENTITY_TYPE.getKey(entityType), e.getMessage());
                     continue;
                 }
 
                 if (entityInstance == null) {
-                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Spawning entity {} returned null, skipping.", BuiltInRegistries.ENTITY_TYPE.getKey(entityType));
+                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.", BuiltInRegistries.ENTITY_TYPE.getKey(entityType));
                     continue;
                 }
 
@@ -168,6 +169,15 @@ public class MobDropSource implements IResourceSource {
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
         } finally {
+            // Очищаем созданные damage source entities
+            if (damageConfigs != null) {
+                for (DamageSourceConfig config : damageConfigs) {
+                    if (config.attackingEntity != null) {
+                        config.attackingEntity.discard();
+                    }
+                }
+            }
+
             try {
                 rootLogger.get().removeFilter(filter);
                 filter.stop();
@@ -180,30 +190,30 @@ public class MobDropSource implements IResourceSource {
 
     private List<DamageSourceConfig> createDamageSources(ServerLevel level, net.minecraft.server.level.ServerPlayer player) {
         List<DamageSourceConfig> configs = new ArrayList<>();
+
         configs.add(new DamageSourceConfig("Player Attack", level.damageSources().playerAttack(player), false, player, null));
         configs.add(new DamageSourceConfig("Fire", level.damageSources().onFire(), true, player, null));
         configs.add(new DamageSourceConfig("Lava", level.damageSources().lava(), true, player, null));
         configs.add(new DamageSourceConfig("Magic", level.damageSources().magic(), false, player, null));
         configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
-        Creeper chargedCreeper = EntityType.CREEPER.create(level);
-        if (chargedCreeper != null) {
-            CompoundTag creeperNBT = new CompoundTag();
-            creeperNBT.putBoolean("powered", true);
-            chargedCreeper.readAdditionalSaveData(creeperNBT);
-            chargedCreeper.setPos(0, 64, 0);
-            Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
-            Holder<DamageType> explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);
-            DamageSource creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
-            configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false, null, chargedCreeper));
-        }
-        Skeleton skeleton = EntityType.SKELETON.create(level);
-        if (skeleton != null) {
-            Arrow arrow = EntityType.ARROW.create(level);
-            if (arrow != null) {
-                arrow.setOwner(skeleton);
-                configs.add(new DamageSourceConfig("Skeleton Arrow", level.damageSources().arrow(arrow, skeleton), false, null, skeleton));
-            }
-        }
+
+        // ИСПРАВЛЕНО: Создаём entities БЕЗ добавления в мир
+        Creeper chargedCreeper = new Creeper(EntityType.CREEPER, level);
+        CompoundTag creeperNBT = new CompoundTag();
+        creeperNBT.putBoolean("powered", true);
+        chargedCreeper.readAdditionalSaveData(creeperNBT);
+        // НЕ добавляем в мир!
+
+        Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+        Holder<DamageType> explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);
+        DamageSource creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
+        configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false, null, chargedCreeper));
+
+        Skeleton skeleton = new Skeleton(EntityType.SKELETON, level);
+        Arrow arrow = new Arrow(EntityType.ARROW, level);
+        arrow.setOwner(skeleton);
+        configs.add(new DamageSourceConfig("Skeleton Arrow", level.damageSources().arrow(arrow, skeleton), false, null, skeleton));
+
         return configs;
     }
 

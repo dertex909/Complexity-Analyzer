@@ -12,77 +12,159 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class VillagerTradeSource implements IResourceSource {
 
     private static final Map<Integer, Double> LEVEL_COST_MAP = Map.of(
-            1, 1.2,
-            2, 1.5,
-            3, 2.0,
-            4, 3.0,
-            5, 5.0
+            1, 1.2, 2, 1.5, 3, 2.0, 4, 3.0, 5, 5.0
     );
 
-    // Используем fastutil - быстрее стандартных HashMap/ArrayList
+    // Проблемные типы трейдов - пропускаем их
+    private static final Set<String> SKIP_TRADE_TYPES = Set.of(
+            "TreasureMapForEmeralds",      // Очень медленно - ищет структуры
+            "EnchantedItemForEmeralds"     // Медленно - генерирует зачарования
+    );
+
     private final Map<Item, List<TradeInfo>> tradesByResult = new Object2ObjectOpenHashMap<>();
 
-    private net.minecraft.world.entity.npc.Villager cachedFakeVillager;
-    private net.minecraft.util.RandomSource cachedRandomSource;
-
     private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {}
+    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type) {}
 
     @Override
     public void initialize(Level level) {
-        ComplexityAnalyzer.LOGGER.debug("Initializing VillagerTradeSource...");
+        ComplexityAnalyzer.LOGGER.info("[VTS] Starting VillagerTradeSource initialization...");
 
-        // Кэшируем villager и RandomSource - не создаем каждый раз
-        cachedFakeVillager = new net.minecraft.world.entity.npc.Villager(
-                net.minecraft.world.entity.EntityType.VILLAGER,
-                level
-        );
-        cachedRandomSource = net.minecraft.util.RandomSource.create();
+        long totalStartTime = System.currentTimeMillis();
 
-        // Проходим по всем трейдам
+        int totalTrades = 0;
+        int fastParsed = 0;
+        int entityParsed = 0;
+        int skippedSlow = 0;
+        int failedTrades = 0;
+
+        List<PendingTrade> pendingTrades = new ObjectArrayList<>();
+        Map<String, Integer> skippedByType = new Object2ObjectOpenHashMap<>();
+
+        // Фаза 1: Быстрая обработка БЕЗ entity
         for (Int2ObjectMap<VillagerTrades.ItemListing[]> professionTrades : VillagerTrades.TRADES.values()) {
             for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : professionTrades.int2ObjectEntrySet()) {
                 int tradeLevel = levelEntry.getIntKey();
-                VillagerTrades.ItemListing[] listings = levelEntry.getValue();
 
-                for (VillagerTrades.ItemListing trade : listings) {
-                    TradeInfo tradeInfo = extractTradeInfo(trade, tradeLevel);
-                    if (tradeInfo != null) {
-                        // computeIfAbsent создает лямбду каждый раз - избегаем этого
-                        List<TradeInfo> trades = tradesByResult.computeIfAbsent(tradeInfo.result.getItem(), k -> new ObjectArrayList<>(2));
-                        trades.add(tradeInfo);
+                for (VillagerTrades.ItemListing listing : levelEntry.getValue()) {
+                    totalTrades++;
+                    String tradeType = listing.getClass().getSimpleName();
+
+                    // Пропускаем известные проблемные типы
+                    if (SKIP_TRADE_TYPES.contains(tradeType)) {
+                        skippedSlow++;
+                        skippedByType.merge(tradeType, 1, Integer::sum);
+                        continue;
+                    }
+
+                    try {
+                        net.minecraft.util.RandomSource randomSource = net.minecraft.util.RandomSource.create();
+                        MerchantOffer offer = listing.getOffer(null, randomSource);
+
+                        if (offer != null && !offer.getResult().isEmpty()) {
+                            fastParsed++;
+                            addTrade(offer, tradeLevel);
+                        } else {
+                            failedTrades++;
+                        }
+
+                    } catch (NullPointerException e) {
+                        // Нужен entity
+                        pendingTrades.add(new PendingTrade(listing, tradeLevel, tradeType));
+                    } catch (Exception e) {
+                        failedTrades++;
                     }
                 }
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("VillagerTradeSource initialized. Found trades for {} unique items.", tradesByResult.size());
+        long phase1Time = System.currentTimeMillis() - totalStartTime;
+        ComplexityAnalyzer.LOGGER.info("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)",
+                phase1Time, fastParsed, totalTrades, skippedSlow);
 
-        // Освобождаем память после инициализации
-        cachedFakeVillager = null;
-        cachedRandomSource = null;
+        // Фаза 2: Обработка С entity (только быстрые типы)
+        if (!pendingTrades.isEmpty()) {
+            long phase2Start = System.currentTimeMillis();
+            ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...",
+                    pendingTrades.size());
+
+            net.minecraft.world.entity.npc.Villager villager = new net.minecraft.world.entity.npc.Villager(
+                    net.minecraft.world.entity.EntityType.VILLAGER, level
+            ) {
+                @Override
+                protected void registerGoals() {}
+
+                @Override
+                public void tick() {}
+            };
+
+            int logInterval = Math.max(1, pendingTrades.size() / 10);
+
+            for (int i = 0; i < pendingTrades.size(); i++) {
+                PendingTrade pending = pendingTrades.get(i);
+
+                if ((i + 1) % logInterval == 0 || (i + 1) == pendingTrades.size()) {
+                    ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 progress: {}/{}", i + 1, pendingTrades.size());
+                }
+
+                try {
+                    net.minecraft.util.RandomSource randomSource = net.minecraft.util.RandomSource.create();
+                    MerchantOffer offer = pending.listing.getOffer(villager, randomSource);
+
+                    if (offer != null && !offer.getResult().isEmpty()) {
+                        entityParsed++;
+                        addTrade(offer, pending.level);
+                    } else {
+                        failedTrades++;
+                    }
+
+                } catch (Exception e) {
+                    failedTrades++;
+                    ComplexityAnalyzer.LOGGER.trace("[VTS] Entity trade failed ({}): {}",
+                            pending.type, e.getMessage());
+                }
+            }
+
+            villager.discard();
+
+            long phase2Time = System.currentTimeMillis() - phase2Start;
+            ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2 complete in {}ms: {}/{} trades",
+                    phase2Time, entityParsed, pendingTrades.size());
+        }
+
+        long totalTime = System.currentTimeMillis() - totalStartTime;
+
+        ComplexityAnalyzer.LOGGER.info("[VTS] ===== Initialization complete in {}ms =====", totalTime);
+        ComplexityAnalyzer.LOGGER.info("[VTS] Results: {} items, {}/{} trades ({}% success)",
+                tradesByResult.size(),
+                fastParsed + entityParsed,
+                totalTrades,
+                String.format("%.1f", (fastParsed + entityParsed) * 100.0 / totalTrades));
+        ComplexityAnalyzer.LOGGER.info("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}",
+                fastParsed, entityParsed, skippedSlow, failedTrades);
+
+        if (!skippedByType.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.info("[VTS] Skipped slow trade types:");
+            skippedByType.forEach((type, count) ->
+                    ComplexityAnalyzer.LOGGER.info("[VTS]   {} - {} times", type, count));
+        }
     }
 
-    // Убрали Optional - возвращаем null напрямую (быстрее)
-    private TradeInfo extractTradeInfo(VillagerTrades.ItemListing trade, int level) {
-        try {
-            MerchantOffer offer = trade.getOffer(cachedFakeVillager, cachedRandomSource);
-            if (offer == null) return null;
+    private void addTrade(MerchantOffer offer, int level) {
+        Item resultItem = offer.getResult().getItem();
 
-            ItemStack result = offer.getResult();
-            if (result.isEmpty()) return null;
-
-            return new TradeInfo(result, offer.getBaseCostA(), offer.getCostB(), level);
-
-        } catch (Exception e) {
-            return null;
-        }
+        tradesByResult.computeIfAbsent(resultItem, k -> new ObjectArrayList<>(2))
+                .add(new TradeInfo(
+                        offer.getResult().copy(),
+                        offer.getBaseCostA().copy(),
+                        offer.getCostB().copy(),
+                        level
+                ));
     }
 
     @Override
@@ -92,45 +174,34 @@ public class VillagerTradeSource implements IResourceSource {
 
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
-        List<TradeInfo> possibleTrades = tradesByResult.get(item);
-        if (possibleTrades == null || possibleTrades.isEmpty()) {
+        List<TradeInfo> trades = tradesByResult.get(item);
+        if (trades == null || trades.isEmpty()) {
             return Optional.empty();
         }
 
-        // Находим лучший трейд (с минимальным уровнем)
-        TradeInfo bestTrade = possibleTrades.getFirst();
-        int minLevel = bestTrade.level();
-
-        for (int i = 1; i < possibleTrades.size(); i++) {
-            TradeInfo currentTrade = possibleTrades.get(i);
-            if (currentTrade.level() < minLevel) {
-                minLevel = currentTrade.level();
-                bestTrade = currentTrade;
+        TradeInfo bestTrade = trades.getFirst();
+        for (int i = 1; i < trades.size(); i++) {
+            if (trades.get(i).level() < bestTrade.level()) {
+                bestTrade = trades.get(i);
             }
         }
 
-        // Используем fastutil и указываем начальную емкость
         Map<Item, Double> sourceItems = new Object2ObjectOpenHashMap<>(2);
 
-        ItemStack costA = bestTrade.costA();
-        if (!costA.isEmpty()) {
-            sourceItems.put(costA.getItem(), (double) costA.getCount() / bestTrade.result().getCount());
+        if (!bestTrade.costA().isEmpty()) {
+            sourceItems.put(bestTrade.costA().getItem(),
+                    (double) bestTrade.costA().getCount() / bestTrade.result().getCount());
         }
-
-        ItemStack costB = bestTrade.costB();
-        if (!costB.isEmpty()) {
-            sourceItems.put(costB.getItem(), (double) costB.getCount() / bestTrade.result().getCount());
+        if (!bestTrade.costB().isEmpty()) {
+            sourceItems.put(bestTrade.costB().getItem(),
+                    (double) bestTrade.costB().getCount() / bestTrade.result().getCount());
         }
-
-        double tradeCost = LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0);
-        String details = String.format("Trade with Lvl %d Villager (best of %d options)",
-                bestTrade.level(), possibleTrades.size());
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())
-                .baseFactor(tradeCost)
+                .baseFactor(LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0))
                 .sourceItems(sourceItems)
-                .details(details)
+                .details(String.format("Trade with Lvl %d Villager", bestTrade.level()))
                 .build());
     }
 

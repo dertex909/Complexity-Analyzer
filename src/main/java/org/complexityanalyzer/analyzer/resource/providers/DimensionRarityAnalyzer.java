@@ -42,7 +42,6 @@ public class DimensionRarityAnalyzer {
         Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
 
         int structuresAnalyzed = 0;
-        int mobsFound = 0;
 
         for (Map.Entry<ResourceKey<Structure>, Structure> entry : structureRegistry.entrySet()) {
             ResourceKey<Structure> structureKey = entry.getKey();
@@ -58,7 +57,6 @@ public class DimensionRarityAnalyzer {
                 for (StructureSpawnOverride override : spawnOverrides.values()) {
                     for (MobSpawnSettings.SpawnerData spawner : override.spawns().unwrap()) {
                         structureSpawnCache.putIfAbsent(spawner.type, dimension);
-                        mobsFound++;
                     }
                 }
             }
@@ -83,8 +81,6 @@ public class DimensionRarityAnalyzer {
         for (net.minecraft.server.level.ServerLevel dimension : server.getAllLevels()) {
             ResourceKey<Level> dimensionKey = dimension.dimension();
             dimensionsFound++;
-
-            ComplexityAnalyzer.LOGGER.debug("Found dimension: {}", dimensionKey.location());
         }
 
         ComplexityAnalyzer.LOGGER.info("Found {} dimensions", dimensionsFound);

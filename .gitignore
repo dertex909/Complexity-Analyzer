@@ -1,10 +1,7 @@
 # Project exclude paths
-/.gradle/
-/build/
-/.idea/
-/todo.md
-/VERSIONING.md
+.gradle/
+build/
+.idea/
+todo.md
+VERSIONING.md
 run/
-/run/logs/
-/run
-/run/

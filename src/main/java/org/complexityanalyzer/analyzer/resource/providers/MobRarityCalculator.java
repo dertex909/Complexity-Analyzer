@@ -2,27 +2,31 @@ package org.complexityanalyzer.analyzer.resource.providers;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.api.IBossRegistry;
 
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MobRarityCalculator {
+public class MobRarityCalculator implements IBossRegistry {
 
     private final DimensionRarityAnalyzer dimensionAnalyzer;
 
     private final Map<EntityType<?>, Double> rarityCache = new ConcurrentHashMap<>();
     private final Map<EntityType<?>, Double> healthCache = new ConcurrentHashMap<>();
     private final Map<EntityType<?>, BossLevel> bossCache = new ConcurrentHashMap<>();
+
+    private final Map<EntityType<?>, BossLevel> registeredBosses = new ConcurrentHashMap<>();
 
     private static final double BOSS_RARITY = 50.0;
     private static final double MINI_BOSS_RARITY = 15.0;
@@ -38,11 +42,11 @@ public class MobRarityCalculator {
     private static final double HIGH_HEALTH_THRESHOLD = 50.0;
 
     private static final Set<String> BOSS_KEYWORDS = Set.of(
-            "boss", "dragon", "wither", "king", "queen", "lord", "ancient", "elder"
+            "boss", "dragon", "king", "queen", "lord", "ancient", "elder", "wither"
     );
 
     private static final Set<String> RARE_KEYWORDS = Set.of(
-            "rare", "elite", "champion", "alpha", "mutant", "titan", "legendary"
+            "rare", "elite", "champion", "alpha", "mutant", "titan", "legendary", "prime"
     );
 
     private enum BossLevel {
@@ -55,16 +59,41 @@ public class MobRarityCalculator {
         this.dimensionAnalyzer = dimensionAnalyzer;
     }
 
+
+    @Override
+    public void registerBoss(EntityType<?> entityType, IBossRegistry.BossType type) {
+        BossLevel level = type == IBossRegistry.BossType.BOSS ? BossLevel.BOSS : BossLevel.MINI_BOSS;
+        registeredBosses.put(entityType, level);
+        bossCache.put(entityType, level);
+        ComplexityAnalyzer.LOGGER.info("[BossRegistry] Registered {} as {}",
+                BuiltInRegistries.ENTITY_TYPE.getKey(entityType), type);
+    }
+
+    @Override
+    public void registerBoss(String entityId, IBossRegistry.BossType type) {
+        ResourceLocation id = ResourceLocation.tryParse(entityId);
+        if (id == null) {
+            ComplexityAnalyzer.LOGGER.warn("[BossRegistry] Invalid entity ID: {}", entityId);
+            return;
+        }
+
+        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(id);
+
+        registerBoss(entityType, type);
+    }
+
+    @Override
     public boolean isBoss(EntityType<?> entityType) {
         BossLevel level = detectBossLevel(entityType);
         return level == BossLevel.BOSS;
     }
 
+    @Override
     public boolean isMiniBoss(EntityType<?> entityType) {
         BossLevel level = detectBossLevel(entityType);
         return level == BossLevel.MINI_BOSS;
     }
-
+    
     public double calculateRarity(EntityType<?> entityType) {
         return rarityCache.computeIfAbsent(entityType, this::calculateRarityInternal);
     }
@@ -136,50 +165,156 @@ public class MobRarityCalculator {
         return rarity;
     }
 
+
+    private BossLevel detectBossLevel(EntityType<?> entityType) {
+        BossLevel registered = registeredBosses.get(entityType);
+        if (registered != null) {
+            return registered;
+        }
+
+        BossLevel cached = bossCache.get(entityType);
+        if (cached != null) {
+            return cached;
+        }
+
+        BossLevel detected = detectBossLevelInternal(entityType);
+        bossCache.put(entityType, detected);
+        return detected;
+    }
+
+    private BossLevel detectBossLevelInternal(EntityType<?> entityType) {
+        BossLevel classCheck = detectByClass(entityType);
+        if (classCheck != BossLevel.NONE) {
+            ComplexityAnalyzer.LOGGER.debug("[BossDetection] {} detected as {} by class",
+                    getEntityName(entityType), classCheck);
+            return classCheck;
+        }
+
+        BossLevel vanillaCheck = detectVanillaBoss(entityType);
+        if (vanillaCheck != BossLevel.NONE) {
+            return vanillaCheck;
+        }
+
+        double health = getEntityHealth(entityType);
+        if (health >= BOSS_HEALTH_THRESHOLD) {
+            ComplexityAnalyzer.LOGGER.debug("[BossDetection] {} detected as BOSS by health ({})",
+                    getEntityName(entityType), health);
+            return BossLevel.BOSS;
+        } else if (health >= MINI_BOSS_HEALTH_THRESHOLD) {
+            if (hasMiniBossIndicators(entityType)) {
+                ComplexityAnalyzer.LOGGER.debug("[BossDetection] {} detected as MINI_BOSS by health + indicators",
+                        getEntityName(entityType));
+                return BossLevel.MINI_BOSS;
+            }
+        }
+
+        if (isModdedEntity(entityType) && health >= 40.0) {
+            BossLevel nameCheck = detectByName(entityType);
+            if (nameCheck != BossLevel.NONE) {
+                ComplexityAnalyzer.LOGGER.debug("[BossDetection] {} detected as {} by name pattern",
+                        getEntityName(entityType), nameCheck);
+                return nameCheck;
+            }
+        }
+
+        return BossLevel.NONE;
+    }
+
+    
+    private BossLevel detectByClass(EntityType<?> entityType) {
+        try {
+            Class<?> entityClass = entityType.getBaseClass();
+
+            if (WitherBoss.class.isAssignableFrom(entityClass)) {
+                return BossLevel.BOSS;
+            }
+            if (EnderDragon.class.isAssignableFrom(entityClass)) {
+                return BossLevel.BOSS;
+            }
+
+            String className = entityClass.getSimpleName();
+            if (className.endsWith("Boss") || className.contains("BossEntity")) {
+                return BossLevel.BOSS;
+            }
+
+            Class<?> superClass = entityClass.getSuperclass();
+            while (superClass != null && superClass != Object.class) {
+                String superName = superClass.getSimpleName();
+                if (superName.endsWith("Boss") || superName.equals("BossEntity")) {
+                    return BossLevel.BOSS;
+                }
+                superClass = superClass.getSuperclass();
+            }
+
+            String packageName = entityClass.getPackage() != null ?
+                    entityClass.getPackage().getName() : "";
+            if (packageName.contains(".boss.") || packageName.endsWith(".boss")) {
+
+                double health = getEntityHealth(entityType);
+                if (health >= MINI_BOSS_HEALTH_THRESHOLD) {
+                    return health >= BOSS_HEALTH_THRESHOLD ? BossLevel.BOSS : BossLevel.MINI_BOSS;
+                }
+            }
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Error checking boss class for {}: {}",
+                    getEntityName(entityType), e.getMessage());
+        }
+
+        return BossLevel.NONE;
+    }
+
+    
+    private BossLevel detectVanillaBoss(EntityType<?> entityType) {
+        if (entityType == EntityType.ENDER_DRAGON || entityType == EntityType.WITHER) {
+            return BossLevel.BOSS;
+        }
+        if (entityType == EntityType.ELDER_GUARDIAN || entityType == EntityType.WARDEN) {
+            return BossLevel.MINI_BOSS;
+        }
+        return BossLevel.NONE;
+    }
+
+    
+    private BossLevel detectByName(EntityType<?> entityType) {
+        String name = getEntityName(entityType).toLowerCase();
+        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        String idString = id.getPath().toLowerCase();
+
+        for (String keyword : BOSS_KEYWORDS) {
+            if (name.contains(keyword) || idString.contains(keyword)) {
+                return BossLevel.BOSS;
+            }
+        }
+
+        for (String keyword : RARE_KEYWORDS) {
+            if (name.contains(keyword) || idString.contains(keyword)) {
+                return BossLevel.MINI_BOSS;
+            }
+        }
+
+        return BossLevel.NONE;
+    }
+
+    
+    private boolean hasMiniBossIndicators(EntityType<?> entityType) {
+
+        if (entityType.getCategory() == MobCategory.MISC) {
+            return true;
+        }
+
+        if (isModdedEntity(entityType)) {
+            BossLevel nameCheck = detectByName(entityType);
+            return nameCheck == BossLevel.MINI_BOSS;
+        }
+
+        return false;
+    }
+
+
     private boolean isModdedEntity(EntityType<?> entityType) {
         ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
         return !id.getNamespace().equals("minecraft");
-    }
-
-    private BossLevel detectBossLevel(EntityType<?> entityType) {
-        return bossCache.computeIfAbsent(entityType, type -> {
-            if (type == EntityType.ENDER_DRAGON || type == EntityType.WITHER) {
-                return BossLevel.BOSS;
-            }
-
-            if (type == EntityType.ELDER_GUARDIAN || type == EntityType.WARDEN) {
-                return BossLevel.MINI_BOSS;
-            }
-
-            double health = getEntityHealth(type);
-            if (health >= BOSS_HEALTH_THRESHOLD) {
-                return BossLevel.BOSS;
-            } else if (health >= MINI_BOSS_HEALTH_THRESHOLD) {
-                return BossLevel.MINI_BOSS;
-            }
-
-            String name = getEntityName(type).toLowerCase();
-            ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
-            String idString = id.getPath().toLowerCase();
-
-            for (String keyword : BOSS_KEYWORDS) {
-                if (name.contains(keyword) || idString.contains(keyword)) {
-                    return BossLevel.BOSS;
-                }
-            }
-
-            for (String keyword : RARE_KEYWORDS) {
-                if (name.contains(keyword) || idString.contains(keyword)) {
-                    return BossLevel.MINI_BOSS;
-                }
-            }
-
-            if (type.getCategory() == MobCategory.MISC && health > 40.0) {
-                return BossLevel.MINI_BOSS;
-            }
-
-            return BossLevel.NONE;
-        });
     }
 
     private double getEntityHealth(EntityType<?> entityType) {

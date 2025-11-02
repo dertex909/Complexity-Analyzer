@@ -51,7 +51,7 @@ public class BaseResourceData {
     }
 
     public enum ResourceSourceType {
-        OVERRIDE("Override", 0.0), // Самый высокий приоритет
+        OVERRIDE("Override", 0.0),
 
         ORE("Ore/Mining", 1.0),
         EMPIRICAL_BLOCK("Empirical Block", 1.0),

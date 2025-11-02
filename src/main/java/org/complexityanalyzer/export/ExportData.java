@@ -18,6 +18,7 @@ public record ExportData(
             int usedInRecipes,
             boolean isValid,
             boolean hasCycle,
+            boolean isHardcoded,
             List<SourceData> alternativeSources
     ) {}
 

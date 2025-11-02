@@ -7,7 +7,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
-import org.complexityanalyzer.api.testAPI.HardcodedSourcesAPITest;
 import org.complexityanalyzer.config.ComplexityConfig;
 
 import java.util.*;
@@ -47,8 +46,6 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing hardcoded sources...", getName());
 
         registerVanillaSources();
-
-        HardcodedSourcesAPITest.runTests(this);fireRegistrationEvent();
 
         ComplexityAnalyzer.LOGGER.info("[{}] Registered {} normal + {} override sources",
                 getName(), normalSources.size(), overrideSources.size());

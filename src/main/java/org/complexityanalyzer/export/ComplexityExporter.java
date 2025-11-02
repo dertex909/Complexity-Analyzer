@@ -14,6 +14,8 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
+import org.complexityanalyzer.analyzer.resource.sources.HardcodedSourcesProvider;
+import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
@@ -73,6 +75,19 @@ public class ComplexityExporter {
         }
     }
 
+    private record CsvRow(
+            String itemId,
+            String displayName,
+            double complexity,
+            String category,
+            boolean hasRecipe,
+            int craftingDepth,
+            int usedInRecipes,
+            boolean isValid,
+            boolean hasCycle,
+            boolean isHardcoded
+    ) {}
+
     public static Path exportAllItems(MinecraftServer server, AnalysisEngine engine) throws IOException {
         Path exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
@@ -128,21 +143,43 @@ public class ComplexityExporter {
         Path exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         Path exportFile = exportDir.resolve("items_all_" + timestamp + ".csv");
+
         List<CsvRow> rows = new ArrayList<>();
         for (Item item : BuiltInRegistries.ITEM) {
-            engine.getComplexityResult(item).ifPresent(c -> rows.add(new CsvRow(
-                    BuiltInRegistries.ITEM.getKey(item).toString(), item.getDescription().getString(),
-                    c.getComplexity(), c.getCategory().getDisplayName(), c.hasRecipe(), c.getDepth(),
-                    engine.getUsageCount(item), c.isValid(), c.hasCycle()
-            )));
+            engine.getComplexityResult(item).ifPresent(c -> {
+                boolean isHardcoded = checkIfHardcoded(item);
+
+                rows.add(new CsvRow(
+                        BuiltInRegistries.ITEM.getKey(item).toString(),
+                        item.getDescription().getString(),
+                        c.getComplexity(),
+                        c.getCategory().getDisplayName(),
+                        c.hasRecipe(),
+                        c.getDepth(),
+                        engine.getUsageCount(item),
+                        c.isValid(),
+                        c.hasCycle(),
+                        isHardcoded
+                ));
+            });
         }
+
         rows.sort(Comparator.comparingDouble(CsvRow::complexity).reversed());
+
         try (PrintWriter writer = new PrintWriter(exportFile.toFile(), StandardCharsets.UTF_8)) {
-            writer.println("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth,Used In Recipes,Is Valid,Has Cycle");
+            writer.println("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth,Used In Recipes,Is Valid,Has Cycle,Is Hardcoded");
             for (CsvRow row : rows) {
-                writer.println(String.format(Locale.US, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s",
-                        row.itemId, row.displayName.replace("\"", "\"\""), row.complexity, row.category,
-                        row.hasRecipe, row.craftingDepth, row.usedInRecipes, row.isValid, row.hasCycle
+                writer.println(String.format(Locale.US, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s,%s",
+                        row.itemId,
+                        row.displayName.replace("\"", "\"\""),
+                        row.complexity,
+                        row.category,
+                        row.hasRecipe,
+                        row.craftingDepth,
+                        row.usedInRecipes,
+                        row.isValid,
+                        row.hasCycle,
+                        row.isHardcoded
                 ));
             }
         }
@@ -190,8 +227,6 @@ public class ComplexityExporter {
         return exportFile;
     }
 
-    private record CsvRow(String itemId, String displayName, double complexity, String category, boolean hasRecipe, int craftingDepth, int usedInRecipes, boolean isValid, boolean hasCycle) {}
-
     private static Path getExportDirectory(MinecraftServer server) throws IOException {
         Path dir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
                 .resolve("data")
@@ -209,14 +244,36 @@ public class ComplexityExporter {
         return dir;
     }
 
+    private static boolean checkIfHardcoded(Item item) {
+        try {
+            IHardcodedSourceRegistry registry = HardcodedSourcesProvider.getRegistry();
+            return registry.isRegistered(item);
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    }
+
     private static ExportData.ItemData buildItemData(Item item, ResourceLocation itemId, ItemComplexity complexity, AnalysisEngine engine) {
         List<ExportData.SourceData> sources = engine.findAllSourcesForItem(item).stream()
                 .map(data -> buildSourceData(data, engine))
                 .sorted(Comparator.comparingDouble(ExportData.SourceData::estimatedCost))
                 .collect(Collectors.toList());
-        return new ExportData.ItemData(itemId.toString(), item.getDescription().getString(), complexity.getComplexity(),
-                complexity.getCategory().getDisplayName(), complexity.hasRecipe(), complexity.getDepth(),
-                engine.getUsageCount(item), complexity.isValid(), complexity.hasCycle(), sources);
+
+        boolean isHardcoded = checkIfHardcoded(item);
+
+        return new ExportData.ItemData(
+                itemId.toString(),
+                item.getDescription().getString(),
+                complexity.getComplexity(),
+                complexity.getCategory().getDisplayName(),
+                complexity.hasRecipe(),
+                complexity.getDepth(),
+                engine.getUsageCount(item),
+                complexity.isValid(),
+                complexity.hasCycle(),
+                isHardcoded,
+                sources
+        );
     }
 
     private static ExportData.SourceData buildSourceData(BaseResourceData data, AnalysisEngine engine) {

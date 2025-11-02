@@ -1,7 +1,18 @@
-# Project exclude paths
+# ================= Gradle / Build =================
 .gradle/
 build/
+
+# ================= IntelliJ IDEA =================
 .idea/
-todo.md
-VERSIONING.md
+
+# ================= Minecraft =================
 run/
+user_jvm_args.txt
+
+# ================= Logs =================
+*.log
+logs/
+
+# ================= Local Documentation =================
+VERSIONING.md
+todo.md

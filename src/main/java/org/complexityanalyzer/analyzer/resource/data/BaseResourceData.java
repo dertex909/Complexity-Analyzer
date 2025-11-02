@@ -20,7 +20,6 @@ public class BaseResourceData {
         this.baseFactor = builder.baseFactor;
         this.details = builder.details;
         this.sourceName = builder.sourceName;
-        // Мы копируем карту, чтобы сделать финальный объект неизменяемым (immutable)
         this.sourceItems = Map.copyOf(builder.sourceItems);
     }
 
@@ -73,7 +72,6 @@ public class BaseResourceData {
         private ResourceSourceType sourceType = ResourceSourceType.UNKNOWN;
         private double baseFactor = 1.0;
         private String details = "";
-        // --- ИЗМЕНЕНИЕ 1: Карта теперь изменяемая (mutable), чтобы можно было добавлять элементы ---
         private final Map<Item, Double> sourceItems = new HashMap<>();
 
         public Builder(Item item, IResourceSource source) {
@@ -90,7 +88,6 @@ public class BaseResourceData {
         public Builder baseFactor(double factor) { this.baseFactor = factor; return this; }
         public Builder details(String details) { this.details = details; return this; }
 
-        // --- ИЗМЕНЕНИЕ 2: Метод теперь добавляет элементы в карту, а не заменяет ее ---
         public Builder sourceItems(Map<Item, Double> items) {
             if (items != null) {
                 this.sourceItems.putAll(items);
@@ -98,7 +95,6 @@ public class BaseResourceData {
             return this;
         }
 
-        // --- ИЗМЕНЕНИЕ 3: Добавлен новый метод, которого не хватало ---
         public void addSourceItem(Item item, double amount) {
             this.sourceItems.put(item, amount);
         }

@@ -44,7 +44,6 @@ public class BlockPropertyProvider {
 
         float explosionResistance;
         try {
-            // Null-safe way to get explosion resistance
             explosionResistance = block.getExplosionResistance();
         } catch (Exception e) {
             explosionResistance = 0.0f;
@@ -53,10 +52,8 @@ public class BlockPropertyProvider {
         return new BlockProperties(hardness, requiredTier, canHarvestByHand, explosionResistance);
     }
 
-    // --- УЛУЧШЕННЫЙ МЕТОД ---
     private Tier determineRequiredTier(Block block) {
         BlockState state = block.defaultBlockState();
-        // Используем теги - это правильный способ
         if (state.is(BlockTags.NEEDS_DIAMOND_TOOL)) {
             return Tiers.DIAMOND;
         }
@@ -66,7 +63,6 @@ public class BlockPropertyProvider {
         if (state.is(BlockTags.NEEDS_STONE_TOOL)) {
             return Tiers.STONE;
         }
-        // Все остальное можно сломать деревянным инструментом или рукой
         return Tiers.WOOD;
     }
 
@@ -94,7 +90,7 @@ public class BlockPropertyProvider {
         public double getHardnessMultiplier() {
             if (hardness < 0) return 10.0;
             if (hardness == 0) return 0.1;
-            return 1.0 + Math.log1p(hardness); // Более плавная формула
+            return 1.0 + Math.log1p(hardness);
         }
 
         public double getToolMultiplier() {
@@ -103,7 +99,7 @@ public class BlockPropertyProvider {
             if (requiredTier == Tiers.IRON) return 2.5;
             if (requiredTier == Tiers.DIAMOND) return 4.0;
             if (requiredTier == Tiers.NETHERITE) return 5.0;
-            return 1.0; // По умолчанию для руки
+            return 1.0;
         }
 
         public String getTierName() {

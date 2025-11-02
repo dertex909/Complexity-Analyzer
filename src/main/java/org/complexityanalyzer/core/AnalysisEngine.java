@@ -11,9 +11,7 @@ import org.complexityanalyzer.analyzer.SourcePathAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
-import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
-import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.analyzer.resource.providers.TheoreticalDistributionProvider;
+import org.complexityanalyzer.analyzer.resource.providers.*;
 import org.complexityanalyzer.analyzer.resource.sources.*;
 import org.complexityanalyzer.analyzer.solver.IterativeSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
@@ -55,6 +53,8 @@ public class AnalysisEngine {
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
     private volatile TheoreticalDistributionProvider theoreticalDistProvider;
+    private volatile MobRarityCalculator mobRarityCalculator;
+
 
     private static class InstanceHolder {
         private static final AnalysisEngine INSTANCE = new AnalysisEngine();
@@ -203,6 +203,10 @@ public class AnalysisEngine {
         this.mobPropProvider = new MobPropertyProvider();
         this.mobPropProvider.initialize();
 
+        DimensionRarityAnalyzer dimensionAnalyzer = new DimensionRarityAnalyzer(serverLevel);
+        this.mobRarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
+        this.mobPropProvider.setRarityCalculator(this.mobRarityCalculator);
+
         this.geoDatabase = new GeoDatabase(serverLevel.getServer());
         this.geoDatabase.loadAll();
 
@@ -224,7 +228,7 @@ public class AnalysisEngine {
         }
 
         initialSources.add(new UniversalLootSource());
-        initialSources.add(new MobDropSource(this.mobPropProvider));
+        initialSources.add(new MobDropSource(this.mobPropProvider, serverLevel));
         initialSources.add(new BlockBreakAsRecipeSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
@@ -428,6 +432,7 @@ public class AnalysisEngine {
         Thread reloadThread = new Thread(() -> {
             try {
                 shutdown();
+                clearAllCaches();
                 Thread.sleep(500);
                 initializeAsync(level, () -> ComplexityAnalyzer.LOGGER.info("Reload complete."));
             } catch (InterruptedException e) {
@@ -516,6 +521,18 @@ public class AnalysisEngine {
         } finally {
             stateLock.unlock();
         }
+    }
+
+    private void clearAllCaches() {
+        ComplexityAnalyzer.LOGGER.info("Clearing all analysis caches...");
+
+        complexityCache.clear();
+
+        if (mobRarityCalculator != null) {
+            mobRarityCalculator.clearCache();
+        }
+
+        ComplexityAnalyzer.LOGGER.info("All caches cleared.");
     }
 
     public Optional<MobDropSource> getMobDropSource() {

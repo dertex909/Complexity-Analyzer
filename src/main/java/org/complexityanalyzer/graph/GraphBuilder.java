@@ -32,14 +32,6 @@ public class GraphBuilder {
             try {
                 Recipe<?> recipe = holder.value();
 
-                if (recipe instanceof net.minecraft.world.item.crafting.ShulkerBoxColoring) {
-                    ComplexityAnalyzer.LOGGER.info("Found ShulkerBoxColoring recipe! Ingredients: {}",
-                            recipe.getIngredients().size());
-                    int added = buildShulkerColoringNodes(graph);
-                    processedCount += added;
-                    continue;
-                }
-
                 RecipeNode node = buildNode(holder.value(), level);
                 if (node != null) {
                     graph.addRecipe(node);
@@ -55,49 +47,6 @@ public class GraphBuilder {
 
         ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped", processedCount, skippedCount);
         return graph;
-    }
-
-    private static int buildShulkerColoringNodes(RecipeGraph graph) {
-        ComplexityAnalyzer.LOGGER.info("Building synthetic shulker box coloring recipes...");
-
-        List<Item> coloredShulkers = List.of(
-                Items.WHITE_SHULKER_BOX, Items.ORANGE_SHULKER_BOX, Items.MAGENTA_SHULKER_BOX,
-                Items.LIGHT_BLUE_SHULKER_BOX, Items.YELLOW_SHULKER_BOX, Items.LIME_SHULKER_BOX,
-                Items.PINK_SHULKER_BOX, Items.GRAY_SHULKER_BOX, Items.LIGHT_GRAY_SHULKER_BOX,
-                Items.CYAN_SHULKER_BOX, Items.PURPLE_SHULKER_BOX, Items.BLUE_SHULKER_BOX,
-                Items.BROWN_SHULKER_BOX, Items.GREEN_SHULKER_BOX, Items.RED_SHULKER_BOX,
-                Items.BLACK_SHULKER_BOX
-        );
-
-        List<Item> allShulkers = new ArrayList<>(coloredShulkers);
-        allShulkers.add(Items.SHULKER_BOX);
-
-        List<Item> allDyes = List.of(
-                Items.WHITE_DYE, Items.ORANGE_DYE, Items.MAGENTA_DYE,
-                Items.LIGHT_BLUE_DYE, Items.YELLOW_DYE, Items.LIME_DYE,
-                Items.PINK_DYE, Items.GRAY_DYE, Items.LIGHT_GRAY_DYE,
-                Items.CYAN_DYE, Items.PURPLE_DYE, Items.BLUE_DYE,
-                Items.BROWN_DYE, Items.GREEN_DYE, Items.RED_DYE,
-                Items.BLACK_DYE
-        );
-
-        int count = 0;
-        for (int i = 0; i < coloredShulkers.size(); i++) {
-            RecipeNode.Builder builder = new RecipeNode.Builder(coloredShulkers.get(i))
-                    .resultCount(1)
-                    .recipeType(RecipeType.CRAFTING)
-                    .category(RecipeCategory.PRIMARY);
-
-            builder.addIngredient(allShulkers, 1);
-            builder.addIngredient(allDyes.get(i), 1);
-
-            RecipeNode node = builder.build();
-            graph.addRecipe(node);
-            count++;
-        }
-
-        ComplexityAnalyzer.LOGGER.info("Added {} shulker box coloring recipes", count);
-        return count;
     }
 
     private static RecipeNode buildSmithingNode(

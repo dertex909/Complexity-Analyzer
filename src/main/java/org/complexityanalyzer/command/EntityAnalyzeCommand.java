@@ -52,7 +52,9 @@ public class EntityAnalyzeCommand {
             return 0;
         }
 
-        Optional<MobPropertyProvider.MobProperties> propsOpt = mobProviderOpt.get().getProperties(entityType);
+        MobPropertyProvider mobProvider = mobProviderOpt.get(); // Сохраняем провайдер
+
+        Optional<MobPropertyProvider.MobProperties> propsOpt = mobProvider.getProperties(entityType);
         if (propsOpt.isEmpty()) {
             output.sendFailure(source,
                     Component.literal("⚠ This entity cannot be analyzed")
@@ -65,7 +67,8 @@ public class EntityAnalyzeCommand {
 
         List<MobDropData> drops = mobDropSourceOpt.map(mds -> mds.getDropsForEntity(entityType)).orElse(List.of());
 
-        displayAnalysis(source, entityType, propsOpt.get(), drops, output);
+        // Передаем mobProvider в displayAnalysis
+        displayAnalysis(source, entityType, propsOpt.get(), drops, mobProvider, output);
         return 1;
     }
 
@@ -74,20 +77,22 @@ public class EntityAnalyzeCommand {
             EntityType<?> type,
             MobPropertyProvider.MobProperties props,
             List<MobDropData> drops,
+            MobPropertyProvider mobProvider, // ДОБАВЛЕНО
             OutputManager output
     ) {
         String entityName = type.getDescription().getString();
 
-        double survivability = props.maxHealth() * (1 + props.armor() / 5.0);
-        double threat = 1 + Math.log1p(props.attackDamage());
-        double combatPower = survivability * threat;
+        // Используем новые методы из MobProperties
+        double survivability = props.calculateSurvivability();
+        double threat = props.calculateThreat();
+        double combatPower = props.calculateCombatPower();
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("═══════════════════════════════")
                         .withStyle(ChatFormatting.DARK_GRAY));
 
-        String mobIcon = getMobIcon(props);
+        String mobIcon = getMobIcon(type, props, mobProvider); // Передаем mobProvider
         output.sendInfo(source,
                 Component.literal(mobIcon + " ")
                         .withStyle(ChatFormatting.RED)
@@ -104,9 +109,13 @@ public class EntityAnalyzeCommand {
                 .append(Component.literal(entityName)
                         .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
 
-        if (props.isBoss()) {
+        // ИСПРАВЛЕНО: используем mobProvider.isBoss(type)
+        if (mobProvider.isBoss(type)) {
             nameComponent.append(Component.literal(" 👑")
                     .withStyle(ChatFormatting.GOLD));
+        } else if (mobProvider.isMiniBoss(type)) {
+            nameComponent.append(Component.literal(" ⭐")
+                    .withStyle(ChatFormatting.YELLOW));
         }
 
         output.sendInfo(source, nameComponent);
@@ -124,7 +133,7 @@ public class EntityAnalyzeCommand {
 
         displayCalculatedFactors(source, survivability, threat, combatPower, output);
 
-        displayDifficultyRating(source, combatPower, props, output);
+        displayDifficultyRating(source, type, combatPower, mobProvider, output); // Передаем type и mobProvider
 
         displayDrops(source, drops, output);
 
@@ -235,18 +244,24 @@ public class EntityAnalyzeCommand {
 
     private static void displayDifficultyRating(
             CommandSourceStack source,
+            EntityType<?> type, // ДОБАВЛЕНО
             double combatPower,
-            MobPropertyProvider.MobProperties props,
+            MobPropertyProvider mobProvider, // ДОБАВЛЕНО
             OutputManager output
     ) {
         String difficulty;
         String difficultyIcon;
         ChatFormatting difficultyColor;
 
-        if (props.isBoss()) {
+        // ИСПРАВЛЕНО: используем mobProvider.isBoss(type)
+        if (mobProvider.isBoss(type)) {
             difficulty = "BOSS";
             difficultyIcon = "👑";
             difficultyColor = ChatFormatting.DARK_PURPLE;
+        } else if (mobProvider.isMiniBoss(type)) {
+            difficulty = "MINI-BOSS";
+            difficultyIcon = "⭐";
+            difficultyColor = ChatFormatting.LIGHT_PURPLE;
         } else if (combatPower > 500) {
             difficulty = "EXTREME";
             difficultyIcon = "💀";
@@ -277,6 +292,7 @@ public class EntityAnalyzeCommand {
 
         String recommendation = switch (difficulty) {
             case "BOSS" -> "Prepare thoroughly! Boss encounter.";
+            case "MINI-BOSS" -> "Elite enemy! Strong gear recommended.";
             case "EXTREME" -> "Extreme danger! Full gear recommended.";
             case "HARD" -> "Dangerous! Good equipment needed.";
             case "MEDIUM" -> "Moderate threat. Stay cautious.";
@@ -337,8 +353,14 @@ public class EntityAnalyzeCommand {
         }
     }
 
-    private static String getMobIcon(MobPropertyProvider.MobProperties props) {
-        if (props.isBoss()) return "👑";
+    // ИСПРАВЛЕНО: добавлены параметры type и mobProvider
+    private static String getMobIcon(
+            EntityType<?> type,
+            MobPropertyProvider.MobProperties props,
+            MobPropertyProvider mobProvider
+    ) {
+        if (mobProvider.isBoss(type)) return "👑";
+        if (mobProvider.isMiniBoss(type)) return "⭐";
 
         String category = props.classification().getName().toLowerCase();
         return switch (category) {

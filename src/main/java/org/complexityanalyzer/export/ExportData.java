@@ -28,4 +28,27 @@ public record ExportData(
             String details,
             Map<String, Double> requiredItems
     ) {}
+
+    // --- НОВЫЕ ЗАПИСИ ДЛЯ МОБОВ ---
+    public record MobData(
+            String name,
+            String id,
+            String category,
+            double health,
+            double damage,
+            double armor,
+            double survivability,
+            double threat,
+            double combatPower,
+            double rarity,
+            boolean isBoss,
+            boolean isMiniBoss,
+            List<MobDropData> drops
+    ) {}
+
+    public record MobDropData(
+            String itemId,
+            String itemName,
+            double yieldPerKill
+    ) {}
 }

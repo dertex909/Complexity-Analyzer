@@ -21,8 +21,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UniversalLootSource implements IResourceSource {
@@ -62,14 +64,38 @@ public class UniversalLootSource implements IResourceSource {
             return;
         }
 
-        MinecraftServer server = serverLevel.getServer();
-        if (!server.isSameThread()) {
-            server.executeBlocking(() -> initialize(level));
-            return;
+        CompletableFuture<Set<ResourceKey<LootTable>>> lootKeysFuture = getCompletableFuture(serverLevel);
+
+        try {
+            Set<ResourceKey<LootTable>> allLootTableKeys = lootKeysFuture.join();
+
+            processLootTables(serverLevel, allLootTableKeys);
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys from server thread. Aborting analysis.", e);
         }
+    }
+
+    private @NotNull CompletableFuture<Set<ResourceKey<LootTable>>> getCompletableFuture(ServerLevel serverLevel) {
+        MinecraftServer server = serverLevel.getServer();
+
+        CompletableFuture<Set<ResourceKey<LootTable>>> lootKeysFuture = new CompletableFuture<>();
+
+        server.execute(() -> {
+            try {
+                Set<ResourceKey<LootTable>> keys = getAllLootTableKeys(server);
+                lootKeysFuture.complete(keys);
+            } catch (Exception e) {
+                lootKeysFuture.completeExceptionally(e);
+            }
+        });
+        return lootKeysFuture;
+    }
+
+    private void processLootTables(ServerLevel serverLevel, Set<ResourceKey<LootTable>> allLootTableKeys) {
+        MinecraftServer server = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
-
         long startTime = System.currentTimeMillis();
         int tablesProcessed = 0;
         int tablesSkipped = 0;
@@ -81,7 +107,6 @@ public class UniversalLootSource implements IResourceSource {
 
         try {
             var reloadableRegistries = server.reloadableRegistries();
-            Set<ResourceKey<LootTable>> allLootTableKeys = getAllLootTableKeys(server);
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
 
             for (ResourceKey<LootTable> lootTableKey : allLootTableKeys) {
@@ -95,7 +120,8 @@ public class UniversalLootSource implements IResourceSource {
                 LootContextDefinition contextDef = contextDefOpt.get();
 
                 try {
-                    LootTable lootTable = reloadableRegistries.getLootTable(lootTableKey);
+                    LootTable lootTable = CompletableFuture.supplyAsync(() -> reloadableRegistries.getLootTable(lootTableKey), server).join();
+
                     if (lootTable == LootTable.EMPTY) {
                         tablesSkipped++;
                         continue;
@@ -181,12 +207,13 @@ public class UniversalLootSource implements IResourceSource {
         }
     }
 
+
     private Set<ResourceKey<LootTable>> getAllLootTableKeys(MinecraftServer server) {
         try {
             var registries = server.reloadableRegistries().get();
             var lootRegistry = registries.registry(Registries.LOOT_TABLE).orElseThrow();
 
-            Set<ResourceKey<LootTable>> keys = lootRegistry.registryKeySet();
+            Set<ResourceKey<LootTable>> keys = new HashSet<>(lootRegistry.registryKeySet());
 
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} loot tables via reloadableRegistries.", keys.size());
             return keys;

@@ -25,6 +25,7 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.event.DatapackSyncHandler;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
@@ -40,6 +41,34 @@ public class ComplexityCommand {
                                 return type.getCategory() != MobCategory.MISC;
                             }),
                     builder);
+
+    private static final SuggestionProvider<CommandSourceStack> LOOT_TABLE_SUGGESTIONS = (context, builder) -> {
+        AnalysisEngine engine = AnalysisEngine.getInstance();
+        if (!engine.isReady()) {
+            return builder.buildFuture();
+        }
+
+        return engine.getSourceByType(UniversalLootSource.class)
+                .map(uls -> {
+                    uls.getAllLootData().values().stream()
+                            .flatMap(map -> map.values().stream())
+                            .map(data -> {
+                                try {
+                                    String details = data.getDetails();
+                                    int start = details.indexOf("'") + 1;
+                                    int end = details.indexOf("'", start);
+                                    return details.substring(start, end);
+                                } catch (Exception e) {
+                                    return null;
+                                }
+                            })
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .forEach(builder::suggest);
+                    return builder.buildFuture();
+                })
+                .orElse(builder.buildFuture());
+    };
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -134,79 +163,77 @@ public class ComplexityCommand {
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ComplexityCommand::executeReload))
 
+                        // --- НАЧАЛО НОВОГО БЛОКА EXPORT ---
                         .then(Commands.literal("export")
                                 .requires(source -> source.hasPermission(2))
-                                .then(Commands.literal("all")
-                                        .executes(ExportCommand::executeAll)
-                                )
-                                .then(Commands.literal("item")
-                                        .then(Commands.argument("item", ResourceLocationArgument.id())
-                                                .suggests(ITEM_SUGGESTIONS)
-                                                .executes(ctx -> ExportCommand.executeSingle(
-                                                        ctx,
-                                                        ResourceLocationArgument.getId(ctx, "item").toString()
-                                                ))
+
+                                // === ГРУППА ДЛЯ ПРЕДМЕТОВ (ITEMS) ===
+                                .then(Commands.literal("items")
+                                        .then(Commands.literal("all")
+                                                .executes(ExportCommand::executeAllItems)
+                                        )
+                                        .then(Commands.literal("category")
+                                                .then(Commands.argument("category_name", StringArgumentType.word())
+                                                        .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
+                                                                new String[]{"Trivial", "Simple", "Moderate", "Complex", "Difficult", "Expert", "Master", "Mythical", "Transcendent", "Eternal"}, builder))
+                                                        .executes(ctx -> ExportCommand.executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))
+                                                )
+                                        )
+                                        .then(Commands.literal("top")
+                                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
+                                                        .executes(ctx -> ExportCommand.executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count")))
+                                                )
+                                        )
+                                        .then(Commands.literal("single")
+                                                .then(Commands.argument("item_id", ResourceLocationArgument.id())
+                                                        .suggests(ITEM_SUGGESTIONS)
+                                                        .executes(ctx -> ExportCommand.executeSingleItem(ctx, ResourceLocationArgument.getId(ctx, "item_id").toString()))
+                                                )
+                                        )
+                                        .then(Commands.literal("csv")
+                                                .executes(ExportCommand::executeItemsCSV)
                                         )
                                 )
-                                .then(Commands.literal("category")
-                                        .then(Commands.argument("category", StringArgumentType.word())
-                                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
-                                                        new String[]{"Trivial", "Simple", "Moderate", "Complex",
-                                                                "Difficult", "Expert", "Master", "Mythical",
-                                                                "Transcendent", "Eternal"},
-                                                        builder
-                                                ))
-                                                .executes(ctx -> ExportCommand.executeCategory(
-                                                        ctx,
-                                                        StringArgumentType.getString(ctx, "category")
-                                                ))
+
+                                // === ГРУППА ДЛЯ МОБОВ (MOBS) ===
+                                .then(Commands.literal("mobs")
+                                        .then(Commands.literal("all")
+                                                .executes(ctx -> ExportCommand.executeAllMobs(ctx, "json"))
+                                                .then(Commands.literal("format")
+                                                        .then(Commands.argument("format_type", StringArgumentType.word())
+                                                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(new String[]{"csv", "json"}, builder))
+                                                                .executes(ctx -> ExportCommand.executeAllMobs(ctx, StringArgumentType.getString(ctx, "format_type")))
+                                                        )
+                                                )
                                         )
-                                )
-                                .then(Commands.literal("top")
-                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
-                                                .executes(ctx -> ExportCommand.executeTop(
-                                                        ctx,
-                                                        IntegerArgumentType.getInteger(ctx, "count")
-                                                ))
+                                        .then(Commands.literal("category")
+                                                .then(Commands.argument("category_name", StringArgumentType.word())
+                                                        .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(Arrays.stream(MobCategory.values()).map(MobCategory::getName), builder))
+                                                        .executes(ctx -> ExportCommand.executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))
+                                                )
                                         )
-                                )
-                                .then(Commands.literal("csv")
-                                        .executes(ExportCommand::executeCSV)
+                                        .then(Commands.literal("top")
+                                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
+                                                        .executes(ctx -> ExportCommand.executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count")))
+                                                )
+                                        )
+                                        .then(Commands.literal("single")
+                                                .then(Commands.argument("mob_id", ResourceLocationArgument.id())
+                                                        .suggests(ENTITY_SUGGESTIONS)
+                                                        .executes(ctx -> ExportCommand.executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString()))
+                                                )
+                                        )
+                                        .then(Commands.literal("csv")
+                                                .executes(ctx -> ExportCommand.executeAllMobs(ctx, "csv"))
+                                        )
                                 )
                         )
+                        // --- КОНЕЦ НОВОГО БЛОКА EXPORT ---
 
                         .then(ChunkCommands.register())
         );
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command with role-based permissions");
     }
-
-    private static final SuggestionProvider<CommandSourceStack> LOOT_TABLE_SUGGESTIONS = (context, builder) -> {
-        AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) {
-            return builder.buildFuture();
-        }
-
-        return engine.getSourceByType(UniversalLootSource.class)
-                .map(uls -> {
-                    uls.getAllLootData().values().stream()
-                            .flatMap(map -> map.values().stream())
-                            .map(data -> {
-                                try {
-                                    String details = data.getDetails();
-                                    int start = details.indexOf("'") + 1;
-                                    int end = details.indexOf("'", start);
-                                    return details.substring(start, end);
-                                } catch (Exception e) {
-                                    return null;
-                                }
-                            })
-                            .filter(Objects::nonNull)
-                            .distinct()
-                            .forEach(builder::suggest);
-                    return builder.buildFuture();
-                })
-                .orElse(builder.buildFuture());
-    };
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();

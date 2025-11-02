@@ -31,7 +31,6 @@ public class MobPropertyProvider {
         MANUAL_OVERRIDES.put(EntityType.CREEPER, new MobProperties(20.0, 0.1, 0.0, MobCategory.MONSTER));
     }
 
-
     public void initialize() {
         ComplexityAnalyzer.LOGGER.info("Initializing MobPropertyProvider...");
         Map<EntityType<? extends LivingEntity>, AttributeSupplier> attributeMap = this.getAttributesViaReflection();
@@ -98,7 +97,6 @@ public class MobPropertyProvider {
         }
         return Optional.ofNullable(propertiesCache.get(type));
     }
-
 
     public double getRarity(EntityType<?> type) {
         if (rarityCalculator == null) {

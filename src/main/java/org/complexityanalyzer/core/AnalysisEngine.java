@@ -53,10 +53,7 @@ public class AnalysisEngine {
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
     private volatile TheoreticalDistributionProvider theoreticalDistProvider;
-    private volatile MobRarityCalculator mobRarityCalculator;
-
-
-    private static class InstanceHolder {
+    private volatile MobRarityCalculator mobRarityCalculator;private static class InstanceHolder {
         private static final AnalysisEngine INSTANCE = new AnalysisEngine();
     }
 
@@ -232,7 +229,7 @@ public class AnalysisEngine {
         initialSources.add(new BlockBreakAsRecipeSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
-        initialSources.add(new WorldInteractionSource());
+        initialSources.add(new HardcodedSourcesProvider());
 
         this.sourceManager = new SourceManager(initialSources);
 

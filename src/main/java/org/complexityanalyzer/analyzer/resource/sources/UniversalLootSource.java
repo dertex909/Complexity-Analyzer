@@ -207,7 +207,6 @@ public class UniversalLootSource implements IResourceSource {
         }
     }
 
-
     private Set<ResourceKey<LootTable>> getAllLootTableKeys(MinecraftServer server) {
         try {
             var registries = server.reloadableRegistries().get();

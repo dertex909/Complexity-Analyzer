@@ -6,8 +6,6 @@ public class SpiralChunkSearcher {
 
     private int currentX;
     private int currentZ;
-
-
     private int dx;
     private int dz;
 

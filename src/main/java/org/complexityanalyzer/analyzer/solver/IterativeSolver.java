@@ -377,7 +377,6 @@ public class IterativeSolver {
                     }
                 }
 
-
                 double dependencyCost = 0;
                 boolean hasInfiniteDependency = false;
 

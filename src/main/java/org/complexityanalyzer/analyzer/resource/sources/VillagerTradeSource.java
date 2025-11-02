@@ -20,10 +20,9 @@ public class VillagerTradeSource implements IResourceSource {
             1, 1.2, 2, 1.5, 3, 2.0, 4, 3.0, 5, 5.0
     );
 
-    // Проблемные типы трейдов - пропускаем их
     private static final Set<String> SKIP_TRADE_TYPES = Set.of(
-            "TreasureMapForEmeralds",      // Очень медленно - ищет структуры
-            "EnchantedItemForEmeralds"     // Медленно - генерирует зачарования
+            "TreasureMapForEmeralds",
+            "EnchantedItemForEmeralds"
     );
 
     private final Map<Item, List<TradeInfo>> tradesByResult = new Object2ObjectOpenHashMap<>();
@@ -46,7 +45,6 @@ public class VillagerTradeSource implements IResourceSource {
         List<PendingTrade> pendingTrades = new ObjectArrayList<>();
         Map<String, Integer> skippedByType = new Object2ObjectOpenHashMap<>();
 
-        // Фаза 1: Быстрая обработка БЕЗ entity
         for (Int2ObjectMap<VillagerTrades.ItemListing[]> professionTrades : VillagerTrades.TRADES.values()) {
             for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : professionTrades.int2ObjectEntrySet()) {
                 int tradeLevel = levelEntry.getIntKey();
@@ -55,7 +53,6 @@ public class VillagerTradeSource implements IResourceSource {
                     totalTrades++;
                     String tradeType = listing.getClass().getSimpleName();
 
-                    // Пропускаем известные проблемные типы
                     if (SKIP_TRADE_TYPES.contains(tradeType)) {
                         skippedSlow++;
                         skippedByType.merge(tradeType, 1, Integer::sum);
@@ -74,7 +71,6 @@ public class VillagerTradeSource implements IResourceSource {
                         }
 
                     } catch (NullPointerException e) {
-                        // Нужен entity
                         pendingTrades.add(new PendingTrade(listing, tradeLevel, tradeType));
                     } catch (Exception e) {
                         failedTrades++;
@@ -87,7 +83,6 @@ public class VillagerTradeSource implements IResourceSource {
         ComplexityAnalyzer.LOGGER.info("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)",
                 phase1Time, fastParsed, totalTrades, skippedSlow);
 
-        // Фаза 2: Обработка С entity (только быстрые типы)
         if (!pendingTrades.isEmpty()) {
             long phase2Start = System.currentTimeMillis();
             ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...",

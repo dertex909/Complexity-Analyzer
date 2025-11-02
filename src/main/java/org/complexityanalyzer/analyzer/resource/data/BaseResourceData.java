@@ -13,6 +13,7 @@ public class BaseResourceData {
     private final String details;
     private final String sourceName;
     private final Map<Item, Double> sourceItems;
+    private final Map<String, String> metadata;
 
     private BaseResourceData(Builder builder) {
         this.item = builder.item;
@@ -21,6 +22,7 @@ public class BaseResourceData {
         this.details = builder.details;
         this.sourceName = builder.sourceName;
         this.sourceItems = Map.copyOf(builder.sourceItems);
+        this.metadata = Map.copyOf(builder.metadata);
     }
 
     public Item getItem() { return item; }
@@ -29,18 +31,34 @@ public class BaseResourceData {
     public String getDetails() { return details; }
     public String getSourceName() { return sourceName; }
     public Map<Item, Double> getSourceItems() { return sourceItems; }
+    public Map<String, String> getMetadata() { return metadata; }
+
+    public boolean isOverride() {
+        return "true".equals(metadata.get("override"));
+    }
+
+    public String getOverrideModId() {
+        return metadata.getOrDefault("override_by", "unknown");
+    }
 
     @Override
     public String toString() {
-        return String.format("BaseResource{item=%s, source=%s, factor=%.2f}", item, sourceType, baseFactor);
+        String base = String.format("BaseResource{item=%s, source=%s, factor=%.2f}", item, sourceType, baseFactor);
+        if (isOverride()) {
+            return base + " [OVERRIDE by " + getOverrideModId() + "]";
+        }
+        return base;
     }
 
     public enum ResourceSourceType {
+        OVERRIDE("Override", 0.0), // Самый высокий приоритет
+
         ORE("Ore/Mining", 1.0),
         EMPIRICAL_BLOCK("Empirical Block", 1.0),
         BLOCK("Block", 1.0),
         BLOCK_TRANSFORMATION("Block Transformation", 1.0),
         FARMING("Farming", 0.8),
+        CRAFTING("Crafting", 1.0),
 
         RENEWABLE("Renewable", 0.8),
         SHEARING("Shearing", 0.7),
@@ -52,16 +70,21 @@ public class BaseResourceData {
         CHEST_LOOT("Chest Loot", 3.0),
         ARCHAEOLOGY("Archaeology", 5.0),
 
+        SPECIAL_LOOT("Special Loot", 4.0),
+        SPECIAL_ACTION("Special Action", 2.5),
+
         GENERIC_LOOT("Generic Loot", 3.0),
         UNKNOWN("Unknown", 10.0),
         UNOBTAINABLE("Unobtainable", Double.POSITIVE_INFINITY);
 
         private final String displayName;
         private final double baseMultiplier;
+
         ResourceSourceType(String displayName, double baseMultiplier) {
             this.displayName = displayName;
             this.baseMultiplier = baseMultiplier;
         }
+
         public String getDisplayName() { return displayName; }
         public double getBaseMultiplier() { return baseMultiplier; }
     }
@@ -73,6 +96,7 @@ public class BaseResourceData {
         private double baseFactor = 1.0;
         private String details = "";
         private final Map<Item, Double> sourceItems = new HashMap<>();
+        private final Map<String, String> metadata = new HashMap<>();
 
         public Builder(Item item, IResourceSource source) {
             this.item = item;
@@ -84,9 +108,20 @@ public class BaseResourceData {
             this.sourceName = "System";
         }
 
-        public Builder sourceType(ResourceSourceType type) { this.sourceType = type; return this; }
-        public Builder baseFactor(double factor) { this.baseFactor = factor; return this; }
-        public Builder details(String details) { this.details = details; return this; }
+        public Builder sourceType(ResourceSourceType type) {
+            this.sourceType = type;
+            return this;
+        }
+
+        public Builder baseFactor(double factor) {
+            this.baseFactor = factor;
+            return this;
+        }
+
+        public Builder details(String details) {
+            this.details = details;
+            return this;
+        }
 
         public Builder sourceItems(Map<Item, Double> items) {
             if (items != null) {
@@ -95,10 +130,25 @@ public class BaseResourceData {
             return this;
         }
 
-        public void addSourceItem(Item item, double amount) {
+        public Builder addSourceItem(Item item, double amount) {
             this.sourceItems.put(item, amount);
+            return this;
         }
 
-        public BaseResourceData build() { return new BaseResourceData(this); }
+        public Builder addMetadata(String key, String value) {
+            this.metadata.put(key, value);
+            return this;
+        }
+
+        public Builder metadata(Map<String, String> meta) {
+            if (meta != null) {
+                this.metadata.putAll(meta);
+            }
+            return this;
+        }
+
+        public BaseResourceData build() {
+            return new BaseResourceData(this);
+        }
     }
 }

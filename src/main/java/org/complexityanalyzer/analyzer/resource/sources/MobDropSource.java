@@ -138,7 +138,6 @@ public class MobDropSource implements IResourceSource {
 
                 Entity entityInstance;
                 try {
-                    // ИСПРАВЛЕНО: создаём БЕЗ spawn (не добавляем в мир)
                     entityInstance = entityType.create(serverLevel);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}", BuiltInRegistries.ENTITY_TYPE.getKey(entityType), e.getMessage());
@@ -169,7 +168,6 @@ public class MobDropSource implements IResourceSource {
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
         } finally {
-            // Очищаем созданные damage source entities
             if (damageConfigs != null) {
                 for (DamageSourceConfig config : damageConfigs) {
                     if (config.attackingEntity != null) {
@@ -197,14 +195,10 @@ public class MobDropSource implements IResourceSource {
         configs.add(new DamageSourceConfig("Magic", level.damageSources().magic(), false, player, null));
         configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
 
-        // ИСПРАВЛЕНО: Создаём entities БЕЗ добавления в мир
         Creeper chargedCreeper = new Creeper(EntityType.CREEPER, level);
         CompoundTag creeperNBT = new CompoundTag();
         creeperNBT.putBoolean("powered", true);
-        chargedCreeper.readAdditionalSaveData(creeperNBT);
-        // НЕ добавляем в мир!
-
-        Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+        chargedCreeper.readAdditionalSaveData(creeperNBT);Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
         Holder<DamageType> explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);
         DamageSource creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
         configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false, null, chargedCreeper));

@@ -16,8 +16,6 @@ public class RecipeNode {
     private final double recipeMultiplier;
     private final int priority;
     private final RecipeCategory category;
-
-
     private RecipeNode(Builder builder) {
         this.resultItem = builder.resultItem;
         this.resultCount = Math.max(1, builder.resultCount);

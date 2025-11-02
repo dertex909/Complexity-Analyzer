@@ -241,7 +241,6 @@ public class ExportCommand {
         }
     }
 
-
     private static int sendEngineNotReady(OutputManager output, CommandSourceStack source, AnalysisEngine engine) {
         output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!").withStyle(ChatFormatting.RED));
         output.sendInfo(source, Component.literal("Current state: " + engine.getCurrentState()).withStyle(ChatFormatting.GRAY));

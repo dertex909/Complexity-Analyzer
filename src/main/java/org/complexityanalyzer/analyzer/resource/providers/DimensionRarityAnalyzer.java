@@ -1,5 +1,6 @@
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -78,16 +79,29 @@ public class DimensionRarityAnalyzer {
 
         int dimensionsFound = 0;
         int biomeMappings;
+        int skippedDimensions = 0;
 
         for (net.minecraft.server.level.ServerLevel dimension : server.getAllLevels()) {
             ResourceKey<Level> dimensionKey = dimension.dimension();
             dimensionsFound++;
 
-            var chunkGenerator = dimension.getChunkSource().getGenerator();
-            var biomeSource = chunkGenerator.getBiomeSource();
+            try {
+                var chunkGenerator = dimension.getChunkSource().getGenerator();
+                var biomeSource = chunkGenerator.getBiomeSource();
 
-            for (var biomeHolder : biomeSource.possibleBiomes()) {
-                biomeHolder.unwrapKey().ifPresent(biomeKey -> biomeToDimensionMap.putIfAbsent(biomeKey, dimensionKey));
+                Set<Holder<Biome>> biomeHolders = new HashSet<>(biomeSource.possibleBiomes());
+
+                for (var biomeHolder : biomeHolders) {
+                    biomeHolder.unwrapKey().ifPresent(biomeKey ->
+                            biomeToDimensionMap.putIfAbsent(biomeKey, dimensionKey)
+                    );
+                }
+            } catch (Exception e) {
+                skippedDimensions++;
+                ComplexityAnalyzer.LOGGER.warn("Failed to analyze dimension {} ({}), skipping: {}",
+                        dimensionKey.location(),
+                        e.getClass().getSimpleName(),
+                        e.getMessage());
             }
         }
 
@@ -102,8 +116,13 @@ public class DimensionRarityAnalyzer {
 
         biomeMappings = biomeToDimensionMap.size();
 
-        ComplexityAnalyzer.LOGGER.info("Found {} dimensions, mapped {} biomes",
-                dimensionsFound, biomeMappings);
+        if (skippedDimensions > 0) {
+            ComplexityAnalyzer.LOGGER.info("Found {} dimensions (skipped {} problematic), mapped {} biomes",
+                    dimensionsFound, skippedDimensions, biomeMappings);
+        } else {
+            ComplexityAnalyzer.LOGGER.info("Found {} dimensions, mapped {} biomes",
+                    dimensionsFound, biomeMappings);
+        }
     }
 
     private ResourceKey<Level> guessDimensionFromStructure(ResourceKey<Structure> structureKey) {

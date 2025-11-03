@@ -5,11 +5,8 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,9 +26,7 @@ import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
-import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.core.AnalysisEngine;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -41,19 +36,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     private static final int SAMPLE_COUNT = 100;
     private static final double BASE_MINING_COST = 2.0;
 
-    private static final double RENEWABLE_THRESHOLD = 5.0;
-    private static final double RENEWABLE_FALLBACK_COST = 0.1;
-
-    private static final double AUTO_LEARN_COST_THRESHOLD = 0.5;
-    private static final float AUTO_LEARN_HARDNESS_THRESHOLD = 1.0F;
-
-    private static final TagKey<Block> C_CROPS = TagKey.create(Registries.BLOCK, ResourceLocation.parse("c:crops"));
-    private static final TagKey<Block> C_MUSHROOMS = TagKey.create(Registries.BLOCK, ResourceLocation.parse("c:mushrooms"));
-
     private final Map<Item, List<BaseResourceData>> allPaths = new HashMap<>();
-    private final Map<Block, Boolean> renewableCache = new HashMap<>();
     private static Field randomField = null;
-    private SourceManager sourceManager = null;
 
     @Override
     public void initialize(Level level) {
@@ -62,15 +46,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             return;
         }
 
-        Optional<SourceManager> smOpt = AnalysisEngine.getInstance().getSourceManager();
-        if (smOpt.isPresent()) {
-            this.sourceManager = smOpt.get();
-        } else {
-            ComplexityAnalyzer.LOGGER.warn("[{}] Could not get SourceManager, using fallback costs", getName());
-        }
-
         this.allPaths.clear();
-        this.renewableCache.clear();
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes.", getName());
         long startTime = System.currentTimeMillis();
@@ -176,89 +152,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
-    }
-
-    private double getSmartBlockCost(Item blockItem, Block block) {
-        if (sourceManager == null) {
-            return 1.0;
-        }
-
-        Optional<BaseResourceData> blockData = sourceManager.analyze(blockItem);
-
-        if (blockData.isEmpty()) {
-            return 1.0;
-        }
-
-        double empiricalCost = blockData.get().getBaseFactor();
-
-        if (empiricalCost < AUTO_LEARN_COST_THRESHOLD
-                && block.defaultDestroyTime() > 0
-                && block.defaultDestroyTime() < AUTO_LEARN_HARDNESS_THRESHOLD) {
-
-            renewableCache.put(block, true);
-
-            ComplexityAnalyzer.LOGGER.debug("[{}] Auto-learned renewable: {} (cost: {}, hardness: {})",
-                    getName(), block, empiricalCost, block.defaultDestroyTime());
-
-            return RENEWABLE_FALLBACK_COST;
-        }
-
-        if (empiricalCost > RENEWABLE_THRESHOLD && isLikelyRenewable(block)) {
-            return RENEWABLE_FALLBACK_COST;
-        }
-
-        return empiricalCost;
-    }
-
-    private boolean isLikelyRenewable(Block block) {
-        return renewableCache.computeIfAbsent(block, this::computeRenewableStatus);
-    }
-
-    private boolean computeRenewableStatus(Block block) {
-        BlockState state = block.defaultBlockState();
-
-        if (state.is(BlockTags.LEAVES)
-                || state.is(BlockTags.SAPLINGS)
-                || state.is(BlockTags.CROPS)
-                || state.is(BlockTags.FLOWERS)
-                || state.is(BlockTags.SMALL_FLOWERS)
-                || state.is(BlockTags.TALL_FLOWERS)
-                || state.is(BlockTags.LOGS)
-                || state.is(BlockTags.WOOL)
-                || state.is(BlockTags.CANDLES)
-        ) {
-            return true;
-        }
-
-        try {
-            if (state.is(BlockTags.BAMBOO_BLOCKS)) return true;
-        } catch (Exception ignored) {}
-
-        if (block instanceof BushBlock
-                || block instanceof CropBlock
-                || block instanceof SaplingBlock
-                || block instanceof MushroomBlock
-                || block instanceof StemBlock
-                || block instanceof SugarCaneBlock
-                || block instanceof CactusBlock
-                || block instanceof BambooStalkBlock
-                || block instanceof SeagrassBlock
-                || block instanceof KelpBlock
-        ) {
-            return true;
-        }
-
-        if (block instanceof BonemealableBlock) {
-            return true;
-        }
-
-        try {
-            if (state.is(C_CROPS) || state.is(C_MUSHROOMS)) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-
-        return block.defaultDestroyTime() > 0F && block.defaultDestroyTime() < 0.5F;
     }
 
     private List<ItemStack> createTestTools(ServerLevel serverLevel) {

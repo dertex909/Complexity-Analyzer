@@ -2,6 +2,7 @@ package org.complexityanalyzer.data;
 
 import net.minecraft.world.item.crafting.RecipeType;
 
+@SuppressWarnings("unused")
 public class RecipeInfo {
     private final RecipeType<?> type;
     private final String typeName;

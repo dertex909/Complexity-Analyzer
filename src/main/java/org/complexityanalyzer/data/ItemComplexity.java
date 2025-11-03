@@ -2,6 +2,7 @@ package org.complexityanalyzer.data;
 
 import net.minecraft.world.item.Item;
 
+@SuppressWarnings("unused")
 public class ItemComplexity {
     private final Item item;
     private final double complexity;

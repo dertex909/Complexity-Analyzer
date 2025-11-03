@@ -49,7 +49,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
 
         ComplexityAnalyzer.LOGGER.info("[{}] Registered {} normal + {} override sources",
                 getName(), normalSources.size(), overrideSources.size());
-    }@Override
+    }
+
+    @Override
     public void registerTransformation(Item result, Item input, Map<Item, Double> toolWear,
                                        double baseCost, String description) {
         Map<Item, Double> ingredients = new HashMap<>();
@@ -116,7 +118,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     @Override
     public boolean isRegistered(Item item) {
         return normalSources.containsKey(item) || overrideSources.containsKey(item);
-    }@Override
+    }
+
+    @Override
     public boolean canProvide(Item item) {
         return normalSources.containsKey(item) || overrideSources.containsKey(item);
     }
@@ -161,7 +165,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {
         return BaseResourceData.ResourceSourceType.SPECIAL_ACTION;
-    }private String getCallingModId() {
+    }
+
+    private String getCallingModId() {
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         for (StackTraceElement element : stack) {
             String className = element.getClassName();
@@ -177,9 +183,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         return "minecraft";
     }
 
-    private void fireRegistrationEvent() {
-        ComplexityAnalyzer.LOGGER.debug("[{}] Registration phase complete", getName());
-    }private void registerVanillaSources() {
+    private void registerVanillaSources() {
         ComplexityAnalyzer.LOGGER.debug("[{}] Registering vanilla sources via API...", getName());
 
         registerWorldInteractions();
@@ -361,7 +365,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         registerComplexSource(Items.LINGERING_POTION,
                 Map.of(Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0),
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Lingering potion brewing");
-    }private void registerDeadCoral(Item alive, Item dead) {
+    }
+
+    private void registerDeadCoral(Item alive, Item dead) {
         registerTransformation(dead, alive, null, 1.0, "Coral drying out");
     }
 

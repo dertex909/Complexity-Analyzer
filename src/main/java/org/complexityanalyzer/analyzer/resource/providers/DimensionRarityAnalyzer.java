@@ -39,7 +39,6 @@ public class DimensionRarityAnalyzer {
         ComplexityAnalyzer.LOGGER.info("Analyzing structure spawns for dimension detection...");
 
         Registry<Structure> structureRegistry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
-        Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
 
         int structuresAnalyzed = 0;
 
@@ -52,7 +51,7 @@ public class DimensionRarityAnalyzer {
             if (!spawnOverrides.isEmpty()) {
                 structuresAnalyzed++;
 
-                ResourceKey<Level> dimension = guessDimensionFromStructure(structureKey, structure, biomeRegistry);
+                ResourceKey<Level> dimension = guessDimensionFromStructure(structureKey);
 
                 for (StructureSpawnOverride override : spawnOverrides.values()) {
                     for (MobSpawnSettings.SpawnerData spawner : override.spawns().unwrap()) {
@@ -75,22 +74,39 @@ public class DimensionRarityAnalyzer {
         }
 
         net.minecraft.server.MinecraftServer server = serverLevel.getServer();
+        Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
 
         int dimensionsFound = 0;
+        int biomeMappings;
 
         for (net.minecraft.server.level.ServerLevel dimension : server.getAllLevels()) {
             ResourceKey<Level> dimensionKey = dimension.dimension();
             dimensionsFound++;
+
+            var chunkGenerator = dimension.getChunkSource().getGenerator();
+            var biomeSource = chunkGenerator.getBiomeSource();
+
+            for (var biomeHolder : biomeSource.possibleBiomes()) {
+                biomeHolder.unwrapKey().ifPresent(biomeKey -> biomeToDimensionMap.putIfAbsent(biomeKey, dimensionKey));
+            }
         }
 
-        ComplexityAnalyzer.LOGGER.info("Found {} dimensions", dimensionsFound);
+        for (Map.Entry<ResourceKey<Biome>, Biome> entry : biomeRegistry.entrySet()) {
+            ResourceKey<Biome> biomeKey = entry.getKey();
+
+            if (!biomeToDimensionMap.containsKey(biomeKey)) {
+                ResourceKey<Level> dimension = getDimensionForBiome(biomeKey);
+                biomeToDimensionMap.put(biomeKey, dimension);
+            }
+        }
+
+        biomeMappings = biomeToDimensionMap.size();
+
+        ComplexityAnalyzer.LOGGER.info("Found {} dimensions, mapped {} biomes",
+                dimensionsFound, biomeMappings);
     }
 
-    private ResourceKey<Level> guessDimensionFromStructure(
-            ResourceKey<Structure> structureKey,
-            Structure structure,
-            Registry<Biome> biomeRegistry
-    ) {
+    private ResourceKey<Level> guessDimensionFromStructure(ResourceKey<Structure> structureKey) {
         String structurePath = structureKey.location().getPath();
 
         if (structurePath.contains("nether") || structurePath.contains("fortress") || structurePath.contains("bastion")) {
@@ -102,74 +118,6 @@ public class DimensionRarityAnalyzer {
         }
 
         return Level.OVERWORLD;
-    }
-
-    public double getMobRarityMultiplier(EntityType<?> entityType) {
-        Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
-
-        Map<ResourceKey<Level>, Set<ResourceKey<Biome>>> dimensionBiomes = new HashMap<>();
-
-        for (Map.Entry<ResourceKey<Biome>, Biome> entry : biomeRegistry.entrySet()) {
-            ResourceKey<Biome> biomeKey = entry.getKey();
-            Biome biome = entry.getValue();
-
-            if (mobSpawnsInBiome(entityType, biome)) {
-                ResourceKey<Level> dimension = biomeToDimensionMap.getOrDefault(
-                        biomeKey,
-                        getDimensionForBiome(biomeKey)
-                );
-                dimensionBiomes.computeIfAbsent(dimension, k -> new HashSet<>())
-                        .add(biomeKey);
-            }
-        }
-
-        if (!dimensionBiomes.isEmpty()) {
-            double maxMultiplier = 1.0;
-
-            for (Map.Entry<ResourceKey<Level>, Set<ResourceKey<Biome>>> entry : dimensionBiomes.entrySet()) {
-                ResourceKey<Level> dimension = entry.getKey();
-                Set<ResourceKey<Biome>> biomes = entry.getValue();
-
-                double multiplier;
-
-                if (dimension.equals(Level.END)) {
-                    boolean isEndIslands = biomes.stream()
-                            .anyMatch(DimensionRarityAnalyzer::isEndIslandsBiome);
-
-                    multiplier = isEndIslands ? END_ISLANDS_MULTIPLIER : DIMENSION_MULTIPLIERS.get(Level.END);
-                } else {
-                    multiplier = DIMENSION_MULTIPLIERS.getOrDefault(dimension, CUSTOM_DIMENSION_MULTIPLIER);
-                }
-
-                maxMultiplier = Math.max(maxMultiplier, multiplier);
-            }
-
-            return maxMultiplier;
-        }
-
-        ResourceKey<Level> structureDimension = structureSpawnCache.get(entityType);
-        if (structureDimension != null) {
-            double multiplier = DIMENSION_MULTIPLIERS.getOrDefault(structureDimension, CUSTOM_DIMENSION_MULTIPLIER);
-
-            ComplexityAnalyzer.LOGGER.debug("Mob {} spawns in structure (dimension: {}), multiplier: {}x",
-                    entityType.getDescription().getString(),
-                    structureDimension.location(),
-                    multiplier);
-
-            return multiplier;
-        }
-
-        ComplexityAnalyzer.LOGGER.debug("Mob {} has no known spawns, fireImmune: {}, using fallback multiplier",
-                entityType.getDescription().getString(),
-                entityType.fireImmune());
-
-        double fallback = entityType.fireImmune() ? DIMENSION_MULTIPLIERS.get(Level.NETHER) : 10.0;
-
-        ComplexityAnalyzer.LOGGER.debug("Fallback multiplier for {}: {}x",
-                entityType.getDescription().getString(),
-                fallback);
-
-        return fallback;
     }
 
     public double getStructureMultiplier(EntityType<?> entityType) {

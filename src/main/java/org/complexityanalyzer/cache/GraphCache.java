@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+@SuppressWarnings("unused")
 public class GraphCache {
     private RecipeGraph currentGraph;
     private long version;

@@ -372,6 +372,7 @@ public class AnalysisEngine {
         return this.graph;
     }
 
+    @SuppressWarnings("unused")
     public Optional<SourceManager> getSourceManager() {
         return Optional.ofNullable(this.sourceManager);
     }

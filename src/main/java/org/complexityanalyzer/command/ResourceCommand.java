@@ -216,9 +216,6 @@ public class ResourceCommand {
     ) {
         Map<Item, Double> sourceItems = data.getSourceItems();
 
-        if (sourceItems.isEmpty()) {
-        }
-
         output.sendInfo(source,
                 Component.literal("  🔗 Required Source Items")
                         .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));

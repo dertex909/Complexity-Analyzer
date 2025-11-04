@@ -22,10 +22,15 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.RecipeGraph;
+import net.neoforged.fml.ModList;
 
 public class JeiCompatibilityModule {
-
     public static void collectRecipesFromJeiPlugins(RecipeGraph graph, Level level) {
+        if (!ModList.get().isLoaded("jei")) {
+            ComplexityAnalyzer.LOGGER.info("JEI not found. Skipping JEI recipe import.");
+            return;
+        }
+
         if (!ComplexityConfig.ENABLE_JEI_INTEGRATION.get()) {
             ComplexityAnalyzer.LOGGER.info("JEI integration disabled in config");
             return;

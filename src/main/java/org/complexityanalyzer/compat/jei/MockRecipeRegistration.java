@@ -145,9 +145,9 @@ public class MockRecipeRegistration implements IRecipeRegistration {
                         var mcType = net.minecraft.core.registries.BuiltInRegistries.RECIPE_TYPE.get(uid);
 
                         if (mcType != null) {
-                            return recipeManager.getAllRecipesFor(mcType);
-                        } else {
-                            ComplexityAnalyzer.LOGGER.warn("Unknown recipe type ID: {}", uid);
+                            @SuppressWarnings({"rawtypes", "unchecked"})
+                            var result = recipeManager.getAllRecipesFor((net.minecraft.world.item.crafting.RecipeType) mcType);
+                            return result;
                         }
                     }
                 } catch (Exception e) {

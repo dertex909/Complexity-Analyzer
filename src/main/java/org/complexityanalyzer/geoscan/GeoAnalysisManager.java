@@ -328,30 +328,31 @@ public class GeoAnalysisManager {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         if (handleCountdown()) return;
+
+        if (currentProfile == ScanProfile.ATOMIC) return;
+
         if (handleStopRequest()) return;
 
         if (scanPhase != ScanMetadata.ScanPhase.RECONNAISSANCE || isProcessingChunk.get()) return;
 
-        if (currentProfile != ScanProfile.ATOMIC) {
-            if (isServerUnderLoad()) {
-                long now = System.currentTimeMillis();
-                if (!wasPaused) {
-                    notifier.logInfo("Server is under heavy load (tick time > " + currentProfile.maxTickTimeMs + "ms). Geo-scan is paused.");
-                    wasPaused = true;
-                    lastPauseLogTime = now;
-                } else if (now - lastPauseLogTime > LOG_THROTTLE_MS) {
-                    notifier.logInfo("Geo-scan still paused due to server load.");
-                    lastPauseLogTime = now;
-                }
-                return;
-            } else {
-                if (wasPaused) {
-                    notifier.logInfo("Server load normalized. Geo-scan resumed.");
-                    wasPaused = false;
-                }
+        if (isServerUnderLoad()) {
+            long now = System.currentTimeMillis();
+            if (!wasPaused) {
+                notifier.logInfo("Server is under heavy load (tick time > " + currentProfile.maxTickTimeMs + "ms). Geo-scan is paused.");
+                wasPaused = true;
+                lastPauseLogTime = now;
+            } else if (now - lastPauseLogTime > LOG_THROTTLE_MS) {
+                notifier.logInfo("Geo-scan still paused due to server load.");
+                lastPauseLogTime = now;
             }
-
+            return;
+        } else {
+            if (wasPaused) {
+                notifier.logInfo("Server load normalized. Geo-scan resumed.");
+                wasPaused = false;
+            }
         }
+
         if (isTickScheduled()) return;
 
         if (currentTask == null) {
@@ -520,7 +521,11 @@ public class GeoAnalysisManager {
     }
 
     private void finishCurrentTask() {
-        if (currentTask != null && !pristineSnapshotsForCurrentTask.isEmpty()) {
+        if (currentTask == null) {
+            return;
+        }
+
+        if (!pristineSnapshotsForCurrentTask.isEmpty()) {
             notifier.logInfo(String.format("Finished reconnaissance for biome %s, found %d new candidates. Saving...",
                     currentTask.biome().location(), pristineSnapshotsForCurrentTask.size()));
             database.appendReconData(currentTask.dimension().location(), currentTask.biome().location(), new ArrayList<>(pristineSnapshotsForCurrentTask));
@@ -620,7 +625,13 @@ public class GeoAnalysisManager {
     }
 
     private void handleRelocation() {
+        if (currentTask == null || currentSearcher == null) {
+            notifier.logError("handleRelocation called but currentTask or currentSearcher is null. Skipping.");
+            return;
+        }
+
         notifier.logWarn("Too many consecutive scan failures for biome " + currentTask.biome().location() + ". Relocating...");
+
         Optional<ChunkPos> newStartPos = worldScanner.findBiomeLocation(currentTask.dimension(), currentTask.biome(), true);
         if (newStartPos.isPresent()) {
             currentSearcher.startAt(newStartPos.get().x, newStartPos.get().z);

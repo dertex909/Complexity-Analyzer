@@ -40,6 +40,8 @@ public class IterativeSolver {
 
     private final Map<RecipeNode, RecipeCostCache> recipeCostCache;
     private final Map<Item, BaseResourceCache> baseResourceCache;
+    private final Set<Item> itemsInQueue = new HashSet<>();
+    private static final int MAX_CACHE_SIZE = 2_500_000;
 
     private int recipeCostCalculations = 0;
     private int cacheHits = 0;
@@ -63,6 +65,7 @@ public class IterativeSolver {
         );
 
         Map<Item, Set<Item>> dependents = buildDependencyGraph();
+        Set<Item> reusableVisitedSet = new HashSet<>();
 
         for (Item item : graph.getCorpus()) {
             updateQueue.offer(new ItemUpdate(item, 0, optimalComplexities.get(item)));
@@ -79,7 +82,9 @@ public class IterativeSolver {
             List<ItemUpdate> currentBatch = new ArrayList<>(batchSize);
 
             for (int i = 0; i < batchSize && !updateQueue.isEmpty(); i++) {
-                currentBatch.add(updateQueue.poll());
+                ItemUpdate update = updateQueue.poll();
+                itemsInQueue.remove(update.getItem());
+                currentBatch.add(update);
             }
 
             boolean batchChanged = false;
@@ -88,10 +93,11 @@ public class IterativeSolver {
                 Item item = update.getItem();
                 double oldComplexity = optimalComplexities.get(item);
 
+                reusableVisitedSet.clear();
                 ComplexityResult result = calculateComplexityEnhanced(
                         item,
                         optimalComplexities,
-                        new HashSet<>()
+                        reusableVisitedSet
                 );
 
                 double newComplexity = result.complexity;
@@ -109,11 +115,9 @@ public class IterativeSolver {
 
                     Set<Item> deps = dependents.getOrDefault(item, Collections.emptySet());
                     for (Item dependent : deps) {
-                        updateQueue.offer(new ItemUpdate(
-                                dependent,
-                                iterations,
-                                optimalComplexities.get(dependent)
-                        ));
+                        if (itemsInQueue.add(dependent)) {
+                            updateQueue.offer(new ItemUpdate(dependent, iterations, optimalComplexities.get(dependent)));
+                        }
                     }
 
                     batchChanged = true;
@@ -281,9 +285,7 @@ public class IterativeSolver {
         }
 
         return allRecipes.stream()
-                .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
-                        && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION
-                        && r.getCategory() != RecipeCategory.RECYCLING)
+                .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE)
                 .toList();
     }
 
@@ -319,11 +321,14 @@ public class IterativeSolver {
         double totalCost = (ingredientsCost * recipe.getRecipeMultiplier())
                 / recipe.getResultCount();
 
-        recipeCostCache.put(recipe, new RecipeCostCache(
-                totalCost,
-                usedComplexities
-        ));
+        if (recipeCostCache.size() >= MAX_CACHE_SIZE) {
+            ComplexityAnalyzer.LOGGER.error("!!! CRITICAL: Recipe cache overflow ({} entries) !!!", recipeCostCache.size());
+            ComplexityAnalyzer.LOGGER.error("This should NEVER happen in normal operation. Possible infinite loop or algorithmic bug!");
+            ComplexityAnalyzer.LOGGER.error("Stopping further caching to prevent OOM. Results may be slower but correct.");
+            return totalCost;
+        }
 
+        recipeCostCache.put(recipe, new RecipeCostCache(totalCost, usedComplexities));
         return totalCost;
     }
 

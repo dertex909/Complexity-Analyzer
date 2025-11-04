@@ -86,7 +86,7 @@ public class AnalysisEngine {
     public void initializeAsync(Level level, Runnable onComplete) {
         if (!currentState.compareAndSet(State.IDLE, State.ANALYZING)) {
             State current = currentState.get();
-            if (current == State.READY) {
+            if (current == State.READY && isReady()) {
                 safeRunCallback(onComplete);
             }
             return;
@@ -293,15 +293,23 @@ public class AnalysisEngine {
     }
 
     public void onGeoScanFinished() {
+        if (!isReady()) {
+            ComplexityAnalyzer.LOGGER.warn("onGeoScanFinished called while engine not ready. Ignoring.");
+            return;
+        }
+
         stateLock.lock();
         try {
+            if (!isReady()) {
+                return;
+            }
+
             SourceManager currentSourceManager = this.sourceManager;
             RecipeGraph currentGraph = this.graph;
             GeoDatabase geoDB = this.geoDatabase;
             BlockPropertyProvider blockProp = this.blockPropProvider;
 
-            if (currentSourceManager == null || currentGraph == null || isInterrupted()) {
-                ComplexityAnalyzer.LOGGER.warn("onGeoScanFinished called while AnalysisEngine was resetting. Ignoring refresh.");
+            if (currentSourceManager == null || currentGraph == null) {
                 return;
             }
 
@@ -336,7 +344,11 @@ public class AnalysisEngine {
     public void createGeoManager(MinecraftServer server) {
         geoManagerLock.lock();
         try {
-            if (this.geoManager == null && this.geoDatabase != null) {
+            if (this.geoManager != null) {
+                this.geoManager.shutdown();
+            }
+
+            if (this.geoDatabase != null) {
                 this.geoManager = new GeoAnalysisManager(server, this.geoDatabase, this);
             }
         } finally {
@@ -448,12 +460,12 @@ public class AnalysisEngine {
         Thread reloadThread = new Thread(() -> {
             try {
                 shutdown();
+                if (Thread.currentThread().isInterrupted()) {
+                    ComplexityAnalyzer.LOGGER.info("Reload cancelled due to server shutdown.");
+                    return;
+                }
                 clearAllCaches();
-                Thread.sleep(500);
                 initializeAsync(level, () -> ComplexityAnalyzer.LOGGER.info("Reload complete."));
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                ComplexityAnalyzer.LOGGER.error("Reload interrupted", e);
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Error during reload", e);
             } finally {

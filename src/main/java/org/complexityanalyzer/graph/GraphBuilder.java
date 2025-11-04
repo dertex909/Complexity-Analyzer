@@ -172,7 +172,6 @@ public class GraphBuilder {
         return builder.build();
     }
 
-    // ========== ДЕЛАЕМ PUBLIC для использования в JEI конвертере ==========
     public static RecipeCategory classifyRecipe(Recipe<?> recipe, Item resultItem, List<Ingredient> ingredients) {
         if (isUnprocessable(recipe, resultItem, ingredients)) return RecipeCategory.UNPROCESSABLE;
         if (isRecyclingRecipe(recipe, ingredients)) return RecipeCategory.RECYCLING;

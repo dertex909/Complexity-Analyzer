@@ -56,11 +56,9 @@ public class JeiPluginScanner {
 
                 MockRecipeRegistration mockRegistration = new MockRecipeRegistration(level);
 
-                try {
-                    plugin.registerRecipes(mockRegistration);
-                } catch (NullPointerException e) {
-                    // Игнорируем ожидаемые NPE
-                } catch (Exception e) {
+                try { plugin.registerRecipes(mockRegistration); }
+                catch (NullPointerException ignored) {}
+                catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.debug("Plugin {} threw exception: {}", pluginId, e.getMessage());
                 }
 
@@ -114,9 +112,7 @@ public class JeiPluginScanner {
                                     ComplexityAnalyzer.LOGGER.debug("Loaded JEI plugin: {} from mod {}",
                                             pluginClass.getSimpleName(), modId);
                                 }
-                            } catch (Exception e) {
-                                // Игнорируем плагины которые не удалось загрузить
-                            }
+                            } catch (Exception ignored) {}
                         });
             } catch (Exception ignored) {}
         });

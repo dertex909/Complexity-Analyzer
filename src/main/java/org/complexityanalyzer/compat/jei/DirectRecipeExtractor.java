@@ -58,9 +58,7 @@ public class DirectRecipeExtractor {
         int customTypes = 0;
         Map<String, Integer> recipeStats = new LinkedHashMap<>();
 
-        // ========== СТАТИСТИКА ПО КАТЕГОРИЯМ ==========
         Map<RecipeCategory, Integer> categoryStats = new EnumMap<>(RecipeCategory.class);
-        // ===============================================
 
         for (RecipeType<?> recipeType : recipeTypes) {
             ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType);
@@ -79,10 +77,7 @@ public class DirectRecipeExtractor {
 
                 for (RecipeNode node : converted) {
                     graph.addRecipe(node);
-
-                    // ========== СЧИТАЕМ КАТЕГОРИИ ==========
                     categoryStats.merge(node.getCategory(), 1, Integer::sum);
-                    // ========================================
                 }
 
                 if (!converted.isEmpty()) {
@@ -101,25 +96,23 @@ public class DirectRecipeExtractor {
                 customTypes, totalImported);
 
         if (!recipeStats.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("Recipe type breakdown:");
-            recipeStats.entrySet().stream()
-                    .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                    .forEach(entry ->
-                            ComplexityAnalyzer.LOGGER.info("  - {}: {} recipes", entry.getKey(), entry.getValue())
-                    );
+            logRecipeStats("Recipe type breakdown", recipeStats);
         }
 
-        // ========== ЛОГИРУЕМ СТАТИСТИКУ ПО КАТЕГОРИЯМ ==========
         if (!categoryStats.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("Category classification:");
-            categoryStats.entrySet().stream()
-                    .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                    .forEach(entry ->
-                            ComplexityAnalyzer.LOGGER.info("  - {}: {} recipes", entry.getKey(), entry.getValue())
-                    );
+            logRecipeStats("Category classification", categoryStats);
         }
-        // ========================================================
     }
+
+    private static void logRecipeStats(String title, Map<?, Integer> stats) {
+        ComplexityAnalyzer.LOGGER.info("{}:", title);
+        stats.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(entry ->
+                        ComplexityAnalyzer.LOGGER.info("  - {}: {} recipes", entry.getKey(), entry.getValue())
+                );
+    }
+
 
     @SuppressWarnings("unchecked")
     private static List<RecipeNode> extractRecipesOfType(
@@ -146,9 +139,7 @@ public class DirectRecipeExtractor {
                     if (node != null) {
                         result.add(node);
                     }
-                } catch (Exception e) {
-                    // Пропускаем проблемные рецепты
-                }
+                } catch (Exception ignored) {}
             }
 
         } catch (Exception e) {

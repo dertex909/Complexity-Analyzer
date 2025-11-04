@@ -27,8 +27,8 @@ import mezz.jei.api.runtime.IIngredientManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
+import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import javax.annotation.meta.TypeQualifierDefault;
@@ -129,8 +129,7 @@ public class MockRecipeRegistration implements IRecipeRegistration {
         }
 
         @Override
-        @Nullable
-        public Object invoke(Object proxy, Method method, @Nullable Object[] args) {
+        public Object invoke(Object proxy, Method method, Object[] args) {
             String methodName = method.getName();
 
             if (methodName.equals("getRecipeManager")) {
@@ -138,14 +137,24 @@ public class MockRecipeRegistration implements IRecipeRegistration {
             }
 
             if (methodName.equals("getAllRecipesFor") && args.length == 1) {
+                Object jeiType = args[0];
+
                 try {
-                    Method getAllRecipesForMethod = RecipeManager.class.getMethod(
-                            "getAllRecipesFor",
-                            net.minecraft.world.item.crafting.RecipeType.class
-                    );
-                    return getAllRecipesForMethod.invoke(recipeManager, args[0]);
-                } catch (Exception ignored) {}
+                    if (jeiType instanceof mezz.jei.api.recipe.RecipeType<?> jeiRecipeType) {
+                        var uid = jeiRecipeType.getUid();
+                        var mcType = net.minecraft.core.registries.BuiltInRegistries.RECIPE_TYPE.get(uid);
+
+                        if (mcType != null) {
+                            return recipeManager.getAllRecipesFor(mcType);
+                        } else {
+                            ComplexityAnalyzer.LOGGER.warn("Unknown recipe type ID: {}", uid);
+                        }
+                    }
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.error("Failed to retrieve recipes for JEI RecipeType", e);
+                }
             }
+
 
             switch (methodName) {
                 case "toString":

@@ -29,9 +29,6 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Адаптивный конвертер - ГЛУБОКО ищет ItemStack внутри любых объектов.
- */
 public class AdaptiveRecipeConverter {
 
     private static final Map<Class<?>, RecipeAdapter> LEARNED_ADAPTERS = new ConcurrentHashMap<>();
@@ -46,7 +43,6 @@ public class AdaptiveRecipeConverter {
                 new RecipeAdapter(null, null)
         );
 
-        // ========== ИСПРАВЛЕНИЕ: Доучиваем OUTPUT если нужно ==========
         if (adapter.outputMethod == null) {
             if (VERBOSE_DEBUG) {
                 ComplexityAnalyzer.LOGGER.debug("[OUTPUT] Learning output method for {}", recipeClass.getSimpleName());
@@ -55,7 +51,6 @@ public class AdaptiveRecipeConverter {
             adapter = new RecipeAdapter(outputMethod, adapter.inputMethod);
             LEARNED_ADAPTERS.put(recipeClass, adapter);
         }
-        // ==============================================================
 
         if (adapter.outputMethod == null) {
             if (VERBOSE_DEBUG) {
@@ -99,15 +94,12 @@ public class AdaptiveRecipeConverter {
         Item resultItem = primaryOutput.getItem();
         int resultCount = primaryOutput.getCount();
 
-        // Извлекаем ингредиенты
         List<List<ItemStack>> inputGroups = extractInputs(recipe, level);
 
         if (inputGroups.isEmpty()) {
             return null;
         }
 
-        // ========== КЛАССИФИКАЦИЯ через GraphBuilder ==========
-        // Преобразуем List<List<ItemStack>> обратно в List<Ingredient>
         List<net.minecraft.world.item.crafting.Ingredient> ingredients = new java.util.ArrayList<>();
         for (List<ItemStack> group : inputGroups) {
             if (!group.isEmpty()) {
@@ -119,37 +111,32 @@ public class AdaptiveRecipeConverter {
             }
         }
 
-        // Вызываем классификацию из GraphBuilder
         org.complexityanalyzer.graph.RecipeCategory category =
                 org.complexityanalyzer.graph.GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
 
-        // Пропускаем UNPROCESSABLE рецепты
         if (category == org.complexityanalyzer.graph.RecipeCategory.UNPROCESSABLE) {
             return null;
         }
-        // =====================================================
 
         org.complexityanalyzer.graph.RecipeNode.Builder builder =
                 new org.complexityanalyzer.graph.RecipeNode.Builder(resultItem)
                         .resultCount(resultCount)
                         .recipeType(recipe.getType())
-                        .category(category); // Используем классифицированную категорию
+                        .category(category);
 
-        // Устанавливаем приоритеты
         if (category == org.complexityanalyzer.graph.RecipeCategory.PRIMARY) {
             var recipeType = recipe.getType();
             if (recipeType == net.minecraft.world.item.crafting.RecipeType.SMELTING ||
                     recipeType == net.minecraft.world.item.crafting.RecipeType.BLASTING) {
                 builder.priority(2000);
             } else {
-                builder.priority(900); // JEI рецепты чуть ниже vanilla crafting
+                builder.priority(900);
             }
         } else if (category == org.complexityanalyzer.graph.RecipeCategory.STORAGE_COMPRESSION ||
                 category == org.complexityanalyzer.graph.RecipeCategory.STORAGE_DECOMPRESSION) {
-            builder.priority(100); // Низкий приоритет для compression/decompression
+            builder.priority(100);
         }
 
-        // Добавляем ингредиенты
         for (List<ItemStack> inputVariants : inputGroups) {
             if (inputVariants.isEmpty()) continue;
 
@@ -178,7 +165,6 @@ public class AdaptiveRecipeConverter {
                 new RecipeAdapter(null, null)
         );
 
-        // ========== ИСПРАВЛЕНИЕ: Доучиваем INPUT если нужно ==========
         if (adapter.inputMethod == null) {
             if (VERBOSE_DEBUG) {
                 ComplexityAnalyzer.LOGGER.debug("[INPUT] Learning input method for {}", recipeClass.getSimpleName());
@@ -187,7 +173,6 @@ public class AdaptiveRecipeConverter {
             adapter = new RecipeAdapter(adapter.outputMethod, inputMethod);
             LEARNED_ADAPTERS.put(recipeClass, adapter);
         }
-        // =============================================================
 
         if (adapter.inputMethod == null) {
             if (VERBOSE_DEBUG) {
@@ -249,15 +234,12 @@ public class AdaptiveRecipeConverter {
 
             return inputs;
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("[INPUT] Failed to extract inputs: {}", e.getMessage());
-            e.printStackTrace();
+            ComplexityAnalyzer.LOGGER.error("[INPUT] Failed to extract inputs for recipe type {}: {}",
+                    recipeClass.getSimpleName(), e.getMessage(), e);
             return new ArrayList<>();
         }
     }
 
-    /**
-     * Универсальный вызов методов с поддержкой RegistryAccess
-     */
     private static Object invokeMethod(Method method, Object target, Level level) throws Exception {
         if (method.getParameterCount() == 0) {
             if (VERBOSE_DEBUG) {
@@ -272,7 +254,6 @@ public class AdaptiveRecipeConverter {
                         method.getName(), paramType.getSimpleName());
             }
 
-            // Если требуется RegistryAccess, передаем его
             if (paramType.getSimpleName().contains("RegistryAccess") ||
                     paramType.getName().contains("RegistryAccess")) {
                 if (VERBOSE_DEBUG) {
@@ -281,7 +262,6 @@ public class AdaptiveRecipeConverter {
                 return method.invoke(target, level.registryAccess());
             }
 
-            // Для других типов пробуем null
             if (VERBOSE_DEBUG) {
                 ComplexityAnalyzer.LOGGER.debug("[INVOKE] Passing null");
             }
@@ -291,9 +271,6 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
-    /**
-     * Распаковывает RecipeHolder и возвращает настоящий рецепт.
-     */
     private static Object unwrapRecipeHolder(Object obj) {
         if (obj == null) {
             return null;
@@ -317,9 +294,6 @@ public class AdaptiveRecipeConverter {
         return obj;
     }
 
-    /**
-     * ========== НОВЫЙ МЕТОД: Обучение одного метода (output ИЛИ input) ==========
-     */
     private static Method learnMethod(Object recipe, boolean isOutput, Level level) {
         String[] candidateMethods = isOutput
                 ? new String[]{"getOutputs", "getOutput", "getResults", "getResult", "getResultItem", "output", "getOutputRaw", "getOutputDefinition"}
@@ -470,9 +444,6 @@ public class AdaptiveRecipeConverter {
         return new ArrayList<>();
     }
 
-    /**
-     * ГЛУБОКО ищет List<ItemStack> или List<List<ItemStack>>.
-     */
     private static List<List<ItemStack>> deepFindItemStackLists(Object obj, int depth) {
         if (obj == null || depth > MAX_RECURSION_DEPTH) {
             if (VERBOSE_DEBUG && depth == 0) {

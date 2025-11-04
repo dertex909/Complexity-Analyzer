@@ -37,7 +37,6 @@ public class JeiRecipeConverter {
             RecipeType<?> type = entry.getKey();
             List<?> recipes = entry.getValue();
 
-            int converted = 0;
             int failed = 0;
 
             for (Object recipe : recipes) {
@@ -45,7 +44,6 @@ public class JeiRecipeConverter {
                     RecipeNode node = convert(recipe, level);
                     if (node != null) {
                         result.add(node);
-                        converted++;
                     } else {
                         failed++;
                         if (failed <= 3) {

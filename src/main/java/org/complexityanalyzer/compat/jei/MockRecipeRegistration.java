@@ -25,6 +25,7 @@ import mezz.jei.api.recipe.vanilla.IVanillaRecipeFactory;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.runtime.IIngredientManager;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,13 +44,20 @@ import java.util.*;
 @MethodsReturnNonnullByDefault
 public class MockRecipeRegistration implements IRecipeRegistration {
     private final Map<RecipeType<?>, List<?>> collectedRecipes = new HashMap<>();
+    private final Level level;
+    private final RecipeManager recipeManager;
 
     private static IJeiHelpers STUB_HELPERS = null;
-    private static IIngredientManager STUB_INGREDIENT_MANAGER = null;
     private static IVanillaRecipeFactory STUB_RECIPE_FACTORY = null;
 
-    @SuppressWarnings("unused")
-    public MockRecipeRegistration(Level level) {}
+    public MockRecipeRegistration(Level level) {
+        this.level = level;
+        this.recipeManager = level.getRecipeManager();
+    }
+
+    public Level getLevel() {
+        return level;
+    }
 
     @Override
     public <T> void addRecipes(RecipeType<T> recipeType, List<T> recipes) {
@@ -68,7 +76,7 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     @NotNull
     public IJeiHelpers getJeiHelpers() {
         if (STUB_HELPERS == null) {
-            STUB_HELPERS = createProxy(IJeiHelpers.class);
+            STUB_HELPERS = createProxyWithRecipeManager(IJeiHelpers.class);
         }
         return STUB_HELPERS;
     }
@@ -76,17 +84,24 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     @Override
     @NotNull
     public IIngredientManager getIngredientManager() {
-        if (STUB_INGREDIENT_MANAGER == null) {
-            STUB_INGREDIENT_MANAGER = createProxy(IIngredientManager.class);
-        }
-        return STUB_INGREDIENT_MANAGER;
+        try {
+            Class<?> jeiInternalClass = Class.forName("mezz.jei.common.Internal");
+            Method getIngredientManager = jeiInternalClass.getMethod("getIngredientManager");
+            Object manager = getIngredientManager.invoke(null);
+
+            if (manager instanceof IIngredientManager) {
+                return (IIngredientManager) manager;
+            }
+        } catch (Exception ignored) {}
+
+        return createProxyWithRecipeManager(IIngredientManager.class);
     }
 
     @Override
     @NotNull
     public IVanillaRecipeFactory getVanillaRecipeFactory() {
         if (STUB_RECIPE_FACTORY == null) {
-            STUB_RECIPE_FACTORY = createProxy(IVanillaRecipeFactory.class);
+            STUB_RECIPE_FACTORY = createProxyWithRecipeManager(IVanillaRecipeFactory.class);
         }
         return STUB_RECIPE_FACTORY;
     }
@@ -98,19 +113,39 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     public <T> void addIngredientInfo(List<T> ingredients, IIngredientType<T> ingredientType, Component... descriptionComponents) {}
 
     @SuppressWarnings("unchecked")
-    private static <T> T createProxy(Class<T> interfaceClass) {
+    private <T> T createProxyWithRecipeManager(Class<T> interfaceClass) {
         return (T) Proxy.newProxyInstance(
                 interfaceClass.getClassLoader(),
                 new Class<?>[] { interfaceClass },
-                new StubInvocationHandler()
+                new StubInvocationHandlerWithRecipeManager(recipeManager)
         );
     }
 
-    private static class StubInvocationHandler implements InvocationHandler {
+    private static class StubInvocationHandlerWithRecipeManager implements InvocationHandler {
+        private final RecipeManager recipeManager;
+
+        public StubInvocationHandlerWithRecipeManager(RecipeManager recipeManager) {
+            this.recipeManager = recipeManager;
+        }
+
         @Override
         @Nullable
         public Object invoke(Object proxy, Method method, @Nullable Object[] args) {
             String methodName = method.getName();
+
+            if (methodName.equals("getRecipeManager")) {
+                return recipeManager;
+            }
+
+            if (methodName.equals("getAllRecipesFor") && args.length == 1) {
+                try {
+                    Method getAllRecipesForMethod = RecipeManager.class.getMethod(
+                            "getAllRecipesFor",
+                            net.minecraft.world.item.crafting.RecipeType.class
+                    );
+                    return getAllRecipesForMethod.invoke(recipeManager, args[0]);
+                } catch (Exception ignored) {}
+            }
 
             switch (methodName) {
                 case "toString":
@@ -123,21 +158,11 @@ public class MockRecipeRegistration implements IRecipeRegistration {
 
             Class<?> returnType = method.getReturnType();
 
-            if (returnType == void.class) {
-                return null;
-            }
-            if (returnType == boolean.class) {
-                return false;
-            }
-            if (returnType.isPrimitive()) {
-                return 0;
-            }
-            if (Collection.class.isAssignableFrom(returnType)) {
-                return Collections.emptyList();
-            }
-            if (Optional.class.isAssignableFrom(returnType)) {
-                return Optional.empty();
-            }
+            if (returnType == void.class) return null;
+            if (returnType == boolean.class) return false;
+            if (returnType.isPrimitive()) return 0;
+            if (Collection.class.isAssignableFrom(returnType)) return Collections.emptyList();
+            if (Optional.class.isAssignableFrom(returnType)) return Optional.empty();
 
             return null;
         }

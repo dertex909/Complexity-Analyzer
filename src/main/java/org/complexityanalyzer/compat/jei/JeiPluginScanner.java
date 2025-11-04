@@ -30,7 +30,6 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class JeiPluginScanner {
 
     public static void scanAndImportRecipes(RecipeGraph graph, Level level) {
@@ -60,20 +59,20 @@ public class JeiPluginScanner {
                 try {
                     plugin.registerRecipes(mockRegistration);
                 } catch (NullPointerException e) {
-                    if (!e.getMessage().contains("factory")) {
-                        ComplexityAnalyzer.LOGGER.debug("Plugin {} threw NPE: {}", pluginId, e.getMessage());
-                    }
+                    // Игнорируем ожидаемые NPE
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.debug("Plugin {} threw exception: {}", pluginId, e.getMessage());
                 }
 
-                List<RecipeNode> recipes = JeiRecipeConverter.convertAll(mockRegistration.getCollectedRecipes());
+                List<RecipeNode> recipes = JeiRecipeConverter.convertAll(
+                        mockRegistration.getCollectedRecipes(),
+                        mockRegistration.getLevel()
+                );
 
                 for (RecipeNode node : recipes) {
                     graph.addRecipe(node);
                 }
 
-                ComplexityAnalyzer.LOGGER.info("Imported {} recipes from plugin: {}", recipes.size(), pluginId);
                 successCount++;
                 totalRecipes += recipes.size();
 
@@ -116,8 +115,7 @@ public class JeiPluginScanner {
                                             pluginClass.getSimpleName(), modId);
                                 }
                             } catch (Exception e) {
-                                ComplexityAnalyzer.LOGGER.debug("Could not load plugin from {}: {}",
-                                        modId, e.getMessage());
+                                // Игнорируем плагины которые не удалось загрузить
                             }
                         });
             } catch (Exception ignored) {}

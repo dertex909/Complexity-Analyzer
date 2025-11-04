@@ -32,7 +32,12 @@ public class JeiCompatibilityModule {
         }
 
         try {
+            // 1. Сканируем JEI плагины для vanilla рецептов
             JeiPluginScanner.scanAndImportRecipes(graph, level);
+
+            // 2. Извлекаем кастомные рецепты напрямую из RecipeManager
+            DirectRecipeExtractor.extractCustomRecipes(graph, level);
+
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("JEI integration failed catastrophically", t);
         }

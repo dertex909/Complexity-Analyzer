@@ -21,6 +21,7 @@ package org.complexityanalyzer.compat.jei;
 import mezz.jei.api.recipe.RecipeType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -29,7 +30,7 @@ import java.util.*;
 
 public class JeiRecipeConverter {
 
-    public static List<RecipeNode> convertAll(Map<RecipeType<?>, List<?>> recipesByType) {
+    public static List<RecipeNode> convertAll(Map<RecipeType<?>, List<?>> recipesByType, Level level) {
         List<RecipeNode> result = new ArrayList<>();
 
         for (Map.Entry<RecipeType<?>, List<?>> entry : recipesByType.entrySet()) {
@@ -41,34 +42,36 @@ public class JeiRecipeConverter {
 
             for (Object recipe : recipes) {
                 try {
-                    RecipeNode node = convert(recipe);
+                    RecipeNode node = convert(recipe, level);
                     if (node != null) {
                         result.add(node);
                         converted++;
                     } else {
                         failed++;
+                        if (failed <= 3) {
+                            String className = recipe.getClass().getSimpleName();
+                            ComplexityAnalyzer.LOGGER.debug("    Failed to convert recipe: {} (type: {})",
+                                    className, type.getUid());
+                        }
                     }
                 } catch (Exception e) {
                     failed++;
+                    if (failed <= 3) {
+                        ComplexityAnalyzer.LOGGER.debug("    Exception converting recipe: {}", e.getMessage());
+                    }
                 }
-            }
-
-            if (converted > 0) {
-                ComplexityAnalyzer.LOGGER.info("  Converted {}/{} recipes from type {}",
-                        converted, recipes.size(), type.getUid());
-            } else if (failed > 0) {
-                ComplexityAnalyzer.LOGGER.debug("  Skipped {} non-item recipes from type {}",
-                        failed, type.getUid());
             }
         }
 
         return result;
     }
 
-    private static RecipeNode convert(Object recipe) {
-        List<ItemStack> outputs = AdaptiveRecipeConverter.extractOutputs(recipe);
+    private static RecipeNode convert(Object recipe, Level level) {
+        List<ItemStack> outputs = AdaptiveRecipeConverter.extractOutputs(recipe, level);
 
         if (outputs.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("      No outputs found for {}",
+                    recipe.getClass().getSimpleName());
             return null;
         }
 
@@ -82,7 +85,13 @@ public class JeiRecipeConverter {
 
         builder.priority(900);
 
-        List<List<ItemStack>> inputs = AdaptiveRecipeConverter.extractInputs(recipe);
+        List<List<ItemStack>> inputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
+
+        if (inputs.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("      No inputs found for {} -> {}",
+                    recipe.getClass().getSimpleName(), resultItem);
+        }
+
         for (List<ItemStack> inputVariants : inputs) {
             if (inputVariants.isEmpty()) continue;
 
@@ -98,6 +107,8 @@ public class JeiRecipeConverter {
         RecipeNode node = builder.build();
 
         if (node.getIngredients().isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("      Recipe has no ingredients after conversion: {}",
+                    recipe.getClass().getSimpleName());
             return null;
         }
 

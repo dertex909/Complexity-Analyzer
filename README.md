@@ -1,6 +1,6 @@
 # 📖 Complexity Analyzer
 
-![Project Banner](https://github.com/dertex909/Complexity-Analyzer/blob/main/src/main/resources/banner.png)
+![Project Banner](https://github.com/dertex909/Complexity-Analyzer/blob/neoforge-1.21.1/src/main/resources/banner.png)
 
 > A powerful framework that calculates the 'true cost' of every item, enabling deep analysis and balancing for complex modpacks.
 
@@ -17,7 +17,7 @@ Your feedback is invaluable. Please report bugs and suggest features on the [Iss
 ## ✨ Core Features
 
 *   **🧠 Deep Economic Analysis:** A graph-based engine calculates the "true cost" of production for every item.
-*   **🔌 Universal Mod Support:** Automatically discovers and parses recipes from virtually any mod compatible with JEI/EMI/REI.
+*   **🔌 Universal Mod Support:** Automatically discovers and parses recipes from virtually any mod compatible with JEI (Planned EMI/REI).
 *   **📊 Powerful In-Game CLI:** A rich set of `/complexity` commands for detailed analysis, crafting tree visualization, and server performance monitoring.
 *   **📤 Data Export:** Export all calculated data into **CSV or JSON** for external analysis.
 *   **🤖 AI-Powered Assistant (Planned):** An upcoming feature to provide in-game guidance and answer complex economic questions.

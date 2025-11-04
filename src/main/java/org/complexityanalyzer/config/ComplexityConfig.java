@@ -20,6 +20,9 @@ package org.complexityanalyzer.config;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.Collections;
+import java.util.List;
+
 public class ComplexityConfig {
     public static final ModConfigSpec SPEC;
 
@@ -42,10 +45,28 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
     public static final ModConfigSpec.DoubleValue SOURCE_BIAS_THRESHOLD;
 
+    public static final ModConfigSpec.BooleanValue ENABLE_JEI_INTEGRATION;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> JEI_PLUGIN_BLACKLIST;
+
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("general");
+
+        builder.push("jei_integration");
+        ENABLE_JEI_INTEGRATION = builder
+                .comment("Enable automatic recipe extraction from JEI plugins of other mods")
+                .define("enableJeiIntegration", true);
+
+        JEI_PLUGIN_BLACKLIST = builder
+                .comment("List of mod IDs whose JEI plugins should be ignored")
+                .defineList(
+                        "jeiPluginBlacklist",
+                        Collections.emptyList(),
+                        () -> "",
+                        obj -> obj instanceof String
+                );
+        builder.pop();
 
         builder.push("limits");
         MAX_DEPTH = builder.defineInRange("maxDepth", 50, 1, 1000);

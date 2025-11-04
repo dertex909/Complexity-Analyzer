@@ -60,6 +60,13 @@ public class GraphBuilder {
         }
 
         ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped", processedCount, skippedCount);
+
+        try {
+            org.complexityanalyzer.compat.jei.JeiCompatibilityModule.collectRecipesFromJeiPlugins(graph, level);
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.error("JEI compatibility module failed", t);
+        }
+
         return graph;
     }
 

@@ -60,6 +60,32 @@ public class WorldScanner {
     }
 
     public Optional<ChunkPos> findBiomeLocation(ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey, boolean isRelocation) {
+        if (!server.isSameThread()) {
+            CompletableFuture<Optional<ChunkPos>> future = new CompletableFuture<>();
+
+            server.execute(() -> {
+                try {
+                    Optional<ChunkPos> result = findBiomeLocationInternal(dimension, biomeKey, isRelocation);
+                    future.complete(result);
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.error("Error finding biome location for {} in {}",
+                            biomeKey.location(), dimension.location(), e);
+                    future.complete(Optional.empty());
+                }
+            });
+
+            try {
+                return future.join();
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.error("Failed to get biome location from main thread", e);
+                return Optional.empty();
+            }
+        }
+
+        return findBiomeLocationInternal(dimension, biomeKey, isRelocation);
+    }
+
+    private Optional<ChunkPos> findBiomeLocationInternal(ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey, boolean isRelocation) {
         ServerLevel level = server.getLevel(dimension);
         if (level == null) {
             ComplexityAnalyzer.LOGGER.error("Cannot find biome location, level {} is not loaded.", dimension.location());

@@ -32,11 +32,10 @@ import org.slf4j.LoggerFactory;
 public class ComplexityAnalyzer {
     public static final String MODID = "complexityanalyzer";
     public static final String MOD_NAME = "Complexity Analyzer";
-    public static final String VERSION = "0.2.0-alpha";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
     public ComplexityAnalyzer(IEventBus ignoredModEventBus, ModContainer modContainer) {
-        LOGGER.info("=== {} v{} ===", MOD_NAME, VERSION);
+        LOGGER.info("=== {} v{} ===", MOD_NAME, modContainer.getModInfo().getVersion());
         modContainer.registerConfig(ModConfig.Type.COMMON, ComplexityConfig.SPEC);
 
         NeoForge.EVENT_BUS.register(DatapackSyncHandler.class);

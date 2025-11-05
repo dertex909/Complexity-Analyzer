@@ -35,7 +35,7 @@ public class IterativeSolver {
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
 
-    private static final double CONVERGENCE_THRESHOLD = 1e-9;
+    private static final double CONVERGENCE_THRESHOLD = 1e-8;
     private static final double EPSILON = 1e-12;
 
     private final Map<RecipeNode, RecipeCostCache> recipeCostCache;

@@ -207,22 +207,6 @@ public class TreeCommand {
             return;
         }
 
-        if (!visitedOnPath.add(item)) {
-            stats.cyclesDetected++;
-            MutableComponent line = Component.literal(prefix)
-                    .append(Component.literal(isLast ? "└─ " : "├─ ")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal("🔄 ")
-                            .withStyle(ChatFormatting.RED))
-                    .append(Component.literal(item.getDescription().getString())
-                            .withStyle(ChatFormatting.RED))
-                    .append(Component.literal(" [CYCLE]")
-                            .withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
-
-            output.sendInfo(source, line);
-            return;
-        }
-
         String quantityString;
         if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
             int displayAmount = (int) Math.ceil(neededAmount);
@@ -233,13 +217,70 @@ public class TreeCommand {
 
         double complexity = engine.getComplexity(item);
         ChatFormatting complexityColor = getComplexityColor(complexity);
+
+        double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
+                Math.ceil(neededAmount) : neededAmount;
+        if (!visitedOnPath.add(item)) {
+            stats.cyclesDetected++;
+            stats.baseResourcesCount++;
+
+            baseResources.merge(item, amountToAdd, Double::sum);
+
+            MutableComponent line = Component.literal(prefix)
+                    .append(Component.literal(isLast ? "└─ " : "├─ ")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("⛏ ")
+                            .withStyle(ChatFormatting.YELLOW))
+                    .append(Component.literal(quantityString)
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                    .append(Component.literal(item.getDescription().getString())
+                            .withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" (")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(String.format("%.2f", complexity))
+                            .withStyle(complexityColor))
+                    .append(Component.literal(") ")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("[BASE-CYCLE]")
+                            .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+
+            output.sendInfo(source, line);
+            return;
+        }
+
         Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
 
-        if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
+        boolean wouldCreateCycle = false;
+        if (recipeOpt.isPresent() && !recipeOpt.get().isBaseRecipe()) {
+            RecipeNode recipe = recipeOpt.get();
+            for (IngredientSlot slot : recipe.getIngredients()) {
+                for (Item variant : slot.getVariants()) {
+                    if (visitedOnPath.contains(variant)) {
+                        wouldCreateCycle = true;
+                        break;
+                    }
+                }
+                if (wouldCreateCycle) break;
+            }
+        }
+
+        if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe() || wouldCreateCycle) {
             stats.baseResourcesCount++;
-            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
-                    Math.ceil(neededAmount) : neededAmount;
             baseResources.merge(item, amountToAdd, Double::sum);
+
+            String sourceType;
+            ChatFormatting sourceColor;
+
+            if (wouldCreateCycle) {
+                sourceType = "[BASE]";
+                sourceColor = ChatFormatting.GREEN;
+            } else if (recipeOpt.isPresent() && recipeOpt.get().isBaseRecipe()) {
+                sourceType = "[BASE]";
+                sourceColor = ChatFormatting.GREEN;
+            } else {
+                sourceType = "[SOURCE]";
+                sourceColor = ChatFormatting.AQUA;
+            }
 
             MutableComponent line = Component.literal(prefix)
                     .append(Component.literal(isLast ? "└─ " : "├─ ")
@@ -256,8 +297,8 @@ public class TreeCommand {
                             .withStyle(complexityColor))
                     .append(Component.literal(") ")
                             .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal("[BASE]")
-                            .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+                    .append(Component.literal(sourceType)
+                            .withStyle(sourceColor, ChatFormatting.BOLD));
 
             output.sendInfo(source, line);
             visitedOnPath.remove(item);

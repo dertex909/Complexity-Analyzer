@@ -18,9 +18,14 @@
 
 package org.complexityanalyzer.graph;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.tags.TagKey;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,6 +105,77 @@ public class RecipeGraph {
         return recipes.stream()
                 .max(Comparator.comparingInt(RecipeNode::getPriority))
                 .orElse(recipes.getFirst());
+    }
+
+    public int reclassifyRecipesBasedOnComplexity(Map<Item, Double> complexities) {
+        int reclassified = 0;
+
+        TagKey<Item> oresTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ores"));
+        TagKey<Item> rawMaterialsTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
+        TagKey<Item> storageBlocksTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
+
+        for (Item item : getAllItems()) {
+            if (!hasRecipe(item)) continue;
+
+            List<RecipeNode> recipes = getRecipes(item);
+            Double resultComplexity = complexities.get(item);
+
+            if (resultComplexity == null || Double.isInfinite(resultComplexity)) {
+                continue;
+            }
+
+            for (RecipeNode recipe : recipes) {
+                if (recipe.getCategory() != RecipeCategory.PRIMARY) {
+                    continue;
+                }
+
+                boolean isReverseRecipe = false;
+                boolean hasRawMaterial = false;
+
+                for (IngredientSlot slot : recipe.getIngredients()) {
+                    for (Item ingredient : slot.getVariants()) {
+                        ItemStack ingredientStack = new ItemStack(ingredient);
+
+                        if (ingredientStack.is(oresTag) ||
+                                ingredientStack.is(rawMaterialsTag) ||
+                                isRawStorageBlock(ingredientStack, storageBlocksTag)) {
+                            hasRawMaterial = true;
+                            break;
+                        }
+
+                        Double ingredientComplexity = complexities.get(ingredient);
+                        if (ingredientComplexity == null || Double.isInfinite(ingredientComplexity)) {
+                            continue;
+                        }
+
+                        if (resultComplexity < ingredientComplexity * 0.95) {
+                            isReverseRecipe = true;
+                        }
+                    }
+                    if (hasRawMaterial) break;
+                }
+
+                if (hasRawMaterial) {
+                    continue;
+                }
+
+                if (isReverseRecipe) {
+                    recipe.setCategory(RecipeCategory.PROCESSING);
+                    reclassified++;
+                }
+            }
+        }
+
+        return reclassified;
+    }
+
+    private boolean isRawStorageBlock(ItemStack stack, TagKey<Item> storageBlocksTag) {
+        if (!stack.is(storageBlocksTag)) {
+            return false;
+        }
+
+        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        return itemId.contains("raw_") || itemId.contains("crude_");
     }
 
     public boolean hasRecipe(Item item) {

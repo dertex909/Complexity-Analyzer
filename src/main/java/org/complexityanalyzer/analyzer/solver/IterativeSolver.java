@@ -135,6 +135,79 @@ public class IterativeSolver {
 
         logResults(iterations, totalTime, converged, itemsProcessed);
 
+        int reclassified = graph.reclassifyRecipesBasedOnComplexity(optimalComplexities);
+
+        if (reclassified > 0) {
+            ComplexityAnalyzer.LOGGER.info("Reclassified {} reverse recipes, recalculating...", reclassified);
+
+            recipeCostCache.clear();
+            baseResourceCache.clear();
+
+            updateQueue.clear();
+            itemsInQueue.clear();
+
+            Set<Item> affectedItems = new HashSet<>();
+            for (Item item : graph.getCorpus()) {
+                if (graph.hasRecipe(item)) {
+                    for (RecipeNode recipe : graph.getRecipes(item)) {
+                        if (recipe.getCategory() == RecipeCategory.PROCESSING) {
+                            affectedItems.add(item);
+                            Set<Item> deps = dependents.getOrDefault(item, Collections.emptySet());
+                            affectedItems.addAll(deps);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            ComplexityAnalyzer.LOGGER.info("Recalculating {} affected items...", affectedItems.size());
+
+            for (Item item : affectedItems) {
+                updateQueue.offer(new ItemUpdate(item, iterations, optimalComplexities.get(item)));
+                itemsInQueue.add(item);
+            }
+
+            int refinementIterations = 0;
+            while (!updateQueue.isEmpty() && refinementIterations < ComplexityConfig.MAX_ITERATIONS.get()) {
+                refinementIterations++;
+
+                int batchSize = Math.min(updateQueue.size(), 1000);
+                boolean batchChanged = false;
+
+                for (int i = 0; i < batchSize && !updateQueue.isEmpty(); i++) {
+                    ItemUpdate update = updateQueue.poll();
+                    Item item = update.getItem();
+                    itemsInQueue.remove(item);
+                    double oldComplexity = optimalComplexities.get(item);
+
+                    reusableVisitedSet.clear();
+                    ComplexityResult result = calculateComplexityEnhanced(item, optimalComplexities, reusableVisitedSet);
+
+                    if (hasSignificantChange(oldComplexity, result.complexity)) {
+                        optimalComplexities.put(item, result.complexity);
+                        if (result.recipe != null) {
+                            optimalRecipes.put(item, result.recipe);
+                        }
+
+                        Set<Item> deps = dependents.getOrDefault(item, Collections.emptySet());
+                        for (Item dep : deps) {
+                            if (itemsInQueue.add(dep)) {
+                                updateQueue.offer(new ItemUpdate(dep, refinementIterations, optimalComplexities.get(dep)));
+                            }
+                        }
+
+                        batchChanged = true;
+                    }
+                }
+
+                if (!batchChanged && updateQueue.isEmpty()) {
+                    break;
+                }
+            }
+
+            ComplexityAnalyzer.LOGGER.info("Refinement complete after {} iterations", refinementIterations);
+        }
+
         clearCaches();
 
         return new SolverResult(
@@ -277,6 +350,7 @@ public class IterativeSolver {
         List<RecipeNode> filteredRecipes = allRecipes.stream()
                 .filter(r -> r.getCategory() != RecipeCategory.UNPROCESSABLE
                         && r.getCategory() != RecipeCategory.RECYCLING
+                        && r.getCategory() != RecipeCategory.PROCESSING
                         && r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION)
                 .toList();
 

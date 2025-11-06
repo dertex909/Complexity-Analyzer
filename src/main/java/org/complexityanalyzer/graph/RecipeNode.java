@@ -33,7 +33,7 @@ public class RecipeNode {
     private final RecipeType<?> recipeType;
     private final double recipeMultiplier;
     private final int priority;
-    private final RecipeCategory category;
+    private RecipeCategory category;
     private RecipeNode(Builder builder) {
         this.resultItem = builder.resultItem;
         this.resultCount = Math.max(1, builder.resultCount);
@@ -46,6 +46,10 @@ public class RecipeNode {
 
     public RecipeCategory getCategory() {
         return category;
+    }
+
+    public void setCategory(RecipeCategory newCategory) {
+        this.category = newCategory;
     }
 
     public Item getResultItem() {

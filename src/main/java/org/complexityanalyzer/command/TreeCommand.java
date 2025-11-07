@@ -30,8 +30,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
+import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -152,8 +155,12 @@ public class TreeCommand {
 
         double initialAmount = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(1.0) : 1.0;
 
+        // ========== ИСПРАВЛЕНИЕ: добавлен sourceManager ==========
+        SourceManager sourceManager = engine.getSourceManager().orElse(null);
+
         displayNodeRecursive(source, item, initialAmount, 0, "  ", true, new HashSet<>(),
-                engine, depthAnalyzer, baseResources, displayMode, maxDepth, uniqueItems, stats, output);
+                engine, depthAnalyzer, baseResources, displayMode, maxDepth, uniqueItems, stats, output, sourceManager);
+        // =========================================================
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
@@ -172,6 +179,7 @@ public class TreeCommand {
                         .withStyle(ChatFormatting.DARK_GRAY));
     }
 
+    // ========== ИСПРАВЛЕНИЕ: добавлен параметр sourceManager ==========
     private static void displayNodeRecursive(
             CommandSourceStack source,
             Item item,
@@ -187,20 +195,35 @@ public class TreeCommand {
             int maxDepth,
             Set<Item> uniqueItems,
             TreeStats stats,
-            OutputManager output
+            OutputManager output,
+            SourceManager sourceManager  // ← ДОБАВЛЕНО
     ) {
         uniqueItems.add(item);
         stats.totalNodes++;
 
+        Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(item);
+        if (complexityOpt.isEmpty()) {
+            MutableComponent errorLine = Component.literal(prefix)
+                    .append(Component.literal(isLast ? "└─ " : "├─ ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(item.getDescription().getString()).withStyle(ChatFormatting.RED))
+                    .append(Component.literal(" [NO DATA]").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
+            output.sendInfo(source, errorLine);
+            return;
+        }
+        ItemComplexity complexityData = complexityOpt.get();
+        double complexity = complexityData.getComplexity();
+        ChatFormatting complexityColor = getComplexityColor(complexity);
+
+        HoverEvent hoverEvent = new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                createHoverText(complexityData, engine));
+
         if (depth >= maxDepth) {
             MutableComponent line = Component.literal(prefix)
-                    .append(Component.literal(isLast ? "└─ " : "├─ ")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal("... ")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
-                    .append(Component.literal("[MAX DEPTH REACHED]")
-                            .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+                    .append(Component.literal(isLast ? "└─ " : "├─ ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("... ").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
+                    .append(Component.literal("[MAX DEPTH REACHED]").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
 
+            line.withStyle(style -> style.withHoverEvent(hoverEvent));
             output.sendInfo(source, line);
             calculateBaseResourcesFor(item, neededAmount, new HashSet<>(visitedOnPath),
                     engine, depthAnalyzer, baseResources, displayMode);
@@ -215,52 +238,41 @@ public class TreeCommand {
             quantityString = neededAmount > 0.001 ? String.format("%.2fx ", neededAmount) : "";
         }
 
-        double complexity = engine.getComplexity(item);
-        ChatFormatting complexityColor = getComplexityColor(complexity);
-
         double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
                 Math.ceil(neededAmount) : neededAmount;
+
         if (!visitedOnPath.add(item)) {
             stats.cyclesDetected++;
             stats.baseResourcesCount++;
-
             baseResources.merge(item, amountToAdd, Double::sum);
 
             MutableComponent line = Component.literal(prefix)
-                    .append(Component.literal(isLast ? "└─ " : "├─ ")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal("⛏ ")
-                            .withStyle(ChatFormatting.YELLOW))
-                    .append(Component.literal(quantityString)
-                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
-                    .append(Component.literal(item.getDescription().getString())
-                            .withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(" (")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal(String.format("%.2f", complexity))
-                            .withStyle(complexityColor))
-                    .append(Component.literal(") ")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal("[BASE-CYCLE]")
-                            .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+                    .append(Component.literal(isLast ? "└─ " : "├─ ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("⛏ ").withStyle(ChatFormatting.YELLOW))
+                    .append(Component.literal(quantityString).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                    .append(Component.literal(item.getDescription().getString()).withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(String.format("%.2f", complexity)).withStyle(complexityColor))
+                    .append(Component.literal(") ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("[BASE-CYCLE]").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
+            line.withStyle(style -> style.withHoverEvent(hoverEvent));
             output.sendInfo(source, line);
             return;
         }
 
-        Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
+        Optional<RecipeNode> recipeOpt = Optional.ofNullable(
+                engine.getSolverResult().get().optimalRecipes().get(item)
+        );
 
         boolean wouldCreateCycle = false;
         if (recipeOpt.isPresent() && !recipeOpt.get().isBaseRecipe()) {
             RecipeNode recipe = recipeOpt.get();
             for (IngredientSlot slot : recipe.getIngredients()) {
-                for (Item variant : slot.getVariants()) {
-                    if (visitedOnPath.contains(variant)) {
-                        wouldCreateCycle = true;
-                        break;
-                    }
+                if (slot.getVariants().stream().anyMatch(visitedOnPath::contains)) {
+                    wouldCreateCycle = true;
+                    break;
                 }
-                if (wouldCreateCycle) break;
             }
         }
 
@@ -268,38 +280,45 @@ public class TreeCommand {
             stats.baseResourcesCount++;
             baseResources.merge(item, amountToAdd, Double::sum);
 
-            String sourceType;
-            ChatFormatting sourceColor;
+            String sourceType = wouldCreateCycle ? "[BASE]" : "[SOURCE]";
+            ChatFormatting sourceColor = wouldCreateCycle ? ChatFormatting.GREEN : ChatFormatting.AQUA;
 
-            if (wouldCreateCycle) {
-                sourceType = "[BASE]";
-                sourceColor = ChatFormatting.GREEN;
-            } else if (recipeOpt.isPresent() && recipeOpt.get().isBaseRecipe()) {
-                sourceType = "[BASE]";
-                sourceColor = ChatFormatting.GREEN;
-            } else {
-                sourceType = "[SOURCE]";
-                sourceColor = ChatFormatting.AQUA;
+            String sourceDetail = "";
+            if (sourceManager != null) {
+                Optional<BaseResourceData> sourceData = sourceManager.analyze(item);
+                if (sourceData.isPresent()) {
+                    BaseResourceData data = sourceData.get();
+                    String spec = data.getSourceSpecifier();
+                    if (spec != null && !spec.isBlank()) {
+                        sourceDetail = " - " + spec;
+                    } else {
+                        sourceDetail = " - " + data.getSourceType().getDisplayName();
+                    }
+                } else {
+                    // Fallback: попытаться определить вручную
+                    String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
+                    if (itemId.contains("ore") || itemId.contains("raw_")) {
+                        sourceDetail = " - добыча";
+                    } else if (itemId.contains("log") || itemId.contains("planks") || itemId.contains("stick")) {
+                        sourceDetail = " - деревообработка";
+                    } else {
+                        sourceDetail = "неизвестный источник-зачем убирать?";  // Убрать "неизвестный источник"
+                    }
+                }
             }
 
             MutableComponent line = Component.literal(prefix)
-                    .append(Component.literal(isLast ? "└─ " : "├─ ")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal("⛏ ")
-                            .withStyle(ChatFormatting.GREEN))
-                    .append(Component.literal(quantityString)
-                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
-                    .append(Component.literal(item.getDescription().getString())
-                            .withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(" (")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal(String.format("%.2f", complexity))
-                            .withStyle(complexityColor))
-                    .append(Component.literal(") ")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal(sourceType)
-                            .withStyle(sourceColor, ChatFormatting.BOLD));
+                    .append(Component.literal(isLast ? "└─ " : "├─ ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("⛏ ").withStyle(ChatFormatting.GREEN))
+                    .append(Component.literal(quantityString).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                    .append(Component.literal(item.getDescription().getString()).withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(String.format("%.2f", complexity)).withStyle(complexityColor))
+                    .append(Component.literal(") ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(sourceType).withStyle(sourceColor, ChatFormatting.BOLD))
+                    .append(Component.literal(sourceDetail).withStyle(ChatFormatting.GRAY)); // ← ДОБАВЛЕНО
 
+            line.withStyle(style -> style.withHoverEvent(hoverEvent));
             output.sendInfo(source, line);
             visitedOnPath.remove(item);
             return;
@@ -307,34 +326,32 @@ public class TreeCommand {
 
         stats.craftingSteps++;
 
-        MutableComponent line = Component.literal(prefix)
-                .append(Component.literal(isLast ? "└─ " : "├─ ")
-                        .withStyle(ChatFormatting.DARK_GRAY))
-                .append(Component.literal("🔨 ")
-                        .withStyle(ChatFormatting.GOLD))
-                .append(Component.literal(quantityString)
-                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
-                .append(Component.literal(item.getDescription().getString())
-                        .withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(" (")
-                        .withStyle(ChatFormatting.DARK_GRAY))
-                .append(Component.literal(String.format("%.2f", complexity))
-                        .withStyle(complexityColor))
-                .append(Component.literal(")")
-                        .withStyle(ChatFormatting.DARK_GRAY));
+        // ========== ИСПРАВЛЕНИЕ: добавлен вывод названия машины ==========
+        RecipeNode recipe = recipeOpt.get();
+        String machineName = engine.getMachineRegistry()
+                .flatMap(registry -> registry.getMachineForRecipe(recipe.getRecipeType()))
+                .map(m -> m.getDescription().getString())
+                .orElse("верстак");
+        // =================================================================
 
+        MutableComponent line = Component.literal(prefix)
+                .append(Component.literal(isLast ? "└─ " : "├─ ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal("🔨 ").withStyle(ChatFormatting.GOLD))
+                .append(Component.literal(quantityString).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                .append(Component.literal(item.getDescription().getString()).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal(String.format("%.2f", complexity)).withStyle(complexityColor))
+                .append(Component.literal(") - ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal(machineName).withStyle(ChatFormatting.AQUA)); // ← ДОБАВЛЕНО
+
+        line.withStyle(style -> style.withHoverEvent(hoverEvent));
         output.sendInfo(source, line);
 
-        RecipeNode recipe = recipeOpt.get();
         String childPrefix = prefix + (isLast ? "   " : "│  ");
 
-        double craftOperations;
-        if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
-            int neededPlayerAmount = (int) Math.ceil(neededAmount);
-            craftOperations = Math.ceil((double) neededPlayerAmount / recipe.getResultCount());
-        } else {
-            craftOperations = neededAmount / recipe.getResultCount();
-        }
+        double craftOperations = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
+                Math.ceil(neededAmount / recipe.getResultCount()) :
+                neededAmount / recipe.getResultCount();
 
         Map<Item, Integer> ingredientsForOneCraft = new LinkedHashMap<>();
         for (IngredientSlot slot : recipe.getIngredients()) {
@@ -349,9 +366,11 @@ public class TreeCommand {
             int countForOneCraft = ingredientsForOneCraft.get(ingredientItem);
             double totalIngredientNeeded = craftOperations * countForOneCraft;
 
+            // ========== ИСПРАВЛЕНИЕ: передан sourceManager ==========
             displayNodeRecursive(source, ingredientItem, totalIngredientNeeded, depth + 1, childPrefix,
                     i == ingredientItems.size() - 1, visitedOnPath, engine, depthAnalyzer,
-                    baseResources, displayMode, maxDepth, uniqueItems, stats, output);
+                    baseResources, displayMode, maxDepth, uniqueItems, stats, output, sourceManager);
+            // ========================================================
         }
         visitedOnPath.remove(item);
     }
@@ -598,6 +617,39 @@ public class TreeCommand {
             }
         }
         visited.remove(item);
+    }
+
+    private static Component createHoverText(ItemComplexity complexityData, AnalysisEngine engine) {
+        if (complexityData.getOptimalRecipe().isPresent()) {
+            RecipeNode recipe = complexityData.getOptimalRecipe().get();
+
+            String machineName = engine.getMachineRegistry()
+                    .flatMap(registry -> registry.getMachineForRecipe(recipe.getRecipeType()))
+                    .map(m -> m.getDescription().getString())
+                    .orElse("Crafting Table");
+
+            return Component.literal("Source: Crafting (" + machineName + ")");
+        }
+
+        if (complexityData.getBaseData().isPresent()) {
+            BaseResourceData data = complexityData.getBaseData().get();
+            String specifier = data.getSourceSpecifier();
+
+            if (specifier == null || specifier.isBlank()) {
+                specifier = "Details unavailable";
+            }
+
+            return switch (data.getSourceType()) {
+                case MOB_DROP -> Component.literal("Source: Mob Drop (" + specifier + ")");
+                case ORE, EMPIRICAL_BLOCK, BLOCK_TRANSFORMATION, BLOCK -> Component.literal("Source: Mining (" + specifier + ")");
+                case VILLAGER_TRADE -> Component.literal("Source: Villager Trade (" + specifier + ")");
+                case FISHING -> Component.literal("Source: Fishing");
+                case CHEST_LOOT -> Component.literal("Source: Chest Loot");
+                default -> Component.literal("Source: " + data.getSourceType().getDisplayName());
+            };
+        }
+
+        return Component.literal("Source: Unknown");
     }
 
     private static class TreeStats {

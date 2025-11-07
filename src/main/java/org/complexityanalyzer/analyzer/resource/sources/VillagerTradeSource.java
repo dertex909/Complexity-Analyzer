@@ -214,6 +214,7 @@ public class VillagerTradeSource implements IResourceSource {
                 .sourceType(getSourceType())
                 .baseFactor(LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0))
                 .sourceItems(sourceItems)
+                .sourceSpecifier("Lvl " + bestTrade.level())
                 .details(String.format("Trade with Lvl %d Villager", bestTrade.level()))
                 .build());
     }

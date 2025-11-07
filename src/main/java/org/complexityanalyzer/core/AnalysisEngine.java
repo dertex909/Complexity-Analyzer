@@ -25,6 +25,7 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
+import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.SourcePathAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
@@ -71,7 +72,10 @@ public class AnalysisEngine {
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
     private volatile TheoreticalDistributionProvider theoreticalDistProvider;
-    private volatile MobRarityCalculator mobRarityCalculator;private static class InstanceHolder {
+    private volatile MobRarityCalculator mobRarityCalculator;
+    private volatile MachineRegistry machineRegistry;
+
+    private static class InstanceHolder {
         private static final AnalysisEngine INSTANCE = new AnalysisEngine();
     }
 
@@ -82,6 +86,11 @@ public class AnalysisEngine {
     private AnalysisEngine() {
         this.complexityCache = new ComplexityCache();
     }
+
+    public Optional<SolverResult> getSolverResult() {
+        return (calculator != null) ? Optional.of(calculator.getSolverResult()) : Optional.empty();
+    }
+
 
     public void initializeAsync(Level level, Runnable onComplete) {
         if (!currentState.compareAndSet(State.IDLE, State.ANALYZING)) {
@@ -110,6 +119,12 @@ public class AnalysisEngine {
                     return;
                 }
 
+                // ========== ИСПРАВЛЕНИЕ: переместить ПЕРЕД GraphBuilder ==========
+                ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
+                this.machineRegistry = new MachineRegistry();
+                this.machineRegistry.initialize();
+                // ==================================================================
+
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);
 
@@ -129,8 +144,9 @@ public class AnalysisEngine {
 
                 initializeResourceSources(serverLevel);
 
-                if (isInterrupted()) {
-                    restoreIdleState();
+                if (serverLevel.getServer().getPlayerList().getPlayerCount() == 0) {
+                    ComplexityAnalyzer.LOGGER.info("No players connected yet. Delaying complexity calculation until first player connects...");
+                    currentState.set(State.READY);
                     return;
                 }
 
@@ -206,6 +222,7 @@ public class AnalysisEngine {
         }
     }
 
+
     private void restoreIdleState() {
         clearDataInternal();
         currentState.set(State.IDLE);
@@ -237,9 +254,10 @@ public class AnalysisEngine {
 
         if (geoDB != null && geoDB.isLoaded()) {
             initialSources.add(new EmpiricalBlockSource(blockProp, geoDB));
-            ComplexityAnalyzer.LOGGER.info("GeoDatabase loaded, skipping theoretical resources.");
+            ComplexityAnalyzer.LOGGER.info("GeoDatabase loaded, using empirical block sources.");
         } else {
             initialSources.add(new TheoreticalBlockSource(blockProp, this.theoreticalDistProvider));
+            ComplexityAnalyzer.LOGGER.info("GeoDatabase not available, using theoretical block sources.");
         }
 
         initialSources.add(new UniversalLootSource());
@@ -251,9 +269,16 @@ public class AnalysisEngine {
 
         this.sourceManager = new SourceManager(initialSources);
 
-        ComplexityAnalyzer.LOGGER.info("Resource sources configured. Initializing all...");
+        ComplexityAnalyzer.LOGGER.info("Resource sources configured with {} providers. Initializing all...", initialSources.size());
         this.sourceManager.initialize(serverLevel);
-        ComplexityAnalyzer.LOGGER.info("All resource sources initialized.");
+
+        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
+            for (IResourceSource source : initialSources) {
+                ComplexityAnalyzer.LOGGER.debug("  - {} (priority: {})", source.getName(), source.getPriority());
+            }
+        }
+
+        ComplexityAnalyzer.LOGGER.info("All resource sources initialized successfully.");
     }
 
     public void recalculateComplexity() {
@@ -275,7 +300,7 @@ public class AnalysisEngine {
             return;
         }
 
-        IterativeSolver solver = new IterativeSolver(currentGraph, currentSourceManager);
+        IterativeSolver solver = new IterativeSolver(currentGraph, currentSourceManager, this.machineRegistry);
         SolverResult solverResult = solver.solve();
 
         if (isInterrupted()) {
@@ -338,6 +363,7 @@ public class AnalysisEngine {
         this.sourceManager = null;
         this.calculator = null;
         this.depthAnalyzer = null;
+        this.machineRegistry = null;
         this.complexityCache.clear();
     }
 
@@ -577,6 +603,10 @@ public class AnalysisEngine {
 
     public Optional<GeoAnalysisManager> getGeoManager() {
         return Optional.ofNullable(this.geoManager);
+    }
+
+    public Optional<MachineRegistry> getMachineRegistry() {
+        return Optional.ofNullable(this.machineRegistry);
     }
 
     public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {}

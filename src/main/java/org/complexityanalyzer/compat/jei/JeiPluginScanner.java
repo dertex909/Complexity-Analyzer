@@ -1,33 +1,18 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.compat.jei;
 
 import mezz.jei.api.IModPlugin;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class JeiPluginScanner {
     public static void scanAndImportRecipes(RecipeGraph graph, Level level) {
@@ -63,45 +48,101 @@ public class JeiPluginScanner {
 
         int pluginsProcessed = 0;
         int totalRecipesImported = 0;
+        Map<ResourceLocation, List<ItemStack>> allCatalysts = new HashMap<>();
 
         for (IModPlugin plugin : cleanPlugins) {
+            String pluginId = plugin.getPluginUid().toString();
+
+            if (isBlacklisted(plugin.getPluginUid().getNamespace())) {
+                ComplexityAnalyzer.LOGGER.info("Skipping blacklisted plugin: {}", pluginId);
+                continue;
+            }
+
+            MockRecipeRegistration mockRegistration = new MockRecipeRegistration(level);
+            MockRecipeCatalystRegistration mockCatalystReg = new MockRecipeCatalystRegistration();
+
+            // Пытаемся зарегистрировать рецепты
             try {
-                String pluginId = plugin.getPluginUid().toString();
-
-                if (isBlacklisted(plugin.getPluginUid().getNamespace())) {
-                    ComplexityAnalyzer.LOGGER.info("Skipping blacklisted plugin: {}", pluginId);
-                    continue;
-                }
-
-                MockRecipeRegistration mockRegistration = new MockRecipeRegistration(level);
-
-                try {
-                    plugin.registerRecipes(mockRegistration);
-                } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
-                    ComplexityAnalyzer.LOGGER.warn("Plugin {} failed during recipe registration (client-only code likely). Skipping. Error: {}", pluginId, e.getMessage());
-                    continue;
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.debug("Plugin {} threw exception during recipe registration: {}", pluginId, e.getMessage());
-                }
-
-                List<RecipeNode> recipes = JeiRecipeConverter.convertAll(
-                        mockRegistration.getCollectedRecipes(),
-                        mockRegistration.getLevel()
-                );
-
-                if (!recipes.isEmpty()) {
-                    recipes.forEach(graph::addRecipe);
-                    pluginsProcessed++;
-                    totalRecipesImported += recipes.size();
-                }
+                plugin.registerRecipes(mockRegistration);
+            } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
+                ComplexityAnalyzer.LOGGER.debug("Plugin {} skipped recipe registration (client-only): {}",
+                        pluginId, e.getMessage());
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("Failed to process JEI plugin {}: {}",
-                        plugin.getClass().getName(), e.getMessage());
+                ComplexityAnalyzer.LOGGER.debug("Plugin {} failed recipe registration: {}",
+                        pluginId, e.getMessage());
+            }
+
+            // Пытаемся зарегистрировать каталисты
+            try {
+                plugin.registerRecipeCatalysts(mockCatalystReg);
+            } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
+                ComplexityAnalyzer.LOGGER.debug("Plugin {} skipped catalyst registration (client-only): {}",
+                        pluginId, e.getMessage());
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.debug("Plugin {} failed catalyst registration: {}",
+                        pluginId, e.getMessage());
+            }
+
+            // Собираем каталисты
+            Map<ResourceLocation, List<ItemStack>> pluginCatalysts = mockCatalystReg.getCatalysts();
+            if (!pluginCatalysts.isEmpty()) {
+                ComplexityAnalyzer.LOGGER.info("Plugin {} registered {} catalyst entries",
+                        pluginId, pluginCatalysts.size());
+
+                for (var entry : pluginCatalysts.entrySet()) {
+                    allCatalysts.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
+                            .addAll(entry.getValue());
+                }
+            }
+
+            // Конвертируем рецепты
+            List<RecipeNode> recipes = JeiRecipeConverter.convertAll(
+                    mockRegistration.getCollectedRecipes(),
+                    mockRegistration.getLevel()
+            );
+
+            if (!recipes.isEmpty()) {
+                recipes.forEach(graph::addRecipe);
+                pluginsProcessed++;
+                totalRecipesImported += recipes.size();
             }
         }
 
         ComplexityAnalyzer.LOGGER.info("JEI import complete: {} plugins processed, {} recipes imported.",
                 pluginsProcessed, totalRecipesImported);
+
+        if (!allCatalysts.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.info("Processing {} catalyst types for MachineRegistry...", allCatalysts.size());
+
+            try {
+                AnalysisEngine.getInstance().getMachineRegistry().ifPresentOrElse(
+                        registry -> {
+                            Map<ResourceLocation, List<Item>> catalystItemMap = new HashMap<>();
+
+                            for (var entry : allCatalysts.entrySet()) {
+                                ResourceLocation recipeType = entry.getKey();
+                                List<Item> items = entry.getValue().stream()
+                                        .map(ItemStack::getItem)
+                                        .distinct()
+                                        .toList();
+
+                                if (!items.isEmpty()) {
+                                    catalystItemMap.put(recipeType, items);
+                                }
+                            }
+
+                            ComplexityAnalyzer.LOGGER.info("Converted {} catalyst types to item mapping", catalystItemMap.size());
+                            registry.loadFromJEI(catalystItemMap);
+                            ComplexityAnalyzer.LOGGER.info("Successfully loaded machine catalysts from JEI");
+                        },
+                        () -> ComplexityAnalyzer.LOGGER.warn("MachineRegistry is not available!")
+                );
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.error("Failed to transfer catalysts to MachineRegistry", e);
+            }
+        } else {
+            ComplexityAnalyzer.LOGGER.warn("No catalysts were collected from JEI plugins");
+        }
     }
 
     private static boolean isBlacklisted(String modId) {

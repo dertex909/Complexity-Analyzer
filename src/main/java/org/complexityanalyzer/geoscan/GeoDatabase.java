@@ -31,6 +31,7 @@ import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -134,6 +135,10 @@ public class GeoDatabase {
 
     public boolean isLoaded() {
         return !inMemoryData.isEmpty();
+    }
+
+    public Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> getAllDimensionData() {
+        return Collections.unmodifiableMap(inMemoryData);
     }
 
     public Optional<BiomeScanData> getBiomeData(ResourceLocation dim, ResourceLocation biome) {

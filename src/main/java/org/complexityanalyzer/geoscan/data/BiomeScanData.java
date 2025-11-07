@@ -67,6 +67,15 @@ public class BiomeScanData {
         return Collections.unmodifiableMap(blockCounts);
     }
 
+    public long getTotalBlocks() {
+        return blockCounts.values().stream().mapToLong(AtomicLong::get).sum();
+    }
+
+    public long getBlockCount(Block block) {
+        AtomicLong count = blockCounts.get(block);
+        return (count != null) ? count.get() : 0;
+    }
+
     public void merge(BiomeScanData other) {
         if (other == null) return;
 

@@ -45,6 +45,9 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
     public static final ModConfigSpec.DoubleValue SOURCE_BIAS_THRESHOLD;
 
+    public static final ModConfigSpec.BooleanValue MACHINE_TAX_ENABLED;
+    public static final ModConfigSpec.DoubleValue MACHINE_TAX_PERCENTAGE;
+
     public static final ModConfigSpec.BooleanValue ENABLE_JEI_INTEGRATION;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> JEI_PLUGIN_BLACKLIST;
 
@@ -97,8 +100,37 @@ public class ComplexityConfig {
         SOURCE_BIAS_THRESHOLD = builder.defineInRange("sourceBiasThreshold", 1.01, 1.0, 2.0);
         builder.pop();
 
+        builder.push("machine_tax");
+        builder.comment(
+                "Machine Tax - adds a percentage of machine/equipment complexity",
+                "to the final complexity of crafted items.",
+                "",
+                "Example: If Furnace has complexity 10.0 and tax is 7.5%,",
+                "then smelted items get +0.75 complexity added to their recipe cost."
+        );
+
+        MACHINE_TAX_ENABLED = builder
+                .comment("Enable machine tax calculation")
+                .define("enabled", true);
+
+        MACHINE_TAX_PERCENTAGE = builder
+                .comment(
+                        "Tax percentage in user-friendly format (0.0 to 100.0)",
+                        "Default: 7.5 means 7.5% of machine complexity is added as tax"
+                )
+                .defineInRange("percentage", 7.5, 0.0, 100.0);
+
+        builder.pop();
+
         builder.pop();
 
         SPEC = builder.build();
+    }
+
+    public static double getMachineTaxMultiplier() {
+        if (!MACHINE_TAX_ENABLED.get()) {
+            return 0.0;
+        }
+        return MACHINE_TAX_PERCENTAGE.get() / 100.0;
     }
 }

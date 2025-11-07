@@ -160,7 +160,8 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
                 .sourceType(rule.type)
                 .baseFactor(rule.baseCost)
                 .details(rule.description)
-                .sourceItems(rule.ingredients);
+                .sourceItems(rule.ingredients)
+                .sourceSpecifier(rule.description);
 
         if (isOverride) {
             builder.addMetadata("override", "true");

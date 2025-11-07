@@ -32,6 +32,7 @@ public class BaseResourceData {
     private final String sourceName;
     private final Map<Item, Double> sourceItems;
     private final Map<String, String> metadata;
+    private final String sourceSpecifier;
 
     private BaseResourceData(Builder builder) {
         this.item = builder.item;
@@ -41,6 +42,7 @@ public class BaseResourceData {
         this.sourceName = builder.sourceName;
         this.sourceItems = Map.copyOf(builder.sourceItems);
         this.metadata = Map.copyOf(builder.metadata);
+        this.sourceSpecifier = builder.sourceSpecifier;
     }
 
     public Item getItem() { return item; }
@@ -50,6 +52,7 @@ public class BaseResourceData {
     public String getSourceName() { return sourceName; }
     public Map<Item, Double> getSourceItems() { return sourceItems; }
     public Map<String, String> getMetadata() { return metadata; }
+    public String getSourceSpecifier() { return sourceSpecifier; }
 
     public boolean isOverride() {
         return "true".equals(metadata.get("override"));
@@ -113,6 +116,7 @@ public class BaseResourceData {
         private ResourceSourceType sourceType = ResourceSourceType.UNKNOWN;
         private double baseFactor = 1.0;
         private String details = "";
+        private String sourceSpecifier = "";
         private final Map<Item, Double> sourceItems = new HashMap<>();
         private final Map<String, String> metadata = new HashMap<>();
 
@@ -167,6 +171,11 @@ public class BaseResourceData {
 
         public BaseResourceData build() {
             return new BaseResourceData(this);
+        }
+
+        public Builder sourceSpecifier(String specifier) {
+            this.sourceSpecifier = specifier;
+            return this;
         }
     }
 }

@@ -18,9 +18,11 @@
 
 package org.complexityanalyzer.analyzer;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;
@@ -36,7 +38,9 @@ public class ComplexityCalculator {
     private final SolverResult solverResult;
     private final SourceManager sourceManager;
     private final ComplexityCache cache;
-
+    public SolverResult getSolverResult() {
+        return this.solverResult;
+    }
     public ComplexityCalculator(
             RecipeGraph graph,
             DepthAnalyzer depthAnalyzer,
@@ -70,18 +74,43 @@ public class ComplexityCalculator {
         double complexity = solverResult.getComplexity(item)
                 .orElseGet(() -> sourceManager.getBaseFactor(item));
 
-        RecipeSelector staticSelector = new RecipeSelector(graph);
-        RecipeNode representativeRecipe = staticSelector.selectStaticBestRecipe(item);
+        RecipeNode optimalRecipe = solverResult.optimalRecipes().get(item);
 
         boolean hasRecipe = graph.hasRecipe(item);
         int depth = hasRecipe ? depthAnalyzer.getDepth(item) : 0;
-        int ingredients = hasRecipe ? representativeRecipe.getTotalIngredientCount() : 0;
 
-        return new ItemComplexity.Builder(item)
+        int ingredients = (optimalRecipe != null) ? optimalRecipe.getTotalIngredientCount() : 0;
+
+        ItemComplexity.Builder builder = new ItemComplexity.Builder(item)
                 .complexity(complexity)
                 .depth(depth)
                 .totalIngredients(ingredients)
-                .hasRecipe(hasRecipe)
-                .build();
-    }
-}
+                .hasRecipe(hasRecipe);
+
+        if (optimalRecipe != null) {
+            builder.optimalRecipe(optimalRecipe);
+
+            // ========== ДОБАВЛЕНО: логирование для отладки ==========
+            if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
+                String itemName = BuiltInRegistries.ITEM.getKey(item).toString();
+                String recipeType = optimalRecipe.getRecipeType().toString();
+                ComplexityAnalyzer.LOGGER.debug("Item {} uses recipe type: {} (complexity: {})",
+                        itemName, recipeType, String.format("%.2f", complexity));
+            }
+            // ========================================================
+        } else {
+            Optional<BaseResourceData> baseData = sourceManager.analyze(item);
+            baseData.ifPresent(builder::baseData);
+
+            // ========== ДОБАВЛЕНО: логирование источника ==========
+            if (ComplexityAnalyzer.LOGGER.isDebugEnabled() && baseData.isPresent()) {
+                String itemName = BuiltInRegistries.ITEM.getKey(item).toString();
+                BaseResourceData data = baseData.get();
+                ComplexityAnalyzer.LOGGER.debug("Item {} is base resource: {} (source: {})",
+                        itemName, data.getSourceType(), data.getSourceSpecifier());
+            }
+            // ======================================================
+        }
+
+        return builder.build();
+    }}

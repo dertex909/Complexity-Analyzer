@@ -128,6 +128,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                         BaseResourceData data = new BaseResourceData.Builder(droppedItem, this)
                                 .sourceType(getSourceType())
+                                .sourceSpecifier(blockToMine.getName().getString())
                                 .details(String.format("Mined from %s with %s (avg: %s)",
                                         blockToMine.getName().getString(), toolName, avgFormatted))
                                 .baseFactor(BASE_MINING_COST)

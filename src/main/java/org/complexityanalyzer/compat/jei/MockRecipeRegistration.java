@@ -86,6 +86,8 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     public IIngredientManager getIngredientManager() {
         try {
             Class<?> jeiInternalClass = Class.forName("mezz.jei.common.Internal");
+
+            @SuppressWarnings("JavaReflectionMemberAccess")
             Method getIngredientManager = jeiInternalClass.getMethod("getIngredientManager");
             Object manager = getIngredientManager.invoke(null);
 

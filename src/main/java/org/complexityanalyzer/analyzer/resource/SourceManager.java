@@ -18,12 +18,18 @@
 
 package org.complexityanalyzer.analyzer.resource;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.EmpiricalBlockSource;
 import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
+import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.graph.IngredientSlot;
+import org.complexityanalyzer.graph.RecipeCategory;
+import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -80,6 +86,23 @@ public class SourceManager {
     }
 
     private Optional<BaseResourceData> performAnalysis(Item item) {
+        RecipeGraph graph = AnalysisEngine.getInstance().getGraph();
+
+        if (graph != null && graph.hasRecipe(item)) {
+            List<RecipeNode> recipes = graph.getRecipes(item);
+
+            boolean hasVanillaCraft = recipes.stream().anyMatch(r -> {
+                String recipeType = r.getRecipeType().toString();
+                return isVanillaRecipeType(recipeType) &&
+                        (r.getCategory() == RecipeCategory.PRIMARY ||
+                                r.getCategory() == RecipeCategory.PROCESSING);
+            });
+
+            if (hasVanillaCraft) {
+                return Optional.empty();
+            }
+        }
+
         Stream<IResourceSource> sourceStream = sources.stream();
 
         boolean empiricalReady = getSourceByType(EmpiricalBlockSource.class)
@@ -95,6 +118,17 @@ public class SourceManager {
                 .map(source -> source.analyze(item))
                 .flatMap(Optional::stream)
                 .min(Comparator.comparingDouble(BaseResourceData::getBaseFactor));
+    }
+
+    // ========== ДОБАВЛЕН вспомогательный метод ==========
+    private static boolean isVanillaRecipeType(String recipeType) {
+        return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
+                recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
+                recipeType.equals("minecraft:blasting") || recipeType.equals("blasting") ||
+                recipeType.equals("minecraft:smoking") || recipeType.equals("smoking") ||
+                recipeType.equals("minecraft:campfire_cooking") || recipeType.equals("campfire_cooking") ||
+                recipeType.equals("minecraft:stonecutting") || recipeType.equals("stonecutting") ||
+                recipeType.equals("minecraft:smithing") || recipeType.equals("smithing");
     }
 
     public List<BaseResourceData> findAllSources(Item item) {

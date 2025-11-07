@@ -113,6 +113,8 @@ public class RecipeGraph {
         TagKey<Item> oresTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ores"));
         TagKey<Item> rawMaterialsTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
         TagKey<Item> storageBlocksTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
+        TagKey<Item> dusts = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:dusts"));
+        TagKey<Item> crushed = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:crushed"));
 
         for (Item item : getAllItems()) {
             if (!hasRecipe(item)) continue;
@@ -129,6 +131,13 @@ public class RecipeGraph {
                     continue;
                 }
 
+                // ========== ИСПРАВЛЕНИЕ ==========
+                String recipeType = recipe.getRecipeType().toString();
+                if (!isVanillaRecipeType(recipeType)) {
+                    continue;
+                }
+                // =================================
+
                 boolean isReverseRecipe = false;
                 boolean hasRawMaterial = false;
 
@@ -138,6 +147,8 @@ public class RecipeGraph {
 
                         if (ingredientStack.is(oresTag) ||
                                 ingredientStack.is(rawMaterialsTag) ||
+                                ingredientStack.is(dusts) ||
+                                ingredientStack.is(crushed) ||
                                 isRawStorageBlock(ingredientStack, storageBlocksTag)) {
                             hasRawMaterial = true;
                             break;
@@ -167,6 +178,17 @@ public class RecipeGraph {
         }
 
         return reclassified;
+    }
+
+    // ========== ДОБАВЛЕН вспомогательный метод ==========
+    private static boolean isVanillaRecipeType(String recipeType) {
+        return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
+                recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
+                recipeType.equals("minecraft:blasting") || recipeType.equals("blasting") ||
+                recipeType.equals("minecraft:smoking") || recipeType.equals("smoking") ||
+                recipeType.equals("minecraft:campfire_cooking") || recipeType.equals("campfire_cooking") ||
+                recipeType.equals("minecraft:stonecutting") || recipeType.equals("stonecutting") ||
+                recipeType.equals("minecraft:smithing") || recipeType.equals("smithing");
     }
 
     private boolean isRawStorageBlock(ItemStack stack, TagKey<Item> storageBlocksTag) {

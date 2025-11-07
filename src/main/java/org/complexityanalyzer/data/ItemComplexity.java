@@ -19,6 +19,10 @@
 package org.complexityanalyzer.data;
 
 import net.minecraft.world.item.Item;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.graph.RecipeNode;
+
+import java.util.Optional;
 
 @SuppressWarnings("unused")
 public class ItemComplexity {
@@ -30,6 +34,8 @@ public class ItemComplexity {
     private final boolean hasCycle;
     private final boolean hasRecipe;
     private final String errorMessage;
+    private final RecipeNode optimalRecipe;
+    private final BaseResourceData baseData;
 
     private ItemComplexity(Builder builder) {
         this.item = builder.item;
@@ -42,6 +48,8 @@ public class ItemComplexity {
         this.hasCycle = builder.hasCycle;
         this.hasRecipe = builder.hasRecipe;
         this.errorMessage = builder.errorMessage;
+        this.optimalRecipe = builder.optimalRecipe;
+        this.baseData = builder.baseData;
     }
 
     public Item getItem() { return item; }
@@ -52,6 +60,8 @@ public class ItemComplexity {
     public boolean hasCycle() { return hasCycle; }
     public boolean hasRecipe() { return hasRecipe; }
     public String getErrorMessage() { return errorMessage; }
+    public Optional<RecipeNode> getOptimalRecipe() {return Optional.ofNullable(optimalRecipe);}
+    public Optional<BaseResourceData> getBaseData() {return Optional.ofNullable(baseData);}
 
     public boolean isValid() {
         return errorMessage == null && !hasCycle && complexity >= 0;
@@ -66,6 +76,8 @@ public class ItemComplexity {
         private boolean hasCycle = false;
         private boolean hasRecipe = true;
         private String errorMessage;
+        private RecipeNode optimalRecipe;
+        private BaseResourceData baseData;
 
         public Builder(Item item) {
             this.item = item;
@@ -103,6 +115,16 @@ public class ItemComplexity {
 
         public Builder errorMessage(String errorMessage) {
             this.errorMessage = errorMessage;
+            return this;
+        }
+
+        public Builder optimalRecipe(RecipeNode recipe) {
+            this.optimalRecipe = recipe;
+            return this;
+        }
+
+        public Builder baseData(BaseResourceData data) {
+            this.baseData = data;
             return this;
         }
 

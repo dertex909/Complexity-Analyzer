@@ -19,7 +19,9 @@
 package org.complexityanalyzer.analyzer.solver;
 
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.crafting.RecipeType;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -34,6 +36,7 @@ public class IterativeSolver {
 
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
+    private final MachineRegistry machineRegistry;
 
     private static final double CONVERGENCE_THRESHOLD = 1e-8;
     private static final double EPSILON = 1e-12;
@@ -46,9 +49,10 @@ public class IterativeSolver {
     private int recipeCostCalculations = 0;
     private int cacheHits = 0;
 
-    public IterativeSolver(RecipeGraph graph, SourceManager sourceManager) {
+    public IterativeSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
         this.graph = graph;
         this.sourceManager = sourceManager;
+        this.machineRegistry = machineRegistry;
         this.recipeCostCache = new HashMap<>();
         this.baseResourceCache = new HashMap<>();
     }
@@ -394,6 +398,10 @@ public class IterativeSolver {
 
         double totalCost = (ingredientsCost * recipe.getRecipeMultiplier())
                 / recipe.getResultCount();
+        if (ComplexityConfig.MACHINE_TAX_ENABLED.get()) {
+            double machineTax = calculateMachineTax(recipe, currentComplexities);
+            totalCost += machineTax;
+        }
 
         if (recipeCostCache.size() >= MAX_CACHE_SIZE) {
             ComplexityAnalyzer.LOGGER.error("!!! CRITICAL: Recipe cache overflow ({} entries) !!!", recipeCostCache.size());
@@ -600,6 +608,39 @@ public class IterativeSolver {
             this.complexity = complexity;
             this.recipe = recipe;
         }
+    }
+
+    private double calculateMachineTax(
+            RecipeNode recipe,
+            Map<Item, Double> currentComplexities
+    ) {
+        RecipeType<?> recipeType = recipe.getRecipeType();
+        Optional<Item> machineItemOpt = machineRegistry.getMachineForRecipe(recipeType);
+
+        if (machineItemOpt.isEmpty()) {
+
+            return 0.0;
+        }
+
+        Item machineItem = machineItemOpt.get();
+
+        Double machineComplexity = currentComplexities.get(machineItem);
+
+        if (machineComplexity == null) {
+            return 0.0;
+        }
+
+        if (!Double.isFinite(machineComplexity)) {
+            return 0.0;
+        }
+
+        if (machineComplexity <= 0) {
+            return 0.0;
+        }
+
+        double taxRate = ComplexityConfig.getMachineTaxMultiplier();
+
+        return machineComplexity * taxRate;
     }
 
     private static class RecipeCostCache {

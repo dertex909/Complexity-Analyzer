@@ -312,6 +312,7 @@ public class MobDropSource implements IResourceSource {
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.MOB_DROP)
                 .baseFactor(finalComplexity)
+                .sourceSpecifier(victimMobType.getDescription().getString())
                 .details(details).build());
     }
 

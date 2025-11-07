@@ -138,7 +138,9 @@ public class UniversalLootSource implements IResourceSource {
                 LootContextDefinition contextDef = contextDefOpt.get();
 
                 try {
-                    LootTable lootTable = CompletableFuture.supplyAsync(() -> reloadableRegistries.getLootTable(lootTableKey), server).join();
+                    LootTable lootTable = CompletableFuture.supplyAsync(() ->
+                            reloadableRegistries.getLootTable(lootTableKey), server
+                    ).join();
 
                     if (lootTable == LootTable.EMPTY) {
                         tablesSkipped++;
@@ -152,25 +154,36 @@ public class UniversalLootSource implements IResourceSource {
                         continue;
                     }
 
-                    Map<Item, Integer> catchCounts = new HashMap<>();
-                    long simulationStart = System.currentTimeMillis();
+                    Map<Item, Integer> catchCounts = CompletableFuture.supplyAsync(() -> {
+                        Map<Item, Integer> counts = new HashMap<>();
+                        long simulationStart = System.currentTimeMillis();
 
-                    for (int i = 0; i < SIMULATION_COUNT; i++) {
-                        if (System.currentTimeMillis() - simulationStart > SIMULATION_TIMEOUT_MS) {
-                            ComplexityAnalyzer.LOGGER.warn("[ULS] Simulation timeout for '{}' after {} iterations. Skipping.", lootTableId, i);
-                            catchCounts.clear();
-                            break;
-                        }
+                        boolean hasLoggedError = false;
+                        for (int i = 0; i < SIMULATION_COUNT; i++) {
+                            if (System.currentTimeMillis() - simulationStart > SIMULATION_TIMEOUT_MS) {
+                                ComplexityAnalyzer.LOGGER.warn("[ULS] Simulation timeout for '{}' after {} iterations. Skipping.", lootTableId, i);
+                                counts.clear();
+                                break;
+                            }
 
-                        List<ItemStack> items = lootTable.getRandomItems(lootParams);
-                        if (items.isEmpty()) continue;
+                            try {
+                                List<ItemStack> items = lootTable.getRandomItems(lootParams);
+                                if (items.isEmpty()) continue;
 
-                        for (ItemStack stack : items) {
-                            if (!stack.isEmpty()) {
-                                catchCounts.merge(stack.getItem(), stack.getCount(), Integer::sum);
+                                for (ItemStack stack : items) {
+                                    if (!stack.isEmpty()) {
+                                        counts.merge(stack.getItem(), stack.getCount(), Integer::sum);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                if (!hasLoggedError) {
+                                    ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {} (suppressing further errors)", lootTableId, e.getMessage());
+                                    hasLoggedError = true;
+                                }
                             }
                         }
-                    }
+                        return counts;
+                    }, server).join();
 
                     if (catchCounts.isEmpty()) {
                         continue;
@@ -187,10 +200,10 @@ public class UniversalLootSource implements IResourceSource {
                         BaseResourceData.Builder builder = new BaseResourceData.Builder(item, this)
                                 .sourceType(contextDef.sourceType)
                                 .baseFactor(baseFactor)
+                                .sourceSpecifier(lootTableId.toString())
                                 .details(details);
 
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
-
                             builder.baseFactor(contextDef.baseActionCost);
                             builder.sourceItems(Map.of(Items.GOLD_INGOT, 1.0 / itemsPerAttempt));
                         }

@@ -58,11 +58,16 @@ public class TheoreticalBlockSource implements IResourceSource {
             BaseResourceData.ResourceSourceType sourceType;
             double baseFactor;
             String details;
+            String specifier = "Unknown Dimension"; // Fallback
 
             if (distributionOpt.isPresent()) {
                 OreDistributionData dist = distributionOpt.get();
                 sourceType = determineSourceType(block, true);
                 baseFactor = calculateBaseFactor(properties, dist, sourceType);
+                specifier = dist.getDimensions().stream()
+                        .findFirst()
+                        .map(key -> key.location().getPath())
+                        .orElse("Unknown Dimension");
                 details = buildDetails(properties, dist);
             } else {
                 sourceType = determineSourceType(block, false);
@@ -70,9 +75,11 @@ public class TheoreticalBlockSource implements IResourceSource {
                 details = buildDetails(properties);
             }
 
+            // ИЗМЕНЕНО: Добавляем specifier
             return new BaseResourceData.Builder(item, this)
                     .sourceType(sourceType)
                     .baseFactor(baseFactor)
+                    .sourceSpecifier(specifier)
                     .details(details)
                     .build();
         });

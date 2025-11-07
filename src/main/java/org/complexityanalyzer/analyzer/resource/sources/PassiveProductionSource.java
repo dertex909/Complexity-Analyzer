@@ -75,6 +75,7 @@ public class PassiveProductionSource implements IResourceSource {
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.FARMING)
                 .baseFactor(complexity)
+                .sourceSpecifier(sourceName)
                 .details(details)
                 .build());
     }

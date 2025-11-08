@@ -90,27 +90,64 @@ public class ComplexityCalculator {
         if (optimalRecipe != null) {
             builder.optimalRecipe(optimalRecipe);
 
-            // ========== ДОБАВЛЕНО: логирование для отладки ==========
             if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
                 String itemName = BuiltInRegistries.ITEM.getKey(item).toString();
                 String recipeType = optimalRecipe.getRecipeType().toString();
-                ComplexityAnalyzer.LOGGER.debug("Item {} uses recipe type: {} (complexity: {})",
-                        itemName, recipeType, String.format("%.2f", complexity));
+
+                StringBuilder debugMsg = new StringBuilder(
+                        String.format("Item %s uses recipe type: %s (complexity: %.2f)",
+                                itemName, recipeType, complexity)
+                );
+
+                if (optimalRecipe.hasFluidIngredients()) {
+                    debugMsg.append(String.format(", fluids: %d (total: %d mB)",
+                            optimalRecipe.getFluidIngredientSlotCount(),
+                            optimalRecipe.getTotalFluidAmount()));
+                }
+
+                if (optimalRecipe.hasChemicalIngredients()) {
+                    debugMsg.append(String.format(", chemicals: %d (total: %d)",
+                            optimalRecipe.getChemicalIngredientSlotCount(),
+                            optimalRecipe.getTotalChemicalAmount()));
+                }
+
+                ComplexityAnalyzer.LOGGER.debug(debugMsg.toString());
             }
-            // ========================================================
+        }
+
+        if (optimalRecipe != null) {
+            builder.optimalRecipe(optimalRecipe);
+
+            if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
+                String itemName = BuiltInRegistries.ITEM.getKey(item).toString();
+                String recipeType = optimalRecipe.getRecipeType().toString();
+
+                StringBuilder debugMsg = new StringBuilder(
+                        String.format("Item %s uses recipe type: %s (complexity: %.2f)",
+                                itemName, recipeType, complexity)
+                );
+
+                // Добавляем информацию о жидкостях если есть
+                if (optimalRecipe.hasFluidIngredients()) {
+                    debugMsg.append(String.format(", fluids: %d (total: %d mB)",
+                            optimalRecipe.getFluidIngredientSlotCount(),
+                            optimalRecipe.getTotalFluidAmount()));
+                }
+
+                ComplexityAnalyzer.LOGGER.debug(debugMsg.toString());
+            }
         } else {
             Optional<BaseResourceData> baseData = sourceManager.analyze(item);
             baseData.ifPresent(builder::baseData);
 
-            // ========== ДОБАВЛЕНО: логирование источника ==========
             if (ComplexityAnalyzer.LOGGER.isDebugEnabled() && baseData.isPresent()) {
                 String itemName = BuiltInRegistries.ITEM.getKey(item).toString();
                 BaseResourceData data = baseData.get();
                 ComplexityAnalyzer.LOGGER.debug("Item {} is base resource: {} (source: {})",
                         itemName, data.getSourceType(), data.getSourceSpecifier());
             }
-            // ======================================================
         }
 
         return builder.build();
-    }}
+    }
+}

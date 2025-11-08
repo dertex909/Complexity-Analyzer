@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.graph;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -36,6 +37,7 @@ public class GraphBuilder {
     private static final TagKey<Item> INGOTS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ingots"));
     private static final TagKey<Item> NUGGETS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:nuggets"));
     private static final TagKey<Item> GEMS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:gems"));
+    private static final TagKey<Item> RAW_MATERIALS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
 
     public static RecipeGraph buildFromWorld(Level level) {
         ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification...");
@@ -79,7 +81,6 @@ public class GraphBuilder {
             int resultCount
     ) {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
-                .resultCount(resultCount)
                 .recipeType(RecipeType.SMITHING)
                 .category(RecipeCategory.PRIMARY);
 
@@ -126,7 +127,7 @@ public class GraphBuilder {
                 }
             }
 
-            builder.priority(2100);
+            // Priority removed - now handled by category
 
         } catch (NoSuchFieldException | IllegalAccessException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to process SmithingTransformRecipe for {}: {}",
@@ -157,13 +158,8 @@ public class GraphBuilder {
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
-                .resultCount(resultStack.getCount())
                 .recipeType(recipe.getType())
                 .category(category);
-
-        if (category == RecipeCategory.PRIMARY && (recipe.getType() == RecipeType.SMELTING || recipe.getType() == RecipeType.BLASTING)) {
-            builder.priority(2000);
-        }
 
         for (Ingredient ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
@@ -182,11 +178,17 @@ public class GraphBuilder {
         ItemStack resultStack = new ItemStack(resultItem);
 
         if (ingredients.size() == 1) {
-            ItemStack ingredientStack = ingredients.getFirst().getItems().length > 0 ? ingredients.getFirst().getItems()[0] : ItemStack.EMPTY;
-            if (!ingredientStack.isEmpty()) {
-                if (ingredientStack.is(STORAGE_BLOCKS_TAG) && (resultStack.is(INGOTS_TAG) || resultStack.is(GEMS_TAG))) {
+            ItemStack[] ingredientStacks = ingredients.getFirst().getItems();
+            for (ItemStack ingredientStack : ingredientStacks) {
+                if (ingredientStack.isEmpty()) {
+                    continue;
+                }
+
+                boolean ingredientIsStorageBlock = ingredientStack.is(STORAGE_BLOCKS_TAG);
+                if (ingredientIsStorageBlock && (resultStack.is(INGOTS_TAG) || resultStack.is(GEMS_TAG) || resultStack.is(RAW_MATERIALS_TAG))) {
                     return RecipeCategory.STORAGE_DECOMPRESSION;
                 }
+
                 if (ingredientStack.is(INGOTS_TAG) && resultStack.is(NUGGETS_TAG)) {
                     return RecipeCategory.STORAGE_DECOMPRESSION;
                 }
@@ -202,6 +204,9 @@ public class GraphBuilder {
         if (areAllIngredientsOfTag(ingredients, GEMS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG)) {
             return RecipeCategory.STORAGE_COMPRESSION;
         }
+        if (areAllIngredientsRawBlocks(ingredients) && resultStack.is(STORAGE_BLOCKS_TAG)) {
+            return RecipeCategory.STORAGE_COMPRESSION;
+        }
 
         return RecipeCategory.PRIMARY;
     }
@@ -211,6 +216,22 @@ public class GraphBuilder {
         return ingredients.stream()
                 .flatMap(ing -> Stream.of(ing.getItems()))
                 .allMatch(stack -> !stack.isEmpty() && stack.is(tag));
+    }
+
+    private static boolean areAllIngredientsRawBlocks(List<Ingredient> ingredients) {
+        if (ingredients.isEmpty()) return false;
+
+        TagKey<Item> rawStorage = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
+
+        return ingredients.stream()
+                .flatMap(ing -> Stream.of(ing.getItems()))
+                .allMatch(stack -> {
+                    if (stack.isEmpty()) return false;
+                    ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (rl == null) return false;
+                    String path = rl.getPath();
+                    return stack.is(rawStorage) || path.contains("raw_" ) || path.contains("crude_");
+                });
     }
 
     private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, List<Ingredient> ingredients) {

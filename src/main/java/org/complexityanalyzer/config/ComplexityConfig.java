@@ -47,9 +47,16 @@ public class ComplexityConfig {
 
     public static final ModConfigSpec.BooleanValue MACHINE_TAX_ENABLED;
     public static final ModConfigSpec.DoubleValue MACHINE_TAX_PERCENTAGE;
+    public static final ModConfigSpec.DoubleValue MACHINE_BASE_COMPLEXITY;
 
     public static final ModConfigSpec.BooleanValue ENABLE_JEI_INTEGRATION;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> JEI_PLUGIN_BLACKLIST;
+
+    public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
+    public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
+
+    public static final ModConfigSpec.DoubleValue CHEMICAL_BASE_COMPLEXITY;
+    public static final ModConfigSpec.DoubleValue CHEMICAL_NORMALIZATION_FACTOR;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -100,6 +107,26 @@ public class ComplexityConfig {
         SOURCE_BIAS_THRESHOLD = builder.defineInRange("sourceBiasThreshold", 1.01, 1.0, 2.0);
         builder.pop();
 
+        builder.push("fluids");
+        FLUID_BASE_COMPLEXITY = builder
+                .comment("Base complexity for generic fluids (not water/lava)")
+                .defineInRange("baseComplexity", 5.0, 0.1, 1000.0);
+
+        FLUID_NORMALIZATION_FACTOR = builder
+                .comment("Multiplier for fluid costs in recipes")
+                .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);
+        builder.pop();
+
+        builder.push("chemicals");
+        CHEMICAL_BASE_COMPLEXITY = builder
+                .comment("Base complexity for generic chemicals/gases")
+                .defineInRange("baseComplexity", 5.0, 0.1, 1000.0);
+
+        CHEMICAL_NORMALIZATION_FACTOR = builder
+                .comment("Multiplier for chemical costs in recipes")
+                .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);
+        builder.pop();
+
         builder.push("machine_tax");
         builder.comment(
                 "Machine Tax - adds a percentage of machine/equipment complexity",
@@ -120,6 +147,10 @@ public class ComplexityConfig {
                 )
                 .defineInRange("percentage", 7.5, 0.0, 100.0);
 
+        MACHINE_BASE_COMPLEXITY = builder
+                .comment("Base complexity for machines when they are not yet calculated (used as fallback)")
+                .defineInRange("baseComplexity", 100.0, 0.0, 10000.0);
+
         builder.pop();
 
         builder.pop();
@@ -132,5 +163,25 @@ public class ComplexityConfig {
             return 0.0;
         }
         return MACHINE_TAX_PERCENTAGE.get() / 100.0;
+    }
+
+    public static double getFluidBaseComplexity() {
+        return FLUID_BASE_COMPLEXITY.get();
+    }
+
+    public static double getFluidNormalizationFactor() {
+        return FLUID_NORMALIZATION_FACTOR.get();
+    }
+
+    public static double getChemicalBaseComplexity() {
+        return CHEMICAL_BASE_COMPLEXITY.get();
+    }
+
+    public static double getChemicalNormalizationFactor() {
+        return CHEMICAL_NORMALIZATION_FACTOR.get();
+    }
+
+    public static double getMachineBaseComplexity() {
+        return MACHINE_BASE_COMPLEXITY.get();
     }
 }

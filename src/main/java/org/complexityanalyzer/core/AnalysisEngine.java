@@ -32,7 +32,7 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.providers.*;
 import org.complexityanalyzer.analyzer.resource.sources.*;
-import org.complexityanalyzer.analyzer.solver.IterativeSolver;
+import org.complexityanalyzer.analyzer.solver.EnhancedIterativeSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.data.ItemComplexity;
@@ -300,7 +300,7 @@ public class AnalysisEngine {
             return;
         }
 
-        IterativeSolver solver = new IterativeSolver(currentGraph, currentSourceManager, this.machineRegistry);
+        EnhancedIterativeSolver solver = new EnhancedIterativeSolver(currentGraph, currentSourceManager, this.machineRegistry);
         SolverResult solverResult = solver.solve();
 
         if (isInterrupted()) {
@@ -425,6 +425,10 @@ public class AnalysisEngine {
     }
 
     public RecipeGraph getGraph() {
+        return this.graph;
+    }
+    
+    public RecipeGraph getRecipeGraph() {
         return this.graph;
     }
 

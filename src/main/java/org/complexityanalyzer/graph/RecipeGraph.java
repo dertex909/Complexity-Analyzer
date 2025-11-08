@@ -249,6 +249,57 @@ public class RecipeGraph {
         return allItems;
     }
 
+    // Методы для работы с fluids и chemicals
+    public List<RecipeNode> getRecipesProducingFluid(net.minecraft.world.level.material.Fluid fluid) {
+        return getAllRecipes().stream()
+                .filter(recipe -> recipe.getFluidOutputs().stream()
+                        .anyMatch(stack -> stack.getFluid().equals(fluid)))
+                .toList();
+    }
+    
+    public List<RecipeNode> getRecipesProducingChemical(Chemical chemical) {
+        return getAllRecipes().stream()
+                .filter(recipe -> recipe.getChemicalOutputs().stream()
+                        .anyMatch(stack -> stack.getChemical().equals(chemical)))
+                .toList();
+    }
+    
+    public List<Item> getItemsUsingFluid(net.minecraft.world.level.material.Fluid fluid) {
+        return getAllRecipes().stream()
+                .filter(recipe -> recipe.getFluidIngredients().stream()
+                        .anyMatch(slot -> slot.getFluidVariants().contains(fluid)))
+                .map(RecipeNode::getResultItem)
+                .distinct()
+                .toList();
+    }
+    
+    public List<Item> getItemsUsingChemical(Chemical chemical) {
+        return getAllRecipes().stream()
+                .filter(recipe -> recipe.getChemicalIngredients().stream()
+                        .anyMatch(slot -> slot.getChemicalVariants().contains(chemical)))
+                .map(RecipeNode::getResultItem)
+                .distinct()
+                .toList();
+    }
+    
+    public Set<net.minecraft.world.level.material.Fluid> getAllUsedFluids() {
+        Set<net.minecraft.world.level.material.Fluid> fluids = new HashSet<>();
+        for (RecipeNode recipe : getAllRecipes()) {
+            recipe.getFluidIngredients().forEach(slot -> fluids.addAll(slot.getFluidVariants()));
+            recipe.getFluidOutputs().forEach(stack -> fluids.add(stack.getFluid()));
+        }
+        return fluids;
+    }
+    
+    public Set<Chemical> getAllUsedChemicals() {
+        Set<Chemical> chemicals = new HashSet<>();
+        for (RecipeNode recipe : getAllRecipes()) {
+            recipe.getChemicalIngredients().forEach(slot -> chemicals.addAll(slot.getChemicalVariants()));
+            recipe.getChemicalOutputs().forEach(stack -> chemicals.add(stack.getChemical()));
+        }
+        return chemicals;
+    }
+
     public record GraphStats(
             int itemsWithRecipes,
             int totalRecipes,

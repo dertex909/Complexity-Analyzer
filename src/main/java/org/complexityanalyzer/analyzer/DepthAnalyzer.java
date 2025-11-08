@@ -20,6 +20,7 @@ package org.complexityanalyzer.analyzer;
 
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.*;
 
@@ -32,13 +33,15 @@ public class DepthAnalyzer {
     private final Map<Item, Optional<RecipeNode>> recipeCache = new ConcurrentHashMap<>();
 
     private Map<Item, RecipeNode> optimalRecipes = new HashMap<>();
+    private final SourceManager sourceManager;
 
     private static final int CYCLE_DEPTH = Integer.MAX_VALUE;
     private static final int IN_PROGRESS = -999;
 
-    public DepthAnalyzer(RecipeGraph graph, SourceManager ignoredSourceManager) {
+    public DepthAnalyzer(RecipeGraph graph, SourceManager sourceManager) {
         this.graph = graph;
         this.cache = new ConcurrentHashMap<>();
+        this.sourceManager = sourceManager;
     }
 
     public void setOptimalRecipes(Map<Item, RecipeNode> optimalRecipes) {
@@ -120,14 +123,43 @@ public class DepthAnalyzer {
                 return Optional.of(optimalRecipe);
             }
 
+            if (hasFiniteBaseSource(key)) {
+                return Optional.empty();
+            }
+
             if (graph != null && graph.hasRecipe(key)) {
                 RecipeNode bestFromGraph = graph.getBestRecipe(key);
                 if (bestFromGraph != null && !bestFromGraph.isBaseRecipe()) {
+                    if (bestFromGraph.getCategory() == RecipeCategory.STORAGE_DECOMPRESSION && hasFiniteBaseSource(key)) {
+                        return Optional.empty();
+                    }
                     return Optional.of(bestFromGraph);
                 }
             }
 
             return Optional.empty();
         });
+    }
+
+    private boolean hasFiniteBaseSource(Item item) {
+        if (sourceManager == null) {
+            return false;
+        }
+
+        return sourceManager.analyze(item)
+                .map(data -> !isUnobtainable(data))
+                .orElse(false);
+    }
+
+    private boolean isUnobtainable(BaseResourceData data) {
+        if (data == null) {
+            return true;
+        }
+
+        if (Double.isInfinite(data.getBaseFactor())) {
+            return true;
+        }
+
+        return data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
     }
 }

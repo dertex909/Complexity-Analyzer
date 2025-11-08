@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.analyzer.resource;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -26,7 +25,6 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.EmpiricalBlockSource;
 import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -88,22 +86,22 @@ public class SourceManager {
     private Optional<BaseResourceData> performAnalysis(Item item) {
         RecipeGraph graph = AnalysisEngine.getInstance().getGraph();
 
+        boolean hasVanillaCraft = false;
         if (graph != null && graph.hasRecipe(item)) {
             List<RecipeNode> recipes = graph.getRecipes(item);
 
-            boolean hasVanillaCraft = recipes.stream().anyMatch(r -> {
+            hasVanillaCraft = recipes.stream().anyMatch(r -> {
                 String recipeType = r.getRecipeType().toString();
                 return isVanillaRecipeType(recipeType) &&
                         (r.getCategory() == RecipeCategory.PRIMARY ||
                                 r.getCategory() == RecipeCategory.PROCESSING);
             });
-
-            if (hasVanillaCraft) {
-                return Optional.empty();
-            }
         }
 
-        Stream<IResourceSource> sourceStream = sources.stream();
+        final boolean vanillaCraftPresent = hasVanillaCraft;
+
+        Stream<IResourceSource> sourceStream = sources.stream()
+                .filter(source -> !vanillaCraftPresent || !source.prefersRecipeOutputs());
 
         boolean empiricalReady = getSourceByType(EmpiricalBlockSource.class)
                 .map(EmpiricalBlockSource::isReady)
@@ -113,11 +111,27 @@ public class SourceManager {
             sourceStream = sourceStream.filter(source -> !(source instanceof TheoreticalBlockSource));
         }
 
-        return sourceStream
+        Optional<BaseResourceData> candidate = sourceStream
                 .filter(source -> source.canProvide(item))
                 .map(source -> source.analyze(item))
-                .flatMap(Optional::stream)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .min(Comparator.comparingDouble(BaseResourceData::getBaseFactor));
+
+        if (candidate.isPresent() && graph != null && graph.hasRecipe(item)) {
+            BaseResourceData data = candidate.get();
+
+            boolean hasNonBaseRecipe = graph.getRecipes(item).stream().anyMatch(r -> !r.isBaseRecipe());
+            if (hasNonBaseRecipe) {
+                boolean unusable = Double.isInfinite(data.getBaseFactor()) ||
+                        data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
+                if (unusable) {
+                    return Optional.empty();
+                }
+            }
+        }
+
+        return candidate;
     }
 
     // ========== ДОБАВЛЕН вспомогательный метод ==========

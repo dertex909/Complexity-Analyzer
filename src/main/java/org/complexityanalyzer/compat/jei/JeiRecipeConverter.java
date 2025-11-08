@@ -19,9 +19,12 @@
 package org.complexityanalyzer.compat.jei;
 
 import mezz.jei.api.recipe.RecipeType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -65,21 +68,39 @@ public class JeiRecipeConverter {
     }
 
     private static RecipeNode convert(Object recipe, Level level) {
-        List<ItemStack> outputs = AdaptiveRecipeConverter.extractOutputs(recipe, level);
+        List<ItemStack> itemOutputs = AdaptiveRecipeConverter.extractOutputs(recipe, level);
+        List<FluidStack> fluidOutputs = AdaptiveRecipeConverter.extractFluidOutputs(recipe, level);
+        List<AdaptiveRecipeConverter.ChemicalStack> chemicalOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(recipe, level);
 
-        if (outputs.isEmpty()) {
+        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("      No outputs found for {}",
                     recipe.getClass().getSimpleName());
             return null;
         }
 
-        ItemStack primaryOutput = outputs.getFirst();
-        Item resultItem = primaryOutput.getItem();
-        int resultCount = primaryOutput.getCount();
+        Item resultItem;
+        RecipeNode.Builder builder;
+        if (!itemOutputs.isEmpty()) {
+            ItemStack primaryOutput = itemOutputs.getFirst();
+            resultItem = primaryOutput.getItem();
+            builder = new RecipeNode.Builder(resultItem)
+                    .resultCount(primaryOutput.getCount());
+        } else {
+            resultItem = Items.BARRIER;
+            builder = new RecipeNode.Builder(resultItem)
+                    .isPlaceholder(true)
+                    .resultCount(1);
+            if (!chemicalOutputs.isEmpty()) {
+                builder.placeholderId(chemicalOutputs.getFirst().getChemical().getFullId());
+            } else if (!fluidOutputs.isEmpty()) {
+                builder.placeholderId(BuiltInRegistries.FLUID.getKey(fluidOutputs.getFirst().getFluid()).toString());
+            }
+        }
 
-        RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
-                .resultCount(resultCount)
-                .category(RecipeCategory.JEI_IMPORTED);
+        builder.category(RecipeCategory.JEI_IMPORTED)
+                .itemOutputs(itemOutputs)
+                .fluidOutputs(fluidOutputs)
+                .chemicalOutputs(chemicalOutputs);
 
         builder.priority(900);
 
@@ -91,14 +112,16 @@ public class JeiRecipeConverter {
         }
         builder.recipeType(recipeType);
 
-        List<List<ItemStack>> inputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
+        List<List<ItemStack>> itemInputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
+        List<List<FluidStack>> fluidInputs = AdaptiveRecipeConverter.extractFluidInputs(recipe, level);
+        List<List<AdaptiveRecipeConverter.ChemicalStack>> chemicalInputs = AdaptiveRecipeConverter.extractChemicalInputs(recipe, level);
 
-        if (inputs.isEmpty()) {
+        if (itemInputs.isEmpty() && fluidInputs.isEmpty() && chemicalInputs.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("      No inputs found for {} -> {}",
                     recipe.getClass().getSimpleName(), resultItem);
         }
 
-        for (List<ItemStack> inputVariants : inputs) {
+        for (List<ItemStack> inputVariants : itemInputs) {
             if (inputVariants.isEmpty()) continue;
 
             List<Item> items = inputVariants.stream()
@@ -110,9 +133,33 @@ public class JeiRecipeConverter {
             builder.addIngredient(items, count);
         }
 
+        for (List<FluidStack> inputVariants : fluidInputs) {
+            if (inputVariants.isEmpty()) continue;
+
+            List<net.minecraft.world.level.material.Fluid> fluids = inputVariants.stream()
+                    .map(FluidStack::getFluid)
+                    .distinct()
+                    .toList();
+
+            int amount = inputVariants.getFirst().getAmount();
+            builder.addFluidIngredient(fluids, amount);
+        }
+
+        for (List<AdaptiveRecipeConverter.ChemicalStack> inputVariants : chemicalInputs) {
+            if (inputVariants.isEmpty()) continue;
+
+            List<org.complexityanalyzer.graph.Chemical> chemicals = inputVariants.stream()
+                    .map(AdaptiveRecipeConverter.ChemicalStack::getChemical)
+                    .distinct()
+                    .toList();
+
+            long amount = inputVariants.getFirst().getAmount();
+            builder.addChemicalIngredient(chemicals, amount);
+        }
+
         RecipeNode node = builder.build();
 
-        if (node.getIngredients().isEmpty()) {
+        if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty() && node.getChemicalIngredients().isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("      Recipe has no ingredients after conversion: {}",
                     recipe.getClass().getSimpleName());
             return null;

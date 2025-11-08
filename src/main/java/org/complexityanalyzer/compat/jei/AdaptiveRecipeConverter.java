@@ -14,17 +14,27 @@ import org.complexityanalyzer.graph.Chemical;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 public class AdaptiveRecipeConverter {
 
     private static final Map<Class<?>, RecipeAdapter> LEARNED_ADAPTERS = new ConcurrentHashMap<>();
     private static final int MAX_RECURSION_DEPTH = 5;
     private static final boolean VERBOSE_DEBUG = false;
+
+    private static final List<String> OUTPUT_KEYWORDS = List.of(
+            "output", "result", "product", "produce", "yield", "generate", "reward", "primary", "secondary", "byproduct"
+    );
+    private static final List<String> INPUT_KEYWORDS = List.of(
+            "input", "ingredient", "require", "consume", "use", "need", "supply", "source", "catalyst", "cost"
+    );
 
     public static RecipeNode convertRecipe(net.minecraft.world.item.crafting.Recipe<?> recipe, Level level) {
         // Шаг 1: Извлекаем все возможные выходы.
@@ -60,12 +70,6 @@ public class AdaptiveRecipeConverter {
         }
 
         RecipeType<?> recipeType = recipe.getType();
-        if (recipeType == null) {
-            if (VERBOSE_DEBUG) {
-                ComplexityAnalyzer.LOGGER.debug("Recipe {} returned null RecipeType, skipping", recipe.getClass().getName());
-            }
-            return null;
-        }
 
         // Шаг 3: Создаем строитель узла RecipeNode.
         RecipeNode.Builder builder;
@@ -129,9 +133,9 @@ public class AdaptiveRecipeConverter {
     public static List<ItemStack> extractOutputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
         RecipeAdapter adapter = getAdapter(actualRecipe, true, level);
-        if (adapter.outputMethod == null) return new ArrayList<>();
+        if (adapter.outputAccessor == null) return new ArrayList<>();
         try {
-            Object result = invokeMethod(adapter.outputMethod, actualRecipe, level);
+            Object result = adapter.outputAccessor.extract(actualRecipe, level);
             return deepFindItemStacks(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -141,9 +145,9 @@ public class AdaptiveRecipeConverter {
     public static List<FluidStack> extractFluidOutputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
         RecipeAdapter adapter = getAdapter(actualRecipe, true, level);
-        if (adapter.outputMethod == null) return new ArrayList<>();
+        if (adapter.outputAccessor == null) return new ArrayList<>();
         try {
-            Object result = invokeMethod(adapter.outputMethod, actualRecipe, level);
+            Object result = adapter.outputAccessor.extract(actualRecipe, level);
             return deepFindFluidStacks(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -153,9 +157,9 @@ public class AdaptiveRecipeConverter {
     public static List<List<ItemStack>> extractInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
         RecipeAdapter adapter = getAdapter(actualRecipe, false, level);
-        if (adapter.inputMethod == null) return new ArrayList<>();
+        if (adapter.inputAccessor == null) return new ArrayList<>();
         try {
-            Object result = invokeMethod(adapter.inputMethod, actualRecipe, level);
+            Object result = adapter.inputAccessor.extract(actualRecipe, level);
             return deepFindItemStackLists(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -165,9 +169,9 @@ public class AdaptiveRecipeConverter {
     public static List<List<FluidStack>> extractFluidInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
         RecipeAdapter adapter = getAdapter(actualRecipe, false, level);
-        if (adapter.inputMethod == null) return new ArrayList<>();
+        if (adapter.inputAccessor == null) return new ArrayList<>();
         try {
-            Object result = invokeMethod(adapter.inputMethod, actualRecipe, level);
+            Object result = adapter.inputAccessor.extract(actualRecipe, level);
             return deepFindFluidStackLists(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -177,9 +181,9 @@ public class AdaptiveRecipeConverter {
     public static List<ChemicalStack> extractChemicalOutputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
         RecipeAdapter adapter = getAdapter(actualRecipe, true, level);
-        if (adapter.outputMethod == null) return new ArrayList<>();
+        if (adapter.outputAccessor == null) return new ArrayList<>();
         try {
-            Object result = invokeMethod(adapter.outputMethod, actualRecipe, level);
+            Object result = adapter.outputAccessor.extract(actualRecipe, level);
             return deepFindChemicalStacks(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -189,9 +193,9 @@ public class AdaptiveRecipeConverter {
     public static List<List<ChemicalStack>> extractChemicalInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
         RecipeAdapter adapter = getAdapter(actualRecipe, false, level);
-        if (adapter.inputMethod == null) return new ArrayList<>();
+        if (adapter.inputAccessor == null) return new ArrayList<>();
         try {
-            Object result = invokeMethod(adapter.inputMethod, actualRecipe, level);
+            Object result = adapter.inputAccessor.extract(actualRecipe, level);
             return deepFindChemicalStackLists(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -202,27 +206,84 @@ public class AdaptiveRecipeConverter {
         Class<?> recipeClass = recipe.getClass();
         RecipeAdapter adapter = LEARNED_ADAPTERS.computeIfAbsent(recipeClass, clazz -> new RecipeAdapter(null, null));
 
-        if (isOutput && adapter.outputMethod == null) {
-            Method method = learnMethod(recipe, true, level);
-            adapter = new RecipeAdapter(method, adapter.inputMethod);
+        if (isOutput && adapter.outputAccessor == null) {
+            Accessor accessor = learnAccessor(recipe, true, level);
+            adapter = new RecipeAdapter(accessor, adapter.inputAccessor);
             LEARNED_ADAPTERS.put(recipeClass, adapter);
-        } else if (!isOutput && adapter.inputMethod == null) {
-            Method method = learnMethod(recipe, false, level);
-            adapter = new RecipeAdapter(adapter.outputMethod, method);
+        } else if (!isOutput && adapter.inputAccessor == null) {
+            Accessor accessor = learnAccessor(recipe, false, level);
+            adapter = new RecipeAdapter(adapter.outputAccessor, accessor);
             LEARNED_ADAPTERS.put(recipeClass, adapter);
         }
         return adapter;
     }
 
     private static Object invokeMethod(Method method, Object target, Level level) throws Exception {
-        if (method.getParameterCount() == 0) {
-            return method.invoke(target);
-        } else if (method.getParameterCount() == 1) {
-            Class<?> paramType = method.getParameterTypes()[0];
-            if (paramType.getName().contains("RegistryAccess")) {
-                return method.invoke(target, level.registryAccess());
+        Object[] args = prepareArguments(method, level);
+        if (args == null) {
+            return null;
+        }
+        return method.invoke(target, args);
+    }
+
+    private static Accessor learnAccessor(Object recipe, boolean isOutput, Level level) {
+        Method method = learnMethod(recipe, isOutput, level);
+        if (method != null) {
+            return new MethodAccessor(method);
+        }
+
+        Field field = learnField(recipe, isOutput);
+        if (field != null) {
+            return new FieldAccessor(field);
+        }
+
+        return null;
+    }
+
+    private static RecipeType<?> extractRecipeTypeFromAccessors(Object actual) {
+        RecipeAdapter adapter = LEARNED_ADAPTERS.get(actual.getClass());
+        if (adapter != null) {
+            RecipeType<?> fromOutput = tryResolveType(adapter.outputAccessor, actual);
+            if (fromOutput != null) {
+                return fromOutput;
             }
-            return method.invoke(target, (Object) null);
+            return tryResolveType(adapter.inputAccessor, actual);
+        }
+        return null;
+    }
+
+    private static RecipeType<?> tryResolveType(Accessor accessor, Object recipe) {
+        if (accessor == null) {
+            return null;
+        }
+        try {
+            Object value = accessor.extract(recipe, null);
+            if (value == null) {
+                return null;
+            }
+            RecipeType<?> fromMethod = findRecipeTypeViaGetter(value);
+            if (fromMethod != null) {
+                return fromMethod;
+            }
+            return extractRecipeTypeFromFields(value);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static RecipeType<?> findRecipeTypeViaGetter(Object value) {
+        String[] candidates = { "getRecipeType", "recipeType", "getType", "type" };
+        for (String candidate : candidates) {
+            try {
+                Method method = findAnyMethod(value.getClass(), candidate);
+                if (method == null || method.getParameterCount() != 0) continue;
+                method.setAccessible(true);
+                Object result = method.invoke(value);
+                RecipeType<?> type = coerceRecipeType(result);
+                if (type != null) {
+                    return type;
+                }
+            } catch (Exception ignored) {}
         }
         return null;
     }
@@ -244,7 +305,8 @@ public class AdaptiveRecipeConverter {
                 "outputsGas", "outputsChemical", "resultChemical", "producedGas", "producedChemical",
                 "getFluidOutput", "getFluidOutputs", "outputFluid", "outputFluids", "getOutputFluids", "getFluidResult",
                 "getFluidResults", "fetchFluidOutput", "retrieveFluidOutput", "fluidOutput", "fluidOutputs", "producedFluid",
-                "producedFluids", "resultFluid", "outputsFluid", "getResultItem", "getResultItems", "getItemOutput",
+                "producedFluids", "resultFluid", "outputsFluid", "getOutputFluid", "getOutputFluids", "outputFluid", "outputFluids",
+                "getResultItem", "getResultItems", "getItemOutput",
                 "getItemOutputs", "itemOutput", "itemOutputs", "stackOutput", "stackOutputs", "getStack", "getStacks",
                 "outputItem", "outputItems", "resultStack", "resultStacks", "producedItem", "producedItems",
                 "getOutputStack", "getOutput", "getOutputs", "getResult", "getResults", "getProduct", "getProducts",
@@ -253,19 +315,22 @@ public class AdaptiveRecipeConverter {
                 "getCreate", "make", "makes", "getMake", "yield", "getYield", "generate", "generated", "getGenerate",
                 "getProcessingOutput", "getRecipeOutput", "getMainOutput", "getSecondaryOutput", "getBonusOutput",
                 "getPrimaryOutput", "getByproduct", "getByproducts", "getResultDefinition", "getOutputDefinition",
-                "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer", "getOutputContents"
+                "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer", "getOutputContents",
+                "getOutputChemical", "getOutputChemicals", "getOutputGas", "getOutputGases"
         }
                 : new String[]{
                 "getLeftGasInput", "getRightGasInput", "getGasInput", "getGasInputs", "getChemicalInput", "getChemicalInputs",
-                "gasInput", "gasInputs", "chemicalInput", "chemicalInputs", "getInfusionInput", "getInfusionInputs",
+                "getInputGas", "getInputGases", "gasInput", "gasInputs", "chemicalInput", "chemicalInputs", "getInputChemical", "inputChemical",
+                "getInfusionInput", "getInfusionInputs",
                 "getPigmentInput", "getPigmentInputs", "getSlurryInput", "getSlurryInputs", "fetchChemicalInput", "retrieveChemicalInput",
                 "inputGas", "inputChemical", "inputsGas", "inputsChemical", "ingredientGas", "ingredientChemical",
-                "getFluidInput", "getFluidInputs", "inputFluid", "inputFluids", "getInputFluids", "getFluidIngredient",
+                "getFluidInput", "getFluidInputs", "getInputFluid", "getInputFluids", "inputFluid", "inputFluids", "fluidInput", "fluidInputs", "getFluidIngredient",
                 "getFluidIngredients", "fetchFluidInput", "retrieveFluidInput", "fluidInput", "fluidInputs", "ingredientFluid",
                 "ingredientFluids", "inputsFluid", "getInputItem", "getInputItems", "getItemInput", "getItemInputs",
-                "itemInput", "itemInputs", "stackInput", "stackInputs", "getInputStack", "getInputStacks", "inputItem",
+                "getInputItem", "getInputItems", "itemInput", "itemInputs", "inputItem", "inputItems", "stackInput", "stackInputs", "getInputStack", "getInputStacks",
                 "inputItems", "ingredientItem", "ingredientItems", "getIngredientItem", "getIngredientItems", "getIngredientStack",
                 "getInput", "getInputs", "getIngredient", "getIngredients", "input", "inputs", "ingredient", "ingredients",
+                "getInputSolid", "inputSolid", "solidInput",
                 "fetchInput", "fetchInputs", "retrieveInput", "retrieveInputs", "consume", "consumes", "consumed", "getConsume",
                 "require", "requires", "required", "getRequire", "need", "needs", "needed", "getNeed", "use", "uses",
                 "used", "getUse", "supply", "supplies", "getSupply", "getSupplies", "source", "sources", "getSource",
@@ -299,25 +364,84 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
+    private static Field learnField(Object recipe, boolean isOutput) {
+        String[] candidateNames = isOutput
+                ? new String[]{
+                "leftGasOutput", "rightGasOutput", "leftOutput", "rightOutput", "gasOutput", "chemicalOutput",
+                "infusionOutput", "pigmentOutput", "slurryOutput", "fluidOutput", "result", "results", "output", "outputs",
+                "product", "products", "mainOutput", "secondaryOutput", "bonusOutput", "primaryOutput", "byproduct", "outputDefinition"
+        }
+                : new String[]{
+                "leftGasInput", "rightGasInput", "gasInput", "chemicalInput", "infusionInput", "pigmentInput",
+                "slurryInput", "fluidInput", "inputs", "input", "ingredient", "ingredients", "required", "requirement",
+                "consume", "consumption", "use", "usage", "need", "supply", "source", "catalyst", "inputDefinition"
+        };
+
+        for (String name : candidateNames) {
+            Field field = findAnyField(recipe.getClass(), name);
+            if (field == null) continue;
+            if (validateField(field, recipe, isOutput)) {
+                return field;
+            }
+        }
+
+        List<String> keywords = isOutput ? OUTPUT_KEYWORDS : INPUT_KEYWORDS;
+        for (Field field : getAllFields(recipe.getClass())) {
+            if (Modifier.isStatic(field.getModifiers())) continue;
+            String lower = field.getName().toLowerCase(Locale.ROOT);
+            if (keywords.stream().noneMatch(lower::contains)) continue;
+            if (validateField(field, recipe, isOutput)) {
+                return field;
+            }
+        }
+
+        return null;
+    }
+
     private static Method findAndValidateMethod(Object recipe, String methodName, boolean isOutput, Level level) {
         try {
             Method method = findAnyMethod(recipe.getClass(), methodName);
             if (method == null) return null;
             method.setAccessible(true);
-            Object result = invokeMethod(method, recipe, level);
-            if (result == null) return null;
-
-            if (isOutput) {
-                if (!deepFindChemicalStacks(result, 0).isEmpty() || !deepFindFluidStacks(result, 0).isEmpty() || !deepFindItemStacks(result, 0).isEmpty()) {
-                    return method;
-                }
-            } else {
-                if (!deepFindChemicalStackLists(result, 0).isEmpty() || !deepFindFluidStackLists(result, 0).isEmpty() || !deepFindItemStackLists(result, 0).isEmpty()) {
-                    return method;
-                }
-            }
+            if (validateMethod(method, recipe, isOutput, level)) return method;
         } catch (Exception ignored) {}
         return null;
+    }
+
+    private static boolean validateMethod(Method method, Object recipe, boolean isOutput, Level level) {
+        try {
+            Object result = invokeMethod(method, recipe, level);
+            return validateResult(result, isOutput);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean validateField(Field field, Object recipe, boolean isOutput) {
+        try {
+            field.setAccessible(true);
+            Object value = field.get(recipe);
+            return validateResult(value, isOutput);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean validateResult(Object result, boolean isOutput) {
+        Object resolved = resolveValue(result);
+        if (resolved == null) {
+            return false;
+        }
+        if (resolved != result) {
+            return validateResult(resolved, isOutput);
+        }
+        return isOutput
+                ? (!deepFindChemicalStacks(resolved, 0).isEmpty()
+                || !deepFindFluidStacks(resolved, 0).isEmpty()
+                || !deepFindItemStacks(resolved, 0).isEmpty())
+                : (!deepFindChemicalStackLists(resolved, 0).isEmpty()
+                || !deepFindFluidStackLists(resolved, 0).isEmpty()
+                || !deepFindItemStackLists(resolved, 0).isEmpty());
     }
 
     private static List<ItemStack> deepFindItemStacks(Object obj, int depth) {
@@ -565,6 +689,45 @@ public class AdaptiveRecipeConverter {
             } catch (Exception ignored) {}
         }
 
+        RecipeType<?> fromFields = extractRecipeTypeFromFields(actual);
+        if (fromFields != null) {
+            return fromFields;
+        }
+
+        return extractRecipeTypeFromAccessors(actual);
+    }
+
+    private static RecipeType<?> extractRecipeTypeFromFields(Object actual) {
+        for (Field field : getAllFields(actual.getClass())) {
+            if (Modifier.isStatic(field.getModifiers())) continue;
+            String lower = field.getName().toLowerCase(Locale.ROOT);
+            if (!(lower.contains("recipetype") || lower.equals("type") || lower.contains("viewer"))) continue;
+            try {
+                field.setAccessible(true);
+                Object value = resolveValue(field.get(actual));
+                RecipeType<?> type = coerceRecipeType(value);
+                if (type != null) {
+                    return type;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (actual.getClass().isRecord()) {
+            for (RecordComponent component : actual.getClass().getRecordComponents()) {
+                String lower = component.getName().toLowerCase(Locale.ROOT);
+                if (!(lower.contains("recipetype") || lower.equals("type") || lower.contains("viewer"))) continue;
+                try {
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = resolveValue(accessor.invoke(actual));
+                    RecipeType<?> type = coerceRecipeType(value);
+                    if (type != null) {
+                        return type;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
         return null;
     }
 
@@ -779,9 +942,136 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
+    private static Object resolveValue(Object value) {
+        if (value instanceof Optional<?> optional) {
+            return optional.orElse(null);
+        }
+        if (value instanceof Supplier<?> supplier) {
+            try {
+                return supplier.get();
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        return value;
+    }
+
+    private static Object[] prepareArguments(Method method, Level level) {
+        int paramCount = method.getParameterCount();
+        if (paramCount == 0) {
+            return new Object[0];
+        }
+
+        Object[] args = new Object[paramCount];
+        Object registryAccess = level != null ? level.registryAccess() : null;
+
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> paramType = parameterTypes[i];
+
+            if (paramType.isPrimitive()) {
+                args[i] = primitiveDefault(paramType);
+                if (args[i] == null) {
+                    return null;
+                }
+                continue;
+            }
+
+            if (paramType.isInstance(level)) {
+                args[i] = level;
+                continue;
+            }
+            if (level != null && paramType.isAssignableFrom(level.getClass())) {
+                args[i] = level;
+                continue;
+            }
+
+            if (registryAccess != null && (paramType.isInstance(registryAccess) || paramType.isAssignableFrom(registryAccess.getClass())
+                    || paramType.getName().contains("RegistryAccess") || paramType.getName().contains("HolderLookup"))) {
+                args[i] = registryAccess;
+                continue;
+            }
+
+            args[i] = null;
+        }
+
+        return args;
+    }
+
+    private static Object primitiveDefault(Class<?> primitive) {
+        if (primitive == boolean.class) return false;
+        if (primitive == byte.class) return (byte) 0;
+        if (primitive == short.class) return (short) 0;
+        if (primitive == int.class) return 0;
+        if (primitive == long.class) return 0L;
+        if (primitive == float.class) return 0F;
+        if (primitive == double.class) return 0D;
+        if (primitive == char.class) return (char) 0;
+        return null;
+    }
+
+    private static List<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            Field[] declared = current.getDeclaredFields();
+            Collections.addAll(fields, declared);
+            current = current.getSuperclass();
+        }
+        return fields;
+    }
+
+    private static Field findAnyField(Class<?> clazz, String name) {
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                if (field.getName().equals(name)) {
+                    return field;
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return null;
+    }
+
+    interface Accessor {
+        Object extract(Object recipe, Level level) throws Exception;
+    }
+
+    static class MethodAccessor implements Accessor {
+        private final Method method;
+
+        MethodAccessor(Method method) {
+            this.method = method;
+        }
+
+        @Override
+        public Object extract(Object recipe, Level level) throws Exception {
+            return invokeMethod(method, recipe, level);
+        }
+    }
+
+    static class FieldAccessor implements Accessor {
+        private final Field field;
+
+        FieldAccessor(Field field) {
+            this.field = field;
+        }
+
+        @Override
+        public Object extract(Object recipe, Level level) throws Exception {
+            field.setAccessible(true);
+            return field.get(recipe);
+        }
+    }
+
     static class RecipeAdapter {
-        final Method outputMethod;
-        final Method inputMethod;
-        RecipeAdapter(Method outputMethod, Method inputMethod) { this.outputMethod = outputMethod; this.inputMethod = inputMethod; }
+        final Accessor outputAccessor;
+        final Accessor inputAccessor;
+
+        RecipeAdapter(Accessor outputAccessor, Accessor inputAccessor) {
+            this.outputAccessor = outputAccessor;
+            this.inputAccessor = inputAccessor;
+        }
     }
 }

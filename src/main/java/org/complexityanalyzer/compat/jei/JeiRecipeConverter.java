@@ -70,9 +70,9 @@ public class JeiRecipeConverter {
     private static RecipeNode convert(Object recipe, Level level) {
         List<ItemStack> itemOutputs = AdaptiveRecipeConverter.extractOutputs(recipe, level);
         List<FluidStack> fluidOutputs = AdaptiveRecipeConverter.extractFluidOutputs(recipe, level);
-        List<AdaptiveRecipeConverter.ChemicalStack> chemicalOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(recipe, level);
+        // ✅ УБРАНО: chemicalOutputs
 
-        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) {
+        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("      No outputs found for {}",
                     recipe.getClass().getSimpleName());
             return null;
@@ -90,17 +90,16 @@ public class JeiRecipeConverter {
             builder = new RecipeNode.Builder(resultItem)
                     .isPlaceholder(true)
                     .resultCount(1);
-            if (!chemicalOutputs.isEmpty()) {
-                builder.placeholderId(chemicalOutputs.getFirst().getChemical().getFullId());
-            } else if (!fluidOutputs.isEmpty()) {
+            // ✅ УБРАНО: chemicalOutputs check
+            if (!fluidOutputs.isEmpty()) {
                 builder.placeholderId(BuiltInRegistries.FLUID.getKey(fluidOutputs.getFirst().getFluid()).toString());
             }
         }
 
+        // ✅ ТОЛЬКО items и fluids
         builder.category(RecipeCategory.JEI_IMPORTED)
                 .itemOutputs(itemOutputs)
-                .fluidOutputs(fluidOutputs)
-                .chemicalOutputs(chemicalOutputs);
+                .fluidOutputs(fluidOutputs);
 
         builder.priority(900);
 
@@ -114,9 +113,9 @@ public class JeiRecipeConverter {
 
         List<List<ItemStack>> itemInputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
         List<List<FluidStack>> fluidInputs = AdaptiveRecipeConverter.extractFluidInputs(recipe, level);
-        List<List<AdaptiveRecipeConverter.ChemicalStack>> chemicalInputs = AdaptiveRecipeConverter.extractChemicalInputs(recipe, level);
+        // ✅ УБРАНО: chemicalInputs
 
-        if (itemInputs.isEmpty() && fluidInputs.isEmpty() && chemicalInputs.isEmpty()) {
+        if (itemInputs.isEmpty() && fluidInputs.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("      No inputs found for {} -> {}",
                     recipe.getClass().getSimpleName(), resultItem);
         }
@@ -145,21 +144,11 @@ public class JeiRecipeConverter {
             builder.addFluidIngredient(fluids, amount);
         }
 
-        for (List<AdaptiveRecipeConverter.ChemicalStack> inputVariants : chemicalInputs) {
-            if (inputVariants.isEmpty()) continue;
-
-            List<org.complexityanalyzer.graph.Chemical> chemicals = inputVariants.stream()
-                    .map(AdaptiveRecipeConverter.ChemicalStack::getChemical)
-                    .distinct()
-                    .toList();
-
-            long amount = inputVariants.getFirst().getAmount();
-            builder.addChemicalIngredient(chemicals, amount);
-        }
+        // ✅ УБРАНО: chemical inputs loop
 
         RecipeNode node = builder.build();
 
-        if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty() && node.getChemicalIngredients().isEmpty()) {
+        if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("      Recipe has no ingredients after conversion: {}",
                     recipe.getClass().getSimpleName());
             return null;

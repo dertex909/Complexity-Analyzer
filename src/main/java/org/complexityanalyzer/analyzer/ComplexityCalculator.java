@@ -105,12 +105,6 @@ public class ComplexityCalculator {
                             optimalRecipe.getTotalFluidAmount()));
                 }
 
-                if (optimalRecipe.hasChemicalIngredients()) {
-                    debugMsg.append(String.format(", chemicals: %d (total: %d)",
-                            optimalRecipe.getChemicalIngredientSlotCount(),
-                            optimalRecipe.getTotalChemicalAmount()));
-                }
-
                 ComplexityAnalyzer.LOGGER.debug(debugMsg.toString());
             }
         }

@@ -257,13 +257,6 @@ public class RecipeGraph {
                 .toList();
     }
     
-    public List<RecipeNode> getRecipesProducingChemical(Chemical chemical) {
-        return getAllRecipes().stream()
-                .filter(recipe -> recipe.getChemicalOutputs().stream()
-                        .anyMatch(stack -> stack.getChemical().equals(chemical)))
-                .toList();
-    }
-    
     public List<Item> getItemsUsingFluid(net.minecraft.world.level.material.Fluid fluid) {
         return getAllRecipes().stream()
                 .filter(recipe -> recipe.getFluidIngredients().stream()
@@ -272,16 +265,7 @@ public class RecipeGraph {
                 .distinct()
                 .toList();
     }
-    
-    public List<Item> getItemsUsingChemical(Chemical chemical) {
-        return getAllRecipes().stream()
-                .filter(recipe -> recipe.getChemicalIngredients().stream()
-                        .anyMatch(slot -> slot.getChemicalVariants().contains(chemical)))
-                .map(RecipeNode::getResultItem)
-                .distinct()
-                .toList();
-    }
-    
+
     public Set<net.minecraft.world.level.material.Fluid> getAllUsedFluids() {
         Set<net.minecraft.world.level.material.Fluid> fluids = new HashSet<>();
         for (RecipeNode recipe : getAllRecipes()) {
@@ -289,15 +273,6 @@ public class RecipeGraph {
             recipe.getFluidOutputs().forEach(stack -> fluids.add(stack.getFluid()));
         }
         return fluids;
-    }
-    
-    public Set<Chemical> getAllUsedChemicals() {
-        Set<Chemical> chemicals = new HashSet<>();
-        for (RecipeNode recipe : getAllRecipes()) {
-            recipe.getChemicalIngredients().forEach(slot -> chemicals.addAll(slot.getChemicalVariants()));
-            recipe.getChemicalOutputs().forEach(stack -> chemicals.add(stack.getChemical()));
-        }
-        return chemicals;
     }
 
     public record GraphStats(

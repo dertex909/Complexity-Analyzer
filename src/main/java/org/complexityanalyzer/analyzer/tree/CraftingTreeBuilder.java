@@ -67,8 +67,7 @@ public class CraftingTreeBuilder {
                 mode,
                 maxDepth,
                 uniqueItems,
-                stats,
-                new HashSet<>()
+                stats
         );
 
         stats.setUniqueItems(uniqueItems.size());
@@ -85,8 +84,7 @@ public class CraftingTreeBuilder {
             DisplayMode displayMode,
             int maxDepth,
             Set<Item> uniqueItems,
-            TreeStatistics stats,
-            Set<Chemical> visitedChemicals
+            TreeStatistics stats
     ) {
         uniqueItems.add(item);
         stats.incrementTotalNodes();
@@ -208,7 +206,7 @@ public class CraftingTreeBuilder {
             double totalIngredientNeeded = craftOperations * countForOneCraft;
 
             TreeNode childNode = buildNode(ingredientItem, totalIngredientNeeded, depth + 1,
-                    visitedOnPath, baseResources, displayMode, maxDepth, uniqueItems, stats, visitedChemicals);
+                    visitedOnPath, baseResources, displayMode, maxDepth, uniqueItems, stats);
             nodeBuilder.addItemChild(childNode);
         }
 
@@ -222,127 +220,8 @@ public class CraftingTreeBuilder {
             }
         }
 
-        // Ингредиенты-химикаты
-        for (ChemicalIngredientSlot slot : recipe.getChemicalIngredients()) {
-            Chemical primaryChem = slot.getPrimaryChemical();
-            if (primaryChem != null) {
-                double amount = slot.getAmount() * craftOperations;
-                TreeNode chemTree = buildChemicalTree(primaryChem, depth + 1, maxDepth,
-                        visitedOnPath, baseResources, displayMode, stats, visitedChemicals);
-                nodeBuilder.addChemicalChild(new ChemicalNode(primaryChem.getRegistryName(), amount, chemTree));
-            }
-        }
-
         visitedOnPath.remove(item);
         return nodeBuilder.build();
-    }
-
-    private TreeNode buildChemicalTree(
-            Chemical chemical,
-            int depth,
-            int maxDepth,
-            Set<Item> itemVisitedOnPath,
-            Map<Item, Double> baseResources,
-            DisplayMode displayMode,
-            TreeStatistics stats,
-            Set<Chemical> visitedChemicals
-    ) {
-        if (depth >= maxDepth) {
-            return TreeNode.builder()
-                    .type(NodeType.MAX_DEPTH_REACHED)
-                    .itemName(chemical.getRegistryName())
-                    .build();
-        }
-
-        List<RecipeNode> allProducers = engine.getRecipeGraph().getRecipesProducingChemical(chemical);
-
-        if (allProducers.isEmpty()) {
-            return TreeNode.builder()
-                    .type(NodeType.BASE_RESOURCE)
-                    .itemName(chemical.getRegistryName())
-                    .addMetadata("reason", "no_recipe")
-                    .build();
-        }
-
-        // Поиск рецепта без циклов
-        RecipeNode selectedRecipe = null;
-        for (RecipeNode candidate : allProducers) {
-            boolean causesCycle = false;
-
-            for (ChemicalIngredientSlot slot : candidate.getChemicalIngredients()) {
-                if (slot.getChemicalVariants().contains(chemical)) {
-                    causesCycle = true;
-                    break;
-                }
-            }
-
-            if (!causesCycle && visitedChemicals.contains(chemical)) {
-                causesCycle = true;
-            }
-
-            if (!causesCycle) {
-                selectedRecipe = candidate;
-                break;
-            }
-        }
-
-        if (selectedRecipe == null) {
-            return TreeNode.builder()
-                    .type(NodeType.CYCLE)
-                    .itemName(chemical.getRegistryName())
-                    .build();
-        }
-
-        visitedChemicals.add(chemical);
-
-        try {
-            RecipeNode recipe = selectedRecipe;
-            String machineName = engine.getMachineRegistry()
-                    .flatMap(registry -> registry.getMachineForRecipe(recipe.getRecipeType()))
-                    .map(m -> m.getDescription().getString())
-                    .orElse("Unknown Machine");
-
-            TreeNode.Builder builder = TreeNode.builder()
-                    .type(NodeType.CRAFTING)
-                    .itemName(chemical.getRegistryName())
-                    .recipe(recipe)
-                    .machineType(machineName);
-
-            // Обработка ингредиентов
-            for (IngredientSlot slot : recipe.getIngredients()) {
-                Item bestVariant = slot.getVariants().stream()
-                        .min(Comparator.comparingDouble(engine::getComplexity))
-                        .orElse(null);
-
-                if (bestVariant != null) {
-                    TreeNode child = buildNode(bestVariant, slot.getCount(), depth + 1,
-                            itemVisitedOnPath, baseResources, displayMode, maxDepth,
-                            new HashSet<>(), stats, visitedChemicals);
-                    builder.addItemChild(child);
-                }
-            }
-
-            for (FluidIngredientSlot slot : recipe.getFluidIngredients()) {
-                var fluid = slot.getPrimaryFluid();
-                if (fluid != null) {
-                    String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
-                    builder.addFluidChild(new FluidNode(fluidName, slot.getAmount()));
-                }
-            }
-
-            for (ChemicalIngredientSlot slot : recipe.getChemicalIngredients()) {
-                Chemical chem = slot.getPrimaryChemical();
-                if (chem != null) {
-                    TreeNode chemTree = buildChemicalTree(chem, depth + 1, maxDepth,
-                            itemVisitedOnPath, baseResources, displayMode, stats, visitedChemicals);
-                    builder.addChemicalChild(new ChemicalNode(chem.getRegistryName(), slot.getAmount(), chemTree));
-                }
-            }
-
-            return builder.build();
-        } finally {
-            visitedChemicals.remove(chemical);
-        }
     }
 
     private void calculateBaseResourcesFor(

@@ -26,7 +26,6 @@ import net.minecraft.network.chat.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.tree.CraftingTreeBuilder;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
@@ -36,10 +35,6 @@ import org.complexityanalyzer.data.ItemComplexity;
 
 import java.util.*;
 
-/**
- * Команда для отображения дерева крафта в чате.
- * Использует CraftingTreeBuilder для построения и отображает результат пользователю.
- */
 public class TreeCommand {
 
     public static final int DEFAULT_MAX_DEPTH = 100;
@@ -94,7 +89,7 @@ public class TreeCommand {
                                    ResourceLocation itemId, OutputManager output, AnalysisEngine engine) {
         renderHeader(source, data, output, engine);
         renderTreeNode(source, data.getRoot(), "  ", true, data.getDisplayMode(), output, engine);
-        renderFooter(source, data, itemId, output, engine);
+        renderFooter(source, data, itemId, output);
     }
 
     private static void renderHeader(CommandSourceStack source, CraftingTreeData data,
@@ -171,9 +166,7 @@ public class TreeCommand {
         if (node.getType() == NodeType.CRAFTING) {
             String childPrefix = prefix + (isLast ? "   " : "│  ");
 
-            int totalChildren = node.getItemChildren().size() +
-                    node.getFluidChildren().size() +
-                    node.getChemicalChildren().size();
+            int totalChildren = node.getItemChildren().size() + node.getFluidChildren().size();
             int currentIndex = 0;
 
             // Item children
@@ -183,45 +176,108 @@ public class TreeCommand {
                         mode, output, engine);
             }
 
-            // Fluid children
+            // Fluid children - улучшенный стиль
             for (FluidNode fluid : node.getFluidChildren()) {
                 currentIndex++;
                 boolean isLastChild = (currentIndex == totalChildren);
                 String fluidBranch = isLastChild ? "└─ " : "├─ ";
 
-                String amount = String.format("%.2f", fluid.getAmount());
+                String displayAmount = formatFluidAmount(fluid.getAmount(), mode);
+                String fluidDisplayName = getCleanResourceName(fluid.getFluidName());
+
                 MutableComponent fluidLine = Component.literal(childPrefix)
                         .append(Component.literal(fluidBranch).withStyle(ChatFormatting.DARK_GRAY))
                         .append(Component.literal("💧 ").withStyle(ChatFormatting.AQUA))
-                        .append(Component.literal(amount + "mB ").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
-                        .append(Component.literal(fluid.getFluidName()).withStyle(ChatFormatting.WHITE))
-                        .append(Component.literal(" [FLUID]").withStyle(ChatFormatting.DARK_AQUA, ChatFormatting.ITALIC));
+                        .append(Component.literal(displayAmount + " ").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                        .append(Component.literal(fluidDisplayName).withStyle(ChatFormatting.WHITE));
+
+                // Добавляем hover с информацией о жидкости
+                fluidLine.withStyle(style -> style.withHoverEvent(new HoverEvent(
+                        HoverEvent.Action.SHOW_TEXT,
+                        createFluidHoverText(fluid, node)
+                )));
 
                 output.sendInfo(source, fluidLine);
             }
+        }
+    }
 
-            // Chemical children
-            for (ChemicalNode chem : node.getChemicalChildren()) {
-                currentIndex++;
-                boolean isLastChild = (currentIndex == totalChildren);
-                String chemBranch = isLastChild ? "└─ " : "├─ ";
+    // Форматирование количества жидкости
+    private static String formatFluidAmount(double amount, DisplayMode mode) {
+        if (mode == DisplayMode.PLAYER_INSTRUCTION) {
+            int displayAmount = (int) Math.ceil(amount);
+            return displayAmount + "mB";
+        } else {
+            return String.format("%.2fmB", amount);
+        }
+    }
 
-                String amount = String.format("%.2f", chem.getAmount());
-                MutableComponent chemLine = Component.literal(childPrefix)
-                        .append(Component.literal(chemBranch).withStyle(ChatFormatting.DARK_GRAY))
-                        .append(Component.literal("⚗ ").withStyle(ChatFormatting.YELLOW))
-                        .append(Component.literal(amount + " ").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
-                        .append(Component.literal(chem.getChemicalName()).withStyle(ChatFormatting.WHITE))
-                        .append(Component.literal(" [CHEMICAL]").withStyle(ChatFormatting.GOLD, ChatFormatting.ITALIC));
+    // Получение чистого имени ресурса (убирает namespace и форматирует)
+    private static String getCleanResourceName(String resourceId) {
+        // Убираем ЛЮБОЙ namespace (все что до двоеточия)
+        String cleanName = resourceId;
+        if (resourceId.contains(":")) {
+            cleanName = resourceId.substring(resourceId.indexOf(":") + 1);
+        }
 
-                output.sendInfo(source, chemLine);
+        // Заменяем подчеркивания и дефисы на пробелы
+        cleanName = cleanName.replace("_", " ").replace("-", " ");
 
-                if (chem.getSubTree() != null) {
-                    String chemChildPrefix = childPrefix + (isLastChild ? "   " : "│  ");
-                    renderTreeNode(source, chem.getSubTree(), chemChildPrefix, true, mode, output, engine);
-                }
+        // Делаем первые буквы заглавными
+        cleanName = capitalizeWords(cleanName);
+
+        // Убираем лишние пробелы
+        cleanName = cleanName.trim().replaceAll("\\s+", " ");
+
+        return cleanName;
+    }
+
+    // Капитализация первых букв слов
+    private static String capitalizeWords(String str) {
+        StringBuilder result = new StringBuilder();
+        boolean capitalizeNext = true;
+
+        for (char c : str.toCharArray()) {
+            if (Character.isWhitespace(c)) {
+                result.append(c);
+                capitalizeNext = true;
+            } else if (capitalizeNext) {
+                result.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                result.append(c);
             }
         }
+
+        return result.toString();
+    }
+
+    // Создание hover текста для жидкостей
+    private static Component createFluidHoverText(FluidNode fluid, TreeNode parentNode) {
+        MutableComponent hover = Component.empty();
+
+        hover.append(Component.literal("💧 Fluid Resource")
+                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+
+        hover.append(Component.literal("\nName: ")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(getCleanResourceName(fluid.getFluidName()))
+                        .withStyle(ChatFormatting.WHITE));
+
+        hover.append(Component.literal("\nAmount: ")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(String.format("%.2f mB", fluid.getAmount()))
+                        .withStyle(ChatFormatting.YELLOW));
+
+        // Добавляем информацию о машине из родительского узла
+        if (parentNode.getMachineType() != null && !parentNode.getMachineType().isEmpty()) {
+            hover.append(Component.literal("\n🏭 Produced in: ")
+                            .withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(parentNode.getMachineType())
+                            .withStyle(ChatFormatting.GREEN));
+        }
+
+        return hover;
     }
 
     private static MutableComponent formatNode(TreeNode node, DisplayMode mode, AnalysisEngine engine) {
@@ -240,51 +296,32 @@ public class TreeCommand {
 
         switch (node.getType()) {
             case NO_DATA:
-                component.append(Component.literal(node.getItemName()).withStyle(ChatFormatting.RED))
-                        .append(Component.literal(" [NO DATA]").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
+                component.append(Component.literal("❌ ").withStyle(ChatFormatting.RED))
+                        .append(Component.literal(quantityString).withStyle(ChatFormatting.GRAY))
+                        .append(Component.literal(node.getItemName()).withStyle(ChatFormatting.RED, ChatFormatting.ITALIC));
                 break;
 
             case MAX_DEPTH_REACHED:
                 component.append(Component.literal("... ").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC))
-                        .append(Component.literal("[MAX DEPTH REACHED]").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+                        .append(Component.literal("[DEPTH LIMIT]").withStyle(ChatFormatting.GRAY));
                 break;
 
             case CYCLE:
-                component.append(Component.literal("⛏ ").withStyle(ChatFormatting.YELLOW))
+                component.append(Component.literal("🔁 ").withStyle(ChatFormatting.GOLD))
                         .append(Component.literal(quantityString).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
                         .append(Component.literal(node.getItemName()).withStyle(ChatFormatting.WHITE))
                         .append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
                         .append(Component.literal(String.format("%.2f", node.getComplexity())).withStyle(complexityColor))
-                        .append(Component.literal(") ").withStyle(ChatFormatting.DARK_GRAY))
-                        .append(Component.literal("[CYCLE]").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+                        .append(Component.literal(")").withStyle(ChatFormatting.DARK_GRAY));
                 break;
 
             case BASE_RESOURCE:
-                boolean wouldCreateCycle = (Boolean) node.getMetadata().getOrDefault("wouldCreateCycle", false);
-                String sourceType = wouldCreateCycle ? "[BASE]" : "[SOURCE]";
-                ChatFormatting sourceColor = wouldCreateCycle ? ChatFormatting.GREEN : ChatFormatting.AQUA;
-
-                String sourceDetail = "";
-                if (!wouldCreateCycle) {
-                    String specifier = (String) node.getMetadata().get("sourceSpecifier");
-                    if (specifier != null && !specifier.isBlank()) {
-                        sourceDetail = " - " + specifier;
-                    } else {
-                        String sourceTypeName = (String) node.getMetadata().get("sourceTypeName");
-                        if (sourceTypeName != null) {
-                            sourceDetail = " - " + sourceTypeName;
-                        }
-                    }
-                }
-
                 component.append(Component.literal("⛏ ").withStyle(ChatFormatting.GREEN))
                         .append(Component.literal(quantityString).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
                         .append(Component.literal(node.getItemName()).withStyle(ChatFormatting.WHITE))
                         .append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
                         .append(Component.literal(String.format("%.2f", node.getComplexity())).withStyle(complexityColor))
-                        .append(Component.literal(") ").withStyle(ChatFormatting.DARK_GRAY))
-                        .append(Component.literal(sourceType).withStyle(sourceColor, ChatFormatting.BOLD))
-                        .append(Component.literal(sourceDetail).withStyle(ChatFormatting.GRAY));
+                        .append(Component.literal(")").withStyle(ChatFormatting.DARK_GRAY));
                 break;
 
             case CRAFTING:
@@ -293,26 +330,113 @@ public class TreeCommand {
                         .append(Component.literal(node.getItemName()).withStyle(ChatFormatting.WHITE))
                         .append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
                         .append(Component.literal(String.format("%.2f", node.getComplexity())).withStyle(complexityColor))
-                        .append(Component.literal(") - ").withStyle(ChatFormatting.DARK_GRAY))
-                        .append(Component.literal(node.getMachineType()).withStyle(ChatFormatting.AQUA));
+                        .append(Component.literal(")").withStyle(ChatFormatting.DARK_GRAY));
                 break;
         }
 
-        // Add hover event
-        if (node.getItem() != null) {
-            Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(node.getItem());
-            complexityOpt.ifPresent(itemComplexity -> {
-                HoverEvent hoverEvent = new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                        createHoverText(itemComplexity, engine));
-                component.withStyle(style -> style.withHoverEvent(hoverEvent));
-            });
-        }
+        // Добавляем детальную информацию в hover
+        component.withStyle(style -> style.withHoverEvent(new HoverEvent(
+                HoverEvent.Action.SHOW_TEXT,
+                createDetailedHoverText(node, engine)
+        )));
 
         return component;
     }
 
+    // Создание детального hover текста для узлов
+    private static Component createDetailedHoverText(TreeNode node, AnalysisEngine engine) {
+        MutableComponent hover = Component.empty();
+
+        // Заголовок с типом узла
+        switch (node.getType()) {
+            case NO_DATA:
+                hover.append(Component.literal("❌ No Recipe Data")
+                        .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+                hover.append(Component.literal("\nThis item has no known recipes")
+                        .withStyle(ChatFormatting.GRAY));
+                break;
+
+            case MAX_DEPTH_REACHED:
+                hover.append(Component.literal("🔍 Depth Limit Reached")
+                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+                hover.append(Component.literal("\nIncrease depth to see more")
+                        .withStyle(ChatFormatting.GRAY));
+                break;
+
+            case CYCLE:
+                hover.append(Component.literal("🔁 Recursive Recipe")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+                hover.append(Component.literal("\nThis item creates a crafting loop")
+                        .withStyle(ChatFormatting.GRAY));
+                break;
+
+            case BASE_RESOURCE:
+                hover.append(Component.literal("⛏ Base Resource")
+                        .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+
+                // Источник получения
+                boolean wouldCreateCycle = (Boolean) node.getMetadata().getOrDefault("wouldCreateCycle", false);
+                if (!wouldCreateCycle) {
+                    String sourceTypeName = (String) node.getMetadata().get("sourceTypeName");
+                    String specifier = (String) node.getMetadata().get("sourceSpecifier");
+
+                    if (sourceTypeName != null) {
+                        hover.append(Component.literal("\n📍 Source: ")
+                                        .withStyle(ChatFormatting.GRAY))
+                                .append(Component.literal(sourceTypeName)
+                                        .withStyle(ChatFormatting.AQUA));
+
+                        if (specifier != null && !specifier.isBlank()) {
+                            hover.append(Component.literal("\n   ")
+                                            .withStyle(ChatFormatting.DARK_GRAY))
+                                    .append(Component.literal(specifier)
+                                            .withStyle(ChatFormatting.YELLOW));
+                        }
+                    }
+                } else {
+                    hover.append(Component.literal("\n⚠ Treated as base to avoid cycle")
+                            .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
+                }
+                break;
+
+            case CRAFTING:
+                hover.append(Component.literal("🔨 Crafting Recipe")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+
+                // Машина для крафта
+                String machineType = node.getMachineType();
+                if (machineType != null && !machineType.isEmpty()) {
+                    hover.append(Component.literal("\n🏭 Machine: ")
+                                    .withStyle(ChatFormatting.GRAY))
+                            .append(Component.literal(machineType)
+                                    .withStyle(ChatFormatting.AQUA));
+                }
+                break;
+        }
+
+        // Дополнительная информация о сложности
+        if (node.getItem() != null) {
+            Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(node.getItem());
+            if (complexityOpt.isPresent()) {
+                ItemComplexity complexity = complexityOpt.get();
+
+                hover.append(Component.literal("\n\n📊 Complexity: ")
+                                .withStyle(ChatFormatting.GRAY))
+                        .append(Component.literal(String.format("%.2f", complexity.getComplexity()))
+                                .withStyle(getComplexityColor(complexity.getComplexity()), ChatFormatting.BOLD));
+
+                if (complexity.getOptimalRecipe().isPresent()) {
+                    hover.append(Component.literal("\n✅ Has optimal recipe")
+                            .withStyle(ChatFormatting.DARK_GREEN));
+                }
+            }
+        }
+
+        return hover;
+    }
+
     private static void renderFooter(CommandSourceStack source, CraftingTreeData data,
-                                     ResourceLocation itemId, OutputManager output, AnalysisEngine engine) {
+                                     ResourceLocation itemId, OutputManager output) {
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,
                 Component.literal("  ─────────────────────────────")
@@ -410,7 +534,7 @@ public class TreeCommand {
                     String itemName = item.getDescription().getString();
 
                     if (mode == DisplayMode.PLAYER_INSTRUCTION) {
-                        int amountForPlayer = (int) amount;
+                        int amountForPlayer = (int) Math.ceil(amount);
                         if (amountForPlayer > 0) {
                             int maxStackSize = item.getDefaultInstance().getMaxStackSize();
                             String stackInfo = getStackVisualization(amountForPlayer, maxStackSize);
@@ -515,46 +639,6 @@ public class TreeCommand {
         }
 
         output.sendInfo(source, Component.literal(""));
-    }
-
-    private static Component createHoverText(ItemComplexity complexityData, AnalysisEngine engine) {
-        if (complexityData.getOptimalRecipe().isPresent()) {
-            var recipe = complexityData.getOptimalRecipe().get();
-            String machineName = engine.getMachineRegistry()
-                    .flatMap(registry -> registry.getMachineForRecipe(recipe.getRecipeType()))
-                    .map(m -> m.getDescription().getString())
-                    .orElse("Crafting Table");
-            return Component.literal("Source: Crafting (" + machineName + ")");
-        }
-
-        if (complexityData.getBaseData().isPresent()) {
-            BaseResourceData data = complexityData.getBaseData().get();
-            String specifier = data.getSourceSpecifier();
-            if (specifier == null || specifier.isBlank()) {
-                specifier = "Details unavailable";
-            }
-
-            // Используем getDisplayName() напрямую
-            String sourceName = data.getSourceType().getDisplayName();
-
-            // Простая проверка по имени
-            String sourcePrefix = "Source: ";
-            if (sourceName.contains("Mob") || sourceName.contains("Drop")) {
-                return Component.literal(sourcePrefix + "Mob Drop (" + specifier + ")");
-            } else if (sourceName.contains("Mining") || sourceName.contains("Ore") || sourceName.contains("Block")) {
-                return Component.literal(sourcePrefix + "Mining (" + specifier + ")");
-            } else if (sourceName.contains("Villager") || sourceName.contains("Trade")) {
-                return Component.literal(sourcePrefix + "Villager Trade (" + specifier + ")");
-            } else if (sourceName.contains("Fishing")) {
-                return Component.literal(sourcePrefix + "Fishing");
-            } else if (sourceName.contains("Chest") || sourceName.contains("Loot")) {
-                return Component.literal(sourcePrefix + "Chest Loot");
-            } else {
-                return Component.literal(sourcePrefix + sourceName);
-            }
-        }
-
-        return Component.literal("Source: Unknown");
     }
 
     private static ChatFormatting getComplexityColor(double complexity) {

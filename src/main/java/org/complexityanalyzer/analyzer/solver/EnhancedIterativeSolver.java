@@ -16,20 +16,15 @@ import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.*;
-import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 🚀 ENHANCED ITERATIVE SOLVER - Phase-based complexity calculation
- */
 public class EnhancedIterativeSolver {
 
     private static final double EPSILON = 1e-12;
     private static final double CONVERGENCE_THRESHOLD = ComplexityConfig.CONVERGENCE_THRESHOLD.get();
     private static final int MAX_ITERATIONS = ComplexityConfig.MAX_ITERATIONS.get();
-    private static final boolean VERBOSE = true;
 
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
@@ -38,7 +33,6 @@ public class EnhancedIterativeSolver {
     private final ComplexityCache cache;
     private final Map<Item, Double> itemComplexities;
     private final Map<Fluid, Double> fluidComplexities;
-    private final Map<Chemical, Double> chemicalComplexities;
     private final Map<Item, RecipeNode> optimalRecipes;
 
     private int totalIterations = 0;
@@ -53,7 +47,6 @@ public class EnhancedIterativeSolver {
         this.cache = new ComplexityCache();
         this.itemComplexities = new ConcurrentHashMap<>();
         this.fluidComplexities = new ConcurrentHashMap<>();
-        this.chemicalComplexities = new ConcurrentHashMap<>();
         this.optimalRecipes = new ConcurrentHashMap<>();
     }
 
@@ -61,7 +54,6 @@ public class EnhancedIterativeSolver {
         ComplexityAnalyzer.LOGGER.info("🚀 Starting Enhanced Iterative Solver...");
         long startTime = System.currentTimeMillis();
 
-        // 🔍 ДИАГНОСТИКА: Проверяем, какие типы рецептов в графе
         Map<String, Integer> recipeTypes = new HashMap<>();
         for (RecipeNode recipe : graph.getAllRecipes()) {
             String type = recipe.getRecipeType().toString();
@@ -96,14 +88,9 @@ public class EnhancedIterativeSolver {
         logPhaseResults("FLUIDS", fluidIterations, fluidComplexities.size());
         cache.clear();
 
-        ComplexityAnalyzer.LOGGER.info("⚗️ Phase 3: Calculating chemical complexities...");
-        int chemicalIterations = solveChemicals();
-        logPhaseResults("CHEMICALS", chemicalIterations, chemicalComplexities.size());
-        cache.clear();
-
         ComplexityAnalyzer.LOGGER.info("🔄 Refinement: Final convergence pass...");
         int refinementIterations = refinementPass();
-        logPhaseResults("REFINEMENT", refinementIterations, itemComplexities.size() + fluidComplexities.size() + chemicalComplexities.size());
+        logPhaseResults("REFINEMENT", refinementIterations, itemComplexities.size() + fluidComplexities.size());
 
         int reclassified = graph.reclassifyRecipesBasedOnComplexity(itemComplexities);
         if (reclassified > 0) {
@@ -114,12 +101,6 @@ public class EnhancedIterativeSolver {
 
         long totalTime = System.currentTimeMillis() - startTime;
         logFinalStatistics(totalTime);
-
-        long infiniteChems = chemicalComplexities.values().stream().filter(v -> Double.isInfinite(v)).count();
-        if (infiniteChems > 0) {
-            diagnoseInfiniteChemicals();
-            diagnoseInfiniteItems();
-        }
 
         return new SolverResult(new HashMap<>(itemComplexities), new HashMap<>(optimalRecipes), totalIterations, totalTime, true);
     }
@@ -142,57 +123,7 @@ public class EnhancedIterativeSolver {
             }
         }
 
-        for (Chemical chemical : graph.getAllUsedChemicals()) {
-            chemicalComplexities.put(chemical, graph.getRecipesProducingChemical(chemical).isEmpty() ? ComplexityConfig.getChemicalBaseComplexity() : Double.POSITIVE_INFINITY);
-        }
-
-        // 🔄 УНИВЕРСАЛЬНАЯ ДЕТЕКЦИЯ ЦИКЛОВ: Если у химиката все рецепты требуют жидкости,
-        // которые сами производятся из этого химиката → это цикл (fluid ↔ gas конверсия)
-        for (Map.Entry<Chemical, Double> entry : chemicalComplexities.entrySet()) {
-            if (Double.isInfinite(entry.getValue())) {
-                Chemical chem = entry.getKey();
-                List<RecipeNode> producers = graph.getRecipesProducingChemical(chem);
-                
-                if (!producers.isEmpty()) {
-                    boolean allRecipesAreCyclic = true;
-                    
-                    for (RecipeNode recipe : producers) {
-                        boolean isCyclic = false;
-                        
-                        // Проверяем, требует ли рецепт жидкости
-                        for (FluidIngredientSlot fluidSlot : recipe.getFluidIngredients()) {
-                            for (Fluid requiredFluid : fluidSlot.getFluidVariants()) {
-                                // Проверяем, производится ли эта жидкость из нашего химиката
-                                List<RecipeNode> fluidProducers = graph.getRecipesProducingFluid(requiredFluid);
-                                for (RecipeNode fluidRecipe : fluidProducers) {
-                                    // Если рецепт производства жидкости требует наш химикат → цикл!
-                                    boolean usesOurChemical = fluidRecipe.getChemicalIngredients().stream()
-                                            .anyMatch(slot -> slot.getChemicalVariants().contains(chem));
-                                    if (usesOurChemical) {
-                                        isCyclic = true;
-                                        break;
-                                    }
-                                }
-                                if (isCyclic) break;
-                            }
-                            if (isCyclic) break;
-                        }
-                        
-                        if (!isCyclic) {
-                            allRecipesAreCyclic = false;
-                            break;
-                        }
-                    }
-                    
-                    if (allRecipesAreCyclic) {
-                        double baseCost = ComplexityConfig.getChemicalBaseComplexity();
-                        ComplexityAnalyzer.LOGGER.warn("  ⚠️ Detected cyclic fluid↔gas conversion for {}, assigning base complexity: {}", chem.getRegistryName(), baseCost);
-                        chemicalComplexities.put(chem, baseCost);
-                    }
-                }
-            }
-        }
-        ComplexityAnalyzer.LOGGER.info("✅ Initialization complete: {} items, {} fluids, {} chemicals", itemComplexities.size(), fluidComplexities.size(), chemicalComplexities.size());
+        ComplexityAnalyzer.LOGGER.info("✅ Initialization complete: {} items, {} fluids", itemComplexities.size(), fluidComplexities.size());
     }
 
     private int solveItems() {
@@ -228,7 +159,7 @@ public class EnhancedIterativeSolver {
     private boolean updateItemComplexity(Item item) {
         double oldComplexity = itemComplexities.get(item);
         double sourceCost = calculateSourceCost(item);
-        ComplexityResult craftResult = calculateCraftingCost(item, false);
+        ComplexityResult craftResult = calculateCraftingCost(item);
         double newComplexity = Math.min(sourceCost, craftResult.complexity);
         if (hasSignificantChange(oldComplexity, newComplexity)) {
             itemComplexities.put(item, newComplexity);
@@ -248,8 +179,8 @@ public class EnhancedIterativeSolver {
         List<Fluid> toUpdate = fluidComplexities.entrySet().stream().filter(e -> Double.isInfinite(e.getValue())).map(Map.Entry::getKey).toList();
         if (toUpdate.isEmpty()) return 0;
         int iterations = 0;
-        boolean changed = true;
-        while (changed && iterations < MAX_ITERATIONS / 2) {
+        boolean changed;
+        while (iterations < MAX_ITERATIONS / 2) {
             iterations++;
             changed = false;
             for (Fluid fluid : toUpdate) {
@@ -294,62 +225,6 @@ public class EnhancedIterativeSolver {
         return minCost;
     }
 
-    private int solveChemicals() {
-        List<Chemical> toUpdate = chemicalComplexities.entrySet().stream().filter(e -> Double.isInfinite(e.getValue())).map(Map.Entry::getKey).toList();
-        if (toUpdate.isEmpty()) return 0;
-        int iterations = 0;
-        boolean changed = true;
-        while (changed && iterations < MAX_ITERATIONS / 2) {
-            iterations++;
-            changed = false;
-            for (Chemical chemical : toUpdate) {
-                if (updateChemicalComplexity(chemical)) {
-                    changed = true;
-                }
-            }
-            if (!changed) break;
-        }
-        return iterations;
-    }
-
-    private boolean updateChemicalComplexity(Chemical chemical) {
-        double oldComplexity = chemicalComplexities.get(chemical);
-        double newComplexity = calculateChemicalComplexity(chemical);
-        if (hasSignificantChange(oldComplexity, newComplexity)) {
-            chemicalComplexities.put(chemical, newComplexity);
-            cache.invalidateChemical(chemical);
-            for (Item user : graph.getItemsUsingChemical(chemical)) updateItemComplexity(user);
-            return true;
-        }
-        return false;
-    }
-
-    private double calculateChemicalComplexity(Chemical chemical) {
-        List<RecipeNode> producers = graph.getRecipesProducingChemical(chemical);
-        if (producers.isEmpty()) return ComplexityConfig.getChemicalBaseComplexity();
-        double minCost = Double.POSITIVE_INFINITY;
-        boolean foundFinite = false;
-        boolean debug = VERBOSE && (chemical.getRegistryName().contains("hydrogen") || chemical.getRegistryName().contains("chlorine") || chemical.getRegistryName().contains("steam"));
-        if (debug) ComplexityAnalyzer.LOGGER.debug("      [CHEM-CALC] Calculating for: {}", chemical.getRegistryName());
-        for (RecipeNode recipe : producers) {
-            double recipeCost = calculateRecipeCost(recipe, true);
-            if (debug) ComplexityAnalyzer.LOGGER.debug("      [CHEM-CALC]   Recipe {}: cost = {}", recipe.getRecipeType(), Double.isInfinite(recipeCost) ? "∞" : String.format("%.2f", recipeCost));
-            if (Double.isInfinite(recipeCost)) continue;
-            long outputAmount = recipe.getChemicalOutputs().stream().filter(s -> s.getChemical().equals(chemical)).mapToLong(AdaptiveRecipeConverter.ChemicalStack::getAmount).sum();
-            if (outputAmount <= 0) outputAmount = 1000;
-            double costPerUnit = (recipeCost * recipe.getRecipeMultiplier()) / (outputAmount / 1000.0);
-            if (debug && costPerUnit < minCost) ComplexityAnalyzer.LOGGER.debug("      [CHEM-CALC]   NEW BEST: {} (from {})", String.format("%.2f", costPerUnit), recipe.getRecipeType());
-            minCost = Math.min(minCost, costPerUnit);
-            foundFinite = true;
-        }
-        if (!foundFinite || Double.isInfinite(minCost)) {
-            if (debug) ComplexityAnalyzer.LOGGER.debug("      [CHEM-CALC] No finite recipe found, falling back to base complexity {}", ComplexityConfig.getChemicalBaseComplexity());
-            return ComplexityConfig.getChemicalBaseComplexity();
-        }
-        if (debug) ComplexityAnalyzer.LOGGER.debug("      [CHEM-CALC] Final complexity: {}", String.format("%.2f", minCost));
-        return minCost;
-    }
-
     private int refinementPass() {
         int iterations = 0;
         boolean changed = true;
@@ -358,7 +233,6 @@ public class EnhancedIterativeSolver {
             changed = false;
             for (Item item : graph.getCorpus()) if (updateItemComplexity(item)) changed = true;
             for (Fluid fluid : graph.getAllUsedFluids()) if (updateFluidComplexity(fluid)) changed = true;
-            for (Chemical chemical : graph.getAllUsedChemicals()) if (updateChemicalComplexity(chemical)) changed = true;
         }
         return iterations;
     }
@@ -384,13 +258,13 @@ public class EnhancedIterativeSolver {
         return bestCost;
     }
 
-    private ComplexityResult calculateCraftingCost(Item item, boolean allowInfiniteMachines) {
+    private ComplexityResult calculateCraftingCost(Item item) {
         List<RecipeNode> recipes = graph.getRecipes(item);
         if (recipes.isEmpty()) return new ComplexityResult(Double.POSITIVE_INFINITY, null);
         double minCost = Double.POSITIVE_INFINITY;
         RecipeNode bestRecipe = null;
         for (RecipeNode recipe : recipes) {
-            double cost = calculateRecipeCost(recipe, allowInfiniteMachines);
+            double cost = calculateRecipeCost(recipe, false);
             if (cost < minCost) {
                 minCost = cost;
                 bestRecipe = recipe;
@@ -403,15 +277,14 @@ public class EnhancedIterativeSolver {
         recipeCostCalculations++;
         if (!allowInfiniteMachines) {
             RecipeCostCache cached = cache.getRecipeCost(recipe);
-            if (cached != null && cached.isValid(itemComplexities, fluidComplexities, chemicalComplexities)) {
+            if (cached != null && cached.isValid(itemComplexities, fluidComplexities)) {
                 cacheHits++; return cached.cost;
             }
         }
         double totalCost = 0.0;
         Map<Item, Double> usedItems = new HashMap<>();
         Map<Fluid, Double> usedFluids = new HashMap<>();
-        Map<Chemical, Double> usedChemicals = new HashMap<>();
-        
+
         for (IngredientSlot slot : recipe.getIngredients()) {
             double slotCost = getMinComplexity(slot.getVariants(), itemComplexities);
             if (Double.isInfinite(slotCost)) return Double.POSITIVE_INFINITY;
@@ -427,14 +300,7 @@ public class EnhancedIterativeSolver {
             Fluid bestFluid = getBestVariant(slot.getFluidVariants(), fluidComplexities);
             if (bestFluid != null) usedFluids.put(bestFluid, slotCost);
         }
-        
-        for (ChemicalIngredientSlot slot : recipe.getChemicalIngredients()) {
-            double slotCost = getMinComplexity(slot.getChemicalVariants(), chemicalComplexities);
-            if (Double.isInfinite(slotCost)) return Double.POSITIVE_INFINITY;
-            totalCost += slotCost * (slot.getAmount() / 1000.0) * ComplexityConfig.getChemicalNormalizationFactor();
-            Chemical bestChem = getBestVariant(slot.getChemicalVariants(), chemicalComplexities);
-            if (bestChem != null) usedChemicals.put(bestChem, slotCost);
-        }
+
         
         if (machineRegistry != null) {
             Optional<Item> machineOpt = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
@@ -454,21 +320,28 @@ public class EnhancedIterativeSolver {
                 }
             }
         }
-        
+
         double multiplier = recipe.getRecipeMultiplier();
+
         int resultCount = recipe.getResultCount();
+
         if (resultCount <= 0 || Double.isInfinite(multiplier)) return Double.POSITIVE_INFINITY;
+
         double finalCost = (totalCost * multiplier) / resultCount;
-        if (!allowInfiniteMachines) cache.putRecipeCost(recipe, new RecipeCostCache(finalCost, usedItems, usedFluids, usedChemicals));
+
+        if (!allowInfiniteMachines) cache.putRecipeCost(recipe, new RecipeCostCache(finalCost, usedItems, usedFluids));
+
         return finalCost;
     }
 
     private boolean isZeroCostMachine(RecipeType<?> recipeType) {
+
         if (recipeType == null) {
             return false;
         }
 
         ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType);
+
         if (typeId == null) {
             return false;
         }
@@ -480,23 +353,26 @@ public class EnhancedIterativeSolver {
     private <T> double getMinComplexity(List<T> variants, Map<T, Double> complexities) {
         return variants.stream().mapToDouble(v -> complexities.getOrDefault(v, Double.POSITIVE_INFINITY)).min().orElse(Double.POSITIVE_INFINITY);
     }
+
     private <T> T getBestVariant(List<T> variants, Map<T, Double> complexities) {
         return variants.stream().min(Comparator.comparingDouble(v -> complexities.getOrDefault(v, Double.POSITIVE_INFINITY))).orElse(null);
     }
+
     private boolean hasSignificantChange(double oldValue, double newValue) {
         if (Double.isInfinite(oldValue) && Double.isInfinite(newValue)) return false;
         if (Double.isInfinite(oldValue) || Double.isInfinite(newValue)) return true;
         double delta = Math.abs(oldValue - newValue);
         return delta > CONVERGENCE_THRESHOLD && (oldValue <= EPSILON ? delta : delta / oldValue) > CONVERGENCE_THRESHOLD;
     }
+
     private void logPhaseResults(String phase, int iterations, int elementsProcessed) {
         ComplexityAnalyzer.LOGGER.info("  ✅ {} complete: {} iterations, {} elements", phase, iterations, elementsProcessed);
         totalIterations += iterations;
     }
+
     private void logFinalStatistics(long totalTime) {
         long finiteItems = itemComplexities.values().stream().filter(v -> !Double.isInfinite(v)).count();
         long infiniteFluids = fluidComplexities.values().stream().filter(v -> Double.isInfinite(v)).count();
-        long infiniteChemicals = chemicalComplexities.values().stream().filter(v -> Double.isInfinite(v)).count();
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
         ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS");
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
@@ -504,7 +380,7 @@ public class EnhancedIterativeSolver {
         ComplexityAnalyzer.LOGGER.info("🔄 Total iterations: {}", totalIterations);
         ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, itemComplexities.size());
         ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} infinite", infiniteFluids, fluidComplexities.size());
-        ComplexityAnalyzer.LOGGER.info("⚗️  Chemicals: {}/{} infinite", infiniteChemicals, chemicalComplexities.size());
+
         if (recipeCostCalculations > 0) {
             ComplexityAnalyzer.LOGGER.info("💾 Cache: {} calculations, {} hits ({}%), {} invalidations", recipeCostCalculations, cacheHits, String.format("%.1f", 100.0 * cacheHits / recipeCostCalculations), cache.getInvalidationCount());
         }
@@ -525,54 +401,14 @@ public class EnhancedIterativeSolver {
                 } else {
                     ComplexityAnalyzer.LOGGER.warn("   → {} ({} recipes) ❓ INVESTIGATE", fluidName, producers.size());
                     if (!producers.isEmpty()) {
-                        RecipeNode firstRecipe = producers.get(0);
+                        RecipeNode firstRecipe = producers.getFirst();
                         ComplexityAnalyzer.LOGGER.warn("      First recipe type: {}", firstRecipe.getRecipeType());
                     }
                 }
             }
         }
-        
-        if (infiniteFluids > 0 || infiniteChemicals > 0) {
-            ComplexityAnalyzer.LOGGER.warn("⚠️  {} chemicals still have infinite complexity:", infiniteChemicals);
-            List<Chemical> infiniteChemList = chemicalComplexities.entrySet().stream().filter(e -> Double.isInfinite(e.getValue())).map(Map.Entry::getKey).limit(25).toList();
-            for (Chemical chem : infiniteChemList) {
-                List<RecipeNode> producers = graph.getRecipesProducingChemical(chem);
-                if (producers.isEmpty()) {
-                    ComplexityAnalyzer.LOGGER.warn("   → {} (no recipes) ✅ EXPECTED", chem.getRegistryName());
-                } else {
-                    ComplexityAnalyzer.LOGGER.warn("   → {} ({} recipes) ❓ INVESTIGATE", chem.getRegistryName(), producers.size());
-                    RecipeNode firstRecipe = producers.get(0);
-                    for (IngredientSlot slot : firstRecipe.getIngredients()) {
-                        Item ing = slot.getFirstVariant();
-                        if (ing != null && Double.isInfinite(itemComplexities.getOrDefault(ing, Double.POSITIVE_INFINITY))) {
-                            ComplexityAnalyzer.LOGGER.warn("      BLOCKED by item: {} (infinite)", BuiltInRegistries.ITEM.getKey(ing).getPath());
-                        }
-                    }
-                    for (FluidIngredientSlot slot : firstRecipe.getFluidIngredients()) {
-                        Fluid fluid = slot.fluidVariants().isEmpty() ? null : slot.fluidVariants().get(0);
-                        if (fluid != null && Double.isInfinite(fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY))) {
-                            ComplexityAnalyzer.LOGGER.warn("      BLOCKED by fluid: {} (infinite)", BuiltInRegistries.FLUID.getKey(fluid).getPath());
-                        }
-                    }
-                    for (ChemicalIngredientSlot slot : firstRecipe.getChemicalIngredients()) {
-                        Chemical chem2 = slot.chemicalVariants().isEmpty() ? null : slot.chemicalVariants().get(0);
-                        if (chem2 != null && Double.isInfinite(chemicalComplexities.getOrDefault(chem2, Double.POSITIVE_INFINITY))) {
-                            ComplexityAnalyzer.LOGGER.warn("      BLOCKED by chemical: {} (infinite)", chem2.getRegistryName());
-                        }
-                    }
-                }
-            }
-            ComplexityAnalyzer.LOGGER.warn("   This indicates truly unavailable resources (no base source + no recipes)");
-        }
-        if (infiniteFluids > 0) ComplexityAnalyzer.LOGGER.warn("⚠️  {} fluids have infinite complexity (check recipes)", infiniteFluids);
     }
 
-    private void diagnoseInfiniteChemicals() {
-        // ... (код диагностики, который мы уже добавили)
-    }
-    private void diagnoseInfiniteItems() {
-        // ... (код диагностики, который мы уже добавили)
-    }
 
     private static class DependencyGraph {
         private final Map<Item, Set<Item>> itemDependents = new HashMap<>();
@@ -595,28 +431,51 @@ public class EnhancedIterativeSolver {
         }
         Set<Item> getItemDependents(Item item) { return itemDependents.getOrDefault(item, Collections.emptySet()); }
     }
+
     private static class ComplexityCache {
         private final Map<RecipeNode, RecipeCostCache> recipeCosts = new ConcurrentHashMap<>();
         private int invalidationCount = 0;
-        RecipeCostCache getRecipeCost(RecipeNode recipe) { return recipeCosts.get(recipe); }
-        void putRecipeCost(RecipeNode recipe, RecipeCostCache cache) { recipeCosts.put(recipe, cache); }
-        void invalidateItem(Item item) { int removed = recipeCosts.size(); recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnItem(item) || e.getKey().getIngredients().stream().anyMatch(s -> s.getVariants().contains(item))); invalidationCount += removed - recipeCosts.size(); }
-        void invalidateFluid(Fluid fluid) { int removed = recipeCosts.size(); recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnFluid(fluid) || e.getKey().getFluidIngredients().stream().anyMatch(s -> s.fluidVariants().contains(fluid))); invalidationCount += removed - recipeCosts.size(); }
-        void invalidateChemical(Chemical chemical) { int removed = recipeCosts.size(); recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnChemical(chemical) || e.getKey().getChemicalIngredients().stream().anyMatch(s -> s.chemicalVariants().contains(chemical))); invalidationCount += removed - recipeCosts.size(); }
-        void clear() { recipeCosts.clear(); }
-        int getInvalidationCount() { return invalidationCount; }
+
+        RecipeCostCache getRecipeCost(RecipeNode recipe) {
+            return recipeCosts.get(recipe);
+        }
+
+        void putRecipeCost(RecipeNode recipe, RecipeCostCache cache) {
+            recipeCosts.put(recipe, cache);
+        }
+
+        void invalidateItem(Item item) {
+            int removed = recipeCosts.size();
+            recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnItem(item) || e.getKey().getIngredients().stream().anyMatch(s -> s.getVariants().contains(item)));
+            invalidationCount += removed - recipeCosts.size();
+        }
+
+        void invalidateFluid(Fluid fluid) { int removed = recipeCosts.size();
+            recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnFluid(fluid) || e.getKey().getFluidIngredients().stream().anyMatch(s -> s.fluidVariants().contains(fluid)));
+            invalidationCount += removed - recipeCosts.size();
+        }
+
+        void clear() {
+            recipeCosts.clear();
+        }
+
+        int getInvalidationCount() {
+            return invalidationCount;
+        }
     }
     private static class RecipeCostCache {
         final double cost;
         final Map<Item, Double> usedItems;
         final Map<Fluid, Double> usedFluids;
-        final Map<Chemical, Double> usedChemicals;
-        RecipeCostCache(double cost, Map<Item, Double> usedItems, Map<Fluid, Double> usedFluids, Map<Chemical, Double> usedChemicals) {
-            this.cost = cost; this.usedItems = new HashMap<>(usedItems); this.usedFluids = new HashMap<>(usedFluids); this.usedChemicals = new HashMap<>(usedChemicals);
+
+        RecipeCostCache(double cost, Map<Item, Double> usedItems, Map<Fluid, Double> usedFluids) {
+            this.cost = cost; this.usedItems = new HashMap<>(usedItems); this.usedFluids = new HashMap<>(usedFluids);
         }
-        boolean isValid(Map<Item, Double> currentItems, Map<Fluid, Double> currentFluids, Map<Chemical, Double> currentChemicals) {
-            return isValidMap(usedItems, currentItems) && isValidMap(usedFluids, currentFluids) && isValidMap(usedChemicals, currentChemicals);
+
+        boolean isValid(Map<Item, Double> currentItems, Map<Fluid, Double> currentFluids) {
+            return isValidMap(usedItems, currentItems) && isValidMap(usedFluids, currentFluids);
         }
+
         private <T> boolean isValidMap(Map<T, Double> cached, Map<T, Double> current) {
             for (Map.Entry<T, Double> entry : cached.entrySet()) {
                 Double currentValue = current.get(entry.getKey());
@@ -624,9 +483,14 @@ public class EnhancedIterativeSolver {
             }
             return true;
         }
-        boolean dependsOnItem(Item item) { return usedItems.containsKey(item); }
-        boolean dependsOnFluid(Fluid fluid) { return usedFluids.containsKey(fluid); }
-        boolean dependsOnChemical(Chemical chemical) { return usedChemicals.containsKey(chemical); }
+
+        boolean dependsOnItem(Item item) {
+            return usedItems.containsKey(item);
+        }
+
+        boolean dependsOnFluid(Fluid fluid) {
+            return usedFluids.containsKey(fluid);
+        }
     }
     private record ComplexityResult(double complexity, RecipeNode recipe) {}
 }

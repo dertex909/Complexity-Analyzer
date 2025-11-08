@@ -9,8 +9,6 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.graph.Chemical;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -27,7 +25,6 @@ public class AdaptiveRecipeConverter {
 
     private static final Map<Class<?>, RecipeAdapter> LEARNED_ADAPTERS = new ConcurrentHashMap<>();
     private static final int MAX_RECURSION_DEPTH = 5;
-    private static final boolean VERBOSE_DEBUG = false;
 
     private static final List<String> OUTPUT_KEYWORDS = List.of(
             "output", "result", "product", "produce", "yield", "generate", "reward", "primary", "secondary", "byproduct"
@@ -37,41 +34,26 @@ public class AdaptiveRecipeConverter {
     );
 
     public static RecipeNode convertRecipe(net.minecraft.world.item.crafting.Recipe<?> recipe, Level level) {
-        // Шаг 1: Извлекаем все возможные выходы.
         List<ItemStack> itemOutputs = extractOutputs(recipe, level);
         List<FluidStack> fluidOutputs = extractFluidOutputs(recipe, level);
-        List<ChemicalStack> chemicalOutputs = extractChemicalOutputs(recipe, level);
 
         if (itemOutputs.isEmpty()) {
             itemOutputs = extractMekanismItemOutputs(recipe);
         }
 
-        if (itemOutputs.isEmpty() && (!fluidOutputs.isEmpty() || !chemicalOutputs.isEmpty())) {
-            String recipeClassName = recipe.getClass().getName();
-            if (recipeClassName.startsWith("mekanism")) {
-                ComplexityAnalyzer.LOGGER.debug("[JEI] Mekanism recipe {} has no item outputs (fluids: {}, chemicals: {})",
-                        recipeClassName, fluidOutputs.size(), chemicalOutputs.size());
-            }
-        }
-
-        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) {
-            if (VERBOSE_DEBUG) ComplexityAnalyzer.LOGGER.debug("Recipe has no outputs, skipping recipe of type: {}", recipe.getType());
+        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty()) {
             return null;
         }
 
-        // Шаг 2: Извлекаем все возможные входы.
         List<List<ItemStack>> itemInputs = extractInputs(recipe, level);
         List<List<FluidStack>> fluidInputs = extractFluidInputs(recipe, level);
-        List<List<ChemicalStack>> chemicalInputs = extractChemicalInputs(recipe, level);
 
-        if (itemInputs.isEmpty() && fluidInputs.isEmpty() && chemicalInputs.isEmpty()) {
-            if (VERBOSE_DEBUG) ComplexityAnalyzer.LOGGER.debug("Recipe has no inputs, skipping recipe of type: {}", recipe.getType());
+        if (itemInputs.isEmpty() && fluidInputs.isEmpty()) {
             return null;
         }
 
         RecipeType<?> recipeType = recipe.getType();
 
-        // Шаг 3: Создаем строитель узла RecipeNode.
         RecipeNode.Builder builder;
         Item resultItem;
 
@@ -81,31 +63,45 @@ public class AdaptiveRecipeConverter {
         } else {
             resultItem = Items.BARRIER;
             builder = new RecipeNode.Builder(resultItem).isPlaceholder(true);
-            if (!chemicalOutputs.isEmpty()) builder.placeholderId(chemicalOutputs.getFirst().getChemical().getFullId());
-            else if (!fluidOutputs.isEmpty()) builder.placeholderId(BuiltInRegistries.FLUID.getKey(fluidOutputs.getFirst().getFluid()).toString());
+            builder.placeholderId(BuiltInRegistries.FLUID.getKey(fluidOutputs.getFirst().getFluid()).toString());
         }
 
-        builder.itemOutputs(itemOutputs).fluidOutputs(fluidOutputs).chemicalOutputs(chemicalOutputs);
+        builder.itemOutputs(itemOutputs)
+                .fluidOutputs(fluidOutputs);
 
-        // Шаг 4: Определяем категорию рецепта.
-        List<Ingredient> ingredients = itemInputs.stream().filter(l -> !l.isEmpty()).map(l -> Ingredient.of(l.toArray(new ItemStack[0]))).toList();
+        // Шаг 4: Определяем категорию рецепта
+        List<Ingredient> ingredients = itemInputs.stream()
+                .filter(l -> !l.isEmpty())
+                .map(l -> Ingredient.of(l.toArray(new ItemStack[0])))
+                .toList();
         RecipeCategory category = org.complexityanalyzer.graph.GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 
         builder.recipeType(recipeType).category(category);
 
-        // Шаг 5: Добавляем все найденные ингредиенты.
-        itemInputs.forEach(group -> { if (!group.isEmpty()) builder.addIngredient(group.stream().map(ItemStack::getItem).distinct().toList(), group.getFirst().getCount()); });
-        fluidInputs.forEach(group -> { if (!group.isEmpty()) builder.addFluidIngredient(group.stream().map(FluidStack::getFluid).distinct().toList(), group.getFirst().getAmount()); });
-        chemicalInputs.forEach(group -> { if (!group.isEmpty()) builder.addChemicalIngredient(group.stream().map(ChemicalStack::getChemical).distinct().toList(), group.getFirst().getAmount()); });
+        // Шаг 5: Добавляем все найденные ингредиенты
+        itemInputs.forEach(group -> {
+            if (!group.isEmpty()) {
+                builder.addIngredient(
+                        group.stream().map(ItemStack::getItem).distinct().toList(),
+                        group.getFirst().getCount()
+                );
+            }
+        });
+
+        fluidInputs.forEach(group -> {
+            if (!group.isEmpty()) {
+                builder.addFluidIngredient(
+                        group.stream().map(FluidStack::getFluid).distinct().toList(),
+                        group.getFirst().getAmount()
+                );
+            }
+        });
 
         RecipeNode node = builder.build();
 
-        if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty() && node.getChemicalIngredients().isEmpty()) return null;
-
-        if (VERBOSE_DEBUG && (node.hasFluidIngredients() || node.hasChemicalIngredients())) {
-            String name = node.isPlaceholder() ? node.getPlaceholderId() : BuiltInRegistries.ITEM.getKey(resultItem).toString();
-            ComplexityAnalyzer.LOGGER.debug("Converted recipe for {}: {} items, {} fluids, {} chemicals.", name, node.getIngredientSlotCount(), node.getFluidIngredientSlotCount(), node.getChemicalIngredientSlotCount());
+        if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty()) {
+            return null;
         }
 
         return node;
@@ -132,10 +128,10 @@ public class AdaptiveRecipeConverter {
 
     public static List<ItemStack> extractOutputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, true, level);
-        if (adapter.outputAccessor == null) return new ArrayList<>();
+        RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.ITEM, level);
+        if (adapter.itemOutputAccessor == null) return new ArrayList<>();
         try {
-            Object result = adapter.outputAccessor.extract(actualRecipe, level);
+            Object result = adapter.itemOutputAccessor.extract(actualRecipe, level);
             return deepFindItemStacks(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -144,10 +140,10 @@ public class AdaptiveRecipeConverter {
 
     public static List<FluidStack> extractFluidOutputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, true, level);
-        if (adapter.outputAccessor == null) return new ArrayList<>();
+        RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.FLUID, level);
+        if (adapter.fluidOutputAccessor == null) return new ArrayList<>();
         try {
-            Object result = adapter.outputAccessor.extract(actualRecipe, level);
+            Object result = adapter.fluidOutputAccessor.extract(actualRecipe, level);
             return deepFindFluidStacks(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -156,10 +152,10 @@ public class AdaptiveRecipeConverter {
 
     public static List<List<ItemStack>> extractInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, false, level);
-        if (adapter.inputAccessor == null) return new ArrayList<>();
+        RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.ITEM, level);
+        if (adapter.itemInputAccessor == null) return new ArrayList<>();
         try {
-            Object result = adapter.inputAccessor.extract(actualRecipe, level);
+            Object result = adapter.itemInputAccessor.extract(actualRecipe, level);
             return deepFindItemStackLists(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
@@ -168,54 +164,59 @@ public class AdaptiveRecipeConverter {
 
     public static List<List<FluidStack>> extractFluidInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, false, level);
-        if (adapter.inputAccessor == null) return new ArrayList<>();
+        RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.FLUID, level);
+        if (adapter.fluidInputAccessor == null) return new ArrayList<>();
         try {
-            Object result = adapter.inputAccessor.extract(actualRecipe, level);
+            Object result = adapter.fluidInputAccessor.extract(actualRecipe, level);
             return deepFindFluidStackLists(result, 0);
         } catch (Exception e) {
             return new ArrayList<>();
         }
     }
 
-    public static List<ChemicalStack> extractChemicalOutputs(Object recipe, Level level) {
-        Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, true, level);
-        if (adapter.outputAccessor == null) return new ArrayList<>();
-        try {
-            Object result = adapter.outputAccessor.extract(actualRecipe, level);
-            return deepFindChemicalStacks(result, 0);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-
-    public static List<List<ChemicalStack>> extractChemicalInputs(Object recipe, Level level) {
-        Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, false, level);
-        if (adapter.inputAccessor == null) return new ArrayList<>();
-        try {
-            Object result = adapter.inputAccessor.extract(actualRecipe, level);
-            return deepFindChemicalStackLists(result, 0);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-
-    private static RecipeAdapter getAdapter(Object recipe, boolean isOutput, Level level) {
+    private static RecipeAdapter getAdapter(Object recipe, boolean isOutput, ResourceType resourceType, Level level) {
         Class<?> recipeClass = recipe.getClass();
-        RecipeAdapter adapter = LEARNED_ADAPTERS.computeIfAbsent(recipeClass, clazz -> new RecipeAdapter(null, null));
+        RecipeAdapter adapter = LEARNED_ADAPTERS.computeIfAbsent(recipeClass,
+                clazz -> new RecipeAdapter(null, null, null, null));
 
-        if (isOutput && adapter.outputAccessor == null) {
-            Accessor accessor = learnAccessor(recipe, true, level);
-            adapter = new RecipeAdapter(accessor, adapter.inputAccessor);
-            LEARNED_ADAPTERS.put(recipeClass, adapter);
-        } else if (!isOutput && adapter.inputAccessor == null) {
-            Accessor accessor = learnAccessor(recipe, false, level);
-            adapter = new RecipeAdapter(adapter.outputAccessor, accessor);
-            LEARNED_ADAPTERS.put(recipeClass, adapter);
+        if (isOutput) {
+            Accessor existingAccessor = switch (resourceType) {
+                case ITEM -> adapter.itemOutputAccessor;
+                case FLUID -> adapter.fluidOutputAccessor;
+            };
+
+            if (existingAccessor == null) {
+                Accessor accessor = learnAccessor(recipe, true, resourceType, level);
+                adapter = switch (resourceType) {
+                    case ITEM -> new RecipeAdapter(accessor, adapter.fluidOutputAccessor,
+                            adapter.itemInputAccessor, adapter.fluidInputAccessor);
+                    case FLUID -> new RecipeAdapter(adapter.itemOutputAccessor, accessor,
+                            adapter.itemInputAccessor, adapter.fluidInputAccessor);
+                };
+                LEARNED_ADAPTERS.put(recipeClass, adapter);
+            }
+        } else {
+            Accessor existingAccessor = switch (resourceType) {
+                case ITEM -> adapter.itemInputAccessor;
+                case FLUID -> adapter.fluidInputAccessor;
+            };
+
+            if (existingAccessor == null) {
+                Accessor accessor = learnAccessor(recipe, false, resourceType, level);
+                adapter = switch (resourceType) {
+                    case ITEM -> new RecipeAdapter(adapter.itemOutputAccessor, adapter.fluidOutputAccessor,
+                            accessor, adapter.fluidInputAccessor);
+                    case FLUID -> new RecipeAdapter(adapter.itemOutputAccessor, adapter.fluidOutputAccessor,
+                            adapter.itemInputAccessor, accessor);
+                };
+                LEARNED_ADAPTERS.put(recipeClass, adapter);
+            }
         }
         return adapter;
+    }
+
+    enum ResourceType {
+        ITEM, FLUID
     }
 
     private static Object invokeMethod(Method method, Object target, Level level) throws Exception {
@@ -226,13 +227,13 @@ public class AdaptiveRecipeConverter {
         return method.invoke(target, args);
     }
 
-    private static Accessor learnAccessor(Object recipe, boolean isOutput, Level level) {
-        Method method = learnMethod(recipe, isOutput, level);
+    private static Accessor learnAccessor(Object recipe, boolean isOutput, ResourceType resourceType, Level level) {
+        Method method = learnMethod(recipe, isOutput, resourceType, level);
         if (method != null) {
             return new MethodAccessor(method);
         }
 
-        Field field = learnField(recipe, isOutput);
+        Field field = learnField(recipe, isOutput, resourceType);
         if (field != null) {
             return new FieldAccessor(field);
         }
@@ -243,11 +244,16 @@ public class AdaptiveRecipeConverter {
     private static RecipeType<?> extractRecipeTypeFromAccessors(Object actual) {
         RecipeAdapter adapter = LEARNED_ADAPTERS.get(actual.getClass());
         if (adapter != null) {
-            RecipeType<?> fromOutput = tryResolveType(adapter.outputAccessor, actual);
-            if (fromOutput != null) {
-                return fromOutput;
-            }
-            return tryResolveType(adapter.inputAccessor, actual);
+            RecipeType<?> type = tryResolveType(adapter.itemOutputAccessor, actual);
+            if (type != null) return type;
+
+            type = tryResolveType(adapter.fluidOutputAccessor, actual);
+            if (type != null) return type;
+
+            type = tryResolveType(adapter.itemInputAccessor, actual);
+            if (type != null) return type;
+
+            return tryResolveType(adapter.fluidInputAccessor, actual);
         }
         return null;
     }
@@ -295,68 +301,107 @@ public class AdaptiveRecipeConverter {
         return obj;
     }
 
-    private static Method learnMethod(Object recipe, boolean isOutput, Level level) {
-        String[] candidateMethods = isOutput
-                ? new String[]{
-                "getLeftGasOutput", "getRightGasOutput", "getLeftOutput", "getRightOutput", "getLeftGas", "getRightGas",
-                "getGasOutput", "getGasOutputs", "getChemicalOutput", "getChemicalOutputs", "gasOutput", "gasOutputs",
-                "chemicalOutput", "chemicalOutputs", "getInfusionOutput", "getInfusionOutputs", "getPigmentOutput", "getPigmentOutputs",
-                "getSlurryOutput", "getSlurryOutputs", "fetchChemicalOutput", "retrieveChemicalOutput", "outputGas", "outputChemical",
-                "outputsGas", "outputsChemical", "resultChemical", "producedGas", "producedChemical",
-                "getFluidOutput", "getFluidOutputs", "outputFluid", "outputFluids", "getOutputFluids", "getFluidResult",
-                "getFluidResults", "fetchFluidOutput", "retrieveFluidOutput", "fluidOutput", "fluidOutputs", "producedFluid",
-                "producedFluids", "resultFluid", "outputsFluid", "getOutputFluid", "getOutputFluids", "outputFluid", "outputFluids",
-                "getResultItem", "getResultItems", "getItemOutput",
-                "getItemOutputs", "itemOutput", "itemOutputs", "stackOutput", "stackOutputs", "getStack", "getStacks",
-                "outputItem", "outputItems", "resultStack", "resultStacks", "producedItem", "producedItems",
-                "getOutputStack", "getOutput", "getOutputs", "getResult", "getResults", "getProduct", "getProducts",
-                "output", "outputs", "result", "results", "product", "products", "fetchOutput", "fetchOutputs",
-                "retrieveOutput", "retrieveOutputs", "produce", "produces", "produced", "getProduce", "create", "creates",
-                "getCreate", "make", "makes", "getMake", "yield", "getYield", "generate", "generated", "getGenerate",
-                "getProcessingOutput", "getRecipeOutput", "getMainOutput", "getSecondaryOutput", "getBonusOutput",
-                "getPrimaryOutput", "getByproduct", "getByproducts", "getResultDefinition", "getOutputDefinition",
-                "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer", "getOutputContents",
-                "getOutputChemical", "getOutputChemicals", "getOutputGas", "getOutputGases"
+    private static String[] getCandidateMethods(boolean isOutput, ResourceType resourceType) {
+        if (isOutput) {
+            return new String[]{
+                    "getLeftGasOutput", "getRightGasOutput", "getLeftOutput", "getRightOutput", "getLeftGas", "getRightGas",
+                    "getGasOutput", "getGasOutputs", "getChemicalOutput", "getChemicalOutputs", "gasOutput", "gasOutputs",
+                    "chemicalOutput", "chemicalOutputs", "getInfusionOutput", "getInfusionOutputs", "getPigmentOutput", "getPigmentOutputs",
+                    "getSlurryOutput", "getSlurryOutputs", "fetchChemicalOutput", "retrieveChemicalOutput", "outputGas", "outputChemical",
+                    "outputsGas", "outputsChemical", "resultChemical", "producedGas", "producedChemical",
+                    "getFluidOutput", "getFluidOutputs", "outputFluid", "outputFluids", "getOutputFluids", "getFluidResult",
+                    "getFluidResults", "fetchFluidOutput", "retrieveFluidOutput", "fluidOutput", "fluidOutputs", "producedFluid",
+                    "producedFluids", "resultFluid", "outputsFluid", "getOutputFluid", "getOutputFluids", "outputFluid", "outputFluids",
+                    "getResultItem", "getResultItems", "getItemOutput",
+                    "getItemOutputs", "itemOutput", "itemOutputs", "stackOutput", "stackOutputs", "getStack", "getStacks",
+                    "outputItem", "outputItems", "resultStack", "resultStacks", "producedItem", "producedItems",
+                    "getOutputStack", "getOutput", "getOutputs", "getResult", "getResults", "getProduct", "getProducts",
+                    "output", "outputs", "result", "results", "product", "products", "fetchOutput", "fetchOutputs",
+                    "retrieveOutput", "retrieveOutputs", "produce", "produces", "produced", "getProduce", "create", "creates",
+                    "getCreate", "make", "makes", "getMake", "yield", "getYield", "generate", "generated", "getGenerate",
+                    "getProcessingOutput", "getRecipeOutput", "getMainOutput", "getSecondaryOutput", "getBonusOutput",
+                    "getPrimaryOutput", "getByproduct", "getByproducts", "getResultDefinition", "getOutputDefinition",
+                    "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer", "getOutputContents",
+                    "getOutputChemical", "getOutputChemicals", "getOutputGas", "getOutputGases"
+            };
         }
-                : new String[]{
-                "getLeftGasInput", "getRightGasInput", "getGasInput", "getGasInputs", "getChemicalInput", "getChemicalInputs",
-                "getInputGas", "getInputGases", "gasInput", "gasInputs", "chemicalInput", "chemicalInputs", "getInputChemical", "inputChemical",
-                "getInfusionInput", "getInfusionInputs",
-                "getPigmentInput", "getPigmentInputs", "getSlurryInput", "getSlurryInputs", "fetchChemicalInput", "retrieveChemicalInput",
-                "inputGas", "inputChemical", "inputsGas", "inputsChemical", "ingredientGas", "ingredientChemical",
-                "getFluidInput", "getFluidInputs", "getInputFluid", "getInputFluids", "inputFluid", "inputFluids", "fluidInput", "fluidInputs", "getFluidIngredient",
-                "getFluidIngredients", "fetchFluidInput", "retrieveFluidInput", "fluidInput", "fluidInputs", "ingredientFluid",
-                "ingredientFluids", "inputsFluid", "getInputItem", "getInputItems", "getItemInput", "getItemInputs",
-                "getInputItem", "getInputItems", "itemInput", "itemInputs", "inputItem", "inputItems", "stackInput", "stackInputs", "getInputStack", "getInputStacks",
-                "inputItems", "ingredientItem", "ingredientItems", "getIngredientItem", "getIngredientItems", "getIngredientStack",
-                "getInput", "getInputs", "getIngredient", "getIngredients", "input", "inputs", "ingredient", "ingredients",
-                "getInputSolid", "inputSolid", "solidInput",
-                "fetchInput", "fetchInputs", "retrieveInput", "retrieveInputs", "consume", "consumes", "consumed", "getConsume",
-                "require", "requires", "required", "getRequire", "need", "needs", "needed", "getNeed", "use", "uses",
-                "used", "getUse", "supply", "supplies", "getSupply", "getSupplies", "source", "sources", "getSource",
-                "getSources", "getProcessingInput", "getRecipeInput", "getMainInput", "getSecondaryInput", "getCatalystInput",
-                "getInputDefinition", "getIngredientDefinition", "getInputData", "getIngredientData", "getInputSlot",
-                "getInputSlots", "getIngredientSlot", "getIngredientSlots", "getInputContainer", "getInputContents",
-                "getInputPair"
+
+        return switch (resourceType) {
+            case ITEM -> new String[]{
+                    "getInputItem", "getInputItems", "getItemInput", "getItemInputs",
+                    "inputItem", "inputItems", "itemInput", "itemInputs", "stackInput", "stackInputs",
+                    "getInputStack", "getInputStacks", "ingredientItem", "ingredientItems",
+                    "getIngredientItem", "getIngredientItems", "getIngredientStack",
+                    "getInput", "getInputs", "getIngredient", "getIngredients", "input", "inputs",
+                    "ingredient", "ingredients", "getInputSolid", "inputSolid", "solidInput"
+            };
+            case FLUID -> new String[]{
+                    "getFluidInput", "getFluidInputs", "getInputFluid", "getInputFluids",
+                    "inputFluid", "inputFluids", "fluidInput", "fluidInputs",
+                    "getFluidIngredient", "getFluidIngredients", "fetchFluidInput",
+                    "retrieveFluidInput", "ingredientFluid", "ingredientFluids",
+                    "getLeftGasInput", "getRightGasInput", "getGasInput", "getGasInputs",
+                    "getChemicalInput", "getChemicalInputs", "getInputGas", "getInputGases",
+                    "gasInput", "gasInputs", "chemicalInput", "chemicalInputs",
+                    "getInputChemical", "inputChemical", "getInfusionInput", "getInfusionInputs",
+                    "getPigmentInput", "getPigmentInputs", "getSlurryInput", "getSlurryInputs",
+                    "fetchChemicalInput", "retrieveChemicalInput", "inputGas", "inputsGas",
+                    "inputsChemical", "ingredientGas", "ingredientChemical"
+            };
         };
+    }
+
+    private static String[] getWildcards(boolean isOutput, ResourceType resourceType) {
+        if (isOutput) {
+            return new String[]{"gas", "chemical", "infusion", "pigment", "slurry", "fluid", "item", "stack", "output", "result", "produce", "craft", "create", "yield", "generate"};
+        }
+
+        return switch (resourceType) {
+            case ITEM -> new String[]{"item", "stack", "input", "ingredient", "solid"};
+            case FLUID -> new String[]{"fluid", "liquid", "input", "ingredient", "gas", "chemical", "infusion", "pigment", "slurry", "input", "ingredient"};
+        };
+    }
+
+    private static String[] getCandidateFields(boolean isOutput, ResourceType resourceType) {
+        if (isOutput) {
+            return new String[]{
+                    "leftGasOutput", "rightGasOutput", "leftOutput", "rightOutput", "gasOutput", "chemicalOutput",
+                    "infusionOutput", "pigmentOutput", "slurryOutput", "fluidOutput", "result", "results", "output", "outputs",
+                    "product", "products", "mainOutput", "secondaryOutput", "bonusOutput", "primaryOutput", "byproduct", "outputDefinition"
+            };
+        }
+
+        return switch (resourceType) {
+            case ITEM -> new String[]{
+                    "inputs", "input", "ingredient", "ingredients", "itemInput", "itemInputs",
+                    "stackInput", "solidInput", "inputDefinition"
+            };
+            case FLUID -> new String[]{
+                    "fluidInput", "fluidInputs", "inputFluid", "inputFluids", "liquidInput",
+                    "leftGasInput", "rightGasInput", "gasInput", "chemicalInput",
+                    "infusionInput", "pigmentInput", "slurryInput", "gasInputs", "chemicalInputs"
+            };
+        };
+    }
+
+    private static Method learnMethod(Object recipe, boolean isOutput, ResourceType resourceType, Level level) {
+        String[] candidateMethods = getCandidateMethods(isOutput, resourceType);
 
         // Фаза 1: Точное совпадение имени
         for (String methodName : candidateMethods) {
-            Method method = findAndValidateMethod(recipe, methodName, isOutput, level);
+            Method method = findAndValidateMethod(recipe, methodName, isOutput, resourceType, level);
             if (method != null) return method;
         }
 
         // Фаза 2: Wildcard поиск
-        String[] wildcards = isOutput
-                ? new String[]{"gas", "chemical", "infusion", "pigment", "slurry", "fluid", "item", "stack", "output", "result", "produce", "craft", "create", "yield", "generate"}
-                : new String[]{"gas", "chemical", "infusion", "pigment", "slurry", "fluid", "item", "stack", "input", "ingredient", "require", "consume", "use", "need", "supply", "source"};
+        String[] wildcards = getWildcards(isOutput, resourceType);
 
         for (String wildcard : wildcards) {
             for (Method method : recipe.getClass().getMethods()) {
                 if (method.getParameterCount() > 1 || method.getName().equals("getClass") || method.getName().equals("toString")) continue;
-                if (Arrays.stream(candidateMethods).anyMatch(m -> m.equals(method.getName()))) continue; // Already checked
+                if (Arrays.stream(candidateMethods).anyMatch(m -> m.equals(method.getName()))) continue;
                 if (method.getName().toLowerCase().contains(wildcard)) {
-                    Method validated = findAndValidateMethod(recipe, method.getName(), isOutput, level);
+                    Method validated = findAndValidateMethod(recipe, method.getName(), isOutput, resourceType, level);
                     if (validated != null) return validated;
                 }
             }
@@ -364,23 +409,13 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
-    private static Field learnField(Object recipe, boolean isOutput) {
-        String[] candidateNames = isOutput
-                ? new String[]{
-                "leftGasOutput", "rightGasOutput", "leftOutput", "rightOutput", "gasOutput", "chemicalOutput",
-                "infusionOutput", "pigmentOutput", "slurryOutput", "fluidOutput", "result", "results", "output", "outputs",
-                "product", "products", "mainOutput", "secondaryOutput", "bonusOutput", "primaryOutput", "byproduct", "outputDefinition"
-        }
-                : new String[]{
-                "leftGasInput", "rightGasInput", "gasInput", "chemicalInput", "infusionInput", "pigmentInput",
-                "slurryInput", "fluidInput", "inputs", "input", "ingredient", "ingredients", "required", "requirement",
-                "consume", "consumption", "use", "usage", "need", "supply", "source", "catalyst", "inputDefinition"
-        };
+    private static Field learnField(Object recipe, boolean isOutput, ResourceType resourceType) {
+        String[] candidateNames = getCandidateFields(isOutput, resourceType);
 
         for (String name : candidateNames) {
             Field field = findAnyField(recipe.getClass(), name);
             if (field == null) continue;
-            if (validateField(field, recipe, isOutput)) {
+            if (validateField(field, recipe, isOutput, resourceType)) {
                 return field;
             }
         }
@@ -390,7 +425,7 @@ public class AdaptiveRecipeConverter {
             if (Modifier.isStatic(field.getModifiers())) continue;
             String lower = field.getName().toLowerCase(Locale.ROOT);
             if (keywords.stream().noneMatch(lower::contains)) continue;
-            if (validateField(field, recipe, isOutput)) {
+            if (validateField(field, recipe, isOutput, resourceType)) {
                 return field;
             }
         }
@@ -398,50 +433,53 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
-    private static Method findAndValidateMethod(Object recipe, String methodName, boolean isOutput, Level level) {
+    private static Method findAndValidateMethod(Object recipe, String methodName, boolean isOutput, ResourceType resourceType, Level level) {
         try {
             Method method = findAnyMethod(recipe.getClass(), methodName);
             if (method == null) return null;
             method.setAccessible(true);
-            if (validateMethod(method, recipe, isOutput, level)) return method;
+            if (validateMethod(method, recipe, isOutput, resourceType, level)) return method;
         } catch (Exception ignored) {}
         return null;
     }
 
-    private static boolean validateMethod(Method method, Object recipe, boolean isOutput, Level level) {
+    private static boolean validateMethod(Method method, Object recipe, boolean isOutput, ResourceType resourceType, Level level) {
         try {
             Object result = invokeMethod(method, recipe, level);
-            return validateResult(result, isOutput);
+            return validateResult(result, isOutput, resourceType);
         } catch (Exception e) {
             return false;
         }
     }
 
-    private static boolean validateField(Field field, Object recipe, boolean isOutput) {
+    private static boolean validateField(Field field, Object recipe, boolean isOutput, ResourceType resourceType) {
         try {
             field.setAccessible(true);
             Object value = field.get(recipe);
-            return validateResult(value, isOutput);
+            return validateResult(value, isOutput, resourceType);
         } catch (Exception e) {
             return false;
         }
     }
 
-    private static boolean validateResult(Object result, boolean isOutput) {
+    private static boolean validateResult(Object result, boolean isOutput, ResourceType resourceType) {
         Object resolved = resolveValue(result);
         if (resolved == null) {
             return false;
         }
         if (resolved != result) {
-            return validateResult(resolved, isOutput);
+            return validateResult(resolved, isOutput, resourceType);
         }
-        return isOutput
-                ? (!deepFindChemicalStacks(resolved, 0).isEmpty()
-                || !deepFindFluidStacks(resolved, 0).isEmpty()
-                || !deepFindItemStacks(resolved, 0).isEmpty())
-                : (!deepFindChemicalStackLists(resolved, 0).isEmpty()
-                || !deepFindFluidStackLists(resolved, 0).isEmpty()
-                || !deepFindItemStackLists(resolved, 0).isEmpty());
+
+        if (isOutput) {
+            return resourceType == ResourceType.ITEM ?
+                    !deepFindItemStacks(resolved, 0).isEmpty() :
+                    !deepFindFluidStacks(resolved, 0).isEmpty();
+        } else {
+            return resourceType == ResourceType.ITEM ?
+                    !deepFindItemStackLists(resolved, 0).isEmpty() :
+                    !deepFindFluidStackLists(resolved, 0).isEmpty();
+        }
     }
 
     private static List<ItemStack> deepFindItemStacks(Object obj, int depth) {
@@ -502,8 +540,9 @@ public class AdaptiveRecipeConverter {
 
     private static List<FluidStack> deepFindFluidStacks(Object obj, int depth) {
         return findRecursive(obj, depth, (o, d) -> {
-            if (o instanceof FluidStack stack && !stack.isEmpty() && IngredientTypeDetector.isActualFluid(stack)) return List.of(stack);
-            if (IngredientTypeDetector.isChemicalIngredient(o)) return Collections.emptyList();
+            if (o instanceof FluidStack stack && !stack.isEmpty()) {
+                return List.of(stack);
+            }
             return null;
         });
     }
@@ -583,31 +622,51 @@ public class AdaptiveRecipeConverter {
 
     private static List<List<FluidStack>> deepFindFluidStackLists(Object obj, int depth) {
         if (obj == null || depth > MAX_RECURSION_DEPTH) return new ArrayList<>();
+
         String className = obj.getClass().getName();
+
+        // Mekanism FluidStackIngredient
         if (className.contains("FluidStackIngredient")) {
             try {
                 Object result = obj.getClass().getMethod("getRepresentations").invoke(obj);
                 if (result instanceof List<?> list) {
-                    List<FluidStack> stacks = list.stream().filter(i -> i instanceof FluidStack && !((FluidStack) i).isEmpty() && IngredientTypeDetector.isActualFluid(i)).map(i -> (FluidStack) i).toList();
+                    // ✅ БЕЗ ПРОВЕРКИ isActualFluid - берём ВСЁ!
+                    List<FluidStack> stacks = list.stream()
+                            .filter(i -> i instanceof FluidStack && !((FluidStack) i).isEmpty())
+                            .map(i -> (FluidStack) i)
+                            .toList();
                     return stacks.isEmpty() ? new ArrayList<>() : List.of(stacks);
                 }
             } catch (Exception ignored) {}
         }
+
         if (obj instanceof Collection<?> coll && !coll.isEmpty()) {
             Object first = coll.iterator().next();
+
             if (first instanceof FluidStack) {
-                List<FluidStack> stacks = coll.stream().map(i -> (FluidStack) i).filter(s -> !s.isEmpty()).toList();
+                // ✅ БЕЗ ПРОВЕРКИ - берём всё!
+                List<FluidStack> stacks = coll.stream()
+                        .map(i -> (FluidStack) i)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
                 return stacks.isEmpty() ? new ArrayList<>() : List.of(stacks);
             }
+
             if (first instanceof Collection) {
                 List<List<FluidStack>> result = new ArrayList<>();
-                for (Object inner : coll) result.addAll(deepFindFluidStackLists(inner, depth + 1));
+                for (Object inner : coll) {
+                    result.addAll(deepFindFluidStackLists(inner, depth + 1));
+                }
                 return result;
             }
+
             List<FluidStack> extracted = new ArrayList<>();
-            for (Object item : coll) extracted.addAll(deepFindFluidStacks(item, depth + 1));
+            for (Object item : coll) {
+                extracted.addAll(deepFindFluidStacks(item, depth + 1));
+            }
             if (!extracted.isEmpty()) return List.of(extracted);
         }
+
         if (obj.getClass().isRecord()) {
             List<List<FluidStack>> recordLists = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindFluidStackLists);
             if (!recordLists.isEmpty()) {
@@ -618,6 +677,7 @@ public class AdaptiveRecipeConverter {
                 return List.of(flatStacks);
             }
         }
+
         for (Method method : obj.getClass().getMethods()) {
             if (method.getParameterCount() != 0 || !method.getName().startsWith("get") && !method.getName().startsWith("as")) continue;
             if (method.getName().equals("getClass")) continue;
@@ -627,6 +687,7 @@ public class AdaptiveRecipeConverter {
                 if (!found.isEmpty()) return found;
             } catch (Exception ignored) {}
         }
+
         return new ArrayList<>();
     }
 
@@ -792,19 +853,6 @@ public class AdaptiveRecipeConverter {
         return deepFindItemStacks(obj, depth + 1);
     }
 
-    private static List<ChemicalStack> deepFindChemicalStacks(Object obj, int depth) {
-        return findRecursive(obj, depth, (o, d) -> {
-            if (o instanceof FluidStack fluidStack && !IngredientTypeDetector.isActualFluid(fluidStack)) {
-                ChemicalStack converted = ChemicalStack.fromFluidStack(fluidStack);
-                return converted != null && !converted.isEmpty() ? List.of(converted) : Collections.emptyList();
-            }
-            if (IngredientTypeDetector.isChemicalIngredient(o)) {
-                ChemicalStack stack = ChemicalStack.fromObject(o);
-                return stack != null && !stack.isEmpty() ? List.of(stack) : Collections.emptyList();
-            }
-            return null;
-        });
-    }
 
     private static List<ItemStack> extractMekanismItemOutputs(Object recipe) {
         if (recipe == null) return Collections.emptyList();
@@ -842,98 +890,8 @@ public class AdaptiveRecipeConverter {
         return Collections.emptyList();
     }
 
-    private static List<List<ChemicalStack>> deepFindChemicalStackLists(Object obj, int depth) {
-        if (obj == null || depth > MAX_RECURSION_DEPTH) return new ArrayList<>();
-        String className = obj.getClass().getName();
-        if (className.contains("ChemicalStackIngredient")) {
-            try {
-                Object result = obj.getClass().getMethod("getRepresentations").invoke(obj);
-                if (result instanceof List<?> list) {
-                    List<ChemicalStack> stacks = new ArrayList<>();
-                    for (Object item : list) {
-                        ChemicalStack stack = ChemicalStack.fromObject(item);
-                        if (stack != null && !stack.isEmpty()) stacks.add(stack);
-                    }
-                    return stacks.isEmpty() ? new ArrayList<>() : List.of(stacks);
-                }
-            } catch (Exception ignored) {}
-        }
-        if (obj instanceof Collection<?> coll && !coll.isEmpty()) {
-            Object first = coll.iterator().next();
-            String firstClassName = first.getClass().getName();
-            if (firstClassName.contains("ChemicalStack") || firstClassName.contains("GasStack")) {
-                List<ChemicalStack> stacks = new ArrayList<>();
-                for (Object item : coll) {
-                    ChemicalStack stack = ChemicalStack.fromObject(item);
-                    if (stack != null && !stack.isEmpty()) stacks.add(stack);
-                }
-                return stacks.isEmpty() ? new ArrayList<>() : List.of(stacks);
-            }
-            if (first instanceof Collection) {
-                List<List<ChemicalStack>> result = new ArrayList<>();
-                for (Object inner : coll) result.addAll(deepFindChemicalStackLists(inner, depth + 1));
-                return result;
-            }
-            List<ChemicalStack> extracted = new ArrayList<>();
-            for (Object item : coll) extracted.addAll(deepFindChemicalStacks(item, depth + 1));
-            if (!extracted.isEmpty()) return List.of(extracted);
-        }
-        if (obj.getClass().isRecord()) {
-            List<List<ChemicalStack>> recordLists = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindChemicalStackLists);
-            if (!recordLists.isEmpty()) {
-                return recordLists;
-            }
-            List<ChemicalStack> flatStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindChemicalStacks);
-            if (!flatStacks.isEmpty()) {
-                return List.of(flatStacks);
-            }
-        }
-        for (Method method : obj.getClass().getMethods()) {
-            if (method.getParameterCount() != 0 || !method.getName().startsWith("get") && !method.getName().startsWith("as")) continue;
-            if (method.getName().equals("getClass")) continue;
-            try {
-                method.setAccessible(true);
-                List<List<ChemicalStack>> found = deepFindChemicalStackLists(method.invoke(obj), depth + 1);
-                if (!found.isEmpty()) return found;
-            } catch (Exception ignored) {}
-        }
-        return new ArrayList<>();
-    }
 
-    public static class ChemicalStack {
-        private final Chemical chemical;
-        private final long amount;
 
-        private ChemicalStack(Chemical chemical, long amount) {
-            this.chemical = chemical;
-            this.amount = amount;
-        }
-
-        public static ChemicalStack fromObject(Object obj) {
-            if (obj == null) return null;
-            Chemical chemical = Chemical.fromObject(obj);
-            if (chemical == null) return null;
-            try {
-                Method getAmount = obj.getClass().getMethod("getAmount");
-                long amount = ((Number) getAmount.invoke(obj)).longValue();
-                return new ChemicalStack(chemical, amount);
-            } catch (Exception e) {
-                return new ChemicalStack(chemical, 0);
-            }
-        }
-
-        public static ChemicalStack fromFluidStack(FluidStack fluidStack) {
-            if (fluidStack == null) return null;
-            Chemical chemical = Chemical.fromObject(fluidStack);
-            if (chemical == null) chemical = Chemical.fromFluid(fluidStack.getFluid());
-            return chemical == null ? null : new ChemicalStack(chemical, fluidStack.getAmount());
-        }
-
-        public Chemical getChemical() { return chemical; }
-        public long getAmount() { return amount; }
-        public boolean isEmpty() { return amount <= 0; }
-        @Override public String toString() { return String.format("%s x%d", chemical, amount); }
-    }
 
     private static Method findAnyMethod(Class<?> clazz, String name) {
         for (Method m : clazz.getMethods()) {
@@ -1066,12 +1024,17 @@ public class AdaptiveRecipeConverter {
     }
 
     static class RecipeAdapter {
-        final Accessor outputAccessor;
-        final Accessor inputAccessor;
+        final Accessor itemOutputAccessor;
+        final Accessor fluidOutputAccessor;
+        final Accessor itemInputAccessor;
+        final Accessor fluidInputAccessor;
 
-        RecipeAdapter(Accessor outputAccessor, Accessor inputAccessor) {
-            this.outputAccessor = outputAccessor;
-            this.inputAccessor = inputAccessor;
+        RecipeAdapter(Accessor itemOutputAccessor, Accessor fluidOutputAccessor,
+                      Accessor itemInputAccessor, Accessor fluidInputAccessor) {
+            this.itemOutputAccessor = itemOutputAccessor;
+            this.fluidOutputAccessor = fluidOutputAccessor;
+            this.itemInputAccessor = itemInputAccessor;
+            this.fluidInputAccessor = fluidInputAccessor;
         }
     }
 }

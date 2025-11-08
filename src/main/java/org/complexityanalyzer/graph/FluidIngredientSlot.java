@@ -8,6 +8,6 @@ public record FluidIngredientSlot(List<Fluid> fluidVariants, int amount) {
     public int getAmount() { return amount; }
     
     public net.minecraft.world.level.material.Fluid getPrimaryFluid() {
-        return fluidVariants.isEmpty() ? null : fluidVariants.get(0);
+        return fluidVariants.isEmpty() ? null : fluidVariants.getFirst();
     }
 }

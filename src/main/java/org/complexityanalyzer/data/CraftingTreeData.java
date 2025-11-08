@@ -39,9 +39,7 @@ public class CraftingTreeData {
         BASE_RESOURCE,      // Базовый ресурс
         CYCLE,             // Циклическая зависимость
         MAX_DEPTH_REACHED, // Достигнута максимальная глубина
-        NO_DATA,           // Нет данных
-        FLUID,             // Жидкость
-        CHEMICAL           // Химикат
+        NO_DATA            // Нет данных
     }
 
     private final Item rootItem;
@@ -82,7 +80,6 @@ public class CraftingTreeData {
         private final String machineType;
         private final List<TreeNode> itemChildren;
         private final List<FluidNode> fluidChildren;
-        private final List<ChemicalNode> chemicalChildren;
         private final Map<String, Object> metadata;
 
         private TreeNode(Builder builder) {
@@ -95,7 +92,6 @@ public class CraftingTreeData {
             this.machineType = builder.machineType;
             this.itemChildren = new ArrayList<>(builder.itemChildren);
             this.fluidChildren = new ArrayList<>(builder.fluidChildren);
-            this.chemicalChildren = new ArrayList<>(builder.chemicalChildren);
             this.metadata = new HashMap<>(builder.metadata);
         }
 
@@ -108,7 +104,6 @@ public class CraftingTreeData {
         public String getMachineType() { return machineType; }
         public List<TreeNode> getItemChildren() { return Collections.unmodifiableList(itemChildren); }
         public List<FluidNode> getFluidChildren() { return Collections.unmodifiableList(fluidChildren); }
-        public List<ChemicalNode> getChemicalChildren() { return Collections.unmodifiableList(chemicalChildren); }
         public Map<String, Object> getMetadata() { return Collections.unmodifiableMap(metadata); }
 
         public static Builder builder() {
@@ -125,7 +120,6 @@ public class CraftingTreeData {
             private String machineType;
             private final List<TreeNode> itemChildren = new ArrayList<>();
             private final List<FluidNode> fluidChildren = new ArrayList<>();
-            private final List<ChemicalNode> chemicalChildren = new ArrayList<>();
             private final Map<String, Object> metadata = new HashMap<>();
 
             public Builder type(NodeType type) {
@@ -176,11 +170,6 @@ public class CraftingTreeData {
                 return this;
             }
 
-            public Builder addChemicalChild(ChemicalNode child) {
-                this.chemicalChildren.add(child);
-                return this;
-            }
-
             public Builder addMetadata(String key, Object value) {
                 this.metadata.put(key, value);
                 return this;
@@ -193,38 +182,27 @@ public class CraftingTreeData {
     }
 
     /**
-     * Узел для жидкости
+     * Узел для жидкости (включая химикаты из Mekanism и т.д.)
      */
     public static class FluidNode {
         private final String fluidName;
         private final double amount;
+        private final String fluidType; // "FLUID", "GAS", "SLURRY", etc.
 
-        public FluidNode(String fluidName, double amount) {
+        public FluidNode(String fluidName, double amount, String fluidType) {
             this.fluidName = fluidName;
             this.amount = amount;
+            this.fluidType = fluidType;
+        }
+
+        // Backward compatibility constructor
+        public FluidNode(String fluidName, double amount) {
+            this(fluidName, amount, "FLUID");
         }
 
         public String getFluidName() { return fluidName; }
         public double getAmount() { return amount; }
-    }
-
-    /**
-     * Узел для химиката
-     */
-    public static class ChemicalNode {
-        private final String chemicalName;
-        private final double amount;
-        private final TreeNode subTree;
-
-        public ChemicalNode(String chemicalName, double amount, TreeNode subTree) {
-            this.chemicalName = chemicalName;
-            this.amount = amount;
-            this.subTree = subTree;
-        }
-
-        public String getChemicalName() { return chemicalName; }
-        public double getAmount() { return amount; }
-        public TreeNode getSubTree() { return subTree; }
+        public String getFluidType() { return fluidType; }
     }
 
     /**

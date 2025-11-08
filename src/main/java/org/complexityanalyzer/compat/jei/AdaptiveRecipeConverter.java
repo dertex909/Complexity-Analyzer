@@ -1,10 +1,12 @@
 package org.complexityanalyzer.compat.jei;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -13,6 +15,7 @@ import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -56,6 +59,14 @@ public class AdaptiveRecipeConverter {
             return null;
         }
 
+        RecipeType<?> recipeType = recipe.getType();
+        if (recipeType == null) {
+            if (VERBOSE_DEBUG) {
+                ComplexityAnalyzer.LOGGER.debug("Recipe {} returned null RecipeType, skipping", recipe.getClass().getName());
+            }
+            return null;
+        }
+
         // Шаг 3: Создаем строитель узла RecipeNode.
         RecipeNode.Builder builder;
         Item resultItem;
@@ -77,7 +88,7 @@ public class AdaptiveRecipeConverter {
         RecipeCategory category = org.complexityanalyzer.graph.GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 
-        builder.recipeType(recipe.getType()).category(category);
+        builder.recipeType(recipeType).category(category);
 
         // Шаг 5: Добавляем все найденные ингредиенты.
         itemInputs.forEach(group -> { if (!group.isEmpty()) builder.addIngredient(group.stream().map(ItemStack::getItem).distinct().toList(), group.getFirst().getCount()); });
@@ -109,6 +120,8 @@ public class AdaptiveRecipeConverter {
             try {
                 for (Object item : (Object[]) obj) results.addAll(findRecursive(item, depth + 1, baseCaseEvaluator));
             } catch (ClassCastException ignored) {}
+        } else if (obj.getClass().isRecord()) {
+            results.addAll(collectFromRecord(obj, depth, (value, d) -> findRecursive(value, d, baseCaseEvaluator)));
         }
         return results;
     }
@@ -331,6 +344,12 @@ public class AdaptiveRecipeConverter {
                 return stacks;
             }
         }
+        if (obj.getClass().isRecord()) {
+            List<ItemStack> recordStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindItemStacks);
+            if (!recordStacks.isEmpty()) {
+                return recordStacks;
+            }
+        }
         if (obj instanceof Collection<?> coll) {
             List<ItemStack> result = new ArrayList<>();
             for (Object item : coll) result.addAll(deepFindItemStacks(item, depth + 1));
@@ -387,6 +406,16 @@ public class AdaptiveRecipeConverter {
                     "getOutput", "getOutputs", "getRepresentations", "getDefinition", "getItem", "getResult");
             if (!stacks.isEmpty()) {
                 return List.of(stacks);
+            }
+        }
+        if (obj.getClass().isRecord()) {
+            List<List<ItemStack>> recordStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindItemStackLists);
+            if (!recordStacks.isEmpty()) {
+                return recordStacks;
+            }
+            List<ItemStack> flatStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindItemStacks);
+            if (!flatStacks.isEmpty()) {
+                return List.of(flatStacks);
             }
         }
         if (obj instanceof Collection<?> coll && !coll.isEmpty()) {
@@ -455,6 +484,16 @@ public class AdaptiveRecipeConverter {
             for (Object item : coll) extracted.addAll(deepFindFluidStacks(item, depth + 1));
             if (!extracted.isEmpty()) return List.of(extracted);
         }
+        if (obj.getClass().isRecord()) {
+            List<List<FluidStack>> recordLists = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindFluidStackLists);
+            if (!recordLists.isEmpty()) {
+                return recordLists;
+            }
+            List<FluidStack> flatStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindFluidStacks);
+            if (!flatStacks.isEmpty()) {
+                return List.of(flatStacks);
+            }
+        }
         for (Method method : obj.getClass().getMethods()) {
             if (method.getParameterCount() != 0 || !method.getName().startsWith("get") && !method.getName().startsWith("as")) continue;
             if (method.getName().equals("getClass")) continue;
@@ -465,6 +504,23 @@ public class AdaptiveRecipeConverter {
             } catch (Exception ignored) {}
         }
         return new ArrayList<>();
+    }
+
+    private static <T> List<T> collectFromRecord(Object obj, int depth, BiFunction<Object, Integer, List<T>> extractor) {
+        if (!obj.getClass().isRecord()) return Collections.emptyList();
+        List<T> results = new ArrayList<>();
+        try {
+            for (RecordComponent component : obj.getClass().getRecordComponents()) {
+                Method accessor = component.getAccessor();
+                accessor.setAccessible(true);
+                Object value = accessor.invoke(obj);
+                List<T> nested = extractor.apply(value, depth + 1);
+                if (!nested.isEmpty()) {
+                    results.addAll(nested);
+                }
+            }
+        } catch (Exception ignored) {}
+        return results;
     }
 
     private static List<ItemStack> extractStacksFromProvider(Object provider, int depth, String... methodNames) {
@@ -483,33 +539,92 @@ public class AdaptiveRecipeConverter {
         return Collections.emptyList();
     }
 
+    public static RecipeType<?> extractRecipeType(Object recipe) {
+        if (recipe == null) return null;
+        Object actual = unwrapRecipeHolder(recipe);
+
+        if (actual instanceof net.minecraft.world.item.crafting.Recipe<?> vanillaRecipe) {
+            return vanillaRecipe.getType();
+        }
+
+        String[] candidates = {
+                "getRecipeType", "recipeType", "getType", "type", "getRecipe", "recipe",
+                "getJeiRecipeType", "jeiRecipeType", "getViewerType", "viewerType"
+        };
+
+        for (String methodName : candidates) {
+            try {
+                Method method = findAnyMethod(actual.getClass(), methodName);
+                if (method == null || method.getParameterCount() != 0) continue;
+                method.setAccessible(true);
+                Object value = method.invoke(actual);
+                RecipeType<?> type = coerceRecipeType(value);
+                if (type != null) {
+                    return type;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        return null;
+    }
+
+    private static RecipeType<?> coerceRecipeType(Object value) {
+        if (value instanceof RecipeType<?> recipeType) {
+            return recipeType;
+        }
+        if (value instanceof Optional<?> optional && optional.isPresent()) {
+            return coerceRecipeType(optional.get());
+        }
+        if (value instanceof ResourceLocation rl) {
+            return BuiltInRegistries.RECIPE_TYPE.get(rl);
+        }
+        if (value instanceof String str) {
+            try {
+                ResourceLocation rl = ResourceLocation.parse(str);
+                return BuiltInRegistries.RECIPE_TYPE.get(rl);
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
     private static List<ItemStack> extractItemStacks(Object obj, int depth) {
         if (obj == null || depth > MAX_RECURSION_DEPTH) return Collections.emptyList();
-        if (obj instanceof ItemStack stack) {
-            return stack.isEmpty() ? Collections.emptyList() : List.of(stack);
-        }
-        if (obj instanceof ItemStack[] array) {
-            return Arrays.stream(array)
-                    .filter(item -> item != null && !item.isEmpty())
-                    .toList();
-        }
-        if (obj instanceof Collection<?> coll) {
-            List<ItemStack> stacks = new ArrayList<>();
-            for (Object element : coll) {
-                List<ItemStack> nested = extractItemStacks(element, depth + 1);
-                if (!nested.isEmpty()) stacks.addAll(nested);
+        switch (obj) {
+            case ItemStack stack -> {
+                return stack.isEmpty() ? Collections.emptyList() : List.of(stack);
             }
-            // Mekanism recipe outputs can be wrapped in a MekanismRecipeOutput object
-            if (obj.getClass().getName().contains("MekanismRecipeOutput")) {
-                try {
-                    Method getStacks = obj.getClass().getMethod("getStacks");
-                    Object result = getStacks.invoke(obj);
-                    if (result instanceof ItemStack[] stacksArray) {
-                        stacks.addAll(Arrays.stream(stacksArray).filter(s -> !s.isEmpty()).toList());
+            case ItemStack[] array -> {
+                return Arrays.stream(array)
+                        .filter(item -> item != null && !item.isEmpty())
+                        .toList();
+            }
+            case Collection<?> coll -> {
+                List<ItemStack> stacks = new ArrayList<>();
+                for (Object element : coll) {
+                    List<ItemStack> nested = extractItemStacks(element, depth + 1);
+                    if (!nested.isEmpty()) stacks.addAll(nested);
+                }
+                // Mekanism recipe outputs can be wrapped in a MekanismRecipeOutput object
+                if (obj.getClass().getName().contains("MekanismRecipeOutput")) {
+                    try {
+                        Method getStacks = obj.getClass().getMethod("getStacks");
+                        Object result = getStacks.invoke(obj);
+                        if (result instanceof ItemStack[] stacksArray) {
+                            stacks.addAll(Arrays.stream(stacksArray).filter(s -> !s.isEmpty()).toList());
+                        }
+                    } catch (Exception ignored) {
                     }
-                } catch (Exception ignored) {}
+                }
+                return stacks;
             }
-            return stacks;
+            default -> {
+            }
+        }
+        if (obj.getClass().isRecord()) {
+            List<ItemStack> recordStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindItemStacks);
+            if (!recordStacks.isEmpty()) {
+                return recordStacks;
+            }
         }
         return deepFindItemStacks(obj, depth + 1);
     }
@@ -599,6 +714,16 @@ public class AdaptiveRecipeConverter {
             List<ChemicalStack> extracted = new ArrayList<>();
             for (Object item : coll) extracted.addAll(deepFindChemicalStacks(item, depth + 1));
             if (!extracted.isEmpty()) return List.of(extracted);
+        }
+        if (obj.getClass().isRecord()) {
+            List<List<ChemicalStack>> recordLists = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindChemicalStackLists);
+            if (!recordLists.isEmpty()) {
+                return recordLists;
+            }
+            List<ChemicalStack> flatStacks = collectFromRecord(obj, depth, AdaptiveRecipeConverter::deepFindChemicalStacks);
+            if (!flatStacks.isEmpty()) {
+                return List.of(flatStacks);
+            }
         }
         for (Method method : obj.getClass().getMethods()) {
             if (method.getParameterCount() != 0 || !method.getName().startsWith("get") && !method.getName().startsWith("as")) continue;

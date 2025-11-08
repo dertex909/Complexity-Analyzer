@@ -83,6 +83,14 @@ public class JeiRecipeConverter {
 
         builder.priority(900);
 
+        net.minecraft.world.item.crafting.RecipeType<?> recipeType = AdaptiveRecipeConverter.extractRecipeType(recipe);
+        if (recipeType == null) {
+            ComplexityAnalyzer.LOGGER.debug("      Skipping {} because recipe type is unknown",
+                    recipe.getClass().getSimpleName());
+            return null;
+        }
+        builder.recipeType(recipeType);
+
         List<List<ItemStack>> inputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
 
         if (inputs.isEmpty()) {

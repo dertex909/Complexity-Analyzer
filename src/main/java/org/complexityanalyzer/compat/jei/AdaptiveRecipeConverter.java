@@ -1,6 +1,7 @@
 package org.complexityanalyzer.compat.jei;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -10,6 +11,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.solver.ChemicalComplexityManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -27,7 +29,13 @@ public class AdaptiveRecipeConverter {
 
     private static final Map<Class<?>, RecipeAdapter> LEARNED_ADAPTERS = new ConcurrentHashMap<>();
     private static ChemicalComplexityManager chemicalManager = null;
+    private static MachineRegistry machineRegistry = null;
+
     private static final int MAX_RECURSION_DEPTH = 5;
+
+    public static void setMachineRegistry(MachineRegistry registry) {
+        machineRegistry = registry;
+    }
 
     public static void setChemicalManager(ChemicalComplexityManager manager) {
         chemicalManager = manager;
@@ -43,6 +51,12 @@ public class AdaptiveRecipeConverter {
     public static List<ChemicalOutput> extractChemicalInputs(Object recipe) {
         try {
             Object actualRecipe = unwrapRecipeHolder(recipe);
+
+            // ========== НОВОЕ: Обработка Records ==========
+            if (actualRecipe.getClass().isRecord()) {
+                return extractChemicalInputsFromRecord(actualRecipe);
+            }
+            // ===============================================
 
             // Ищем методы типа getChemicalInput, getGasInput и т.д.
             for (String methodName : Arrays.asList("getChemicalInput", "getChemicalInputs",
@@ -66,26 +80,104 @@ public class AdaptiveRecipeConverter {
         return Collections.emptyList();
     }
 
+    // ========== НОВЫЙ МЕТОД ==========
+    private static List<ChemicalOutput> extractChemicalInputsFromRecord(Object record) {
+        List<ChemicalOutput> results = new ArrayList<>();
+
+        try {
+            for (RecordComponent component : record.getClass().getRecordComponents()) {
+                String name = component.getName();
+
+                // Ищем input-related компоненты
+                if (name.contains("input") || name.contains("Input") ||
+                        name.equals("superHeatedCoolant") ||
+                        name.contains("ingredient") || name.contains("source")) {
+
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = accessor.invoke(record);
+
+                    if (value != null) {
+                        // Пытаемся извлечь chemical
+                        ChemicalOutput extracted = tryExtractChemical(value);
+                        if (extracted != null) {
+                            results.add(extracted);
+                        } else {
+                            // Рекурсивно ищем в value
+                            results.addAll(deepFindChemicalStacks(value));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to extract inputs from record: {}", e.getMessage());
+        }
+
+        return results;
+    }
+
     public static List<ChemicalOutput> extractChemicalOutputs(Object recipe, Level level) {
         try {
             Object actualRecipe = unwrapRecipeHolder(recipe);
 
-            // Универсальный адаптер для поиска outputs
-            RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.FLUID, level);
+            if (actualRecipe.getClass().isRecord()) {
+                return extractChemicalOutputsFromRecord(actualRecipe);
+            }
 
-            if (adapter.fluidOutputAccessor == null) {
+            RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.CHEMICAL, level);
+
+            if (adapter.chemicalOutputAccessor == null) {
                 return new ArrayList<>();
             }
 
-            Object result = adapter.fluidOutputAccessor.extract(actualRecipe, level);
+            Object result = adapter.chemicalOutputAccessor.extract(actualRecipe, level);
 
-            // Рекурсивно ищем ВСЕ chemicals
             return deepFindChemicalStacks(result);
 
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.debug("Failed to extract chemical outputs: {}", e.getMessage());
             return new ArrayList<>();
         }
+    }
+
+    // ========== НОВЫЙ МЕТОД ==========
+    private static List<ChemicalOutput> extractChemicalOutputsFromRecord(Object record) {
+        List<ChemicalOutput> results = new ArrayList<>();
+
+        try {
+            // Обрабатываем все компоненты record'а
+            for (RecordComponent component : record.getClass().getRecordComponents()) {
+                String name = component.getName();
+
+                // Ищем output-related компоненты
+                if (name.contains("output") || name.contains("Output") ||
+                        name.equals("steam") || name.equals("cooledCoolant") ||
+                        name.contains("product") || name.contains("result")) {
+
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = accessor.invoke(record);
+
+                    if (value != null) {
+                        // Пытаемся извлечь chemical
+                        ChemicalOutput extracted = tryExtractChemical(value);
+                        if (extracted != null) {
+                            results.add(extracted);
+                        } else {
+                            List<ChemicalOutput> deep = deepFindChemicalStacks(value);
+                            if (!deep.isEmpty()) {
+                                results.addAll(deep);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to extract from record: ", e);
+        }
+
+        ComplexityAnalyzer.LOGGER.warn("  Total extracted: {}", results.size());
+        return results;
     }
 
     private static List<ChemicalOutput> deepFindChemicalStacks(Object obj) {
@@ -209,41 +301,12 @@ public class AdaptiveRecipeConverter {
 
                 if (result instanceof List<?> list && !list.isEmpty()) {
                     // Берём первый элемент списка (это ChemicalStack)
-                    Object firstStack = list.get(0);
+                    Object firstStack = list.getFirst();
                     return tryExtractChemical(firstStack); // Рекурсивно обрабатываем
                 }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.debug("Failed to extract from ChemicalStackIngredient: {}", e.getMessage());
             }
-
-            // Альтернативно: пытаемся извлечь через ingredient()
-            try {
-                Method ingredient = obj.getClass().getMethod("ingredient");
-                Object ing = ingredient.invoke(obj);
-
-                if (ing != null) {
-                    // Пытаемся найти getChemicalHolders()
-                    Method getChemicalHolders = ing.getClass().getMethod("getChemicalHolders");
-                    Object holders = getChemicalHolders.invoke(ing);
-
-                    if (holders instanceof List<?> holderList && !holderList.isEmpty()) {
-                        Object firstHolder = holderList.get(0);
-
-                        // Создаём временный ChemicalStack
-                        try {
-                            Method amount = obj.getClass().getMethod("amount");
-                            long amt = (long) amount.invoke(obj);
-
-                            // Получаем ID из holder
-                            String holderId = firstHolder.toString();
-                            ResourceLocation loc = parseResourceLocation(holderId);
-                            if (loc != null) {
-                                return new ChemicalOutput(loc, amt);
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                }
-            } catch (Exception ignored) {}
 
             return null;
         }
@@ -271,24 +334,52 @@ public class AdaptiveRecipeConverter {
                 } catch (Exception ignored) {}
             }
 
-            // Получить внутренний объект (Chemical/Holder)
-            Object innerObject = obj;
-            for (String methodName : Arrays.asList("getChemicalHolder", "getChemical", "chemical", "getType", "type")) {
+            // ========== ИСПРАВЛЕНИЕ: Правильное извлечение ID ==========
+            ResourceLocation chemicalId = null;
+
+            // Приоритет 1: getTypeRegistryName() - возвращает правильный ResourceLocation
+            try {
+                Method getTypeRegistryName = obj.getClass().getMethod("getTypeRegistryName");
+                Object result = getTypeRegistryName.invoke(obj);
+                if (result instanceof ResourceLocation) {
+                    chemicalId = (ResourceLocation) result;
+                } else if (result != null) {
+                    // Если вернулась строка "mekanism:antimatter"
+                    String idStr = result.toString();
+                    chemicalId = ResourceLocation.parse(idStr);
+                }
+            } catch (Exception ignored) {}
+
+            // Приоритет 2: getChemical() и затем getRegistryName()
+            if (chemicalId == null) {
                 try {
-                    Method m = obj.getClass().getMethod(methodName);
-                    Object result = m.invoke(obj);
-                    if (result != null && result != obj) {
-                        innerObject = result;
-                        break;
+                    Method getChemical = obj.getClass().getMethod("getChemical");
+                    Object chemical = getChemical.invoke(obj);
+                    if (chemical != null) {
+                        // Пробуем получить registry name из chemical
+                        try {
+                            Method getRegistryName = chemical.getClass().getMethod("getRegistryName");
+                            Object regName = getRegistryName.invoke(chemical);
+                            if (regName instanceof ResourceLocation) {
+                                chemicalId = (ResourceLocation) regName;
+                            } else if (regName != null) {
+                                chemicalId = ResourceLocation.parse(regName.toString());
+                            }
+                        } catch (Exception ignored) {
+                            // Если не удалось, парсим toString()
+                            String chemStr = chemical.toString();
+                            if (chemStr.contains(":")) {
+                                chemicalId = parseResourceLocation(chemStr);
+                            }
+                        }
                     }
                 } catch (Exception ignored) {}
             }
 
-            // Получить ResourceLocation
-            ResourceLocation loc = parseResourceLocation(innerObject.toString());
-            if (loc != null) {
-                return new ChemicalOutput(loc, amount);
+            if (chemicalId != null) {
+                return new ChemicalOutput(chemicalId, amount);
             }
+            // ============================================================
 
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.debug("Failed to extract chemical: {}", e.getMessage());
@@ -437,8 +528,79 @@ public class AdaptiveRecipeConverter {
         }
     }
 
+    private static List<List<ItemStack>> extractItemInputsFromRecord(Object record) {
+        List<List<ItemStack>> results = new ArrayList<>();
+
+        try {
+            for (RecordComponent component : record.getClass().getRecordComponents()) {
+                String name = component.getName();
+
+                // Ищем input-related компоненты (НО НЕ chemical!)
+                if ((name.contains("input") || name.contains("Input") ||
+                        name.contains("ingredient")) &&
+                        !name.toLowerCase().contains("chemical") &&
+                        !name.toLowerCase().contains("gas") &&
+                        !name.toLowerCase().contains("fluid")) {
+
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = accessor.invoke(record);
+
+                    if (value != null) {
+                        List<List<ItemStack>> extracted = deepFindItemStackLists(value, 0);
+                        if (!extracted.isEmpty()) {
+                            results.addAll(extracted);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to extract item inputs from record: {}", e.getMessage());
+        }
+
+        return results;
+    }
+
+    private static List<List<FluidStack>> extractFluidInputsFromRecord(Object record) {
+        List<List<FluidStack>> results = new ArrayList<>();
+
+        try {
+            for (RecordComponent component : record.getClass().getRecordComponents()) {
+                String name = component.getName();
+
+                // Ищем fluid inputs
+                if ((name.contains("water") || name.contains("fluid") ||
+                        name.contains("Fluid") || name.contains("liquid")) &&
+                        !name.toLowerCase().contains("output")) {
+
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = accessor.invoke(record);
+
+                    if (value != null) {
+                        List<List<FluidStack>> extracted = deepFindFluidStackLists(value, 0);
+                        if (!extracted.isEmpty()) {
+                            results.addAll(extracted);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to extract fluid inputs from record: {}", e.getMessage());
+        }
+
+        return results;
+    }
+
     public static List<List<ItemStack>> extractInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
+
+        // ========== НОВОЕ: Обработка Records ==========
+        if (actualRecipe.getClass().isRecord()) {
+            return extractItemInputsFromRecord(actualRecipe);
+        }
+        // ===============================================
+
         RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.ITEM, level);
         if (adapter.itemInputAccessor == null) return new ArrayList<>();
         try {
@@ -451,6 +613,13 @@ public class AdaptiveRecipeConverter {
 
     public static List<List<FluidStack>> extractFluidInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
+
+        // ========== НОВОЕ: Обработка Records ==========
+        if (actualRecipe.getClass().isRecord()) {
+            return extractFluidInputsFromRecord(actualRecipe);
+        }
+        // ===============================================
+
         RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.FLUID, level);
         if (adapter.fluidInputAccessor == null) return new ArrayList<>();
         try {
@@ -464,21 +633,27 @@ public class AdaptiveRecipeConverter {
     private static RecipeAdapter getAdapter(Object recipe, boolean isOutput, ResourceType resourceType, Level level) {
         Class<?> recipeClass = recipe.getClass();
         RecipeAdapter adapter = LEARNED_ADAPTERS.computeIfAbsent(recipeClass,
-                clazz -> new RecipeAdapter(null, null, null, null));
+                clazz -> new RecipeAdapter(null, null, null, null, null, null));
 
         if (isOutput) {
             Accessor existingAccessor = switch (resourceType) {
                 case ITEM -> adapter.itemOutputAccessor;
                 case FLUID -> adapter.fluidOutputAccessor;
+                case CHEMICAL -> adapter.chemicalOutputAccessor;
             };
 
             if (existingAccessor == null) {
                 Accessor accessor = learnAccessor(recipe, true, resourceType, level);
                 adapter = switch (resourceType) {
                     case ITEM -> new RecipeAdapter(accessor, adapter.fluidOutputAccessor,
-                            adapter.itemInputAccessor, adapter.fluidInputAccessor);
+                            adapter.chemicalOutputAccessor, adapter.itemInputAccessor,
+                            adapter.fluidInputAccessor, adapter.chemicalInputAccessor);
                     case FLUID -> new RecipeAdapter(adapter.itemOutputAccessor, accessor,
-                            adapter.itemInputAccessor, adapter.fluidInputAccessor);
+                            adapter.chemicalOutputAccessor, adapter.itemInputAccessor,
+                            adapter.fluidInputAccessor, adapter.chemicalInputAccessor);
+                    case CHEMICAL -> new RecipeAdapter(adapter.itemOutputAccessor,
+                            adapter.fluidOutputAccessor, accessor, adapter.itemInputAccessor,
+                            adapter.fluidInputAccessor, adapter.chemicalInputAccessor);
                 };
                 LEARNED_ADAPTERS.put(recipeClass, adapter);
             }
@@ -486,15 +661,18 @@ public class AdaptiveRecipeConverter {
             Accessor existingAccessor = switch (resourceType) {
                 case ITEM -> adapter.itemInputAccessor;
                 case FLUID -> adapter.fluidInputAccessor;
+                case CHEMICAL -> adapter.chemicalInputAccessor;
             };
 
             if (existingAccessor == null) {
                 Accessor accessor = learnAccessor(recipe, false, resourceType, level);
                 adapter = switch (resourceType) {
                     case ITEM -> new RecipeAdapter(adapter.itemOutputAccessor, adapter.fluidOutputAccessor,
-                            accessor, adapter.fluidInputAccessor);
+                            adapter.chemicalOutputAccessor, accessor, adapter.fluidInputAccessor, adapter.chemicalInputAccessor);
                     case FLUID -> new RecipeAdapter(adapter.itemOutputAccessor, adapter.fluidOutputAccessor,
-                            adapter.itemInputAccessor, accessor);
+                            adapter.chemicalOutputAccessor, adapter.itemInputAccessor, accessor, adapter.chemicalInputAccessor);
+                    case CHEMICAL -> new RecipeAdapter(adapter.itemOutputAccessor, adapter.fluidOutputAccessor,
+                            adapter.chemicalOutputAccessor, adapter.itemInputAccessor, adapter.fluidInputAccessor, accessor);
                 };
                 LEARNED_ADAPTERS.put(recipeClass, adapter);
             }
@@ -503,7 +681,7 @@ public class AdaptiveRecipeConverter {
     }
 
     enum ResourceType {
-        ITEM, FLUID
+        ITEM, FLUID, CHEMICAL
     }
 
     private static Object invokeMethod(Method method, Object target, Level level) throws Exception {
@@ -590,26 +768,30 @@ public class AdaptiveRecipeConverter {
 
     private static String[] getCandidateMethods(boolean isOutput, ResourceType resourceType) {
         if (isOutput) {
-            return new String[]{
-                    "getLeftGasOutput", "getRightGasOutput", "getLeftOutput", "getRightOutput", "getLeftGas", "getRightGas",
-                    "getGasOutput", "getGasOutputs", "getChemicalOutput", "getChemicalOutputs", "gasOutput", "gasOutputs",
-                    "chemicalOutput", "chemicalOutputs", "getInfusionOutput", "getInfusionOutputs", "getPigmentOutput", "getPigmentOutputs",
-                    "getSlurryOutput", "getSlurryOutputs", "fetchChemicalOutput", "retrieveChemicalOutput", "outputGas", "outputChemical",
-                    "outputsGas", "outputsChemical", "resultChemical", "producedGas", "producedChemical",
-                    "getFluidOutput", "getFluidOutputs", "outputFluid", "outputFluids", "getOutputFluids", "getFluidResult",
-                    "getFluidResults", "fetchFluidOutput", "retrieveFluidOutput", "fluidOutput", "fluidOutputs", "producedFluid",
-                    "producedFluids", "resultFluid", "outputsFluid", "getOutputFluid", "getOutputFluids", "outputFluid", "outputFluids",
-                    "getResultItem", "getResultItems", "getItemOutput",
-                    "getItemOutputs", "itemOutput", "itemOutputs", "stackOutput", "stackOutputs", "getStack", "getStacks",
-                    "outputItem", "outputItems", "resultStack", "resultStacks", "producedItem", "producedItems",
-                    "getOutputStack", "getOutput", "getOutputs", "getResult", "getResults", "getProduct", "getProducts",
-                    "output", "outputs", "result", "results", "product", "products", "fetchOutput", "fetchOutputs",
-                    "retrieveOutput", "retrieveOutputs", "produce", "produces", "produced", "getProduce", "create", "creates",
-                    "getCreate", "make", "makes", "getMake", "yield", "getYield", "generate", "generated", "getGenerate",
-                    "getProcessingOutput", "getRecipeOutput", "getMainOutput", "getSecondaryOutput", "getBonusOutput",
-                    "getPrimaryOutput", "getByproduct", "getByproducts", "getResultDefinition", "getOutputDefinition",
-                    "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer", "getOutputContents",
-                    "getOutputChemical", "getOutputChemicals", "getOutputGas", "getOutputGases"
+            return switch (resourceType) {
+                case ITEM -> new String[]{
+                        "getResultItem", "getResultItems", "getItemOutput",
+                        "getItemOutputs", "itemOutput", "itemOutputs", "stackOutput", "stackOutputs", "getStack", "getStacks",
+                        "outputItem", "outputItems", "resultStack", "resultStacks", "producedItem", "producedItems",
+                        "getOutputStack", "getOutput", "getOutputs", "getResult", "getResults", "getProduct", "getProducts",
+                        "output", "outputs", "result", "results", "product", "products", "fetchOutput", "fetchOutputs",
+                        "retrieveOutput", "retrieveOutputs", "produce", "produces", "produced", "getProduce", "create", "creates",
+                        "getCreate", "make", "makes", "getMake", "yield", "getYield", "generate", "generated", "getGenerate",
+                        "getProcessingOutput", "getRecipeOutput", "getMainOutput", "getSecondaryOutput", "getBonusOutput",
+                        "getPrimaryOutput", "getByproduct", "getByproducts", "getResultDefinition", "getOutputDefinition",
+                        "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer", "getOutputContents",
+                        "getOutputChemical", "getOutputChemicals", "getOutputGas", "getOutputGases"
+                };
+                case FLUID -> new String[]{
+                        "getFluidOutput", "getFluidOutputs", "outputFluid", "outputFluids", "getOutputFluids", "getFluidResult",
+                        "getFluidResults", "fetchFluidOutput", "retrieveFluidOutput", "fluidOutput", "fluidOutputs", "producedFluid",
+                        "producedFluids", "resultFluid", "outputsFluid", "getOutputFluid", "getOutputFluids", "outputFluid", "outputFluids"
+                };
+                case CHEMICAL -> new String[]{
+                        "getOutput", "getOutputDefinition", "getChemicalOutput", "getChemicalOutputs",
+                        "getGasOutput", "getGasOutputs", "chemicalOutput", "gasOutput",
+                        "getLeftGasOutput", "getRightGasOutput", "getLeftOutput", "getRightOutput"
+                };
             };
         }
 
@@ -626,35 +808,46 @@ public class AdaptiveRecipeConverter {
                     "getFluidInput", "getFluidInputs", "getInputFluid", "getInputFluids",
                     "inputFluid", "inputFluids", "fluidInput", "fluidInputs",
                     "getFluidIngredient", "getFluidIngredients", "fetchFluidInput",
-                    "retrieveFluidInput", "ingredientFluid", "ingredientFluids",
-                    "getLeftGasInput", "getRightGasInput", "getGasInput", "getGasInputs",
-                    "getChemicalInput", "getChemicalInputs", "getInputGas", "getInputGases",
-                    "gasInput", "gasInputs", "chemicalInput", "chemicalInputs",
-                    "getInputChemical", "inputChemical", "getInfusionInput", "getInfusionInputs",
-                    "getPigmentInput", "getPigmentInputs", "getSlurryInput", "getSlurryInputs",
-                    "fetchChemicalInput", "retrieveChemicalInput", "inputGas", "inputsGas",
-                    "inputsChemical", "ingredientGas", "ingredientChemical"
+                    "retrieveFluidInput", "ingredientFluid", "ingredientFluids"
+            };
+            case CHEMICAL -> new String[]{
+                    "getInput", "getInputDefinition", "getChemicalInput", "getChemicalInputs",
+                    "getGasInput", "getGasInputs", "chemicalInput", "gasInput",
+                    "getLeftGasInput", "getRightGasInput"
             };
         };
     }
 
     private static String[] getWildcards(boolean isOutput, ResourceType resourceType) {
         if (isOutput) {
-            return new String[]{"gas", "chemical", "infusion", "pigment", "slurry", "fluid", "item", "stack", "output", "result", "produce", "craft", "create", "yield", "generate"};
+            return switch (resourceType) {
+                case ITEM -> new String[]{"item", "stack", "output", "result", "produce", "craft", "create", "yield", "generate"};
+                case FLUID -> new String[]{"fluid", "liquid", "output", "result"};
+                case CHEMICAL -> new String[]{"gas", "chemical", "output", "result"};
+            };
         }
 
         return switch (resourceType) {
             case ITEM -> new String[]{"item", "stack", "input", "ingredient", "solid"};
-            case FLUID -> new String[]{"fluid", "liquid", "input", "ingredient", "gas", "chemical", "infusion", "pigment", "slurry", "input", "ingredient"};
+            case FLUID -> new String[]{"fluid", "liquid", "input", "ingredient"};
+            case CHEMICAL -> new String[]{"gas", "chemical", "input", "ingredient"};
         };
     }
 
     private static String[] getCandidateFields(boolean isOutput, ResourceType resourceType) {
         if (isOutput) {
-            return new String[]{
-                    "leftGasOutput", "rightGasOutput", "leftOutput", "rightOutput", "gasOutput", "chemicalOutput",
-                    "infusionOutput", "pigmentOutput", "slurryOutput", "fluidOutput", "result", "results", "output", "outputs",
-                    "product", "products", "mainOutput", "secondaryOutput", "bonusOutput", "primaryOutput", "byproduct", "outputDefinition"
+            return switch (resourceType) {
+                case ITEM -> new String[]{
+                        "result", "results", "output", "outputs",
+                        "product", "products", "mainOutput", "secondaryOutput", "bonusOutput", "primaryOutput", "byproduct", "outputDefinition"
+                };
+                case FLUID -> new String[]{
+                        "fluidOutput", "fluidOutputs", "outputFluid", "outputFluids", "liquidOutput"
+                };
+                case CHEMICAL -> new String[]{
+                        "gasOutput", "chemicalOutput", "output", "outputDefinition",
+                        "leftGasOutput", "rightGasOutput"
+                };
             };
         }
 
@@ -664,9 +857,11 @@ public class AdaptiveRecipeConverter {
                     "stackInput", "solidInput", "inputDefinition"
             };
             case FLUID -> new String[]{
-                    "fluidInput", "fluidInputs", "inputFluid", "inputFluids", "liquidInput",
-                    "leftGasInput", "rightGasInput", "gasInput", "chemicalInput",
-                    "infusionInput", "pigmentInput", "slurryInput", "gasInputs", "chemicalInputs"
+                    "fluidInput", "fluidInputs", "inputFluid", "inputFluids", "liquidInput"
+            };
+            case CHEMICAL -> new String[]{
+                    "gasInput", "chemicalInput", "input", "inputDefinition",
+                    "leftGasInput", "rightGasInput"
             };
         };
     }
@@ -1108,12 +1303,165 @@ public class AdaptiveRecipeConverter {
         return Collections.emptyList();
     }
 
+    private static RecipeType<?> extractRecipeTypeFromRecord(Object record) {
+        try {
+            // Приоритет 1: Ищем явный тип в компонентах
+            for (RecordComponent component : record.getClass().getRecordComponents()) {
+                String name = component.getName();
+
+                if (name.equals("type") || name.equals("recipeType")) {
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = accessor.invoke(record);
+
+                    RecipeType<?> type = coerceRecipeType(value);
+                    if (type != null) return type;
+                }
+            }
+
+            // Приоритет 2: Используем MachineRegistry через ID рецепта
+            if (machineRegistry != null) {
+                for (RecordComponent component : record.getClass().getRecordComponents()) {
+                    if (component.getName().equals("id")) {
+                        Method accessor = component.getAccessor();
+                        accessor.setAccessible(true);
+                        Object value = accessor.invoke(record);
+
+                        if (value instanceof ResourceLocation recipeId) {
+                            RecipeType<?> type = findRecipeTypeViaRegistry(recipeId);
+                            if (type != null) {
+                                ComplexityAnalyzer.LOGGER.debug("Found recipe type via MachineRegistry: {} -> {}",
+                                        recipeId, BuiltInRegistries.RECIPE_TYPE.getKey(type));
+                                return type;
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to extract recipe type from record: {}", e.getMessage());
+        }
+
+        return null;
+    }
+
+    // ========== НОВЫЙ МЕТОД: использует MachineRegistry ==========
+    private static RecipeType<?> findRecipeTypeViaRegistry(ResourceLocation recipeId) {
+        if (machineRegistry == null) return null;
+
+        String path = recipeId.getPath();
+
+        // ========== ИСПРАВЛЕНИЕ: Обработка путей с "/" в начале ==========
+        // Убираем ведущий "/" если есть
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        // ==================================================================
+
+        String[] parts = path.split("/");
+
+        if (parts.length == 0) return null;
+
+        String typeHint = parts[0]; // "sps", "boiler", etc.
+        String namespace = recipeId.getNamespace();
+
+        // ========== ИСПРАВЛЕНИЕ: Пропускаем пустые hints ==========
+        if (typeHint.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("Empty type hint for recipe {}, cannot determine type", recipeId);
+            return null;
+        }
+        // ===========================================================
+
+        ComplexityAnalyzer.LOGGER.debug("Looking for recipe type with hint '{}' in namespace '{}'", typeHint, namespace);
+
+        // Перебираем все типы рецептов и проверяем, есть ли машина в реестре
+        List<RecipeType<?>> candidates = new ArrayList<>();
+
+        for (Map.Entry<ResourceKey<RecipeType<?>>, RecipeType<?>> entry :
+                BuiltInRegistries.RECIPE_TYPE.entrySet()) {
+
+            ResourceLocation typeId = entry.getKey().location();
+
+            // Проверяем namespace
+            if (!typeId.getNamespace().equals(namespace)) continue;
+
+            // Проверяем, содержит ли path нашу подсказку
+            if (!typeId.getPath().contains(typeHint)) continue;
+
+            RecipeType<?> recipeType = entry.getValue();
+
+            // ✅ Проверяем, есть ли машина для этого типа в MachineRegistry
+            Optional<Item> machine = machineRegistry.getMachineForRecipe(recipeType);
+
+            if (machine.isPresent()) {
+                ComplexityAnalyzer.LOGGER.debug("  Candidate: {} (has machine)", typeId);
+                candidates.add(recipeType);
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("No matching recipe type found for {}", recipeId);
+            return null;
+        }
+
+        // Если несколько кандидатов, выбираем наиболее подходящий
+        if (candidates.size() > 1) {
+            // Сортируем по длине пути (короче = точнее)
+            candidates.sort(Comparator.comparingInt(rt -> {
+                ResourceLocation typeLocation = BuiltInRegistries.RECIPE_TYPE.getKey(rt);
+                return typeLocation != null ? typeLocation.getPath().length() : Integer.MAX_VALUE;
+            }));
+
+            RecipeType<?> best = candidates.getFirst();
+            ResourceLocation bestLocation = BuiltInRegistries.RECIPE_TYPE.getKey(best);
+            ComplexityAnalyzer.LOGGER.debug("Multiple candidates, chose: {}", bestLocation);
+            return best;
+        }
+
+        RecipeType<?> result = candidates.getFirst();
+        ResourceLocation resultLocation = BuiltInRegistries.RECIPE_TYPE.getKey(result);
+        ComplexityAnalyzer.LOGGER.debug("Matched recipe type {} for recipe {}", resultLocation, recipeId);
+        return result;
+    }
+
+    private static RecipeType<?> guessRecipeTypeFromId(ResourceLocation recipeId) {
+        String path = recipeId.getPath();
+
+        // Универсальный паттерн: первая часть пути обычно = тип рецепта
+        // Например: "sps/antimatter" -> "sps"
+        String[] parts = path.split("/");
+        if (parts.length > 0) {
+            String typeHint = parts[0];
+
+            // Ищем в реестре все типы и пытаемся найти подходящий
+            for (Map.Entry<ResourceKey<RecipeType<?>>, RecipeType<?>> entry :
+                    BuiltInRegistries.RECIPE_TYPE.entrySet()) {
+
+                ResourceLocation typeId = entry.getKey().location();
+
+                // Проверяем совпадение namespace и частичное совпадение пути
+                if (typeId.getNamespace().equals(recipeId.getNamespace()) &&
+                        typeId.getPath().contains(typeHint)) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
+    }
+
     public static RecipeType<?> extractRecipeType(Object recipe) {
         if (recipe == null) return null;
         Object actual = unwrapRecipeHolder(recipe);
 
         if (actual instanceof net.minecraft.world.item.crafting.Recipe<?> vanillaRecipe) {
             return vanillaRecipe.getType();
+        }
+
+        // ✅ ДОБАВИТЬ: Обработка Records
+        if (actual.getClass().isRecord()) {
+            return extractRecipeTypeFromRecord(actual);
         }
 
         String[] candidates = {
@@ -1410,15 +1758,21 @@ public class AdaptiveRecipeConverter {
     static class RecipeAdapter {
         final Accessor itemOutputAccessor;
         final Accessor fluidOutputAccessor;
+        final Accessor chemicalOutputAccessor;
         final Accessor itemInputAccessor;
         final Accessor fluidInputAccessor;
+        final Accessor chemicalInputAccessor;
 
         RecipeAdapter(Accessor itemOutputAccessor, Accessor fluidOutputAccessor,
-                      Accessor itemInputAccessor, Accessor fluidInputAccessor) {
+                      Accessor chemicalOutputAccessor,
+                      Accessor itemInputAccessor, Accessor fluidInputAccessor,
+                      Accessor chemicalInputAccessor) {
             this.itemOutputAccessor = itemOutputAccessor;
             this.fluidOutputAccessor = fluidOutputAccessor;
+            this.chemicalOutputAccessor = chemicalOutputAccessor;
             this.itemInputAccessor = itemInputAccessor;
             this.fluidInputAccessor = fluidInputAccessor;
+            this.chemicalInputAccessor = chemicalInputAccessor;
         }
     }
 }

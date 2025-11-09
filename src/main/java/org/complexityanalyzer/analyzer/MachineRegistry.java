@@ -45,18 +45,14 @@ public class MachineRegistry {
                 continue;
             }
 
-            // ========== ДОБАВЛЕНО: защита ванильных машин ==========
             if (typeId.getNamespace().equals("minecraft")) {
-                // Не перезаписываем ванильные типы рецептов
                 if (mapping.containsKey(typeId)) {
                     skipped++;
-                    ComplexityAnalyzer.LOGGER.debug("Skipped vanilla recipe type: {}", typeId);
                     continue;
                 }
             }
-            // =======================================================
 
-            Item machine = machines.get(0);
+            Item machine = machines.getFirst();
 
             if (mapping.containsKey(typeId)) {
                 updated++;
@@ -65,7 +61,6 @@ public class MachineRegistry {
             }
 
             mapping.put(typeId, machine);
-            ComplexityAnalyzer.LOGGER.debug("  {} -> {}", typeId, BuiltInRegistries.ITEM.getKey(machine));
         }
 
         ComplexityAnalyzer.LOGGER.info("Loaded from JEI: {} new, {} updated, {} skipped. Total machines: {}",

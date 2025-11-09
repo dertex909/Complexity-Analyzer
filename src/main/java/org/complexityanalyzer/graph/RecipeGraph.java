@@ -37,6 +37,9 @@ public class RecipeGraph {
 
     private final Map<Item, RecipeNode> bestRecipeCache;
 
+    private final Map<ResourceLocation, List<RecipeNode>> recipesByFluid = new ConcurrentHashMap<>();
+
+
     public RecipeGraph() {
         this.recipesByItem = new ConcurrentHashMap<>();
         this.usageMap = new ConcurrentHashMap<>();
@@ -51,6 +54,15 @@ public class RecipeGraph {
         Item result = node.getResultItem();
 
         recipesByItem.computeIfAbsent(result, k -> new ArrayList<>()).add(node);
+
+        if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) {
+            try {
+                ResourceLocation fluidId = ResourceLocation.parse(node.getPlaceholderId());
+                recipesByFluid.computeIfAbsent(fluidId, k -> new ArrayList<>()).add(node);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.warn("Invalid placeholder ID: {}", node.getPlaceholderId());
+            }
+        }
 
         for (IngredientSlot slot : node.getIngredients()) {
             for (Item ingredient : slot.getVariants()) {
@@ -264,15 +276,23 @@ public class RecipeGraph {
         return allItems;
     }
 
-    // Методы для работы с fluids и chemicals
     public List<RecipeNode> getRecipesProducingFluid(net.minecraft.world.level.material.Fluid fluid) {
-        fluid = normalizeFluid(fluid); // Нормализуем
+        fluid = normalizeFluid(fluid);
         final net.minecraft.world.level.material.Fluid normalizedFluid = fluid;
 
-        return getAllRecipes().stream()
+        ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(normalizedFluid);
+
+        List<RecipeNode> placeholderRecipes = recipesByFluid.getOrDefault(fluidId, Collections.emptyList());
+
+        List<RecipeNode> standardRecipes = getAllRecipes().stream()
                 .filter(recipe -> recipe.getFluidOutputs().stream()
                         .anyMatch(stack -> normalizeFluid(stack.getFluid()).equals(normalizedFluid)))
                 .toList();
+
+        List<RecipeNode> combined = new ArrayList<>(placeholderRecipes);
+        combined.addAll(standardRecipes);
+
+        return combined;
     }
 
     public List<Item> getItemsUsingFluid(net.minecraft.world.level.material.Fluid fluid) {

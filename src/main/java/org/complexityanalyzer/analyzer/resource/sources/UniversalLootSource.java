@@ -234,7 +234,7 @@ public class UniversalLootSource implements IResourceSource {
                 duration, tablesProcessed, tablesSkipped, totalItemsFound);
 
         for (var entry : allLootData.entrySet()) {
-            ComplexityAnalyzer.LOGGER.info("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
+            ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
         }
     }
 

@@ -105,11 +105,11 @@ public class DirectRecipeExtractor {
     }
 
     private static void logRecipeStats(String title, Map<?, Integer> stats) {
-        ComplexityAnalyzer.LOGGER.info("{}:", title);
+        ComplexityAnalyzer.LOGGER.debug("{}:", title);
         stats.entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                 .forEach(entry ->
-                        ComplexityAnalyzer.LOGGER.info("  - {}: {} recipes", entry.getKey(), entry.getValue())
+                        ComplexityAnalyzer.LOGGER.debug("  - {}: {} recipes", entry.getKey(), entry.getValue())
                 );
     }
 
@@ -121,7 +121,6 @@ public class DirectRecipeExtractor {
             Level level) {
 
         List<RecipeNode> result = new ArrayList<>();
-        String typeIdString = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType).toString();
 
         try {
             var method = net.minecraft.world.item.crafting.RecipeManager.class.getMethod(
@@ -132,27 +131,16 @@ public class DirectRecipeExtractor {
             @SuppressWarnings("rawtypes")
             var recipes = (Collection<RecipeHolder>) method.invoke(recipeManager, recipeType);
 
-            // ✅ ОТЛАДКА
-            if (typeIdString.contains("separat") || typeIdString.contains("electrolytic")) {
-                ComplexityAnalyzer.LOGGER.warn("🔍 Found {} recipes of type {}",
-                        recipes.size(), typeIdString);
-            }
-
             for (RecipeHolder<?> holder : recipes) {
                 try {
                     Recipe<?> recipe = holder.value();
+
                     RecipeNode node = AdaptiveRecipeConverter.convertRecipe(recipe, level);
 
                     if (node != null) {
                         result.add(node);
-                    } else if (typeIdString.contains("separat") || typeIdString.contains("electrolytic")) {
-                        ComplexityAnalyzer.LOGGER.warn("   ❌ Recipe {} converted to NULL", holder.id());
                     }
-                } catch (Exception e) {
-                    if (typeIdString.contains("separat") || typeIdString.contains("electrolytic")) {
-                        ComplexityAnalyzer.LOGGER.warn("   ❌ Recipe conversion failed: {}", e.getMessage());
-                    }
-                }
+                } catch (Exception ignored) {}
             }
 
         } catch (Exception e) {

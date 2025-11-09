@@ -100,10 +100,10 @@ public class MobPropertyProvider {
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("MobPropertyProvider initialized:");
-        ComplexityAnalyzer.LOGGER.info("  ✓ Manual overrides: {}", MANUAL_OVERRIDES.size());
-        ComplexityAnalyzer.LOGGER.info("  ✓ Total entities: {}", propertiesCache.size());
-        ComplexityAnalyzer.LOGGER.info("  ⚠ Failed/Skipped: {}", failedCount);
+        ComplexityAnalyzer.LOGGER.debug("MobPropertyProvider initialized:");
+        ComplexityAnalyzer.LOGGER.debug("  ✓ Manual overrides: {}", MANUAL_OVERRIDES.size());
+        ComplexityAnalyzer.LOGGER.debug("  ✓ Total entities: {}", propertiesCache.size());
+        ComplexityAnalyzer.LOGGER.debug("  ⚠ Failed/Skipped: {}", failedCount);
     }
 
     public Optional<MobProperties> getProperties(EntityType<?> type) {

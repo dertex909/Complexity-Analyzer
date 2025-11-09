@@ -82,7 +82,8 @@ public class GraphBuilder {
     ) {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(RecipeType.SMITHING)
-                .category(RecipeCategory.PRIMARY);
+                .category(RecipeCategory.PRIMARY)
+                .rawRecipe(recipe);
 
         try {
             java.lang.reflect.Field templateField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("template");
@@ -159,7 +160,8 @@ public class GraphBuilder {
 
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(recipe.getType())
-                .category(category);
+                .category(category)
+                .rawRecipe(recipe); // ========== НОВОЕ ==========
 
         for (Ingredient ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
@@ -228,7 +230,6 @@ public class GraphBuilder {
                 .allMatch(stack -> {
                     if (stack.isEmpty()) return false;
                     ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    if (rl == null) return false;
                     String path = rl.getPath();
                     return stack.is(rawStorage) || path.contains("raw_" ) || path.contains("crude_");
                 });

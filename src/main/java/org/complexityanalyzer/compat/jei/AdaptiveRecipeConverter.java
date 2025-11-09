@@ -9,6 +9,8 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.solver.ChemicalComplexityManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -24,7 +26,12 @@ import java.util.function.Supplier;
 public class AdaptiveRecipeConverter {
 
     private static final Map<Class<?>, RecipeAdapter> LEARNED_ADAPTERS = new ConcurrentHashMap<>();
+    private static ChemicalComplexityManager chemicalManager = null;
     private static final int MAX_RECURSION_DEPTH = 5;
+
+    public static void setChemicalManager(ChemicalComplexityManager manager) {
+        chemicalManager = manager;
+    }
 
     private static final List<String> OUTPUT_KEYWORDS = List.of(
             "output", "result", "product", "produce", "yield", "generate", "reward", "primary", "secondary", "byproduct"
@@ -32,6 +39,279 @@ public class AdaptiveRecipeConverter {
     private static final List<String> INPUT_KEYWORDS = List.of(
             "input", "ingredient", "require", "consume", "use", "need", "supply", "source", "catalyst", "cost"
     );
+
+    public static List<ChemicalOutput> extractChemicalInputs(Object recipe) {
+        try {
+            Object actualRecipe = unwrapRecipeHolder(recipe);
+
+            // Ищем методы типа getChemicalInput, getGasInput и т.д.
+            for (String methodName : Arrays.asList("getChemicalInput", "getChemicalInputs",
+                    "getGasInput", "getGasInputs", "getLeftGasInput", "getRightGasInput",
+                    "getLeftInput", "getRightInput", "getInput")) {
+                try {
+                    Method m = actualRecipe.getClass().getMethod(methodName);
+                    Object result = m.invoke(actualRecipe);
+
+                    if (result != null) {
+                        List<ChemicalOutput> found = deepFindChemicalStacks(result);
+                        if (!found.isEmpty()) return found;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+        } catch (Exception e) {
+            // Silent
+        }
+
+        return Collections.emptyList();
+    }
+
+    public static List<ChemicalOutput> extractChemicalOutputs(Object recipe, Level level) {
+        try {
+            Object actualRecipe = unwrapRecipeHolder(recipe);
+
+            // Универсальный адаптер для поиска outputs
+            RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.FLUID, level);
+
+            if (adapter.fluidOutputAccessor == null) {
+                return new ArrayList<>();
+            }
+
+            Object result = adapter.fluidOutputAccessor.extract(actualRecipe, level);
+
+            // Рекурсивно ищем ВСЕ chemicals
+            return deepFindChemicalStacks(result);
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to extract chemical outputs: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    private static List<ChemicalOutput> deepFindChemicalStacks(Object obj) {
+        Set<Object> visited = new HashSet<>();
+        return deepFindChemicalStacksRecursive(obj, visited, 0);
+    }
+
+    private static List<ChemicalOutput> deepFindChemicalStacksRecursive(Object obj, Set<Object> visited, int depth) {
+        // Защита от null и глубины
+        if (obj == null || depth > 5) {
+            return new ArrayList<>();
+        }
+
+        // Защита от циклов
+        if (!visited.add(obj)) {
+            return new ArrayList<>();
+        }
+
+        List<ChemicalOutput> results = new ArrayList<>();
+
+        // ========== КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ ==========
+        // НЕ пытаемся извлечь chemical из Records напрямую!
+        // Records обрабатываем только через компоненты
+        if (!obj.getClass().isRecord()) {
+            // Пытаемся извлечь chemical из текущего объекта
+            ChemicalOutput directOutput = tryExtractChemical(obj);
+            if (directOutput != null) {
+                results.add(directOutput);
+                // НЕ ВОЗВРАЩАЕМСЯ! Продолжаем искать другие chemicals
+            }
+        }
+        // ============================================
+
+        // Обрабатываем коллекции
+        if (obj instanceof Collection<?> coll) {
+            for (Object item : coll) {
+                results.addAll(deepFindChemicalStacksRecursive(item, visited, depth + 1));
+            }
+        }
+
+        // Обрабатываем массивы
+        else if (obj.getClass().isArray()) {
+            try {
+                Object[] array = (Object[]) obj;
+                for (Object item : array) {
+                    results.addAll(deepFindChemicalStacksRecursive(item, visited, depth + 1));
+                }
+            } catch (ClassCastException ignored) {}
+        }
+
+        // Обрабатываем Records (ElectrolysisRecipeOutput и другие)
+        else if (obj.getClass().isRecord()) {
+            try {
+                for (RecordComponent component : obj.getClass().getRecordComponents()) {
+                    Method accessor = component.getAccessor();
+                    accessor.setAccessible(true);
+                    Object value = accessor.invoke(obj);
+
+                    // Рекурсивно обрабатываем КАЖДЫЙ компонент
+                    results.addAll(deepFindChemicalStacksRecursive(value, visited, depth + 1));
+                }
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.debug("Failed to process record: {}", e.getMessage());
+            }
+        }
+
+        // Обрабатываем обычные объекты через методы
+        else if (!isPrimitive(obj)) {
+            // Ищем только методы которые явно возвращают outputs
+            for (Method method : obj.getClass().getMethods()) {
+                if (method.getParameterCount() != 0) continue;
+
+                String name = method.getName();
+
+                // Только методы которые могут вернуть chemical outputs
+                if (!name.contains("Output") && !name.contains("output") &&
+                        !name.contains("Chemical") && !name.contains("chemical") &&
+                        !name.contains("Definition") && !name.contains("definition")) {
+                    continue;
+                }
+
+                // Пропускаем системные методы
+                if (name.equals("getClass") || name.equals("toString") ||
+                        name.equals("hashCode") || name.equals("getName")) {
+                    continue;
+                }
+
+                try {
+                    method.setAccessible(true);
+                    Object result = method.invoke(obj);
+
+                    if (result != null && result != obj) {
+                        results.addAll(deepFindChemicalStacksRecursive(result, visited, depth + 1));
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        return results;
+    }
+    // Вспомогательный метод
+    private static boolean isPrimitive(Object obj) {
+        return obj instanceof String || obj instanceof Number ||
+                obj instanceof Boolean || obj instanceof Character ||
+                obj.getClass().isPrimitive();
+    }
+
+    private static ChemicalOutput tryExtractChemical(Object obj) {
+        if (obj == null) return null;
+
+        String className = obj.getClass().getName();
+
+        // ========== ОБРАБОТКА ChemicalStackIngredient ==========
+        if (className.contains("ChemicalStackIngredient") ||
+                (className.contains("Ingredient") && className.contains("Chemical"))) {
+
+            // Ищем метод getRepresentations()
+            try {
+                Method getRepresentations = obj.getClass().getMethod("getRepresentations");
+                Object result = getRepresentations.invoke(obj);
+
+                if (result instanceof List<?> list && !list.isEmpty()) {
+                    // Берём первый элемент списка (это ChemicalStack)
+                    Object firstStack = list.get(0);
+                    return tryExtractChemical(firstStack); // Рекурсивно обрабатываем
+                }
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.debug("Failed to extract from ChemicalStackIngredient: {}", e.getMessage());
+            }
+
+            // Альтернативно: пытаемся извлечь через ingredient()
+            try {
+                Method ingredient = obj.getClass().getMethod("ingredient");
+                Object ing = ingredient.invoke(obj);
+
+                if (ing != null) {
+                    // Пытаемся найти getChemicalHolders()
+                    Method getChemicalHolders = ing.getClass().getMethod("getChemicalHolders");
+                    Object holders = getChemicalHolders.invoke(ing);
+
+                    if (holders instanceof List<?> holderList && !holderList.isEmpty()) {
+                        Object firstHolder = holderList.get(0);
+
+                        // Создаём временный ChemicalStack
+                        try {
+                            Method amount = obj.getClass().getMethod("amount");
+                            long amt = (long) amount.invoke(obj);
+
+                            // Получаем ID из holder
+                            String holderId = firstHolder.toString();
+                            ResourceLocation loc = parseResourceLocation(holderId);
+                            if (loc != null) {
+                                return new ChemicalOutput(loc, amt);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            return null;
+        }
+        // ========================================================
+
+        // Проверка на ChemicalStack/Gas/Slurry/etc
+        if (!className.contains("Chemical") && !className.contains("Gas") &&
+                !className.contains("Slurry") && !className.contains("Infusion") &&
+                !className.contains("Pigment")) {
+            return null;
+        }
+
+        try {
+            long amount = 1000;
+
+            // Получить количество
+            for (String methodName : Arrays.asList("getAmount", "amount")) {
+                try {
+                    Method m = obj.getClass().getMethod(methodName);
+                    Object result = m.invoke(obj);
+                    if (result instanceof Number) {
+                        amount = ((Number) result).longValue();
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // Получить внутренний объект (Chemical/Holder)
+            Object innerObject = obj;
+            for (String methodName : Arrays.asList("getChemicalHolder", "getChemical", "chemical", "getType", "type")) {
+                try {
+                    Method m = obj.getClass().getMethod(methodName);
+                    Object result = m.invoke(obj);
+                    if (result != null && result != obj) {
+                        innerObject = result;
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // Получить ResourceLocation
+            ResourceLocation loc = parseResourceLocation(innerObject.toString());
+            if (loc != null) {
+                return new ChemicalOutput(loc, amount);
+            }
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to extract chemical: {}", e.getMessage());
+        }
+
+        return null;
+    }
+
+    // ========== НОВЫЙ вспомогательный метод ==========
+    private static ResourceLocation parseResourceLocation(String str) {
+        if (str == null || !str.contains(":")) return null;
+
+        // Убираем всё лишнее: "Reference{mekanism:sodium}" -> "mekanism:sodium"
+        String cleanId = str.replaceAll(".*?([a-z0-9_]+:[a-z0-9_/]+).*", "$1");
+
+        if (!cleanId.contains(":")) return null;
+
+        try {
+            return ResourceLocation.parse(cleanId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     public static RecipeNode convertRecipe(net.minecraft.world.item.crafting.Recipe<?> recipe, Level level) {
         List<ItemStack> itemOutputs = extractOutputs(recipe, level);
@@ -69,7 +349,6 @@ public class AdaptiveRecipeConverter {
         builder.itemOutputs(itemOutputs)
                 .fluidOutputs(fluidOutputs);
 
-        // Шаг 4: Определяем категорию рецепта
         List<Ingredient> ingredients = itemInputs.stream()
                 .filter(l -> !l.isEmpty())
                 .map(l -> Ingredient.of(l.toArray(new ItemStack[0])))
@@ -79,7 +358,6 @@ public class AdaptiveRecipeConverter {
 
         builder.recipeType(recipeType).category(category);
 
-        // Шаг 5: Добавляем все найденные ингредиенты
         itemInputs.forEach(group -> {
             if (!group.isEmpty()) {
                 builder.addIngredient(
@@ -98,7 +376,9 @@ public class AdaptiveRecipeConverter {
             }
         });
 
-        RecipeNode node = builder.build();
+        RecipeNode node = builder
+                .rawRecipe(recipe)
+                .build();
 
         if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty()) {
             return null;
@@ -139,12 +419,19 @@ public class AdaptiveRecipeConverter {
     }
 
     public static List<FluidStack> extractFluidOutputs(Object recipe, Level level) {
-        Object actualRecipe = unwrapRecipeHolder(recipe);
-        RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.FLUID, level);
-        if (adapter.fluidOutputAccessor == null) return new ArrayList<>();
         try {
+            Object actualRecipe = unwrapRecipeHolder(recipe);
+
+            RecipeAdapter adapter = getAdapter(actualRecipe, true, ResourceType.FLUID, level);
+
+            if (adapter.fluidOutputAccessor == null) {
+                return new ArrayList<>();
+            }
+
             Object result = adapter.fluidOutputAccessor.extract(actualRecipe, level);
+
             return deepFindFluidStacks(result, 0);
+
         } catch (Exception e) {
             return new ArrayList<>();
         }
@@ -539,12 +826,109 @@ public class AdaptiveRecipeConverter {
     }
 
     private static List<FluidStack> deepFindFluidStacks(Object obj, int depth) {
+        if (obj == null || depth > MAX_RECURSION_DEPTH) return new ArrayList<>();
+
+        // Если это FluidStack - отлично
+        if (obj instanceof FluidStack stack && !stack.isEmpty()) {
+            return List.of(stack);
+        }
+
+        // Если это ChemicalStack/Gas/Slurry/Infusion/Pigment - конвертируем
+        String className = obj.getClass().getName();
+        if (className.contains("Chemical") || className.contains("Gas") || className.contains("Slurry")
+                || className.contains("Infusion") || className.contains("Pigment")) {
+
+            FluidStack converted = tryConvertToFluid(obj, depth);
+            if (converted != null && !converted.isEmpty()) {
+                return List.of(converted);
+            }
+        }
+
+        // Универсальная рекурсивная обработка: Collections, Arrays, Records и т.д.
         return findRecursive(obj, depth, (o, d) -> {
             if (o instanceof FluidStack stack && !stack.isEmpty()) {
                 return List.of(stack);
             }
+            FluidStack converted = tryConvertToFluid(o, d);
+            if (converted != null && !converted.isEmpty()) {
+                return List.of(converted);
+            }
             return null;
         });
+    }
+
+    private static FluidStack tryConvertToFluid(Object obj, int depth) {
+        if (obj == null || depth > MAX_RECURSION_DEPTH) return null;
+
+        try {
+            String resourceId = null;
+            long amount = 1000;
+
+            String className = obj.getClass().getSimpleName();
+
+            if (className.contains("Slurry") || className.contains("Pigment")) {
+                return null;
+            }
+
+            for (String methodName : Arrays.asList("getAmount", "amount")) {
+                try {
+                    Method m = obj.getClass().getMethod(methodName);
+                    Object result = m.invoke(obj);
+                    if (result instanceof Number) {
+                        amount = ((Number) result).longValue();
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // Ищем внутренний объект
+            Object innerObject = obj;
+            for (String methodName : Arrays.asList("getChemical", "chemical", "getGas", "gas", "getFluid", "fluid", "getType", "type")) {
+                try {
+                    Method m = obj.getClass().getMethod(methodName);
+                    Object result = m.invoke(obj);
+                    if (result != null && result != obj) {
+                        innerObject = result;
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // Ищем строковое представление
+            for (String methodName : Arrays.asList("toString", "getName", "name", "getRegistryName", "registryName", "getId", "id")) {
+                try {
+                    Method m = innerObject.getClass().getMethod(methodName);
+                    Object result = m.invoke(innerObject);
+                    if (result instanceof String str && str.contains(":")) {
+                        resourceId = str;
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (resourceId != null) {
+                String cleanId = resourceId.replaceAll(".*\\[([^\\]]+)].*", "$1")
+                        .replaceAll(".*\\{([^}]+)}.*", "$1")
+                        .replaceAll("^.*?([a-z0-9_]+:[a-z0-9_]+).*$", "$1");
+
+
+
+                try {
+                    ResourceLocation loc = ResourceLocation.parse(cleanId);
+                    net.minecraft.world.level.material.Fluid fluid = BuiltInRegistries.FLUID.get(loc);
+
+                    if (fluid != net.minecraft.world.level.material.Fluids.EMPTY) {
+                        return new FluidStack(fluid, (int) Math.min(amount, Integer.MAX_VALUE));
+                    }
+                } catch (Exception ignored) {}
+            }
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Failed to convert {} to FluidStack: {}",
+                    obj.getClass().getSimpleName(), e.getMessage());
+        }
+
+        return null;
     }
 
     private static List<List<ItemStack>> deepFindItemStackLists(Object obj, int depth) {
@@ -891,8 +1275,6 @@ public class AdaptiveRecipeConverter {
     }
 
 
-
-
     private static Method findAnyMethod(Class<?> clazz, String name) {
         for (Method m : clazz.getMethods()) {
             if (m.getName().equals(name)) return m;
@@ -995,6 +1377,8 @@ public class AdaptiveRecipeConverter {
     interface Accessor {
         Object extract(Object recipe, Level level) throws Exception;
     }
+
+    public record ChemicalOutput(ResourceLocation id, long amount) {}
 
     static class MethodAccessor implements Accessor {
         private final Method method;

@@ -121,6 +121,7 @@ public class DirectRecipeExtractor {
             Level level) {
 
         List<RecipeNode> result = new ArrayList<>();
+        String typeIdString = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType).toString();
 
         try {
             var method = net.minecraft.world.item.crafting.RecipeManager.class.getMethod(
@@ -131,6 +132,12 @@ public class DirectRecipeExtractor {
             @SuppressWarnings("rawtypes")
             var recipes = (Collection<RecipeHolder>) method.invoke(recipeManager, recipeType);
 
+            // ✅ ОТЛАДКА
+            if (typeIdString.contains("separat") || typeIdString.contains("electrolytic")) {
+                ComplexityAnalyzer.LOGGER.warn("🔍 Found {} recipes of type {}",
+                        recipes.size(), typeIdString);
+            }
+
             for (RecipeHolder<?> holder : recipes) {
                 try {
                     Recipe<?> recipe = holder.value();
@@ -138,8 +145,14 @@ public class DirectRecipeExtractor {
 
                     if (node != null) {
                         result.add(node);
+                    } else if (typeIdString.contains("separat") || typeIdString.contains("electrolytic")) {
+                        ComplexityAnalyzer.LOGGER.warn("   ❌ Recipe {} converted to NULL", holder.id());
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    if (typeIdString.contains("separat") || typeIdString.contains("electrolytic")) {
+                        ComplexityAnalyzer.LOGGER.warn("   ❌ Recipe conversion failed: {}", e.getMessage());
+                    }
+                }
             }
 
         } catch (Exception e) {

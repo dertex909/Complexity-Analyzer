@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UniversalLootSource implements IResourceSource {
 
     private static final int SIMULATION_COUNT = 500;
-    private static final int SIMULATION_TIMEOUT_MS = 3000;
+    private static final int SIMULATION_TIMEOUT_MS = 1000;
 
     private final Map<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> allLootData = new ConcurrentHashMap<>();
 

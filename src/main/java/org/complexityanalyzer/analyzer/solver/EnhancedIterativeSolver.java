@@ -14,6 +14,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.*;
 
@@ -34,6 +35,9 @@ public class EnhancedIterativeSolver {
     private final Map<Item, Double> itemComplexities;
     private final Map<Fluid, Double> fluidComplexities;
     private final Map<Item, RecipeNode> optimalRecipes;
+    private final ChemicalComplexityManager chemicalManager;
+    private final ThreadLocal<Set<net.minecraft.world.level.material.Fluid>> fluidCalculationStack =
+            ThreadLocal.withInitial(HashSet::new);
 
     private int totalIterations = 0;
     private int recipeCostCalculations = 0;
@@ -48,6 +52,8 @@ public class EnhancedIterativeSolver {
         this.itemComplexities = new ConcurrentHashMap<>();
         this.fluidComplexities = new ConcurrentHashMap<>();
         this.optimalRecipes = new ConcurrentHashMap<>();
+        this.chemicalManager = new ChemicalComplexityManager(); // НОВОЕ
+        AdaptiveRecipeConverter.setChemicalManager(chemicalManager); // НОВОЕ
     }
 
     public SolverResult solve() {
@@ -66,16 +72,6 @@ public class EnhancedIterativeSolver {
                 .limit(30)
                 .forEach(e -> ComplexityAnalyzer.LOGGER.warn("   {} → {} recipes", e.getKey(), e.getValue()));
 
-        long separatingCount = graph.getAllRecipes().stream()
-                .filter(r -> r.getRecipeType().toString().equals("mekanism:separating"))
-                .count();
-        ComplexityAnalyzer.LOGGER.warn("🔍 mekanism:separating recipes: {}", separatingCount);
-
-        long rotaryCount = graph.getAllRecipes().stream()
-                .filter(r -> r.getRecipeType().toString().equals("mekanism:rotary"))
-                .count();
-        ComplexityAnalyzer.LOGGER.warn("🔍 mekanism:rotary recipes: {}", rotaryCount);
-
         initialize();
 
         ComplexityAnalyzer.LOGGER.info("📦 Phase 1: Calculating item complexities...");
@@ -88,9 +84,50 @@ public class EnhancedIterativeSolver {
         logPhaseResults("FLUIDS", fluidIterations, fluidComplexities.size());
         cache.clear();
 
+        ComplexityAnalyzer.LOGGER.info("🧪 Phase 3: Calculating chemical complexities...");
+        int chemIterations = solveChemicals();
+        logPhaseResults("CHEMICALS", chemIterations, chemicalManager.size());
+
+// ========== СИНХРОНИЗАЦИЯ CHEMICALS → FLUIDS ==========
+        ComplexityAnalyzer.LOGGER.info("🔗 Synchronizing chemicals to fluids...");
+        int synchronizd = 1;
+
+        for (ResourceLocation chemId : chemicalManager.getAllChemicals()) {
+            // ========== DEBUG ==========
+            ComplexityAnalyzer.LOGGER.debug("Checking chemical: {}", chemId);
+
+            // Проверяем есть ли fluid с таким же ID
+            Fluid fluid = BuiltInRegistries.FLUID.get(chemId);
+
+            ComplexityAnalyzer.LOGGER.debug("  Found fluid: {} (isEmpty: {})",
+                    fluid, fluid == net.minecraft.world.level.material.Fluids.EMPTY);
+            // ===========================
+
+            if (fluid != null && fluid != net.minecraft.world.level.material.Fluids.EMPTY) {
+                double chemComplexity = chemicalManager.getComplexity(chemId);
+                double fluidComplexity = fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY);
+
+                ComplexityAnalyzer.LOGGER.debug("  Chemical complexity: {}, Fluid complexity: {}",
+                        chemComplexity, fluidComplexity);
+
+                // Если chemical конечный, а fluid бесконечный - обновляем
+                if (!Double.isInfinite(chemComplexity) && Double.isInfinite(fluidComplexity)) {
+                    fluidComplexities.put(fluid, chemComplexity);
+                    ComplexityAnalyzer.LOGGER.info("✅ Synchronized fluid {} from chemical: {}",
+                            chemId, chemComplexity);
+                    synchronizd++;
+                }
+            }
+        }
+
+        ComplexityAnalyzer.LOGGER.info("🔗 Synchronized {} fluids from chemicals", synchronizd);
+// ======================================================================
+
+        cache.clear();
+
         ComplexityAnalyzer.LOGGER.info("🔄 Refinement: Final convergence pass...");
         int refinementIterations = refinementPass();
-        logPhaseResults("REFINEMENT", refinementIterations, itemComplexities.size() + fluidComplexities.size());
+        logPhaseResults("REFINEMENT", refinementIterations, itemComplexities.size() + fluidComplexities.size() + chemicalManager.size());
 
         int reclassified = graph.reclassifyRecipesBasedOnComplexity(itemComplexities);
         if (reclassified > 0) {
@@ -109,21 +146,149 @@ public class EnhancedIterativeSolver {
         ComplexityAnalyzer.LOGGER.info("🔧 Initializing solver...");
         dependencies.build(graph, sourceManager);
 
+        // Инициализация items
         for (Item item : graph.getCorpus()) {
             Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
-            itemComplexities.put(item, dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty() ? dataOpt.get().getBaseFactor() : Double.POSITIVE_INFINITY);
+            itemComplexities.put(item, dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty()
+                    ? dataOpt.get().getBaseFactor()
+                    : Double.POSITIVE_INFINITY);
         }
 
+        // Инициализация fluids
         for (Fluid fluid : graph.getAllUsedFluids()) {
             String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
-            if (fluidName.equals("minecraft:water") || fluidName.equals("minecraft:lava") || fluidName.equals("minecraft:flowing_water") || fluidName.equals("minecraft:flowing_lava")) {
-                fluidComplexities.put(fluid, ComplexityConfig.getFluidBaseComplexity());
+
+            if (fluidName.equals("minecraft:water") || fluidName.equals("minecraft:lava")) {
+                fluidComplexities.put(fluid, 1.0);
             } else {
-                fluidComplexities.put(fluid, graph.getRecipesProducingFluid(fluid).isEmpty() ? ComplexityConfig.getFluidBaseComplexity() : Double.POSITIVE_INFINITY);
+                fluidComplexities.put(fluid, Double.POSITIVE_INFINITY);
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("✅ Initialization complete: {} items, {} fluids", itemComplexities.size(), fluidComplexities.size());
+        // ========== ИСПРАВЛЕНИЕ: Инициализация chemicals ==========
+        int chemicalsRegistered = 0;
+        int chemicalRecipesCreated = 0;
+
+        for (RecipeNode recipe : graph.getAllRecipes()) {
+            // ✅ ВАЖНО: Получаем RAW рецепт!
+            Object raw = recipe.getRawRecipeRef();
+            if (raw == null) continue;
+
+            // ✅ Используем raw вместо RecipeNode
+            List<AdaptiveRecipeConverter.ChemicalOutput> chemOutputs =
+                    AdaptiveRecipeConverter.extractChemicalOutputs(raw, null);
+
+            if (chemOutputs.isEmpty()) continue;
+
+            for (AdaptiveRecipeConverter.ChemicalOutput output : chemOutputs) {
+                // Регистрируем chemical если ещё не зарегистрирован
+                if (!chemicalManager.getAllChemicals().contains(output.id())) {
+                    chemicalManager.registerChemical(output.id(), Double.POSITIVE_INFINITY);
+                    chemicalsRegistered++;
+                }
+
+                // Создаём ChemicalRecipe
+                Map<Item, Double> itemInputs = new HashMap<>();
+                Map<Fluid, Double> fluidInputs = new HashMap<>();
+                Map<ResourceLocation, Double> chemInputs = new HashMap<>();
+
+                // Собираем item inputs
+                for (IngredientSlot slot : recipe.getIngredients()) {
+                    if (!slot.getVariants().isEmpty()) {
+                        Item bestItem = slot.getVariants().getFirst();
+                        itemInputs.put(bestItem, (double) slot.getCount());
+                    }
+                }
+
+                // Собираем fluid inputs
+                for (FluidIngredientSlot slot : recipe.getFluidIngredients()) {
+                    if (!slot.getFluidVariants().isEmpty()) {
+                        Fluid bestFluid = slot.getFluidVariants().getFirst();
+                        fluidInputs.put(bestFluid, slot.getAmount() / 1000.0);
+                    }
+                }
+
+                // ✅ Собираем chemical inputs (из RAW!)
+                List<AdaptiveRecipeConverter.ChemicalOutput> chemInputsList =
+                        AdaptiveRecipeConverter.extractChemicalInputs(raw);
+                for (AdaptiveRecipeConverter.ChemicalOutput chemInput : chemInputsList) {
+                    chemInputs.put(chemInput.id(), chemInput.amount() / 1000.0);
+                }
+
+                // Машина
+                double machineComplexity = 0.0;
+                if (machineRegistry != null) {
+                    Optional<Item> machineOpt = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
+                    if (machineOpt.isPresent()) {
+                        Item machineItem = machineOpt.get();
+                        machineComplexity = itemComplexities.getOrDefault(machineItem, 0.0);
+                        if (Double.isInfinite(machineComplexity)) {
+                            machineComplexity = ComplexityConfig.getMachineBaseComplexity();
+                        }
+                        machineComplexity *= ComplexityConfig.getMachineTaxMultiplier();
+                    }
+                }
+
+                ChemicalComplexityManager.ChemicalRecipe chemRecipe =
+                        new ChemicalComplexityManager.ChemicalRecipe(
+                                itemInputs,
+                                fluidInputs,
+                                chemInputs,
+                                output.amount() / 1000.0,
+                                machineComplexity,
+                                recipe.getRecipeMultiplier()
+                        );
+
+                chemicalManager.addProducingRecipe(output.id(), chemRecipe);
+                chemicalRecipesCreated++;
+            }
+        }
+
+        ComplexityAnalyzer.LOGGER.info("✅ Initialization complete: {} items, {} fluids, {} chemicals ({} recipes)",
+                itemComplexities.size(), fluidComplexities.size(), chemicalsRegistered, chemicalRecipesCreated);
+    }
+
+    private int solveChemicals() {
+        Set<ResourceLocation> toUpdate = new HashSet<>();
+
+        for (ResourceLocation chemId : chemicalManager.getAllChemicals()) {
+            if (Double.isInfinite(chemicalManager.getComplexity(chemId))) {
+                toUpdate.add(chemId);
+            }
+        }
+
+        if (toUpdate.isEmpty()) return 0;
+
+        ComplexityAnalyzer.LOGGER.info("🧪 Calculating {} chemicals...", toUpdate.size());
+
+        int iterations = 0;
+        boolean changed;
+
+        while (iterations < MAX_ITERATIONS / 2) {
+            iterations++;
+            changed = false;
+
+            for (ResourceLocation chemId : toUpdate) {
+                if (updateChemicalComplexity(chemId)) {
+                    changed = true;
+                }
+            }
+
+            if (!changed) break;
+        }
+
+        return iterations;
+    }
+
+    private boolean updateChemicalComplexity(ResourceLocation chemId) {
+        double oldComplexity = chemicalManager.getComplexity(chemId);
+        double newComplexity = chemicalManager.calculateComplexity(chemId, itemComplexities, fluidComplexities);
+
+        if (hasSignificantChange(oldComplexity, newComplexity)) {
+            chemicalManager.setComplexity(chemId, newComplexity);
+            return true;
+        }
+        return false;
     }
 
     private int solveItems() {
@@ -176,8 +341,23 @@ public class EnhancedIterativeSolver {
     }
 
     private int solveFluids() {
-        List<Fluid> toUpdate = fluidComplexities.entrySet().stream().filter(e -> Double.isInfinite(e.getValue())).map(Map.Entry::getKey).toList();
-        if (toUpdate.isEmpty()) return 0;
+        List<Fluid> toUpdate = fluidComplexities.entrySet().stream()
+                .filter(e -> Double.isInfinite(e.getValue()))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        ComplexityAnalyzer.LOGGER.warn("🔍 Fluids to calculate: {}", toUpdate.size());
+        toUpdate.forEach(f -> {
+            String name = BuiltInRegistries.FLUID.getKey(f).toString();
+            int recipeCount = graph.getRecipesProducingFluid(f).size();
+            ComplexityAnalyzer.LOGGER.warn("   - {}: {} recipes", name, recipeCount);
+        });
+
+        if (toUpdate.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.warn("⚠️  No fluids with INFINITY! All already have values.");
+            return 0;
+        }
+
         int iterations = 0;
         boolean changed;
         while (iterations < MAX_ITERATIONS / 2) {
@@ -193,9 +373,23 @@ public class EnhancedIterativeSolver {
         return iterations;
     }
 
+    private static final Set<String> PROTECTED_FLUIDS = Set.of(
+            "minecraft:water",
+            "minecraft:lava"
+    );
+
+    private boolean isProtectedFluid(Fluid fluid) {
+        return PROTECTED_FLUIDS.contains(BuiltInRegistries.FLUID.getKey(fluid).toString());
+    }
+
     private boolean updateFluidComplexity(Fluid fluid) {
+        if (isProtectedFluid(fluid)) {
+            return false;
+        }
+
         double oldComplexity = fluidComplexities.get(fluid);
         double newComplexity = calculateFluidComplexity(fluid);
+
         if (hasSignificantChange(oldComplexity, newComplexity)) {
             fluidComplexities.put(fluid, newComplexity);
             cache.invalidateFluid(fluid);
@@ -206,23 +400,79 @@ public class EnhancedIterativeSolver {
     }
 
     private double calculateFluidComplexity(Fluid fluid) {
-        List<RecipeNode> producers = graph.getRecipesProducingFluid(fluid);
-        if (producers.isEmpty()) return ComplexityConfig.getFluidBaseComplexity();
-        double minCost = Double.POSITIVE_INFINITY;
-        boolean foundFinite = false;
-        for (RecipeNode recipe : producers) {
-            double recipeCost = calculateRecipeCost(recipe, true);
-            if (Double.isInfinite(recipeCost)) continue;
-            int outputAmount = recipe.getFluidOutputs().stream().filter(s -> s.getFluid().equals(fluid)).mapToInt(net.neoforged.neoforge.fluids.FluidStack::getAmount).sum();
-            if (outputAmount <= 0) outputAmount = 1000;
-            double costPerUnit = (recipeCost * recipe.getRecipeMultiplier()) / (outputAmount / 1000.0);
-            minCost = Math.min(minCost, costPerUnit);
-            foundFinite = true;
+        if (isProtectedFluid(fluid)) {
+            return 1.00;
         }
-        if (!foundFinite || Double.isInfinite(minCost)) {
-            return ComplexityConfig.getFluidBaseComplexity();
+
+        Set<Fluid> stack = fluidCalculationStack.get();
+        if (stack.contains(fluid)) {
+            ComplexityAnalyzer.LOGGER.debug("🔄 Cycle detected for fluid {}",
+                    BuiltInRegistries.FLUID.getKey(fluid));
+            return Double.POSITIVE_INFINITY;
         }
-        return minCost;
+
+        stack.add(fluid);
+        try {
+            List<RecipeNode> producers = graph.getRecipesProducingFluid(fluid);
+            String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
+
+            if (producers.isEmpty()) {
+                ComplexityAnalyzer.LOGGER.debug("💧 {} has NO recipes, returning base complexity", fluidName);
+                return Double.POSITIVE_INFINITY;
+            }
+
+            ComplexityAnalyzer.LOGGER.debug("💧 Calculating {} from {} recipes", fluidName, producers.size());
+
+            double minCost = Double.POSITIVE_INFINITY;
+            boolean foundFinite = false;
+
+            for (RecipeNode recipe : producers) {
+                double recipeCost = calculateRecipeCost(recipe, true);
+
+                if (Double.isInfinite(recipeCost)) {
+                    ComplexityAnalyzer.LOGGER.debug("   Recipe {} -> INFINITE", recipe.getRecipeType());
+                    continue;
+                }
+
+                int outputAmount = recipe.getFluidOutputs().stream()
+                        .filter(s -> s.getFluid().equals(fluid))
+                        .mapToInt(net.neoforged.neoforge.fluids.FluidStack::getAmount)
+                        .sum();
+
+                if (outputAmount <= 0) outputAmount = 1000;
+
+                double costPerUnit = (recipeCost * recipe.getRecipeMultiplier()) / (outputAmount / 1000.0);
+
+                ComplexityAnalyzer.LOGGER.debug("   Recipe {} -> {} ({}mB)",
+                        recipe.getRecipeType(), String.format("%.2f", costPerUnit), outputAmount);
+
+                minCost = Math.min(minCost, costPerUnit);
+                foundFinite = true;
+            }
+
+            if (!foundFinite || Double.isInfinite(minCost)) {
+                ComplexityAnalyzer.LOGGER.warn("⚠️  {} has recipes but all INFINITE, using base", fluidName);
+                minCost = Double.POSITIVE_INFINITY;
+            }
+
+            // ========== НОВОЕ: Проверяем chemical с тем же ID ==========
+            ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
+            if (chemicalManager != null && chemicalManager.getAllChemicals().contains(fluidId)) {
+                double chemComplexity = chemicalManager.getComplexity(fluidId);
+                if (!Double.isInfinite(chemComplexity) && chemComplexity < minCost) {
+                    ComplexityAnalyzer.LOGGER.debug("   Using chemical complexity {} instead of recipe {}",
+                            String.format("%.2f", chemComplexity), String.format("%.2f", minCost));
+                    minCost = chemComplexity;
+                }
+            }
+            // ============================================================
+
+            ComplexityAnalyzer.LOGGER.debug("✅ {} final complexity: {}", fluidName, String.format("%.2f", minCost));
+            return minCost;
+
+        } finally {
+            stack.remove(fluid);
+        }
     }
 
     private int refinementPass() {
@@ -233,6 +483,7 @@ public class EnhancedIterativeSolver {
             changed = false;
             for (Item item : graph.getCorpus()) if (updateItemComplexity(item)) changed = true;
             for (Fluid fluid : graph.getAllUsedFluids()) if (updateFluidComplexity(fluid)) changed = true;
+            for (ResourceLocation chemId : chemicalManager.getAllChemicals()) if (updateChemicalComplexity(chemId)) changed = true;
         }
         return iterations;
     }
@@ -373,6 +624,9 @@ public class EnhancedIterativeSolver {
     private void logFinalStatistics(long totalTime) {
         long finiteItems = itemComplexities.values().stream().filter(v -> !Double.isInfinite(v)).count();
         long infiniteFluids = fluidComplexities.values().stream().filter(v -> Double.isInfinite(v)).count();
+        long finiteChemicals = chemicalManager.getAllChemicals().stream()
+                .filter(id -> !Double.isInfinite(chemicalManager.getComplexity(id))).count();
+
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
         ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS");
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
@@ -380,12 +634,43 @@ public class EnhancedIterativeSolver {
         ComplexityAnalyzer.LOGGER.info("🔄 Total iterations: {}", totalIterations);
         ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, itemComplexities.size());
         ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} infinite", infiniteFluids, fluidComplexities.size());
+        ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChemicals, chemicalManager.size());
 
         if (recipeCostCalculations > 0) {
-            ComplexityAnalyzer.LOGGER.info("💾 Cache: {} calculations, {} hits ({}%), {} invalidations", recipeCostCalculations, cacheHits, String.format("%.1f", 100.0 * cacheHits / recipeCostCalculations), cache.getInvalidationCount());
+            ComplexityAnalyzer.LOGGER.info("💾 Cache: {} calculations, {} hits ({}%), {} invalidations",
+                    recipeCostCalculations, cacheHits,
+                    String.format("%.1f", 100.0 * cacheHits / recipeCostCalculations),
+                    cache.getInvalidationCount());
         }
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
+
+        // Лог chemicals
+        if (finiteChemicals > 0) {
+            ComplexityAnalyzer.LOGGER.debug("--- [DEBUG] Chemical Complexities ---");
+            chemicalManager.getAllChemicals().stream()
+                    .sorted(Comparator.comparing(ResourceLocation::toString))
+                    .limit(50)
+                    .forEach(id -> {
+                        double complexity = chemicalManager.getComplexity(id);
+                        String complexityStr = Double.isInfinite(complexity) ? "Infinity" : String.format("%.2f", complexity);
+                        ComplexityAnalyzer.LOGGER.debug("  - {}: {}", id, complexityStr);
+                    });
+            ComplexityAnalyzer.LOGGER.debug("--- [DEBUG] End of Chemicals ---");
+        }
         
+        ComplexityAnalyzer.LOGGER.debug("--- [DEBUG] Final Fluid Complexities ---");
+        fluidComplexities.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey(Comparator.comparing(f -> BuiltInRegistries.FLUID.getKey(f).toString())))
+            .forEach(entry -> {
+                Fluid fluid = entry.getKey();
+                Double complexity = entry.getValue();
+                String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
+                String complexityStr = Double.isInfinite(complexity) ? "Infinity" : String.format("%.2f", complexity);
+                ComplexityAnalyzer.LOGGER.debug("  - {}: {}", fluidName, complexityStr);
+            });
+        ComplexityAnalyzer.LOGGER.debug("--- [DEBUG] End of Fluid Complexities ---");
+
+
         if (infiniteFluids > 0) {
             ComplexityAnalyzer.LOGGER.warn("⚠️  {} fluids have infinite complexity:", infiniteFluids);
             List<Fluid> infiniteFluidList = fluidComplexities.entrySet().stream()

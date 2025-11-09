@@ -166,7 +166,7 @@ public class ComplexityConfig {
     }
 
     public static double getFluidBaseComplexity() {
-        return FLUID_BASE_COMPLEXITY.get();
+        return Double.POSITIVE_INFINITY;
     }
 
     public static double getFluidNormalizationFactor() {

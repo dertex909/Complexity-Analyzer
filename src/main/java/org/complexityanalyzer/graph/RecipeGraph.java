@@ -228,6 +228,21 @@ public class RecipeGraph {
                 .sum();
     }
 
+    private static net.minecraft.world.level.material.Fluid normalizeFluid(net.minecraft.world.level.material.Fluid fluid) {
+        String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
+
+        if (fluidName.contains("flowing_")) {
+            String staticName = fluidName.replace("flowing_", "");
+            ResourceLocation staticId = ResourceLocation.parse(staticName);
+
+            if (BuiltInRegistries.FLUID.containsKey(staticId)) {
+                return BuiltInRegistries.FLUID.get(staticId);
+            }
+        }
+
+        return fluid;
+    }
+
     public void clear() {
         recipesByItem.clear();
         usageMap.clear();
@@ -251,16 +266,23 @@ public class RecipeGraph {
 
     // Методы для работы с fluids и chemicals
     public List<RecipeNode> getRecipesProducingFluid(net.minecraft.world.level.material.Fluid fluid) {
+        fluid = normalizeFluid(fluid); // Нормализуем
+        final net.minecraft.world.level.material.Fluid normalizedFluid = fluid;
+
         return getAllRecipes().stream()
                 .filter(recipe -> recipe.getFluidOutputs().stream()
-                        .anyMatch(stack -> stack.getFluid().equals(fluid)))
+                        .anyMatch(stack -> normalizeFluid(stack.getFluid()).equals(normalizedFluid)))
                 .toList();
     }
-    
+
     public List<Item> getItemsUsingFluid(net.minecraft.world.level.material.Fluid fluid) {
+        fluid = normalizeFluid(fluid); // Нормализуем
+        final net.minecraft.world.level.material.Fluid normalizedFluid = fluid;
+
         return getAllRecipes().stream()
                 .filter(recipe -> recipe.getFluidIngredients().stream()
-                        .anyMatch(slot -> slot.getFluidVariants().contains(fluid)))
+                        .anyMatch(slot -> slot.getFluidVariants().stream()
+                                .anyMatch(f -> normalizeFluid(f).equals(normalizedFluid))))
                 .map(RecipeNode::getResultItem)
                 .distinct()
                 .toList();
@@ -269,8 +291,11 @@ public class RecipeGraph {
     public Set<net.minecraft.world.level.material.Fluid> getAllUsedFluids() {
         Set<net.minecraft.world.level.material.Fluid> fluids = new HashSet<>();
         for (RecipeNode recipe : getAllRecipes()) {
-            recipe.getFluidIngredients().forEach(slot -> fluids.addAll(slot.getFluidVariants()));
-            recipe.getFluidOutputs().forEach(stack -> fluids.add(stack.getFluid()));
+            // Нормализуем все жидкости
+            recipe.getFluidIngredients().forEach(slot ->
+                    slot.getFluidVariants().forEach(f -> fluids.add(normalizeFluid(f))));
+            recipe.getFluidOutputs().forEach(stack ->
+                    fluids.add(normalizeFluid(stack.getFluid())));
         }
         return fluids;
     }

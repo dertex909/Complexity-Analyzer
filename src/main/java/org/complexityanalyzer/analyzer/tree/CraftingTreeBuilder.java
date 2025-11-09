@@ -214,7 +214,7 @@ public class CraftingTreeBuilder {
         for (FluidIngredientSlot slot : recipe.getFluidIngredients()) {
             var primaryFluid = slot.getPrimaryFluid();
             if (primaryFluid != null) {
-                String fluidName = BuiltInRegistries.FLUID.getKey(primaryFluid).toString();
+                String fluidName = primaryFluid.getFluidType().getDescription().getString();
                 double amount = slot.getAmount() * craftOperations;
                 nodeBuilder.addFluidChild(new FluidNode(fluidName, amount));
             }

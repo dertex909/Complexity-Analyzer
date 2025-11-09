@@ -29,6 +29,9 @@ public class RecipeNode {
     private final boolean isPlaceholder;
     private final String placeholderId;
 
+    // ========== НОВОЕ: Ссылка на сырой рецепт ==========
+    private transient Object rawRecipeRef;
+
     private RecipeNode(Builder builder) {
         this.resultItem = builder.resultItem;
         this.resultCount = builder.resultCount;
@@ -45,15 +48,22 @@ public class RecipeNode {
 
         this.isPlaceholder = builder.isPlaceholder;
         this.placeholderId = builder.placeholderId;
+
+        // ========== НОВОЕ ==========
+        this.rawRecipeRef = builder.rawRecipeRef;
     }
 
-    // Старый метод для создания пустого узла
     public static RecipeNode empty(Item item) {
         return new Builder(item).category(RecipeCategory.UNPROCESSABLE).build();
     }
 
     public void setCategory(RecipeCategory category) {
         this.category = category;
+    }
+
+    // ========== НОВОЕ: Геттер для raw recipe ==========
+    public Object getRawRecipeRef() {
+        return rawRecipeRef;
     }
 
     // Getters...
@@ -124,6 +134,9 @@ public class RecipeNode {
         private boolean isPlaceholder = false;
         private String placeholderId = "";
 
+        // ========== НОВОЕ: Поле для raw recipe ==========
+        private Object rawRecipeRef;
+
         public Builder(Item resultItem) {
             this.resultItem = resultItem;
         }
@@ -136,6 +149,12 @@ public class RecipeNode {
 
         public Builder isPlaceholder(boolean placeholder) { this.isPlaceholder = placeholder; return this; }
         public Builder placeholderId(String id) { this.placeholderId = id; return this; }
+
+        // ========== НОВОЕ: Метод для установки raw recipe ==========
+        public Builder rawRecipe(Object raw) {
+            this.rawRecipeRef = raw;
+            return this;
+        }
 
         public Builder addIngredient(List<Item> variants, int count) {
             this.ingredients.add(new IngredientSlot(variants, count));
@@ -164,7 +183,6 @@ public class RecipeNode {
         }
     }
 
-    // Вспомогательные методы для подсчёта общего количества fluids
     public int getTotalFluidAmount() {
         return fluidOutputs.stream()
                 .mapToInt(net.neoforged.neoforge.fluids.FluidStack::getAmount)

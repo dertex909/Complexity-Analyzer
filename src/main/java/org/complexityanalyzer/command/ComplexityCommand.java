@@ -41,7 +41,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.event.DatapackSyncHandler;
+import org.complexityanalyzer.event.AnalysisBootstrap;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -252,7 +252,7 @@ public class ComplexityCommand {
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = DatapackSyncHandler.getEngine();
+        AnalysisEngine engine = AnalysisBootstrap.getEngine();
 
         if (engine == null) {
             output.sendFailure(source,

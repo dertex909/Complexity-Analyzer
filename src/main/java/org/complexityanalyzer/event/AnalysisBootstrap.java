@@ -21,13 +21,14 @@ package org.complexityanalyzer.event;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
-public class DatapackSyncHandler {
+public class AnalysisBootstrap {
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
@@ -37,6 +38,11 @@ public class DatapackSyncHandler {
         engine.createGeoManager(server);
 
         engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("Analysis engine initialization complete."));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        AnalysisEngine.getInstance().onPlayerJoined();
     }
 
     @SubscribeEvent

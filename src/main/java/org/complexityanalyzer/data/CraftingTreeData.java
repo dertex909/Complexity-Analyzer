@@ -23,23 +23,20 @@ import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.*;
 
-/**
- * Структура данных для дерева крафта.
- * Может быть использована для экспорта, анализа, GUI и т.д.
- */
+ 
 public class CraftingTreeData {
 
     public enum DisplayMode {
-        PLAYER_INSTRUCTION,  // Округление для игрока
-        ECONOMIC_COST       // Точные значения
+        PLAYER_INSTRUCTION,   
+        ECONOMIC_COST        
     }
 
     public enum NodeType {
-        CRAFTING,           // Требует крафта
-        BASE_RESOURCE,      // Базовый ресурс
-        CYCLE,             // Циклическая зависимость
-        MAX_DEPTH_REACHED, // Достигнута максимальная глубина
-        NO_DATA            // Нет данных
+        CRAFTING,            
+        BASE_RESOURCE,       
+        CYCLE,              
+        MAX_DEPTH_REACHED,  
+        NO_DATA             
     }
 
     private final Item rootItem;
@@ -59,7 +56,7 @@ public class CraftingTreeData {
         this.maxDepth = maxDepth;
     }
 
-    // Getters
+     
     public Item getRootItem() { return rootItem; }
     public TreeNode getRoot() { return root; }
     public Map<Item, Double> getBaseResources() { return baseResources; }
@@ -67,9 +64,7 @@ public class CraftingTreeData {
     public DisplayMode getDisplayMode() { return displayMode; }
     public int getMaxDepth() { return maxDepth; }
 
-    /**
-     * Узел дерева крафта
-     */
+     
     public static class TreeNode {
         private final NodeType type;
         private final Item item;
@@ -181,13 +176,11 @@ public class CraftingTreeData {
         }
     }
 
-    /**
-     * Узел для жидкости (включая химикаты из Mekanism и т.д.)
-     */
+     
     public static class FluidNode {
         private final String fluidName;
         private final double amount;
-        private final String fluidType; // "FLUID", "GAS", "SLURRY", etc.
+        private final String fluidType;  
 
         public FluidNode(String fluidName, double amount, String fluidType) {
             this.fluidName = fluidName;
@@ -195,7 +188,7 @@ public class CraftingTreeData {
             this.fluidType = fluidType;
         }
 
-        // Backward compatibility constructor
+         
         public FluidNode(String fluidName, double amount) {
             this(fluidName, amount, "FLUID");
         }
@@ -205,9 +198,7 @@ public class CraftingTreeData {
         public String getFluidType() { return fluidType; }
     }
 
-    /**
-     * Статистика дерева
-     */
+     
     public static class TreeStatistics {
         private int totalNodes = 0;
         private int uniqueItems = 0;

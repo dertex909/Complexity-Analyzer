@@ -1,7 +1,24 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.analyzer.solver;
 
 import net.minecraft.resources.ResourceLocation;
-import org.complexityanalyzer.config.ComplexityConfig;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,7 +37,7 @@ public class ChemicalComplexityManager {
     }
 
     public double getComplexity(ResourceLocation chemicalId) {
-        return complexities.getOrDefault(chemicalId, ComplexityConfig.getFluidBaseComplexity());
+        return complexities.getOrDefault(chemicalId, Double.POSITIVE_INFINITY);
     }
 
     public void setComplexity(ResourceLocation chemicalId, double complexity) {
@@ -42,7 +59,7 @@ public class ChemicalComplexityManager {
         List<ChemicalRecipe> recipes = getProducingRecipes(chemicalId);
 
         if (recipes.isEmpty()) {
-            return ComplexityConfig.getFluidBaseComplexity();
+            return Double.POSITIVE_INFINITY;
         }
 
         double minCost = Double.POSITIVE_INFINITY;
@@ -54,7 +71,7 @@ public class ChemicalComplexityManager {
             }
         }
 
-        return Double.isInfinite(minCost) ? ComplexityConfig.getFluidBaseComplexity() : minCost;
+        return Double.isInfinite(minCost) ? Double.POSITIVE_INFINITY : minCost;
     }
 
     public int size() {
@@ -66,9 +83,6 @@ public class ChemicalComplexityManager {
         producingRecipes.clear();
     }
 
-    /**
-     * Представление рецепта производства chemical
-     */
     public record ChemicalRecipe(
             Map<net.minecraft.world.item.Item, Double> itemInputs,
             Map<net.minecraft.world.level.material.Fluid, Double> fluidInputs,
@@ -82,31 +96,26 @@ public class ChemicalComplexityManager {
                                     ChemicalComplexityManager chemicalManager) {
             double totalCost = 0.0;
 
-            // Item inputs
             for (Map.Entry<net.minecraft.world.item.Item, Double> entry : itemInputs.entrySet()) {
                 double itemCost = itemComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(itemCost)) return Double.POSITIVE_INFINITY;
                 totalCost += itemCost * entry.getValue();
             }
 
-            // Fluid inputs
             for (Map.Entry<net.minecraft.world.level.material.Fluid, Double> entry : fluidInputs.entrySet()) {
                 double fluidCost = fluidComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(fluidCost)) return Double.POSITIVE_INFINITY;
                 totalCost += fluidCost * entry.getValue();
             }
 
-            // Chemical inputs
             for (Map.Entry<ResourceLocation, Double> entry : chemicalInputs.entrySet()) {
                 double chemCost = chemicalManager.getComplexity(entry.getKey());
                 if (Double.isInfinite(chemCost)) return Double.POSITIVE_INFINITY;
                 totalCost += chemCost * entry.getValue();
             }
 
-            // Machine cost
             totalCost += machineComplexity;
 
-            // Normalize by output amount
             if (outputAmount <= 0) return Double.POSITIVE_INFINITY;
             return (totalCost * multiplier) / outputAmount;
         }

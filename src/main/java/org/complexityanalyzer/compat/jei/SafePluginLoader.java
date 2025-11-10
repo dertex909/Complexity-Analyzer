@@ -26,11 +26,7 @@ import java.lang.reflect.Constructor;
 
 public class SafePluginLoader {
 
-    /**
-     * Пытается безопасно загрузить и создать экземпляр класса плагина.
-     * @param className Имя класса для загрузки.
-     * @return Экземпляр плагина, если загрузка прошла успешно, иначе null.
-     */
+     
     public static IModPlugin tryLoadPlugin(String className, String modId) {
         try {
             Class<?> pluginClass = Class.forName(className);

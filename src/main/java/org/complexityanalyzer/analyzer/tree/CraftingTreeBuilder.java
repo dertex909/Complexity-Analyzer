@@ -30,11 +30,7 @@ import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.*;
 
 import java.util.*;
-
-/**
- * Строитель дерева крафта - содержит только логику анализа.
- * Не зависит от UI, команд или способа отображения.
- */
+ 
 public class CraftingTreeBuilder {
 
     private final AnalysisEngine engine;
@@ -48,9 +44,6 @@ public class CraftingTreeBuilder {
         this.sourceManager = engine.getSourceManager().orElse(null);
     }
 
-    /**
-     * Строит дерево крафта для указанного предмета
-     */
     public CraftingTreeData build(Item item, DisplayMode mode, int maxDepth) {
         Map<Item, Double> baseResources = new LinkedHashMap<>();
         Set<Item> uniqueItems = new HashSet<>();
@@ -102,7 +95,6 @@ public class CraftingTreeBuilder {
         ItemComplexity complexityData = complexityOpt.get();
         double complexity = complexityData.getComplexity();
 
-        // Проверка максимальной глубины
         if (depth >= maxDepth) {
             calculateBaseResourcesFor(item, neededAmount, new HashSet<>(visitedOnPath),
                     baseResources, displayMode);
@@ -117,7 +109,6 @@ public class CraftingTreeBuilder {
         double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
                 Math.ceil(neededAmount) : neededAmount;
 
-        // Проверка циклов
         if (!visitedOnPath.add(item)) {
             stats.incrementCycles();
             stats.incrementBaseResources();
@@ -146,7 +137,6 @@ public class CraftingTreeBuilder {
             }
         }
 
-        // Базовый ресурс
         if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe() || wouldCreateCycle) {
             stats.incrementBaseResources();
             baseResources.merge(item, amountToAdd, Double::sum);
@@ -170,7 +160,6 @@ public class CraftingTreeBuilder {
             return builder.build();
         }
 
-        // Узел крафта
         stats.incrementCraftingSteps();
 
         RecipeNode recipe = recipeOpt.get();
@@ -191,7 +180,6 @@ public class CraftingTreeBuilder {
                 .recipe(recipe)
                 .machineType(machineName);
 
-        // Ингредиенты-предметы
         Map<Item, Integer> ingredientsForOneCraft = new LinkedHashMap<>();
         for (IngredientSlot slot : recipe.getIngredients()) {
             slot.getVariants().stream()
@@ -210,7 +198,6 @@ public class CraftingTreeBuilder {
             nodeBuilder.addItemChild(childNode);
         }
 
-        // Ингредиенты-жидкости
         for (FluidIngredientSlot slot : recipe.getFluidIngredients()) {
             var primaryFluid = slot.getPrimaryFluid();
             if (primaryFluid != null) {

@@ -33,7 +33,7 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.event.DatapackSyncHandler;
+import org.complexityanalyzer.event.AnalysisBootstrap;
 
 import java.util.Map;
 import java.util.Optional;
@@ -43,7 +43,7 @@ public class ResourceCommand {
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = DatapackSyncHandler.getEngine();
+        AnalysisEngine engine = AnalysisBootstrap.getEngine();
 
         if (!engine.isReady()) {
             output.sendFailure(source,

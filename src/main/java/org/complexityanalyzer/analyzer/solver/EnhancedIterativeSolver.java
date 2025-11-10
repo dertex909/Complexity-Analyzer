@@ -1,6 +1,19 @@
 /*
  * Complexity Analyzer
  * Copyright (C) 2025 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.analyzer.solver;
@@ -53,7 +66,6 @@ public class EnhancedIterativeSolver {
         this.fluidComplexities = new ConcurrentHashMap<>();
         this.optimalRecipes = new ConcurrentHashMap<>();
         this.chemicalManager = new ChemicalComplexityManager();
-        AdaptiveRecipeConverter.setChemicalManager(chemicalManager);
     }
 
     public SolverResult solve() {
@@ -383,7 +395,6 @@ public class EnhancedIterativeSolver {
         stack.add(fluid);
         try {
             List<RecipeNode> producers = graph.getRecipesProducingFluid(fluid);
-            String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
 
             if (producers.isEmpty()) {
                 return Double.POSITIVE_INFINITY;
@@ -398,7 +409,7 @@ public class EnhancedIterativeSolver {
 
                 if (Double.isInfinite(recipeCost)) {
                     Object rawRecipe = recipe.getRawRecipeRef();
-                    if (rawRecipe != null && chemicalManager != null) {
+                    if (rawRecipe != null) {
                         List<AdaptiveRecipeConverter.ChemicalOutput> chemInputs =
                                 AdaptiveRecipeConverter.extractChemicalInputs(rawRecipe);
                         for (AdaptiveRecipeConverter.ChemicalOutput chemInput : chemInputs) {
@@ -433,7 +444,7 @@ public class EnhancedIterativeSolver {
             }
 
             ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
-            if (chemicalManager != null && chemicalManager.getAllChemicals().contains(fluidId)) {
+            if (chemicalManager.getAllChemicals().contains(fluidId)) {
                 double chemComplexity = chemicalManager.getComplexity(fluidId);
                 if (!Double.isInfinite(chemComplexity) && chemComplexity < minCost) {
                     minCost = chemComplexity;
@@ -522,7 +533,7 @@ public class EnhancedIterativeSolver {
             if (Double.isInfinite(slotCost)) {
                 if (allowInfiniteMachines) {
                     Fluid bestFluid = getBestVariant(slot.getFluidVariants(), fluidComplexities);
-                    if (bestFluid != null && chemicalManager != null) {
+                    if (bestFluid != null) {
                         ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(bestFluid);
                         double chemComplexity = chemicalManager.getComplexity(fluidId);
                         if (!Double.isInfinite(chemComplexity)) {

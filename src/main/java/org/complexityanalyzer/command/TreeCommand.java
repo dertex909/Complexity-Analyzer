@@ -44,7 +44,6 @@ public class TreeCommand {
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
-        // Валидация
         if (!engine.isReady() || engine.getDepthAnalyzer().isEmpty()) {
             output.sendFailure(source,
                     Component.literal("⚠ Analysis engine is not ready!")
@@ -67,11 +66,9 @@ public class TreeCommand {
         Item item = itemOpt.get();
 
         try {
-            // Построение дерева
             CraftingTreeBuilder builder = new CraftingTreeBuilder(engine);
             CraftingTreeData treeData = builder.build(item, displayMode, maxDepth);
 
-            // Отображение дерева
             renderTree(source, treeData, itemId, output, engine);
 
             return 1;
@@ -82,8 +79,6 @@ public class TreeCommand {
             return 0;
         }
     }
-
-    //==================== РЕНДЕРИНГ ====================
 
     private static void renderTree(CommandSourceStack source, CraftingTreeData data,
                                    ResourceLocation itemId, OutputManager output, AnalysisEngine engine) {
@@ -162,21 +157,18 @@ public class TreeCommand {
 
         output.sendInfo(source, line);
 
-        // Рендер дочерних узлов
         if (node.getType() == NodeType.CRAFTING) {
             String childPrefix = prefix + (isLast ? "   " : "│  ");
 
             int totalChildren = node.getItemChildren().size() + node.getFluidChildren().size();
             int currentIndex = 0;
 
-            // Item children
             for (TreeNode child : node.getItemChildren()) {
                 currentIndex++;
                 renderTreeNode(source, child, childPrefix, currentIndex == totalChildren,
                         mode, output, engine);
             }
 
-            // Fluid children - улучшенный стиль
             for (FluidNode fluid : node.getFluidChildren()) {
                 currentIndex++;
                 boolean isLastChild = (currentIndex == totalChildren);
@@ -191,7 +183,7 @@ public class TreeCommand {
                         .append(Component.literal(displayAmount + " ").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
                         .append(Component.literal(fluidDisplayName).withStyle(ChatFormatting.WHITE));
 
-                // Добавляем hover с информацией о жидкости
+                 
                 fluidLine.withStyle(style -> style.withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
                         createFluidHoverText(fluid, node)
@@ -202,7 +194,7 @@ public class TreeCommand {
         }
     }
 
-    // Форматирование количества жидкости
+     
     private static String formatFluidAmount(double amount, DisplayMode mode) {
         if (mode == DisplayMode.PLAYER_INSTRUCTION) {
             int displayAmount = (int) Math.ceil(amount);
@@ -212,27 +204,27 @@ public class TreeCommand {
         }
     }
 
-    // Получение чистого имени ресурса (убирает namespace и форматирует)
+     
     private static String getCleanResourceName(String resourceId) {
-        // Убираем ЛЮБОЙ namespace (все что до двоеточия)
+         
         String cleanName = resourceId;
         if (resourceId.contains(":")) {
             cleanName = resourceId.substring(resourceId.indexOf(":") + 1);
         }
 
-        // Заменяем подчеркивания и дефисы на пробелы
+         
         cleanName = cleanName.replace("_", " ").replace("-", " ");
 
-        // Делаем первые буквы заглавными
+         
         cleanName = capitalizeWords(cleanName);
 
-        // Убираем лишние пробелы
+         
         cleanName = cleanName.trim().replaceAll("\\s+", " ");
 
         return cleanName;
     }
 
-    // Капитализация первых букв слов
+     
     private static String capitalizeWords(String str) {
         StringBuilder result = new StringBuilder();
         boolean capitalizeNext = true;
@@ -252,7 +244,7 @@ public class TreeCommand {
         return result.toString();
     }
 
-    // Создание hover текста для жидкостей
+     
     private static Component createFluidHoverText(FluidNode fluid, TreeNode parentNode) {
         MutableComponent hover = Component.empty();
 
@@ -269,7 +261,7 @@ public class TreeCommand {
                 .append(Component.literal(String.format("%.2f mB", fluid.getAmount()))
                         .withStyle(ChatFormatting.YELLOW));
 
-        // Добавляем информацию о машине из родительского узла
+         
         if (parentNode.getMachineType() != null && !parentNode.getMachineType().isEmpty()) {
             hover.append(Component.literal("\n🏭 Produced in: ")
                             .withStyle(ChatFormatting.GRAY))
@@ -334,7 +326,7 @@ public class TreeCommand {
                 break;
         }
 
-        // Добавляем детальную информацию в hover
+         
         component.withStyle(style -> style.withHoverEvent(new HoverEvent(
                 HoverEvent.Action.SHOW_TEXT,
                 createDetailedHoverText(node, engine)
@@ -343,11 +335,11 @@ public class TreeCommand {
         return component;
     }
 
-    // Создание детального hover текста для узлов
+     
     private static Component createDetailedHoverText(TreeNode node, AnalysisEngine engine) {
         MutableComponent hover = Component.empty();
 
-        // Заголовок с типом узла
+         
         switch (node.getType()) {
             case NO_DATA:
                 hover.append(Component.literal("❌ No Recipe Data")
@@ -374,7 +366,7 @@ public class TreeCommand {
                 hover.append(Component.literal("⛏ Base Resource")
                         .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
 
-                // Источник получения
+                 
                 boolean wouldCreateCycle = (Boolean) node.getMetadata().getOrDefault("wouldCreateCycle", false);
                 if (!wouldCreateCycle) {
                     String sourceTypeName = (String) node.getMetadata().get("sourceTypeName");
@@ -403,7 +395,7 @@ public class TreeCommand {
                 hover.append(Component.literal("🔨 Crafting Recipe")
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-                // Машина для крафта
+                 
                 String machineType = node.getMachineType();
                 if (machineType != null && !machineType.isEmpty()) {
                     hover.append(Component.literal("\n🏭 Machine: ")
@@ -414,7 +406,7 @@ public class TreeCommand {
                 break;
         }
 
-        // Дополнительная информация о сложности
+         
         if (node.getItem() != null) {
             Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(node.getItem());
             if (complexityOpt.isPresent()) {

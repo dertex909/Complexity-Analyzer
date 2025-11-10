@@ -134,7 +134,6 @@ public class SourceManager {
         return candidate;
     }
 
-    // ========== ДОБАВЛЕН вспомогательный метод ==========
     private static boolean isVanillaRecipeType(String recipeType) {
         return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
                 recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||

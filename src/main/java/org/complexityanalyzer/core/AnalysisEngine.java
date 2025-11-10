@@ -23,6 +23,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
@@ -57,6 +58,7 @@ public class AnalysisEngine {
     private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
     private final AtomicBoolean analysisCancelled = new AtomicBoolean(false);
     private final AtomicBoolean isReloading = new AtomicBoolean(false);
+    private final AtomicBoolean initialComplexityCalculated = new AtomicBoolean(false);
     private final ReentrantLock stateLock = new ReentrantLock();
     private final ReentrantLock geoManagerLock = new ReentrantLock();
     private final Object executorLock = new Object();
@@ -74,6 +76,7 @@ public class AnalysisEngine {
     private volatile TheoreticalDistributionProvider theoreticalDistProvider;
     private volatile MobRarityCalculator mobRarityCalculator;
     private volatile MachineRegistry machineRegistry;
+    private volatile MinecraftServer server;
 
     private static class InstanceHolder {
         private static final AnalysisEngine INSTANCE = new AnalysisEngine();
@@ -91,7 +94,6 @@ public class AnalysisEngine {
         return (calculator != null) ? Optional.of(calculator.getSolverResult()) : Optional.empty();
     }
 
-
     public void initializeAsync(Level level, Runnable onComplete) {
         if (!currentState.compareAndSet(State.IDLE, State.ANALYZING)) {
             State current = currentState.get();
@@ -106,6 +108,8 @@ public class AnalysisEngine {
             return;
         }
 
+        this.server = serverLevel.getServer();
+
         ExecutorService executor = ensureExecutorAvailable();
 
         ComplexityAnalyzer.LOGGER.info("Starting background analysis...");
@@ -119,11 +123,9 @@ public class AnalysisEngine {
                     return;
                 }
 
-                // ========== ИСПРАВЛЕНИЕ: переместить ПЕРЕД GraphBuilder ==========
                 ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
                 this.machineRegistry = new MachineRegistry();
                 this.machineRegistry.initialize();
-                // ==================================================================
 
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);
@@ -144,13 +146,17 @@ public class AnalysisEngine {
 
                 initializeResourceSources(serverLevel);
 
-                if (serverLevel.getServer().getPlayerList().getPlayerCount() == 0) {
-                    ComplexityAnalyzer.LOGGER.info("No players connected yet. Delaying complexity calculation until first player connects...");
-                    currentState.set(State.READY);
-                    return;
+                if (ComplexityConfig.ANALYSIS_TRIGGER.get() == ComplexityConfig.AnalysisTrigger.ON_FIRST_PLAYER_JOIN) {
+                    if (serverLevel.getServer().getPlayerList().getPlayerCount() == 0) {
+                        ComplexityAnalyzer.LOGGER.info("Analysis trigger is set to ON_FIRST_PLAYER_JOIN. Delaying calculation...");
+                        currentState.set(State.READY);
+                        safeRunCallback(onComplete);
+                        return;
+                    }
                 }
 
-                recalculateComplexity();
+                ComplexityAnalyzer.LOGGER.info("Starting complexity calculation on server startup...");
+                performComplexityCalculation();
 
                 if (isInterrupted()) {
                     restoreIdleState();
@@ -159,14 +165,6 @@ public class AnalysisEngine {
 
                 ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
                 currentState.set(State.READY);
-
-                try {
-                    createGeoManager(serverLevel.getServer());
-                    Optional<GeoAnalysisManager> geoMgr = getGeoManager();
-                    geoMgr.ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
-                }
 
                 safeRunCallback(onComplete);
 
@@ -179,6 +177,57 @@ public class AnalysisEngine {
         });
 
         currentAnalysisTask.set(task);
+    }
+
+    public void onPlayerJoined() {
+        if (ComplexityConfig.ANALYSIS_TRIGGER.get() != ComplexityConfig.AnalysisTrigger.ON_FIRST_PLAYER_JOIN) {
+            return;
+        }
+
+        if (!isReady() || initialComplexityCalculated.get()) {
+            return;
+        }
+
+        ComplexityAnalyzer.LOGGER.info("First player connected. Starting deferred complexity calculation...");
+
+        ExecutorService executor = ensureExecutorAvailable();
+        executor.submit(() -> {
+            try {
+                performComplexityCalculation();
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.error("Error during deferred complexity calculation", e);
+            }
+        });
+    }
+
+    private void performComplexityCalculation() {
+        if (initialComplexityCalculated.getAndSet(true)) {
+            ComplexityAnalyzer.LOGGER.debug("Complexity already calculated, skipping.");
+            return;
+        }
+
+        ComplexityAnalyzer.LOGGER.info("Starting complexity calculation...");
+
+        recalculateComplexity();
+
+        if (isInterrupted()) {
+            ComplexityAnalyzer.LOGGER.info("Analysis was cancelled during calculation.");
+            initialComplexityCalculated.set(false);
+            return;
+        }
+
+        try {
+            MinecraftServer srv = this.server;
+            if (srv != null) {
+                createGeoManager(srv);
+                Optional<GeoAnalysisManager> geoMgr = getGeoManager();
+                geoMgr.ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
+        }
+
+        ComplexityAnalyzer.LOGGER.info("Complexity calculation complete.");
     }
 
     private boolean isInterrupted() {
@@ -221,7 +270,6 @@ public class AnalysisEngine {
             ComplexityAnalyzer.LOGGER.error("Error in completion callback", e);
         }
     }
-
 
     private void restoreIdleState() {
         clearDataInternal();
@@ -365,6 +413,8 @@ public class AnalysisEngine {
         this.depthAnalyzer = null;
         this.machineRegistry = null;
         this.complexityCache.clear();
+        this.initialComplexityCalculated.set(false);
+        this.server = null;
     }
 
     public void createGeoManager(MinecraftServer server) {
@@ -427,12 +477,7 @@ public class AnalysisEngine {
     public RecipeGraph getGraph() {
         return this.graph;
     }
-    
-    public RecipeGraph getRecipeGraph() {
-        return this.graph;
-    }
 
-    @SuppressWarnings("unused")
     public Optional<SourceManager> getSourceManager() {
         return Optional.ofNullable(this.sourceManager);
     }

@@ -128,7 +128,7 @@ public class GraphBuilder {
                 }
             }
 
-            // Priority removed - now handled by category
+             
 
         } catch (NoSuchFieldException | IllegalAccessException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to process SmithingTransformRecipe for {}: {}",
@@ -161,7 +161,7 @@ public class GraphBuilder {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(recipe.getType())
                 .category(category)
-                .rawRecipe(recipe); // ========== НОВОЕ ==========
+                .rawRecipe(recipe);  
 
         for (Ingredient ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;

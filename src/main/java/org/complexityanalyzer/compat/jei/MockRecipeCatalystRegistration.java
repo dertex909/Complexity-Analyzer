@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.compat.jei;
 
 import mezz.jei.api.helpers.IJeiHelpers;
@@ -10,10 +28,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,8 +42,7 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
 
     private final Map<ResourceLocation, List<ItemStack>> catalysts = new HashMap<>();
 
-    private static final IIngredientManager EMPTY_INGREDIENT_MANAGER = createProxy(IIngredientManager.class);
-    private static final IJeiHelpers EMPTY_JEI_HELPERS = createProxy(IJeiHelpers.class);
+    private static final IJeiHelpers EMPTY_JEI_HELPERS = new JeiMocks.EmptyJeiHelpers();
 
     public Map<ResourceLocation, List<ItemStack>> getCatalysts() {
         return catalysts;
@@ -49,25 +66,8 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
     @Override public <T> void addRecipeCatalysts(RecipeType<?> recipeType, IIngredientType<T> ingredientType, List<T> ingredients) {}
 
     @Override @NotNull
-    public IIngredientManager getIngredientManager() {return EMPTY_INGREDIENT_MANAGER;}
+    public IIngredientManager getIngredientManager() {return EMPTY_JEI_HELPERS.getIngredientManager();}
 
     @Override @NotNull
     public IJeiHelpers getJeiHelpers() {return EMPTY_JEI_HELPERS;}
-
-    @SuppressWarnings("unchecked")
-    private static <T> T createProxy(Class<T> interfaceClass) {
-        return (T) Proxy.newProxyInstance(
-                interfaceClass.getClassLoader(),
-                new Class<?>[] { interfaceClass },
-                (proxy, method, args) -> {
-                    String methodName = method.getName();
-                    return switch (methodName) {
-                        case "toString" -> "MockProxy$" + interfaceClass.getSimpleName();
-                        case "hashCode" -> System.identityHashCode(proxy);
-                        case "equals" -> args != null && args.length == 1 && proxy == args[0];
-                        default -> null;
-                    };
-                }
-        );
-    }
 }

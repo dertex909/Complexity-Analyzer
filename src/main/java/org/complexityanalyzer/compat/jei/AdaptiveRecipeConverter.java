@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.compat.jei;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -12,7 +30,6 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
-import org.complexityanalyzer.analyzer.solver.ChemicalComplexityManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -28,17 +45,12 @@ import java.util.function.Supplier;
 public class AdaptiveRecipeConverter {
 
     private static final Map<Class<?>, RecipeAdapter> LEARNED_ADAPTERS = new ConcurrentHashMap<>();
-    private static ChemicalComplexityManager chemicalManager = null;
     private static MachineRegistry machineRegistry = null;
 
     private static final int MAX_RECURSION_DEPTH = 5;
 
     public static void setMachineRegistry(MachineRegistry registry) {
         machineRegistry = registry;
-    }
-
-    public static void setChemicalManager(ChemicalComplexityManager manager) {
-        chemicalManager = manager;
     }
 
     private static final List<String> OUTPUT_KEYWORDS = List.of(
@@ -52,13 +64,13 @@ public class AdaptiveRecipeConverter {
         try {
             Object actualRecipe = unwrapRecipeHolder(recipe);
 
-            // ========== НОВОЕ: Обработка Records ==========
+             
             if (actualRecipe.getClass().isRecord()) {
                 return extractChemicalInputsFromRecord(actualRecipe);
             }
-            // ===============================================
+             
 
-            // Ищем методы типа getChemicalInput, getGasInput и т.д.
+             
             for (String methodName : Arrays.asList("getChemicalInput", "getChemicalInputs",
                     "getGasInput", "getGasInputs", "getLeftGasInput", "getRightGasInput",
                     "getLeftInput", "getRightInput", "getInput")) {
@@ -73,14 +85,12 @@ public class AdaptiveRecipeConverter {
                 } catch (Exception ignored) {}
             }
 
-        } catch (Exception e) {
-            // Silent
-        }
+        } catch (Exception ignored) {}
 
         return Collections.emptyList();
     }
 
-    // ========== НОВЫЙ МЕТОД ==========
+     
     private static List<ChemicalOutput> extractChemicalInputsFromRecord(Object record) {
         List<ChemicalOutput> results = new ArrayList<>();
 
@@ -88,7 +98,7 @@ public class AdaptiveRecipeConverter {
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
-                // Ищем input-related компоненты
+                 
                 if (name.contains("input") || name.contains("Input") ||
                         name.equals("superHeatedCoolant") ||
                         name.contains("ingredient") || name.contains("source")) {
@@ -98,12 +108,12 @@ public class AdaptiveRecipeConverter {
                     Object value = accessor.invoke(record);
 
                     if (value != null) {
-                        // Пытаемся извлечь chemical
+                         
                         ChemicalOutput extracted = tryExtractChemical(value);
                         if (extracted != null) {
                             results.add(extracted);
                         } else {
-                            // Рекурсивно ищем в value
+                             
                             results.addAll(deepFindChemicalStacks(value));
                         }
                     }
@@ -140,16 +150,16 @@ public class AdaptiveRecipeConverter {
         }
     }
 
-    // ========== НОВЫЙ МЕТОД ==========
+     
     private static List<ChemicalOutput> extractChemicalOutputsFromRecord(Object record) {
         List<ChemicalOutput> results = new ArrayList<>();
 
         try {
-            // Обрабатываем все компоненты record'а
+             
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
-                // Ищем output-related компоненты
+                 
                 if (name.contains("output") || name.contains("Output") ||
                         name.equals("steam") || name.equals("cooledCoolant") ||
                         name.contains("product") || name.contains("result")) {
@@ -159,7 +169,7 @@ public class AdaptiveRecipeConverter {
                     Object value = accessor.invoke(record);
 
                     if (value != null) {
-                        // Пытаемся извлечь chemical
+                         
                         ChemicalOutput extracted = tryExtractChemical(value);
                         if (extracted != null) {
                             results.add(extracted);
@@ -176,7 +186,6 @@ public class AdaptiveRecipeConverter {
             ComplexityAnalyzer.LOGGER.error("Failed to extract from record: ", e);
         }
 
-        ComplexityAnalyzer.LOGGER.warn("  Total extracted: {}", results.size());
         return results;
     }
 
@@ -186,39 +195,30 @@ public class AdaptiveRecipeConverter {
     }
 
     private static List<ChemicalOutput> deepFindChemicalStacksRecursive(Object obj, Set<Object> visited, int depth) {
-        // Защита от null и глубины
         if (obj == null || depth > 5) {
             return new ArrayList<>();
         }
 
-        // Защита от циклов
         if (!visited.add(obj)) {
             return new ArrayList<>();
         }
 
         List<ChemicalOutput> results = new ArrayList<>();
 
-        // ========== КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ ==========
-        // НЕ пытаемся извлечь chemical из Records напрямую!
-        // Records обрабатываем только через компоненты
         if (!obj.getClass().isRecord()) {
-            // Пытаемся извлечь chemical из текущего объекта
             ChemicalOutput directOutput = tryExtractChemical(obj);
             if (directOutput != null) {
                 results.add(directOutput);
-                // НЕ ВОЗВРАЩАЕМСЯ! Продолжаем искать другие chemicals
             }
         }
-        // ============================================
 
-        // Обрабатываем коллекции
         if (obj instanceof Collection<?> coll) {
             for (Object item : coll) {
                 results.addAll(deepFindChemicalStacksRecursive(item, visited, depth + 1));
             }
         }
 
-        // Обрабатываем массивы
+         
         else if (obj.getClass().isArray()) {
             try {
                 Object[] array = (Object[]) obj;
@@ -228,7 +228,7 @@ public class AdaptiveRecipeConverter {
             } catch (ClassCastException ignored) {}
         }
 
-        // Обрабатываем Records (ElectrolysisRecipeOutput и другие)
+         
         else if (obj.getClass().isRecord()) {
             try {
                 for (RecordComponent component : obj.getClass().getRecordComponents()) {
@@ -236,7 +236,7 @@ public class AdaptiveRecipeConverter {
                     accessor.setAccessible(true);
                     Object value = accessor.invoke(obj);
 
-                    // Рекурсивно обрабатываем КАЖДЫЙ компонент
+                     
                     results.addAll(deepFindChemicalStacksRecursive(value, visited, depth + 1));
                 }
             } catch (Exception e) {
@@ -244,22 +244,22 @@ public class AdaptiveRecipeConverter {
             }
         }
 
-        // Обрабатываем обычные объекты через методы
+         
         else if (!isPrimitive(obj)) {
-            // Ищем только методы которые явно возвращают outputs
+             
             for (Method method : obj.getClass().getMethods()) {
                 if (method.getParameterCount() != 0) continue;
 
                 String name = method.getName();
 
-                // Только методы которые могут вернуть chemical outputs
+                 
                 if (!name.contains("Output") && !name.contains("output") &&
                         !name.contains("Chemical") && !name.contains("chemical") &&
                         !name.contains("Definition") && !name.contains("definition")) {
                     continue;
                 }
 
-                // Пропускаем системные методы
+                 
                 if (name.equals("getClass") || name.equals("toString") ||
                         name.equals("hashCode") || name.equals("getName")) {
                     continue;
@@ -278,7 +278,7 @@ public class AdaptiveRecipeConverter {
 
         return results;
     }
-    // Вспомогательный метод
+     
     private static boolean isPrimitive(Object obj) {
         return obj instanceof String || obj instanceof Number ||
                 obj instanceof Boolean || obj instanceof Character ||
@@ -290,19 +290,19 @@ public class AdaptiveRecipeConverter {
 
         String className = obj.getClass().getName();
 
-        // ========== ОБРАБОТКА ChemicalStackIngredient ==========
+         
         if (className.contains("ChemicalStackIngredient") ||
                 (className.contains("Ingredient") && className.contains("Chemical"))) {
 
-            // Ищем метод getRepresentations()
+             
             try {
                 Method getRepresentations = obj.getClass().getMethod("getRepresentations");
                 Object result = getRepresentations.invoke(obj);
 
                 if (result instanceof List<?> list && !list.isEmpty()) {
-                    // Берём первый элемент списка (это ChemicalStack)
+                     
                     Object firstStack = list.getFirst();
-                    return tryExtractChemical(firstStack); // Рекурсивно обрабатываем
+                    return tryExtractChemical(firstStack);  
                 }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.debug("Failed to extract from ChemicalStackIngredient: {}", e.getMessage());
@@ -310,9 +310,9 @@ public class AdaptiveRecipeConverter {
 
             return null;
         }
-        // ========================================================
+         
 
-        // Проверка на ChemicalStack/Gas/Slurry/etc
+         
         if (!className.contains("Chemical") && !className.contains("Gas") &&
                 !className.contains("Slurry") && !className.contains("Infusion") &&
                 !className.contains("Pigment")) {
@@ -322,7 +322,7 @@ public class AdaptiveRecipeConverter {
         try {
             long amount = 1000;
 
-            // Получить количество
+             
             for (String methodName : Arrays.asList("getAmount", "amount")) {
                 try {
                     Method m = obj.getClass().getMethod(methodName);
@@ -334,29 +334,29 @@ public class AdaptiveRecipeConverter {
                 } catch (Exception ignored) {}
             }
 
-            // ========== ИСПРАВЛЕНИЕ: Правильное извлечение ID ==========
+             
             ResourceLocation chemicalId = null;
 
-            // Приоритет 1: getTypeRegistryName() - возвращает правильный ResourceLocation
+             
             try {
                 Method getTypeRegistryName = obj.getClass().getMethod("getTypeRegistryName");
                 Object result = getTypeRegistryName.invoke(obj);
                 if (result instanceof ResourceLocation) {
                     chemicalId = (ResourceLocation) result;
                 } else if (result != null) {
-                    // Если вернулась строка "mekanism:antimatter"
+                     
                     String idStr = result.toString();
                     chemicalId = ResourceLocation.parse(idStr);
                 }
             } catch (Exception ignored) {}
 
-            // Приоритет 2: getChemical() и затем getRegistryName()
+             
             if (chemicalId == null) {
                 try {
                     Method getChemical = obj.getClass().getMethod("getChemical");
                     Object chemical = getChemical.invoke(obj);
                     if (chemical != null) {
-                        // Пробуем получить registry name из chemical
+                         
                         try {
                             Method getRegistryName = chemical.getClass().getMethod("getRegistryName");
                             Object regName = getRegistryName.invoke(chemical);
@@ -366,7 +366,7 @@ public class AdaptiveRecipeConverter {
                                 chemicalId = ResourceLocation.parse(regName.toString());
                             }
                         } catch (Exception ignored) {
-                            // Если не удалось, парсим toString()
+                             
                             String chemStr = chemical.toString();
                             if (chemStr.contains(":")) {
                                 chemicalId = parseResourceLocation(chemStr);
@@ -379,7 +379,7 @@ public class AdaptiveRecipeConverter {
             if (chemicalId != null) {
                 return new ChemicalOutput(chemicalId, amount);
             }
-            // ============================================================
+             
 
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.debug("Failed to extract chemical: {}", e.getMessage());
@@ -388,11 +388,11 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
-    // ========== НОВЫЙ вспомогательный метод ==========
+     
     private static ResourceLocation parseResourceLocation(String str) {
         if (str == null || !str.contains(":")) return null;
 
-        // Убираем всё лишнее: "Reference{mekanism:sodium}" -> "mekanism:sodium"
+         
         String cleanId = str.replaceAll(".*?([a-z0-9_]+:[a-z0-9_/]+).*", "$1");
 
         if (!cleanId.contains(":")) return null;
@@ -535,7 +535,7 @@ public class AdaptiveRecipeConverter {
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
-                // Ищем input-related компоненты (НО НЕ chemical!)
+                 
                 if ((name.contains("input") || name.contains("Input") ||
                         name.contains("ingredient")) &&
                         !name.toLowerCase().contains("chemical") &&
@@ -568,7 +568,7 @@ public class AdaptiveRecipeConverter {
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
-                // Ищем fluid inputs
+                 
                 if ((name.contains("water") || name.contains("fluid") ||
                         name.contains("Fluid") || name.contains("liquid")) &&
                         !name.toLowerCase().contains("output")) {
@@ -595,11 +595,11 @@ public class AdaptiveRecipeConverter {
     public static List<List<ItemStack>> extractInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
 
-        // ========== НОВОЕ: Обработка Records ==========
+         
         if (actualRecipe.getClass().isRecord()) {
             return extractItemInputsFromRecord(actualRecipe);
         }
-        // ===============================================
+         
 
         RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.ITEM, level);
         if (adapter.itemInputAccessor == null) return new ArrayList<>();
@@ -614,11 +614,11 @@ public class AdaptiveRecipeConverter {
     public static List<List<FluidStack>> extractFluidInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
 
-        // ========== НОВОЕ: Обработка Records ==========
+         
         if (actualRecipe.getClass().isRecord()) {
             return extractFluidInputsFromRecord(actualRecipe);
         }
-        // ===============================================
+         
 
         RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.FLUID, level);
         if (adapter.fluidInputAccessor == null) return new ArrayList<>();
@@ -869,13 +869,13 @@ public class AdaptiveRecipeConverter {
     private static Method learnMethod(Object recipe, boolean isOutput, ResourceType resourceType, Level level) {
         String[] candidateMethods = getCandidateMethods(isOutput, resourceType);
 
-        // Фаза 1: Точное совпадение имени
+         
         for (String methodName : candidateMethods) {
             Method method = findAndValidateMethod(recipe, methodName, isOutput, resourceType, level);
             if (method != null) return method;
         }
 
-        // Фаза 2: Wildcard поиск
+         
         String[] wildcards = getWildcards(isOutput, resourceType);
 
         for (String wildcard : wildcards) {
@@ -1023,12 +1023,12 @@ public class AdaptiveRecipeConverter {
     private static List<FluidStack> deepFindFluidStacks(Object obj, int depth) {
         if (obj == null || depth > MAX_RECURSION_DEPTH) return new ArrayList<>();
 
-        // Если это FluidStack - отлично
+         
         if (obj instanceof FluidStack stack && !stack.isEmpty()) {
             return List.of(stack);
         }
 
-        // Если это ChemicalStack/Gas/Slurry/Infusion/Pigment - конвертируем
+         
         String className = obj.getClass().getName();
         if (className.contains("Chemical") || className.contains("Gas") || className.contains("Slurry")
                 || className.contains("Infusion") || className.contains("Pigment")) {
@@ -1039,7 +1039,7 @@ public class AdaptiveRecipeConverter {
             }
         }
 
-        // Универсальная рекурсивная обработка: Collections, Arrays, Records и т.д.
+         
         return findRecursive(obj, depth, (o, d) -> {
             if (o instanceof FluidStack stack && !stack.isEmpty()) {
                 return List.of(stack);
@@ -1076,7 +1076,7 @@ public class AdaptiveRecipeConverter {
                 } catch (Exception ignored) {}
             }
 
-            // Ищем внутренний объект
+             
             Object innerObject = obj;
             for (String methodName : Arrays.asList("getChemical", "chemical", "getGas", "gas", "getFluid", "fluid", "getType", "type")) {
                 try {
@@ -1089,7 +1089,7 @@ public class AdaptiveRecipeConverter {
                 } catch (Exception ignored) {}
             }
 
-            // Ищем строковое представление
+             
             for (String methodName : Arrays.asList("toString", "getName", "name", "getRegistryName", "registryName", "getId", "id")) {
                 try {
                     Method m = innerObject.getClass().getMethod(methodName);
@@ -1102,7 +1102,7 @@ public class AdaptiveRecipeConverter {
             }
 
             if (resourceId != null) {
-                String cleanId = resourceId.replaceAll(".*\\[([^\\]]+)].*", "$1")
+                String cleanId = resourceId.replaceAll(".*\\[([^]]+)].*", "$1")
                         .replaceAll(".*\\{([^}]+)}.*", "$1")
                         .replaceAll("^.*?([a-z0-9_]+:[a-z0-9_]+).*$", "$1");
 
@@ -1204,12 +1204,12 @@ public class AdaptiveRecipeConverter {
 
         String className = obj.getClass().getName();
 
-        // Mekanism FluidStackIngredient
+         
         if (className.contains("FluidStackIngredient")) {
             try {
                 Object result = obj.getClass().getMethod("getRepresentations").invoke(obj);
                 if (result instanceof List<?> list) {
-                    // ✅ БЕЗ ПРОВЕРКИ isActualFluid - берём ВСЁ!
+                     
                     List<FluidStack> stacks = list.stream()
                             .filter(i -> i instanceof FluidStack && !((FluidStack) i).isEmpty())
                             .map(i -> (FluidStack) i)
@@ -1223,7 +1223,7 @@ public class AdaptiveRecipeConverter {
             Object first = coll.iterator().next();
 
             if (first instanceof FluidStack) {
-                // ✅ БЕЗ ПРОВЕРКИ - берём всё!
+                 
                 List<FluidStack> stacks = coll.stream()
                         .map(i -> (FluidStack) i)
                         .filter(s -> !s.isEmpty())
@@ -1305,7 +1305,7 @@ public class AdaptiveRecipeConverter {
 
     private static RecipeType<?> extractRecipeTypeFromRecord(Object record) {
         try {
-            // Приоритет 1: Ищем явный тип в компонентах
+             
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
@@ -1319,7 +1319,7 @@ public class AdaptiveRecipeConverter {
                 }
             }
 
-            // Приоритет 2: Используем MachineRegistry через ID рецепта
+             
             if (machineRegistry != null) {
                 for (RecordComponent component : record.getClass().getRecordComponents()) {
                     if (component.getName().equals("id")) {
@@ -1346,36 +1346,36 @@ public class AdaptiveRecipeConverter {
         return null;
     }
 
-    // ========== НОВЫЙ МЕТОД: использует MachineRegistry ==========
+     
     private static RecipeType<?> findRecipeTypeViaRegistry(ResourceLocation recipeId) {
         if (machineRegistry == null) return null;
 
         String path = recipeId.getPath();
 
-        // ========== ИСПРАВЛЕНИЕ: Обработка путей с "/" в начале ==========
-        // Убираем ведущий "/" если есть
+         
+         
         if (path.startsWith("/")) {
             path = path.substring(1);
         }
-        // ==================================================================
+         
 
         String[] parts = path.split("/");
 
         if (parts.length == 0) return null;
 
-        String typeHint = parts[0]; // "sps", "boiler", etc.
+        String typeHint = parts[0];  
         String namespace = recipeId.getNamespace();
 
-        // ========== ИСПРАВЛЕНИЕ: Пропускаем пустые hints ==========
+         
         if (typeHint.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("Empty type hint for recipe {}, cannot determine type", recipeId);
             return null;
         }
-        // ===========================================================
+         
 
         ComplexityAnalyzer.LOGGER.debug("Looking for recipe type with hint '{}' in namespace '{}'", typeHint, namespace);
 
-        // Перебираем все типы рецептов и проверяем, есть ли машина в реестре
+         
         List<RecipeType<?>> candidates = new ArrayList<>();
 
         for (Map.Entry<ResourceKey<RecipeType<?>>, RecipeType<?>> entry :
@@ -1383,15 +1383,15 @@ public class AdaptiveRecipeConverter {
 
             ResourceLocation typeId = entry.getKey().location();
 
-            // Проверяем namespace
+             
             if (!typeId.getNamespace().equals(namespace)) continue;
 
-            // Проверяем, содержит ли path нашу подсказку
+             
             if (!typeId.getPath().contains(typeHint)) continue;
 
             RecipeType<?> recipeType = entry.getValue();
 
-            // ✅ Проверяем, есть ли машина для этого типа в MachineRegistry
+             
             Optional<Item> machine = machineRegistry.getMachineForRecipe(recipeType);
 
             if (machine.isPresent()) {
@@ -1405,9 +1405,9 @@ public class AdaptiveRecipeConverter {
             return null;
         }
 
-        // Если несколько кандидатов, выбираем наиболее подходящий
+         
         if (candidates.size() > 1) {
-            // Сортируем по длине пути (короче = точнее)
+             
             candidates.sort(Comparator.comparingInt(rt -> {
                 ResourceLocation typeLocation = BuiltInRegistries.RECIPE_TYPE.getKey(rt);
                 return typeLocation != null ? typeLocation.getPath().length() : Integer.MAX_VALUE;
@@ -1425,32 +1425,6 @@ public class AdaptiveRecipeConverter {
         return result;
     }
 
-    private static RecipeType<?> guessRecipeTypeFromId(ResourceLocation recipeId) {
-        String path = recipeId.getPath();
-
-        // Универсальный паттерн: первая часть пути обычно = тип рецепта
-        // Например: "sps/antimatter" -> "sps"
-        String[] parts = path.split("/");
-        if (parts.length > 0) {
-            String typeHint = parts[0];
-
-            // Ищем в реестре все типы и пытаемся найти подходящий
-            for (Map.Entry<ResourceKey<RecipeType<?>>, RecipeType<?>> entry :
-                    BuiltInRegistries.RECIPE_TYPE.entrySet()) {
-
-                ResourceLocation typeId = entry.getKey().location();
-
-                // Проверяем совпадение namespace и частичное совпадение пути
-                if (typeId.getNamespace().equals(recipeId.getNamespace()) &&
-                        typeId.getPath().contains(typeHint)) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
-    }
-
     public static RecipeType<?> extractRecipeType(Object recipe) {
         if (recipe == null) return null;
         Object actual = unwrapRecipeHolder(recipe);
@@ -1459,7 +1433,7 @@ public class AdaptiveRecipeConverter {
             return vanillaRecipe.getType();
         }
 
-        // ✅ ДОБАВИТЬ: Обработка Records
+         
         if (actual.getClass().isRecord()) {
             return extractRecipeTypeFromRecord(actual);
         }
@@ -1560,7 +1534,7 @@ public class AdaptiveRecipeConverter {
                     List<ItemStack> nested = extractItemStacks(element, depth + 1);
                     if (!nested.isEmpty()) stacks.addAll(nested);
                 }
-                // Mekanism recipe outputs can be wrapped in a MekanismRecipeOutput object
+                 
                 if (obj.getClass().getName().contains("MekanismRecipeOutput")) {
                     try {
                         Method getStacks = obj.getClass().getMethod("getStacks");
@@ -1593,7 +1567,7 @@ public class AdaptiveRecipeConverter {
             return Collections.emptyList();
         }
 
-        // Try common Mekanism recipe output definitions (getOutputDefinition -> ItemStackOutput)
+         
         try {
             Method outputDefinition = findAnyMethod(recipe.getClass(), "getOutputDefinition");
             if (outputDefinition != null) {
@@ -1611,7 +1585,7 @@ public class AdaptiveRecipeConverter {
             }
         } catch (Exception ignored) {}
 
-        // Fallback: call direct output accessors on the recipe instance itself
+         
         List<ItemStack> direct = extractStacksFromProvider(recipe, 0,
                 "getPrimaryOutput", "getItemOutput", "getOutput", "getResult", "getOutputs",
                 "primaryOutput", "itemOutput", "output", "result");

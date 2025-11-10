@@ -55,13 +55,20 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
-    public static final ModConfigSpec.DoubleValue CHEMICAL_BASE_COMPLEXITY;
-    public static final ModConfigSpec.DoubleValue CHEMICAL_NORMALIZATION_FACTOR;
+    public static final ModConfigSpec.EnumValue<AnalysisTrigger> ANALYSIS_TRIGGER;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("general");
+
+        ANALYSIS_TRIGGER = builder
+                .comment(
+                        "When to perform the main complexity analysis.",
+                        "ON_SERVER_START: Slower server startup, but instant for the first player.",
+                        "ON_FIRST_PLAYER_JOIN: Faster server startup, but the first player may need to wait for analysis to complete."
+                )
+                .defineEnum("analysisTrigger", AnalysisTrigger.ON_FIRST_PLAYER_JOIN);
 
         builder.push("jei_integration");
         ENABLE_JEI_INTEGRATION = builder
@@ -117,15 +124,6 @@ public class ComplexityConfig {
                 .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);
         builder.pop();
 
-        builder.push("chemicals");
-        CHEMICAL_BASE_COMPLEXITY = builder
-                .comment("Base complexity for generic chemicals/gases")
-                .defineInRange("baseComplexity", 5.0, 0.1, 1000.0);
-
-        CHEMICAL_NORMALIZATION_FACTOR = builder
-                .comment("Multiplier for chemical costs in recipes")
-                .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);
-        builder.pop();
 
         builder.push("machine_tax");
         builder.comment(
@@ -165,23 +163,16 @@ public class ComplexityConfig {
         return MACHINE_TAX_PERCENTAGE.get() / 100.0;
     }
 
-    public static double getFluidBaseComplexity() {
-        return Double.POSITIVE_INFINITY;
-    }
-
     public static double getFluidNormalizationFactor() {
         return FLUID_NORMALIZATION_FACTOR.get();
     }
 
-    public static double getChemicalBaseComplexity() {
-        return CHEMICAL_BASE_COMPLEXITY.get();
-    }
-
-    public static double getChemicalNormalizationFactor() {
-        return CHEMICAL_NORMALIZATION_FACTOR.get();
-    }
-
     public static double getMachineBaseComplexity() {
         return MACHINE_BASE_COMPLEXITY.get();
+    }
+
+    public enum AnalysisTrigger {
+        ON_SERVER_START,
+        ON_FIRST_PLAYER_JOIN
     }
 }

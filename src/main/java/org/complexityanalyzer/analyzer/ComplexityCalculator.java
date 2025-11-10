@@ -121,7 +121,6 @@ public class ComplexityCalculator {
                                 itemName, recipeType, complexity)
                 );
 
-                // Добавляем информацию о жидкостях если есть
                 if (optimalRecipe.hasFluidIngredients()) {
                     debugMsg.append(String.format(", fluids: %d (total: %d mB)",
                             optimalRecipe.getFluidIngredientSlotCount(),

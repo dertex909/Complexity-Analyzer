@@ -31,13 +31,11 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeCategory;
-import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.*;
 
 public class JeiRecipeConverter {
-    private static final RecipeGraph graph = new RecipeGraph();
 
     public static List<RecipeNode> convertAll(Map<RecipeType<?>, List<?>> recipesByType, Level level) {
         List<RecipeNode> result = new ArrayList<>();
@@ -46,7 +44,6 @@ public class JeiRecipeConverter {
             RecipeType<?> jeiType = entry.getKey();
             List<?> recipes = entry.getValue();
 
-            // Получаем ID типа из JEI
             ResourceLocation jeiTypeId = jeiType.getUid();
 
             for (Object recipe : recipes) {
@@ -56,8 +53,9 @@ public class JeiRecipeConverter {
                     if (node != null) {
                         result.add(node);
                     }
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.debug("Exception converting recipe: {}", e.getMessage());
+                } catch (Throwable t) {
+                    ComplexityAnalyzer.LOGGER.warn("Failed to convert a recipe from JEI type '{}' (Class: {}). Skipping. Reason: {}",
+                            jeiTypeId, recipe.getClass().getName(), t.getClass().getSimpleName());
                 }
             }
         }
@@ -84,7 +82,10 @@ public class JeiRecipeConverter {
                 if (node != null) {
                     result.add(node);
                 }
-            } catch (Exception ignored) {}
+            } catch (Throwable t) {
+                ComplexityAnalyzer.LOGGER.warn("Failed to convert a recipe from RecipeManager (ID: {}). Skipping. Reason: {}",
+                        holder.id(), t.getClass().getSimpleName());
+            }
         }
 
         return result;
@@ -96,12 +97,10 @@ public class JeiRecipeConverter {
         List<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs =
                 AdaptiveRecipeConverter.extractChemicalOutputs(recipe, level);
 
-        // Если нет никакого выхода, рецепт бесполезен
         if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) {
             return null;
         }
 
-        // --- Определяем результат и строим узел ---
         Item resultItem;
         RecipeNode.Builder builder;
 
@@ -123,7 +122,6 @@ public class JeiRecipeConverter {
             }
         }
 
-        // --- Собираем узел рецепта ---
         builder.category(RecipeCategory.JEI_IMPORTED)
                 .itemOutputs(itemOutputs)
                 .fluidOutputs(fluidOutputs)
@@ -131,7 +129,6 @@ public class JeiRecipeConverter {
                 .rawRecipe(recipe)
                 .priority(900);
 
-        // Извлекаем тип рецепта
         net.minecraft.world.item.crafting.RecipeType<?> recipeType = AdaptiveRecipeConverter.extractRecipeType(recipe);
 
         if (recipeType == null && jeiTypeId != null) {
@@ -139,7 +136,7 @@ public class JeiRecipeConverter {
 
             if (recipeType == null) {
                 final String typeId = jeiTypeId.toString();
-                recipeType = new net.minecraft.world.item.crafting.RecipeType<net.minecraft.world.item.crafting.Recipe<?>>() {
+                recipeType = new net.minecraft.world.item.crafting.RecipeType<>() {
                     @Override
                     public String toString() {
                         return typeId;
@@ -169,7 +166,6 @@ public class JeiRecipeConverter {
             builder.addIngredient(items, count);
         }
 
-        // Добавляем входы в виде жидкостей
         for (List<FluidStack> inputVariants : fluidInputs) {
             if (inputVariants.isEmpty()) continue;
             List<net.minecraft.world.level.material.Fluid> fluids = inputVariants.stream()
@@ -180,22 +176,18 @@ public class JeiRecipeConverter {
             builder.addFluidIngredient(fluids, amount);
         }
 
-        // ✅ ДОБАВЛЯЕМ CHEMICAL INPUTS!
         for (AdaptiveRecipeConverter.ChemicalOutput chemInput : chemicalInputs) {
             builder.addChemicalIngredient(chemInput.id(), (int) chemInput.amount());
         }
 
-        // ✅ ИСПРАВЛЕНО: Строим node ПЕРЕД проверкой!
         RecipeNode node = builder.build();
 
-        // Теперь проверяем входы
         if (node.getIngredients().isEmpty() &&
                 node.getFluidIngredients().isEmpty() &&
                 node.getChemicalIngredients().isEmpty()) {
             return null;
         }
 
-        graph.addRecipe(node);
         return node;
     }
 }

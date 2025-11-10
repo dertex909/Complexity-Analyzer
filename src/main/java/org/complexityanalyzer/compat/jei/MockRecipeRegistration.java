@@ -27,7 +27,7 @@ import mezz.jei.api.runtime.IIngredientManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
-import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -35,9 +35,6 @@ import javax.annotation.meta.TypeQualifierDefault;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.*;
 
 @ParametersAreNonnullByDefault
@@ -48,7 +45,6 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     private final RecipeManager recipeManager;
 
     private static IJeiHelpers STUB_HELPERS = null;
-    private static IVanillaRecipeFactory STUB_RECIPE_FACTORY = null;
 
     public MockRecipeRegistration(Level level) {
         this.level = level;
@@ -76,7 +72,7 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     @NotNull
     public IJeiHelpers getJeiHelpers() {
         if (STUB_HELPERS == null) {
-            STUB_HELPERS = createProxyWithRecipeManager(IJeiHelpers.class);
+            STUB_HELPERS = new JeiMocks.SmartJeiHelpers(recipeManager);
         }
         return STUB_HELPERS;
     }
@@ -84,28 +80,13 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     @Override
     @NotNull
     public IIngredientManager getIngredientManager() {
-        try {
-            Class<?> jeiInternalClass = Class.forName("mezz.jei.common.Internal");
-
-            @SuppressWarnings("JavaReflectionMemberAccess")
-            Method getIngredientManager = jeiInternalClass.getMethod("getIngredientManager");
-            Object manager = getIngredientManager.invoke(null);
-
-            if (manager instanceof IIngredientManager) {
-                return (IIngredientManager) manager;
-            }
-        } catch (Exception ignored) {}
-
-        return createProxyWithRecipeManager(IIngredientManager.class);
+        return getJeiHelpers().getIngredientManager();
     }
 
     @Override
     @NotNull
     public IVanillaRecipeFactory getVanillaRecipeFactory() {
-        if (STUB_RECIPE_FACTORY == null) {
-            STUB_RECIPE_FACTORY = createProxyWithRecipeManager(IVanillaRecipeFactory.class);
-        }
-        return STUB_RECIPE_FACTORY;
+        return getJeiHelpers().getVanillaRecipeFactory();
     }
 
     @Override
@@ -113,71 +94,6 @@ public class MockRecipeRegistration implements IRecipeRegistration {
 
     @Override
     public <T> void addIngredientInfo(List<T> ingredients, IIngredientType<T> ingredientType, Component... descriptionComponents) {}
-
-    @SuppressWarnings("unchecked")
-    private <T> T createProxyWithRecipeManager(Class<T> interfaceClass) {
-        return (T) Proxy.newProxyInstance(
-                interfaceClass.getClassLoader(),
-                new Class<?>[] { interfaceClass },
-                new StubInvocationHandlerWithRecipeManager(recipeManager)
-        );
-    }
-
-    private static class StubInvocationHandlerWithRecipeManager implements InvocationHandler {
-        private final RecipeManager recipeManager;
-
-        public StubInvocationHandlerWithRecipeManager(RecipeManager recipeManager) {
-            this.recipeManager = recipeManager;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) {
-            String methodName = method.getName();
-
-            if (methodName.equals("getRecipeManager")) {
-                return recipeManager;
-            }
-
-            if (methodName.equals("getAllRecipesFor") && args.length == 1) {
-                Object jeiType = args[0];
-
-                try {
-                    if (jeiType instanceof mezz.jei.api.recipe.RecipeType<?> jeiRecipeType) {
-                        var uid = jeiRecipeType.getUid();
-                        var mcType = net.minecraft.core.registries.BuiltInRegistries.RECIPE_TYPE.get(uid);
-
-                        if (mcType != null) {
-                            @SuppressWarnings({"rawtypes", "unchecked"})
-                            var result = recipeManager.getAllRecipesFor((net.minecraft.world.item.crafting.RecipeType) mcType);
-                            return result;
-                        }
-                    }
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.error("Failed to retrieve recipes for JEI RecipeType", e);
-                }
-            }
-
-
-            switch (methodName) {
-                case "toString":
-                    return "MockJeiStub@" + Integer.toHexString(System.identityHashCode(proxy));
-                case "hashCode":
-                    return System.identityHashCode(proxy);
-                case "equals":
-                    return args.length == 1 && proxy == args[0];
-            }
-
-            Class<?> returnType = method.getReturnType();
-
-            if (returnType == void.class) return null;
-            if (returnType == boolean.class) return false;
-            if (returnType.isPrimitive()) return 0;
-            if (Collection.class.isAssignableFrom(returnType)) return Collections.emptyList();
-            if (Optional.class.isAssignableFrom(returnType)) return Optional.empty();
-
-            return null;
-        }
-    }
 }
 
 @Retention(RetentionPolicy.RUNTIME)

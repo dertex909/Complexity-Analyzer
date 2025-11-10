@@ -38,10 +38,6 @@ public interface IResourceSource {
         return 0;
     }
 
-    /**
-     * @return true if this source primarily mirrors crafted recipes and should be ignored
-     *         when a legitimate crafting path already exists.
-     */
     default boolean prefersRecipeOutputs() {
         return false;
     }

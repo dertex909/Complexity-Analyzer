@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.compat.jei;
 
 import mezz.jei.api.IModPlugin;
@@ -48,7 +66,7 @@ public class JeiPluginScanner {
 
         Map<ResourceLocation, List<ItemStack>> allCatalysts = new HashMap<>();
 
-        // ========== ШАГ 1: Собрать ВСЕ каталисты ==========
+         
         for (IModPlugin plugin : cleanPlugins) {
             String pluginId = plugin.getPluginUid().toString();
 
@@ -59,15 +77,12 @@ public class JeiPluginScanner {
 
             MockRecipeCatalystRegistration mockCatalystReg = new MockRecipeCatalystRegistration();
 
-            // Собираем каталисты
+
             try {
                 plugin.registerRecipeCatalysts(mockCatalystReg);
-            } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
-                ComplexityAnalyzer.LOGGER.debug("Plugin {} skipped catalyst registration (client-only): {}",
-                        pluginId, e.getMessage());
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.debug("Plugin {} failed catalyst registration: {}",
-                        pluginId, e.getMessage());
+            } catch (Throwable t) {
+                ComplexityAnalyzer.LOGGER.debug("Plugin {} is not server-compatible, skipping its catalyst registration. Reason: {}",
+                        pluginId, t.getClass().getSimpleName());
             }
 
             Map<ResourceLocation, List<ItemStack>> pluginCatalysts = mockCatalystReg.getCatalysts();
@@ -82,7 +97,7 @@ public class JeiPluginScanner {
             }
         }
 
-        // ========== ШАГ 2: Загрузить MachineRegistry ОДИН РАЗ ==========
+         
         if (!allCatalysts.isEmpty()) {
             ComplexityAnalyzer.LOGGER.info("Loading {} catalyst types to MachineRegistry...", allCatalysts.size());
 
@@ -105,7 +120,7 @@ public class JeiPluginScanner {
                     ComplexityAnalyzer.LOGGER.info("Converted {} catalyst types to item mapping", catalystItemMap.size());
                     registry.loadFromJEI(catalystItemMap);
 
-                    // ✅ ПОДКЛЮЧАЕМ к AdaptiveRecipeConverter
+                     
                     AdaptiveRecipeConverter.setMachineRegistry(registry);
                     ComplexityAnalyzer.LOGGER.info("MachineRegistry loaded and connected to AdaptiveRecipeConverter");
                 });
@@ -116,7 +131,7 @@ public class JeiPluginScanner {
             ComplexityAnalyzer.LOGGER.warn("No catalysts were collected from JEI plugins");
         }
 
-        // ========== ШАГ 3: Конвертировать рецепты (MachineRegistry уже готов!) ==========
+         
         int pluginsProcessed = 0;
         int totalRecipesImported = 0;
 
@@ -129,18 +144,13 @@ public class JeiPluginScanner {
 
             MockRecipeRegistration mockRegistration = new MockRecipeRegistration(level);
 
-            // Регистрируем рецепты
             try {
                 plugin.registerRecipes(mockRegistration);
-            } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
-                ComplexityAnalyzer.LOGGER.debug("Plugin {} skipped recipe registration (client-only): {}",
-                        pluginId, e.getMessage());
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.debug("Plugin {} failed recipe registration: {}",
-                        pluginId, e.getMessage());
+            } catch (Throwable t) {
+                ComplexityAnalyzer.LOGGER.debug("Plugin {} is not server-compatible, skipping its recipe registration. Reason: {}",
+                        pluginId, t.getClass().getSimpleName());
             }
-
-            // Конвертируем рецепты
+             
             List<RecipeNode> recipes = JeiRecipeConverter.convertAll(
                     mockRegistration.getCollectedRecipes(),
                     mockRegistration.getLevel()

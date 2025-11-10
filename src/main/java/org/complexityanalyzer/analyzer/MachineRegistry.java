@@ -37,7 +37,6 @@ public class MachineRegistry {
             return;
         }
 
-        ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
         int vanilla = registerVanilla();
         ComplexityAnalyzer.LOGGER.info("Registered {} vanilla machines", vanilla);
 

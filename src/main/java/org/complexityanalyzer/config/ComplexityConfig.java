@@ -55,20 +55,10 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
-    public static final ModConfigSpec.EnumValue<AnalysisTrigger> ANALYSIS_TRIGGER;
-
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("general");
-
-        ANALYSIS_TRIGGER = builder
-                .comment(
-                        "When to perform the main complexity analysis.",
-                        "ON_SERVER_START: Slower server startup, but instant for the first player.",
-                        "ON_FIRST_PLAYER_JOIN: Faster server startup, but the first player may need to wait for analysis to complete."
-                )
-                .defineEnum("analysisTrigger", AnalysisTrigger.ON_FIRST_PLAYER_JOIN);
 
         builder.push("jei_integration");
         ENABLE_JEI_INTEGRATION = builder
@@ -169,10 +159,5 @@ public class ComplexityConfig {
 
     public static double getMachineBaseComplexity() {
         return MACHINE_BASE_COMPLEXITY.get();
-    }
-
-    public enum AnalysisTrigger {
-        ON_SERVER_START,
-        ON_FIRST_PLAYER_JOIN
     }
 }

@@ -23,7 +23,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
@@ -58,7 +57,6 @@ public class AnalysisEngine {
     private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
     private final AtomicBoolean analysisCancelled = new AtomicBoolean(false);
     private final AtomicBoolean isReloading = new AtomicBoolean(false);
-    private final AtomicBoolean initialComplexityCalculated = new AtomicBoolean(false);
     private final ReentrantLock stateLock = new ReentrantLock();
     private final ReentrantLock geoManagerLock = new ReentrantLock();
     private final Object executorLock = new Object();
@@ -130,7 +128,7 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);
 
-                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] Starting FAST initial analysis ===");
+                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] Starting analysis ===");
 
                 if (isInterrupted()) {
                     restoreIdleState();
@@ -146,16 +144,11 @@ public class AnalysisEngine {
 
                 initializeResourceSources(serverLevel);
 
-                if (ComplexityConfig.ANALYSIS_TRIGGER.get() == ComplexityConfig.AnalysisTrigger.ON_FIRST_PLAYER_JOIN) {
-                    if (serverLevel.getServer().getPlayerList().getPlayerCount() == 0) {
-                        ComplexityAnalyzer.LOGGER.info("Analysis trigger is set to ON_FIRST_PLAYER_JOIN. Delaying calculation...");
-                        currentState.set(State.READY);
-                        safeRunCallback(onComplete);
-                        return;
-                    }
+                if (isInterrupted()) {
+                    restoreIdleState();
+                    return;
                 }
 
-                ComplexityAnalyzer.LOGGER.info("Starting complexity calculation on server startup...");
                 performComplexityCalculation();
 
                 if (isInterrupted()) {
@@ -179,40 +172,13 @@ public class AnalysisEngine {
         currentAnalysisTask.set(task);
     }
 
-    public void onPlayerJoined() {
-        if (ComplexityConfig.ANALYSIS_TRIGGER.get() != ComplexityConfig.AnalysisTrigger.ON_FIRST_PLAYER_JOIN) {
-            return;
-        }
-
-        if (!isReady() || initialComplexityCalculated.get()) {
-            return;
-        }
-
-        ComplexityAnalyzer.LOGGER.info("First player connected. Starting deferred complexity calculation...");
-
-        ExecutorService executor = ensureExecutorAvailable();
-        executor.submit(() -> {
-            try {
-                performComplexityCalculation();
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Error during deferred complexity calculation", e);
-            }
-        });
-    }
-
     private void performComplexityCalculation() {
-        if (initialComplexityCalculated.getAndSet(true)) {
-            ComplexityAnalyzer.LOGGER.debug("Complexity already calculated, skipping.");
-            return;
-        }
-
         ComplexityAnalyzer.LOGGER.info("Starting complexity calculation...");
 
         recalculateComplexity();
 
         if (isInterrupted()) {
             ComplexityAnalyzer.LOGGER.info("Analysis was cancelled during calculation.");
-            initialComplexityCalculated.set(false);
             return;
         }
 
@@ -413,7 +379,6 @@ public class AnalysisEngine {
         this.depthAnalyzer = null;
         this.machineRegistry = null;
         this.complexityCache.clear();
-        this.initialComplexityCalculated.set(false);
         this.server = null;
     }
 

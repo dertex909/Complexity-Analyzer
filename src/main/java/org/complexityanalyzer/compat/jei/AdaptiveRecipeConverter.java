@@ -535,7 +535,6 @@ public class AdaptiveRecipeConverter {
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
-                 
                 if ((name.contains("input") || name.contains("Input") ||
                         name.contains("ingredient")) &&
                         !name.toLowerCase().contains("chemical") &&
@@ -568,7 +567,6 @@ public class AdaptiveRecipeConverter {
             for (RecordComponent component : record.getClass().getRecordComponents()) {
                 String name = component.getName();
 
-                 
                 if ((name.contains("water") || name.contains("fluid") ||
                         name.contains("Fluid") || name.contains("liquid")) &&
                         !name.toLowerCase().contains("output")) {
@@ -595,11 +593,9 @@ public class AdaptiveRecipeConverter {
     public static List<List<ItemStack>> extractInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
 
-         
         if (actualRecipe.getClass().isRecord()) {
             return extractItemInputsFromRecord(actualRecipe);
         }
-         
 
         RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.ITEM, level);
         if (adapter.itemInputAccessor == null) return new ArrayList<>();
@@ -614,11 +610,9 @@ public class AdaptiveRecipeConverter {
     public static List<List<FluidStack>> extractFluidInputs(Object recipe, Level level) {
         Object actualRecipe = unwrapRecipeHolder(recipe);
 
-         
         if (actualRecipe.getClass().isRecord()) {
             return extractFluidInputsFromRecord(actualRecipe);
         }
-         
 
         RecipeAdapter adapter = getAdapter(actualRecipe, false, ResourceType.FLUID, level);
         if (adapter.fluidInputAccessor == null) return new ArrayList<>();

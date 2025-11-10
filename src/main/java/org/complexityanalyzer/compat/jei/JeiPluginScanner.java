@@ -66,7 +66,6 @@ public class JeiPluginScanner {
 
         Map<ResourceLocation, List<ItemStack>> allCatalysts = new HashMap<>();
 
-         
         for (IModPlugin plugin : cleanPlugins) {
             String pluginId = plugin.getPluginUid().toString();
 
@@ -76,7 +75,6 @@ public class JeiPluginScanner {
             }
 
             MockRecipeCatalystRegistration mockCatalystReg = new MockRecipeCatalystRegistration();
-
 
             try {
                 plugin.registerRecipeCatalysts(mockCatalystReg);
@@ -97,7 +95,6 @@ public class JeiPluginScanner {
             }
         }
 
-         
         if (!allCatalysts.isEmpty()) {
             ComplexityAnalyzer.LOGGER.info("Loading {} catalyst types to MachineRegistry...", allCatalysts.size());
 
@@ -120,7 +117,6 @@ public class JeiPluginScanner {
                     ComplexityAnalyzer.LOGGER.info("Converted {} catalyst types to item mapping", catalystItemMap.size());
                     registry.loadFromJEI(catalystItemMap);
 
-                     
                     AdaptiveRecipeConverter.setMachineRegistry(registry);
                     ComplexityAnalyzer.LOGGER.info("MachineRegistry loaded and connected to AdaptiveRecipeConverter");
                 });
@@ -131,9 +127,8 @@ public class JeiPluginScanner {
             ComplexityAnalyzer.LOGGER.warn("No catalysts were collected from JEI plugins");
         }
 
-         
         int pluginsProcessed = 0;
-        int totalRecipesImported = 0;
+        int totalJeiRecipesImported = 0;
 
         for (IModPlugin plugin : cleanPlugins) {
             String pluginId = plugin.getPluginUid().toString();
@@ -150,8 +145,8 @@ public class JeiPluginScanner {
                 ComplexityAnalyzer.LOGGER.debug("Plugin {} is not server-compatible, skipping its recipe registration. Reason: {}",
                         pluginId, t.getClass().getSimpleName());
             }
-             
-            List<RecipeNode> recipes = JeiRecipeConverter.convertAll(
+
+            List<RecipeNode> recipes = JeiRecipeConverter.convertAllFromJei(
                     mockRegistration.getCollectedRecipes(),
                     mockRegistration.getLevel()
             );
@@ -159,12 +154,30 @@ public class JeiPluginScanner {
             if (!recipes.isEmpty()) {
                 recipes.forEach(graph::addRecipe);
                 pluginsProcessed++;
-                totalRecipesImported += recipes.size();
+                totalJeiRecipesImported += recipes.size();
             }
         }
 
         ComplexityAnalyzer.LOGGER.info("JEI import complete: {} plugins processed, {} recipes imported.",
-                pluginsProcessed, totalRecipesImported);
+                pluginsProcessed, totalJeiRecipesImported);
+
+        try {
+            ComplexityAnalyzer.LOGGER.info("Starting RecipeManager processing (this may take a while)...");
+
+            List<RecipeNode> mcRecipes = JeiRecipeConverter.convertAllFromRecipeManager(level);
+
+            mcRecipes.forEach(graph::addRecipe);
+
+            ComplexityAnalyzer.LOGGER.info("RecipeManager import complete: {} recipes added.", mcRecipes.size());
+
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to process RecipeManager", e);
+        }
+
+        ComplexityAnalyzer.LOGGER.info(
+                "=== TOTAL IMPORT SUMMARY: {} JEI recipes + RecipeManager recipes ===",
+                totalJeiRecipesImported
+        );
     }
 
     private static boolean isBlacklisted(String modId) {

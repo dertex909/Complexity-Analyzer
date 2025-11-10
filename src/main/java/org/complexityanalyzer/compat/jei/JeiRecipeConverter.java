@@ -36,8 +36,7 @@ import org.complexityanalyzer.graph.RecipeNode;
 import java.util.*;
 
 public class JeiRecipeConverter {
-
-    public static List<RecipeNode> convertAll(Map<RecipeType<?>, List<?>> recipesByType, Level level) {
+    public static List<RecipeNode> convertAllFromJei(Map<RecipeType<?>, List<?>> recipesByType, Level level) {
         List<RecipeNode> result = new ArrayList<>();
 
         for (Map.Entry<RecipeType<?>, List<?>> entry : recipesByType.entrySet()) {
@@ -53,40 +52,79 @@ public class JeiRecipeConverter {
                     if (node != null) {
                         result.add(node);
                     }
+                } catch (NoClassDefFoundError e) {
+                    ComplexityAnalyzer.LOGGER.error(
+                            "CLIENT CLASS ERROR in JEI recipe from '{}' (Class: {}). Skipping to prevent crash! Error: {}",
+                            jeiTypeId, recipe.getClass().getName(), e.getMessage()
+                    );
                 } catch (Throwable t) {
-                    ComplexityAnalyzer.LOGGER.warn("Failed to convert a recipe from JEI type '{}' (Class: {}). Skipping. Reason: {}",
-                            jeiTypeId, recipe.getClass().getName(), t.getClass().getSimpleName());
+                    ComplexityAnalyzer.LOGGER.warn(
+                            "Failed to convert a recipe from JEI type '{}' (Class: {}). Skipping. Reason: {}",
+                            jeiTypeId, recipe.getClass().getName(), t.getClass().getSimpleName()
+                    );
                 }
             }
         }
+
+        return result;
+    }
+
+    public static List<RecipeNode> convertAllFromRecipeManager(Level level) {
+        List<RecipeNode> result = new ArrayList<>();
 
         ComplexityAnalyzer.LOGGER.info("Processing recipes from RecipeManager...");
 
         RecipeManager recipeManager = level.getRecipeManager();
 
+        int processed = 0;
+        int skipped = 0;
+        int failed = 0;
+
         for (RecipeHolder<?> holder : recipeManager.getRecipes()) {
-            Recipe<?> recipe = holder.value();
-            net.minecraft.world.item.crafting.RecipeType<?> mcType = recipe.getType();
-
-            ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(mcType);
-            if (typeId == null) {
-                continue;
-            }
-
-            if (typeId.getNamespace().equals("minecraft")) {
-                continue;
-            }
-
             try {
+                Recipe<?> recipe = holder.value();
+                net.minecraft.world.item.crafting.RecipeType<?> mcType = recipe.getType();
+
+                ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(mcType);
+                if (typeId == null) {
+                    skipped++;
+                    continue;
+                }
+
+                if (typeId.getNamespace().equals("minecraft")) {
+                    skipped++;
+                    continue;
+                }
+
                 RecipeNode node = convert(recipe, level, typeId);
                 if (node != null) {
                     result.add(node);
+                    processed++;
+
+                    if (processed % 500 == 0) {
+                        ComplexityAnalyzer.LOGGER.info("  Processed {} recipes so far...", processed);
+                    }
                 }
+
+            } catch (NoClassDefFoundError e) {
+                ComplexityAnalyzer.LOGGER.error(
+                        "CLIENT CLASS ERROR for recipe {}: {}. This recipe will be skipped!",
+                        holder.id(), e.getMessage()
+                );
+                failed++;
             } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.warn("Failed to convert a recipe from RecipeManager (ID: {}). Skipping. Reason: {}",
-                        holder.id(), t.getClass().getSimpleName());
+                ComplexityAnalyzer.LOGGER.warn(
+                        "Failed to convert a recipe from RecipeManager (ID: {}). Skipping. Reason: {}",
+                        holder.id(), t.getClass().getSimpleName()
+                );
+                failed++;
             }
         }
+
+        ComplexityAnalyzer.LOGGER.info(
+                "RecipeManager processing complete: {} converted, {} skipped, {} failed",
+                processed, skipped, failed
+        );
 
         return result;
     }

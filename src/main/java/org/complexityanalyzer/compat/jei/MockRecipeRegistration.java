@@ -57,9 +57,7 @@ public class MockRecipeRegistration implements IRecipeRegistration {
 
     @Override
     public <T> void addRecipes(RecipeType<T> recipeType, List<T> recipes) {
-        if (recipes.isEmpty()) {
-            return;
-        }
+        if (recipes.isEmpty()) return;
         collectedRecipes.put(recipeType, new ArrayList<>(recipes));
     }
 
@@ -71,9 +69,7 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     @Override
     @NotNull
     public IJeiHelpers getJeiHelpers() {
-        if (STUB_HELPERS == null) {
-            STUB_HELPERS = new JeiMocks.SmartJeiHelpers(recipeManager);
-        }
+        if (STUB_HELPERS == null) STUB_HELPERS = new JeiMocks.SmartJeiHelpers(recipeManager);
         return STUB_HELPERS;
     }
 

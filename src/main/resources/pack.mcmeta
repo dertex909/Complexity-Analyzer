@@ -1,8 +1,6 @@
 {
   "pack": {
     "description": "Complexity Analyzer resources",
-    "pack_format": 34,
-    "forge:resource_pack_format": 34,
-    "forge:data_pack_format": 34
+    "pack_format": 34
   }
 }

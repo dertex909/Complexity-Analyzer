@@ -37,36 +37,53 @@ import java.util.*;
 
 public class JeiRecipeConverter {
     public static List<RecipeNode> convertAllFromJei(Map<RecipeType<?>, List<?>> recipesByType, Level level) {
-        List<RecipeNode> result = new ArrayList<>();
+        int totalRecipes = recipesByType.values().stream().mapToInt(List::size).sum();
+
+        Map<Class<?>, List<RecipeWithType>> recipesByClass = new HashMap<>();
 
         for (Map.Entry<RecipeType<?>, List<?>> entry : recipesByType.entrySet()) {
             RecipeType<?> jeiType = entry.getKey();
             List<?> recipes = entry.getValue();
+            if (recipes.isEmpty()) continue;
 
             ResourceLocation jeiTypeId = jeiType.getUid();
 
             for (Object recipe : recipes) {
-                try {
-                    RecipeNode node = convert(recipe, level, jeiTypeId);
-
-                    if (node != null) {
-                        result.add(node);
-                    }
-                } catch (NoClassDefFoundError e) {
-                    ComplexityAnalyzer.LOGGER.error(
-                            "CLIENT CLASS ERROR in JEI recipe from '{}' (Class: {}). Skipping to prevent crash! Error: {}",
-                            jeiTypeId, recipe.getClass().getName(), e.getMessage()
-                    );
-                } catch (Throwable t) {
-                    ComplexityAnalyzer.LOGGER.warn(
-                            "Failed to convert a recipe from JEI type '{}' (Class: {}). Skipping. Reason: {}",
-                            jeiTypeId, recipe.getClass().getName(), t.getClass().getSimpleName()
-                    );
-                }
+                recipesByClass.computeIfAbsent(recipe.getClass(), k -> new ArrayList<>())
+                        .add(new RecipeWithType(recipe, jeiTypeId));
             }
         }
 
+        long learnStart = System.currentTimeMillis();
+        for (Map.Entry<Class<?>, List<RecipeWithType>> entry : recipesByClass.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            Object sampleRecipe = entry.getValue().getFirst().recipe();
+            AdaptiveRecipeConverter.warmupClass(sampleRecipe, level);
+        }
+        long learnTime = System.currentTimeMillis() - learnStart;
+        if (learnTime > 500) {
+            ComplexityAnalyzer.LOGGER.debug("Adapter learning took {}ms for {} classes",
+                    learnTime, recipesByClass.size());
+        }
+
+        long convertStart = System.currentTimeMillis();
+        List<RecipeWithType> allRecipes = recipesByClass.values().stream()
+                .flatMap(List::stream)
+                .toList();
+
+        List<RecipeNode> result = new ArrayList<>(AdaptiveRecipeConverter.convertJeiBatch(allRecipes, level));
+
+        long convertTime = System.currentTimeMillis() - convertStart;
+
+        if (convertTime > 1000) {
+            ComplexityAnalyzer.LOGGER.info("JEI batch conversion: {}ms for {} recipes ({} nodes)",
+                    convertTime, totalRecipes, result.size());
+        }
+
         return result;
+    }
+
+    public record RecipeWithType(Object recipe, ResourceLocation jeiTypeId) {
     }
 
     public static List<RecipeNode> convertAllFromRecipeManager(Level level) {
@@ -113,9 +130,7 @@ public class JeiRecipeConverter {
         List<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs =
                 AdaptiveRecipeConverter.extractChemicalOutputs(recipe, level);
 
-        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) {
-            return null;
-        }
+        if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) return null;
 
         Item resultItem;
         RecipeNode.Builder builder;
@@ -161,9 +176,7 @@ public class JeiRecipeConverter {
             }
         }
 
-        if (recipeType == null) {
-            return null;
-        }
+        if (recipeType == null) return null;
 
         builder.recipeType(recipeType);
 

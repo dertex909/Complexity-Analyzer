@@ -27,20 +27,15 @@ public class SafePluginLoader {
     public static IModPlugin tryLoadPlugin(String className, String modId) {
         try {
             Class<?> pluginClass = Class.forName(className);
-
-            if (!IModPlugin.class.isAssignableFrom(pluginClass)) {
-                return null;
-            }
+            if (!IModPlugin.class.isAssignableFrom(pluginClass)) return null;
 
             Constructor<?> ctor = pluginClass.getDeclaredConstructor();
             ctor.setAccessible(true);
             return (IModPlugin) ctor.newInstance();
-
         } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
             ComplexityAnalyzer.LOGGER.warn("[SafeLoader] Skipping client-only JEI plugin from mod '{}': {} (Reason: {})",
                     modId, className, e.getClass().getSimpleName());
             return null;
-
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("[SafeLoader] Failed to load JEI plugin class '{}' from mod '{}'",
                     className, modId, t);

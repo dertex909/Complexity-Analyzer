@@ -109,9 +109,7 @@ public class JeiPluginScanner {
                                 .distinct()
                                 .toList();
 
-                        if (!items.isEmpty()) {
-                            catalystItemMap.put(recipeType, items);
-                        }
+                        if (!items.isEmpty()) catalystItemMap.put(recipeType, items);
                     }
 
                     ComplexityAnalyzer.LOGGER.info("Converted {} catalyst types to item mapping", catalystItemMap.size());
@@ -133,10 +131,9 @@ public class JeiPluginScanner {
         for (IModPlugin plugin : cleanPlugins) {
             String pluginId = plugin.getPluginUid().toString();
 
-            if (isBlacklisted(plugin.getPluginUid().getNamespace())) {
-                continue;
-            }
+            if (isBlacklisted(plugin.getPluginUid().getNamespace())) continue;
 
+            long pluginStart = System.currentTimeMillis();
             MockRecipeRegistration mockRegistration = new MockRecipeRegistration(level);
 
             try {
@@ -146,15 +143,28 @@ public class JeiPluginScanner {
                         pluginId, t.getClass().getSimpleName());
             }
 
+            long registerTime = System.currentTimeMillis() - pluginStart;
+
+            long convertStart = System.currentTimeMillis();
             List<RecipeNode> recipes = JeiRecipeConverter.convertAllFromJei(
                     mockRegistration.getCollectedRecipes(),
                     mockRegistration.getLevel()
             );
+            long convertTime = System.currentTimeMillis() - convertStart;
 
             if (!recipes.isEmpty()) {
                 recipes.forEach(graph::addRecipe);
                 pluginsProcessed++;
                 totalJeiRecipesImported += recipes.size();
+            }
+
+            long totalTime = System.currentTimeMillis() - pluginStart;
+            if (totalTime > 1000) {
+                ComplexityAnalyzer.LOGGER.warn("Slow JEI plugin {}: {}ms total (register={}ms, convert={}ms, {} recipes)",
+                        pluginId, totalTime, registerTime, convertTime, recipes.size());
+            } else {
+                ComplexityAnalyzer.LOGGER.debug("JEI plugin {}: {}ms (register={}ms, convert={}ms, {} recipes)",
+                        pluginId, totalTime, registerTime, convertTime, recipes.size());
             }
         }
 

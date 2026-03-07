@@ -33,8 +33,10 @@ import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
+import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
+import sun.misc.Unsafe;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -50,10 +52,10 @@ import java.util.function.Supplier;
 public final class AdaptiveRecipeConverter {
 
     private static final int MAX_DEPTH = 5;
-    private static final int BATCH_TIMEOUT_SECONDS = 30;
-    private static final int SINGLE_LEARN_TIMEOUT_SECONDS = 3;
+    private static final int BATCH_TIMEOUT_SECONDS = 60;
 
     private static final MethodHandles.Lookup LOOKUP;
+    private static final Unsafe UNSAFE;
 
     static {
         MethodHandles.Lookup lk;
@@ -63,6 +65,16 @@ public final class AdaptiveRecipeConverter {
             lk = MethodHandles.lookup();
         }
         LOOKUP = lk;
+
+        // Кэшируем Unsafe один раз при загрузке класса
+        Unsafe unsafeInstance = null;
+        try {
+            var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            unsafeInstance = (Unsafe) unsafeField.get(null);
+        } catch (Exception ignored) {
+        }
+        UNSAFE = unsafeInstance;
     }
 
     private static volatile ForkJoinPool recipePool;
@@ -89,8 +101,6 @@ public final class AdaptiveRecipeConverter {
     private static final ConcurrentHashMap<Class<?>, ClassMeta> CLASS_META_CACHE = new ConcurrentHashMap<>(256);
 
     private static final ConcurrentHashMap<Class<?>, AdapterSnapshot> ADAPTER_CACHE = new ConcurrentHashMap<>(256);
-
-    private static final ConcurrentHashMap<LearningKey, CompletableFuture<Accessor>> LEARNING_FUTURES = new ConcurrentHashMap<>(64);
 
     private static volatile MachineRegistry machineRegistry;
 
@@ -254,9 +264,6 @@ public final class AdaptiveRecipeConverter {
 
     enum ResourceType {ITEM, FLUID, CHEMICAL}
 
-    private record LearningKey(Class<?> clazz, boolean isOutput, ResourceType type) {
-    }
-
     interface Accessor {
         Object extract(Object recipe, Level level) throws Throwable;
     }
@@ -297,30 +304,26 @@ public final class AdaptiveRecipeConverter {
         FieldAccessor(Field field) {
             this.field = field;
             long off = -1;
-            try {
-                var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-                unsafeField.setAccessible(true);
-                var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
-                @SuppressWarnings("deprecation")
-                long fieldOffset = unsafe.objectFieldOffset(field);
-                off = fieldOffset;
-            } catch (Exception ignored) {
+            if (UNSAFE != null) {
+                try {
+                    @SuppressWarnings("deprecation")
+                    long fieldOffset = UNSAFE.objectFieldOffset(field);
+                    off = fieldOffset;
+                } catch (Exception ignored) {
+                }
             }
             this.offset = off;
-            if (off == -1) field.setAccessible(true);
+            if (off == -1) {
+                try {
+                    field.setAccessible(true);
+                } catch (Exception ignored) {
+                }
+            }
         }
 
         @Override
         public Object extract(Object recipe, Level level) throws Throwable {
-            if (offset != -1) {
-                try {
-                    var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-                    unsafeField.setAccessible(true);
-                    var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
-                    return unsafe.getObject(recipe, offset);
-                } catch (Exception ignored) {
-                }
-            }
+            if (offset != -1 && UNSAFE != null) return UNSAFE.getObject(recipe, offset);
             return field.get(recipe);
         }
     }
@@ -332,9 +335,158 @@ public final class AdaptiveRecipeConverter {
     public record ChemicalOutput(ResourceLocation id, long amount) {
     }
 
-    public static List<RecipeNode> convertRecipesBatch(List<? extends Recipe<?>> recipes, Level level) {
+    private static final Set<String> UNSAFE_RECIPE_CLASSES = ConcurrentHashMap.newKeySet();
+
+    public static void warmupClass(Object sampleRecipe, Level level) {
+        if (sampleRecipe == null) return;
+        Object actual = unwrap(sampleRecipe);
+        Class<?> clazz = actual.getClass();
+        AdapterSnapshot existing = ADAPTER_CACHE.get(clazz);
+        if (existing != null && existing != AdapterSnapshot.EMPTY) return;
+        for (ResourceType type : ResourceType.values()) {
+            resolveAccessor(actual, true, type, level);
+            resolveAccessor(actual, false, type, level);
+        }
+    }
+
+    public static List<RecipeNode> convertJeiBatch(
+            List<JeiRecipeConverter.RecipeWithType> recipes, Level level) {
 
         if (recipes.isEmpty()) return Collections.emptyList();
+
+        java.util.logging.Logger threadingLogger = java.util.logging.Logger.getLogger("net.minecraft.util.ThreadingDetector");
+        java.util.logging.Level oldLevel = threadingLogger.getLevel();
+        threadingLogger.setLevel(java.util.logging.Level.OFF);
+        org.apache.logging.log4j.core.Logger minecraftLogger = null;
+        org.apache.logging.log4j.Level oldLog4jLevel = null;
+        try {
+            var loggerContext = org.apache.logging.log4j.LogManager.getContext(false);
+            if (loggerContext instanceof org.apache.logging.log4j.core.LoggerContext ctx) {
+                minecraftLogger = ctx.getLogger("minecraft/ThreadingDetector");
+                if (minecraftLogger != null) {
+                    oldLog4jLevel = minecraftLogger.getLevel();
+                    minecraftLogger.setLevel(org.apache.logging.log4j.Level.OFF);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        List<RecipeNode> results = new ArrayList<>(recipes.size());
+        List<JeiRecipeConverter.RecipeWithType> unsafeRecipes = new ArrayList<>();
+
+        try {
+            List<JeiRecipeConverter.RecipeWithType> safeRecipes = new ArrayList<>();
+            for (var recipeWithType : recipes) {
+                if (UNSAFE_RECIPE_CLASSES.contains(recipeWithType.recipe().getClass().getName())) {
+                    unsafeRecipes.add(recipeWithType);
+                } else {
+                    safeRecipes.add(recipeWithType);
+                }
+            }
+
+            if (!safeRecipes.isEmpty()) {
+                ForkJoinPool pool = getPool();
+                int size = safeRecipes.size();
+
+                @SuppressWarnings("unchecked")
+                CompletableFuture<RecipeNode>[] futures = new CompletableFuture[size];
+
+                for (int i = 0; i < size; i++) {
+                    final var recipeWithType = safeRecipes.get(i);
+                    futures[i] = CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return JeiRecipeConverter.convert(
+                                    recipeWithType.recipe(),
+                                    level,
+                                    recipeWithType.jeiTypeId()
+                            );
+                        } catch (Throwable t) {
+                            if (isThreadingError(t)) {
+                                String className = recipeWithType.recipe().getClass().getName();
+                                UNSAFE_RECIPE_CLASSES.add(className);
+                            }
+                            return null;
+                        }
+                    }, pool);
+                }
+
+                CompletableFuture<Void> all = CompletableFuture.allOf(futures);
+                try {
+                    all.get(BATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                } catch (TimeoutException e) {
+                    ComplexityAnalyzer.LOGGER.warn("JEI batch conversion timed out after {}s", BATCH_TIMEOUT_SECONDS);
+                    for (CompletableFuture<RecipeNode> f : futures) f.cancel(true);
+                } catch (Exception ignored) {
+                }
+
+                for (int i = 0; i < size; i++) {
+                    CompletableFuture<RecipeNode> f = futures[i];
+                    if (f.isDone() && !f.isCompletedExceptionally() && !f.isCancelled()) {
+                        RecipeNode node = f.getNow(null);
+                        if (node != null) {
+                            results.add(node);
+                        } else if (UNSAFE_RECIPE_CLASSES.contains(safeRecipes.get(i).recipe().getClass().getName())) {
+                            unsafeRecipes.add(safeRecipes.get(i));
+                        }
+                    }
+                }
+            }
+        } finally {
+            threadingLogger.setLevel(oldLevel);
+            if (minecraftLogger != null && oldLog4jLevel != null) minecraftLogger.setLevel(oldLog4jLevel);
+        }
+
+        if (!unsafeRecipes.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.info("Found {} thread-unsafe recipe classes, processing sequentially",
+                    unsafeRecipes.stream().map(r -> r.recipe().getClass().getSimpleName()).distinct().count());
+
+            for (var recipeWithType : unsafeRecipes) {
+                try {
+                    RecipeNode node = JeiRecipeConverter.convert(
+                            recipeWithType.recipe(),
+                            level,
+                            recipeWithType.jeiTypeId()
+                    );
+                    if (node != null) results.add(node);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        return results;
+    }
+
+    public static List<RecipeNode> convertRecipesBatch(
+            List<? extends Recipe<?>> recipes, Level level) {
+
+        if (recipes.isEmpty()) return Collections.emptyList();
+
+        List<Recipe<?>> safeRecipes = new ArrayList<>();
+        List<Recipe<?>> unsafeRecipes = new ArrayList<>();
+
+        for (var recipe : recipes) {
+            if (UNSAFE_RECIPE_CLASSES.contains(recipe.getClass().getName())) {
+                unsafeRecipes.add(recipe);
+            } else {
+                safeRecipes.add(recipe);
+            }
+        }
+
+        List<RecipeNode> results = new ArrayList<>(recipes.size());
+
+        if (!safeRecipes.isEmpty()) results.addAll(convertBatchParallel(safeRecipes, level));
+
+        if (!unsafeRecipes.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("Processing {} recipes sequentially (known thread-unsafe)",
+                    unsafeRecipes.size());
+            results.addAll(convertBatchSequential(unsafeRecipes, level));
+        }
+
+        return results;
+    }
+
+    private static List<RecipeNode> convertBatchParallel(
+            List<? extends Recipe<?>> recipes, Level level) {
 
         ForkJoinPool pool = getPool();
         int size = recipes.size();
@@ -344,7 +496,21 @@ public final class AdaptiveRecipeConverter {
 
         for (int i = 0; i < size; i++) {
             final var recipe = recipes.get(i);
-            futures[i] = CompletableFuture.supplyAsync(() -> convertRecipe(recipe, level), pool);
+            futures[i] = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return convertRecipe(recipe, level);
+                } catch (Throwable t) {
+                    if (isThreadingError(t)) {
+                        String className = recipe.getClass().getName();
+                        if (UNSAFE_RECIPE_CLASSES.add(className)) {
+                            ComplexityAnalyzer.LOGGER.warn(
+                                    "Detected thread-unsafe recipe class: {}. Will process sequentially in future.",
+                                    className);
+                        }
+                    }
+                    return null;
+                }
+            }, pool);
         }
 
         CompletableFuture<Void> all = CompletableFuture.allOf(futures);
@@ -358,13 +524,75 @@ public final class AdaptiveRecipeConverter {
         }
 
         List<RecipeNode> results = new ArrayList<>(size);
-        for (CompletableFuture<RecipeNode> f : futures) {
+        List<Recipe<?>> retryRecipes = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            CompletableFuture<RecipeNode> f = futures[i];
             if (f.isDone() && !f.isCompletedExceptionally() && !f.isCancelled()) {
                 RecipeNode node = f.getNow(null);
+                if (node != null) {
+                    results.add(node);
+                } else if (UNSAFE_RECIPE_CLASSES.contains(recipes.get(i).getClass().getName())) {
+                    retryRecipes.add(recipes.get(i));
+                }
+            }
+        }
+
+        if (!retryRecipes.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.debug("Retrying {} recipes sequentially after threading errors",
+                    retryRecipes.size());
+            results.addAll(convertBatchSequential(retryRecipes, level));
+        }
+
+        return results;
+    }
+
+    private static List<RecipeNode> convertBatchSequential(
+            List<? extends Recipe<?>> recipes, Level level) {
+
+        List<RecipeNode> results = new ArrayList<>(recipes.size());
+        for (var recipe : recipes) {
+            try {
+                RecipeNode node = convertRecipe(recipe, level);
                 if (node != null) results.add(node);
+            } catch (Exception ignored) {
             }
         }
         return results;
+    }
+
+    private static boolean isThreadingError(Throwable t) {
+        if (t == null) return false;
+
+        String message = t.getMessage();
+        String className = t.getClass().getName();
+
+        if (className.contains("ThreadingDetector") ||
+                className.contains("ConcurrentModification")) {
+            return true;
+        }
+
+        if (message != null && (
+                message.contains("thread") ||
+                        message.contains("Thread") ||
+                        message.contains("concurrent") ||
+                        message.contains("Concurrent"))) {
+            return true;
+        }
+
+        Throwable cause = t.getCause();
+        if (cause != null && cause != t) return isThreadingError(cause);
+
+        StackTraceElement[] stack = t.getStackTrace();
+        for (StackTraceElement elem : stack) {
+            if (elem.getClassName().contains("ThreadingDetector") ||
+                    elem.getClassName().contains("RandomSource") ||
+                    elem.getClassName().contains("LegacyRandomSource")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static RecipeNode convertRecipe(Recipe<?> recipe, Level level) {
@@ -398,7 +626,7 @@ public final class AdaptiveRecipeConverter {
             if (!group.isEmpty()) ingredients.add(Ingredient.of(group.toArray(new ItemStack[0])));
         }
 
-        RecipeCategory category = org.complexityanalyzer.graph.GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
+        RecipeCategory category = GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 
         builder.recipeType(recipeType).category(category);
@@ -983,31 +1211,16 @@ public final class AdaptiveRecipeConverter {
         Accessor existing = snapshot.get(isOutput, type);
         if (existing != null) return existing;
 
-        LearningKey key = new LearningKey(clazz, isOutput, type);
+        // Прямое обучение без асинхронности для уже подготовленных классов
+        Accessor accessor = learnAccessor(recipe, isOutput, type, level);
 
-        CompletableFuture<Accessor> future = LEARNING_FUTURES.computeIfAbsent(key, k ->
-                CompletableFuture.supplyAsync(() -> {
-                    try {
-                        return learnAccessor(recipe, isOutput, type, level);
-                    } finally {
-                        LEARNING_FUTURES.remove(k);
-                    }
-                }, getPool())
-        );
-
-        try {
-            Accessor accessor = future.get(SINGLE_LEARN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            if (accessor != null) {
-                ADAPTER_CACHE.compute(clazz, (c, old) -> {
-                    AdapterSnapshot base = old != null ? old : AdapterSnapshot.EMPTY;
-                    return base.with(isOutput, type, accessor);
-                });
-            }
-            return accessor;
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("Learning timeout for {}", clazz.getSimpleName());
-            return null;
+        if (accessor != null) {
+            ADAPTER_CACHE.compute(clazz, (c, old) -> {
+                AdapterSnapshot base = old != null ? old : AdapterSnapshot.EMPTY;
+                return base.with(isOutput, type, accessor);
+            });
         }
+        return accessor;
     }
 
     private static Accessor learnAccessor(Object recipe, boolean isOutput, ResourceType type, Level level) {
@@ -1632,6 +1845,6 @@ public final class AdaptiveRecipeConverter {
     public static void clearCaches() {
         CLASS_META_CACHE.clear();
         ADAPTER_CACHE.clear();
-        LEARNING_FUTURES.clear();
+        UNSAFE_RECIPE_CLASSES.clear();
     }
 }

@@ -90,12 +90,15 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     }
 
     @Override
-    public <T> void addIngredientInfo(T ingredient, IIngredientType<T> ingredientType, Component... descriptionComponents) {}
+    public <T> void addIngredientInfo(T ingredient, IIngredientType<T> ingredientType, Component... descriptionComponents) {
+    }
 
     @Override
-    public <T> void addIngredientInfo(List<T> ingredients, IIngredientType<T> ingredientType, Component... descriptionComponents) {}
+    public <T> void addIngredientInfo(List<T> ingredients, IIngredientType<T> ingredientType, Component... descriptionComponents) {
+    }
 }
 
 @Retention(RetentionPolicy.RUNTIME)
 @TypeQualifierDefault(ElementType.METHOD)
-@interface MethodsReturnNonnullByDefault {}
+@interface MethodsReturnNonnullByDefault {
+}

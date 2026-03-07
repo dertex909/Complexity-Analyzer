@@ -151,8 +151,7 @@ public class SourceManager {
             if (source.canProvide(item)) {
                 if (source instanceof IMultiSourceProvider multiSource) {
                     results.addAll(multiSource.findAllSources(item));
-                }
-                else {
+                } else {
                     source.analyze(item).ifPresent(results::add);
                 }
             }

@@ -157,7 +157,8 @@ public class AnalyzeCommand {
         output.sendInfo(source, Component.literal(""));
     }
 
-    private record SourceWithCost(BaseResourceData data, double fullCost) {}
+    private record SourceWithCost(BaseResourceData data, double fullCost) {
+    }
 
     private static void displaySourceInfo(
             CommandSourceStack source,

@@ -45,8 +45,11 @@ public class VillagerTradeSource implements IResourceSource {
 
     private final Map<Item, List<TradeInfo>> tradesByResult = new Object2ObjectOpenHashMap<>();
 
-    private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {}
-    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type) {}
+    private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {
+    }
+
+    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type) {
+    }
 
     @Override
     public void initialize(Level level) {
@@ -110,10 +113,12 @@ public class VillagerTradeSource implements IResourceSource {
                     net.minecraft.world.entity.EntityType.VILLAGER, level
             ) {
                 @Override
-                protected void registerGoals() {}
+                protected void registerGoals() {
+                }
 
                 @Override
-                public void tick() {}
+                public void tick() {
+                }
             };
 
             int logInterval = Math.max(1, pendingTrades.size() / 10);
@@ -220,10 +225,14 @@ public class VillagerTradeSource implements IResourceSource {
     }
 
     @Override
-    public int getPriority() { return 35; }
+    public int getPriority() {
+        return 35;
+    }
 
     @Override
-    public String getName() { return "VillagerTradeSource"; }
+    public String getName() {
+        return "VillagerTradeSource";
+    }
 
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {

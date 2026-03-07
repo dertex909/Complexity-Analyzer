@@ -42,7 +42,8 @@ public class TheoreticalBlockSource implements IResourceSource {
     }
 
     @Override
-    public void initialize(Level level) {}
+    public void initialize(Level level) {
+    }
 
     @Override
     public boolean canProvide(Item item) {
@@ -58,7 +59,7 @@ public class TheoreticalBlockSource implements IResourceSource {
             BaseResourceData.ResourceSourceType sourceType;
             double baseFactor;
             String details;
-            String specifier = "Unknown Dimension";  
+            String specifier = "Unknown Dimension";
 
             if (distributionOpt.isPresent()) {
                 OreDistributionData dist = distributionOpt.get();
@@ -125,9 +126,17 @@ public class TheoreticalBlockSource implements IResourceSource {
     }
 
     @Override
-    public int getPriority() { return 50; }
+    public int getPriority() {
+        return 50;
+    }
+
     @Override
-    public String getName() { return "TheoreticalBlockSource"; }
+    public String getName() {
+        return "TheoreticalBlockSource";
+    }
+
     @Override
-    public BaseResourceData.ResourceSourceType getSourceType() { return BaseResourceData.ResourceSourceType.ORE; }
+    public BaseResourceData.ResourceSourceType getSourceType() {
+        return BaseResourceData.ResourceSourceType.ORE;
+    }
 }

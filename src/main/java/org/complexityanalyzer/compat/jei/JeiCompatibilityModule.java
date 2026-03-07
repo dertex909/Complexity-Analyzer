@@ -38,7 +38,6 @@ public class JeiCompatibilityModule {
 
         try {
             JeiPluginScanner.scanAndImportRecipes(graph, level);
-            DirectRecipeExtractor.extractCustomRecipes(graph, level);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("JEI integration failed catastrophically", t);
         }

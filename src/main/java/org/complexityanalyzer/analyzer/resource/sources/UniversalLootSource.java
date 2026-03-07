@@ -224,7 +224,8 @@ public class UniversalLootSource implements IResourceSource {
             try {
                 rootLogger.get().removeFilter(filter);
                 filter.stop();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         long duration = System.currentTimeMillis() - startTime;
@@ -360,10 +361,14 @@ public class UniversalLootSource implements IResourceSource {
     }
 
     @Override
-    public int getPriority() { return 25; }
+    public int getPriority() {
+        return 25;
+    }
 
     @Override
-    public String getName() { return "UniversalLootSource"; }
+    public String getName() {
+        return "UniversalLootSource";
+    }
 
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {

@@ -46,7 +46,8 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
             BaseResourceData.ResourceSourceType type,
             String description,
             String modId
-    ) {}
+    ) {
+    }
 
     public HardcodedSourcesProvider() {
         INSTANCE = this;

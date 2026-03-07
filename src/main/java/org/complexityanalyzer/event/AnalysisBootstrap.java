@@ -6,6 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
@@ -29,6 +30,10 @@ public class AnalysisBootstrap {
     public static void onServerStopping(ServerStoppingEvent event) {
         ComplexityAnalyzer.LOGGER.info("Server stopping, shutting down Complexity Analyzer...");
         AnalysisEngine.getInstance().shutdown();
+
+        ComplexityAnalyzer.LOGGER.debug("Cleaning up AdaptiveRecipeConverter resources...");
+        AdaptiveRecipeConverter.shutdown();
+        AdaptiveRecipeConverter.clearCaches();
     }
 
     public static AnalysisEngine getEngine() {

@@ -19,6 +19,8 @@
 package org.complexityanalyzer.analyzer.solver;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.material.Fluid;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,21 +56,17 @@ public class ChemicalComplexityManager {
     }
 
     public double calculateComplexity(ResourceLocation chemicalId,
-                                      Map<net.minecraft.world.item.Item, Double> itemComplexities,
-                                      Map<net.minecraft.world.level.material.Fluid, Double> fluidComplexities) {
+                                      Map<Item, Double> itemComplexities,
+                                      Map<Fluid, Double> fluidComplexities) {
         List<ChemicalRecipe> recipes = getProducingRecipes(chemicalId);
 
-        if (recipes.isEmpty()) {
-            return Double.POSITIVE_INFINITY;
-        }
+        if (recipes.isEmpty()) return Double.POSITIVE_INFINITY;
 
         double minCost = Double.POSITIVE_INFINITY;
 
         for (ChemicalRecipe recipe : recipes) {
             double cost = recipe.calculateCost(itemComplexities, fluidComplexities, this);
-            if (!Double.isInfinite(cost)) {
-                minCost = Math.min(minCost, cost);
-            }
+            if (!Double.isInfinite(cost)) minCost = Math.min(minCost, cost);
         }
 
         return Double.isInfinite(minCost) ? Double.POSITIVE_INFINITY : minCost;
@@ -84,25 +82,25 @@ public class ChemicalComplexityManager {
     }
 
     public record ChemicalRecipe(
-            Map<net.minecraft.world.item.Item, Double> itemInputs,
-            Map<net.minecraft.world.level.material.Fluid, Double> fluidInputs,
+            Map<Item, Double> itemInputs,
+            Map<Fluid, Double> fluidInputs,
             Map<ResourceLocation, Double> chemicalInputs,
             double outputAmount,
             double machineComplexity,
             double multiplier
     ) {
-        public double calculateCost(Map<net.minecraft.world.item.Item, Double> itemComplexities,
-                                    Map<net.minecraft.world.level.material.Fluid, Double> fluidComplexities,
+        public double calculateCost(Map<Item, Double> itemComplexities,
+                                    Map<Fluid, Double> fluidComplexities,
                                     ChemicalComplexityManager chemicalManager) {
             double totalCost = 0.0;
 
-            for (Map.Entry<net.minecraft.world.item.Item, Double> entry : itemInputs.entrySet()) {
+            for (Map.Entry<Item, Double> entry : itemInputs.entrySet()) {
                 double itemCost = itemComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(itemCost)) return Double.POSITIVE_INFINITY;
                 totalCost += itemCost * entry.getValue();
             }
 
-            for (Map.Entry<net.minecraft.world.level.material.Fluid, Double> entry : fluidInputs.entrySet()) {
+            for (Map.Entry<Fluid, Double> entry : fluidInputs.entrySet()) {
                 double fluidCost = fluidComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(fluidCost)) return Double.POSITIVE_INFINITY;
                 totalCost += fluidCost * entry.getValue();

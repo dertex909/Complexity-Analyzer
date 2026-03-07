@@ -115,6 +115,7 @@ public class TheoreticalDistributionProvider {
         }
         return blocks;
     }
+
     private double calculateFrequency(int count) {
         return Math.min(1.0, count * 0.1);
     }
@@ -123,7 +124,10 @@ public class TheoreticalDistributionProvider {
         return Optional.ofNullable(distributionData.get(block));
     }
 
-    public boolean isInitialized() { return initialized; }
+    public boolean isInitialized() {
+        return initialized;
+    }
 
-    private record HeightRange(int minY, int maxY) {}
+    private record HeightRange(int minY, int maxY) {
+    }
 }

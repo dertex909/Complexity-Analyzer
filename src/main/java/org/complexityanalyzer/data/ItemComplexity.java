@@ -52,16 +52,45 @@ public class ItemComplexity {
         this.baseData = builder.baseData;
     }
 
-    public Item getItem() { return item; }
-    public double getComplexity() { return complexity; }
-    public int getDepth() { return depth; }
-    public int getTotalIngredients() { return totalIngredients; }
-    public ComplexityCategory getCategory() { return category; }
-    public boolean hasCycle() { return hasCycle; }
-    public boolean hasRecipe() { return hasRecipe; }
-    public String getErrorMessage() { return errorMessage; }
-    public Optional<RecipeNode> getOptimalRecipe() {return Optional.ofNullable(optimalRecipe);}
-    public Optional<BaseResourceData> getBaseData() {return Optional.ofNullable(baseData);}
+    public Item getItem() {
+        return item;
+    }
+
+    public double getComplexity() {
+        return complexity;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public int getTotalIngredients() {
+        return totalIngredients;
+    }
+
+    public ComplexityCategory getCategory() {
+        return category;
+    }
+
+    public boolean hasCycle() {
+        return hasCycle;
+    }
+
+    public boolean hasRecipe() {
+        return hasRecipe;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public Optional<RecipeNode> getOptimalRecipe() {
+        return Optional.ofNullable(optimalRecipe);
+    }
+
+    public Optional<BaseResourceData> getBaseData() {
+        return Optional.ofNullable(baseData);
+    }
 
     public boolean isValid() {
         return errorMessage == null && !hasCycle && complexity >= 0;

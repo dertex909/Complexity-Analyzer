@@ -114,9 +114,7 @@ public class HeuristicAnalyzer {
     }
 
     private boolean isChunkCleanByHeuristic(ChunkSnapshot snapshot, ResourceLocation dimensionId) {
-        if (hasHeuristics()) {
-            return true;
-        }
+        if (hasHeuristics()) return true;
 
         Set<Block> heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {
@@ -127,12 +125,8 @@ public class HeuristicAnalyzer {
         int unnaturalBlockCount = 0;
         for (Map.Entry<String, Integer> entry : snapshot.blockCounts().entrySet()) {
             Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey()));
-            if (block != Blocks.AIR && !heuristic.contains(block)) {
-                unnaturalBlockCount += entry.getValue();
-            }
-            if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) {
-                return false;
-            }
+            if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getValue();
+            if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }
         return true;
     }

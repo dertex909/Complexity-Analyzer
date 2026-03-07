@@ -33,7 +33,8 @@ public class PassiveProductionSource implements IResourceSource {
 
     private final Map<Item, ProductionInfo> productionMap = new HashMap<>();
 
-    private record ProductionInfo(EntityType<?> sourceType, double ticksPerItem, String method) {}
+    private record ProductionInfo(EntityType<?> sourceType, double ticksPerItem, String method) {
+    }
 
     @Override
     public void initialize(net.minecraft.world.level.Level level) {
@@ -70,7 +71,7 @@ public class PassiveProductionSource implements IResourceSource {
         double complexity = (info.ticksPerItem() * ComplexityConfig.TIME_COST_MULTIPLIER.get()) + ComplexityConfig.BASE_ACTION_COST.get();
 
         String sourceName = (info.sourceType() != null) ? info.sourceType().getDescription().getString() : "the environment";
-        String details = String.format("From %s (Avg. ~%d ticks, Method: %s)", sourceName, (int)info.ticksPerItem(), info.method());
+        String details = String.format("From %s (Avg. ~%d ticks, Method: %s)", sourceName, (int) info.ticksPerItem(), info.method());
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.FARMING)

@@ -70,60 +70,38 @@ public class JeiRecipeConverter {
     }
 
     public static List<RecipeNode> convertAllFromRecipeManager(Level level) {
-        List<RecipeNode> result = new ArrayList<>();
-
         ComplexityAnalyzer.LOGGER.info("Processing recipes from RecipeManager...");
 
         RecipeManager recipeManager = level.getRecipeManager();
 
-        int processed = 0;
+        List<Recipe<?>> moddedRecipes = new ArrayList<>();
         int skipped = 0;
-        int failed = 0;
 
         for (RecipeHolder<?> holder : recipeManager.getRecipes()) {
-            try {
-                Recipe<?> recipe = holder.value();
-                net.minecraft.world.item.crafting.RecipeType<?> mcType = recipe.getType();
+            Recipe<?> recipe = holder.value();
+            net.minecraft.world.item.crafting.RecipeType<?> mcType = recipe.getType();
 
-                ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(mcType);
-                if (typeId == null) {
-                    skipped++;
-                    continue;
-                }
-
-                if (typeId.getNamespace().equals("minecraft")) {
-                    skipped++;
-                    continue;
-                }
-
-                RecipeNode node = convert(recipe, level, typeId);
-                if (node != null) {
-                    result.add(node);
-                    processed++;
-
-                    if (processed % 500 == 0) {
-                        ComplexityAnalyzer.LOGGER.info("  Processed {} recipes so far...", processed);
-                    }
-                }
-
-            } catch (NoClassDefFoundError e) {
-                ComplexityAnalyzer.LOGGER.error(
-                        "CLIENT CLASS ERROR for recipe {}: {}. This recipe will be skipped!",
-                        holder.id(), e.getMessage()
-                );
-                failed++;
-            } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.warn(
-                        "Failed to convert a recipe from RecipeManager (ID: {}). Skipping. Reason: {}",
-                        holder.id(), t.getClass().getSimpleName()
-                );
-                failed++;
+            ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(mcType);
+            if (typeId == null || typeId.getNamespace().equals("minecraft")) {
+                skipped++;
+                continue;
             }
+
+            moddedRecipes.add(recipe);
         }
 
+        ComplexityAnalyzer.LOGGER.info("Found {} modded recipes to process (skipped {} vanilla)",
+                moddedRecipes.size(), skipped);
+
+        if (moddedRecipes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<RecipeNode> result = AdaptiveRecipeConverter.convertRecipesBatch(moddedRecipes, level);
+
         ComplexityAnalyzer.LOGGER.info(
-                "RecipeManager processing complete: {} converted, {} skipped, {} failed",
-                processed, skipped, failed
+                "RecipeManager processing complete: {} converted, {} skipped",
+                result.size(), skipped
         );
 
         return result;

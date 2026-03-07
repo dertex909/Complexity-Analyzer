@@ -38,7 +38,8 @@ public class ComplexityCache {
     private final AtomicLong hits = new AtomicLong(0);
     private final AtomicLong misses = new AtomicLong(0);
 
-    public ComplexityCache() {}
+    public ComplexityCache() {
+    }
 
     public Optional<ItemComplexity> get(Item item) {
         ItemComplexity result = cache.get(item);

@@ -45,14 +45,37 @@ public class BaseResourceData {
         this.sourceSpecifier = builder.sourceSpecifier;
     }
 
-    public Item getItem() { return item; }
-    public ResourceSourceType getSourceType() { return sourceType; }
-    public double getBaseFactor() { return baseFactor; }
-    public String getDetails() { return details; }
-    public String getSourceName() { return sourceName; }
-    public Map<Item, Double> getSourceItems() { return sourceItems; }
-    public Map<String, String> getMetadata() { return metadata; }
-    public String getSourceSpecifier() { return sourceSpecifier; }
+    public Item getItem() {
+        return item;
+    }
+
+    public ResourceSourceType getSourceType() {
+        return sourceType;
+    }
+
+    public double getBaseFactor() {
+        return baseFactor;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public String getSourceName() {
+        return sourceName;
+    }
+
+    public Map<Item, Double> getSourceItems() {
+        return sourceItems;
+    }
+
+    public Map<String, String> getMetadata() {
+        return metadata;
+    }
+
+    public String getSourceSpecifier() {
+        return sourceSpecifier;
+    }
 
     public boolean isOverride() {
         return "true".equals(metadata.get("override"));
@@ -106,8 +129,13 @@ public class BaseResourceData {
             this.baseMultiplier = baseMultiplier;
         }
 
-        public String getDisplayName() { return displayName; }
-        public double getBaseMultiplier() { return baseMultiplier; }
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public double getBaseMultiplier() {
+            return baseMultiplier;
+        }
     }
 
     public static class Builder {

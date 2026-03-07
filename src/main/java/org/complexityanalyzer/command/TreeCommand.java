@@ -183,7 +183,7 @@ public class TreeCommand {
                         .append(Component.literal(displayAmount + " ").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
                         .append(Component.literal(fluidDisplayName).withStyle(ChatFormatting.WHITE));
 
-                 
+
                 fluidLine.withStyle(style -> style.withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
                         createFluidHoverText(fluid, node)
@@ -194,7 +194,7 @@ public class TreeCommand {
         }
     }
 
-     
+
     private static String formatFluidAmount(double amount, DisplayMode mode) {
         if (mode == DisplayMode.PLAYER_INSTRUCTION) {
             int displayAmount = (int) Math.ceil(amount);
@@ -204,27 +204,27 @@ public class TreeCommand {
         }
     }
 
-     
+
     private static String getCleanResourceName(String resourceId) {
-         
+
         String cleanName = resourceId;
         if (resourceId.contains(":")) {
             cleanName = resourceId.substring(resourceId.indexOf(":") + 1);
         }
 
-         
+
         cleanName = cleanName.replace("_", " ").replace("-", " ");
 
-         
+
         cleanName = capitalizeWords(cleanName);
 
-         
+
         cleanName = cleanName.trim().replaceAll("\\s+", " ");
 
         return cleanName;
     }
 
-     
+
     private static String capitalizeWords(String str) {
         StringBuilder result = new StringBuilder();
         boolean capitalizeNext = true;
@@ -244,7 +244,7 @@ public class TreeCommand {
         return result.toString();
     }
 
-     
+
     private static Component createFluidHoverText(FluidNode fluid, TreeNode parentNode) {
         MutableComponent hover = Component.empty();
 
@@ -261,7 +261,7 @@ public class TreeCommand {
                 .append(Component.literal(String.format("%.2f mB", fluid.getAmount()))
                         .withStyle(ChatFormatting.YELLOW));
 
-         
+
         if (parentNode.getMachineType() != null && !parentNode.getMachineType().isEmpty()) {
             hover.append(Component.literal("\n🏭 Produced in: ")
                             .withStyle(ChatFormatting.GRAY))
@@ -326,7 +326,7 @@ public class TreeCommand {
                 break;
         }
 
-         
+
         component.withStyle(style -> style.withHoverEvent(new HoverEvent(
                 HoverEvent.Action.SHOW_TEXT,
                 createDetailedHoverText(node, engine)
@@ -335,11 +335,11 @@ public class TreeCommand {
         return component;
     }
 
-     
+
     private static Component createDetailedHoverText(TreeNode node, AnalysisEngine engine) {
         MutableComponent hover = Component.empty();
 
-         
+
         switch (node.getType()) {
             case NO_DATA:
                 hover.append(Component.literal("❌ No Recipe Data")
@@ -366,7 +366,7 @@ public class TreeCommand {
                 hover.append(Component.literal("⛏ Base Resource")
                         .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
 
-                 
+
                 boolean wouldCreateCycle = (Boolean) node.getMetadata().getOrDefault("wouldCreateCycle", false);
                 if (!wouldCreateCycle) {
                     String sourceTypeName = (String) node.getMetadata().get("sourceTypeName");
@@ -395,7 +395,7 @@ public class TreeCommand {
                 hover.append(Component.literal("🔨 Crafting Recipe")
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-                 
+
                 String machineType = node.getMachineType();
                 if (machineType != null && !machineType.isEmpty()) {
                     hover.append(Component.literal("\n🏭 Machine: ")
@@ -406,7 +406,7 @@ public class TreeCommand {
                 break;
         }
 
-         
+
         if (node.getItem() != null) {
             Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(node.getItem());
             if (complexityOpt.isPresent()) {

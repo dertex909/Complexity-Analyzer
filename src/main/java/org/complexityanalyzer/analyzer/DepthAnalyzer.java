@@ -51,18 +51,14 @@ public class DepthAnalyzer {
 
     public int getDepth(Item item) {
         Integer cachedDepth = cache.get(item);
-        if (cachedDepth != null) {
-            return cachedDepth;
-        }
+        if (cachedDepth != null) return cachedDepth;
         return calculateDepth(item);
     }
 
     private int calculateDepth(Item item) {
         Integer cached = cache.get(item);
         if (cached != null) {
-            if (cached == IN_PROGRESS) {
-                return CYCLE_DEPTH;
-            }
+            if (cached == IN_PROGRESS) return CYCLE_DEPTH;
             return cached;
         }
 
@@ -103,9 +99,7 @@ public class DepthAnalyzer {
     }
 
     private int calculateSlotDepth(IngredientSlot slot) {
-        if (slot.getVariants().isEmpty()) {
-            return 0;
-        }
+        if (slot.getVariants().isEmpty()) return 0;
 
         int minDepth = CYCLE_DEPTH;
         for (Item variant : slot.getVariants()) {
@@ -119,13 +113,9 @@ public class DepthAnalyzer {
     public Optional<RecipeNode> getRecipeToFollow(Item item) {
         return recipeCache.computeIfAbsent(item, key -> {
             RecipeNode optimalRecipe = optimalRecipes.get(key);
-            if (optimalRecipe != null) {
-                return Optional.of(optimalRecipe);
-            }
+            if (optimalRecipe != null) return Optional.of(optimalRecipe);
 
-            if (hasFiniteBaseSource(key)) {
-                return Optional.empty();
-            }
+            if (hasFiniteBaseSource(key)) return Optional.empty();
 
             if (graph != null && graph.hasRecipe(key)) {
                 RecipeNode bestFromGraph = graph.getBestRecipe(key);
@@ -142,9 +132,7 @@ public class DepthAnalyzer {
     }
 
     private boolean hasFiniteBaseSource(Item item) {
-        if (sourceManager == null) {
-            return false;
-        }
+        if (sourceManager == null) return false;
 
         return sourceManager.analyze(item)
                 .map(data -> !isUnobtainable(data))
@@ -152,14 +140,8 @@ public class DepthAnalyzer {
     }
 
     private boolean isUnobtainable(BaseResourceData data) {
-        if (data == null) {
-            return true;
-        }
-
-        if (Double.isInfinite(data.getBaseFactor())) {
-            return true;
-        }
-
+        if (data == null) return true;
+        if (Double.isInfinite(data.getBaseFactor())) return true;
         return data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
     }
 }

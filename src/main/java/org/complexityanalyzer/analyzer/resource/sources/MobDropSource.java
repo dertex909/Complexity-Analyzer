@@ -197,7 +197,8 @@ public class MobDropSource implements IResourceSource {
             try {
                 rootLogger.get().removeFilter(filter);
                 filter.stop();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         long duration = System.currentTimeMillis() - startTime;
@@ -216,7 +217,8 @@ public class MobDropSource implements IResourceSource {
         Creeper chargedCreeper = new Creeper(EntityType.CREEPER, level);
         CompoundTag creeperNBT = new CompoundTag();
         creeperNBT.putBoolean("powered", true);
-        chargedCreeper.readAdditionalSaveData(creeperNBT);Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+        chargedCreeper.readAdditionalSaveData(creeperNBT);
+        Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
         Holder<DamageType> explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);
         DamageSource creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
         configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false, null, chargedCreeper));
@@ -236,11 +238,14 @@ public class MobDropSource implements IResourceSource {
                         .withParameter(LootContextParams.THIS_ENTITY, entityInstance)
                         .withParameter(LootContextParams.ORIGIN, entityInstance.position())
                         .withParameter(LootContextParams.DAMAGE_SOURCE, config.damageSource);
-                if (config.killerPlayer != null) builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, config.killerPlayer);
+                if (config.killerPlayer != null)
+                    builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, config.killerPlayer);
                 if (config.attackingEntity != null) {
                     builder.withParameter(LootContextParams.ATTACKING_ENTITY, config.attackingEntity);
-                    if (config.damageSource.getDirectEntity() != null) builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.damageSource.getDirectEntity());
-                    else builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
+                    if (config.damageSource.getDirectEntity() != null)
+                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.damageSource.getDirectEntity());
+                    else
+                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
                 }
                 if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
                 LootParams lootParams = builder.create(LootContextParamSets.ENTITY);
@@ -256,7 +261,9 @@ public class MobDropSource implements IResourceSource {
     }
 
     @Override
-    public boolean canProvide(Item item) { return dropMap.containsKey(item); }
+    public boolean canProvide(Item item) {
+        return dropMap.containsKey(item);
+    }
 
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
@@ -317,25 +324,38 @@ public class MobDropSource implements IResourceSource {
     }
 
     @Override
-    public BaseResourceData.ResourceSourceType getSourceType() { return BaseResourceData.ResourceSourceType.MOB_DROP; }
-    @Override
-    public int getPriority() { return 20; }
-    @Override
-    public String getName() { return "MobDropSource"; }
+    public BaseResourceData.ResourceSourceType getSourceType() {
+        return BaseResourceData.ResourceSourceType.MOB_DROP;
+    }
 
-    private record DamageSourceConfig(String methodName, DamageSource damageSource, boolean isOnFire, net.minecraft.server.level.ServerPlayer killerPlayer, Entity attackingEntity) {}
+    @Override
+    public int getPriority() {
+        return 20;
+    }
+
+    @Override
+    public String getName() {
+        return "MobDropSource";
+    }
+
+    private record DamageSourceConfig(String methodName, DamageSource damageSource, boolean isOnFire,
+                                      net.minecraft.server.level.ServerPlayer killerPlayer, Entity attackingEntity) {
+    }
 
     private static class DropStatistics {
         private final Map<String, Integer> dropsByMethod = new HashMap<>();
         private int totalDropped = 0;
+
         public void addDrop(String method, int count) {
             dropsByMethod.merge(method, count, Integer::sum);
             totalDropped += count;
         }
+
         public double getAverageYield() {
             if (SIMULATION_COUNT == 0) return 0.0;
             return (double) totalDropped / SIMULATION_COUNT;
         }
+
         public String getBestMethod() {
             return dropsByMethod.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("Unknown");
         }
@@ -345,32 +365,55 @@ public class MobDropSource implements IResourceSource {
         ComplexityAnalyzer.LOGGER.info("Registering special kill-based drops...");
         int count = 0;
 
-        registerDrop(EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper"); count++;
-        registerDrop(EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper"); count++;
-        registerDrop(EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper"); count++;
-        registerDrop(EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper"); count++;
+        registerDrop(EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
+        count++;
+        registerDrop(EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper");
+        count++;
+        registerDrop(EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper");
+        count++;
 
-        registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill"); count++;
-        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill"); count++;
-        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot"); count++;
-        registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob"); count++;
+        registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
+        count++;
+        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
+        count++;
+        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot");
+        count++;
+        registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
+        count++;
 
         final double MUSIC_DISC_YIELD = 1.0 / 12.0;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_11, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_13, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_BLOCKS, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CAT, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CHIRP, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_FAR, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MALL, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MELLOHI, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STAL, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STRAD, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WAIT, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WARD, MUSIC_DISC_YIELD, "Killed by Skeleton"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_PIGSTEP, MUSIC_DISC_YIELD, "Bastion Loot"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_OTHERSIDE, MUSIC_DISC_YIELD, "Dungeon Loot"); count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_5, MUSIC_DISC_YIELD, "Ancient City Loot"); count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_11, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_13, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_BLOCKS, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CAT, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CHIRP, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_FAR, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MALL, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MELLOHI, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STAL, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STRAD, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WAIT, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WARD, MUSIC_DISC_YIELD, "Killed by Skeleton");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_PIGSTEP, MUSIC_DISC_YIELD, "Bastion Loot");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_OTHERSIDE, MUSIC_DISC_YIELD, "Dungeon Loot");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_5, MUSIC_DISC_YIELD, "Ancient City Loot");
+        count++;
 
         ComplexityAnalyzer.LOGGER.info("Registered {} special kill-based drop entries.", count);
     }

@@ -23,10 +23,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.lang.reflect.Constructor;
 
-
 public class SafePluginLoader {
-
-     
     public static IModPlugin tryLoadPlugin(String className, String modId) {
         try {
             Class<?> pluginClass = Class.forName(className);

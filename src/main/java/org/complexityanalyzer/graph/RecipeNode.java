@@ -70,29 +70,89 @@ public class RecipeNode {
         return new Builder(item).category(RecipeCategory.UNPROCESSABLE).build();
     }
 
-    public void setCategory(RecipeCategory category) { this.category = category; }
-    public List<AdaptiveRecipeConverter.ChemicalOutput> getChemicalOutputs() { return chemicalOutputs; }
-    public List<ChemicalIngredient> getChemicalIngredients() { return chemicalIngredients; }
-    public List<IngredientSlot> getIngredients() { return ingredients; }
-    public List<FluidIngredientSlot> getFluidIngredients() { return fluidIngredients; }
-    public List<ItemStack> getItemOutputs() { return itemOutputs; }
-    public List<FluidStack> getFluidOutputs() { return fluidOutputs; }
-    public Object getRawRecipeRef() { return rawRecipeRef; }
-    public Item getResultItem() { return resultItem; }
-    public String getPlaceholderId() { return placeholderId; }
-    public RecipeType<?> getRecipeType() { return recipeType; }
-    public RecipeCategory getCategory() { return category; }
-    public int getResultCount() { return resultCount; }
-    public int getPriority() { return priority; }
+    public void setCategory(RecipeCategory category) {
+        this.category = category;
+    }
+
+    public List<AdaptiveRecipeConverter.ChemicalOutput> getChemicalOutputs() {
+        return chemicalOutputs;
+    }
+
+    public List<ChemicalIngredient> getChemicalIngredients() {
+        return chemicalIngredients;
+    }
+
+    public List<IngredientSlot> getIngredients() {
+        return ingredients;
+    }
+
+    public List<FluidIngredientSlot> getFluidIngredients() {
+        return fluidIngredients;
+    }
+
+    public List<ItemStack> getItemOutputs() {
+        return itemOutputs;
+    }
+
+    public List<FluidStack> getFluidOutputs() {
+        return fluidOutputs;
+    }
+
+    public Object getRawRecipeRef() {
+        return rawRecipeRef;
+    }
+
+    public Item getResultItem() {
+        return resultItem;
+    }
+
+    public String getPlaceholderId() {
+        return placeholderId;
+    }
+
+    public RecipeType<?> getRecipeType() {
+        return recipeType;
+    }
+
+    public RecipeCategory getCategory() {
+        return category;
+    }
+
+    public int getResultCount() {
+        return resultCount;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
     public int getTotalIngredientCount() {
         return ingredients.stream().mapToInt(IngredientSlot::getCount).sum();
     }
-    public int getIngredientSlotCount() { return ingredients.size(); }
-    public int getFluidIngredientSlotCount() { return fluidIngredients.size(); }
-    public boolean isBaseRecipe() {return ingredients.isEmpty() && fluidIngredients.isEmpty() && chemicalIngredients.isEmpty();}
-    public boolean hasFluidIngredients() { return !fluidIngredients.isEmpty(); }
-    public boolean isPlaceholder() { return isPlaceholder; }
-    public double getRecipeMultiplier() { return recipeMultiplier; }
+
+    public int getIngredientSlotCount() {
+        return ingredients.size();
+    }
+
+    public int getFluidIngredientSlotCount() {
+        return fluidIngredients.size();
+    }
+
+    public boolean isBaseRecipe() {
+        return ingredients.isEmpty() && fluidIngredients.isEmpty() && chemicalIngredients.isEmpty();
+    }
+
+    public boolean hasFluidIngredients() {
+        return !fluidIngredients.isEmpty();
+    }
+
+    public boolean isPlaceholder() {
+        return isPlaceholder;
+    }
+
+    public double getRecipeMultiplier() {
+        return recipeMultiplier;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -122,7 +182,7 @@ public class RecipeNode {
                 .mapToInt(FluidStack::getAmount)
                 .sum();
     }
-     
+
     public static class Builder {
         private final Item resultItem;
         private final List<ChemicalIngredient> chemicalIngredients = new ArrayList<>();
@@ -144,20 +204,75 @@ public class RecipeNode {
             this.resultItem = resultItem;
         }
 
-        public Builder addIngredient(List<Item> variants, int count) {this.ingredients.add(new IngredientSlot(variants, count));return this;}
-        public Builder addFluidIngredient(List<net.minecraft.world.level.material.Fluid> variants, int amount) {this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));return this;}
-        public Builder chemicalOutputs(List<AdaptiveRecipeConverter.ChemicalOutput> outputs) {this.chemicalOutputs = outputs != null ? outputs : new ArrayList<>();return this;}
-        public Builder addChemicalIngredient(ResourceLocation chemicalId, int amount) {this.chemicalIngredients.add(new ChemicalIngredient(chemicalId, amount));return this;}
-        public Builder itemOutputs(List<ItemStack> outputs) {this.itemOutputs = outputs;return this;}
-        public Builder fluidOutputs(List<FluidStack> outputs) {this.fluidOutputs = outputs;return this;}
-        public Builder resultCount(int count) { this.resultCount = count; return this; }
-        public Builder recipeType(RecipeType<?> recipeType) { this.recipeType = recipeType; return this; }
-        public Builder category(RecipeCategory category) { this.category = category; return this; }
-        public Builder recipeMultiplier(double multiplier) { this.recipeMultiplier = multiplier; return this; }
-        public Builder priority(int priority) { this.priority = priority; return this; }
-        public Builder isPlaceholder(boolean placeholder) { this.isPlaceholder = placeholder; return this; }
-        public Builder placeholderId(String id) { this.placeholderId = id; return this; }
-        public Builder rawRecipe(Object raw) { this.rawRecipeRef = raw; return this; }
+        public Builder addIngredient(List<Item> variants, int count) {
+            this.ingredients.add(new IngredientSlot(variants, count));
+            return this;
+        }
+
+        public Builder addFluidIngredient(List<net.minecraft.world.level.material.Fluid> variants, int amount) {
+            this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
+            return this;
+        }
+
+        public Builder chemicalOutputs(List<AdaptiveRecipeConverter.ChemicalOutput> outputs) {
+            this.chemicalOutputs = outputs != null ? outputs : new ArrayList<>();
+            return this;
+        }
+
+        public Builder addChemicalIngredient(ResourceLocation chemicalId, int amount) {
+            this.chemicalIngredients.add(new ChemicalIngredient(chemicalId, amount));
+            return this;
+        }
+
+        public Builder itemOutputs(List<ItemStack> outputs) {
+            this.itemOutputs = outputs;
+            return this;
+        }
+
+        public Builder fluidOutputs(List<FluidStack> outputs) {
+            this.fluidOutputs = outputs;
+            return this;
+        }
+
+        public Builder resultCount(int count) {
+            this.resultCount = count;
+            return this;
+        }
+
+        public Builder recipeType(RecipeType<?> recipeType) {
+            this.recipeType = recipeType;
+            return this;
+        }
+
+        public Builder category(RecipeCategory category) {
+            this.category = category;
+            return this;
+        }
+
+        public Builder recipeMultiplier(double multiplier) {
+            this.recipeMultiplier = multiplier;
+            return this;
+        }
+
+        public Builder priority(int priority) {
+            this.priority = priority;
+            return this;
+        }
+
+        public Builder isPlaceholder(boolean placeholder) {
+            this.isPlaceholder = placeholder;
+            return this;
+        }
+
+        public Builder placeholderId(String id) {
+            this.placeholderId = id;
+            return this;
+        }
+
+        public Builder rawRecipe(Object raw) {
+            this.rawRecipeRef = raw;
+            return this;
+        }
 
         public RecipeNode build() {
             if (this.resultCount == 0 && !itemOutputs.isEmpty()) {
@@ -174,4 +289,5 @@ public class RecipeNode {
     }
 }
 
-record ChemicalIngredient(ResourceLocation id, int amount) {}
+record ChemicalIngredient(ResourceLocation id, int amount) {
+}

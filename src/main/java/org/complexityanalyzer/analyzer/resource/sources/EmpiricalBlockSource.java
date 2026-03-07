@@ -43,7 +43,8 @@ public class EmpiricalBlockSource implements IResourceSource {
     }
 
     @Override
-    public void initialize(Level level) {}
+    public void initialize(Level level) {
+    }
 
     @Override
     public boolean canProvide(Item item) {
@@ -115,11 +116,22 @@ public class EmpiricalBlockSource implements IResourceSource {
                 .build());
     }
 
-    public boolean isReady() { return this.geoDatabase != null && this.geoDatabase.isLoaded(); }
+    public boolean isReady() {
+        return this.geoDatabase != null && this.geoDatabase.isLoaded();
+    }
+
     @Override
-    public int getPriority() { return 100000; }
+    public int getPriority() {
+        return 100000;
+    }
+
     @Override
-    public String getName() { return "EmpiricalBlockSource"; }
+    public String getName() {
+        return "EmpiricalBlockSource";
+    }
+
     @Override
-    public BaseResourceData.ResourceSourceType getSourceType() { return BaseResourceData.ResourceSourceType.EMPIRICAL_BLOCK; }
+    public BaseResourceData.ResourceSourceType getSourceType() {
+        return BaseResourceData.ResourceSourceType.EMPIRICAL_BLOCK;
+    }
 }

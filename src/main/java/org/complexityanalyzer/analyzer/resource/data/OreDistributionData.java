@@ -93,5 +93,6 @@ public class OreDistributionData {
         return dimensions.contains(dimension);
     }
 
-    public record BiomeOccurrence(int minY, int maxY, double frequency) {}
+    public record BiomeOccurrence(int minY, int maxY, double frequency) {
+    }
 }

@@ -35,7 +35,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -59,7 +59,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -84,7 +84,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -109,7 +109,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -133,7 +133,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -158,7 +158,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         if (!"csv".equalsIgnoreCase(format) && !"json".equalsIgnoreCase(format)) {
             output.sendFailure(source, Component.literal("Invalid format: " + format + ". Use 'csv' or 'json'."));
@@ -188,7 +188,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -213,7 +213,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
@@ -238,7 +238,7 @@ public class ExportCommand {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) { return sendEngineNotReady(output, source, engine); }
+        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));

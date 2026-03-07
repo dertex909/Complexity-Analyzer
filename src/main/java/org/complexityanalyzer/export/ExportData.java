@@ -38,7 +38,8 @@ public record ExportData(
             boolean hasCycle,
             boolean isHardcoded,
             List<SourceData> alternativeSources
-    ) {}
+    ) {
+    }
 
     public record SourceData(
             String sourceType,
@@ -46,7 +47,8 @@ public record ExportData(
             double estimatedCost,
             String details,
             Map<String, Double> requiredItems
-    ) {}
+    ) {
+    }
 
     public record MobData(
             String name,
@@ -62,11 +64,13 @@ public record ExportData(
             boolean isBoss,
             boolean isMiniBoss,
             List<MobDropData> drops
-    ) {}
+    ) {
+    }
 
     public record MobDropData(
             String itemId,
             String itemName,
             double yieldPerKill
-    ) {}
+    ) {
+    }
 }

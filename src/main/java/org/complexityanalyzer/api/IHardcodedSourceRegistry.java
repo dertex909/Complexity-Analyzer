@@ -23,7 +23,6 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
 import java.util.Map;
 
-@SuppressWarnings("unused")
 public interface IHardcodedSourceRegistry {
 
     void registerTransformation(Item result, Item input, Map<Item, Double> toolWear,

@@ -26,4 +26,5 @@ public record MobDropData(
         EntityType<?> sourceMob,
         double averageYield,
         String killMethod
-){}
+) {
+}

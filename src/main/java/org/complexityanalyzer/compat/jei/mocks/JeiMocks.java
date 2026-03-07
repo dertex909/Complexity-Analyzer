@@ -38,6 +38,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.RecipeManager;
 import org.jetbrains.annotations.Nullable;
+
 import javax.annotation.ParametersAreNonnullByDefault;
 
 import java.util.Collection;
@@ -55,15 +56,38 @@ public class JeiMocks {
         private static final EmptyIngredientManager INGREDIENT_MANAGER = new EmptyIngredientManager();
         private static final EmptyVanillaRecipeFactory VANILLA_RECIPE_FACTORY = new EmptyVanillaRecipeFactory();
 
-        @Override public IGuiHelper getGuiHelper() { return null; }
-        @Override public IStackHelper getStackHelper() { return null; }
-        @Override public IModIdHelper getModIdHelper() { return null; }
-        @Override public IFocusFactory getFocusFactory() { return null; }
-        @Override public IColorHelper getColorHelper() { return null; }
-        @Override public IPlatformFluidHelper<?> getPlatformFluidHelper() { return null; }
+        @Override
+        public IGuiHelper getGuiHelper() {
+            return null;
+        }
 
         @Override
-        public <T> Optional<RecipeType<T>> getRecipeType( ResourceLocation uid, Class<? extends T> recipeClass) {
+        public IStackHelper getStackHelper() {
+            return null;
+        }
+
+        @Override
+        public IModIdHelper getModIdHelper() {
+            return null;
+        }
+
+        @Override
+        public IFocusFactory getFocusFactory() {
+            return null;
+        }
+
+        @Override
+        public IColorHelper getColorHelper() {
+            return null;
+        }
+
+        @Override
+        public IPlatformFluidHelper<?> getPlatformFluidHelper() {
+            return null;
+        }
+
+        @Override
+        public <T> Optional<RecipeType<T>> getRecipeType(ResourceLocation uid, Class<? extends T> recipeClass) {
             return Optional.empty();
         }
 
@@ -82,14 +106,20 @@ public class JeiMocks {
             return INGREDIENT_MANAGER;
         }
 
-        @Override public ICodecHelper getCodecHelper() { return null; }
+        @Override
+        public ICodecHelper getCodecHelper() {
+            return null;
+        }
 
         @Override
         public IVanillaRecipeFactory getVanillaRecipeFactory() {
             return VANILLA_RECIPE_FACTORY;
         }
 
-        @Override public IIngredientVisibility getIngredientVisibility() { return null; }
+        @Override
+        public IIngredientVisibility getIngredientVisibility() {
+            return null;
+        }
     }
 
     public static class SmartJeiHelpers extends EmptyJeiHelpers {
@@ -114,39 +144,39 @@ public class JeiMocks {
 
     private static class EmptyIngredientManager implements IIngredientManager {
         @Override
-        public <V> Collection<V> getAllIngredients( IIngredientType<V> ingredientType) {
+        public <V> Collection<V> getAllIngredients(IIngredientType<V> ingredientType) {
             return Collections.emptyList();
         }
 
         @Override
-        public <V> Collection<ITypedIngredient<V>> getAllTypedIngredients( IIngredientType<V> ingredientType) {
+        public <V> Collection<ITypedIngredient<V>> getAllTypedIngredients(IIngredientType<V> ingredientType) {
             return Collections.emptyList();
         }
 
         @Override
-        public <V> IIngredientHelper<V> getIngredientHelper( V ingredient) {
+        public <V> IIngredientHelper<V> getIngredientHelper(V ingredient) {
             return null;
         }
 
-        
-        @Override
-        public <V> IIngredientHelper<V> getIngredientHelper( IIngredientType<V> ingredientType) {
-            return null;
-        }
 
         @Override
-        public <V> IIngredientRenderer<V> getIngredientRenderer( V ingredient) {
+        public <V> IIngredientHelper<V> getIngredientHelper(IIngredientType<V> ingredientType) {
             return null;
         }
 
         @Override
-        public <V> IIngredientRenderer<V> getIngredientRenderer( IIngredientType<V> ingredientType) {
+        public <V> IIngredientRenderer<V> getIngredientRenderer(V ingredient) {
             return null;
         }
 
-        
         @Override
-        public <V> Codec<V> getIngredientCodec( IIngredientType<V> ingredientType) {
+        public <V> IIngredientRenderer<V> getIngredientRenderer(IIngredientType<V> ingredientType) {
+            return null;
+        }
+
+
+        @Override
+        public <V> Codec<V> getIngredientCodec(IIngredientType<V> ingredientType) {
             return null;
         }
 
@@ -155,85 +185,88 @@ public class JeiMocks {
             return Collections.emptyList();
         }
 
-        
+
         @Override
-        public Optional<IIngredientType<?>> getIngredientTypeForUid( String ingredientTypeUid) {
+        public Optional<IIngredientType<?>> getIngredientTypeForUid(String ingredientTypeUid) {
             return Optional.empty();
         }
 
         @Override
-        public <V> void addIngredientsAtRuntime( IIngredientType<V> ingredientType,  Collection<V> ingredients) {}
+        public <V> void addIngredientsAtRuntime(IIngredientType<V> ingredientType, Collection<V> ingredients) {
+        }
 
         @Override
-        public <V> void removeIngredientsAtRuntime( IIngredientType<V> ingredientType,  Collection<V> ingredients) {}
+        public <V> void removeIngredientsAtRuntime(IIngredientType<V> ingredientType, Collection<V> ingredients) {
+        }
 
         @Nullable
         @Override
-        public <V> IIngredientType<V> getIngredientType( V ingredient) {
+        public <V> IIngredientType<V> getIngredientType(V ingredient) {
             return null;
         }
 
         @Override
-        public <V> Optional<IIngredientType<V>> getIngredientTypeChecked( V ingredient) {
+        public <V> Optional<IIngredientType<V>> getIngredientTypeChecked(V ingredient) {
             return Optional.empty();
         }
 
-        
+
         @Override
-        public <B, I> Optional<IIngredientTypeWithSubtypes<B, I>> getIngredientTypeWithSubtypesFromBase( B baseIngredient) {
+        public <B, I> Optional<IIngredientTypeWithSubtypes<B, I>> getIngredientTypeWithSubtypesFromBase(B baseIngredient) {
             return Optional.empty();
         }
 
-        
+
         @Override
-        public <V> Optional<IIngredientType<V>> getIngredientTypeChecked( Class<? extends V> ingredientClass) {
+        public <V> Optional<IIngredientType<V>> getIngredientTypeChecked(Class<? extends V> ingredientClass) {
             return Optional.empty();
         }
 
-        
+
         @Override
-        public <V> Optional<ITypedIngredient<V>> createTypedIngredient( IIngredientType<V> ingredientType,  V ingredient, boolean normalize) {
+        public <V> Optional<ITypedIngredient<V>> createTypedIngredient(IIngredientType<V> ingredientType, V ingredient, boolean normalize) {
             return Optional.empty();
         }
 
-        
+
         @Override
-        public <V> ITypedIngredient<V> normalizeTypedIngredient( ITypedIngredient<V> typedIngredient) {
+        public <V> ITypedIngredient<V> normalizeTypedIngredient(ITypedIngredient<V> typedIngredient) {
             return typedIngredient;
         }
 
-        
+
         @Override
         public IClickableIngredientFactory getClickableIngredientFactory() {
             return null;
         }
 
-        
+
         @Override
-        public Collection<String> getIngredientAliases( ITypedIngredient<?> ingredient) {
+        public Collection<String> getIngredientAliases(ITypedIngredient<?> ingredient) {
             return Collections.emptyList();
         }
 
         @Override
-        public void registerIngredientListener( IIngredientListener listener) {}
+        public void registerIngredientListener(IIngredientListener listener) {
+        }
 
         @Override
-        public <V> Optional<V> getIngredientByUid( IIngredientType<V> ingredientType,  String ingredientUuid) {
+        public <V> Optional<V> getIngredientByUid(IIngredientType<V> ingredientType, String ingredientUuid) {
             return Optional.empty();
         }
 
-        
+
         @Override
-        public <V> Optional<ITypedIngredient<V>> getTypedIngredientByUid( IIngredientType<V> ingredientType,  String ingredientUuid) {
+        public <V> Optional<ITypedIngredient<V>> getTypedIngredientByUid(IIngredientType<V> ingredientType, String ingredientUuid) {
             return Optional.empty();
         }
 
-        
+
         @Override
         public <V> Optional<IClickableIngredient<V>> createClickableIngredient(
-                 IIngredientType<V> ingredientType,
-                 V ingredient,
-                 net.minecraft.client.renderer.Rect2i area,
+                IIngredientType<V> ingredientType,
+                V ingredient,
+                net.minecraft.client.renderer.Rect2i area,
                 boolean normalize) {
             return Optional.empty();
         }
@@ -250,52 +283,52 @@ public class JeiMocks {
 
     private static class EmptyVanillaRecipeFactory implements IVanillaRecipeFactory {
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe( ItemStack leftInput,  List<ItemStack> rightInputs,  List<ItemStack> outputs,  ResourceLocation uid) {
+        public IJeiAnvilRecipe createAnvilRecipe(ItemStack leftInput, List<ItemStack> rightInputs, List<ItemStack> outputs, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe( List<ItemStack> leftInputs,  List<ItemStack> rightInputs,  List<ItemStack> outputs,  ResourceLocation uid) {
+        public IJeiAnvilRecipe createAnvilRecipe(List<ItemStack> leftInputs, List<ItemStack> rightInputs, List<ItemStack> outputs, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiGrindstoneRecipe createGrindstoneRecipe( List<ItemStack> topInputs,  List<ItemStack> bottomInputs,  List<ItemStack> outputs, int minXp, int maxXp,  ResourceLocation uid) {
+        public IJeiGrindstoneRecipe createGrindstoneRecipe(List<ItemStack> topInputs, List<ItemStack> bottomInputs, List<ItemStack> outputs, int minXp, int maxXp, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe( List<ItemStack> ingredients,  ItemStack potionInput,  ItemStack potionOutput,  ResourceLocation uid) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, ItemStack potionInput, ItemStack potionOutput, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe( List<ItemStack> ingredients,  List<ItemStack> potionInputs,  ItemStack potionOutput,  ResourceLocation uid) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, List<ItemStack> potionInputs, ItemStack potionOutput, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiShapedRecipeBuilder createShapedRecipeBuilder( CraftingBookCategory category,  List<ItemStack> results) {
+        public IJeiShapedRecipeBuilder createShapedRecipeBuilder(CraftingBookCategory category, List<ItemStack> results) {
             return null;
         }
 
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe( ItemStack leftInput,  List<ItemStack> rightInputs,  List<ItemStack> outputs) {
+        public IJeiAnvilRecipe createAnvilRecipe(ItemStack leftInput, List<ItemStack> rightInputs, List<ItemStack> outputs) {
             return null;
         }
 
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe( List<ItemStack> leftInputs,  List<ItemStack> rightInputs,  List<ItemStack> outputs) {
+        public IJeiAnvilRecipe createAnvilRecipe(List<ItemStack> leftInputs, List<ItemStack> rightInputs, List<ItemStack> outputs) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe( List<ItemStack> ingredients,  ItemStack potionInput,  ItemStack potionOutput) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, ItemStack potionInput, ItemStack potionOutput) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe( List<ItemStack> ingredients,  List<ItemStack> potionInputs,  ItemStack potionOutput) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, List<ItemStack> potionInputs, ItemStack potionOutput) {
             return null;
         }
     }

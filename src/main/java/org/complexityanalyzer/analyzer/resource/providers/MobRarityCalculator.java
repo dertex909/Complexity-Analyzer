@@ -111,7 +111,7 @@ public class MobRarityCalculator implements IBossRegistry {
         BossLevel level = detectBossLevel(entityType);
         return level == BossLevel.MINI_BOSS;
     }
-    
+
     public double calculateRarity(EntityType<?> entityType) {
         return rarityCache.computeIfAbsent(entityType, this::calculateRarityInternal);
     }
@@ -238,7 +238,7 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-    
+
     private BossLevel detectByClass(EntityType<?> entityType) {
         try {
             Class<?> entityClass = entityType.getBaseClass();
@@ -282,7 +282,7 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-    
+
     private BossLevel detectVanillaBoss(EntityType<?> entityType) {
         if (entityType == EntityType.ENDER_DRAGON || entityType == EntityType.WITHER) {
             return BossLevel.BOSS;
@@ -293,7 +293,7 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-    
+
     private BossLevel detectByName(EntityType<?> entityType) {
         String name = getEntityName(entityType).toLowerCase();
         ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
@@ -314,7 +314,7 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-    
+
     private boolean hasMiniBossIndicators(EntityType<?> entityType) {
 
         if (entityType.getCategory() == MobCategory.MISC) {

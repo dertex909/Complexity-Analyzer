@@ -54,13 +54,8 @@ public class MobPropertyProvider {
         int failedCount = 0;
 
         for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
-            if (MANUAL_OVERRIDES.containsKey(type)) {
-                continue;
-            }
-
-            if (type.getCategory() == MobCategory.MISC) {
-                continue;
-            }
+            if (MANUAL_OVERRIDES.containsKey(type)) continue;
+            if (type.getCategory() == MobCategory.MISC) continue;
 
             try {
                 @SuppressWarnings("unchecked")
@@ -107,14 +102,10 @@ public class MobPropertyProvider {
     }
 
     public Optional<MobProperties> getProperties(EntityType<?> type) {
-        if (MANUAL_OVERRIDES.containsKey(type)) {
-            return Optional.of(MANUAL_OVERRIDES.get(type));
-        }
+        if (MANUAL_OVERRIDES.containsKey(type)) return Optional.of(MANUAL_OVERRIDES.get(type));
 
         MobProperties cached = propertiesCache.get(type);
-        if (cached != null) {
-            return Optional.of(cached);
-        }
+        if (cached != null) return Optional.of(cached);
 
         ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
 
@@ -122,9 +113,7 @@ public class MobPropertyProvider {
             @SuppressWarnings("unchecked")
             EntityType<? extends LivingEntity> livingType = (EntityType<? extends LivingEntity>) type;
 
-            if (!DefaultAttributes.hasSupplier(livingType)) {
-                return Optional.empty();
-            }
+            if (!DefaultAttributes.hasSupplier(livingType)) return Optional.empty();
 
             AttributeSupplier attributes = DefaultAttributes.getSupplier(livingType);
 

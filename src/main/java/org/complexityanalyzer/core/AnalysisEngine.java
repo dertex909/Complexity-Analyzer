@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class AnalysisEngine {
-    public enum State { IDLE, ANALYZING, READY, FAILED }
+    public enum State {IDLE, ANALYZING, READY, FAILED}
 
     private final AtomicReference<State> currentState = new AtomicReference<>(State.IDLE);
     private final AtomicReference<ExecutorService> analysisExecutor = new AtomicReference<>(null);
@@ -95,9 +95,7 @@ public class AnalysisEngine {
     public void initializeAsync(Level level, Runnable onComplete) {
         if (!currentState.compareAndSet(State.IDLE, State.ANALYZING)) {
             State current = currentState.get();
-            if (current == State.READY && isReady()) {
-                safeRunCallback(onComplete);
-            }
+            if (current == State.READY && isReady()) safeRunCallback(onComplete);
             return;
         }
 
@@ -211,15 +209,11 @@ public class AnalysisEngine {
     private ExecutorService ensureExecutorAvailable() {
         ExecutorService current = analysisExecutor.get();
 
-        if (current != null && !current.isShutdown()) {
-            return current;
-        }
+        if (current != null && !current.isShutdown()) return current;
 
         synchronized (executorLock) {
             current = analysisExecutor.get();
-            if (current != null && !current.isShutdown()) {
-                return current;
-            }
+            if (current != null && !current.isShutdown()) return current;
 
             ComplexityAnalyzer.LOGGER.info("Creating new analysis thread pool.");
             ExecutorService newExecutor = createAnalysisExecutor();
@@ -299,9 +293,7 @@ public class AnalysisEngine {
         RecipeGraph currentGraph = this.graph;
         SourceManager currentSourceManager = this.sourceManager;
 
-        if (isInterrupted() || currentGraph == null || currentSourceManager == null) {
-            return;
-        }
+        if (isInterrupted() || currentGraph == null || currentSourceManager == null) return;
 
         ComplexityAnalyzer.LOGGER.info("Recalculating all complexity data...");
 
@@ -310,9 +302,7 @@ public class AnalysisEngine {
         SourcePathAnalyzer pathAnalyzer = new SourcePathAnalyzer(currentGraph, currentSourceManager);
         pathAnalyzer.findItemsWithBasePath();
 
-        if (isInterrupted()) {
-            return;
-        }
+        if (isInterrupted()) return;
 
         EnhancedIterativeSolver solver = new EnhancedIterativeSolver(currentGraph, currentSourceManager, this.machineRegistry);
         SolverResult solverResult = solver.solve();
@@ -339,18 +329,14 @@ public class AnalysisEngine {
 
         stateLock.lock();
         try {
-            if (!isReady()) {
-                return;
-            }
+            if (!isReady()) return;
 
             SourceManager currentSourceManager = this.sourceManager;
             RecipeGraph currentGraph = this.graph;
             GeoDatabase geoDB = this.geoDatabase;
             BlockPropertyProvider blockProp = this.blockPropProvider;
 
-            if (currentSourceManager == null || currentGraph == null) {
-                return;
-            }
+            if (currentSourceManager == null || currentGraph == null) return;
 
             ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Updating resource sources...");
 
@@ -385,13 +371,8 @@ public class AnalysisEngine {
     public void createGeoManager(MinecraftServer server) {
         geoManagerLock.lock();
         try {
-            if (this.geoManager != null) {
-                this.geoManager.shutdown();
-            }
-
-            if (this.geoDatabase != null) {
-                this.geoManager = new GeoAnalysisManager(server, this.geoDatabase, this);
-            }
+            if (this.geoManager != null) this.geoManager.shutdown();
+            if (this.geoDatabase != null) this.geoManager = new GeoAnalysisManager(server, this.geoDatabase, this);
         } finally {
             geoManagerLock.unlock();
         }
@@ -453,9 +434,7 @@ public class AnalysisEngine {
 
     public Optional<ItemComplexity> getComplexityResult(Item item) {
         ComplexityCalculator calc = this.calculator;
-        if (calc == null || !isReady()) {
-            return Optional.empty();
-        }
+        if (calc == null || !isReady()) return Optional.empty();
         return calc.getOrCalculateComplexity(item);
     }
 
@@ -596,18 +575,14 @@ public class AnalysisEngine {
 
         complexityCache.clear();
 
-        if (mobRarityCalculator != null) {
-            mobRarityCalculator.clearCache();
-        }
+        if (mobRarityCalculator != null) mobRarityCalculator.clearCache();
 
         ComplexityAnalyzer.LOGGER.info("All caches cleared.");
     }
 
     public Optional<MobDropSource> getMobDropSource() {
         SourceManager sm = this.sourceManager;
-        if (sm == null) {
-            return Optional.empty();
-        }
+        if (sm == null) return Optional.empty();
         return sm.getSourceByType(MobDropSource.class);
     }
 
@@ -623,17 +598,14 @@ public class AnalysisEngine {
         return Optional.ofNullable(this.machineRegistry);
     }
 
-    public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {}
+    public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {
+    }
 
     public EngineStats getStats() {
-        if (!isReady()) {
-            return new EngineStats(currentState.get(), 0, 0, 0);
-        }
+        if (!isReady()) return new EngineStats(currentState.get(), 0, 0, 0);
 
         RecipeGraph currentGraph = this.graph;
-        if (currentGraph == null) {
-            return new EngineStats(currentState.get(), 0, 0, 0);
-        }
+        if (currentGraph == null) return new EngineStats(currentState.get(), 0, 0, 0);
 
         return new EngineStats(
                 currentState.get(),
@@ -645,9 +617,7 @@ public class AnalysisEngine {
 
     public <T extends IResourceSource> Optional<T> getSourceByType(Class<T> type) {
         SourceManager sm = this.sourceManager;
-        if (sm == null) {
-            return Optional.empty();
-        }
+        if (sm == null) return Optional.empty();
         return sm.getSourceByType(type);
     }
 }

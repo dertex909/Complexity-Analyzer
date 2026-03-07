@@ -38,9 +38,11 @@ public class ComplexityCalculator {
     private final SolverResult solverResult;
     private final SourceManager sourceManager;
     private final ComplexityCache cache;
+
     public SolverResult getSolverResult() {
         return this.solverResult;
     }
+
     public ComplexityCalculator(
             RecipeGraph graph,
             DepthAnalyzer depthAnalyzer,

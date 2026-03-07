@@ -77,8 +77,7 @@ public class GraphBuilder {
 
     private static RecipeNode buildSmithingNode(
             net.minecraft.world.item.crafting.SmithingTransformRecipe recipe,
-            Item resultItem,
-            int resultCount
+            Item resultItem
     ) {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(RecipeType.SMITHING)
@@ -128,7 +127,6 @@ public class GraphBuilder {
                 }
             }
 
-             
 
         } catch (NoSuchFieldException | IllegalAccessException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to process SmithingTransformRecipe for {}: {}",
@@ -148,7 +146,7 @@ public class GraphBuilder {
         List<Ingredient> ingredients = recipe.getIngredients();
 
         if (recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe smithing) {
-            return buildSmithingNode(smithing, resultItem, resultStack.getCount());
+            return buildSmithingNode(smithing, resultItem);
         }
 
         if (ingredients.isEmpty()) {
@@ -161,7 +159,7 @@ public class GraphBuilder {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(recipe.getType())
                 .category(category)
-                .rawRecipe(recipe);  
+                .rawRecipe(recipe);
 
         for (Ingredient ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
@@ -231,7 +229,7 @@ public class GraphBuilder {
                     if (stack.isEmpty()) return false;
                     ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     String path = rl.getPath();
-                    return stack.is(rawStorage) || path.contains("raw_" ) || path.contains("crude_");
+                    return stack.is(rawStorage) || path.contains("raw_") || path.contains("crude_");
                 });
     }
 

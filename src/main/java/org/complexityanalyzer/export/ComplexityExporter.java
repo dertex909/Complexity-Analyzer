@@ -74,6 +74,7 @@ public class ComplexityExporter {
                 out.value(value);
             }
         }
+
         @Override
         public Double read(JsonReader in) throws IOException {
             return switch (in.peek()) {
@@ -87,7 +88,10 @@ public class ComplexityExporter {
                     };
                 }
                 case NUMBER -> in.nextDouble();
-                case NULL -> { in.nextNull(); yield null; }
+                case NULL -> {
+                    in.nextNull();
+                    yield null;
+                }
                 default -> throw new JsonSyntaxException("Expected number or string");
             };
         }
@@ -104,7 +108,8 @@ public class ComplexityExporter {
             boolean isValid,
             boolean hasCycle,
             boolean isHardcoded
-    ) {}
+    ) {
+    }
 
     public static Path exportAllItems(MinecraftServer server, AnalysisEngine engine) throws IOException {
         Path exportDir = getExportDirectory(server);

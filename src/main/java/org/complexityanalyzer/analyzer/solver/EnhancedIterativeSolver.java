@@ -466,7 +466,8 @@ public class EnhancedIterativeSolver {
             changed = false;
             for (Item item : graph.getCorpus()) if (updateItemComplexity(item)) changed = true;
             for (Fluid fluid : graph.getAllUsedFluids()) if (updateFluidComplexity(fluid)) changed = true;
-            for (ResourceLocation chemId : chemicalManager.getAllChemicals()) if (updateChemicalComplexity(chemId)) changed = true;
+            for (ResourceLocation chemId : chemicalManager.getAllChemicals())
+                if (updateChemicalComplexity(chemId)) changed = true;
         }
         return iterations;
     }
@@ -483,7 +484,10 @@ public class EnhancedIterativeSolver {
                 boolean hasInfiniteDep = false;
                 for (Map.Entry<Item, Double> entry : data.getSourceItems().entrySet()) {
                     double depComplexity = itemComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
-                    if (Double.isInfinite(depComplexity)) { hasInfiniteDep = true; break; }
+                    if (Double.isInfinite(depComplexity)) {
+                        hasInfiniteDep = true;
+                        break;
+                    }
                     cost += depComplexity * entry.getValue();
                 }
                 if (!hasInfiniteDep) bestCost = Math.min(bestCost, cost);
@@ -512,7 +516,8 @@ public class EnhancedIterativeSolver {
         if (!allowInfiniteMachines) {
             RecipeCostCache cached = cache.getRecipeCost(recipe);
             if (cached != null && cached.isValid(itemComplexities, fluidComplexities)) {
-                cacheHits++; return cached.cost;
+                cacheHits++;
+                return cached.cost;
             }
         }
         double totalCost = 0.0;
@@ -554,7 +559,7 @@ public class EnhancedIterativeSolver {
             if (bestFluid != null) usedFluids.put(bestFluid, slotCost);
         }
 
-        
+
         if (machineRegistry != null) {
             Optional<Item> machineOpt = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
             if (machineOpt.isPresent()) {
@@ -649,6 +654,7 @@ public class EnhancedIterativeSolver {
 
     private static class DependencyGraph {
         private final Map<Item, Set<Item>> itemDependents = new HashMap<>();
+
         void build(RecipeGraph graph, SourceManager sourceManager) {
             for (RecipeNode recipe : graph.getAllRecipes()) {
                 Item result = recipe.getResultItem();
@@ -666,7 +672,10 @@ public class EnhancedIterativeSolver {
                 }
             }
         }
-        Set<Item> getItemDependents(Item item) { return itemDependents.getOrDefault(item, Collections.emptySet()); }
+
+        Set<Item> getItemDependents(Item item) {
+            return itemDependents.getOrDefault(item, Collections.emptySet());
+        }
     }
 
     private static class ComplexityCache {
@@ -687,7 +696,8 @@ public class EnhancedIterativeSolver {
             invalidationCount += removed - recipeCosts.size();
         }
 
-        void invalidateFluid(Fluid fluid) { int removed = recipeCosts.size();
+        void invalidateFluid(Fluid fluid) {
+            int removed = recipeCosts.size();
             recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnFluid(fluid) || e.getKey().getFluidIngredients().stream().anyMatch(s -> s.fluidVariants().contains(fluid)));
             invalidationCount += removed - recipeCosts.size();
         }
@@ -700,13 +710,16 @@ public class EnhancedIterativeSolver {
             return invalidationCount;
         }
     }
+
     private static class RecipeCostCache {
         final double cost;
         final Map<Item, Double> usedItems;
         final Map<Fluid, Double> usedFluids;
 
         RecipeCostCache(double cost, Map<Item, Double> usedItems, Map<Fluid, Double> usedFluids) {
-            this.cost = cost; this.usedItems = new HashMap<>(usedItems); this.usedFluids = new HashMap<>(usedFluids);
+            this.cost = cost;
+            this.usedItems = new HashMap<>(usedItems);
+            this.usedFluids = new HashMap<>(usedFluids);
         }
 
         boolean isValid(Map<Item, Double> currentItems, Map<Fluid, Double> currentFluids) {
@@ -716,7 +729,8 @@ public class EnhancedIterativeSolver {
         private <T> boolean isValidMap(Map<T, Double> cached, Map<T, Double> current) {
             for (Map.Entry<T, Double> entry : cached.entrySet()) {
                 Double currentValue = current.get(entry.getKey());
-                if (currentValue == null || Math.abs(currentValue - entry.getValue()) > CONVERGENCE_THRESHOLD) return false;
+                if (currentValue == null || Math.abs(currentValue - entry.getValue()) > CONVERGENCE_THRESHOLD)
+                    return false;
             }
             return true;
         }
@@ -729,5 +743,7 @@ public class EnhancedIterativeSolver {
             return usedFluids.containsKey(fluid);
         }
     }
-    private record ComplexityResult(double complexity, RecipeNode recipe) {}
+
+    private record ComplexityResult(double complexity, RecipeNode recipe) {
+    }
 }

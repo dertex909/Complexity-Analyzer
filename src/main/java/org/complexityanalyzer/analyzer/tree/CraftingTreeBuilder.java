@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.analyzer.tree;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
@@ -30,7 +29,7 @@ import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.*;
 
 import java.util.*;
- 
+
 public class CraftingTreeBuilder {
 
     private final AnalysisEngine engine;

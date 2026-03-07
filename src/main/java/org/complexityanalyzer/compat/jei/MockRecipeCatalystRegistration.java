@@ -62,12 +62,23 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
         }
     }
 
-    @Override public void addRecipeCatalysts(RecipeType<?> recipeType, ItemLike... ingredients) {}
-    @Override public <T> void addRecipeCatalysts(RecipeType<?> recipeType, IIngredientType<T> ingredientType, List<T> ingredients) {}
+    @Override
+    public void addRecipeCatalysts(RecipeType<?> recipeType, ItemLike... ingredients) {
+    }
 
-    @Override @NotNull
-    public IIngredientManager getIngredientManager() {return EMPTY_JEI_HELPERS.getIngredientManager();}
+    @Override
+    public <T> void addRecipeCatalysts(RecipeType<?> recipeType, IIngredientType<T> ingredientType, List<T> ingredients) {
+    }
 
-    @Override @NotNull
-    public IJeiHelpers getJeiHelpers() {return EMPTY_JEI_HELPERS;}
+    @Override
+    @NotNull
+    public IIngredientManager getIngredientManager() {
+        return EMPTY_JEI_HELPERS.getIngredientManager();
+    }
+
+    @Override
+    @NotNull
+    public IJeiHelpers getJeiHelpers() {
+        return EMPTY_JEI_HELPERS;
+    }
 }

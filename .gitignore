@@ -18,3 +18,7 @@ VERSIONING.md
 todo.md
 /logo.png
 /.vscode/
+/.eclipse/configurations/Client.launch
+/.eclipse/configurations/Data.launch
+/.eclipse/configurations/GameTestServer.launch
+/.eclipse/configurations/Server.launch

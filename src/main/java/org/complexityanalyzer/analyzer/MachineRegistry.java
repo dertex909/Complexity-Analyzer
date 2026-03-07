@@ -33,9 +33,7 @@ public class MachineRegistry {
     private boolean initialized = false;
 
     public void initialize() {
-        if (initialized) {
-            return;
-        }
+        if (initialized) return;
 
         int vanilla = registerVanilla();
         ComplexityAnalyzer.LOGGER.info("Registered {} vanilla machines", vanilla);
@@ -58,9 +56,7 @@ public class MachineRegistry {
             ResourceLocation typeId = entry.getKey();
             List<Item> machines = entry.getValue();
 
-            if (machines.isEmpty()) {
-                continue;
-            }
+            if (machines.isEmpty()) continue;
 
             if (typeId.getNamespace().equals("minecraft")) {
                 if (mapping.containsKey(typeId)) {
@@ -83,15 +79,11 @@ public class MachineRegistry {
         ComplexityAnalyzer.LOGGER.info("Loaded from JEI: {} new, {} updated, {} skipped. Total machines: {}",
                 added, updated, skipped, mapping.size());
 
-        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-            logAllMachines();
-        }
+        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) logAllMachines();
     }
 
     public Optional<Item> getMachineForRecipe(RecipeType<?> type) {
-        if (!initialized) {
-            return Optional.empty();
-        }
+        if (!initialized) return Optional.empty();
 
         ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(type);
         return Optional.ofNullable((typeId != null) ? mapping.get(typeId) : null);

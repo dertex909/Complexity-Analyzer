@@ -23,20 +23,19 @@ import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.*;
 
- 
 public class CraftingTreeData {
 
     public enum DisplayMode {
-        PLAYER_INSTRUCTION,   
-        ECONOMIC_COST        
+        PLAYER_INSTRUCTION,
+        ECONOMIC_COST
     }
 
     public enum NodeType {
-        CRAFTING,            
-        BASE_RESOURCE,       
-        CYCLE,              
-        MAX_DEPTH_REACHED,  
-        NO_DATA             
+        CRAFTING,
+        BASE_RESOURCE,
+        CYCLE,
+        MAX_DEPTH_REACHED,
+        NO_DATA
     }
 
     private final Item rootItem;
@@ -56,15 +55,32 @@ public class CraftingTreeData {
         this.maxDepth = maxDepth;
     }
 
-     
-    public Item getRootItem() { return rootItem; }
-    public TreeNode getRoot() { return root; }
-    public Map<Item, Double> getBaseResources() { return baseResources; }
-    public TreeStatistics getStatistics() { return statistics; }
-    public DisplayMode getDisplayMode() { return displayMode; }
-    public int getMaxDepth() { return maxDepth; }
 
-     
+    public Item getRootItem() {
+        return rootItem;
+    }
+
+    public TreeNode getRoot() {
+        return root;
+    }
+
+    public Map<Item, Double> getBaseResources() {
+        return baseResources;
+    }
+
+    public TreeStatistics getStatistics() {
+        return statistics;
+    }
+
+    public DisplayMode getDisplayMode() {
+        return displayMode;
+    }
+
+    public int getMaxDepth() {
+        return maxDepth;
+    }
+
+
     public static class TreeNode {
         private final NodeType type;
         private final Item item;
@@ -90,16 +106,45 @@ public class CraftingTreeData {
             this.metadata = new HashMap<>(builder.metadata);
         }
 
-        public NodeType getType() { return type; }
-        public Item getItem() { return item; }
-        public String getItemName() { return itemName; }
-        public double getNeededAmount() { return neededAmount; }
-        public double getComplexity() { return complexity; }
-        public RecipeNode getRecipe() { return recipe; }
-        public String getMachineType() { return machineType; }
-        public List<TreeNode> getItemChildren() { return Collections.unmodifiableList(itemChildren); }
-        public List<FluidNode> getFluidChildren() { return Collections.unmodifiableList(fluidChildren); }
-        public Map<String, Object> getMetadata() { return Collections.unmodifiableMap(metadata); }
+        public NodeType getType() {
+            return type;
+        }
+
+        public Item getItem() {
+            return item;
+        }
+
+        public String getItemName() {
+            return itemName;
+        }
+
+        public double getNeededAmount() {
+            return neededAmount;
+        }
+
+        public double getComplexity() {
+            return complexity;
+        }
+
+        public RecipeNode getRecipe() {
+            return recipe;
+        }
+
+        public String getMachineType() {
+            return machineType;
+        }
+
+        public List<TreeNode> getItemChildren() {
+            return Collections.unmodifiableList(itemChildren);
+        }
+
+        public List<FluidNode> getFluidChildren() {
+            return Collections.unmodifiableList(fluidChildren);
+        }
+
+        public Map<String, Object> getMetadata() {
+            return Collections.unmodifiableMap(metadata);
+        }
 
         public static Builder builder() {
             return new Builder();
@@ -176,11 +221,11 @@ public class CraftingTreeData {
         }
     }
 
-     
+
     public static class FluidNode {
         private final String fluidName;
         private final double amount;
-        private final String fluidType;  
+        private final String fluidType;
 
         public FluidNode(String fluidName, double amount, String fluidType) {
             this.fluidName = fluidName;
@@ -188,17 +233,25 @@ public class CraftingTreeData {
             this.fluidType = fluidType;
         }
 
-         
+
         public FluidNode(String fluidName, double amount) {
             this(fluidName, amount, "FLUID");
         }
 
-        public String getFluidName() { return fluidName; }
-        public double getAmount() { return amount; }
-        public String getFluidType() { return fluidType; }
+        public String getFluidName() {
+            return fluidName;
+        }
+
+        public double getAmount() {
+            return amount;
+        }
+
+        public String getFluidType() {
+            return fluidType;
+        }
     }
 
-     
+
     public static class TreeStatistics {
         private int totalNodes = 0;
         private int uniqueItems = 0;
@@ -206,16 +259,44 @@ public class CraftingTreeData {
         private int baseResourcesCount = 0;
         private int cyclesDetected = 0;
 
-        public void incrementTotalNodes() { totalNodes++; }
-        public void incrementCraftingSteps() { craftingSteps++; }
-        public void incrementBaseResources() { baseResourcesCount++; }
-        public void incrementCycles() { cyclesDetected++; }
-        public void setUniqueItems(int count) { uniqueItems = count; }
+        public void incrementTotalNodes() {
+            totalNodes++;
+        }
 
-        public int getTotalNodes() { return totalNodes; }
-        public int getUniqueItems() { return uniqueItems; }
-        public int getCraftingSteps() { return craftingSteps; }
-        public int getBaseResourcesCount() { return baseResourcesCount; }
-        public int getCyclesDetected() { return cyclesDetected; }
+        public void incrementCraftingSteps() {
+            craftingSteps++;
+        }
+
+        public void incrementBaseResources() {
+            baseResourcesCount++;
+        }
+
+        public void incrementCycles() {
+            cyclesDetected++;
+        }
+
+        public void setUniqueItems(int count) {
+            uniqueItems = count;
+        }
+
+        public int getTotalNodes() {
+            return totalNodes;
+        }
+
+        public int getUniqueItems() {
+            return uniqueItems;
+        }
+
+        public int getCraftingSteps() {
+            return craftingSteps;
+        }
+
+        public int getBaseResourcesCount() {
+            return baseResourcesCount;
+        }
+
+        public int getCyclesDetected() {
+            return cyclesDetected;
+        }
     }
 }

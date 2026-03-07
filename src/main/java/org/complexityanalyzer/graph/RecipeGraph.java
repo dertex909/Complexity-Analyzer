@@ -143,12 +143,12 @@ public class RecipeGraph {
                     continue;
                 }
 
-                 
+
                 String recipeType = recipe.getRecipeType().toString();
                 if (!isVanillaRecipeType(recipeType)) {
                     continue;
                 }
-                 
+
 
                 boolean isReverseRecipe = false;
                 boolean hasRawMaterial = false;
@@ -192,7 +192,7 @@ public class RecipeGraph {
         return reclassified;
     }
 
-     
+
     private static boolean isVanillaRecipeType(String recipeType) {
         return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
                 recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
@@ -296,7 +296,7 @@ public class RecipeGraph {
     }
 
     public List<Item> getItemsUsingFluid(net.minecraft.world.level.material.Fluid fluid) {
-        fluid = normalizeFluid(fluid);  
+        fluid = normalizeFluid(fluid);
         final net.minecraft.world.level.material.Fluid normalizedFluid = fluid;
 
         return getAllRecipes().stream()
@@ -311,7 +311,7 @@ public class RecipeGraph {
     public Set<net.minecraft.world.level.material.Fluid> getAllUsedFluids() {
         Set<net.minecraft.world.level.material.Fluid> fluids = new HashSet<>();
         for (RecipeNode recipe : getAllRecipes()) {
-             
+
             recipe.getFluidIngredients().forEach(slot ->
                     slot.getFluidVariants().forEach(f -> fluids.add(normalizeFluid(f))));
             recipe.getFluidOutputs().forEach(stack ->

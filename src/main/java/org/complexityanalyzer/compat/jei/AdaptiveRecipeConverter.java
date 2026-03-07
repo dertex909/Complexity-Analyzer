@@ -66,7 +66,6 @@ public final class AdaptiveRecipeConverter {
         }
         LOOKUP = lk;
 
-        // Кэшируем Unsafe один раз при загрузке класса
         Unsafe unsafeInstance = null;
         try {
             var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
@@ -1211,7 +1210,6 @@ public final class AdaptiveRecipeConverter {
         Accessor existing = snapshot.get(isOutput, type);
         if (existing != null) return existing;
 
-        // Прямое обучение без асинхронности для уже подготовленных классов
         Accessor accessor = learnAccessor(recipe, isOutput, type, level);
 
         if (accessor != null) {

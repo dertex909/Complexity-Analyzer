@@ -75,7 +75,15 @@ public class WorldScanner {
             });
 
             try {
-                return future.join();
+                return future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                ComplexityAnalyzer.LOGGER.warn("Timeout waiting for biome location (server may be stopping)");
+                future.cancel(true);
+                return Optional.empty();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                future.cancel(true);
+                return Optional.empty();
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Failed to get biome location from main thread", e);
                 return Optional.empty();
@@ -148,6 +156,15 @@ public class WorldScanner {
                     } else {
                         server.execute(() -> onComplete.accept(Optional.empty(), false));
                     }
+                })
+                .exceptionally(throwable -> {
+                    ComplexityAnalyzer.LOGGER.debug("Chunk processing failed for {}: {}", pos, throwable.getMessage());
+                    try {
+                        server.execute(() -> onComplete.accept(Optional.empty(), false));
+                    } catch (Exception e) {
+                        onComplete.accept(Optional.empty(), false);
+                    }
+                    return null;
                 });
     }
 

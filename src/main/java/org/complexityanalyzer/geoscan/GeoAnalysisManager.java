@@ -43,10 +43,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -196,7 +193,7 @@ public class GeoAnalysisManager {
                 int attempts = 0;
                 int relocateTries = 0;
 
-                while (pristineSnapshotsForCurrentTask.size() < task.chunksToFind() && attempts < 10000 && relocateTries < 5 && !stopRequested.get()) {
+                while (pristineSnapshotsForCurrentTask.size() < task.chunksToFind() && attempts < 10000 && relocateTries < 5 && !stopRequested.get() && !Thread.currentThread().isInterrupted()) {
                     if (attempts > 0 && attempts % 250 == 0) {
                         Optional<ChunkPos> newStart = worldScanner.findBiomeLocation(task.dimension(), task.biome(), true);
                         if (newStart.isPresent()) {
@@ -220,9 +217,17 @@ public class GeoAnalysisManager {
                     });
 
                     try {
-                        future.get().ifPresent(pristineSnapshotsForCurrentTask::add);
+                        future.get(3, TimeUnit.SECONDS).ifPresent(pristineSnapshotsForCurrentTask::add);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        future.cancel(true);
+                        break;
+                    } catch (TimeoutException e) {
+                        future.cancel(true);
+                        if (stopRequested.get() || Thread.currentThread().isInterrupted()) break;
                     } catch (Exception e) {
-                        ComplexityAnalyzer.LOGGER.warn("[ATOMIC] Error processing chunk future", e);
+                        if (stopRequested.get() || Thread.currentThread().isInterrupted()) break;
+                        ComplexityAnalyzer.LOGGER.warn("[ATOMIC] Error processing chunk future: {}", e.getMessage());
                     }
                     attempts++;
                 }
@@ -301,7 +306,7 @@ public class GeoAnalysisManager {
     }
 
     public String getStatus() {
-        if(isCountdownActive()) {
+        if (isCountdownActive()) {
             return String.format("Scan scheduled in %s mode, starting in %d seconds...", scheduledProfile.name().toLowerCase(), countdownTicks / 20);
         }
         return switch (scanPhase) {
@@ -488,20 +493,20 @@ public class GeoAnalysisManager {
         long searchStartTime = System.nanoTime();
 
         ChunkPos nextPos = null;
-        while(System.nanoTime() - searchStartTime < timeBudgetNanos) {
+        while (System.nanoTime() - searchStartTime < timeBudgetNanos) {
             ChunkPos candidatePos = currentSearcher.next();
-            if(attemptedChunks.add(candidatePos.toLong())) {
+            if (attemptedChunks.add(candidatePos.toLong())) {
                 nextPos = candidatePos;
                 break;
             }
         }
 
-        if(nextPos == null) {
+        if (nextPos == null) {
             isProcessingChunk.set(false);
             return;
         }
 
-        worldScanner.processChunk(currentTask.dimension(), currentTask. biome(), nextPos, (snapshotOpt, success) -> {
+        worldScanner.processChunk(currentTask.dimension(), currentTask.biome(), nextPos, (snapshotOpt, success) -> {
             if (success) {
                 snapshotOpt.ifPresent(snapshot -> {
                     if (database.analyzeSnapshotForRecon(snapshot)) {
@@ -657,7 +662,7 @@ public class GeoAnalysisManager {
 
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("Shutting down GeoAnalysisManager...");
-        
+
         this.stopRequested.set(true);
 
         NeoForge.EVENT_BUS.unregister(this);

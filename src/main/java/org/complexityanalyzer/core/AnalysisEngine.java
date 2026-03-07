@@ -499,9 +499,10 @@ public class AnalysisEngine {
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("Shutdown requested for AnalysisEngine.");
 
+        analysisCancelled.set(true);
+
         Future<?> currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) {
-            analysisCancelled.set(true);
             currentTask.cancel(true);
         }
 
@@ -519,42 +520,17 @@ public class AnalysisEngine {
         ExecutorService executor = analysisExecutor.getAndSet(null);
 
         if (executor != null && !executor.isShutdown()) {
-            ComplexityAnalyzer.LOGGER.info("Shutting down analysis thread pool gracefully... Attempting to stabilize core.");
-            executor.shutdown();
+            ComplexityAnalyzer.LOGGER.info("Shutting down analysis thread pool...");
+            executor.shutdownNow();
 
             try {
-                final String[] countdownMessages = {
-                        "[T-5s] Warning: Analysis core is not responding to shutdown signal. Stabilizing magnetic field...",
-                        "[T-4s] Warning: Coolant pressure dropping. Trying to bypass primary calculation loop...",
-                        "[T-3s] CRITICAL: Resonance cascade imminent in solver matrix! Attempting to eject complexity queue...",
-                        "[T-2s] DANGER: Control rod ejection FAILED! Core temperature rising exponentially!",
-                        "[T-1s] !!! CORE INTEGRITY FAILURE IMMINENT. BRACE FOR IMPACT. !!!"
-                };
-
-                boolean terminatedGracefully = false;
-                for (int i = 0; i < 5; i++) {
-                    if (executor.awaitTermination(1, TimeUnit.SECONDS)) {
-                        terminatedGracefully = true;
-                        ComplexityAnalyzer.LOGGER.info("Graceful shutdown successful. Analysis core is stable.");
-                        break;
-                    } else {
-                        ComplexityAnalyzer.LOGGER.warn(countdownMessages[i]);
-                    }
+                if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
+                    ComplexityAnalyzer.LOGGER.warn("Analysis thread did not terminate within 3 seconds. Proceeding with shutdown.");
+                } else {
+                    ComplexityAnalyzer.LOGGER.info("Analysis thread pool terminated cleanly.");
                 }
-
-                if (!terminatedGracefully) {
-                    ComplexityAnalyzer.LOGGER.error("!!! CONTAINMENT BREACH: ANALYSIS CORE MELTDOWN !!!");
-                    ComplexityAnalyzer.LOGGER.error("Forcing emergency shutdown protocol! Data integrity compromised!");
-
-                    List<Runnable> discardedTasks = executor.shutdownNow();
-
-                    ComplexityAnalyzer.LOGGER.error("SCRAM PROTOCOL ENGAGED. Purged {} tasks from execution queue.", discardedTasks.size());
-                    ComplexityAnalyzer.LOGGER.error("System state is UNRECOVERABLE. Full analysis required on next boot.");
-                }
-
             } catch (InterruptedException e) {
-                ComplexityAnalyzer.LOGGER.error("!!! INTERRUPTED DURING EMERGENCY SHUTDOWN. STATE UNKNOWN. !!!", e);
-                executor.shutdownNow();
+                ComplexityAnalyzer.LOGGER.warn("Interrupted while waiting for analysis thread pool termination.");
                 Thread.currentThread().interrupt();
             }
             ComplexityAnalyzer.LOGGER.info("Analysis thread pool is now offline.");

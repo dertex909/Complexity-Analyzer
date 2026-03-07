@@ -24,4 +24,5 @@ public record ChunkSnapshot(
         int chunkX,
         int chunkZ,
         Map<String, Integer> blockCounts
-) {}
+) {
+}

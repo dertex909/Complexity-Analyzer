@@ -31,9 +31,7 @@ public record ScanTask(
     @Override
     public int compareTo(ScanTask other) {
         int dimCompare = this.dimension.location().toString().compareTo(other.dimension.location().toString());
-        if (dimCompare != 0) {
-            return dimCompare;
-        }
+        if (dimCompare != 0) return dimCompare;
         return this.biome.location().toString().compareTo(other.biome.location().toString());
     }
 }

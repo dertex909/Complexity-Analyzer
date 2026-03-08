@@ -95,7 +95,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 try {
                     LootTable lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                     if (lootTable == LootTable.EMPTY) continue;
-
                     Map<Item, Double> averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, blockToMine);
                     if (averageDrop.isEmpty()) continue;
 
@@ -103,16 +102,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                         Item droppedItem = entry.getKey();
                         double itemsPerAction = entry.getValue();
                         if (itemsPerAction <= 0) continue;
-
-                        if (blockAsItem != Items.AIR && droppedItem == blockAsItem) {
-                            continue;
-                        }
-
+                        if (blockAsItem != Items.AIR && droppedItem == blockAsItem) continue;
                         Map<Item, Double> sourceItems = new HashMap<>();
-
-                        if (blockAsItem != Items.AIR) {
-                            sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
-                        }
+                        if (blockAsItem != Items.AIR) sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
 
                         Item toolItem = toolStack.getItem();
                         if (toolItem != Items.AIR) {
@@ -145,19 +137,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         for (List<BaseResourceData> paths : allPaths.values()) {
             paths.sort((a, b) -> {
-                int typeCompare = Double.compare(
-                        a.getSourceType().getBaseMultiplier(),
-                        b.getSourceType().getBaseMultiplier()
-                );
+                int typeCompare = Double.compare(a.getSourceType().getBaseMultiplier(), b.getSourceType().getBaseMultiplier());
                 if (typeCompare != 0) return typeCompare;
 
                 int factorCompare = Double.compare(a.getBaseFactor(), b.getBaseFactor());
                 if (factorCompare != 0) return factorCompare;
 
-                int sizeCompare = Integer.compare(
-                        a.getSourceItems().size(),
-                        b.getSourceItems().size()
-                );
+                int sizeCompare = Integer.compare(a.getSourceItems().size(), b.getSourceItems().size());
                 if (sizeCompare != 0) return sizeCompare;
 
                 double sumA = a.getSourceItems().values().stream().mapToDouble(Double::doubleValue).sum();
@@ -235,9 +221,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             lootTable.getRandomItems(context, drops::add);
 
             for (ItemStack stack : drops) {
-                if (!stack.isEmpty()) {
-                    totalCounts.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
-                }
+                if (!stack.isEmpty()) totalCounts.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
             }
         }
 
@@ -313,9 +297,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             seed = seed * 31L + BuiltInRegistries.ITEM.getKey(tool.getItem()).toString().hashCode();
 
             ItemEnchantments enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-            if (!enchantments.isEmpty()) {
-                seed = seed * 31L + enchantments.hashCode();
-            }
+            if (!enchantments.isEmpty()) seed = seed * 31L + enchantments.hashCode();
         } else {
             seed = seed * 31L + "empty_hand".hashCode();
         }
@@ -337,10 +319,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
         List<BaseResourceData> paths = allPaths.get(item);
-        if (paths == null || paths.isEmpty()) {
-            return Optional.empty();
-        }
-
+        if (paths == null || paths.isEmpty()) return Optional.empty();
         return Optional.of(paths.getFirst());
     }
 

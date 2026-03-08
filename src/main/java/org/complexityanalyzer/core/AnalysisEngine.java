@@ -521,16 +521,25 @@ public class AnalysisEngine {
 
         if (executor != null && !executor.isShutdown()) {
             ComplexityAnalyzer.LOGGER.info("Shutting down analysis thread pool...");
-            executor.shutdownNow();
+
+            executor.shutdown();
 
             try {
-                if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
-                    ComplexityAnalyzer.LOGGER.warn("Analysis thread did not terminate within 3 seconds. Proceeding with shutdown.");
+                if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    ComplexityAnalyzer.LOGGER.warn("Analysis thread did not terminate gracefully, forcing shutdown...");
+                    executor.shutdownNow();
+
+                    if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                        ComplexityAnalyzer.LOGGER.error("Analysis thread pool did not terminate within timeout!");
+                    } else {
+                        ComplexityAnalyzer.LOGGER.info("Analysis thread pool terminated after forced shutdown.");
+                    }
                 } else {
                     ComplexityAnalyzer.LOGGER.info("Analysis thread pool terminated cleanly.");
                 }
             } catch (InterruptedException e) {
                 ComplexityAnalyzer.LOGGER.warn("Interrupted while waiting for analysis thread pool termination.");
+                executor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
             ComplexityAnalyzer.LOGGER.info("Analysis thread pool is now offline.");

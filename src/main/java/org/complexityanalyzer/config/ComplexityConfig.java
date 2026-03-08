@@ -55,6 +55,8 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
+    public static final ModConfigSpec.IntValue GEOSCAN_CHUNK_TIMEOUT_MS;
+
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
@@ -141,15 +143,28 @@ public class ComplexityConfig {
 
         builder.pop();
 
+        builder.push("geo_scan");
+        builder.comment(
+                "Geo-Scan Settings - controls world scanning for block rarity analysis."
+        );
+
+        GEOSCAN_CHUNK_TIMEOUT_MS = builder
+                .comment(
+                        "Timeout in milliseconds for loading/generating a single chunk.",
+                        "Increase if you have heavy modpacks with slow worldgen.",
+                        "Default: 10000 (10 seconds)"
+                )
+                .defineInRange("chunkTimeoutMs", 10000, 100, 60000);
+
+        builder.pop();
+
         builder.pop();
 
         SPEC = builder.build();
     }
 
     public static double getMachineTaxMultiplier() {
-        if (!MACHINE_TAX_ENABLED.get()) {
-            return 0.0;
-        }
+        if (!MACHINE_TAX_ENABLED.get()) return 0.0;
         return MACHINE_TAX_PERCENTAGE.get() / 100.0;
     }
 
@@ -159,5 +174,9 @@ public class ComplexityConfig {
 
     public static double getMachineBaseComplexity() {
         return MACHINE_BASE_COMPLEXITY.get();
+    }
+
+    public static int getGeoscanChunkTimeoutMs() {
+        return GEOSCAN_CHUNK_TIMEOUT_MS.get();
     }
 }

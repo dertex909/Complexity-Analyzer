@@ -31,10 +31,7 @@ import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
@@ -75,6 +72,10 @@ public class GeoDatabase {
 
     public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
         return storage.countReconChunks(dimension, biome);
+    }
+
+    public Set<Long> loadAllReconChunkCoordinates() {
+        return storage.loadAllReconChunkCoordinates();
     }
 
     public Map<ResourceLocation, Map<ResourceLocation, Path>> getAllReconFilePaths() {

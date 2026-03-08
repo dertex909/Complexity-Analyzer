@@ -23,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.data.BiomeDataMapper;
@@ -38,11 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -308,6 +305,29 @@ public class GeoDataStorage {
         } catch (IOException e) {
             return 0;
         }
+    }
+
+    public Set<Long> loadAllReconChunkCoordinates() {
+        Set<Long> allCoordinates = ConcurrentHashMap.newKeySet();
+        Map<ResourceLocation, Map<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
+
+        allPaths.forEach((dim, biomeMap) -> biomeMap.forEach((biome, path) -> {
+            try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
+                lines.forEach(line -> {
+                    try {
+                        ChunkSnapshot snapshot = GSON.fromJson(line, ChunkSnapshot.class);
+                        if (snapshot != null) {
+                            allCoordinates.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
+                        }
+                    } catch (JsonSyntaxException ignored) {
+                    }
+                });
+            } catch (IOException e) {
+                ComplexityAnalyzer.LOGGER.debug("Failed to read recon file: {}", path);
+            }
+        }));
+
+        return allCoordinates;
     }
 
     private Path getFinalFilePath(ResourceLocation dimension, ResourceLocation biome) {

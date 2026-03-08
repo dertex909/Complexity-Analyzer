@@ -53,15 +53,11 @@ public class EmpiricalBlockSource implements IResourceSource {
 
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
-        if (!canProvide(item)) {
-            return Optional.empty();
-        }
+        if (!canProvide(item)) return Optional.empty();
 
         Block block = ((BlockItem) item).getBlock();
         var propertiesOpt = propertyProvider.getProperties(block);
-        if (propertiesOpt.isEmpty()) {
-            return Optional.empty();
-        }
+        if (propertiesOpt.isEmpty()) return Optional.empty();
         var properties = propertiesOpt.get();
 
         double bestCost = Double.POSITIVE_INFINITY;
@@ -78,9 +74,7 @@ public class EmpiricalBlockSource implements IResourceSource {
                 targetBlockCount += biomeData.getBlockCount(block);
             }
 
-            if (totalBlocksInDim == 0 || targetBlockCount == 0) {
-                continue;
-            }
+            if (totalBlocksInDim == 0 || targetBlockCount == 0) continue;
 
             double rarity = (double) targetBlockCount / totalBlocksInDim;
 
@@ -105,9 +99,7 @@ public class EmpiricalBlockSource implements IResourceSource {
             }
         }
 
-        if (bestData != null) {
-            return Optional.of(bestData);
-        }
+        if (bestData != null) return Optional.of(bestData);
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.UNOBTAINABLE)

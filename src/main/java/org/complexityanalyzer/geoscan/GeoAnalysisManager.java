@@ -169,6 +169,8 @@ public class GeoAnalysisManager {
             tasksCompleted = 0;
             stopRequested.set(false);
             attemptedChunks.clear();
+            attemptedChunks.addAll(database.loadAllReconChunkCoordinates());
+            notifier.logInfo(String.format("[ATOMIC] Loaded %d already scanned chunk coordinates.", attemptedChunks.size()));
             currentTask = null;
 
             while ((this.currentTask = taskQueue.poll()) != null) {
@@ -436,6 +438,8 @@ public class GeoAnalysisManager {
                     totalTasks = tasks.size();
                     tasksCompleted = 0;
                     attemptedChunks.clear();
+                    attemptedChunks.addAll(database.loadAllReconChunkCoordinates());
+                    notifier.logInfo(String.format("Loaded %d already scanned chunk coordinates.", attemptedChunks.size()));
                     notifier.notifyScanPreparationComplete(totalTasks);
                 });
             });

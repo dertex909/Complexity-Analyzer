@@ -50,6 +50,8 @@ public class WorldScanner {
     private final Random random = new Random();
     private volatile boolean shutdownRequested = false;
 
+    private final FastChunkAnalyzer fastAnalyzer;
+
     private static final List<BlockPos> SEARCH_ORIGINS = List.of(
             BlockPos.ZERO, new BlockPos(5000, 64, 5000), new BlockPos(-5000, 64, 5000),
             new BlockPos(5000, 64, -5000), new BlockPos(-5000, 64, -5000)
@@ -59,6 +61,11 @@ public class WorldScanner {
 
     public WorldScanner(MinecraftServer server) {
         this.server = server;
+        this.fastAnalyzer = new FastChunkAnalyzer(server);
+    }
+
+    public FastChunkAnalyzer getFastAnalyzer() {
+        return fastAnalyzer;
     }
 
     public Optional<ChunkPos> findBiomeLocation(
@@ -108,6 +115,29 @@ public class WorldScanner {
         return Optional.empty();
     }
 
+    /**
+     * FAST: Process chunk using FastChunkAnalyzer (ChunkStatus.FEATURES, no world loading)
+     */
+    public void processChunkFast(ResourceKey<Level> dimension, ResourceKey<Biome> targetBiomeKey, ChunkPos pos,
+                                 BiConsumer<Optional<ChunkSnapshot>, Boolean> onComplete) {
+        fastAnalyzer.analyzeChunk(dimension, targetBiomeKey, pos, onComplete);
+    }
+
+    /**
+     * FAST BLOCKING: Process chunk using FastChunkAnalyzer, blocking until done.
+     */
+    public Optional<ChunkSnapshot> processChunkFastBlocking(
+            ResourceKey<Level> dimension,
+            ResourceKey<Biome> targetBiomeKey,
+            ChunkPos pos,
+            long timeoutMs
+    ) {
+        return fastAnalyzer.analyzeChunkBlocking(dimension, targetBiomeKey, pos, timeoutMs);
+    }
+
+    /**
+     * LEGACY: Process chunk with FULL status (loads into world as LevelChunk)
+     */
     public Optional<ChunkSnapshot> processChunkBlocking(
             ResourceKey<Level> dimension,
             ResourceKey<Biome> targetBiomeKey,
@@ -150,6 +180,9 @@ public class WorldScanner {
         }
     }
 
+    /**
+     * LEGACY: Process chunk with async FULL status
+     */
     public void processChunk(ResourceKey<Level> dimension, ResourceKey<Biome> targetBiomeKey, ChunkPos pos,
                              BiConsumer<Optional<ChunkSnapshot>, Boolean> onComplete) {
 
@@ -212,7 +245,7 @@ public class WorldScanner {
         return false;
     }
 
-    private ChunkSnapshot createSnapshot(LevelChunk chunk) {
+    private ChunkSnapshot createSnapshot(ChunkAccess chunk) {
         Map<String, Integer> counts = new HashMap<>();
         for (LevelChunkSection section : chunk.getSections()) {
             if (section == null || section.hasOnlyAir()) continue;
@@ -243,5 +276,6 @@ public class WorldScanner {
 
     public void shutdown() {
         shutdownRequested = true;
+        fastAnalyzer.shutdown();
     }
 }

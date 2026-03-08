@@ -35,6 +35,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
+import org.complexityanalyzer.geoscan.task.FastChunkAnalyzer;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.SpiralChunkSearcher;
@@ -53,7 +54,8 @@ public class GeoAnalysisManager {
         LITE(40.0f, 20, 250),
         FAST(50.0f, 5, 100),
         EXTREME(Float.MAX_VALUE, 1, 50),
-        ATOMIC(0f, 0, 0);
+        ATOMIC(0f, 0, 0),
+        TURBO(Float.MAX_VALUE, 0, 100);  // NEW: Uses FastChunkAnalyzer
 
         public final float maxTickTimeMs;
         public final int ticksBetweenScans;
@@ -144,6 +146,207 @@ public class GeoAnalysisManager {
         this.countdownTicks = COUNTDOWN_SECONDS * 20;
         notifier.broadcastWarning(String.format("World scan (%s mode) will start in %d seconds.", profile.name().toLowerCase(), COUNTDOWN_SECONDS));
     }
+
+    // ========================
+    // TURBO SCAN (NEW)
+    // ========================
+
+    private void runTurboScan(int chunksPerBiome) {
+        Executor executor = analysisEngine.getBackgroundExecutor();
+        if (executor == null) {
+            ComplexityAnalyzer.LOGGER.error("Cannot run TURBO scan, executor is not available!");
+            return;
+        }
+
+        executor.execute(() -> {
+            long startTime = System.currentTimeMillis();
+            notifier.logInfo("[TURBO] Starting fast parallel scan (ChunkStatus.FEATURES)...");
+
+            List<ScanTask> preparedTasks = prepareScanTasks(chunksPerBiome);
+            if (preparedTasks.isEmpty()) {
+                server.execute(notifier::notifyDatabaseIsUpToDate);
+                return;
+            }
+
+            scanPhase = ScanMetadata.ScanPhase.RECONNAISSANCE;
+            database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
+            taskQueue.addAll(preparedTasks);
+            totalTasks = taskQueue.size();
+            tasksCompleted = 0;
+            stopRequested.set(false);
+            attemptedChunks.clear();
+            attemptedChunks.addAll(database.loadAllReconChunkCoordinates());
+            notifier.logInfo(String.format("[TURBO] Loaded %d already scanned chunk coordinates.", attemptedChunks.size()));
+            currentTask = null;
+
+            FastChunkAnalyzer fastAnalyzer = worldScanner.getFastAnalyzer();
+
+            while ((this.currentTask = taskQueue.poll()) != null) {
+                if (stopRequested.get() || Thread.currentThread().isInterrupted()) {
+                    notifier.logInfo("[TURBO] Stop requested, aborting remaining tasks.");
+                    break;
+                }
+                tasksCompleted++;
+
+                pristineSnapshotsForCurrentTask.clear();
+                consecutiveScanFailures = 0;
+
+                ScanTask task = this.currentTask;
+
+                // Find biome location
+                Optional<ChunkPos> startPosOpt = worldScanner.findBiomeLocation(
+                        task.dimension(), task.biome(), false
+                );
+                if (startPosOpt.isEmpty()) {
+                    notifier.logWarn(String.format("[TURBO] Could not find location for %s, skipping.",
+                            task.biome().location()));
+                    continue;
+                }
+
+                SpiralChunkSearcher searcher = new SpiralChunkSearcher();
+                searcher.startAt(startPosOpt.get().x, startPosOpt.get().z);
+                int attempts = 0;
+                int relocateTries = 0;
+
+                while (pristineSnapshotsForCurrentTask.size() < task.chunksToFind()
+                        && attempts < 10000
+                        && relocateTries < 5
+                        && !stopRequested.get()
+                        && !Thread.currentThread().isInterrupted()) {
+
+                    // Relocate if too many failures
+                    if (attempts > 0 && attempts % 250 == 0) {
+                        Optional<ChunkPos> newStart = worldScanner.findBiomeLocation(
+                                task.dimension(), task.biome(), true
+                        );
+                        if (newStart.isPresent()) {
+                            searcher.startAt(newStart.get().x, newStart.get().z);
+                            relocateTries++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Collect a batch of positions to analyze
+                    int batchSize = Math.min(
+                            32, // Process 32 chunks at a time
+                            task.chunksToFind() - pristineSnapshotsForCurrentTask.size()
+                    );
+                    List<ChunkPos> batch = new ArrayList<>();
+                    while (batch.size() < batchSize && attempts < 10000) {
+                        ChunkPos candidatePos = searcher.next();
+                        if (attemptedChunks.add(candidatePos.toLong())) {
+                            batch.add(candidatePos);
+                        }
+                        attempts++;
+                    }
+
+                    if (batch.isEmpty()) continue;
+
+                    // Process batch in parallel using FastChunkAnalyzer
+                    CountDownLatch batchLatch = new CountDownLatch(batch.size());
+
+                    fastAnalyzer.analyzeBatch(
+                            task.dimension(),
+                            task.biome(),
+                            batch,
+                            (snapshotOpt, success) -> {
+                                try {
+                                    if (success) {
+                                        snapshotOpt.ifPresent(snapshot -> {
+                                            synchronized (pristineSnapshotsForCurrentTask) {
+                                                if (database.analyzeSnapshotForRecon(snapshot)) {
+                                                    pristineSnapshotsForCurrentTask.add(snapshot);
+                                                }
+                                            }
+                                        });
+                                    }
+                                } finally {
+                                    batchLatch.countDown();
+                                }
+                            },
+                            () -> {
+                            } // batch complete (handled by latch)
+                    );
+
+                    // Wait for batch to complete with timeout handling
+                    try {
+                        boolean completed = batchLatch.await(30, TimeUnit.SECONDS);
+                        if (!completed) {
+                            long remaining = batchLatch.getCount();
+                            notifier.logWarn(String.format(
+                                    "[TURBO] Batch timeout for %s, %d/%d chunks still pending. Continuing with next batch...",
+                                    task.biome().location().getPath(),
+                                    remaining,
+                                    batch.size()
+                            ));
+                            // Continue anyway - pending chunks will complete in background
+                            // and won't be counted, but that's acceptable
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        notifier.logWarn("[TURBO] Scan interrupted during batch processing.");
+                        break;
+                    }
+
+                    // Log progress periodically
+                    if (attempts % 100 == 0 || pristineSnapshotsForCurrentTask.size() >= task.chunksToFind()) {
+                        notifier.logInfo(String.format(
+                                "[TURBO] Task %d/%d: %s... %d/%d found (in-flight: %d)",
+                                tasksCompleted, totalTasks,
+                                task.biome().location().getPath(),
+                                pristineSnapshotsForCurrentTask.size(),
+                                task.chunksToFind(),
+                                fastAnalyzer.getInFlightCount()
+                        ));
+                    }
+                }
+
+                // Save results for this task
+                synchronized (pristineSnapshotsForCurrentTask) {
+                    if (!pristineSnapshotsForCurrentTask.isEmpty()) {
+                        database.appendReconData(
+                                task.dimension().location(),
+                                task.biome().location(),
+                                new ArrayList<>(pristineSnapshotsForCurrentTask)
+                        );
+                        notifier.logInfo(String.format(
+                                "[TURBO] Task %d/%d complete: %s — saved %d candidates.",
+                                tasksCompleted, totalTasks,
+                                task.biome().location().getPath(),
+                                pristineSnapshotsForCurrentTask.size()
+                        ));
+                    }
+                }
+            }
+
+            this.currentTask = null;
+
+            long duration = System.currentTimeMillis() - startTime;
+            notifier.logInfo(String.format(
+                    "[TURBO] Reconnaissance complete in %.2f seconds. (completed: %d, failed: %d)",
+                    duration / 1000.0,
+                    fastAnalyzer.getTotalCompleted(),
+                    fastAnalyzer.getTotalFailed()
+            ));
+            fastAnalyzer.resetStats();
+
+            if (stopRequested.get()) {
+                server.execute(() -> {
+                    scanPhase = ScanMetadata.ScanPhase.IDLE;
+                    taskQueue.clear();
+                    stopRequested.set(false);
+                    notifier.notifyReconnaissanceFinished(true);
+                });
+            } else {
+                server.execute(() -> finishReconnaissance(false));
+            }
+        });
+    }
+
+    // ========================
+    // ATOMIC SCAN (existing)
+    // ========================
 
     private void runAtomicScan(int chunksPerBiome) {
         Executor executor = analysisEngine.getBackgroundExecutor();
@@ -290,8 +493,8 @@ public class GeoAnalysisManager {
             }
 
             if (!initiatorName.equals("Server")) {
-                if (profile == ScanProfile.EXTREME) {
-                    notifier.broadcastSevere("!!! FORCED WORLD SCAN IN EXTREME MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
+                if (profile == ScanProfile.EXTREME || profile == ScanProfile.TURBO) {
+                    notifier.broadcastSevere("!!! FORCED WORLD SCAN IN " + profile.name() + " MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
                 } else {
                     notifier.broadcastSevere("Forced world scan started! Severe lag may occur!");
                 }
@@ -336,9 +539,17 @@ public class GeoAnalysisManager {
             case IDLE -> "Idle";
             case RECONNAISSANCE -> {
                 if (currentTask == null) yield "Phase 1: Reconnaissance (Initializing next task...)";
-                yield String.format("Phase 1: Reconnaissance. Task %d/%d: %s (%d/%d)",
+                String extra = "";
+                if (currentProfile == ScanProfile.TURBO) {
+                    FastChunkAnalyzer fa = worldScanner.getFastAnalyzer();
+                    extra = String.format(" [in-flight: %d, done: %d, failed: %d]",
+                            fa.getInFlightCount(), fa.getTotalCompleted(), fa.getTotalFailed());
+                }
+                yield String.format("Phase 1: Reconnaissance (%s). Task %d/%d: %s (%d/%d)%s",
+                        currentProfile.name(),
                         tasksCompleted, totalTasks, currentTask.biome().location().getPath(),
-                        pristineSnapshotsForCurrentTask.size(), currentTask.chunksToFind());
+                        pristineSnapshotsForCurrentTask.size(), currentTask.chunksToFind(),
+                        extra);
             }
             case REFINING -> "Phase 2: Refining all collected data...";
             case COMPLETE -> "Complete";
@@ -357,7 +568,7 @@ public class GeoAnalysisManager {
     public void onServerTick(ServerTickEvent.Post event) {
         if (handleCountdown()) return;
 
-        if (currentProfile == ScanProfile.ATOMIC) return;
+        if (currentProfile == ScanProfile.ATOMIC || currentProfile == ScanProfile.TURBO) return;
 
         if (handleStopRequest()) return;
 
@@ -415,6 +626,8 @@ public class GeoAnalysisManager {
 
         if (profile == ScanProfile.ATOMIC) {
             runAtomicScan(chunksPerBiome);
+        } else if (profile == ScanProfile.TURBO) {
+            runTurboScan(chunksPerBiome);
         } else {
             Executor executor = analysisEngine.getBackgroundExecutor();
             if (executor == null) {
@@ -542,7 +755,8 @@ public class GeoAnalysisManager {
             return;
         }
 
-        worldScanner.processChunk(currentTask.dimension(), currentTask.biome(), nextPos, (snapshotOpt, success) -> {
+        // Use fast analyzer for non-ATOMIC/TURBO profiles too
+        worldScanner.processChunkFast(currentTask.dimension(), currentTask.biome(), nextPos, (snapshotOpt, success) -> {
             if (success) {
                 snapshotOpt.ifPresent(snapshot -> {
                     if (database.analyzeSnapshotForRecon(snapshot)) {

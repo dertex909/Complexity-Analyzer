@@ -25,9 +25,7 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.EmpiricalBlockSource;
 import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,26 +84,11 @@ public class SourceManager {
     private Optional<BaseResourceData> performAnalysis(Item item) {
         RecipeGraph graph = AnalysisEngine.getInstance().getGraph();
 
-        boolean hasVanillaCraft = false;
-        if (graph != null && graph.hasRecipe(item)) {
-            List<RecipeNode> recipes = graph.getRecipes(item);
-
-            hasVanillaCraft = recipes.stream().anyMatch(r -> {
-                String recipeType = r.getRecipeType().toString();
-                return isVanillaRecipeType(recipeType) &&
-                        (r.getCategory() == RecipeCategory.PRIMARY ||
-                                r.getCategory() == RecipeCategory.PROCESSING);
-            });
-        }
-
-        final boolean vanillaCraftPresent = hasVanillaCraft;
-
-        Stream<IResourceSource> sourceStream = sources.stream()
-                .filter(source -> !vanillaCraftPresent || !source.prefersRecipeOutputs());
-
         boolean empiricalReady = getSourceByType(EmpiricalBlockSource.class)
                 .map(EmpiricalBlockSource::isReady)
                 .orElse(false);
+
+        Stream<IResourceSource> sourceStream = sources.stream();
 
         if (empiricalReady) {
             sourceStream = sourceStream.filter(source -> !(source instanceof TheoreticalBlockSource));

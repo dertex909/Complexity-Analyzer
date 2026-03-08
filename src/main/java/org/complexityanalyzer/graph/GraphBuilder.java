@@ -27,8 +27,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.compat.jei.JeiCompatibilityModule;
 import org.complexityanalyzer.config.ComplexityConfig;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -64,10 +66,7 @@ public class GraphBuilder {
         ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped", processedCount, skippedCount);
 
         try {
-            org.complexityanalyzer.compat.jei.JeiCompatibilityModule.collectRecipesFromJeiPlugins(
-                    graph,
-                    level
-            );
+            JeiCompatibilityModule.collectRecipesFromJeiPlugins(graph, level);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("JEI compatibility module failed", t);
         }
@@ -76,18 +75,18 @@ public class GraphBuilder {
     }
 
     private static RecipeNode buildSmithingNode(
-            net.minecraft.world.item.crafting.SmithingTransformRecipe recipe,
+            SmithingTransformRecipe recipe,
             Item resultItem
     ) {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(RecipeType.SMITHING)
                 .category(RecipeCategory.PRIMARY)
+                .resultCount(1)
                 .rawRecipe(recipe);
-
         try {
-            java.lang.reflect.Field templateField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("template");
-            java.lang.reflect.Field baseField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("base");
-            java.lang.reflect.Field additionField = net.minecraft.world.item.crafting.SmithingTransformRecipe.class.getDeclaredField("addition");
+            Field templateField = SmithingTransformRecipe.class.getDeclaredField("template");
+            Field baseField = SmithingTransformRecipe.class.getDeclaredField("base");
+            Field additionField = SmithingTransformRecipe.class.getDeclaredField("addition");
 
             templateField.setAccessible(true);
             baseField.setAccessible(true);
@@ -102,9 +101,7 @@ public class GraphBuilder {
                         .map(ItemStack::getItem)
                         .distinct()
                         .toList();
-                if (!templateVariants.isEmpty()) {
-                    builder.addIngredient(templateVariants, 1);
-                }
+                if (!templateVariants.isEmpty()) builder.addIngredient(templateVariants, 1);
             }
 
             if (!base.isEmpty()) {
@@ -112,9 +109,7 @@ public class GraphBuilder {
                         .map(ItemStack::getItem)
                         .distinct()
                         .toList();
-                if (!baseVariants.isEmpty()) {
-                    builder.addIngredient(baseVariants, 1);
-                }
+                if (!baseVariants.isEmpty()) builder.addIngredient(baseVariants, 1);
             }
 
             if (!addition.isEmpty()) {
@@ -122,15 +117,13 @@ public class GraphBuilder {
                         .map(ItemStack::getItem)
                         .distinct()
                         .toList();
-                if (!additionVariants.isEmpty()) {
-                    builder.addIngredient(additionVariants, 1);
-                }
+                if (!additionVariants.isEmpty()) builder.addIngredient(additionVariants, 1);
             }
 
 
         } catch (NoSuchFieldException | IllegalAccessException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to process SmithingTransformRecipe for {}: {}",
-                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(resultItem),
+                    BuiltInRegistries.ITEM.getKey(resultItem),
                     e.getMessage());
             return null;
         }
@@ -145,13 +138,8 @@ public class GraphBuilder {
         Item resultItem = resultStack.getItem();
         List<Ingredient> ingredients = recipe.getIngredients();
 
-        if (recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe smithing) {
-            return buildSmithingNode(smithing, resultItem);
-        }
-
-        if (ingredients.isEmpty()) {
-            return null;
-        }
+        if (recipe instanceof SmithingTransformRecipe smithing) return buildSmithingNode(smithing, resultItem);
+        if (ingredients.isEmpty()) return null;
 
         RecipeCategory category = classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
@@ -159,6 +147,7 @@ public class GraphBuilder {
         RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
                 .recipeType(recipe.getType())
                 .category(category)
+                .resultCount(resultStack.getCount())
                 .rawRecipe(recipe);
 
         for (Ingredient ingredient : ingredients) {
@@ -180,9 +169,7 @@ public class GraphBuilder {
         if (ingredients.size() == 1) {
             ItemStack[] ingredientStacks = ingredients.getFirst().getItems();
             for (ItemStack ingredientStack : ingredientStacks) {
-                if (ingredientStack.isEmpty()) {
-                    continue;
-                }
+                if (ingredientStack.isEmpty()) continue;
 
                 boolean ingredientIsStorageBlock = ingredientStack.is(STORAGE_BLOCKS_TAG);
                 if (ingredientIsStorageBlock && (resultStack.is(INGOTS_TAG) || resultStack.is(GEMS_TAG) || resultStack.is(RAW_MATERIALS_TAG))) {

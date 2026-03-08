@@ -80,7 +80,10 @@ public class EmpiricalBlockSource implements IResourceSource {
 
             double toolMultiplier = properties.getToolMultiplier();
             double hardnessMultiplier = properties.getHardnessMultiplier();
-            double rarityFactor = 1.0 + Math.log1p(1.0 / rarity);
+
+            double inverseRarity = 1.0 / rarity;
+            double rarityFactor = 0.5 + (Math.sqrt(inverseRarity) / 10.0);
+
             double baseFactor = toolMultiplier * hardnessMultiplier * rarityFactor * getSourceType().getBaseMultiplier();
 
             if (baseFactor < bestCost) {

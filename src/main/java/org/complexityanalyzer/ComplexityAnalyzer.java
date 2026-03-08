@@ -37,9 +37,7 @@ public class ComplexityAnalyzer {
     public ComplexityAnalyzer(IEventBus ignoredModEventBus, ModContainer modContainer) {
         LOGGER.info("=== {} v{} ===", MOD_NAME, modContainer.getModInfo().getVersion());
         modContainer.registerConfig(ModConfig.Type.COMMON, ComplexityConfig.SPEC);
-
         NeoForge.EVENT_BUS.register(AnalysisBootstrap.class);
-
         LOGGER.info("{} initialized successfully.", MOD_NAME);
     }
 }

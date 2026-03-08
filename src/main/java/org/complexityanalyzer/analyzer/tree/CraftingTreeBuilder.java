@@ -125,6 +125,20 @@ public class CraftingTreeBuilder {
                 .flatMap(result -> result.getOptimalRecipe(item))
                 .or(() -> depthAnalyzer.getRecipeToFollow(item));
 
+        if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
+            RecipeGraph graph = engine.getGraph();
+            if (graph != null && graph.hasRecipe(item)) {
+                List<RecipeNode> recipes = graph.getRecipes(item);
+                Optional<RecipeNode> craftRecipe = recipes.stream()
+                        .filter(r -> !r.isBaseRecipe())
+                        .filter(r -> r.getCategory() == RecipeCategory.PRIMARY
+                                || r.getCategory() == RecipeCategory.PROCESSING)
+                        .min(Comparator.comparingInt(RecipeNode::getPriority));
+
+                if (craftRecipe.isPresent()) recipeOpt = craftRecipe;
+            }
+        }
+
         boolean wouldCreateCycle = false;
         if (recipeOpt.isPresent() && !recipeOpt.get().isBaseRecipe()) {
             RecipeNode recipe = recipeOpt.get();

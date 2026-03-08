@@ -38,9 +38,7 @@ public class JeiPluginScanner {
 
         ModList.get().getMods().forEach(modInfo -> {
             String modId = modInfo.getModId();
-            if (modId.equals("jei") || modId.equals(ComplexityAnalyzer.MODID)) {
-                return;
-            }
+            if (modId.equals("jei") || modId.equals(ComplexityAnalyzer.MODID)) return;
 
             try {
                 var scanData = modInfo.getOwningFile().getFile().getScanResult();
@@ -48,9 +46,7 @@ public class JeiPluginScanner {
                         .filter(ad -> ad.annotationType().getClassName().equals("mezz.jei.api.JeiPlugin"))
                         .forEach(ad -> {
                             IModPlugin plugin = SafePluginLoader.tryLoadPlugin(ad.clazz().getClassName(), modId);
-                            if (plugin != null) {
-                                cleanPlugins.add(plugin);
-                            }
+                            if (plugin != null) cleanPlugins.add(plugin);
                         });
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.warn("Error scanning mod {} for JEI plugins: {}", modId, e.getMessage());
@@ -85,12 +81,10 @@ public class JeiPluginScanner {
 
             Map<ResourceLocation, List<ItemStack>> pluginCatalysts = mockCatalystReg.getCatalysts();
             if (!pluginCatalysts.isEmpty()) {
-                ComplexityAnalyzer.LOGGER.info("Plugin {} registered {} catalyst entries",
-                        pluginId, pluginCatalysts.size());
+                ComplexityAnalyzer.LOGGER.info("Plugin {} registered {} catalyst entries", pluginId, pluginCatalysts.size());
 
                 for (var entry : pluginCatalysts.entrySet()) {
-                    allCatalysts.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
-                            .addAll(entry.getValue());
+                    allCatalysts.computeIfAbsent(entry.getKey(), k -> new ArrayList<>()).addAll(entry.getValue());
                 }
             }
         }

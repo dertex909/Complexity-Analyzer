@@ -117,7 +117,7 @@ public class EmpiricalBlockSource implements IResourceSource {
 
     @Override
     public int getPriority() {
-        return 100000;
+        return Integer.MAX_VALUE;
     }
 
     @Override

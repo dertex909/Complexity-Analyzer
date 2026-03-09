@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -36,9 +36,6 @@ public class AnalysisBootstrap {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
-
-        engine.createGeoManager(server);
-
         engine.initializeAsync(server.overworld(), () ->
                 ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete.")
         );
@@ -47,10 +44,9 @@ public class AnalysisBootstrap {
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         ComplexityAnalyzer.LOGGER.info("Server stopping, shutting down Complexity Analyzer...");
-        AnalysisEngine.getInstance().shutdown();
+        AnalysisEngine.getInstance().shutdownCompletely();
 
         ComplexityAnalyzer.LOGGER.debug("Cleaning up AdaptiveRecipeConverter resources...");
-        AdaptiveRecipeConverter.shutdown();
         AdaptiveRecipeConverter.clearCaches();
     }
 

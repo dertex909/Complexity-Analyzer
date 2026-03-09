@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -243,6 +243,16 @@ public class ChunkCommands {
 
         AnalysisEngine.getInstance().getGeoManager().ifPresentOrElse(
                 manager -> {
+                    boolean wasScanning = manager.isScanning();
+                    boolean wasCountdown = manager.isCountdownActive();
+
+                    if (!wasScanning && !wasCountdown) {
+                        output.sendFailure(source,
+                                Component.literal("❌ No scan is currently running or scheduled.")
+                                        .withStyle(ChatFormatting.RED));
+                        return;
+                    }
+
                     output.sendInfo(source,
                             Component.literal("🛑 Stopping geo-scan...")
                                     .withStyle(ChatFormatting.YELLOW));

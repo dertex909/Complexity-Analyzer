@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -53,14 +53,12 @@ public class AnalysisEngine {
     public enum State {IDLE, ANALYZING, READY, FAILED}
 
     private final AtomicReference<State> currentState = new AtomicReference<>(State.IDLE);
-    private final AtomicReference<ExecutorService> analysisExecutor = new AtomicReference<>(null);
     private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
     private final AtomicBoolean analysisCancelled = new AtomicBoolean(false);
     private final AtomicBoolean isReloading = new AtomicBoolean(false);
+    private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
     private final ReentrantLock stateLock = new ReentrantLock();
     private final ReentrantLock geoManagerLock = new ReentrantLock();
-    private final Object executorLock = new Object();
-
     private final ComplexityCache complexityCache;
 
     private volatile RecipeGraph graph;
@@ -89,31 +87,55 @@ public class AnalysisEngine {
     }
 
     public Optional<SolverResult> getSolverResult() {
-        return (calculator != null) ? Optional.of(calculator.getSolverResult()) : Optional.empty();
+        ComplexityCalculator calc = this.calculator;
+        return (calc != null) ? Optional.of(calc.getSolverResult()) : Optional.empty();
     }
 
     public void initializeAsync(Level level, Runnable onComplete) {
+        if (isShuttingDown.get()) {
+            ComplexityAnalyzer.LOGGER.warn("Cannot initialize: engine is shutting down");
+            return;
+        }
+
+        State current = currentState.get();
+        if (current == State.FAILED) {
+            stateLock.lock();
+            try {
+                if (currentState.get() == State.FAILED) {
+                    currentState.set(State.IDLE);
+                    ComplexityAnalyzer.LOGGER.info("Reset from FAILED state to IDLE for retry");
+                }
+            } finally {
+                stateLock.unlock();
+            }
+        }
+
         if (!currentState.compareAndSet(State.IDLE, State.ANALYZING)) {
-            State current = currentState.get();
-            if (current == State.READY && isReady()) safeRunCallback(onComplete);
+            current = currentState.get();
+            if (current == State.READY && isReady()) {
+                safeRunCallback(onComplete);
+            } else if (current == State.ANALYZING) {
+                ComplexityAnalyzer.LOGGER.debug("Analysis already in progress, ignoring duplicate request");
+            }
             return;
         }
 
         if (!(level instanceof ServerLevel serverLevel)) {
             currentState.set(State.FAILED);
+            ComplexityAnalyzer.LOGGER.error("Cannot initialize: not a ServerLevel");
             return;
         }
 
         this.server = serverLevel.getServer();
+        analysisCancelled.set(false);
 
-        ExecutorService executor = ensureExecutorAvailable();
+        ExecutorService executor = ThreadPoolManager.getInstance().getComputePool();
 
-        ComplexityAnalyzer.LOGGER.info("Starting background analysis...");
+        ComplexityAnalyzer.LOGGER.info("Starting background analysis with {} threads...",
+                ThreadPoolManager.getInstance().getParallelism());
 
         Future<?> task = executor.submit(() -> {
             try {
-                analysisCancelled.set(false);
-
                 if (isInterrupted()) {
                     restoreIdleState();
                     return;
@@ -163,6 +185,8 @@ public class AnalysisEngine {
                 if (!isInterrupted()) {
                     ComplexityAnalyzer.LOGGER.error("Critical error during analysis initialization", e);
                     currentState.set(State.FAILED);
+                } else {
+                    restoreIdleState();
                 }
             }
         });
@@ -182,10 +206,12 @@ public class AnalysisEngine {
 
         try {
             MinecraftServer srv = this.server;
-            if (srv != null) {
+            if (srv != null && !isInterrupted()) {
                 createGeoManager(srv);
                 Optional<GeoAnalysisManager> geoMgr = getGeoManager();
-                geoMgr.ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
+                if (!isInterrupted()) {
+                    geoMgr.ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
+                }
             }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
@@ -195,31 +221,9 @@ public class AnalysisEngine {
     }
 
     private boolean isInterrupted() {
-        return analysisCancelled.get() || Thread.currentThread().isInterrupted();
-    }
-
-    private static ExecutorService createAnalysisExecutor() {
-        return Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "Complexity-Analysis-Thread");
-            t.setDaemon(true);
-            return t;
-        });
-    }
-
-    private ExecutorService ensureExecutorAvailable() {
-        ExecutorService current = analysisExecutor.get();
-
-        if (current != null && !current.isShutdown()) return current;
-
-        synchronized (executorLock) {
-            current = analysisExecutor.get();
-            if (current != null && !current.isShutdown()) return current;
-
-            ComplexityAnalyzer.LOGGER.info("Creating new analysis thread pool.");
-            ExecutorService newExecutor = createAnalysisExecutor();
-            analysisExecutor.set(newExecutor);
-            return newExecutor;
-        }
+        return analysisCancelled.get() ||
+                isShuttingDown.get() ||
+                Thread.currentThread().isInterrupted();
     }
 
     private void safeRunCallback(Runnable callback) {
@@ -232,8 +236,13 @@ public class AnalysisEngine {
     }
 
     private void restoreIdleState() {
-        clearDataInternal();
-        currentState.set(State.IDLE);
+        stateLock.lock();
+        try {
+            clearDataInternal();
+            currentState.set(State.IDLE);
+        } finally {
+            stateLock.unlock();
+        }
     }
 
     private void initializeCoreProviders(ServerLevel serverLevel) {
@@ -313,7 +322,6 @@ public class AnalysisEngine {
         }
 
         this.depthAnalyzer = new DepthAnalyzer(currentGraph, currentSourceManager);
-
         this.depthAnalyzer.setOptimalRecipes(solverResult.optimalRecipes());
 
         this.calculator = new ComplexityCalculator(currentGraph, this.depthAnalyzer, solverResult, currentSourceManager);
@@ -327,9 +335,14 @@ public class AnalysisEngine {
             return;
         }
 
+        if (isShuttingDown.get()) {
+            ComplexityAnalyzer.LOGGER.warn("onGeoScanFinished called during shutdown. Ignoring.");
+            return;
+        }
+
         stateLock.lock();
         try {
-            if (!isReady()) return;
+            if (!isReady() || isShuttingDown.get()) return;
 
             SourceManager currentSourceManager = this.sourceManager;
             RecipeGraph currentGraph = this.graph;
@@ -369,17 +382,27 @@ public class AnalysisEngine {
     }
 
     public void createGeoManager(MinecraftServer server) {
+        if (isShuttingDown.get()) return;
+
         geoManagerLock.lock();
         try {
-            if (this.geoManager != null) this.geoManager.shutdown();
-            if (this.geoDatabase != null) this.geoManager = new GeoAnalysisManager(server, this.geoDatabase, this);
+            if (isShuttingDown.get()) return;
+
+            GeoAnalysisManager oldManager = this.geoManager;
+            if (oldManager != null) oldManager.shutdown();
+
+            GeoDatabase geoDB = this.geoDatabase;
+            if (geoDB != null) {
+                this.geoManager = new GeoAnalysisManager(server, geoDB, this);
+            }
         } finally {
             geoManagerLock.unlock();
         }
     }
 
     public Executor getBackgroundExecutor() {
-        return analysisExecutor.get();
+        if (isShuttingDown.get()) return null;
+        return ThreadPoolManager.getInstance().getComputePool();
     }
 
     public void clearGeoDatabase() {
@@ -388,8 +411,12 @@ public class AnalysisEngine {
             return;
         }
 
+        if (isShuttingDown.get()) return;
+
         stateLock.lock();
         try {
+            if (!isReady() || isShuttingDown.get()) return;
+
             GeoDatabase geoDB = this.geoDatabase;
             if (geoDB != null) {
                 geoDB.clear();
@@ -417,7 +444,7 @@ public class AnalysisEngine {
     }
 
     public boolean isReady() {
-        return currentState.get() == State.READY;
+        return currentState.get() == State.READY && !isShuttingDown.get();
     }
 
     public RecipeGraph getGraph() {
@@ -469,34 +496,42 @@ public class AnalysisEngine {
     }
 
     public void reloadAsync(Level level) {
-        if (isReloading.getAndSet(true)) {
+        if (!isReloading.compareAndSet(false, true)) {
             ComplexityAnalyzer.LOGGER.warn("Reload is already in progress. Ignoring duplicate request.");
             return;
         }
 
         ComplexityAnalyzer.LOGGER.info("Reload requested. Scheduling full restart...");
 
-        Thread reloadThread = new Thread(() -> {
+        ThreadPoolManager.getInstance().submit(() -> {
             try {
-                shutdown();
-                if (Thread.currentThread().isInterrupted()) {
-                    ComplexityAnalyzer.LOGGER.info("Reload cancelled due to server shutdown.");
-                    return;
+                stateLock.lock();
+                try {
+                    shutdown();
+                    if (Thread.currentThread().isInterrupted()) {
+                        ComplexityAnalyzer.LOGGER.info("Reload cancelled due to server shutdown.");
+                        return;
+                    }
+                    clearAllCaches();
+                } finally {
+                    stateLock.unlock();
                 }
-                clearAllCaches();
+
                 initializeAsync(level, () -> ComplexityAnalyzer.LOGGER.info("Reload complete."));
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Error during reload", e);
             } finally {
                 isReloading.set(false);
             }
-        }, "Complexity-Reload-Thread");
-
-        reloadThread.setDaemon(true);
-        reloadThread.start();
+        });
     }
 
     public void shutdown() {
+        if (!isShuttingDown.compareAndSet(false, true)) {
+            ComplexityAnalyzer.LOGGER.debug("Shutdown already in progress");
+            return;
+        }
+
         ComplexityAnalyzer.LOGGER.info("Shutdown requested for AnalysisEngine.");
 
         analysisCancelled.set(true);
@@ -504,6 +539,10 @@ public class AnalysisEngine {
         Future<?> currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) {
             currentTask.cancel(true);
+            try {
+                currentTask.get(2, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+            }
         }
 
         geoManagerLock.lock();
@@ -517,34 +556,6 @@ public class AnalysisEngine {
             geoManagerLock.unlock();
         }
 
-        ExecutorService executor = analysisExecutor.getAndSet(null);
-
-        if (executor != null && !executor.isShutdown()) {
-            ComplexityAnalyzer.LOGGER.info("Shutting down analysis thread pool...");
-
-            executor.shutdown();
-
-            try {
-                if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
-                    ComplexityAnalyzer.LOGGER.warn("Analysis thread did not terminate gracefully, forcing shutdown...");
-                    executor.shutdownNow();
-
-                    if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
-                        ComplexityAnalyzer.LOGGER.error("Analysis thread pool did not terminate within timeout!");
-                    } else {
-                        ComplexityAnalyzer.LOGGER.info("Analysis thread pool terminated after forced shutdown.");
-                    }
-                } else {
-                    ComplexityAnalyzer.LOGGER.info("Analysis thread pool terminated cleanly.");
-                }
-            } catch (InterruptedException e) {
-                ComplexityAnalyzer.LOGGER.warn("Interrupted while waiting for analysis thread pool termination.");
-                executor.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-            ComplexityAnalyzer.LOGGER.info("Analysis thread pool is now offline.");
-        }
-
         stateLock.lock();
         try {
             clearDataInternal();
@@ -553,6 +564,14 @@ public class AnalysisEngine {
         } finally {
             stateLock.unlock();
         }
+
+        isShuttingDown.set(false);
+    }
+
+    public void shutdownCompletely() {
+        shutdown();
+        ThreadPoolManager.getInstance().shutdown();
+        ComplexityAnalyzer.LOGGER.info("AnalysisEngine and ThreadPoolManager fully shutdown.");
     }
 
     private void clearAllCaches() {
@@ -560,7 +579,8 @@ public class AnalysisEngine {
 
         complexityCache.clear();
 
-        if (mobRarityCalculator != null) mobRarityCalculator.clearCache();
+        MobRarityCalculator calc = mobRarityCalculator;
+        if (calc != null) calc.clearCache();
 
         ComplexityAnalyzer.LOGGER.info("All caches cleared.");
     }

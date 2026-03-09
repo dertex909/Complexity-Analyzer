@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -33,6 +33,7 @@ import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -76,25 +77,8 @@ public final class AdaptiveRecipeConverter {
         UNSAFE = unsafeInstance;
     }
 
-    private static volatile ForkJoinPool recipePool;
-
     private static ForkJoinPool getPool() {
-        ForkJoinPool pool = recipePool;
-        if (pool == null || pool.isShutdown()) {
-            synchronized (AdaptiveRecipeConverter.class) {
-                pool = recipePool;
-                if (pool == null || pool.isShutdown()) {
-                    pool = new ForkJoinPool(
-                            Math.max(2, Runtime.getRuntime().availableProcessors() - 1),
-                            ForkJoinPool.defaultForkJoinWorkerThreadFactory,
-                            (t, e) -> ComplexityAnalyzer.LOGGER.error("Recipe converter error", e),
-                            true
-                    );
-                    recipePool = pool;
-                }
-            }
-        }
-        return pool;
+        return ThreadPoolManager.getInstance().getForkJoinPool();
     }
 
     private static final ConcurrentHashMap<Class<?>, ClassMeta> CLASS_META_CACHE = new ConcurrentHashMap<>(256);
@@ -1827,22 +1811,14 @@ public final class AdaptiveRecipeConverter {
             "chemicalInput", "gasInput", "getLeftGasInput", "getRightGasInput"
     };
 
-    public static void shutdown() {
-        ForkJoinPool pool = recipePool;
-        if (pool != null) {
-            pool.shutdown();
-            try {
-                if (!pool.awaitTermination(5, TimeUnit.SECONDS)) pool.shutdownNow();
-            } catch (InterruptedException e) {
-                pool.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
     public static void clearCaches() {
         CLASS_META_CACHE.clear();
         ADAPTER_CACHE.clear();
         UNSAFE_RECIPE_CLASSES.clear();
+
+        TL_ITEM_LIST.remove();
+        TL_FLUID_LIST.remove();
+        TL_CHEM_LIST.remove();
+        TL_VISITED.remove();
     }
 }

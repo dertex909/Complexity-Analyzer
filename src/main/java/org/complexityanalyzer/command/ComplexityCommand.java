@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -102,6 +102,10 @@ public class ComplexityCommand {
 
                         .then(Commands.literal("stats")
                                 .executes(ComplexityCommand::executeStats))
+
+                        .then(Commands.literal("threads")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ComplexityCommand::executeThreads))
 
                         .then(Commands.literal("analyze")
                                 .then(Commands.literal("item")
@@ -593,6 +597,83 @@ public class ComplexityCommand {
                         .withStyle(ChatFormatting.AQUA)
                         .append(Component.literal(String.valueOf(totalEntries))
                                 .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        return 1;
+    }
+
+    private static int executeThreads(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
+
+        org.complexityanalyzer.core.ThreadPoolManager.PoolStats stats =
+                org.complexityanalyzer.core.ThreadPoolManager.getInstance().getStats();
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+
+        output.sendInfo(source,
+                Component.literal("⚙ ")
+                        .withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal("Thread Pool Statistics")
+                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+
+        output.sendInfo(source,
+                Component.literal("═══════════════════════════════")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal(""));
+
+        output.sendInfo(source,
+                Component.literal("  Parallelism Target: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.parallelism()))
+                                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("  🔹 Compute Pool (I/O & Tasks)")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("    Active Threads: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.activeThreads()))
+                                .withStyle(ChatFormatting.YELLOW)));
+
+        output.sendInfo(source,
+                Component.literal("    Queued Tasks: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.queuedTasks()))
+                                .withStyle(stats.queuedTasks() > 100 ? ChatFormatting.RED : ChatFormatting.GREEN)));
+
+        output.sendInfo(source,
+                Component.literal("    Completed: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.completedTasks()))
+                                .withStyle(ChatFormatting.WHITE)));
+
+        output.sendInfo(source, Component.literal(""));
+        output.sendInfo(source,
+                Component.literal("  🔹 ForkJoin Pool (Parallel Streams)")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+
+        output.sendInfo(source,
+                Component.literal("    Active Threads: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.forkJoinActive()))
+                                .withStyle(ChatFormatting.YELLOW)));
+
+        output.sendInfo(source,
+                Component.literal("    Task Steals: ")
+                        .withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf(stats.forkJoinSteals()))
+                                .withStyle(ChatFormatting.WHITE)));
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source,

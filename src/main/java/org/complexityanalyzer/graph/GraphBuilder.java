@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -29,9 +29,12 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.JeiCompatibilityModule;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.ThreadPoolManager;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class GraphBuilder {
@@ -42,28 +45,40 @@ public class GraphBuilder {
     private static final TagKey<Item> RAW_MATERIALS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
 
     public static RecipeGraph buildFromWorld(Level level) {
-        ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification...");
+        ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification ({} threads)...",
+                ThreadPoolManager.getInstance().getParallelism());
+
         RecipeGraph graph = new RecipeGraph();
         RecipeManager recipeManager = level.getRecipeManager();
-        int processedCount = 0;
-        int skippedCount = 0;
 
-        for (RecipeHolder<?> holder : recipeManager.getRecipes()) {
+        List<RecipeHolder<?>> allRecipes = recipeManager.getRecipes().stream().toList();
+
+        AtomicInteger processedCount = new AtomicInteger(0);
+        AtomicInteger skippedCount = new AtomicInteger(0);
+
+        ConcurrentLinkedQueue<RecipeNode> processedNodes = new ConcurrentLinkedQueue<>();
+
+        allRecipes.parallelStream().forEach(holder -> {
             try {
                 RecipeNode node = buildNode(holder.value(), level);
                 if (node != null) {
-                    graph.addRecipe(node);
-                    processedCount++;
+                    processedNodes.add(node);
+                    processedCount.incrementAndGet();
                 } else {
-                    skippedCount++;
+                    skippedCount.incrementAndGet();
                 }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.warn("Failed to process recipe {}: {}", holder.id(), e.getMessage());
-                skippedCount++;
+                skippedCount.incrementAndGet();
             }
+        });
+
+        for (RecipeNode node : processedNodes) {
+            graph.addRecipe(node);
         }
 
-        ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped", processedCount, skippedCount);
+        ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped",
+                processedCount.get(), skippedCount.get());
 
         try {
             JeiCompatibilityModule.collectRecipesFromJeiPlugins(graph, level);

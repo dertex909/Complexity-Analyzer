@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -25,18 +25,22 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.EmpiricalBlockSource;
 import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class SourceManager {
-    private final List<IResourceSource> sources;
+    private final CopyOnWriteArrayList<IResourceSource> sources;
     private final Map<Item, Optional<BaseResourceData>> cache = new ConcurrentHashMap<>();
 
     public SourceManager(List<IResourceSource> initialSources) {
-        this.sources = new ArrayList<>(initialSources);
+        this.sources = new CopyOnWriteArrayList<>(initialSources);
         sortSources();
     }
 
@@ -49,7 +53,10 @@ public class SourceManager {
     }
 
     private void sortSources() {
-        this.sources.sort(Comparator.comparingInt(IResourceSource::getPriority).reversed());
+        List<IResourceSource> sorted = new ArrayList<>(sources);
+        sorted.sort(Comparator.comparingInt(IResourceSource::getPriority).reversed());
+        sources.clear();
+        sources.addAll(sorted);
     }
 
     public void addSourceAndRefresh(IResourceSource newSource) {
@@ -61,14 +68,30 @@ public class SourceManager {
     }
 
     public void initialize(Level level) {
-        for (IResourceSource source : sources) {
-            try {
-                source.initialize(level);
-                ComplexityAnalyzer.LOGGER.debug("Initialized resource source: {}", source.getName());
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
-            }
-        }
+        ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources in parallel...", sources.size());
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failCount = new AtomicInteger(0);
+
+        List<IResourceSource> sourceSnapshot = new ArrayList<>(sources);
+
+        List<CompletableFuture<Void>> futures = sourceSnapshot.stream()
+                .map(source -> CompletableFuture.runAsync(() -> {
+                    try {
+                        source.initialize(level);
+                        successCount.incrementAndGet();
+                        ComplexityAnalyzer.LOGGER.debug("Initialized resource source: {}", source.getName());
+                    } catch (Exception e) {
+                        failCount.incrementAndGet();
+                        ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
+                    }
+                }, ThreadPoolManager.getInstance().getComputePool()))
+                .toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed",
+                successCount.get(), failCount.get());
     }
 
     public double getBaseFactor(Item item) {
@@ -108,39 +131,24 @@ public class SourceManager {
             if (hasNonBaseRecipe) {
                 boolean unusable = Double.isInfinite(data.getBaseFactor()) ||
                         data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
-                if (unusable) {
-                    return Optional.empty();
-                }
+                if (unusable) return Optional.empty();
             }
         }
 
         return candidate;
     }
 
-    private static boolean isVanillaRecipeType(String recipeType) {
-        return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
-                recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
-                recipeType.equals("minecraft:blasting") || recipeType.equals("blasting") ||
-                recipeType.equals("minecraft:smoking") || recipeType.equals("smoking") ||
-                recipeType.equals("minecraft:campfire_cooking") || recipeType.equals("campfire_cooking") ||
-                recipeType.equals("minecraft:stonecutting") || recipeType.equals("stonecutting") ||
-                recipeType.equals("minecraft:smithing") || recipeType.equals("smithing");
-    }
-
     public List<BaseResourceData> findAllSources(Item item) {
-        List<BaseResourceData> results = new ArrayList<>();
-
-        for (IResourceSource source : sources) {
-            if (source.canProvide(item)) {
-                if (source instanceof IMultiSourceProvider multiSource) {
-                    results.addAll(multiSource.findAllSources(item));
-                } else {
-                    source.analyze(item).ifPresent(results::add);
-                }
-            }
-        }
-
-        return results;
+        return sources.parallelStream()
+                .filter(source -> source.canProvide(item))
+                .flatMap(source -> {
+                    if (source instanceof IMultiSourceProvider multiSource) {
+                        return multiSource.findAllSources(item).stream();
+                    } else {
+                        return source.analyze(item).stream();
+                    }
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public void clearCache() {

@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -47,9 +47,7 @@ public class SourcePathAnalyzer {
                         .map(BaseResourceData::getSourceType)
                         .orElse(BaseResourceData.ResourceSourceType.UNKNOWN);
 
-                if (type != BaseResourceData.ResourceSourceType.UNKNOWN) {
-                    itemsWithBasePath.add(item);
-                }
+                if (type != BaseResourceData.ResourceSourceType.UNKNOWN) itemsWithBasePath.add(item);
             }
         }
 
@@ -58,9 +56,7 @@ public class SourcePathAnalyzer {
             lastSize = itemsWithBasePath.size();
             for (RecipeNode recipe : graph.getAllRecipes()) {
                 Item result = recipe.getResultItem();
-                if (itemsWithBasePath.contains(result)) {
-                    continue;
-                }
+                if (itemsWithBasePath.contains(result)) continue;
 
                 boolean allIngredientsHaveBasePath = true;
                 for (IngredientSlot slot : recipe.getIngredients()) {
@@ -70,9 +66,7 @@ public class SourcePathAnalyzer {
                     }
                 }
 
-                if (allIngredientsHaveBasePath) {
-                    itemsWithBasePath.add(result);
-                }
+                if (allIngredientsHaveBasePath) itemsWithBasePath.add(result);
             }
         } while (itemsWithBasePath.size() > lastSize);
 

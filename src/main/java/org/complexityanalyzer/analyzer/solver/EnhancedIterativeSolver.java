@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -29,10 +29,13 @@ import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.*;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class EnhancedIterativeSolver {
 
@@ -44,39 +47,42 @@ public class EnhancedIterativeSolver {
     private final SourceManager sourceManager;
     private final MachineRegistry machineRegistry;
     private final DependencyGraph dependencies;
-    private final ComplexityCache cache;
+    private final SolverCache cache;
     private final Map<Item, Double> itemComplexities;
     private final Map<Fluid, Double> fluidComplexities;
     private final Map<Item, RecipeNode> optimalRecipes;
     private final ChemicalComplexityManager chemicalManager;
-    private final ThreadLocal<Set<net.minecraft.world.level.material.Fluid>> fluidCalculationStack =
-            ThreadLocal.withInitial(HashSet::new);
+    private final int parallelism;
 
-    private int totalIterations = 0;
-    private int recipeCostCalculations = 0;
-    private int cacheHits = 0;
+    private final ThreadLocal<Set<Fluid>> fluidCalculationStack = ThreadLocal.withInitial(HashSet::new);
+
+    private final AtomicInteger totalIterations = new AtomicInteger(0);
+    private final AtomicInteger recipeCostCalculations = new AtomicInteger(0);
+    private final AtomicInteger cacheHits = new AtomicInteger(0);
 
     public EnhancedIterativeSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
         this.graph = graph;
         this.sourceManager = sourceManager;
         this.machineRegistry = machineRegistry;
         this.dependencies = new DependencyGraph();
-        this.cache = new ComplexityCache();
+        this.cache = new SolverCache();
         this.itemComplexities = new ConcurrentHashMap<>();
         this.fluidComplexities = new ConcurrentHashMap<>();
         this.optimalRecipes = new ConcurrentHashMap<>();
         this.chemicalManager = new ChemicalComplexityManager();
+        this.parallelism = ThreadPoolManager.getInstance().getParallelism();
     }
 
     public SolverResult solve() {
-        ComplexityAnalyzer.LOGGER.info("🚀 Starting Enhanced Iterative Solver...");
+        ComplexityAnalyzer.LOGGER.info("🚀 Starting Enhanced Iterative Solver with {} threads...", parallelism);
         long startTime = System.currentTimeMillis();
 
-        Map<String, Integer> recipeTypes = new HashMap<>();
-        for (RecipeNode recipe : graph.getAllRecipes()) {
+        Map<String, Integer> recipeTypes = new ConcurrentHashMap<>();
+
+        graph.getAllRecipes().parallelStream().forEach(recipe -> {
             String type = recipe.getRecipeType().toString();
-            recipeTypes.put(type, recipeTypes.getOrDefault(type, 0) + 1);
-        }
+            recipeTypes.merge(type, 1, Integer::sum);
+        });
 
         ComplexityAnalyzer.LOGGER.debug("🔍 Recipe types in graph ({} total):", graph.getAllRecipes().size());
         recipeTypes.entrySet().stream()
@@ -86,23 +92,22 @@ public class EnhancedIterativeSolver {
 
         initialize();
 
-        ComplexityAnalyzer.LOGGER.info("📦 Phase 1: Calculating item complexities...");
-        int itemIterations = solveItems();
+        ComplexityAnalyzer.LOGGER.info("📦 Phase 1: Calculating item complexities (parallel)...");
+        int itemIterations = solveItemsParallel();
         logPhaseResults("ITEMS", itemIterations, itemComplexities.size());
         cache.clear();
 
-        ComplexityAnalyzer.LOGGER.info("💧 Phase 2: Calculating fluid complexities...");
-        int fluidIterations = solveFluids();
+        ComplexityAnalyzer.LOGGER.info("💧 Phase 2: Calculating fluid complexities (parallel)...");
+        int fluidIterations = solveFluidsParallel();
         logPhaseResults("FLUIDS", fluidIterations, fluidComplexities.size());
         cache.clear();
 
-        ComplexityAnalyzer.LOGGER.info("🧪 Phase 3: Calculating chemical complexities...");
-        int chemIterations = solveChemicals();
+        ComplexityAnalyzer.LOGGER.info("🧪 Phase 3: Calculating chemical complexities (parallel)...");
+        int chemIterations = solveChemicalsParallel();
         logPhaseResults("CHEMICALS", chemIterations, chemicalManager.size());
 
-        for (ResourceLocation chemId : chemicalManager.getAllChemicals()) {
+        chemicalManager.getAllChemicals().parallelStream().forEach(chemId -> {
             Fluid fluid = BuiltInRegistries.FLUID.get(chemId);
-
             if (fluid != net.minecraft.world.level.material.Fluids.EMPTY) {
                 double chemComplexity = chemicalManager.getComplexity(chemId);
                 double fluidComplexity = fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY);
@@ -113,51 +118,75 @@ public class EnhancedIterativeSolver {
                     }
                 }
             }
-        }
-
+        });
 
         cache.clear();
 
-        ComplexityAnalyzer.LOGGER.info("🔄 Refinement: Final convergence pass...");
-        int refinementIterations = refinementPass();
-        logPhaseResults("REFINEMENT", refinementIterations, itemComplexities.size() + fluidComplexities.size() + chemicalManager.size());
+        ComplexityAnalyzer.LOGGER.info("🔄 Refinement: Final convergence pass (parallel)...");
+        int refinementIterations = refinementPassParallel();
+        logPhaseResults("REFINEMENT", refinementIterations,
+                itemComplexities.size() + fluidComplexities.size() + chemicalManager.size());
 
         int reclassified = graph.reclassifyRecipesBasedOnComplexity(itemComplexities);
         if (reclassified > 0) {
             ComplexityAnalyzer.LOGGER.info("🔄 Reclassified {} recipes, running final pass...", reclassified);
             cache.clear();
-            totalIterations += refinementPass();
+            totalIterations.addAndGet(refinementPassParallel());
         }
+
+        cleanupThreadLocals();
 
         long totalTime = System.currentTimeMillis() - startTime;
         logFinalStatistics(totalTime);
 
-        return new SolverResult(new HashMap<>(itemComplexities), new HashMap<>(optimalRecipes), totalIterations, totalTime, true);
+        return new SolverResult(new HashMap<>(itemComplexities), new HashMap<>(optimalRecipes),
+                totalIterations.get(), totalTime, true);
+    }
+
+    private void cleanupThreadLocals() {
+        try {
+            ForkJoinPool pool = ThreadPoolManager.getInstance().getForkJoinPool();
+            List<CompletableFuture<Void>> cleanups = new ArrayList<>();
+            for (int i = 0; i < parallelism; i++) {
+                cleanups.add(CompletableFuture.runAsync(() -> {
+                    Set<Fluid> set = fluidCalculationStack.get();
+                    set.clear();
+                    fluidCalculationStack.remove();
+                }, pool));
+            }
+            try {
+                CompletableFuture.allOf(cleanups.toArray(new CompletableFuture[0]))
+                        .get(5, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("ThreadLocal cleanup warning: {}", e.getMessage());
+        }
     }
 
     private void initialize() {
         ComplexityAnalyzer.LOGGER.info("🔧 Initializing solver...");
         dependencies.build(graph, sourceManager);
 
-        for (Item item : graph.getCorpus()) {
+        graph.getCorpus().parallelStream().forEach(item -> {
             Optional<BaseResourceData> dataOpt = sourceManager.analyze(item);
-            itemComplexities.put(item, dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty()
+            double complexity = dataOpt.isPresent() && dataOpt.get().getSourceItems().isEmpty()
                     ? dataOpt.get().getBaseFactor()
-                    : Double.POSITIVE_INFINITY);
-        }
+                    : Double.POSITIVE_INFINITY;
+            itemComplexities.put(item, complexity);
+        });
 
-        for (Fluid fluid : graph.getAllUsedFluids()) {
+        graph.getAllUsedFluids().parallelStream().forEach(fluid -> {
             String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
-
             if (fluidName.equals("minecraft:water") || fluidName.equals("minecraft:lava")) {
                 fluidComplexities.put(fluid, 1.0);
             } else {
                 fluidComplexities.put(fluid, Double.POSITIVE_INFINITY);
             }
-        }
+        });
 
-        int chemicalsRegistered = 0;
-        int chemicalRecipesCreated = 0;
+        AtomicInteger chemicalsRegistered = new AtomicInteger(0);
+        AtomicInteger chemicalRecipesCreated = new AtomicInteger(0);
 
         for (RecipeNode recipe : graph.getAllRecipes()) {
             Map<Item, Double> itemInputs = new HashMap<>();
@@ -177,9 +206,8 @@ public class EnhancedIterativeSolver {
             for (AdaptiveRecipeConverter.ChemicalOutput output : chemOutputs) {
                 if (!chemicalManager.getAllChemicals().contains(output.id())) {
                     chemicalManager.registerChemical(output.id(), Double.POSITIVE_INFINITY);
-                    chemicalsRegistered++;
+                    chemicalsRegistered.incrementAndGet();
                 }
-
 
                 Map<ResourceLocation, Double> chemInputs = new HashMap<>();
 
@@ -230,39 +258,31 @@ public class EnhancedIterativeSolver {
                         );
 
                 chemicalManager.addProducingRecipe(output.id(), chemRecipe);
-                chemicalRecipesCreated++;
+                chemicalRecipesCreated.incrementAndGet();
             }
         }
 
         ComplexityAnalyzer.LOGGER.info("✅ Initialization complete: {} items, {} fluids, {} chemicals ({} recipes)",
-                itemComplexities.size(), fluidComplexities.size(), chemicalsRegistered, chemicalRecipesCreated);
+                itemComplexities.size(), fluidComplexities.size(), chemicalsRegistered.get(), chemicalRecipesCreated.get());
     }
 
-    private int solveChemicals() {
-        Set<ResourceLocation> toUpdate = new HashSet<>();
-
-        for (ResourceLocation chemId : chemicalManager.getAllChemicals()) {
-            if (Double.isInfinite(chemicalManager.getComplexity(chemId))) {
-                toUpdate.add(chemId);
-            }
-        }
+    private int solveChemicalsParallel() {
+        List<ResourceLocation> toUpdate = chemicalManager.getAllChemicals().stream()
+                .filter(chemId -> Double.isInfinite(chemicalManager.getComplexity(chemId)))
+                .toList();
 
         if (toUpdate.isEmpty()) return 0;
 
         int iterations = 0;
-        boolean changed;
+        AtomicBoolean changed = new AtomicBoolean(true);
 
-        while (iterations < MAX_ITERATIONS / 2) {
+        while (iterations < MAX_ITERATIONS / 2 && changed.get()) {
             iterations++;
-            changed = false;
+            changed.set(false);
 
-            for (ResourceLocation chemId : toUpdate) {
-                if (updateChemicalComplexity(chemId)) {
-                    changed = true;
-                }
-            }
-
-            if (!changed) break;
+            toUpdate.parallelStream().forEach(chemId -> {
+                if (updateChemicalComplexity(chemId)) changed.set(true);
+            });
         }
 
         return iterations;
@@ -279,45 +299,56 @@ public class EnhancedIterativeSolver {
         return false;
     }
 
-    private int solveItems() {
-        PriorityQueue<Item> updateQueue = new PriorityQueue<>(Comparator.comparingDouble(itemComplexities::get));
-        Set<Item> inQueue = new HashSet<>(graph.getCorpus());
-        updateQueue.addAll(inQueue);
+    private int solveItemsParallel() {
+        List<Item> allItems = new ArrayList<>(graph.getCorpus());
+        ConcurrentLinkedQueue<Item> updateQueue = new ConcurrentLinkedQueue<>(allItems);
+        Set<Item> needsUpdate = ConcurrentHashMap.newKeySet();
+        needsUpdate.addAll(allItems);
+
         int iterations = 0;
-        while (!updateQueue.isEmpty() && iterations < MAX_ITERATIONS) {
+        AtomicBoolean changed = new AtomicBoolean(true);
+
+        while (!updateQueue.isEmpty() && iterations < MAX_ITERATIONS && changed.get()) {
             iterations++;
+            changed.set(false);
+
+            List<Item> batch = new ArrayList<>();
+            Item item;
             int batchSize = Math.min(500, updateQueue.size());
-            List<Item> batch = new ArrayList<>(batchSize);
-            for (int i = 0; i < batchSize && !updateQueue.isEmpty(); i++) {
-                Item item = updateQueue.poll();
-                inQueue.remove(item);
+            for (int i = 0; i < batchSize && (item = updateQueue.poll()) != null; i++) {
+                needsUpdate.remove(item);
                 batch.add(item);
             }
-            boolean changed = false;
-            for (Item item : batch) {
-                if (updateItemComplexity(item)) {
-                    changed = true;
-                    for (Item dependent : dependencies.getItemDependents(item)) {
-                        if (inQueue.add(dependent)) {
-                            updateQueue.offer(dependent);
+
+            Set<Item> dependentsToAdd = ConcurrentHashMap.newKeySet();
+
+            batch.parallelStream().forEach(batchItem -> {
+                if (updateItemComplexity(batchItem)) {
+                    changed.set(true);
+                    for (Item dependent : dependencies.getItemDependents(batchItem)) {
+                        if (needsUpdate.add(dependent)) {
+                            dependentsToAdd.add(dependent);
                         }
                     }
                 }
-            }
-            if (!changed && updateQueue.isEmpty()) break;
+            });
+
+            updateQueue.addAll(dependentsToAdd);
         }
+
         return iterations;
     }
 
     private boolean updateItemComplexity(Item item) {
-        double oldComplexity = itemComplexities.get(item);
+        double oldComplexity = itemComplexities.getOrDefault(item, Double.POSITIVE_INFINITY);
         double sourceCost = calculateSourceCost(item);
         ComplexityResult craftResult = calculateCraftingCost(item);
-        double newComplexity = Math.min(sourceCost, craftResult.complexity);
+        double newComplexity = Math.min(sourceCost, craftResult.complexity());
+
         if (hasSignificantChange(oldComplexity, newComplexity)) {
             itemComplexities.put(item, newComplexity);
-            if (craftResult.recipe() != null && !Double.isInfinite(craftResult.complexity)
-                    && craftResult.complexity + EPSILON < sourceCost) {
+            if (craftResult.recipe() != null && !Double.isInfinite(craftResult.complexity())
+                    && craftResult.complexity() + EPSILON < sourceCost) {
                 optimalRecipes.put(item, craftResult.recipe());
             } else {
                 optimalRecipes.remove(item);
@@ -328,7 +359,7 @@ public class EnhancedIterativeSolver {
         return false;
     }
 
-    private int solveFluids() {
+    private int solveFluidsParallel() {
         List<Fluid> toUpdate = fluidComplexities.entrySet().stream()
                 .filter(e -> Double.isInfinite(e.getValue()))
                 .map(Map.Entry::getKey)
@@ -340,17 +371,19 @@ public class EnhancedIterativeSolver {
         }
 
         int iterations = 0;
-        boolean changed;
-        while (iterations < MAX_ITERATIONS / 2) {
+        AtomicBoolean changed = new AtomicBoolean(true);
+
+        while (iterations < MAX_ITERATIONS / 2 && changed.get()) {
             iterations++;
-            changed = false;
-            for (Fluid fluid : toUpdate) {
+            changed.set(false);
+
+            toUpdate.parallelStream().forEach(fluid -> {
                 if (updateFluidComplexity(fluid)) {
-                    changed = true;
+                    changed.set(true);
                 }
-            }
-            if (!changed) break;
+            });
         }
+
         return iterations;
     }
 
@@ -368,13 +401,13 @@ public class EnhancedIterativeSolver {
             return false;
         }
 
-        double oldComplexity = fluidComplexities.get(fluid);
+        double oldComplexity = fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY);
         double newComplexity = calculateFluidComplexity(fluid);
 
         if (hasSignificantChange(oldComplexity, newComplexity)) {
             fluidComplexities.put(fluid, newComplexity);
             cache.invalidateFluid(fluid);
-            for (Item user : graph.getItemsUsingFluid(fluid)) updateItemComplexity(user);
+            graph.getItemsUsingFluid(fluid).parallelStream().forEach(this::updateItemComplexity);
             return true;
         }
         return false;
@@ -382,7 +415,7 @@ public class EnhancedIterativeSolver {
 
     private double calculateFluidComplexity(Fluid fluid) {
         if (isProtectedFluid(fluid)) {
-            return 1.00;
+            return 1.0;
         }
 
         Set<Fluid> stack = fluidCalculationStack.get();
@@ -399,7 +432,6 @@ public class EnhancedIterativeSolver {
             if (producers.isEmpty()) {
                 return Double.POSITIVE_INFINITY;
             }
-
 
             double minCost = Double.POSITIVE_INFINITY;
             boolean foundFinite = false;
@@ -458,23 +490,38 @@ public class EnhancedIterativeSolver {
         }
     }
 
-    private int refinementPass() {
+    private int refinementPassParallel() {
         int iterations = 0;
-        boolean changed = true;
-        while (changed && iterations < 100) {
+        AtomicBoolean changed = new AtomicBoolean(true);
+
+        List<Item> items = new ArrayList<>(graph.getCorpus());
+        List<Fluid> fluids = new ArrayList<>(graph.getAllUsedFluids());
+        List<ResourceLocation> chemicals = new ArrayList<>(chemicalManager.getAllChemicals());
+
+        while (changed.get() && iterations < 100) {
             iterations++;
-            changed = false;
-            for (Item item : graph.getCorpus()) if (updateItemComplexity(item)) changed = true;
-            for (Fluid fluid : graph.getAllUsedFluids()) if (updateFluidComplexity(fluid)) changed = true;
-            for (ResourceLocation chemId : chemicalManager.getAllChemicals())
-                if (updateChemicalComplexity(chemId)) changed = true;
+            changed.set(false);
+
+            items.parallelStream().forEach(item -> {
+                if (updateItemComplexity(item)) changed.set(true);
+            });
+
+            fluids.parallelStream().forEach(fluid -> {
+                if (updateFluidComplexity(fluid)) changed.set(true);
+            });
+
+            chemicals.parallelStream().forEach(chemId -> {
+                if (updateChemicalComplexity(chemId)) changed.set(true);
+            });
         }
+
         return iterations;
     }
 
     private double calculateSourceCost(Item item) {
         List<BaseResourceData> allSources = sourceManager.findAllSources(item);
         if (allSources.isEmpty()) return Double.POSITIVE_INFINITY;
+
         double bestCost = Double.POSITIVE_INFINITY;
         for (BaseResourceData data : allSources) {
             if (data.getSourceItems().isEmpty()) {
@@ -499,8 +546,10 @@ public class EnhancedIterativeSolver {
     private ComplexityResult calculateCraftingCost(Item item) {
         List<RecipeNode> recipes = graph.getRecipes(item);
         if (recipes.isEmpty()) return new ComplexityResult(Double.POSITIVE_INFINITY, null);
+
         double minCost = Double.POSITIVE_INFINITY;
         RecipeNode bestRecipe = null;
+
         for (RecipeNode recipe : recipes) {
             double cost = calculateRecipeCost(recipe, false);
             if (cost < minCost) {
@@ -512,14 +561,16 @@ public class EnhancedIterativeSolver {
     }
 
     private double calculateRecipeCost(RecipeNode recipe, boolean allowInfiniteMachines) {
-        recipeCostCalculations++;
+        recipeCostCalculations.incrementAndGet();
+
         if (!allowInfiniteMachines) {
             RecipeCostCache cached = cache.getRecipeCost(recipe);
             if (cached != null && cached.isValid(itemComplexities, fluidComplexities)) {
-                cacheHits++;
+                cacheHits.incrementAndGet();
                 return cached.cost;
             }
         }
+
         double totalCost = 0.0;
         Map<Item, Double> usedItems = new HashMap<>();
         Map<Fluid, Double> usedFluids = new HashMap<>();
@@ -559,7 +610,6 @@ public class EnhancedIterativeSolver {
             if (bestFluid != null) usedFluids.put(bestFluid, slotCost);
         }
 
-
         if (machineRegistry != null) {
             Optional<Item> machineOpt = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
             if (machineOpt.isPresent()) {
@@ -569,8 +619,11 @@ public class EnhancedIterativeSolver {
                 if (isZeroCostMachine(recipe.getRecipeType())) {
                     machineComplexity = 0.0;
                 } else if (Double.isInfinite(machineComplexity)) {
-                    if (allowInfiniteMachines) machineComplexity = ComplexityConfig.getMachineBaseComplexity();
-                    else return Double.POSITIVE_INFINITY;
+                    if (allowInfiniteMachines) {
+                        machineComplexity = ComplexityConfig.getMachineBaseComplexity();
+                    } else {
+                        return Double.POSITIVE_INFINITY;
+                    }
                 }
 
                 if (machineComplexity > 0.0) {
@@ -580,26 +633,25 @@ public class EnhancedIterativeSolver {
         }
 
         double multiplier = recipe.getRecipeMultiplier();
-
         int resultCount = recipe.getResultCount();
 
         if (resultCount <= 0 || Double.isInfinite(multiplier)) return Double.POSITIVE_INFINITY;
 
         double finalCost = (totalCost * multiplier) / resultCount;
 
-        if (!allowInfiniteMachines) cache.putRecipeCost(recipe, new RecipeCostCache(finalCost, usedItems, usedFluids));
+        if (!allowInfiniteMachines) {
+            cache.putRecipeCost(recipe, new RecipeCostCache(finalCost, usedItems, usedFluids));
+        }
 
         return finalCost;
     }
 
     private boolean isZeroCostMachine(RecipeType<?> recipeType) {
-
         if (recipeType == null) {
             return false;
         }
 
         ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType);
-
         if (typeId == null) {
             return false;
         }
@@ -609,11 +661,16 @@ public class EnhancedIterativeSolver {
     }
 
     private <T> double getMinComplexity(List<T> variants, Map<T, Double> complexities) {
-        return variants.stream().mapToDouble(v -> complexities.getOrDefault(v, Double.POSITIVE_INFINITY)).min().orElse(Double.POSITIVE_INFINITY);
+        return variants.stream()
+                .mapToDouble(v -> complexities.getOrDefault(v, Double.POSITIVE_INFINITY))
+                .min()
+                .orElse(Double.POSITIVE_INFINITY);
     }
 
     private <T> T getBestVariant(List<T> variants, Map<T, Double> complexities) {
-        return variants.stream().min(Comparator.comparingDouble(v -> complexities.getOrDefault(v, Double.POSITIVE_INFINITY))).orElse(null);
+        return variants.stream()
+                .min(Comparator.comparingDouble(v -> complexities.getOrDefault(v, Double.POSITIVE_INFINITY)))
+                .orElse(null);
     }
 
     private boolean hasSignificantChange(double oldValue, double newValue) {
@@ -625,7 +682,7 @@ public class EnhancedIterativeSolver {
 
     private void logPhaseResults(String phase, int iterations, int elementsProcessed) {
         ComplexityAnalyzer.LOGGER.info("  ✅ {} complete: {} iterations, {} elements", phase, iterations, elementsProcessed);
-        totalIterations += iterations;
+        totalIterations.addAndGet(iterations);
     }
 
     private void logFinalStatistics(long totalTime) {
@@ -634,43 +691,47 @@ public class EnhancedIterativeSolver {
         long finiteChemicals = chemicalManager.getAllChemicals().stream()
                 .filter(id -> !Double.isInfinite(chemicalManager.getComplexity(id))).count();
 
+        int totalIter = totalIterations.get();
+        int recipeCosts = recipeCostCalculations.get();
+        int hits = cacheHits.get();
+
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS");
+        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS (parallelism: {})", parallelism);
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
         ComplexityAnalyzer.LOGGER.info("⏱️  Time: {}ms", totalTime);
-        ComplexityAnalyzer.LOGGER.info("🔄 Total iterations: {}", totalIterations);
+        ComplexityAnalyzer.LOGGER.info("🔄 Total iterations: {}", totalIter);
         ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, itemComplexities.size());
         ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} infinite", infiniteFluids, fluidComplexities.size());
         ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChemicals, chemicalManager.size());
 
-        if (recipeCostCalculations > 0) {
+        if (recipeCosts > 0) {
             ComplexityAnalyzer.LOGGER.info("💾 Cache: {} calculations, {} hits ({}%), {} invalidations",
-                    recipeCostCalculations, cacheHits,
-                    String.format("%.1f", 100.0 * cacheHits / recipeCostCalculations),
+                    recipeCosts, hits,
+                    String.format("%.1f", 100.0 * hits / recipeCosts),
                     cache.getInvalidationCount());
         }
     }
 
-
     private static class DependencyGraph {
-        private final Map<Item, Set<Item>> itemDependents = new HashMap<>();
+        private final Map<Item, Set<Item>> itemDependents = new ConcurrentHashMap<>();
 
         void build(RecipeGraph graph, SourceManager sourceManager) {
-            for (RecipeNode recipe : graph.getAllRecipes()) {
+            graph.getAllRecipes().parallelStream().forEach(recipe -> {
                 Item result = recipe.getResultItem();
                 for (IngredientSlot slot : recipe.getIngredients()) {
                     for (Item ingredient : slot.getVariants()) {
-                        itemDependents.computeIfAbsent(ingredient, k -> new HashSet<>()).add(result);
+                        itemDependents.computeIfAbsent(ingredient, k -> ConcurrentHashMap.newKeySet()).add(result);
                     }
                 }
-            }
-            for (Item item : graph.getCorpus()) {
+            });
+
+            graph.getCorpus().parallelStream().forEach(item -> {
                 for (BaseResourceData source : sourceManager.findAllSources(item)) {
                     for (Item sourceItem : source.getSourceItems().keySet()) {
-                        itemDependents.computeIfAbsent(sourceItem, k -> new HashSet<>()).add(item);
+                        itemDependents.computeIfAbsent(sourceItem, k -> ConcurrentHashMap.newKeySet()).add(item);
                     }
                 }
-            }
+            });
         }
 
         Set<Item> getItemDependents(Item item) {
@@ -678,9 +739,9 @@ public class EnhancedIterativeSolver {
         }
     }
 
-    private static class ComplexityCache {
+    private static class SolverCache {
         private final Map<RecipeNode, RecipeCostCache> recipeCosts = new ConcurrentHashMap<>();
-        private int invalidationCount = 0;
+        private final AtomicInteger invalidationCount = new AtomicInteger(0);
 
         RecipeCostCache getRecipeCost(RecipeNode recipe) {
             return recipeCosts.get(recipe);
@@ -691,15 +752,25 @@ public class EnhancedIterativeSolver {
         }
 
         void invalidateItem(Item item) {
-            int removed = recipeCosts.size();
-            recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnItem(item) || e.getKey().getIngredients().stream().anyMatch(s -> s.getVariants().contains(item)));
-            invalidationCount += removed - recipeCosts.size();
+            AtomicInteger removedCount = new AtomicInteger(0);
+            recipeCosts.entrySet().removeIf(e -> {
+                boolean shouldRemove = e.getValue().dependsOnItem(item) ||
+                        e.getKey().getIngredients().stream().anyMatch(s -> s.getVariants().contains(item));
+                if (shouldRemove) removedCount.incrementAndGet();
+                return shouldRemove;
+            });
+            invalidationCount.addAndGet(removedCount.get());
         }
 
         void invalidateFluid(Fluid fluid) {
-            int removed = recipeCosts.size();
-            recipeCosts.entrySet().removeIf(e -> e.getValue().dependsOnFluid(fluid) || e.getKey().getFluidIngredients().stream().anyMatch(s -> s.fluidVariants().contains(fluid)));
-            invalidationCount += removed - recipeCosts.size();
+            AtomicInteger removedCount = new AtomicInteger(0);
+            recipeCosts.entrySet().removeIf(e -> {
+                boolean shouldRemove = e.getValue().dependsOnFluid(fluid) ||
+                        e.getKey().getFluidIngredients().stream().anyMatch(s -> s.fluidVariants().contains(fluid));
+                if (shouldRemove) removedCount.incrementAndGet();
+                return shouldRemove;
+            });
+            invalidationCount.addAndGet(removedCount.get());
         }
 
         void clear() {
@@ -707,7 +778,7 @@ public class EnhancedIterativeSolver {
         }
 
         int getInvalidationCount() {
-            return invalidationCount;
+            return invalidationCount.get();
         }
     }
 
@@ -729,8 +800,9 @@ public class EnhancedIterativeSolver {
         private <T> boolean isValidMap(Map<T, Double> cached, Map<T, Double> current) {
             for (Map.Entry<T, Double> entry : cached.entrySet()) {
                 Double currentValue = current.get(entry.getKey());
-                if (currentValue == null || Math.abs(currentValue - entry.getValue()) > CONVERGENCE_THRESHOLD)
+                if (currentValue == null || Math.abs(currentValue - entry.getValue()) > CONVERGENCE_THRESHOLD) {
                     return false;
+                }
             }
             return true;
         }

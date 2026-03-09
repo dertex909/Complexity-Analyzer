@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -40,6 +40,7 @@ import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,7 +49,7 @@ public class WorldScanner {
 
     private final MinecraftServer server;
     private final Random random = new Random();
-    private volatile boolean shutdownRequested = false;
+    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
 
     private static final List<BlockPos> SEARCH_ORIGINS = List.of(
             BlockPos.ZERO, new BlockPos(5000, 64, 5000), new BlockPos(-5000, 64, 5000),
@@ -66,6 +67,7 @@ public class WorldScanner {
             ResourceKey<Biome> biomeKey,
             boolean isRelocation
     ) {
+        if (shutdownRequested.get()) return Optional.empty();
         return findBiomeLocationInternal(dimension, biomeKey, isRelocation);
     }
 
@@ -74,6 +76,8 @@ public class WorldScanner {
             ResourceKey<Biome> biomeKey,
             boolean isRelocation
     ) {
+        if (shutdownRequested.get()) return Optional.empty();
+
         ServerLevel level = server.getLevel(dimension);
         if (level == null) {
             ComplexityAnalyzer.LOGGER.error("Cannot find biome location, level {} is not loaded.", dimension.location());
@@ -88,11 +92,8 @@ public class WorldScanner {
         List<BlockPos> originsToTry = isRelocation ? generateRandomOrigins() : SEARCH_ORIGINS;
 
         for (BlockPos origin : originsToTry) {
-            if (Thread.currentThread().isInterrupted() || shutdownRequested) {
-                ComplexityAnalyzer.LOGGER.debug(
-                        "Biome search interrupted for {}",
-                        biomeKey.location()
-                );
+            if (shutdownRequested.get() || Thread.currentThread().isInterrupted()) {
+                ComplexityAnalyzer.LOGGER.debug("Biome search interrupted for {}", biomeKey.location());
                 return Optional.empty();
             }
 
@@ -114,7 +115,8 @@ public class WorldScanner {
             ChunkPos pos,
             long timeoutMs
     ) {
-        if (shutdownRequested) return Optional.empty();
+        if (shutdownRequested.get()) return Optional.empty();
+
         ServerLevel level = server.getLevel(dimension);
         if (level == null) return Optional.empty();
 
@@ -122,12 +124,24 @@ public class WorldScanner {
             return Optional.empty();
         }
 
-        if (Thread.currentThread().isInterrupted() || shutdownRequested) return Optional.empty();
+        if (shutdownRequested.get() || Thread.currentThread().isInterrupted()) return Optional.empty();
+
+        if (server.isSameThread()) {
+            try {
+                ChunkAccess chunk = level.getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FULL, true);
+                if (chunk instanceof LevelChunk levelChunk && isBiomePresentInChunk(levelChunk, targetBiomeKey)) {
+                    return Optional.of(createSnapshot(levelChunk));
+                }
+                return Optional.empty();
+            } catch (Exception e) {
+                return Optional.empty();
+            }
+        }
 
         CompletableFuture<Optional<ChunkSnapshot>> result = new CompletableFuture<>();
 
         server.execute(() -> {
-            if (shutdownRequested) {
+            if (shutdownRequested.get()) {
                 result.complete(Optional.empty());
                 return;
             }
@@ -153,7 +167,7 @@ public class WorldScanner {
     public void processChunk(ResourceKey<Level> dimension, ResourceKey<Biome> targetBiomeKey, ChunkPos pos,
                              BiConsumer<Optional<ChunkSnapshot>, Boolean> onComplete) {
 
-        if (shutdownRequested) {
+        if (shutdownRequested.get()) {
             onComplete.accept(Optional.empty(), false);
             return;
         }
@@ -169,18 +183,23 @@ public class WorldScanner {
             return;
         }
 
+        if (shutdownRequested.get()) {
+            onComplete.accept(Optional.empty(), false);
+            return;
+        }
+
         ServerChunkCache chunkCache = level.getChunkSource();
 
         chunkCache.getChunkFuture(pos.x, pos.z, ChunkStatus.BIOMES, true)
                 .thenCompose(either -> {
-                    if (shutdownRequested) return CompletableFuture.completedFuture(null);
+                    if (shutdownRequested.get()) return CompletableFuture.completedFuture(null);
                     ChunkAccess chunk = either.orElse(null);
                     if (chunk == null || !isBiomePresentInChunk(chunk, targetBiomeKey))
                         return CompletableFuture.completedFuture(null);
                     return chunkCache.getChunkFuture(pos.x, pos.z, ChunkStatus.FULL, true);
                 })
                 .thenAcceptAsync(either -> {
-                    if (shutdownRequested || either == null) {
+                    if (shutdownRequested.get() || either == null) {
                         onComplete.accept(Optional.empty(), false);
                         return;
                     }
@@ -193,7 +212,7 @@ public class WorldScanner {
                     }
                 }, server)
                 .exceptionally(throwable -> {
-                    if (!shutdownRequested) {
+                    if (!shutdownRequested.get()) {
                         ComplexityAnalyzer.LOGGER.debug("Chunk processing failed for {}: {}", pos, throwable.getMessage());
                     }
                     onComplete.accept(Optional.empty(), false);
@@ -242,6 +261,6 @@ public class WorldScanner {
     }
 
     public void shutdown() {
-        shutdownRequested = true;
+        shutdownRequested.set(true);
     }
 }

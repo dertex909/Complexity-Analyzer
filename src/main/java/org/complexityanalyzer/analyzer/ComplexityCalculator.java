@@ -1,6 +1,6 @@
 /*
  * Complexity Analyzer
- * Copyright (C) 2025 dertex909
+ * Copyright (C) 2026 dertex909
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -88,28 +88,6 @@ public class ComplexityCalculator {
                 .depth(depth)
                 .totalIngredients(ingredients)
                 .hasRecipe(hasRecipe);
-
-        if (optimalRecipe != null) {
-            builder.optimalRecipe(optimalRecipe);
-
-            if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                String itemName = BuiltInRegistries.ITEM.getKey(item).toString();
-                String recipeType = optimalRecipe.getRecipeType().toString();
-
-                StringBuilder debugMsg = new StringBuilder(
-                        String.format("Item %s uses recipe type: %s (complexity: %.2f)",
-                                itemName, recipeType, complexity)
-                );
-
-                if (optimalRecipe.hasFluidIngredients()) {
-                    debugMsg.append(String.format(", fluids: %d (total: %d mB)",
-                            optimalRecipe.getFluidIngredientSlotCount(),
-                            optimalRecipe.getTotalFluidAmount()));
-                }
-
-                ComplexityAnalyzer.LOGGER.debug(debugMsg.toString());
-            }
-        }
 
         if (optimalRecipe != null) {
             builder.optimalRecipe(optimalRecipe);

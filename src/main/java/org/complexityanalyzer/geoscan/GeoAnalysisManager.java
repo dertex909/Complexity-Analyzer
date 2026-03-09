@@ -567,7 +567,12 @@ public class GeoAnalysisManager {
                 currentTask = null;
             }
             isProcessingChunk.set(false);
-        }, server);
+        }, server).exceptionally(ex -> {
+            ComplexityAnalyzer.LOGGER.error("Error in startNextTask for biome search", ex);
+            currentTask = null;
+            isProcessingChunk.set(false);
+            return null;
+        });
 
         return true;
     }
@@ -782,7 +787,11 @@ public class GeoAnalysisManager {
                 finishCurrentTask();
             }
             isProcessingChunk.set(false);
-        }, server);
+        }, server).exceptionally(ex -> {
+            ComplexityAnalyzer.LOGGER.error("Error during relocation", ex);
+            isProcessingChunk.set(false);
+            return null;
+        });
     }
 
     private boolean isServerUnderLoad() {

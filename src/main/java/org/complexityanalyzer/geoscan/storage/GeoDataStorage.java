@@ -18,9 +18,7 @@
 
 package org.complexityanalyzer.geoscan.storage;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
@@ -35,23 +33,45 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 public class GeoDataStorage {
+    private static class ResourceLocationAdapter implements JsonSerializer<ResourceLocation>, JsonDeserializer<ResourceLocation> {
+        @Override
+        public JsonElement serialize(ResourceLocation src, Type typeOfSrc, JsonSerializationContext context) {
+            return new JsonPrimitive(src.toString());
+        }
 
-    private static final Gson GSON = new GsonBuilder().create();
-    private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
+        @Override
+        public ResourceLocation deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            if (json.isJsonNull()) return null;
+            return ResourceLocation.parse(json.getAsString());
+        }
+    }
+
+    private static final Gson GSON = new GsonBuilder()
+            .registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter())
+            .create();
+
+    private static final Gson PRETTY_GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter())
+            .create();
 
     private final Path dataDir;
     private final Path reconDir;
     private final Path finalDir;
     private final Path metadataFile;
+
+    private final ConcurrentHashMap<Path, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
     public GeoDataStorage(MinecraftServer server) {
         this.dataDir = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(ComplexityAnalyzer.MODID);
@@ -93,6 +113,9 @@ public class GeoDataStorage {
     public void appendReconData(ResourceLocation dimension, ResourceLocation biome, List<ChunkSnapshot> newSnapshots) {
         if (newSnapshots.isEmpty()) return;
         Path file = getReconFilePath(dimension, biome);
+
+        ReentrantLock lock = fileLocks.computeIfAbsent(file, k -> new ReentrantLock());
+        lock.lock();
         try {
             Files.createDirectories(file.getParent());
             try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
@@ -103,6 +126,8 @@ public class GeoDataStorage {
             }
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -130,9 +155,7 @@ public class GeoDataStorage {
                             ComplexityAnalyzer.LOGGER.error("Failed to list biome files in {}", dimPathDir, e);
                         }
 
-                        if (!biomeFiles.isEmpty()) {
-                            allPaths.put(dimensionId, biomeFiles);
-                        }
+                        if (!biomeFiles.isEmpty()) allPaths.put(dimensionId, biomeFiles);
                     });
                 } catch (IOException e) {
                     ComplexityAnalyzer.LOGGER.error("Failed to list dimension paths in {}", dimNamespaceDir, e);

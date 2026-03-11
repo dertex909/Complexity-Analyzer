@@ -58,6 +58,9 @@ public class GeoAnalysisManager {
     private static final int ATOMIC_MAX_RELOCATIONS = 20;
     private static final long LOG_THROTTLE_MS = 5000;
 
+    private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
+    private final AtomicInteger totalChunksFound = new AtomicInteger(0);
+
     private final MinecraftServer server;
     private final GeoDatabase database;
     private final AnalysisEngine analysisEngine;
@@ -201,10 +204,11 @@ public class GeoAnalysisManager {
     }
 
     public String getStatus() {
-        if (isCountdownActive()) return String.format("Scan scheduled in %s mode, starting in %d seconds...",
-                scheduledProfile.name().toLowerCase(), countdownTicks / 20);
+        if (isCountdownActive()) {
+            return String.format("Scan scheduled in %s mode, starting in %d seconds...",
+                    scheduledProfile.name().toLowerCase(), countdownTicks / 20);
+        }
 
-        ScanTask task = currentTask;
         int completed = tasksCompleted.get();
         int total = totalTasks.get();
 
@@ -212,13 +216,22 @@ public class GeoAnalysisManager {
             case IDLE -> "Idle";
             case RECONNAISSANCE -> {
                 if (currentProfile == ScanProfile.ATOMIC) {
-                    yield String.format("Phase 1: ATOMIC scan - %d/%d tasks completed", completed, total);
-                } else if (task == null) {
-                    yield "Phase 1: Reconnaissance (Initializing next task...)";
+                    int chunksFound = totalChunksFound.get();
+                    int chunksNeeded = totalChunksNeeded.get();
+                    yield String.format("Phase 1: ATOMIC scan - %d/%d biomes completed (%d/%d chunks)",
+                            completed, total, chunksFound, chunksNeeded);
                 } else {
-                    yield String.format("Phase 1: Reconnaissance. Task %d/%d: %s (%d/%d)",
-                            completed, total, task.biome().location().getPath(),
-                            pristineSnapshotsForCurrentTask.size(), task.chunksToFind());
+                    ScanTask task = currentTask;
+                    if (task == null) {
+                        yield String.format("Phase 1: Reconnaissance - %d/%d biomes completed (Initializing...)",
+                                completed, total);
+                    } else {
+                        yield String.format("Phase 1: Reconnaissance - %d/%d biomes completed. Current: %s (%d/%d chunks)",
+                                completed, total,
+                                task.biome().location().getPath(),
+                                pristineSnapshotsForCurrentTask.size(),
+                                task.chunksToFind());
+                    }
                 }
             }
             case REFINING -> "Phase 2: Refining all collected data...";
@@ -383,6 +396,10 @@ public class GeoAnalysisManager {
                 });
                 return;
             }
+
+            int totalNeeded = preparedTasks.stream().mapToInt(ScanTask::chunksToFind).sum();
+            totalChunksNeeded.set(totalNeeded);
+            totalChunksFound.set(0);
 
             scanPhase = ScanMetadata.ScanPhase.RECONNAISSANCE;
             database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
@@ -549,6 +566,7 @@ public class GeoAnalysisManager {
 
                             if (isTargetBiome) {
                                 int newCount = foundCount.incrementAndGet();
+                                totalChunksFound.incrementAndGet();
                                 lastFoundAtAttempt.set(attemptCount.get());
 
                                 if (newCount <= targetChunks) {

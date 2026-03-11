@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.geoscan.scan;
 
 import net.minecraft.resources.ResourceLocation;
@@ -7,7 +25,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
-import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.task.*;
 
@@ -25,11 +42,18 @@ public class ScanExecutor {
     private final ChunkBatchProcessor batchProcessor;
     private final ScanNotifier notifier;
 
-    private final Set<Thread> activeWorkers = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
-    private volatile CountDownLatch activeLatch;
-    private volatile ConcurrentHashMap<String, Queue<ChunkSnapshot>> resultBuffers;
+
+    private final AtomicInteger nextWorkerId = new AtomicInteger(0);
+
+    private volatile ScanSession currentSession = null;
+    private volatile Runnable currentOnComplete = null;
+    private final Object sessionLock = new Object();
+
+    private final Set<Thread> permanentWorkers = ConcurrentHashMap.newKeySet();
+    private final int maxWorkers;
+
+    private final ConcurrentHashMap<String, Queue<ChunkSnapshot>> resultBuffers = new ConcurrentHashMap<>();
 
     public ScanExecutor(
             MinecraftServer server,
@@ -43,143 +67,137 @@ public class ScanExecutor {
         this.worldScanner = worldScanner;
         this.batchProcessor = batchProcessor;
         this.notifier = notifier;
+
+        this.maxWorkers = ThreadPoolManager.getInstance().getParallelism();
     }
 
-    public void stop() {
-        ComplexityAnalyzer.LOGGER.info("[SCAN] 🛑 STOP REQUESTED");
-        stopRequested.set(true);
-        worldScanner.requestStop();
-
-        for (Thread worker : activeWorkers) {
-            worker.interrupt();
-        }
-    }
-
-    private boolean shouldStop() {
-        return isShutdown.get()
-                || stopRequested.get()
-                || !server.isRunning()
-                || Thread.currentThread().isInterrupted();
-    }
-
-    private boolean shouldPause() {
-        return server.isPaused() || isShutdown.get();
-    }
-
-    private void waitWhilePaused() {
-        while (server.isPaused() && !shouldStop()) {
-            LockSupport.parkNanos(100_000_000L);
-            if (Thread.currentThread().isInterrupted()) break;
-        }
-    }
-
-    public void execute(ScanSession session, Runnable onComplete) {
-        stopRequested.set(false);
-        worldScanner.clearStopRequest();
-
-        if (!session.isValid() || isShutdown.get()) {
+    public void execute(ScanSession newSession, Runnable onComplete) {
+        if (isShutdown.get()) {
             onComplete.run();
             return;
         }
 
-        long startTime = System.currentTimeMillis();
-        ScanProfile profile = session.getProfile();
-        int totalThreads = ThreadPoolManager.getInstance().getParallelism();
-        int numWorkers = profile.getWorkerCount(totalThreads);
+        synchronized (sessionLock) {
+            if (currentSession != null) currentSession.invalidate();
 
-        notifier.logInfo(String.format("[SCAN] 🚀 %s MODE — using %d/%d threads",
-                profile.name(), numWorkers, totalThreads));
+            currentSession = newSession;
+            currentOnComplete = onComplete;
+            worldScanner.clearStopRequest();
 
-        ConcurrentHashMap<String, Queue<ChunkSnapshot>> buffers = new ConcurrentHashMap<>();
-        this.resultBuffers = buffers;
+            batchProcessor.setProfile(newSession.getProfile());
 
-        CountDownLatch latch = new CountDownLatch(numWorkers);
-        this.activeLatch = latch;
+            flushAllBuffers(resultBuffers);
+            resultBuffers.clear();
 
-        AtomicInteger activeCount = new AtomicInteger(numWorkers);
-        ExecutorService pool = ThreadPoolManager.getInstance().getComputePool();
+            notifier.logInfo(String.format("[SCAN] 🚀 %s MODE — using %d/%d threads, max %d parallel chunks",
+                    newSession.getProfile().name(),
+                    newSession.getProfile().getWorkerCount(maxWorkers),
+                    maxWorkers,
+                    newSession.getProfile().maxParallelChunks));
 
-        for (int i = 0; i < numWorkers; i++) {
-            final int workerId = i;
-            try {
-                CompletableFuture.runAsync(
-                        () -> runWorker(workerId, session, buffers, latch, activeCount),
-                        pool
-                );
-            } catch (RejectedExecutionException e) {
-                ComplexityAnalyzer.LOGGER.warn("[SCAN] Worker {} rejected", workerId);
-                latch.countDown();
-                activeCount.decrementAndGet();
-            }
+            ensureWorkersRunning(newSession.getProfile().getWorkerCount(maxWorkers));
         }
-
-        CompletableFuture.runAsync(() -> {
-            awaitCompletion(latch);
-            flushAllBuffers(buffers);
-
-            long duration = System.currentTimeMillis() - startTime;
-            notifier.logInfo(String.format("[SCAN] 🎉 Complete in %.2f seconds! (%s mode, %d workers)",
-                    duration / 1000.0, profile.name(), numWorkers));
-
-            try {
-                server.execute(onComplete);
-            } catch (RejectedExecutionException e) {
-                ComplexityAnalyzer.LOGGER.warn("[SCAN] Server rejected completion callback");
-            }
-        }, pool);
     }
 
-    private void runWorker(
-            int workerId,
-            ScanSession session,
-            ConcurrentHashMap<String, Queue<ChunkSnapshot>> buffers,
-            CountDownLatch latch,
-            AtomicInteger activeCount
-    ) {
+    public void stop() {
+        synchronized (sessionLock) {
+            if (currentSession != null) {
+                ComplexityAnalyzer.LOGGER.info("[SCAN] 🛑 STOP REQUESTED");
+                currentSession.invalidate();
+                worldScanner.requestStop();
+
+                flushAllBuffers(resultBuffers);
+
+                currentSession = null;
+                currentOnComplete = null;
+            }
+        }
+    }
+
+    private void ensureWorkersRunning(int neededWorkers) {
+        ExecutorService pool = ThreadPoolManager.getInstance().getComputePool();
+
+        while (permanentWorkers.size() < neededWorkers) {
+            final int workerId = nextWorkerId.getAndIncrement();
+
+            try {
+                CompletableFuture.runAsync(() -> workerLoop(workerId), pool);
+            } catch (RejectedExecutionException e) {
+                ComplexityAnalyzer.LOGGER.warn("[SCAN] Worker {} rejected", workerId);
+                break;
+            }
+        }
+    }
+
+    private void workerLoop(int workerId) {
         Thread currentThread = Thread.currentThread();
-        activeWorkers.add(currentThread);
+        permanentWorkers.add(currentThread);
         String workerName = "Worker-" + workerId;
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} started on {}", workerName, currentThread.getName());
+        ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} started (permanent)", workerName);
 
         try {
-            while (session.isValid() && !shouldStop()) {
-                if (shouldPause()) {
-                    waitWhilePaused();
-                    if (shouldStop()) break;
+            while (!isShutdown.get() && !Thread.currentThread().isInterrupted()) {
+                ScanSession session = currentSession;
+
+                if (session == null || !session.isValid()) {
+                    LockSupport.parkNanos(100_000_000L);
+                    continue;
                 }
 
                 ScanTask task = session.pollTask();
-                if (task == null) break;
 
-                processTask(workerName, task, session, buffers);
+                if (task == null) {
+                    if (session.getTasksCompleted() >= session.getTotalTasks()) completeSession(session);
+                    LockSupport.parkNanos(100_000_000L);
+                    continue;
+                }
+
+                processTask(workerName, task, session);
             }
         } catch (Exception e) {
-            if (session.isValid() && !shouldStop()) {
-                ComplexityAnalyzer.LOGGER.error("[SCAN] {} crashed", workerName, e);
-            }
+            if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error("[SCAN] {} crashed", workerName, e);
         } finally {
-            activeWorkers.remove(currentThread);
-            int remaining = activeCount.decrementAndGet();
-            ComplexityAnalyzer.LOGGER.info("[SCAN] {} finished. {} workers active", workerName, remaining);
-            latch.countDown();
+            permanentWorkers.remove(currentThread);
+            ComplexityAnalyzer.LOGGER.info("[SCAN] {} stopped", workerName);
+        }
+    }
+
+    private void completeSession(ScanSession session) {
+        synchronized (sessionLock) {
+            if (currentSession != session) return;
+
+            Runnable callback = currentOnComplete;
+            currentSession = null;
+            currentOnComplete = null;
+
+            flushAllBuffers(resultBuffers);
+
+            notifier.logInfo("[SCAN] 🎉 Session complete!");
+
+            if (callback != null) {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        server.execute(callback);
+                    } catch (Exception e) {
+                        ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete failed", e);
+                    }
+                }, ThreadPoolManager.getInstance().getComputePool());
+            }
         }
     }
 
     private void processTask(
             String workerName,
             ScanTask task,
-            ScanSession session,
-            ConcurrentHashMap<String, Queue<ChunkSnapshot>> buffers
+            ScanSession session
     ) {
-        if (!session.isValid() || shouldStop()) return;
+        if (!session.isValid() || isShutdown.get()) return;
 
         int targetChunks = task.chunksToFind();
-        int taskNum = session.incrementTasksCompleted();
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] {} - task {}/{}: {} (need {} chunks)",
-                workerName, taskNum, session.getTotalTasks(),
-                task.biome().location().getPath(), targetChunks);
+        ComplexityAnalyzer.LOGGER.info("[SCAN] {} - starting: {} (need {} chunks)",
+                workerName, task.biome().location().getPath(), targetChunks);
 
         AtomicInteger foundCount = new AtomicInteger(0);
         AtomicInteger attemptCount = new AtomicInteger(0);
@@ -188,10 +206,10 @@ public class ScanExecutor {
         int maxAttempts = Math.min(ScanConfig.MAX_ATTEMPTS,
                 Math.max(ScanConfig.MIN_ATTEMPTS, targetChunks * ScanConfig.MAX_ATTEMPTS_PER_CHUNK));
 
-        if (shouldStop() || !session.isValid()) return;
+        if (isShutdown.get() || !session.isValid()) return;
 
         Optional<ChunkPos> startPos = findBiome(task, false);
-        if (startPos.isEmpty() || shouldStop() || !session.isValid()) return;
+        if (startPos.isEmpty() || isShutdown.get() || !session.isValid()) return;
 
         SpiralChunkSearcher searcher = new SpiralChunkSearcher();
         searcher.startAt(startPos.get().x, startPos.get().z);
@@ -200,11 +218,11 @@ public class ScanExecutor {
         AtomicInteger lastFoundAt = new AtomicInteger(0);
 
         while (!taskDone.get() && attemptCount.get() < maxAttempts
-                && session.isValid() && !shouldStop()) {
+                && session.isValid() && !isShutdown.get()) {
 
-            if (shouldPause()) {
-                waitWhilePaused();
-                if (shouldStop()) break;
+            if (server.isPaused()) {
+                waitWhilePaused(session);
+                if (isShutdown.get() || !session.isValid()) break;
             }
 
             if (foundCount.get() >= targetChunks) {
@@ -216,10 +234,10 @@ public class ScanExecutor {
             if (attemptsSinceFind > ScanConfig.STUCK_THRESHOLD
                     && relocations < ScanConfig.MAX_RELOCATIONS) {
 
-                if (shouldStop() || !session.isValid()) break;
+                if (isShutdown.get() || !session.isValid()) break;
 
                 Optional<ChunkPos> newStart = findBiome(task, true);
-                if (shouldStop() || !session.isValid()) break;
+                if (isShutdown.get() || !session.isValid()) break;
 
                 if (newStart.isPresent()) {
                     searcher.startAt(newStart.get().x, newStart.get().z);
@@ -231,37 +249,53 @@ public class ScanExecutor {
             List<ChunkPos> batch = collectBatch(searcher, session, attemptCount);
             if (batch.isEmpty()) continue;
 
-            if (shouldStop() || !session.isValid()) break;
+            if (isShutdown.get() || !session.isValid()) break;
 
-            List<ChunkBatchProcessor.ScanResult> results = batchProcessor
-                    .processBatchSync(task.dimension(), batch);
+            try {
+                List<ChunkBatchProcessor.ScanResult> results = batchProcessor
+                        .processBatchAsync(task.dimension(), batch, session)
+                        .get(30, TimeUnit.SECONDS);
 
-            for (ChunkBatchProcessor.ScanResult result : results) {
-                if (taskDone.get() || !session.isValid() || shouldStop()) break;
-
-                processResult(result, task, session, buffers, foundCount, targetChunks,
-                        lastFoundAt, attemptCount, workerName, taskDone);
+                for (ChunkBatchProcessor.ScanResult result : results) {
+                    if (taskDone.get() || !session.isValid() || isShutdown.get()) break;
+                    processResult(result, task, session, foundCount, targetChunks,
+                            lastFoundAt, attemptCount, workerName, taskDone);
+                }
+            } catch (TimeoutException e) {
+                ComplexityAnalyzer.LOGGER.debug("[SCAN] {} - batch timeout, continuing", workerName);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (ExecutionException e) {
+                ComplexityAnalyzer.LOGGER.debug("[SCAN] {} - batch failed: {}", workerName, e.getMessage());
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] {} - finished {}: {} chunks in {} attempts",
-                workerName, task.biome().location().getPath(), foundCount.get(), attemptCount.get());
+        int completed = session.incrementTasksCompleted();
+        ComplexityAnalyzer.LOGGER.info("[SCAN] {} - finished {}: {} chunks in {} attempts ({}/{})",
+                workerName, task.biome().location().getPath(), foundCount.get(), attemptCount.get(),
+                completed, session.getTotalTasks());
+    }
+
+    private void waitWhilePaused(ScanSession session) {
+        while (server.isPaused() && !isShutdown.get() && session.isValid()) {
+            LockSupport.parkNanos(100_000_000L);
+            if (Thread.currentThread().isInterrupted()) break;
+        }
     }
 
     private Optional<ChunkPos> findBiome(ScanTask task, boolean isRelocation) {
-        if (shouldStop()) return Optional.empty();
+        if (isShutdown.get()) return Optional.empty();
         return worldScanner.findBiomeLocation(task.dimension(), task.biome(), isRelocation);
     }
 
     private List<ChunkPos> collectBatch(SpiralChunkSearcher searcher, ScanSession session, AtomicInteger attemptCount) {
         List<ChunkPos> batch = new ArrayList<>(ScanConfig.BATCH_SIZE);
 
-        for (int i = 0; i < ScanConfig.CHUNK_SEARCH_BATCH && batch.size() < ScanConfig.BATCH_SIZE; i++) {
-            if (!session.isValid() || shouldStop()) break;
-
+        while (batch.size() < ScanConfig.BATCH_SIZE) {
+            if (!session.isValid() || isShutdown.get()) break;
             ChunkPos candidate = searcher.next();
             attemptCount.incrementAndGet();
-
             if (session.tryMarkChunk(candidate)) batch.add(candidate);
         }
 
@@ -272,7 +306,6 @@ public class ScanExecutor {
             ChunkBatchProcessor.ScanResult result,
             ScanTask task,
             ScanSession session,
-            ConcurrentHashMap<String, Queue<ChunkSnapshot>> buffers,
             AtomicInteger foundCount,
             int targetChunks,
             AtomicInteger lastFoundAt,
@@ -283,13 +316,20 @@ public class ScanExecutor {
         ChunkSnapshot snapshot = result.snapshot();
         ResourceLocation actualBiome = result.actualBiome();
 
-        if (actualBiome == null || !database.analyzeSnapshotForRecon(snapshot)) return;
+        ComplexityAnalyzer.LOGGER.info("[SCAN] processResult: chunk [{}, {}], biome={}",
+                snapshot.chunkX(), snapshot.chunkZ(), actualBiome);
+
+        if (actualBiome == null || !database.analyzeSnapshotForRecon(snapshot)) {
+            ComplexityAnalyzer.LOGGER.info("[SCAN] processResult: REJECTED (biome={}, analyze={})",
+                    actualBiome, actualBiome != null);
+            return;
+        }
 
         ResourceLocation targetBiome = task.biome().location();
         boolean isTarget = actualBiome.equals(targetBiome);
 
         if (session.consumeChunkNeed(task.dimension().location(), actualBiome)) {
-            saveToBuffer(task.dimension().location(), actualBiome, snapshot, buffers);
+            saveToBuffer(task.dimension().location(), actualBiome, snapshot);
 
             if (isTarget) {
                 lastFoundAt.set(attemptCount.get());
@@ -299,7 +339,7 @@ public class ScanExecutor {
                     taskDone.set(true);
                     ComplexityAnalyzer.LOGGER.info("[SCAN] {} - {} COMPLETE: {}/{} chunks",
                             workerName, targetBiome.getPath(), newCount, targetChunks);
-                } else if (newCount % 10 == 0) { // Логируем каждые 10 чанков
+                } else if (newCount % 10 == 0) {
                     ComplexityAnalyzer.LOGGER.info("[SCAN] {} - {} progress: {}/{} chunks",
                             workerName, targetBiome.getPath(), newCount, targetChunks);
                 }
@@ -318,11 +358,12 @@ public class ScanExecutor {
     private void saveToBuffer(
             ResourceLocation dimension,
             ResourceLocation biome,
-            ChunkSnapshot snapshot,
-            ConcurrentHashMap<String, Queue<ChunkSnapshot>> buffers
+            ChunkSnapshot snapshot
     ) {
+        ComplexityAnalyzer.LOGGER.info("[SCAN] saveToBuffer: [{}, {}] -> {}/{}",
+                snapshot.chunkX(), snapshot.chunkZ(), dimension, biome);
         String key = dimension + "|" + biome;
-        Queue<ChunkSnapshot> buffer = buffers.computeIfAbsent(key, k -> new ConcurrentLinkedQueue<>());
+        Queue<ChunkSnapshot> buffer = resultBuffers.computeIfAbsent(key, k -> new ConcurrentLinkedQueue<>());
         buffer.add(snapshot);
 
         if (buffer.size() >= ScanConfig.BATCH_SAVE_THRESHOLD) flushBuffer(buffer, dimension, biome);
@@ -362,43 +403,29 @@ public class ScanExecutor {
         });
     }
 
-    private void awaitCompletion(CountDownLatch latch) {
-        try {
-            boolean finished = latch.await(ScanConfig.SCAN_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-            if (!finished) {
-                notifier.logWarn("[SCAN] Scan timed out after " + ScanConfig.SCAN_TIMEOUT_MINUTES + " minutes");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            notifier.logWarn("[SCAN] Scan interrupted");
-        }
-    }
-
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("[SCAN] shutdown() called");
         isShutdown.set(true);
-        stopRequested.set(true);
 
-        for (Thread worker : activeWorkers) {
+        synchronized (sessionLock) {
+            if (currentSession != null) {
+                currentSession.invalidate();
+                currentSession = null;
+            }
+            currentOnComplete = null;
+        }
+
+        for (Thread worker : permanentWorkers) {
             worker.interrupt();
         }
-        activeWorkers.clear();
 
-        CountDownLatch latch = activeLatch;
-        if (latch != null) {
-            try {
-                boolean finished = latch.await(ScanConfig.SHUTDOWN_AWAIT_SECONDS, TimeUnit.SECONDS);
-                if (!finished) ComplexityAnalyzer.LOGGER.debug("[SCAN] Workers still running, continuing shutdown");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        int waited = 0;
+        while (!permanentWorkers.isEmpty() && waited < 2000) {
+            LockSupport.parkNanos(100_000_000L);
+            waited += 100;
         }
 
-        ConcurrentHashMap<String, Queue<ChunkSnapshot>> buffers = resultBuffers;
-        if (buffers != null && !buffers.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("[SCAN] Saving {} buffer entries...", buffers.size());
-            flushAllBuffers(buffers);
-        }
+        flushAllBuffers(resultBuffers);
 
         ComplexityAnalyzer.LOGGER.info("[SCAN] shutdown() complete");
     }

@@ -27,8 +27,6 @@ import org.jetbrains.annotations.Nullable;
 public class ScanNotifier {
 
     private final MinecraftServer server;
-    private long lastLogTime = 0;
-    private static final long LOG_INTERVAL_MS = 15_000;
 
     public ScanNotifier(MinecraftServer server) {
         this.server = server;
@@ -82,16 +80,6 @@ public class ScanNotifier {
 
     public void logError(String message, Throwable throwable) {
         ComplexityAnalyzer.LOGGER.error(message, throwable);
-    }
-
-    public void logProgress(boolean shouldLog, String message) {
-        if (!shouldLog) return;
-
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastLogTime > LOG_INTERVAL_MS) {
-            lastLogTime = currentTime;
-            logInfo(message);
-        }
     }
 
     public void notifyScanCountdown(int secondsLeft) {

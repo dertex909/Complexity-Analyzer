@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.geoscan.scan;
 
 import net.minecraft.resources.ResourceKey;
@@ -18,10 +36,6 @@ import org.complexityanalyzer.geoscan.task.WorldScanner;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Координирует подготовку и запуск сканирования.
- * Отвечает за создание сессий и подготовку задач.
- */
 public class ScanCoordinator {
 
     private final MinecraftServer server;
@@ -45,12 +59,7 @@ public class ScanCoordinator {
         this.notifier = notifier;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Создание сессии
-    // ══════════════════════════════════════════════════════════════════════════
-
     public ScanSession createSession(int chunksPerBiome, ScanProfile profile) {
-        // Инвалидируем предыдущую сессию
         invalidateCurrentSession();
 
         long sessionId = sessionIdGenerator.incrementAndGet();
@@ -78,10 +87,6 @@ public class ScanCoordinator {
         return currentSession;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Подготовка задач
-    // ══════════════════════════════════════════════════════════════════════════
-
     public List<ScanTask> prepareTasks(ScanSession session) {
         if (!session.isValid()) return Collections.emptyList();
 
@@ -106,9 +111,7 @@ public class ScanCoordinator {
                 int existingChunks = getExistingChunkCount(dimension.location(), biomeKey.location());
                 int chunksNeeded = chunksPerBiome - existingChunks;
 
-                if (chunksNeeded > 0) {
-                    tasks.add(new ScanTask(dimension, biomeKey, chunksNeeded));
-                }
+                if (chunksNeeded > 0) tasks.add(new ScanTask(dimension, biomeKey, chunksNeeded));
             }
         }
 
@@ -120,8 +123,17 @@ public class ScanCoordinator {
     private Set<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
         Set<ResourceKey<Biome>> biomes = new HashSet<>();
         var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
-        biomeSource.possibleBiomes().forEach(holder ->
-                holder.unwrapKey().ifPresent(biomes::add));
+
+        ComplexityAnalyzer.LOGGER.info("[Prepare] Dimension {} biomeSource: {}",
+                level.dimension().location(), biomeSource.getClass().getSimpleName());
+
+        biomeSource.possibleBiomes().forEach(holder -> holder.unwrapKey().ifPresent(key -> {
+            ComplexityAnalyzer.LOGGER.debug("[Prepare] {} -> {}", level.dimension().location(), key.location());
+            biomes.add(key);
+        }));
+
+        ComplexityAnalyzer.LOGGER.info("[Prepare] {} has {} biomes", level.dimension().location(), biomes.size());
+
         return biomes;
     }
 
@@ -133,14 +145,8 @@ public class ScanCoordinator {
         return Math.max(finalChunks, reconChunks);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Инициализация сессии
-    // ══════════════════════════════════════════════════════════════════════════
-
     public boolean initializeSession(ScanSession session, List<ScanTask> tasks) {
-        if (!session.isValid() || tasks.isEmpty()) {
-            return false;
-        }
+        if (!session.isValid() || tasks.isEmpty()) return false;
 
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
 

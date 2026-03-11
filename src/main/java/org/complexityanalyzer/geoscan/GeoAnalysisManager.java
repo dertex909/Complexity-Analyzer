@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.geoscan;
 
 import net.minecraft.commands.CommandSourceStack;
@@ -26,19 +44,11 @@ public class GeoAnalysisManager {
     private final GeoDatabase database;
     private final AnalysisEngine analysisEngine;
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Подсистемы
-    // ══════════════════════════════════════════════════════════════════════════
-
     private final ChunkBatchProcessor batchProcessor;
     private final ScanNotifier notifier;
     private final ScanCoordinator coordinator;
     private final ScanExecutor scanExecutor;
     private final DataRefiner dataRefiner;
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Состояние
-    // ══════════════════════════════════════════════════════════════════════════
 
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final AtomicBoolean scanStarting = new AtomicBoolean(false);
@@ -47,10 +57,6 @@ public class GeoAnalysisManager {
     private volatile int scheduledChunksPerBiome = 0;
     private volatile String scheduledInitiator = "";
     private volatile ScanProfile scheduledProfile = ScanProfile.QUARTER;
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Конструктор
-    // ══════════════════════════════════════════════════════════════════════════
 
     public GeoAnalysisManager(MinecraftServer server, GeoDatabase database, AnalysisEngine engine) {
         this.server = server;
@@ -70,10 +76,6 @@ public class GeoAnalysisManager {
 
         ComplexityAnalyzer.LOGGER.info("GeoAnalysisManager initialized");
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Публичный API — Запуск сканирования
-    // ══════════════════════════════════════════════════════════════════════════
 
     public void startInitialScanIfNeeded() {
         if (isShutdown.get()) return;
@@ -140,12 +142,16 @@ public class GeoAnalysisManager {
             server.execute(() -> {
                 if (isShutdown.get()) return;
 
-                if (isScanning() || isCountdownActive() || !scanStarting.compareAndSet(false, true)) {
-                    if (!initiatorName.equals("Server")) {
-                        notifier.sendFailure(null, "A scan is already running or starting.");
-                    } else {
-                        notifier.logWarn("Scan requested by server, but another scan is active. Skipping.");
-                    }
+                if (isScanning()) {
+                    ComplexityAnalyzer.LOGGER.info("[GeoAnalysisManager] Stopping current scan to start new one");
+                    scanExecutor.stop();
+                    coordinator.stopScan();
+                }
+
+                if (isCountdownActive()) cancelScheduledScan();
+
+                if (!scanStarting.compareAndSet(false, true)) {
+                    notifier.sendFailure(null, "A scan is already starting.");
                     return;
                 }
 
@@ -168,10 +174,6 @@ public class GeoAnalysisManager {
             scanStarting.set(false);
         }
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Публичный API — Остановка
-    // ══════════════════════════════════════════════════════════════════════════
 
     public void stopScan(CommandSourceStack source) {
         if (isScanning()) {
@@ -201,13 +203,8 @@ public class GeoAnalysisManager {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Публичный API — Статус
-    // ══════════════════════════════════════════════════════════════════════════
-
     public String getStatus() {
         if (scanStarting.get()) return "Starting scan...";
-
 
         if (isCountdownActive()) {
             return String.format("Scan scheduled in %s mode, starting in %d seconds...",
@@ -241,10 +238,6 @@ public class GeoAnalysisManager {
     public boolean isCountdownActive() {
         return countdownTicks.get() > 0;
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Внутренняя логика
-    // ══════════════════════════════════════════════════════════════════════════
 
     private void startScanInternal(int chunksPerBiome, String initiatorName, ScanProfile profile) {
         if (isShutdown.get()) return;
@@ -289,7 +282,6 @@ public class GeoAnalysisManager {
                             return;
                         }
 
-                        // Один исполнитель для всех режимов
                         scanExecutor.execute(session, () -> onReconnaissanceComplete(session));
                     });
                 } catch (RejectedExecutionException e) {
@@ -309,15 +301,10 @@ public class GeoAnalysisManager {
         dataRefiner.refine(session, () -> {
             if (!isShutdown.get()) {
                 coordinator.invalidateCurrentSession();
-
                 analysisEngine.onGeoScanFinished();
             }
         });
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Обработчик тиков (для countdown)
-    // ══════════════════════════════════════════════════════════════════════════
 
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
@@ -332,15 +319,9 @@ public class GeoAnalysisManager {
             int secondsLeft = ticks / 20;
             notifier.notifyScanCountdown(secondsLeft);
 
-            if (secondsLeft == 0) {
-                startScanInternal(scheduledChunksPerBiome, scheduledInitiator, scheduledProfile);
-            }
+            if (secondsLeft == 0) startScanInternal(scheduledChunksPerBiome, scheduledInitiator, scheduledProfile);
         }
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Shutdown
-    // ══════════════════════════════════════════════════════════════════════════
 
     public void shutdown() {
         if (!isShutdown.compareAndSet(false, true)) return;

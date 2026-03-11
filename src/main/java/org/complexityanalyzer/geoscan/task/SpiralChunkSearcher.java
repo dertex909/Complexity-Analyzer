@@ -54,9 +54,7 @@ public class SpiralChunkSearcher {
             dx = -dz;
             dz = oldDx;
 
-            if (dz == 0) {
-                segmentLength++;
-            }
+            if (dz == 0) segmentLength++;
         }
 
         currentX += dx;

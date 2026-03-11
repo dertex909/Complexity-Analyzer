@@ -192,9 +192,7 @@ public class GeoDataStorage {
     public Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
         Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
             BiomeScanData data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
-            if (data != null) {
-                mapper.afterLoad(data);
-            }
+            if (data != null) mapper.afterLoad(data);
             return data;
         });
 
@@ -289,9 +287,7 @@ public class GeoDataStorage {
                             ComplexityAnalyzer.LOGGER.error("Failed to list biome files in {}", dimPathDir, e);
                         }
 
-                        if (!biomeData.isEmpty()) {
-                            allData.put(dimensionId, biomeData);
-                        }
+                        if (!biomeData.isEmpty()) allData.put(dimensionId, biomeData);
                     });
                 } catch (IOException e) {
                     ComplexityAnalyzer.LOGGER.error("Failed to list dimension paths in {}", dimNamespaceDir, e);
@@ -339,9 +335,7 @@ public class GeoDataStorage {
                 lines.forEach(line -> {
                     try {
                         ChunkSnapshot snapshot = GSON.fromJson(line, ChunkSnapshot.class);
-                        if (snapshot != null) {
-                            allCoordinates.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
-                        }
+                        if (snapshot != null) allCoordinates.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
                     } catch (JsonSyntaxException ignored) {
                     }
                 });

@@ -37,10 +37,6 @@ public class BiomeScanData {
         this.scannedChunksSet = new HashSet<>();
     }
 
-    public void addBlock(Block block) {
-        blockCounts.computeIfAbsent(block, k -> new AtomicLong(0)).incrementAndGet();
-    }
-
     public void addBlock(Block block, long count) {
         blockCounts.computeIfAbsent(block, k -> new AtomicLong(0)).addAndGet(count);
     }
@@ -53,18 +49,8 @@ public class BiomeScanData {
         this.scannedChunksSet.add(coord);
     }
 
-    public boolean hasScannedChunk(int chunkX, int chunkZ) {
-        if (this.scannedChunksSet == null) return false;
-        long coord = ChunkCoordinateUtil.pack(chunkX, chunkZ);
-        return this.scannedChunksSet.contains(coord);
-    }
-
     public int getChunksScanned() {
         return scannedChunksSet != null ? scannedChunksSet.size() : 0;
-    }
-
-    public Map<Block, AtomicLong> getBlockCounts() {
-        return Collections.unmodifiableMap(blockCounts);
     }
 
     public long getTotalBlocks() {
@@ -74,19 +60,6 @@ public class BiomeScanData {
     public long getBlockCount(Block block) {
         AtomicLong count = blockCounts.get(block);
         return (count != null) ? count.get() : 0;
-    }
-
-    public void merge(BiomeScanData other) {
-        if (other == null) return;
-
-        other.getBlockCounts().forEach((block, count) -> this.addBlock(block, count.get()));
-
-        if (other.scannedChunksSet != null) {
-            if (this.scannedChunksSet == null) {
-                this.scannedChunksSet = new HashSet<>();
-            }
-            this.scannedChunksSet.addAll(other.scannedChunksSet);
-        }
     }
 
     public Map<Block, AtomicLong> getInternalBlockCounts() {

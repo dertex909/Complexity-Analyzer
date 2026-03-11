@@ -1,8 +1,25 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.geoscan.scan;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
-import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.task.ScanTask;
@@ -59,10 +76,6 @@ public class ScanSession {
         active.set(false);
     }
 
-    public ScanMetadata.ScanPhase getPhase() {
-        return phase;
-    }
-
     public void setPhase(ScanMetadata.ScanPhase phase) {
         this.phase = phase;
     }
@@ -99,6 +112,12 @@ public class ScanSession {
 
     public void setBiomeNeed(ResourceLocation dim, ResourceLocation biome, int needed) {
         remainingNeeds.put(dim.toString() + "|" + biome.toString(), new AtomicInteger(needed));
+    }
+
+    public boolean hasBiomeNeed(ResourceLocation dim, ResourceLocation biome) {
+        String key = dim.toString() + "|" + biome.toString();
+        AtomicInteger remaining = remainingNeeds.get(key);
+        return remaining != null && remaining.get() > 0;
     }
 
     public boolean consumeChunkNeed(ResourceLocation dim, ResourceLocation biome) {

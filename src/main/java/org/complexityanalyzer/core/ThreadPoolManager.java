@@ -1,46 +1,35 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.core;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 public class ThreadPoolManager {
 
     private static final int PARALLELISM = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
+    private static final int QUEUE_CAPACITY = 10000;
+    private static final long SHUTDOWN_TIMEOUT_MS = 500;
 
     private static volatile ThreadPoolManager instance;
     private static final Object LOCK = new Object();
 
     private volatile ExecutorService computePool;
     private volatile ForkJoinPool forkJoinPool;
-    private volatile ScheduledExecutorService scheduledPool;
 
     private final AtomicInteger computeThreadCounter = new AtomicInteger(0);
-    private final AtomicInteger scheduledThreadCounter = new AtomicInteger(0);
-
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final AtomicBoolean isInitializing = new AtomicBoolean(false);
+
+    private volatile Thread shutdownWatchdog;
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Singleton
+    // ══════════════════════════════════════════════════════════════════════════
 
     private ThreadPoolManager() {
         initialize();
@@ -57,6 +46,10 @@ public class ThreadPoolManager {
         return localInstance;
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Инициализация
+    // ══════════════════════════════════════════════════════════════════════════
+
     private void initialize() {
         if (!isInitializing.compareAndSet(false, true)) synchronized (LOCK) {
             if (!isShutdown.get() && computePool != null && !computePool.isShutdown()) return;
@@ -64,13 +57,13 @@ public class ThreadPoolManager {
 
         try {
             synchronized (LOCK) {
-                ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with {} threads", PARALLELISM);
+                ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with {} threads (leaving 1 for server)", PARALLELISM);
 
                 this.computePool = new ThreadPoolExecutor(
                         PARALLELISM,
                         PARALLELISM,
                         60L, TimeUnit.SECONDS,
-                        new LinkedBlockingQueue<>(10000),
+                        new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                         r -> {
                             Thread t = new Thread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
                             t.setDaemon(true);
@@ -92,21 +85,86 @@ public class ThreadPoolManager {
                         true
                 );
 
-                this.scheduledPool = Executors.newScheduledThreadPool(
-                        Math.max(1, PARALLELISM / 2),
-                        r -> {
-                            Thread t = new Thread(r, "Complexity-Scheduled-" + scheduledThreadCounter.incrementAndGet());
-                            t.setDaemon(true);
-                            return t;
-                        }
-                );
-
                 isShutdown.set(false);
+
+                // ← ПЕРЕСОЗДАЁМ watchdog каждый раз заново
+                Thread oldWatchdog = shutdownWatchdog;
+                if (oldWatchdog != null && oldWatchdog.isAlive()) {
+                    oldWatchdog.interrupt();
+                }
+
+                shutdownWatchdog = new Thread(() -> {
+                    while (!isShutdown.get()) {
+                        LockSupport.parkNanos(100_000_000_0L);
+
+                        if (isJvmShuttingDown()) {
+                            ComplexityAnalyzer.LOGGER.info("[Watchdog] JVM shutdown detected — force killing all threads");
+                            forceShutdown();
+                            return;
+                        }
+                    }
+                }, "Complexity-Watchdog");
+
+                shutdownWatchdog.setDaemon(true);
+                shutdownWatchdog.start();
             }
         } finally {
             isInitializing.set(false);
         }
     }
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Watchdog методы
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Проверяет, завершается ли JVM.
+     * Пытается добавить и удалить shutdown hook — если JVM уже завершается,
+     * добавление хука бросит IllegalStateException.
+     */
+    private boolean isJvmShuttingDown() {
+        try {
+            Thread hook = new Thread(() -> {
+            });
+            Runtime.getRuntime().addShutdownHook(hook);
+            Runtime.getRuntime().removeShutdownHook(hook);
+            return false;
+        } catch (IllegalStateException e) {
+            return true;
+        }
+    }
+
+    /**
+     * Принудительно убивает все пулы потоков
+     */
+    private void forceShutdown() {
+        isShutdown.set(true);
+
+        ExecutorService compute = computePool;
+        ForkJoinPool fj = forkJoinPool;
+
+        if (compute != null && !compute.isShutdown()) {
+            List<Runnable> dropped = compute.shutdownNow();
+            if (!dropped.isEmpty()) {
+                ComplexityAnalyzer.LOGGER.debug("[Watchdog] ComputePool: dropped {} pending tasks", dropped.size());
+            }
+        }
+
+        if (fj != null && !fj.isShutdown()) {
+            List<Runnable> dropped = fj.shutdownNow();
+            if (!dropped.isEmpty()) {
+                ComplexityAnalyzer.LOGGER.debug("[Watchdog] ForkJoinPool: dropped {} pending tasks", dropped.size());
+            }
+        }
+
+        computePool = null;
+        forkJoinPool = null;
+
+        ComplexityAnalyzer.LOGGER.info("[Watchdog] All pools force-killed");
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Публичный API
+    // ══════════════════════════════════════════════════════════════════════════
 
     public ExecutorService getComputePool() {
         ensureNotShutdown();
@@ -138,21 +196,6 @@ public class ThreadPoolManager {
         return pool;
     }
 
-    public ScheduledExecutorService getScheduledPool() {
-        ensureNotShutdown();
-        ScheduledExecutorService pool = scheduledPool;
-        if (pool == null || pool.isShutdown()) {
-            synchronized (LOCK) {
-                pool = scheduledPool;
-                if (pool == null || pool.isShutdown()) {
-                    initialize();
-                    pool = scheduledPool;
-                }
-            }
-        }
-        return pool;
-    }
-
     public int getParallelism() {
         return PARALLELISM;
     }
@@ -162,10 +205,9 @@ public class ThreadPoolManager {
         getComputePool().submit(task);
     }
 
-    public <T> Future<T> submit(Callable<T> task) {
-        if (task == null) return null;
-        return getComputePool().submit(task);
-    }
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Shutdown
+    // ══════════════════════════════════════════════════════════════════════════
 
     private void ensureNotShutdown() {
         if (isShutdown.get()) {
@@ -178,44 +220,93 @@ public class ThreadPoolManager {
         }
     }
 
-    public boolean isShutdownState() {
-        return isShutdown.get();
-    }
-
     public void shutdown() {
         if (!isShutdown.compareAndSet(false, true)) return;
 
         synchronized (LOCK) {
             ComplexityAnalyzer.LOGGER.info("Shutting down ThreadPoolManager...");
 
-            shutdownPool(computePool, "ComputePool");
-            shutdownPool(forkJoinPool, "ForkJoinPool");
-            shutdownPool(scheduledPool, "ScheduledPool");
+            Thread watchdog = shutdownWatchdog;
+            if (watchdog != null) watchdog.interrupt();
+
+            int computeCancelled = shutdownPoolImmediate(computePool, "ComputePool");
+            int forkJoinCancelled = shutdownPoolImmediate(forkJoinPool, "ForkJoinPool");
+
+            int totalCancelled = computeCancelled + forkJoinCancelled;
+            if (totalCancelled > 0) {
+                ComplexityAnalyzer.LOGGER.info("Cancelled {} pending tasks across all pools.", totalCancelled);
+            }
+
+            awaitTerminationBriefly();
+            logRemainingThreads();
 
             computePool = null;
             forkJoinPool = null;
-            scheduledPool = null;
 
             ComplexityAnalyzer.LOGGER.info("ThreadPoolManager shutdown complete.");
         }
     }
 
-    private void shutdownPool(ExecutorService pool, String name) {
-        if (pool == null || pool.isShutdown()) return;
+    private int shutdownPoolImmediate(ExecutorService pool, String name) {
+        if (pool == null || pool.isShutdown()) return 0;
+        List<Runnable> cancelled = pool.shutdownNow();
+        int count = cancelled.size();
+        if (count > 0) ComplexityAnalyzer.LOGGER.debug("{}: cancelled {} pending tasks", name, count);
+        return count;
+    }
 
-        pool.shutdown();
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private void awaitTerminationBriefly() {
+        long deadline = System.currentTimeMillis() + SHUTDOWN_TIMEOUT_MS;
+
         try {
-            if (!pool.awaitTermination(2, TimeUnit.SECONDS)) {
-                ComplexityAnalyzer.LOGGER.warn("{} did not terminate gracefully, forcing...", name);
-                pool.shutdownNow();
-                if (!pool.awaitTermination(2, TimeUnit.SECONDS))
-                    ComplexityAnalyzer.LOGGER.error("{} did not terminate!", name);
+            ExecutorService compute = computePool;
+            ForkJoinPool fj = forkJoinPool;
+
+            if (compute != null) {
+                long remaining = deadline - System.currentTimeMillis();
+                if (remaining > 0) compute.awaitTermination(remaining, TimeUnit.MILLISECONDS);
+            }
+
+            if (fj != null) {
+                long remaining = deadline - System.currentTimeMillis();
+                if (remaining > 0) fj.awaitTermination(remaining, TimeUnit.MILLISECONDS);
             }
         } catch (InterruptedException e) {
-            pool.shutdownNow();
             Thread.currentThread().interrupt();
+            ComplexityAnalyzer.LOGGER.debug("Interrupted while waiting for pool termination");
         }
     }
+
+    private void logRemainingThreads() {
+        int remaining = 0;
+
+        ExecutorService compute = computePool;
+        if (compute instanceof ThreadPoolExecutor tpe && !tpe.isTerminated()) {
+            int active = tpe.getActiveCount();
+            if (active > 0) {
+                remaining += active;
+                ComplexityAnalyzer.LOGGER.debug("ComputePool: {} threads still active (will die with JVM)", active);
+            }
+        }
+
+        ForkJoinPool fj = forkJoinPool;
+        if (fj != null && !fj.isTerminated()) {
+            int active = fj.getActiveThreadCount();
+            if (active > 0) {
+                remaining += active;
+                ComplexityAnalyzer.LOGGER.debug("ForkJoinPool: {} threads still active (will die with JVM)", active);
+            }
+        }
+
+        if (remaining > 0) {
+            ComplexityAnalyzer.LOGGER.info("{} daemon threads still running — they will terminate when JVM exits.", remaining);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Статистика
+    // ══════════════════════════════════════════════════════════════════════════
 
     public PoolStats getStats() {
         ExecutorService compute = computePool;

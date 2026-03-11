@@ -30,18 +30,19 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.geoscan.GeoAnalysisManager;
+import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 
 public class ChunkCommands {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("geoscan")
                 .then(Commands.literal("start")
-                        .executes(ctx -> executeScan(ctx, 32, "lite", false))
+                        .executes(ctx -> executeScan(ctx, 32, "quarter", false))
                         .then(Commands.argument("chunks", IntegerArgumentType.integer(1))
-                                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), "lite", false))
+                                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), "quarter", false))
                                 .then(Commands.argument("profile", StringArgumentType.word())
-                                        .suggests((c, b) -> SharedSuggestionProvider.suggest(new String[]{"lite", "fast", "extreme", "atomic"}, b))
+                                        .suggests((c, b) -> SharedSuggestionProvider.suggest(new String[]{"quarter", "half", "most", "full"}, b))
                                         .executes(ctx -> executeScan(ctx,
                                                 IntegerArgumentType.getInteger(ctx, "chunks"),
                                                 StringArgumentType.getString(ctx, "profile"),
@@ -66,10 +67,12 @@ public class ChunkCommands {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
 
-        final GeoAnalysisManager.ScanProfile profile;
+        final ScanProfile profile;
         try {
-            profile = GeoAnalysisManager.ScanProfile.valueOf(profileName.toUpperCase());
+            profile = ScanProfile.valueOf(profileName.toUpperCase());
         } catch (IllegalArgumentException e) {
+            int totalThreads = ThreadPoolManager.getInstance().getParallelism();
+
             output.sendFailure(source,
                     Component.literal("❌ Unknown scan profile: ")
                             .append(Component.literal(profileName)
@@ -80,24 +83,24 @@ public class ChunkCommands {
                             .withStyle(ChatFormatting.GRAY));
 
             output.sendInfo(source,
-                    Component.literal("  🟢 lite")
+                    Component.literal("  🟢 quarter")
                             .withStyle(ChatFormatting.GREEN)
-                            .append(Component.literal(" - Low impact, slower")
+                            .append(Component.literal(String.format(" - 25%% CPU, %d threads", ScanProfile.QUARTER.getWorkerCount(totalThreads)))
                                     .withStyle(ChatFormatting.DARK_GRAY)));
             output.sendInfo(source,
-                    Component.literal("  🟡 fast")
+                    Component.literal("  🟡 half")
                             .withStyle(ChatFormatting.YELLOW)
-                            .append(Component.literal(" - Balanced performance")
+                            .append(Component.literal(String.format(" - 50%% CPU, %d threads", ScanProfile.HALF.getWorkerCount(totalThreads)))
                                     .withStyle(ChatFormatting.DARK_GRAY)));
             output.sendInfo(source,
-                    Component.literal("  🟠 extreme")
+                    Component.literal("  🟠 most")
                             .withStyle(ChatFormatting.GOLD)
-                            .append(Component.literal(" - High performance, may cause lag")
+                            .append(Component.literal(String.format(" - 75%% CPU, %d threads", ScanProfile.MOST.getWorkerCount(totalThreads)))
                                     .withStyle(ChatFormatting.DARK_GRAY)));
             output.sendInfo(source,
-                    Component.literal("  🔴 atomic")
+                    Component.literal("  🔴 full")
                             .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
-                            .append(Component.literal(" - MAXIMUM SPEED, EXPECT HEAVY LAG!")
+                            .append(Component.literal(String.format(" - 100%% CPU, %d threads", ScanProfile.FULL.getWorkerCount(totalThreads)))
                                     .withStyle(ChatFormatting.DARK_RED)));
 
             return 0;
@@ -158,15 +161,14 @@ public class ChunkCommands {
                                         .withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
                         output.sendInfo(source, Component.literal(""));
 
-                        if (profile == GeoAnalysisManager.ScanProfile.EXTREME ||
-                                profile == GeoAnalysisManager.ScanProfile.ATOMIC) {
+                        if (profile == ScanProfile.FULL || profile == ScanProfile.MOST) {
                             output.broadcastSever(
                                     Component.literal("⚠⚠⚠ GEO-SCAN FORCE STARTED ⚠⚠⚠"));
                             output.broadcastSever(
-                                    Component.literal("EXPECT SEVERE LAG! Profile: " + profileName.toUpperCase()));
+                                    Component.literal("EXPECT SERVER LAG! Profile: " + profileName.toUpperCase()));
                         } else {
                             output.broadcastWarning(
-                                    Component.literal("⚡ Geo-scan started. Possible lag!"));
+                                    Component.literal("⚡ Geo-scan started."));
                         }
 
                         output.sendToAdmins(
@@ -209,8 +211,7 @@ public class ChunkCommands {
                                         .withStyle(ChatFormatting.DARK_GRAY));
                         output.sendInfo(source, Component.literal(""));
 
-                        if (profile == GeoAnalysisManager.ScanProfile.EXTREME ||
-                                profile == GeoAnalysisManager.ScanProfile.ATOMIC) {
+                        if (profile == ScanProfile.FULL || profile == ScanProfile.MOST) {
                             output.broadcastWarning(
                                     Component.literal("⚠ Geo-scan scheduled! Lag expected in 10 seconds..."));
                         } else {
@@ -291,62 +292,34 @@ public class ChunkCommands {
 
                     output.sendInfo(source, Component.literal(""));
 
-                    if (status.contains("IDLE") || status.contains("idle")) {
-                        output.sendInfo(source,
-                                Component.literal("  Status: ")
-                                        .withStyle(ChatFormatting.GRAY)
-                                        .append(Component.literal("💤 IDLE")
-                                                .withStyle(ChatFormatting.GREEN)));
-                        output.sendInfo(source,
-                                Component.literal("  No active scans")
-                                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    ChatFormatting statusColor;
+                    String statusIcon;
 
-                    } else if (status.contains("SCANNING") || status.contains("scanning")) {
-                        output.sendInfo(source,
-                                Component.literal("  Status: ")
-                                        .withStyle(ChatFormatting.GRAY)
-                                        .append(Component.literal("⚙ SCANNING")
-                                                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
-
-                        try {
-                            if (status.contains("%")) {
-                                String percent = status.substring(status.indexOf("(") + 1, status.indexOf("%"));
-                                int percentValue = Integer.parseInt(percent.trim());
-                                String progressBar = getProgressBar(percentValue);
-
-                                output.sendInfo(source,
-                                        Component.literal("  Progress: ")
-                                                .withStyle(ChatFormatting.GRAY)
-                                                .append(Component.literal(percent + "%")
-                                                        .withStyle(ChatFormatting.AQUA)));
-
-                                output.sendInfo(source,
-                                        Component.literal("  " + progressBar)
-                                                .withStyle(ChatFormatting.DARK_GRAY));
-                            }
-                        } catch (Exception e) {
-                            output.sendInfo(source,
-                                    Component.literal("  " + status)
-                                            .withStyle(ChatFormatting.WHITE));
-                        }
-
-                    } else if (status.contains("COUNTDOWN")) {
-                        output.sendInfo(source,
-                                Component.literal("  Status: ")
-                                        .withStyle(ChatFormatting.GRAY)
-                                        .append(Component.literal("⏳ COUNTDOWN")
-                                                .withStyle(ChatFormatting.GOLD)));
-                        output.sendInfo(source,
-                                Component.literal("  Starting soon...")
-                                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
-
+                    if (status.toLowerCase().contains("idle") || status.toLowerCase().contains("complete")) {
+                        statusColor = ChatFormatting.GREEN;
+                        statusIcon = "💤";
+                    } else if (status.toLowerCase().contains("full") || status.toLowerCase().contains("most")) {
+                        statusColor = ChatFormatting.RED;
+                        statusIcon = "🔥";
+                    } else if (status.toLowerCase().contains("recon") || status.toLowerCase().contains("scan")) {
+                        statusColor = ChatFormatting.YELLOW;
+                        statusIcon = "⚙";
+                    } else if (status.toLowerCase().contains("refin") || status.toLowerCase().contains("phase 2")) {
+                        statusColor = ChatFormatting.AQUA;
+                        statusIcon = "✨";
+                    } else if (status.toLowerCase().contains("scheduled") || status.toLowerCase().contains("countdown")) {
+                        statusColor = ChatFormatting.GOLD;
+                        statusIcon = "⏳";
                     } else {
-                        output.sendInfo(source,
-                                Component.literal("  Status: ")
-                                        .withStyle(ChatFormatting.GRAY)
-                                        .append(Component.literal(status)
-                                                .withStyle(ChatFormatting.WHITE)));
+                        statusColor = ChatFormatting.WHITE;
+                        statusIcon = "📊";
                     }
+
+                    output.sendInfo(source,
+                            Component.literal("  " + statusIcon + " ")
+                                    .withStyle(statusColor)
+                                    .append(Component.literal(status)
+                                            .withStyle(ChatFormatting.WHITE)));
 
                     output.sendInfo(source,
                             Component.literal("═══════════════════════════════")
@@ -408,21 +381,25 @@ public class ChunkCommands {
         return 1;
     }
 
-    private static String getProfileIcon(GeoAnalysisManager.ScanProfile profile) {
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Утилиты
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private static String getProfileIcon(ScanProfile profile) {
         return switch (profile) {
-            case LITE -> "🟢";
-            case FAST -> "🟡";
-            case EXTREME -> "🟠";
-            case ATOMIC -> "🔴";
+            case QUARTER -> "🟢";
+            case HALF -> "🟡";
+            case MOST -> "🟠";
+            case FULL -> "🔴";
         };
     }
 
-    private static ChatFormatting getProfileColor(GeoAnalysisManager.ScanProfile profile) {
+    private static ChatFormatting getProfileColor(ScanProfile profile) {
         return switch (profile) {
-            case LITE -> ChatFormatting.GREEN;
-            case FAST -> ChatFormatting.YELLOW;
-            case EXTREME -> ChatFormatting.GOLD;
-            case ATOMIC -> ChatFormatting.RED;
+            case QUARTER -> ChatFormatting.GREEN;
+            case HALF -> ChatFormatting.YELLOW;
+            case MOST -> ChatFormatting.GOLD;
+            case FULL -> ChatFormatting.RED;
         };
     }
 

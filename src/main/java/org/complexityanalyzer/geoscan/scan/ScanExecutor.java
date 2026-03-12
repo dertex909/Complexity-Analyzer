@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.geoscan.scan;
 
 import net.minecraft.resources.ResourceLocation;
@@ -43,14 +25,15 @@ public class ScanExecutor {
     private final ScanNotifier notifier;
 
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-
     private final AtomicInteger nextWorkerId = new AtomicInteger(0);
+    private final AtomicInteger activeWorkerCount = new AtomicInteger(0);
 
     private volatile ScanSession currentSession = null;
     private volatile Runnable currentOnComplete = null;
     private final Object sessionLock = new Object();
+    private final AtomicBoolean completing = new AtomicBoolean(false);
 
-    private final Set<Thread> permanentWorkers = ConcurrentHashMap.newKeySet();
+    private final Set<Thread> workerThreads = ConcurrentHashMap.newKeySet();
     private final int maxWorkers;
 
     private final ConcurrentHashMap<String, Queue<ChunkSnapshot>> resultBuffers = new ConcurrentHashMap<>();
@@ -82,6 +65,7 @@ public class ScanExecutor {
 
             currentSession = newSession;
             currentOnComplete = onComplete;
+            completing.set(false);
             worldScanner.clearStopRequest();
 
             batchProcessor.setProfile(newSession.getProfile());
@@ -89,13 +73,15 @@ public class ScanExecutor {
             flushAllBuffers(resultBuffers);
             resultBuffers.clear();
 
+            int targetWorkers = newSession.getProfile().getWorkerCount(maxWorkers);
+
             notifier.logInfo(String.format("[SCAN] 🚀 %s MODE — using %d/%d threads, max %d parallel chunks",
                     newSession.getProfile().name(),
-                    newSession.getProfile().getWorkerCount(maxWorkers),
+                    targetWorkers,
                     maxWorkers,
                     newSession.getProfile().maxParallelChunks));
 
-            ensureWorkersRunning(newSession.getProfile().getWorkerCount(maxWorkers));
+            ensureWorkersRunning(targetWorkers);
         }
     }
 
@@ -115,57 +101,80 @@ public class ScanExecutor {
     }
 
     private void ensureWorkersRunning(int neededWorkers) {
+        if (isShutdown.get()) return;
+
         ExecutorService pool = ThreadPoolManager.getInstance().getComputePool();
 
-        while (permanentWorkers.size() < neededWorkers) {
-            final int workerId = nextWorkerId.getAndIncrement();
+        int current = activeWorkerCount.get();
+        while (current < neededWorkers) {
+            if (activeWorkerCount.compareAndSet(current, current + 1)) {
+                if (isShutdown.get()) {
+                    activeWorkerCount.decrementAndGet();
+                    break;
+                }
 
-            try {
-                CompletableFuture.runAsync(() -> workerLoop(workerId), pool);
-            } catch (RejectedExecutionException e) {
-                ComplexityAnalyzer.LOGGER.warn("[SCAN] Worker {} rejected", workerId);
-                break;
+                final int workerId = nextWorkerId.getAndIncrement();
+                try {
+                    CompletableFuture.runAsync(() -> workerLoop(workerId), pool);
+                } catch (RejectedExecutionException e) {
+                    activeWorkerCount.decrementAndGet();
+                    ComplexityAnalyzer.LOGGER.warn("[SCAN] Worker {} rejected", workerId);
+                    break;
+                }
             }
+            current = activeWorkerCount.get();
         }
     }
 
     private void workerLoop(int workerId) {
         Thread currentThread = Thread.currentThread();
-        permanentWorkers.add(currentThread);
+        workerThreads.add(currentThread);
         String workerName = "Worker-" + workerId;
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} started (permanent)", workerName);
+        ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} started", workerName);
 
         try {
             while (!isShutdown.get() && !Thread.currentThread().isInterrupted()) {
                 ScanSession session = currentSession;
 
                 if (session == null || !session.isValid()) {
+                    if (isShutdown.get()) break;
                     LockSupport.parkNanos(100_000_000L);
+                    if (Thread.currentThread().isInterrupted()) break;
                     continue;
                 }
 
                 ScanTask task = session.pollTask();
 
                 if (task == null) {
-                    if (session.getTasksCompleted() >= session.getTotalTasks()) completeSession(session);
+                    if (session.getTasksCompleted() >= session.getTotalTasks()) tryCompleteSession(session);
+                    if (isShutdown.get()) break;
                     LockSupport.parkNanos(100_000_000L);
+                    if (Thread.currentThread().isInterrupted()) break;
                     continue;
                 }
 
                 processTask(workerName, task, session);
             }
         } catch (Exception e) {
-            if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error("[SCAN] {} crashed", workerName, e);
+            if (!isShutdown.get()) {
+                ComplexityAnalyzer.LOGGER.error("[SCAN] {} crashed", workerName, e);
+            }
         } finally {
-            permanentWorkers.remove(currentThread);
+            workerThreads.remove(currentThread);
+            activeWorkerCount.decrementAndGet();
             ComplexityAnalyzer.LOGGER.info("[SCAN] {} stopped", workerName);
         }
     }
 
-    private void completeSession(ScanSession session) {
+    private void tryCompleteSession(ScanSession session) {
+        if (!completing.compareAndSet(false, true)) return;
+
         synchronized (sessionLock) {
-            if (currentSession != session) return;
+            if (currentSession != session) {
+                completing.set(false);
+                return;
+            }
 
             Runnable callback = currentOnComplete;
             currentSession = null;
@@ -175,14 +184,14 @@ public class ScanExecutor {
 
             notifier.logInfo("[SCAN] 🎉 Session complete!");
 
-            if (callback != null) {
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        server.execute(callback);
-                    } catch (Exception e) {
-                        ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete failed", e);
-                    }
-                }, ThreadPoolManager.getInstance().getComputePool());
+            if (callback != null && !isShutdown.get()) {
+                try {
+                    server.execute(callback);
+                } catch (RejectedExecutionException e) {
+                    ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete rejected — server shutting down");
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete failed", e);
+                }
             }
         }
     }
@@ -267,7 +276,9 @@ public class ScanExecutor {
                 Thread.currentThread().interrupt();
                 break;
             } catch (ExecutionException e) {
-                ComplexityAnalyzer.LOGGER.debug("[SCAN] {} - batch failed: {}", workerName, e.getMessage());
+                if (!isShutdown.get()) {
+                    ComplexityAnalyzer.LOGGER.debug("[SCAN] {} - batch failed: {}", workerName, e.getMessage());
+                }
             }
         }
 
@@ -377,9 +388,13 @@ public class ScanExecutor {
         }
 
         if (!batch.isEmpty()) {
-            CompletableFuture.runAsync(() -> database.appendReconData(dim, biome, batch),
-                    ThreadPoolManager.getInstance().getComputePool()
-            );
+            if (isShutdown.get()) {
+                database.appendReconData(dim, biome, batch);
+            } else {
+                CompletableFuture.runAsync(() -> database.appendReconData(dim, biome, batch),
+                        ThreadPoolManager.getInstance().getComputePool()
+                );
+            }
         }
     }
 
@@ -415,14 +430,20 @@ public class ScanExecutor {
             currentOnComplete = null;
         }
 
-        for (Thread worker : permanentWorkers) {
+        for (Thread worker : workerThreads) {
+            LockSupport.unpark(worker);
             worker.interrupt();
         }
 
         int waited = 0;
-        while (!permanentWorkers.isEmpty() && waited < 2000) {
-            LockSupport.parkNanos(100_000_000L);
-            waited += 100;
+        while (!workerThreads.isEmpty() && waited < 2000) {
+            LockSupport.parkNanos(50_000_000L);
+            waited += 50;
+        }
+
+        if (!workerThreads.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.warn("[SCAN] {} workers still alive after 2s timeout",
+                    workerThreads.size());
         }
 
         flushAllBuffers(resultBuffers);

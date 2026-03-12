@@ -130,7 +130,8 @@ public class ThreadPoolManager {
 
     private boolean isJvmShuttingDown() {
         try {
-            Thread hook = new Thread(() -> {});
+            Thread hook = new Thread(() -> {
+            });
             Runtime.getRuntime().addShutdownHook(hook);
             Runtime.getRuntime().removeShutdownHook(hook);
             return false;

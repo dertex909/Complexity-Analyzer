@@ -381,10 +381,6 @@ public class ChunkCommands {
         return 1;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Утилиты
-    // ══════════════════════════════════════════════════════════════════════════
-
     private static String getProfileIcon(ScanProfile profile) {
         return switch (profile) {
             case QUARTER -> "🟢";

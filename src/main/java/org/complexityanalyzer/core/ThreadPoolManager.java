@@ -45,10 +45,6 @@ public class ThreadPoolManager {
 
     private volatile Thread shutdownWatchdog;
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Singleton
-    // ══════════════════════════════════════════════════════════════════════════
-
     private ThreadPoolManager() {
         initialize();
     }
@@ -63,10 +59,6 @@ public class ThreadPoolManager {
         }
         return localInstance;
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Инициализация
-    // ══════════════════════════════════════════════════════════════════════════
 
     private void initialize() {
         if (!isInitializing.compareAndSet(false, true)) synchronized (LOCK) {
@@ -105,11 +97,8 @@ public class ThreadPoolManager {
 
                 isShutdown.set(false);
 
-                // ← ПЕРЕСОЗДАЁМ watchdog каждый раз заново
                 Thread oldWatchdog = shutdownWatchdog;
-                if (oldWatchdog != null && oldWatchdog.isAlive()) {
-                    oldWatchdog.interrupt();
-                }
+                if (oldWatchdog != null && oldWatchdog.isAlive()) oldWatchdog.interrupt();
 
                 shutdownWatchdog = new Thread(() -> {
                     while (!isShutdown.get()) {
@@ -130,15 +119,7 @@ public class ThreadPoolManager {
             isInitializing.set(false);
         }
     }
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Watchdog методы
-    // ══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Проверяет, завершается ли JVM.
-     * Пытается добавить и удалить shutdown hook — если JVM уже завершается,
-     * добавление хука бросит IllegalStateException.
-     */
     private boolean isJvmShuttingDown() {
         try {
             Thread hook = new Thread(() -> {
@@ -151,9 +132,6 @@ public class ThreadPoolManager {
         }
     }
 
-    /**
-     * Принудительно убивает все пулы потоков
-     */
     private void forceShutdown() {
         isShutdown.set(true);
 
@@ -179,10 +157,6 @@ public class ThreadPoolManager {
 
         ComplexityAnalyzer.LOGGER.info("[Watchdog] All pools force-killed");
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Публичный API
-    // ══════════════════════════════════════════════════════════════════════════
 
     public ExecutorService getComputePool() {
         ensureNotShutdown();
@@ -222,10 +196,6 @@ public class ThreadPoolManager {
         if (task == null) return;
         getComputePool().submit(task);
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Shutdown
-    // ══════════════════════════════════════════════════════════════════════════
 
     private void ensureNotShutdown() {
         if (isShutdown.get()) {
@@ -321,10 +291,6 @@ public class ThreadPoolManager {
             ComplexityAnalyzer.LOGGER.info("{} daemon threads still running — they will terminate when JVM exits.", remaining);
         }
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Статистика
-    // ══════════════════════════════════════════════════════════════════════════
 
     public PoolStats getStats() {
         ExecutorService compute = computePool;

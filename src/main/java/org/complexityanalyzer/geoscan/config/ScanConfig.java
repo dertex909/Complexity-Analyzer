@@ -44,21 +44,7 @@ public final class ScanConfig {
 
     public static final int COUNTDOWN_SECONDS = 60;
     public static final int FULL_WORLD_THRESHOLD = 60;
-
-    public static final int RADIUS_NORMAL = 6400;
-    public static final int RADIUS_EXTENDED = 32000;
     public static final int RADIUS_MAX = 64000;
     public static final int RADIUS_FULL_WORLD = 1_000_000;
-
-    public static final int RELOCATION_MIN_DISTANCE = 500;
-    public static final int RELOCATION_ORIGINS_COUNT = 5;
-
-    public static final int BATCH_SIZE = 64;
-    public static final int MAX_ATTEMPTS_PER_CHUNK = 50;
-    public static final int MIN_ATTEMPTS = 2000;
-    public static final int MAX_ATTEMPTS = 20000;
-    public static final int MAX_RELOCATIONS = 50;
-    public static final int STUCK_THRESHOLD = 200;
-
     public static final int BATCH_SAVE_THRESHOLD = 200;
 }

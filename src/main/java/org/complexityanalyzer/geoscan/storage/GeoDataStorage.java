@@ -90,9 +90,7 @@ public class GeoDataStorage {
     }
 
     public ScanMetadata loadMetadata() {
-        if (!Files.exists(metadataFile)) {
-            return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
-        }
+        if (!Files.exists(metadataFile)) return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         try (FileReader reader = new FileReader(metadataFile.toFile())) {
             ScanMetadata meta = PRETTY_GSON.fromJson(reader, ScanMetadata.class);
             return meta != null ? meta : new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
@@ -118,7 +116,8 @@ public class GeoDataStorage {
         lock.lock();
         try {
             Files.createDirectories(file.getParent());
-            try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 for (ChunkSnapshot snapshot : newSnapshots) {
                     writer.write(GSON.toJson(snapshot));
                     writer.newLine();
@@ -197,11 +196,13 @@ public class GeoDataStorage {
         });
 
         Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> concurrentData = new ConcurrentHashMap<>();
-        loadedData.forEach((dim, biomeMap) -> concurrentData.put(dim, new ConcurrentHashMap<>(biomeMap)));
+        loadedData.forEach((dim, biomeMap) -> concurrentData.put(dim,
+                new ConcurrentHashMap<>(biomeMap)));
         return concurrentData;
     }
 
-    public void saveFinalBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data, BiomeDataMapper mapper) {
+    public void saveFinalBiomeData(ResourceLocation dimension, ResourceLocation biome,
+                                   BiomeScanData data, BiomeDataMapper mapper) {
         mapper.prepareForSave(data);
         Path file = getFinalFilePath(dimension, biome);
         saveJson(file, data);
@@ -209,10 +210,8 @@ public class GeoDataStorage {
 
     public void deleteAllData() {
         try {
-            if (Files.exists(dataDir)) {
-                try (Stream<Path> walk = Files.walk(dataDir)) {
-                    walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
-                }
+            if (Files.exists(dataDir)) try (Stream<Path> walk = Files.walk(dataDir)) {
+                walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
             }
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to clear geo-data directory.", e);
@@ -226,10 +225,8 @@ public class GeoDataStorage {
     }
 
     private void deleteDirectory(Path dir) throws IOException {
-        if (Files.exists(dir)) {
-            try (Stream<Path> walk = Files.walk(dir)) {
-                walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
-            }
+        if (Files.exists(dir)) try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
         }
         Files.createDirectories(dir);
     }
@@ -255,9 +252,7 @@ public class GeoDataStorage {
 
     private <T> Map<ResourceLocation, Map<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
         Map<ResourceLocation, Map<ResourceLocation, T>> allData = new HashMap<>();
-        if (!Files.exists(rootDir)) {
-            return allData;
-        }
+        if (!Files.exists(rootDir)) return allData;
 
         try (Stream<Path> dimNamespaces = Files.list(rootDir)) {
             dimNamespaces.filter(Files::isDirectory).forEach(dimNamespaceDir -> {

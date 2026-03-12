@@ -146,14 +146,6 @@ public class GeoDatabase {
         return Optional.ofNullable(inMemoryData.get(dim)).map(dimData -> dimData.get(biome));
     }
 
-    public double getGlobalRarity(Block block) {
-        if (!isLoaded() && analyzer.hasHeuristics()) return 0.0;
-        long total = totalBlocksInCache.get();
-        if (total == 0) return 0.0;
-        long targetCount = globalBlockCountsCache.getOrDefault(block, new AtomicLong(0)).get();
-        return (double) targetCount / total;
-    }
-
     private void updateGlobalCache(BiomeScanData oldData, BiomeScanData newData) {
         if (oldData != null) {
             oldData.getInternalBlockCounts().forEach((block, count) -> {

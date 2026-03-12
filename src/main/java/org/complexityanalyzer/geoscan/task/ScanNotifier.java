@@ -94,11 +94,6 @@ public class ScanNotifier {
         logInfo("Countdown finished. Starting scan requested by " + initiator + " for " + chunksPerBiome + " chunks per biome.");
     }
 
-    public void notifyScanPreparationComplete(int totalBiomes) {
-        broadcastInfo("Preliminary analysis complete. Background scanning begins.");
-        logInfo("Geo-scan preparation complete. Found " + totalBiomes + " reachable biomes to scan/update.");
-    }
-
     public void notifyDatabaseIsUpToDate() {
         broadcastSuccess("Database is already up to date.");
     }

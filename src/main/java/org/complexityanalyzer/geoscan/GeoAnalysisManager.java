@@ -158,7 +158,8 @@ public class GeoAnalysisManager {
                 try {
                     if (!initiatorName.equals("Server")) {
                         if (profile == ScanProfile.FULL || profile == ScanProfile.MOST) {
-                            notifier.broadcastSevere("!!! FORCED WORLD SCAN IN " + profile.name() + " MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
+                            notifier.broadcastSevere("!!! FORCED WORLD SCAN IN " + profile.name() +
+                                    " MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
                         } else {
                             notifier.broadcastSevere("Forced world scan started! Some lag may occur.");
                         }
@@ -206,10 +207,8 @@ public class GeoAnalysisManager {
     public String getStatus() {
         if (scanStarting.get()) return "Starting scan...";
 
-        if (isCountdownActive()) {
-            return String.format("Scan scheduled in %s mode, starting in %d seconds...",
-                    scheduledProfile.name().toLowerCase(), countdownTicks.get() / 20);
-        }
+        if (isCountdownActive()) return String.format("Scan scheduled in %s mode, starting in %d seconds...",
+                scheduledProfile.name().toLowerCase(), countdownTicks.get() / 20);
 
         ScanMetadata.ScanPhase phase = database.getScanPhase();
 
@@ -241,14 +240,11 @@ public class GeoAnalysisManager {
 
     private void startScanInternal(int chunksPerBiome, String initiatorName, ScanProfile profile) {
         if (isShutdown.get()) return;
-
         countdownTicks.set(-1);
-
         ScanSession session = coordinator.createSession(chunksPerBiome, profile);
-
         notifier.notifyScanStarting(chunksPerBiome, initiatorName + " (" + profile.name().toLowerCase() + " mode)");
-
         Executor executor = analysisEngine.getBackgroundExecutor();
+
         if (executor == null) {
             ComplexityAnalyzer.LOGGER.error("Cannot start scan, background executor not available!");
             return;
@@ -257,11 +253,8 @@ public class GeoAnalysisManager {
         try {
             executor.execute(() -> {
                 if (!session.isValid() || isShutdown.get()) return;
-
                 List<ScanTask> tasks = coordinator.prepareTasks(session);
-
                 if (!session.isValid() || isShutdown.get()) return;
-
                 if (tasks.isEmpty()) {
                     try {
                         server.execute(() -> {
@@ -276,7 +269,6 @@ public class GeoAnalysisManager {
                 try {
                     server.execute(() -> {
                         if (!session.isValid() || isShutdown.get()) return;
-
                         if (!coordinator.initializeSession(session, tasks)) {
                             coordinator.invalidateCurrentSession();
                             return;
@@ -295,9 +287,7 @@ public class GeoAnalysisManager {
 
     private void onReconnaissanceComplete(ScanSession session) {
         if (isShutdown.get()) return;
-
         coordinator.finishReconnaissance(session);
-
         dataRefiner.refine(session, () -> {
             if (!isShutdown.get()) {
                 coordinator.invalidateCurrentSession();
@@ -309,16 +299,13 @@ public class GeoAnalysisManager {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         if (isShutdown.get()) return;
-
         int ticks = countdownTicks.get();
         if (ticks <= 0) return;
-
         ticks = countdownTicks.decrementAndGet();
 
         if (ticks % 20 == 0) {
             int secondsLeft = ticks / 20;
             notifier.notifyScanCountdown(secondsLeft);
-
             if (secondsLeft == 0) startScanInternal(scheduledChunksPerBiome, scheduledInitiator, scheduledProfile);
         }
     }
@@ -331,7 +318,6 @@ public class GeoAnalysisManager {
 
         countdownTicks.set(-1);
         scanStarting.set(false);
-
         coordinator.shutdown();
         scanExecutor.shutdown();
         dataRefiner.shutdown();

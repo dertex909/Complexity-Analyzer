@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 
 public class HeuristicAnalyzer {
 
-    private static final int RECON_DIVERSITY_THRESHOLD = 50;
+    private static final int RECON_DIVERSITY_THRESHOLD = 100;
     private static final int REFINE_UNNATURAL_THRESHOLD = 64;
     private static final double NATURAL_BLOCK_RARITY_THRESHOLD = 0.00005;
 
@@ -58,7 +58,8 @@ public class HeuristicAnalyzer {
         dimensionalHeuristics.clear();
 
         Map<ResourceLocation, List<Path>> pathsByDimension = new ConcurrentHashMap<>();
-        reconFilePaths.forEach((dimId, biomeMap) -> pathsByDimension.computeIfAbsent(dimId, k -> new ArrayList<>()).addAll(biomeMap.values()));
+        reconFilePaths.forEach((dimId, biomeMap) ->
+                pathsByDimension.computeIfAbsent(dimId, k -> new ArrayList<>()).addAll(biomeMap.values()));
 
         pathsByDimension.forEach((dimId, paths) -> {
             ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);
@@ -77,14 +78,14 @@ public class HeuristicAnalyzer {
                 Set<Block> dimensionHeuristic = ConcurrentHashMap.newKeySet();
                 if (totalBlocksInDim > 0) {
                     totalCounts.forEach((block, count) -> {
-                        if (block != null && block != Blocks.AIR && (double) count / totalBlocksInDim > NATURAL_BLOCK_RARITY_THRESHOLD) {
-                            dimensionHeuristic.add(block);
-                        }
+                        if (block != null && block != Blocks.AIR && (double) count / totalBlocksInDim >
+                                NATURAL_BLOCK_RARITY_THRESHOLD) dimensionHeuristic.add(block);
                     });
                 }
 
                 dimensionalHeuristics.put(dimId, dimensionHeuristic);
-                ComplexityAnalyzer.LOGGER.info("Heuristic for {} built. Found {} common 'natural' blocks.", dimId, dimensionHeuristic.size());
+                ComplexityAnalyzer.LOGGER.info("Heuristic for {} built. Found {} common 'natural' blocks.",
+                        dimId, dimensionHeuristic.size());
             }
         });
     }
@@ -97,9 +98,8 @@ public class HeuristicAnalyzer {
                     finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
                     snapshot.blockCounts().forEach((blockId, count) -> {
                         Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
-                        if (block != Blocks.AIR && block != Blocks.BEDROCK) {
+                        if (block != Blocks.AIR && block != Blocks.BEDROCK)
                             finalCleanData.addBlock(block, count.longValue());
-                        }
                     });
                 });
         return finalCleanData;
@@ -118,7 +118,8 @@ public class HeuristicAnalyzer {
 
         Set<Block> heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {
-            ComplexityAnalyzer.LOGGER.warn("No heuristic found for dimension {}. Accepting chunk at [{}, {}] without filtering.", dimensionId, snapshot.chunkX(), snapshot.chunkZ());
+            ComplexityAnalyzer.LOGGER.warn("No heuristic found for dimension {}. Accepting chunk at [{}, {}] " +
+                    "without filtering.", dimensionId, snapshot.chunkX(), snapshot.chunkZ());
             return true;
         }
 

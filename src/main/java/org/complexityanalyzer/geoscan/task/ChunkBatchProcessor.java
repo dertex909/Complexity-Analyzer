@@ -1,204 +1,136 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.geoscan.task;
 
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
+import org.complexityanalyzer.geoscan.worldgen.UltraFastChunkGenerator;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkBatchProcessor {
 
     private final MinecraftServer server;
     private final ChunkAnalyzer analyzer;
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
-    private volatile Semaphore generationPermits;
+    private final ConcurrentHashMap<ResourceKey<Level>, BiomeContext> biomeContexts = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResourceKey<Level>, UltraFastChunkGenerator> generators = new ConcurrentHashMap<>();
 
-    public record ScanResult(ChunkSnapshot snapshot, ResourceLocation actualBiome) {
+    private final ConcurrentHashMap<Long, ResourceLocation> biomeCache = new ConcurrentHashMap<>();
+    private static final int BIOME_CACHE_MAX_SIZE = 100_000;
+
+    private record BiomeContext(BiomeSource biomeSource, Climate.Sampler sampler, int seaLevel) {
+    }
+
+    public record ScanResult(ChunkSnapshot snapshot, ResourceLocation biome) {
     }
 
     public ChunkBatchProcessor(MinecraftServer server) {
         this.server = server;
         this.analyzer = new ChunkAnalyzer();
-        this.generationPermits = new Semaphore(4);
     }
 
-    public void setProfile(ScanProfile profile) {
-        this.generationPermits = new Semaphore(profile.maxParallelChunks);
+    private BiomeContext getBiomeContext(ResourceKey<Level> dimension) {
+        return biomeContexts.computeIfAbsent(dimension, dim -> {
+            ServerLevel level = server.getLevel(dim);
+            if (level == null) throw new IllegalStateException("Level not found: " + dim);
+            return new BiomeContext(
+                    level.getChunkSource().getGenerator().getBiomeSource(),
+                    level.getChunkSource().randomState().sampler(),
+                    level.getSeaLevel()
+            );
+        });
     }
 
-    public CompletableFuture<List<ScanResult>> processBatchAsync(
+    private UltraFastChunkGenerator getGenerator(ResourceKey<Level> dimension) {
+        return generators.computeIfAbsent(dimension, dim -> {
+            ServerLevel level = server.getLevel(dim);
+            if (level == null) throw new IllegalStateException("Level not found: " + dim);
+            return new UltraFastChunkGenerator(level);
+        });
+    }
+
+    private long chunkKey(ResourceKey<Level> dim, ChunkPos pos) {
+        int dimHash = dim.location().hashCode() & 0xFFFF;
+        return ((long) dimHash << 48) | ((long) (pos.x & 0xFFFFFF) << 24) | (pos.z & 0xFFFFFF);
+    }
+
+    private ResourceLocation checkBiomeCached(BiomeContext ctx, ResourceKey<Level> dim, ChunkPos pos) {
+        long key = chunkKey(dim, pos);
+
+        ResourceLocation cached = biomeCache.get(key);
+        if (cached != null) return cached;
+
+        int blockX = (pos.x << 4) + 8;
+        int blockZ = (pos.z << 4) + 8;
+
+        try {
+            Holder<Biome> biome = ctx.biomeSource.getNoiseBiome(blockX >> 2, ctx.seaLevel >> 2, blockZ >> 2, ctx.sampler);
+            ResourceLocation result = biome.unwrapKey().map(ResourceKey::location).orElse(null);
+            if (result != null && biomeCache.size() < BIOME_CACHE_MAX_SIZE) biomeCache.put(key, result);
+            return result;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public List<ScanResult> processBatch(
             ResourceKey<Level> dimension,
             List<ChunkPos> positions,
             ScanSession session
     ) {
-        if (shutdown.get() || positions.isEmpty()) return CompletableFuture.completedFuture(Collections.emptyList());
-
+        if (positions.isEmpty()) return Collections.emptyList();
         ServerLevel level = server.getLevel(dimension);
-        if (level == null) return CompletableFuture.completedFuture(Collections.emptyList());
-
+        if (level == null) return Collections.emptyList();
         ResourceLocation dimId = dimension.location();
-        AtomicInteger remaining = new AtomicInteger(positions.size());
-        List<ScanResult> out = Collections.synchronizedList(new ArrayList<>());
-        CompletableFuture<List<ScanResult>> allDone = new CompletableFuture<>();
+        BiomeContext ctx = getBiomeContext(dimension);
+        List<ChunkPos> toGenerate = new ArrayList<>(32);
+        Map<ChunkPos, ResourceLocation> biomeMap = new HashMap<>(32);
 
         for (ChunkPos pos : positions) {
-            if (shutdown.get() || !session.isValid()) {
-                if (remaining.decrementAndGet() == 0) allDone.complete(out);
-                continue;
-            }
-
-            submitOne(level, dimId, pos, session, out, remaining, allDone);
+            if (!session.isValid()) break;
+            ResourceLocation biome = checkBiomeCached(ctx, dimension, pos);
+            if (biome == null) continue;
+            if (session.NotNeedsBiome(dimId, biome)) continue;
+            toGenerate.add(pos);
+            biomeMap.put(pos, biome);
+            if (toGenerate.size() >= 24) break;
         }
 
-        return allDone;
-    }
+        if (toGenerate.isEmpty()) return Collections.emptyList();
 
-    private void submitOne(
-            ServerLevel level,
-            ResourceLocation dimId,
-            ChunkPos pos,
-            ScanSession session,
-            List<ScanResult> out,
-            AtomicInteger remaining,
-            CompletableFuture<List<ScanResult>> allDone
-    ) {
-        level.getChunkSource()
-                .getChunkFuture(pos.x, pos.z, ChunkStatus.BIOMES, true)
-                .thenCompose(biomeResult -> {
-                    if (shutdown.get() || !session.isValid()) return CompletableFuture.completedFuture(null);
+        UltraFastChunkGenerator generator = getGenerator(dimension);
+        List<ChunkAccess> chunks = generator.generateBatch(toGenerate);
 
-                    ChunkAccess biomeChunk = biomeResult.orElse(null);
-                    if (biomeChunk == null) return CompletableFuture.completedFuture(null);
+        List<ScanResult> results = new ArrayList<>(chunks.size());
 
-                    Set<ResourceLocation> allBiomes = getAllBiomesInChunk(biomeChunk);
-
-                    boolean hasNeededBiome = false;
-                    for (ResourceLocation biome : allBiomes) {
-                        if (session.hasBiomeNeed(dimId, biome)) {
-                            hasNeededBiome = true;
-                            break;
-                        }
-                    }
-
-                    if (!hasNeededBiome) return CompletableFuture.completedFuture(null);
-
-                    CompletableFuture<ChunkAccess> future = new CompletableFuture<>();
-
-                    CompletableFuture.runAsync(() -> {
-                        try {
-                            generationPermits.acquire();
-
-                            if (shutdown.get() || !session.isValid()) {
-                                generationPermits.release();
-                                future.complete(null);
-                                return;
-                            }
-
-                            server.execute(() -> {
-                                try {
-                                    ChunkAccess chunk = level.getChunk(pos.x, pos.z, ChunkStatus.FEATURES, true);
-                                    future.complete(chunk);
-                                } catch (Exception e) {
-                                    future.complete(null);
-                                } finally {
-                                    generationPermits.release();
-                                }
-                            });
-                        } catch (InterruptedException e) {
-                            future.complete(null);
-                            Thread.currentThread().interrupt();
-                        }
-                    });
-
-                    return future;
-                })
-                .thenAcceptAsync(chunk -> {
-                    try {
-                        if (shutdown.get() || !session.isValid() || chunk == null) return;
-
-                        Set<ResourceLocation> allBiomes = getAllBiomesInChunk(chunk);
-
-                        ResourceLocation matchedBiome = null;
-                        for (ResourceLocation biome : allBiomes) {
-                            if (session.hasBiomeNeed(dimId, biome)) {
-                                matchedBiome = biome;
-                                break;
-                            }
-                        }
-
-                        if (matchedBiome == null) return;
-                        ChunkSnapshot snapshot = analyzer.createSnapshot(chunk);
-                        if (snapshot == null) return;
-                        out.add(new ScanResult(snapshot, matchedBiome));
-                    } finally {
-                        if (remaining.decrementAndGet() == 0) allDone.complete(out);
-                    }
-                }, server)
-                .exceptionally(t -> {
-                    if (remaining.decrementAndGet() == 0) allDone.complete(out);
-                    return null;
-                });
-    }
-
-    private Set<ResourceLocation> getAllBiomesInChunk(ChunkAccess chunk) {
-        Set<ResourceLocation> biomes = new HashSet<>();
-
-        try {
-            int minSection = chunk.getMinSection();
-            int maxSection = chunk.getMaxSection();
-
-            for (int sectionY = minSection; sectionY < maxSection; sectionY++) {
-                int quartY = sectionY * 4 + 2;
-                for (int qx = 0; qx < 4; qx++) {
-                    for (int qz = 0; qz < 4; qz++) {
-                        try {
-                            chunk.getNoiseBiome(qx, quartY, qz)
-                                    .unwrapKey()
-                                    .map(ResourceKey::location)
-                                    .ifPresent(biomes::add);
-                        } catch (Exception ignored) {
-                        }
-                    }
-                }
-            }
-        } catch (Throwable ignored) {
+        for (int i = 0; i < chunks.size(); i++) {
+            ChunkAccess chunk = chunks.get(i);
+            if (chunk == null || !session.isValid()) continue;
+            ChunkPos pos = toGenerate.get(i);
+            ResourceLocation biome = biomeMap.get(pos);
+            if (session.NotNeedsBiome(dimId, biome)) continue;
+            ChunkSnapshot snapshot = analyzer.createSnapshot(chunk);
+            if (snapshot != null) results.add(new ScanResult(snapshot, biome));
         }
 
-        return biomes;
+        return results;
     }
 
     public void shutdown() {
-        shutdown.set(true);
+        biomeContexts.clear();
+        generators.clear();
+        biomeCache.clear();
+        UltraFastChunkGenerator.clearAllCaches();
     }
 }

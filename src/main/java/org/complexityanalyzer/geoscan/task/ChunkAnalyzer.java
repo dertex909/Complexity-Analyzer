@@ -43,9 +43,8 @@ public class ChunkAnalyzer {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
                         Block block = section.getBlockState(x, y, z).getBlock();
-                        if (block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR) {
+                        if (block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR)
                             blockCounts.addTo(block, 1);
-                        }
                     }
                 }
             }

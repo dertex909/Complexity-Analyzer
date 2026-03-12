@@ -45,12 +45,10 @@ public class BiomeDataMapper {
 
     public void afterLoad(BiomeScanData data) {
         data.getInternalBlockCounts().clear();
-        if (data.serializableBlockCounts != null) {
-            data.serializableBlockCounts.forEach((key, count) -> {
-                Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(key));
-                if (block != Blocks.AIR) data.getInternalBlockCounts().put(block, new AtomicLong(count));
-            });
-        }
+        if (data.serializableBlockCounts != null) data.serializableBlockCounts.forEach((key, count) -> {
+            Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(key));
+            if (block != Blocks.AIR) data.getInternalBlockCounts().put(block, new AtomicLong(count));
+        });
 
         if (data.scannedChunks != null) {
             data.setInternalScannedChunksSet(new HashSet<>(data.scannedChunks));

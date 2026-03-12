@@ -27,7 +27,6 @@ public record ScanTask(
         ResourceKey<Biome> biome,
         int chunksToFind
 ) implements Comparable<ScanTask> {
-
     @Override
     public int compareTo(ScanTask other) {
         int dimCompare = this.dimension.location().toString().compareTo(other.dimension.location().toString());

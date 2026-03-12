@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.complexityanalyzer.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "complexity_analyzer.refmap.json",
+  "mixins": [
+    "ThreadingDetectorMixin",
+    "PalettedContainerMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

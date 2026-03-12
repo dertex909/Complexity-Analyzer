@@ -71,19 +71,13 @@ public class DataRefiner {
                 }
 
                 if (!session.isValid()) return;
-
                 notifier.logInfo("Building heuristics from reconnaissance data...");
                 database.buildHeuristicFromFiles(reconPaths);
-
                 if (!session.isValid()) return;
-
                 notifier.logInfo("Clearing old final data...");
                 database.clearFinalData();
-
                 if (!session.isValid()) return;
-
                 notifier.logInfo("Refining data for each biome...");
-
                 for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry : reconPaths.entrySet()) {
                     if (!session.isValid()) break;
 
@@ -99,9 +93,8 @@ public class DataRefiner {
                             BiomeScanData finalData = database.refineRawDataFromStream(stream, dimension);
                             if (finalData.getChunksScanned() > 0) database.saveBiomeData(dimension, biome, finalData);
                         } catch (Exception e) {
-                            if (session.isValid()) {
+                            if (session.isValid())
                                 ComplexityAnalyzer.LOGGER.error("Error refining {} in {}", biome, dimension, e);
-                            }
                         }
                     }
                 }
@@ -119,13 +112,10 @@ public class DataRefiner {
 
     private void finishRefinement(ScanSession session, Runnable onComplete) {
         notifier.logInfo("Finalizing refinement...");
-
         session.setPhase(ScanMetadata.ScanPhase.COMPLETE);
         database.setScanPhase(ScanMetadata.ScanPhase.COMPLETE);
         database.loadAll();
-
         notifier.notifyRefinementFinished();
-
         if (onComplete != null) onComplete.run();
     }
 

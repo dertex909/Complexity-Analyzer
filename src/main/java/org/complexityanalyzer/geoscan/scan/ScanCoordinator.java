@@ -150,9 +150,6 @@ public class ScanCoordinator {
 
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
 
-        session.addTasks(tasks);
-        session.setTotalTasks(tasks.size());
-
         int totalChunks = 0;
         for (ScanTask task : tasks) {
             int needed = task.chunksToFind();
@@ -165,8 +162,7 @@ public class ScanCoordinator {
         Set<Long> existing = database.loadAllReconChunkCoordinates();
         session.loadAttemptedChunks(existing);
 
-        notifier.logInfo(String.format("Loaded %d already scanned chunk coordinates.", existing.size()));
-        notifier.notifyScanPreparationComplete(tasks.size());
+        notifier.logInfo(String.format("Starting scan: %d biomes, %d chunks needed", tasks.size(), totalChunks));
 
         return true;
     }

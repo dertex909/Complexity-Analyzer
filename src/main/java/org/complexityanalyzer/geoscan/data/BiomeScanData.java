@@ -43,9 +43,7 @@ public class BiomeScanData {
 
     public void addScannedChunk(int chunkX, int chunkZ) {
         long coord = ChunkCoordinateUtil.pack(chunkX, chunkZ);
-        if (this.scannedChunksSet == null) {
-            this.scannedChunksSet = new HashSet<>();
-        }
+        if (this.scannedChunksSet == null) this.scannedChunksSet = new HashSet<>();
         this.scannedChunksSet.add(coord);
     }
 

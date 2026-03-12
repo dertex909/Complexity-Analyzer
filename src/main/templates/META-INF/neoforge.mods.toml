@@ -2,6 +2,9 @@ modLoader = "javafml"
 loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
 
+[[mixins]]
+config = "complexity_analyzer.mixins.json"
+
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"

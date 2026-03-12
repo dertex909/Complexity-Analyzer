@@ -101,7 +101,7 @@ public class ChunkBatchProcessor {
             if (!session.isValid()) break;
             ResourceLocation biome = checkBiomeCached(ctx, dimension, pos);
             if (biome == null) continue;
-            if (session.NotNeedsBiome(dimId, biome)) continue;
+            if (session.doesNotNeedBiome(dimId, biome)) continue;
             toGenerate.add(pos);
             biomeMap.put(pos, biome);
             if (toGenerate.size() >= 24) break;
@@ -119,7 +119,7 @@ public class ChunkBatchProcessor {
             if (chunk == null || !session.isValid()) continue;
             ChunkPos pos = toGenerate.get(i);
             ResourceLocation biome = biomeMap.get(pos);
-            if (session.NotNeedsBiome(dimId, biome)) continue;
+            if (session.doesNotNeedBiome(dimId, biome)) continue;
             ChunkSnapshot snapshot = analyzer.createSnapshot(chunk);
             if (snapshot != null) results.add(new ScanResult(snapshot, biome));
         }

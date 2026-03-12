@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
-import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
@@ -34,35 +33,20 @@ public class FastBiomeFinder {
             BlockPos origin,
             int maxRadius
     ) {
-        long startTime = System.currentTimeMillis();
         CachedSamplers samplers = getSamplers(level);
         int searchY = level.getSeaLevel();
         int coarseStep = Math.max(256, maxRadius / 25);
-        BlockPos coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(), searchY, maxRadius, coarseStep);
-        if (coarseMatch == null) coarseMatch = fastRandomSearch(samplers, biomePredicate, origin, maxRadius, searchY);
+        BlockPos coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(),
+                searchY, maxRadius, coarseStep);
         if (coarseMatch == null) {
-            long elapsed = System.currentTimeMillis() - startTime;
-            ComplexityAnalyzer.LOGGER.debug("[FastBiomeFinder] NOT FOUND in {}ms", elapsed);
-            return null;
+            coarseMatch = fastRandomSearch(samplers, biomePredicate, origin, maxRadius, searchY);
+            if (coarseMatch == null) return null;
         }
-
-        BlockPos refined = refinePosition(samplers, biomePredicate, coarseMatch, searchY);
-        long elapsed = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.debug("[FastBiomeFinder] FOUND at [{}, {}, {}] in {}ms",
-                refined.getX(), refined.getY(), refined.getZ(), elapsed);
-
-        return refined;
+        return refinePosition(samplers, biomePredicate, coarseMatch, searchY);
     }
 
-    private static BlockPos gridSearch(
-            CachedSamplers samplers,
-            Predicate<Holder<Biome>> predicate,
-            int centerX,
-            int centerZ,
-            int y,
-            int maxRadius,
-            int step
-    ) {
+    private static BlockPos gridSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+                                       int centerX, int centerZ, int y, int maxRadius, int step) {
         if (checkBiomeFast(samplers, predicate, centerX, y, centerZ)) return new BlockPos(centerX, y, centerZ);
 
         for (int distance = step; distance <= maxRadius; distance += step) {
@@ -87,12 +71,8 @@ public class FastBiomeFinder {
         return null;
     }
 
-    private static BlockPos fastRandomSearch(
-            CachedSamplers samplers,
-            Predicate<Holder<Biome>> predicate,
-            BlockPos origin,
-            int maxRadius,
-            int y
+    private static BlockPos fastRandomSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+                                             BlockPos origin, int maxRadius, int y
     ) {
         ThreadLocalRandom random = ThreadLocalRandom.current();
 
@@ -107,11 +87,8 @@ public class FastBiomeFinder {
         return null;
     }
 
-    private static BlockPos refinePosition(
-            CachedSamplers samplers,
-            Predicate<Holder<Biome>> predicate,
-            BlockPos rough,
-            int defaultY
+    private static BlockPos refinePosition(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+                                           BlockPos rough, int defaultY
     ) {
         int bestX = rough.getX();
         int bestZ = rough.getZ();
@@ -141,12 +118,8 @@ public class FastBiomeFinder {
         return new BlockPos(bestX, bestY, bestZ);
     }
 
-    private static boolean checkBiomeFast(
-            CachedSamplers samplers,
-            Predicate<Holder<Biome>> predicate,
-            int x,
-            int y,
-            int z
+    private static boolean checkBiomeFast(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+                                          int x, int y, int z
     ) {
         try {
             Holder<Biome> biome = samplers.biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, samplers.sampler);

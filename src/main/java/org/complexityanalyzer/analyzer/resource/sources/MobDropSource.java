@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
+import com.mojang.authlib.GameProfile;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -25,7 +26,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -59,10 +62,13 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import static org.apache.logging.log4j.Level.WARN;
+
 public class MobDropSource implements IResourceSource {
     private final MobPropertyProvider mobProvider;
     private final Map<Item, List<MobDropData>> dropMap = new HashMap<>();
     private static final int SIMULATION_COUNT = 500;
+    private static final Object LOOT_LOCK = new Object();
 
     private static final Set<EntityType<?>> SPECIAL_KILL_ENTITIES = Set.of(
             EntityType.WITHER,
@@ -72,21 +78,20 @@ public class MobDropSource implements IResourceSource {
 
     public MobDropSource(MobPropertyProvider mobProvider, Level level) {
         this.mobProvider = mobProvider;
-
         DimensionRarityAnalyzer dimensionAnalyzer = new DimensionRarityAnalyzer(level);
         MobRarityCalculator rarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
-
         mobProvider.setRarityCalculator(rarityCalculator);
     }
 
     private static class LootFunctionFilter extends AbstractFilter {
         @Override
         public Result filter(LogEvent event) {
-            if (event == null || event.getLevel() != org.apache.logging.log4j.Level.WARN) return Result.NEUTRAL;
+            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
             String loggerName = event.getLoggerName();
             if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
                 String message = event.getMessage().getFormattedMessage();
-                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt") || message.contains("Couldn't find a compatible enchantment"))) {
+                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
+                        || message.contains("Couldn't find a compatible enchantment"))) {
                     return Result.DENY;
                 }
             }
@@ -135,35 +140,32 @@ public class MobDropSource implements IResourceSource {
         List<DamageSourceConfig> damageConfigs = null;
 
         try {
-            com.mojang.authlib.GameProfile fakePlayerProfile = new com.mojang.authlib.GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
-            net.minecraft.server.level.ServerPlayer fakePlayer = new net.minecraft.server.level.ServerPlayer(server, serverLevel, fakePlayerProfile, net.minecraft.server.level.ClientInformation.createDefault());
+            GameProfile fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
+            ServerPlayer fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile,
+                    ClientInformation.createDefault());
             damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
             for (EntityType<?> entityType : entityTypes) {
-                if (SPECIAL_KILL_ENTITIES.contains(entityType)) {
-                    continue;
-                }
+                if (SPECIAL_KILL_ENTITIES.contains(entityType)) continue;
 
                 ResourceKey<LootTable> lootTableKey = entityType.getDefaultLootTable();
-                LootTable lootTable = CompletableFuture.supplyAsync(() -> server.reloadableRegistries().getLootTable(lootTableKey), server).join();
-                if (lootTable == LootTable.EMPTY) {
-                    continue;
-                }
-
-                if (entityType.getCategory() == MobCategory.MISC) {
-                    continue;
-                }
+                LootTable lootTable = CompletableFuture.supplyAsync(() ->
+                        server.reloadableRegistries().getLootTable(lootTableKey), server).join();
+                if (lootTable == LootTable.EMPTY) continue;
+                if (entityType.getCategory() == MobCategory.MISC) continue;
 
                 Entity entityInstance;
                 try {
                     entityInstance = entityType.create(serverLevel);
                 } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}", BuiltInRegistries.ENTITY_TYPE.getKey(entityType), e.getMessage());
+                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
+                            BuiltInRegistries.ENTITY_TYPE.getKey(entityType), e.getMessage());
                     continue;
                 }
 
                 if (entityInstance == null) {
-                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.", BuiltInRegistries.ENTITY_TYPE.getKey(entityType));
+                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
+                            BuiltInRegistries.ENTITY_TYPE.getKey(entityType));
                     continue;
                 }
 
@@ -188,9 +190,7 @@ public class MobDropSource implements IResourceSource {
         } finally {
             if (damageConfigs != null) {
                 for (DamageSourceConfig config : damageConfigs) {
-                    if (config.attackingEntity != null) {
-                        config.attackingEntity.discard();
-                    }
+                    if (config.attackingEntity != null) config.attackingEntity.discard();
                 }
             }
 
@@ -205,7 +205,7 @@ public class MobDropSource implements IResourceSource {
         ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, dropMap.size(), duration);
     }
 
-    private List<DamageSourceConfig> createDamageSources(ServerLevel level, net.minecraft.server.level.ServerPlayer player) {
+    private List<DamageSourceConfig> createDamageSources(ServerLevel level, ServerPlayer player) {
         List<DamageSourceConfig> configs = new ArrayList<>();
 
         configs.add(new DamageSourceConfig("Player Attack", level.damageSources().playerAttack(player), false, player, null));
@@ -221,17 +221,20 @@ public class MobDropSource implements IResourceSource {
         Registry<DamageType> damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
         Holder<DamageType> explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);
         DamageSource creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
-        configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false, null, chargedCreeper));
+        configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false,
+                null, chargedCreeper));
 
         Skeleton skeleton = new Skeleton(EntityType.SKELETON, level);
         Arrow arrow = new Arrow(EntityType.ARROW, level);
         arrow.setOwner(skeleton);
-        configs.add(new DamageSourceConfig("Skeleton Arrow", level.damageSources().arrow(arrow, skeleton), false, null, skeleton));
+        configs.add(new DamageSourceConfig("Skeleton Arrow", level.damageSources().arrow(arrow, skeleton),
+                false, null, skeleton));
 
         return configs;
     }
 
-    private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable, DamageSourceConfig config, Map<Item, DropStatistics> combinedDrops) {
+    private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable,
+                                    DamageSourceConfig config, Map<Item, DropStatistics> combinedDrops) {
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
                 LootParams.Builder builder = new LootParams.Builder(level)
@@ -242,20 +245,27 @@ public class MobDropSource implements IResourceSource {
                     builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, config.killerPlayer);
                 if (config.attackingEntity != null) {
                     builder.withParameter(LootContextParams.ATTACKING_ENTITY, config.attackingEntity);
-                    if (config.damageSource.getDirectEntity() != null)
-                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.damageSource.getDirectEntity());
-                    else
+                    if (config.damageSource.getDirectEntity() != null) {
+                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY,
+                                config.damageSource.getDirectEntity());
+                    } else {
                         builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
+                    }
                 }
                 if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
                 LootParams lootParams = builder.create(LootContextParamSets.ENTITY);
-                List<ItemStack> drops = lootTable.getRandomItems(lootParams);
+                List<ItemStack> drops;
+                synchronized (LOOT_LOCK) {
+                    drops = lootTable.getRandomItems(lootParams);
+                }
                 if (config.isOnFire) entityInstance.clearFire();
                 for (ItemStack stack : drops) {
-                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(config.methodName, stack.getCount());
+                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics())
+                            .addDrop(config.methodName, stack.getCount());
                 }
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Exception during loot simulation for {} with method {}", entityInstance.getType().getDescriptionId(), config.methodName, e);
+                ComplexityAnalyzer.LOGGER.error("Exception during loot simulation for {} with method {}",
+                        entityInstance.getType().getDescriptionId(), config.methodName, e);
             }
         }
     }
@@ -302,7 +312,6 @@ public class MobDropSource implements IResourceSource {
                 var creeperProps = creeperPropsOpt.get();
                 double creeperCombatPower = creeperProps.calculateCombatPower();
                 double creeperRarity = mobProvider.getRarity(EntityType.CREEPER);
-
                 specialConditionCost = (creeperCombatPower * creeperRarity) * 200.0;
             } else {
                 specialConditionCost = 50000.0;
@@ -339,7 +348,7 @@ public class MobDropSource implements IResourceSource {
     }
 
     private record DamageSourceConfig(String methodName, DamageSource damageSource, boolean isOnFire,
-                                      net.minecraft.server.level.ServerPlayer killerPlayer, Entity attackingEntity) {
+                                      ServerPlayer killerPlayer, Entity attackingEntity) {
     }
 
     private static class DropStatistics {
@@ -357,7 +366,11 @@ public class MobDropSource implements IResourceSource {
         }
 
         public String getBestMethod() {
-            return dropsByMethod.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("Unknown");
+            return dropsByMethod.entrySet()
+                    .stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse("Unknown");
         }
     }
 

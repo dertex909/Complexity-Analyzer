@@ -41,8 +41,7 @@ public class LootAnalyzeCommand {
 
         if (!engine.isReady()) {
             output.sendFailure(source,
-                    Component.literal("⚠ Analysis engine is not ready!")
-                            .withStyle(ChatFormatting.RED));
+                    Component.literal("⚠ Analysis engine is not ready!").withStyle(ChatFormatting.RED));
             return 0;
         }
 
@@ -61,9 +60,7 @@ public class LootAnalyzeCommand {
         List<BaseResourceData> itemsFromTable = new ArrayList<>();
         for (Map.Entry<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> typeEntry : uls.getAllLootData().entrySet()) {
             for (BaseResourceData data : typeEntry.getValue().values()) {
-                if (data.getDetails().contains(lootTableId.toString())) {
-                    itemsFromTable.add(data);
-                }
+                if (data.getDetails().contains(lootTableId.toString())) itemsFromTable.add(data);
             }
         }
 

@@ -10,21 +10,75 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ScanSession {
+
+    public record BiomeKey(ResourceLocation dim, ResourceLocation biome) {
+    }
 
     private final long sessionId;
     private final ScanProfile profile;
     private final int chunksPerBiome;
+
+    private final AtomicLong totalChunksScanned = new AtomicLong(0);
+    private final long startTimeMs = System.currentTimeMillis();
 
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
 
     private final Set<Long> attemptedChunks = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<String, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
 
     private volatile ScanMetadata.ScanPhase phase = ScanMetadata.ScanPhase.RECONNAISSANCE;
+
+    public void recordChunkScanned() {
+        totalChunksScanned.incrementAndGet();
+    }
+
+    public float getScanSpeed() {
+        long elapsedMs = System.currentTimeMillis() - startTimeMs;
+        if (elapsedMs < 1000) return 0;
+        return totalChunksScanned.get() / (elapsedMs / 1000f);
+    }
+
+    public long getTotalChunksScanned() {
+        return totalChunksScanned.get();
+    }
+
+    public long getElapsedSeconds() {
+        return (System.currentTimeMillis() - startTimeMs) / 1000;
+    }
+
+    public int getTotalChunksNeeded() {
+        int remaining = 0;
+        for (AtomicInteger need : remainingNeeds.values()) {
+            remaining += need.get();
+        }
+        return remaining + (int) totalChunksScanned.get();
+    }
+
+    public int getProgressPercent() {
+        int totalNeeded = remainingNeeds.size() * chunksPerBiome;
+        if (totalNeeded == 0) return 100;
+        return (int) (totalChunksScanned.get() * 100 / totalNeeded);
+    }
+
+    public Map<ResourceLocation, Map<ResourceLocation, int[]>> getBiomeProgress() {
+        Map<ResourceLocation, Map<ResourceLocation, int[]>> result = new HashMap<>();
+
+        for (var entry : remainingNeeds.entrySet()) {
+            BiomeKey key = entry.getKey();
+            int remaining = entry.getValue().get();
+            int scanned = Math.max(0, chunksPerBiome - remaining);
+
+            result.computeIfAbsent(key.dim(), k -> new HashMap<>())
+                    .put(key.biome(), new int[]{scanned, chunksPerBiome});
+        }
+
+        return result;
+    }
 
     public ScanSession(long sessionId, ScanProfile profile, int chunksPerBiome) {
         this.sessionId = sessionId;
@@ -61,37 +115,33 @@ public class ScanSession {
     }
 
     public void setBiomeNeed(ResourceLocation dim, ResourceLocation biome, int needed) {
-        remainingNeeds.put(dim + "|" + biome, new AtomicInteger(needed));
+        remainingNeeds.put(new BiomeKey(dim, biome), new AtomicInteger(needed));
     }
 
-    public boolean NotNeedsBiome(ResourceLocation dim, ResourceLocation biome) {
-        AtomicInteger remaining = remainingNeeds.get(dim + "|" + biome);
+    public boolean doesNotNeedBiome(ResourceLocation dim, ResourceLocation biome) {
+        AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
         return remaining == null || remaining.get() <= 0;
     }
 
     public boolean tryClaimChunk(ResourceLocation dim, ResourceLocation biome) {
-        AtomicInteger remaining = remainingNeeds.get(dim + "|" + biome);
+        AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
         if (remaining == null) return false;
 
-        int current = remaining.get();
-        while (current > 0) {
-            if (remaining.compareAndSet(current, current - 1)) {
-                totalChunksFound.incrementAndGet();
-                return true;
-            }
+        int current;
+        do {
             current = remaining.get();
-        }
-        return false;
+            if (current <= 0) return false;
+        } while (!remaining.compareAndSet(current, current - 1));
+
+        totalChunksFound.incrementAndGet();
+        return true;
     }
 
     public ResourceLocation getRandomNeededBiome(ResourceLocation dim) {
-        String prefix = dim + "|";
         List<ResourceLocation> needed = new ArrayList<>();
 
         for (var entry : remainingNeeds.entrySet()) {
-            if (entry.getKey().startsWith(prefix) && entry.getValue().get() > 0) {
-                needed.add(ResourceLocation.parse(entry.getKey().substring(prefix.length())));
-            }
+            if (entry.getKey().dim().equals(dim) && entry.getValue().get() > 0) needed.add(entry.getKey().biome());
         }
 
         if (needed.isEmpty()) return null;
@@ -101,9 +151,7 @@ public class ScanSession {
     public List<ResourceLocation> getDimensionsWithNeeds() {
         Set<ResourceLocation> dims = new HashSet<>();
         for (var entry : remainingNeeds.entrySet()) {
-            if (entry.getValue().get() > 0) {
-                dims.add(ResourceLocation.parse(entry.getKey().split("\\|")[0]));
-            }
+            if (entry.getValue().get() > 0) dims.add(entry.getKey().dim());
         }
         return new ArrayList<>(dims);
     }

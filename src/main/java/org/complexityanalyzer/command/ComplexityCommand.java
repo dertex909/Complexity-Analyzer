@@ -248,7 +248,7 @@ public class ComplexityCommand {
                                 )
                         )
 
-                        .then(ChunkCommands.register())
+                        .then(GeoScanCommands.register())
         );
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command with role-based permissions");
     }

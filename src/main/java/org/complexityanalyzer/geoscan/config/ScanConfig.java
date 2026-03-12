@@ -24,21 +24,27 @@ public final class ScanConfig {
     }
 
     public enum ScanProfile {
-        QUARTER(0.25f, 4),
-        HALF(0.50f, 8),
-        MOST(0.75f, 16),
-        FULL(1.00f, 32);
+        QUARTER(0.25f, 4, 30.0f),
+        HALF(0.50f, 8, 40.0f),
+        MOST(0.75f, 16, 50.0f),
+        FULL(1.00f, 32, -1.0f);
 
         public final float threadFraction;
         public final int maxParallelChunks;
+        public final float msptLimit;
 
-        ScanProfile(float threadFraction, int maxParallelChunks) {
+        ScanProfile(float threadFraction, int maxParallelChunks, float msptLimit) {
             this.threadFraction = threadFraction;
             this.maxParallelChunks = maxParallelChunks;
+            this.msptLimit = msptLimit;
         }
 
         public int getWorkerCount(int totalThreads) {
             return Math.max(1, Math.round(totalThreads * threadFraction));
+        }
+
+        public boolean hasMsptLimit() {
+            return msptLimit > 0;
         }
     }
 
@@ -46,5 +52,7 @@ public final class ScanConfig {
     public static final int FULL_WORLD_THRESHOLD = 60;
     public static final int RADIUS_MAX = 64000;
     public static final int RADIUS_FULL_WORLD = 1_000_000;
-    public static final int BATCH_SAVE_THRESHOLD = 200;
+    public static final int BATCH_SAVE_THRESHOLD = 32;
+    public static final int MSPT_RECOVERY_THRESHOLD_MS = 5;
+    public static final int MSPT_SAMPLE_COUNT = 5;
 }

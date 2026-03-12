@@ -63,18 +63,36 @@ public class GeoAnalysisManager {
         this.database = database;
         this.analysisEngine = engine;
 
-        Executor backgroundExecutor = engine.getBackgroundExecutor();
-
         WorldScanner worldScanner = new WorldScanner(server);
         this.batchProcessor = new ChunkBatchProcessor(server);
         this.notifier = new ScanNotifier(server);
         this.coordinator = new ScanCoordinator(server, database, worldScanner, notifier);
         this.scanExecutor = new ScanExecutor(server, database, worldScanner, batchProcessor, notifier);
-        this.dataRefiner = new DataRefiner(database, notifier, backgroundExecutor);
+        this.dataRefiner = new DataRefiner(database, notifier);
 
         NeoForge.EVENT_BUS.register(this);
 
         ComplexityAnalyzer.LOGGER.info("GeoAnalysisManager initialized");
+    }
+
+    public ScanSession getCurrentSession() {
+        return coordinator.getCurrentSession();
+    }
+
+    public int getActiveWorkerCount() {
+        return scanExecutor.getActiveWorkerCount();
+    }
+
+    public int getTargetWorkerCount() {
+        return scanExecutor.getTargetWorkerCount();
+    }
+
+    public boolean isThrottled() {
+        return scanExecutor.isThrottled();
+    }
+
+    public float getCurrentMspt() {
+        return scanExecutor.getCurrentMspt();
     }
 
     public void startInitialScanIfNeeded() {
@@ -100,8 +118,7 @@ public class GeoAnalysisManager {
 
                 if (phase == ScanMetadata.ScanPhase.REFINING) {
                     notifier.logWarn("Server stopped during refinement. Restarting refinement phase...");
-                    ScanSession session = coordinator.createSession(32, ScanProfile.QUARTER);
-                    dataRefiner.refine(session, analysisEngine::onGeoScanFinished);
+                    dataRefiner.refine(analysisEngine::onGeoScanFinished);
                     return;
                 }
 
@@ -217,7 +234,12 @@ public class GeoAnalysisManager {
             case RECONNAISSANCE -> {
                 ScanSession session = coordinator.getCurrentSession();
                 if (session != null && session.isValid()) {
-                    yield "Phase 1: " + session.getStatusString();
+                    String status = "Phase 1: " + session.getStatusString();
+                    if (scanExecutor.isThrottled()) {
+                        float mspt = scanExecutor.getCurrentMspt();
+                        status += String.format(" [PAUSED - MSPT: %.1f]", mspt);
+                    }
+                    yield status;
                 } else {
                     yield "Reconnaissance (no active session)";
                 }
@@ -287,9 +309,11 @@ public class GeoAnalysisManager {
 
     private void onReconnaissanceComplete(ScanSession session) {
         if (isShutdown.get()) return;
+        ComplexityAnalyzer.LOGGER.info("[GeoAnalysisManager] Reconnaissance complete! Starting refinement...");
         coordinator.finishReconnaissance(session);
-        dataRefiner.refine(session, () -> {
+        dataRefiner.refine(() -> {
             if (!isShutdown.get()) {
+                ComplexityAnalyzer.LOGGER.info("[GeoAnalysisManager] Refinement complete! Invalidating session.");
                 coordinator.invalidateCurrentSession();
                 analysisEngine.onGeoScanFinished();
             }
@@ -299,6 +323,7 @@ public class GeoAnalysisManager {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         if (isShutdown.get()) return;
+        if (isScanning()) scanExecutor.updateMsptMonitor();
         int ticks = countdownTicks.get();
         if (ticks <= 0) return;
         ticks = countdownTicks.decrementAndGet();

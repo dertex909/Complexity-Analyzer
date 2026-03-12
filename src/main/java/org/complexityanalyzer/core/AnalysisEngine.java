@@ -353,12 +353,12 @@ public class AnalysisEngine {
 
             ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Updating resource sources...");
 
-            currentSourceManager.removeSourcesByType(TheoreticalBlockSource.class);
-            currentSourceManager.removeSourcesByType(EmpiricalBlockSource.class);
-
             if (geoDB != null && blockProp != null) {
-                EmpiricalBlockSource empiricalSource = new EmpiricalBlockSource(blockProp, geoDB);
-                currentSourceManager.addSourceAndRefresh(empiricalSource);
+                currentSourceManager.removeSourcesByType(TheoreticalBlockSource.class);
+                currentSourceManager.removeSourcesByType(EmpiricalBlockSource.class);
+                currentSourceManager.addSourceAndRefresh(new EmpiricalBlockSource(blockProp, geoDB));
+            } else {
+                ComplexityAnalyzer.LOGGER.warn("Failed to apply GeoScan data: DB is null");
             }
 
             recalculateComplexity();

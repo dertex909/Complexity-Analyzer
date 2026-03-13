@@ -13,6 +13,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.ThreadPoolManager;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -31,13 +32,6 @@ public class UltraFastChunkGenerator {
 
     private final ConcurrentHashMap<Long, CompletableFuture<ChunkAccess>> inProgress = new ConcurrentHashMap<>();
 
-    private static final ForkJoinPool GENERATION_POOL = new ForkJoinPool(
-            Runtime.getRuntime().availableProcessors(),
-            ForkJoinPool.defaultForkJoinWorkerThreadFactory,
-            null,
-            true
-    );
-
     public UltraFastChunkGenerator(ServerLevel level) {
         this.level = level;
         this.generator = level.getChunkSource().getGenerator();
@@ -46,6 +40,10 @@ public class UltraFastChunkGenerator {
 
         String dimensionKey = level.dimension().location().toString();
         this.cache = DIMENSION_CACHES.computeIfAbsent(dimensionKey, k -> new OptimizedChunkCache());
+    }
+
+    private static ForkJoinPool getPool() {
+        return ThreadPoolManager.getInstance().getForkJoinPool();
     }
 
     public List<ChunkAccess> generateBatch(List<ChunkPos> positions) {
@@ -116,6 +114,7 @@ public class UltraFastChunkGenerator {
 
         if (toGenerate.isEmpty()) return area;
 
+        ForkJoinPool pool = getPool();
         List<CompletableFuture<Void>> futures = new ArrayList<>(toGenerate.size());
 
         for (ChunkPos pos : toGenerate) {
@@ -123,7 +122,7 @@ public class UltraFastChunkGenerator {
             futures.add(CompletableFuture.runAsync(() -> {
                 ChunkAccess chunk = getOrCreateChunk(pos);
                 area.put(key, chunk);
-            }, GENERATION_POOL));
+            }, pool));
         }
         awaitAll(futures);
 
@@ -132,7 +131,7 @@ public class UltraFastChunkGenerator {
             futures.add(CompletableFuture.runAsync(() -> {
                 ChunkAccess chunk = area.get(key);
                 if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
-            }, GENERATION_POOL));
+            }, pool));
         }
         awaitAll(futures);
 
@@ -141,7 +140,7 @@ public class UltraFastChunkGenerator {
             futures.add(CompletableFuture.runAsync(() -> {
                 ChunkAccess chunk = area.get(key);
                 if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
-            }, GENERATION_POOL));
+            }, pool));
         }
         awaitAll(futures);
 
@@ -153,7 +152,7 @@ public class UltraFastChunkGenerator {
                     generateSurface(chunk, area);
                     cache.put(pos, chunk, ChunkStatus.SURFACE);
                 }
-            }, GENERATION_POOL));
+            }, pool));
         }
         awaitAll(futures);
 

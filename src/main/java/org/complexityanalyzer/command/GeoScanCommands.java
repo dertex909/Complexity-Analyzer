@@ -57,7 +57,7 @@ public class GeoScanCommands {
                                         32,
                                         StringArgumentType.getString(ctx, "profile"),
                                         false))
-                                .then(Commands.argument("chunks", IntegerArgumentType.integer(1, 256))
+                                .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
                                         .executes(ctx -> executeScan(ctx,
                                                 IntegerArgumentType.getInteger(ctx, "chunks"),
                                                 StringArgumentType.getString(ctx, "profile"),

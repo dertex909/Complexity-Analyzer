@@ -183,7 +183,12 @@ public class UltraFastChunkGenerator {
 
     private void generateSurface(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
         try {
-            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(level, chunk, area, ChunkStatus.SURFACE);
+            List<ChunkAccess> neighbors = new ArrayList<>(area.values());
+
+            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(level, chunk, neighbors, 1,
+                    ChunkStatus.SURFACE
+            );
+
             generator.buildSurface(region, structureManager, randomState, chunk);
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.SURFACE);
         } catch (Exception e) {
@@ -193,14 +198,14 @@ public class UltraFastChunkGenerator {
 
     private void generateFeatures(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
         try {
-            Heightmap.primeHeightmaps(chunk, EnumSet.of(
-                    Heightmap.Types.MOTION_BLOCKING,
-                    Heightmap.Types.OCEAN_FLOOR,
+            Heightmap.primeHeightmaps(chunk, EnumSet.of(Heightmap.Types.MOTION_BLOCKING, Heightmap.Types.OCEAN_FLOOR,
                     Heightmap.Types.WORLD_SURFACE
             ));
 
-            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(
-                    level, chunk, area, ChunkStatus.FEATURES
+            List<ChunkAccess> neighbors = new ArrayList<>(area.values());
+
+            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(level, chunk, neighbors, 1,
+                    ChunkStatus.FEATURES
             );
 
             generator.applyBiomeDecoration(region, chunk, structureManager);

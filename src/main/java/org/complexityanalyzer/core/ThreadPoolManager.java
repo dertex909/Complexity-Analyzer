@@ -327,26 +327,15 @@ public class ThreadPoolManager {
     }
 
     private void logRemainingThreads(ExecutorService compute, ForkJoinPool fj) {
-        int remaining = 0;
+        int computeActive = compute instanceof ThreadPoolExecutor tpe && !tpe.isTerminated() ? tpe.getActiveCount() : 0;
+        int fjActive = fj != null && !fj.isTerminated() ? fj.getActiveThreadCount() : 0;
+        int total = computeActive + fjActive;
 
-        if (compute instanceof ThreadPoolExecutor tpe && !tpe.isTerminated()) {
-            int active = tpe.getActiveCount();
-            if (active > 0) {
-                remaining += active;
-                ComplexityAnalyzer.LOGGER.warn("ComputePool: {} threads still active (daemon - will die with JVM)", active);
-            }
-        }
-
-        if (fj != null && !fj.isTerminated()) {
-            int active = fj.getActiveThreadCount();
-            if (active > 0) {
-                remaining += active;
-                ComplexityAnalyzer.LOGGER.warn("ForkJoinPool: {} threads still active (daemon - will die with JVM)", active);
-            }
-        }
-
-        if (remaining > 0) {
-            ComplexityAnalyzer.LOGGER.warn("{} daemon threads still running — they will terminate when JVM exits.", remaining);
+        if (total > 0) {
+            String details = computeActive > 0 && fjActive > 0
+                    ? String.format(" (Compute: %d, ForkJoin: %d)", computeActive, fjActive)
+                    : computeActive > 0 ? " (ComputePool)" : " (ForkJoinPool)";
+            ComplexityAnalyzer.LOGGER.warn("{} daemon threads{} still running — will terminate with JVM", total, details);
         }
     }
 

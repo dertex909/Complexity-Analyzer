@@ -1,7 +1,6 @@
 package org.complexityanalyzer.geoscan.worldgen;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
@@ -14,25 +13,42 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.status.ChunkStep;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
-import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
-import java.util.Map;
+import java.util.List;
 
 public class IsolatedWorldGenRegion extends WorldGenRegion {
 
     private final ChunkAccess centerChunk;
-    private final Map<Long, ChunkAccess> localChunkCache;
-    private final ChunkStatus targetStatus;
+    private final ChunkAccess[] localChunks;
+    private final int side;
+    private final int originX;
+    private final int originZ;
 
     public IsolatedWorldGenRegion(ServerLevel level, ChunkAccess centerChunk,
-                                  Map<Long, ChunkAccess> chunkCache, ChunkStatus targetStatus) {
+                                  List<ChunkAccess> neighborChunks, int radius,
+                                  ChunkStatus targetStatus) {
 
-        super(level, createCache(centerChunk, chunkCache), getChunkStep(targetStatus), centerChunk);
+        super(level, createCache(centerChunk, neighborChunks, radius), getChunkStep(targetStatus), centerChunk);
+
         this.centerChunk = centerChunk;
-        this.localChunkCache = chunkCache;
-        this.targetStatus = targetStatus;
+        this.side = 2 * radius + 1;
+        this.originX = centerChunk.getPos().x - radius;
+        this.originZ = centerChunk.getPos().z - radius;
+
+        this.localChunks = new ChunkAccess[side * side];
+
+        for (ChunkAccess chunk : neighborChunks) {
+            putChunkInArray(chunk);
+        }
+        putChunkInArray(centerChunk);
+    }
+
+    private void putChunkInArray(ChunkAccess chunk) {
+        int lx = chunk.getPos().x - originX;
+        int lz = chunk.getPos().z - originZ;
+
+        if (lx >= 0 && lx < side && lz >= 0 && lz < side) localChunks[lx + lz * side] = chunk;
     }
 
     private static ChunkStep getChunkStep(ChunkStatus status) {
@@ -40,20 +56,26 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     }
 
     private static StaticCache2D<GenerationChunkHolder> createCache(ChunkAccess centerChunk,
-                                                                    Map<Long, ChunkAccess> chunkCache) {
-        ChunkPos center = centerChunk.getPos();
+                                                                    List<ChunkAccess> neighbors,
+                                                                    int radius) {
+        int side = 2 * radius + 1;
+        int originX = centerChunk.getPos().x - radius;
+        int originZ = centerChunk.getPos().z - radius;
 
-        int radius = 1;
+        ChunkAccess[] tempArray = new ChunkAccess[side * side];
 
-        return StaticCache2D.create(center.x, center.z, radius, (x, z) -> {
-            long key = ChunkPos.asLong(x, z);
-            ChunkAccess chunk;
+        for (ChunkAccess chunk : neighbors) {
+            int lx = chunk.getPos().x - originX;
+            int lz = chunk.getPos().z - originZ;
+            if (lx >= 0 && lx < side && lz >= 0 && lz < side) tempArray[lx + lz * side] = chunk;
+        }
+        tempArray[(centerChunk.getPos().x - originX) + (centerChunk.getPos().z - originZ) * side] = centerChunk;
 
-            if (x == center.x && z == center.z) {
-                chunk = centerChunk;
-            } else {
-                chunk = chunkCache.get(key);
-            }
+        return StaticCache2D.create(centerChunk.getPos().x, centerChunk.getPos().z, radius, (x, z) -> {
+            int lx = x - originX;
+            int lz = z - originZ;
+            if (lx < 0 || lz < 0 || lx >= side || lz >= side) return null;
+            ChunkAccess chunk = tempArray[lx + lz * side];
 
             if (chunk == null) return null;
             return new FakeGenerationChunkHolder(chunk);
@@ -61,66 +83,53 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     }
 
     @Override
-    @Nullable
-    public ChunkAccess getChunk(int x, int z, @NotNull ChunkStatus status, boolean required) {
-        long key = ChunkPos.asLong(x, z);
-        if (x == centerChunk.getPos().x && z == centerChunk.getPos().z) return centerChunk;
-
-        ChunkAccess chunk = localChunkCache.get(key);
-
-        if (chunk == null && required && targetStatus != ChunkStatus.CARVERS) ComplexityAnalyzer.LOGGER.debug(
-                "[IsolatedRegion] Missing chunk [{}, {}] for {} at {}", x, z, targetStatus, centerChunk.getPos()
-        );
-
-        return chunk;
-    }
-
-    @Override
-    public boolean hasChunk(int x, int z) {
-        if (x == centerChunk.getPos().x && z == centerChunk.getPos().z) return true;
-        return localChunkCache.containsKey(ChunkPos.asLong(x, z));
-    }
-
-    @Override
     public @NotNull BlockState getBlockState(@NotNull BlockPos pos) {
-        int cx = SectionPos.blockToSectionCoord(pos.getX());
-        int cz = SectionPos.blockToSectionCoord(pos.getZ());
+        int cx = pos.getX() >> 4;
+        int cz = pos.getZ() >> 4;
 
-        ChunkAccess chunk;
-        if (cx == centerChunk.getPos().x && cz == centerChunk.getPos().z) {
-            chunk = centerChunk;
-        } else {
-            chunk = localChunkCache.get(ChunkPos.asLong(cx, cz));
+        int lx = cx - originX;
+        int lz = cz - originZ;
+
+        if (lx >= 0 && lx < side && lz >= 0 && lz < side) {
+            ChunkAccess chunk = localChunks[lx + lz * side];
+            if (chunk != null) try {
+                return chunk.getBlockState(pos);
+            } catch (Throwable ignored) {
+            }
         }
-
-        if (chunk != null) try {
-            return chunk.getBlockState(pos);
-        } catch (Exception e) {
-            return Blocks.AIR.defaultBlockState();
-        }
-
         return Blocks.AIR.defaultBlockState();
     }
 
     @Override
     public @NotNull FluidState getFluidState(@NotNull BlockPos pos) {
-        int cx = SectionPos.blockToSectionCoord(pos.getX());
-        int cz = SectionPos.blockToSectionCoord(pos.getZ());
+        int cx = pos.getX() >> 4;
+        int cz = pos.getZ() >> 4;
+        int lx = cx - originX;
+        int lz = cz - originZ;
 
-        ChunkAccess chunk;
-        if (cx == centerChunk.getPos().x && cz == centerChunk.getPos().z) {
-            chunk = centerChunk;
-        } else {
-            chunk = localChunkCache.get(ChunkPos.asLong(cx, cz));
+        if (lx >= 0 && lx < side && lz >= 0 && lz < side) {
+            ChunkAccess chunk = localChunks[lx + lz * side];
+            if (chunk != null) try {
+                return chunk.getFluidState(pos);
+            } catch (Throwable ignored) {
+            }
         }
-
-        if (chunk != null) try {
-            return chunk.getFluidState(pos);
-        } catch (Exception e) {
-            return Fluids.EMPTY.defaultFluidState();
-        }
-
         return Fluids.EMPTY.defaultFluidState();
+    }
+
+    @Override
+    public boolean hasChunk(int x, int z) {
+        int lx = x - originX;
+        int lz = z - originZ;
+        return lx >= 0 && lx < side && lz >= 0 && lz < side && localChunks[lx + lz * side] != null;
+    }
+
+    @Override
+    public ChunkAccess getChunk(int x, int z, @NotNull ChunkStatus status, boolean required) {
+        int lx = x - originX;
+        int lz = z - originZ;
+        if (lx >= 0 && lx < side && lz >= 0 && lz < side) return localChunks[lx + lz * side];
+        return null;
     }
 
     @Override

@@ -55,12 +55,27 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
-    public static final ModConfigSpec.IntValue GEOSCAN_CHUNK_TIMEOUT_MS;
+    public static final ModConfigSpec.IntValue MAX_THREADS;
+
+    private static volatile int resolvedMaxThreads = -1;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("general");
+
+        builder.push("threading");
+        MAX_THREADS = builder
+                .comment(
+                        "Maximum number of threads for analysis and geo-scanning.",
+                        "0 = unlimited (uses all available CPU cores minus 2)",
+                        "1-1024 = fixed thread limit for hosting environments",
+                        "",
+                        "WARNING: If set higher than available CPU cores, server will crash on startup!",
+                        "Use 0 for local servers, set explicit limit (e.g. 4) for shared hosting."
+                )
+                .defineInRange("maxThreads", 0, 0, 1024);
+        builder.pop();
 
         builder.push("jei_integration");
         ENABLE_JEI_INTEGRATION = builder
@@ -143,21 +158,6 @@ public class ComplexityConfig {
 
         builder.pop();
 
-        builder.push("geo_scan");
-        builder.comment(
-                "Geo-Scan Settings - controls world scanning for block rarity analysis."
-        );
-
-        GEOSCAN_CHUNK_TIMEOUT_MS = builder
-                .comment(
-                        "Timeout in milliseconds for loading/generating a single chunk.",
-                        "Increase if you have heavy modpacks with slow worldgen.",
-                        "Default: 10000 (10 seconds)"
-                )
-                .defineInRange("chunkTimeoutMs", 10000, 100, 60000);
-
-        builder.pop();
-
         builder.pop();
 
         SPEC = builder.build();
@@ -176,7 +176,28 @@ public class ComplexityConfig {
         return MACHINE_BASE_COMPLEXITY.get();
     }
 
-    public static int getGeoscanChunkTimeoutMs() {
-        return GEOSCAN_CHUNK_TIMEOUT_MS.get();
+    public static int getMaxThreads() {
+        if (resolvedMaxThreads >= 0) return resolvedMaxThreads;
+
+        int configValue = MAX_THREADS.get();
+        int availableCores = Runtime.getRuntime().availableProcessors();
+
+        if (configValue == 0) {
+            resolvedMaxThreads = Math.max(1, availableCores - 2);
+        } else {
+            if (configValue > availableCores) throw new IllegalStateException(String.format(
+                    "[Complexity Analyzer] Config error: maxThreads=%d exceeds available CPU cores=%d. " +
+                            "Set maxThreads to %d or less, or use 0 for unlimited.",
+                    configValue, availableCores, availableCores
+            ));
+
+            resolvedMaxThreads = configValue;
+        }
+
+        return resolvedMaxThreads;
+    }
+
+    public static void resetThreadCache() {
+        resolvedMaxThreads = -1;
     }
 }

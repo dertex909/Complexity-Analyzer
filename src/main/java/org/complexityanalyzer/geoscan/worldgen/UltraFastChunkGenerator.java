@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.geoscan.worldgen;
 
 import net.minecraft.core.Holder;
@@ -53,10 +35,6 @@ public class UltraFastChunkGenerator {
     private final StructureManager structureManager;
     private final OptimizedChunkCache cache;
 
-    private static final int GENERATION_TIMEOUT_SECONDS = 30;
-
-    private final ConcurrentHashMap<Long, CompletableFuture<ChunkAccess>> inProgress = new ConcurrentHashMap<>();
-
     private final boolean isNoiseGenerator;
     private final NoiseBasedChunkGeneratorAccessor noiseAccessor;
     private final Holder<NoiseGeneratorSettings> noiseSettings;
@@ -78,10 +56,6 @@ public class UltraFastChunkGenerator {
             this.noiseAccessor = null;
             this.noiseSettings = null;
         }
-    }
-
-    private static ForkJoinPool getPool() {
-        return ThreadPoolManager.getInstance().getForkJoinPool();
     }
 
     public List<ChunkAccess> generateBatch(List<ChunkPos> positions) {
@@ -152,102 +126,60 @@ public class UltraFastChunkGenerator {
 
         if (toGenerate.isEmpty()) return area;
 
-        ForkJoinPool pool = getPool();
-        List<CompletableFuture<Void>> futures = new ArrayList<>(toGenerate.size());
+        runParallelPhase(toGenerate, pos -> area.put(pos.toLong(), getOrCreateChunk(pos)));
 
-        for (ChunkPos pos : toGenerate) {
-            long key = pos.toLong();
-            futures.add(CompletableFuture.runAsync(() -> {
-                IsolatedThreadMarker.markIsolated();
-                try {
-                    ChunkAccess chunk = getOrCreateChunk(pos);
-                    area.put(key, chunk);
-                } finally {
-                    IsolatedThreadMarker.unmarkIsolated();
-                }
-            }, pool));
-        }
-        awaitAll(futures);
+        runParallelPhase(toGenerate, pos -> {
+            ChunkAccess chunk = area.get(pos.toLong());
+            if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
+        });
 
-        for (ChunkPos pos : toGenerate) {
-            long key = pos.toLong();
-            futures.add(CompletableFuture.runAsync(() -> {
-                IsolatedThreadMarker.markIsolated();
-                try {
-                    ChunkAccess chunk = area.get(key);
-                    if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
-                } finally {
-                    IsolatedThreadMarker.unmarkIsolated();
-                }
-            }, pool));
-        }
-        awaitAll(futures);
+        runParallelPhase(toGenerate, pos -> {
+            ChunkAccess chunk = area.get(pos.toLong());
+            if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
+        });
 
-        for (ChunkPos pos : toGenerate) {
-            long key = pos.toLong();
-            futures.add(CompletableFuture.runAsync(() -> {
-                IsolatedThreadMarker.markIsolated();
-                try {
-                    ChunkAccess chunk = area.get(key);
-                    if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
-                } finally {
-                    IsolatedThreadMarker.unmarkIsolated();
-                }
-            }, pool));
-        }
-        awaitAll(futures);
-
-        for (ChunkPos pos : toGenerate) {
-            long key = pos.toLong();
-            futures.add(CompletableFuture.runAsync(() -> {
-                IsolatedThreadMarker.markIsolated();
-                try {
-                    ChunkAccess chunk = area.get(key);
-                    if (hasNotStatus(chunk, ChunkStatus.SURFACE)) {
-                        generateSurface(chunk, area);
-                        cache.put(pos, chunk, ChunkStatus.SURFACE);
-                    }
-                } finally {
-                    IsolatedThreadMarker.unmarkIsolated();
-                }
-            }, pool));
-        }
-        awaitAll(futures);
+        runParallelPhase(toGenerate, pos -> {
+            ChunkAccess chunk = area.get(pos.toLong());
+            if (hasNotStatus(chunk, ChunkStatus.SURFACE)) {
+                generateSurface(chunk, area);
+                cache.put(pos, chunk, ChunkStatus.SURFACE);
+            }
+        });
 
         return area;
     }
 
-    private ChunkAccess getOrCreateChunk(ChunkPos pos) {
-        long key = pos.toLong();
-        ChunkAccess cached = cache.get(pos, ChunkStatus.EMPTY);
-        if (cached != null) return cached;
+    private void runParallelPhase(List<ChunkPos> items, java.util.function.Consumer<ChunkPos> task) {
+        ForkJoinPool pool = ThreadPoolManager.getInstance().getForkJoinPool();
+        CountDownLatch latch = new CountDownLatch(items.size());
 
-        CompletableFuture<ChunkAccess> future = inProgress.computeIfAbsent(key, k -> {
-            CompletableFuture<ChunkAccess> f = new CompletableFuture<>();
-            try {
-                f.complete(createProtoChunk(pos));
-            } catch (Exception e) {
-                f.completeExceptionally(e);
-            }
-            return f;
-        });
+        for (ChunkPos pos : items) {
+            pool.execute(() -> {
+                IsolatedThreadMarker.markIsolated();
+                try {
+                    task.accept(pos);
+                } finally {
+                    IsolatedThreadMarker.unmarkIsolated();
+                    latch.countDown();
+                }
+            });
+        }
 
         try {
-            return future.get(GENERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            return createProtoChunk(pos);
-        } finally {
-            inProgress.remove(key, future);
+            boolean completed = latch.await(60, TimeUnit.SECONDS);
+            if (!completed) {
+                ComplexityAnalyzer.LOGGER.warn("[UltraFast] Phase timeout! Not all chunks generated in 60s.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ComplexityAnalyzer.LOGGER.warn("[UltraFast] Phase generation interrupted.");
         }
     }
 
-    private void awaitAll(List<CompletableFuture<Void>> futures) {
-        if (futures.isEmpty()) return;
-        try {
-            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-        } finally {
-            futures.clear();
-        }
+    private ChunkAccess getOrCreateChunk(ChunkPos pos) {
+        ChunkAccess cached = cache.get(pos, ChunkStatus.EMPTY);
+        if (cached != null) return cached;
+        return createProtoChunk(pos);
     }
 
     private boolean hasStatus(ChunkAccess chunk, ChunkStatus status) {
@@ -260,9 +192,8 @@ public class UltraFastChunkGenerator {
     }
 
     private ProtoChunk createProtoChunk(ChunkPos pos) {
-        return new ProtoChunk(pos, UpgradeData.EMPTY, level, level.registryAccess().registryOrThrow(Registries.BIOME),
-                null
-        );
+        return new ProtoChunk(pos, UpgradeData.EMPTY, level,
+                level.registryAccess().registryOrThrow(Registries.BIOME), null);
     }
 
     private void generateBiomes(ChunkAccess chunk) {

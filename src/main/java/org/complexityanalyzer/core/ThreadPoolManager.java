@@ -19,6 +19,7 @@
 package org.complexityanalyzer.core;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -29,7 +30,6 @@ import java.util.concurrent.locks.LockSupport;
 
 public class ThreadPoolManager {
 
-    private static final int PARALLELISM = Math.max(1, Runtime.getRuntime().availableProcessors() - 2);
     private static final int QUEUE_CAPACITY = 10000;
     private static final long GRACEFUL_TIMEOUT_MS = 500;
     private static final long FORCE_KILL_TIMEOUT_MS = 2000;
@@ -39,6 +39,7 @@ public class ThreadPoolManager {
 
     private volatile ExecutorService computePool;
     private volatile ForkJoinPool forkJoinPool;
+    private volatile int parallelism;
 
     private final AtomicInteger computeThreadCounter = new AtomicInteger(0);
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
@@ -52,10 +53,12 @@ public class ThreadPoolManager {
 
     public static ThreadPoolManager getInstance() {
         ThreadPoolManager localInstance = instance;
-        if (localInstance == null) {
+        if (localInstance == null || localInstance.isShutdown.get()) {
             synchronized (LOCK) {
                 localInstance = instance;
-                if (localInstance == null) instance = localInstance = new ThreadPoolManager();
+                if (localInstance == null || localInstance.isShutdown.get()) {
+                    instance = localInstance = new ThreadPoolManager();
+                }
             }
         }
         return localInstance;
@@ -71,8 +74,9 @@ public class ThreadPoolManager {
                 existing.isShutdown.set(false);
                 existing.isInitializing.set(false);
                 existing.computeThreadCounter.set(0);
+                ComplexityConfig.resetThreadCache();
                 existing.initialize();
-                ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", PARALLELISM);
+                ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", existing.parallelism);
             } else {
                 instance = new ThreadPoolManager();
             }
@@ -94,11 +98,13 @@ public class ThreadPoolManager {
                     return;
                 }
 
-                ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with {} threads", PARALLELISM);
+                this.parallelism = ComplexityConfig.getMaxThreads();
+
+                ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with {} threads", parallelism);
 
                 this.computePool = new ThreadPoolExecutor(
-                        PARALLELISM,
-                        PARALLELISM,
+                        parallelism,
+                        parallelism,
                         60L, TimeUnit.SECONDS,
                         new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                         r -> {
@@ -111,7 +117,7 @@ public class ThreadPoolManager {
                 );
 
                 this.forkJoinPool = new ForkJoinPool(
-                        PARALLELISM,
+                        parallelism,
                         pool -> {
                             ForkJoinWorkerThread thread = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
                             thread.setName("Complexity-ForkJoin-" + thread.getPoolIndex());
@@ -216,7 +222,7 @@ public class ThreadPoolManager {
     }
 
     public int getParallelism() {
-        return PARALLELISM;
+        return parallelism;
     }
 
     private void ensureNotShutdown() {
@@ -264,7 +270,7 @@ public class ThreadPoolManager {
 
             if (remainingTime > 0) {
                 if (!computeTerminated) {
-                    computeTerminated = awaitTermination(compute, "ComputePool", remainingTime / 2);
+                    awaitTermination(compute, "ComputePool", remainingTime / 2);
                 }
                 if (!fjTerminated) {
                     elapsed = System.currentTimeMillis() - shutdownStartTime;
@@ -273,7 +279,7 @@ public class ThreadPoolManager {
                 }
             }
 
-            if (!computeTerminated || !fjTerminated) {
+            if (!fjTerminated) {
                 elapsed = System.currentTimeMillis() - shutdownStartTime;
                 ComplexityAnalyzer.LOGGER.warn("Pools did not terminate within {}ms - force killing threads", elapsed);
                 forceInterruptAllWorkers();
@@ -351,12 +357,12 @@ public class ThreadPoolManager {
         ForkJoinPool fj = forkJoinPool;
 
         if (compute == null || fj == null || isShutdown.get()) {
-            return new PoolStats(PARALLELISM, 0, 0, 0, 0, 0);
+            return new PoolStats(parallelism, 0, 0, 0, 0, 0);
         }
 
         if (compute instanceof ThreadPoolExecutor tpe) {
             return new PoolStats(
-                    PARALLELISM,
+                    parallelism,
                     tpe.getActiveCount(),
                     tpe.getCompletedTaskCount(),
                     tpe.getQueue().size(),
@@ -365,7 +371,7 @@ public class ThreadPoolManager {
             );
         }
 
-        return new PoolStats(PARALLELISM, 0, 0, 0,
+        return new PoolStats(parallelism, 0, 0, 0,
                 fj.getActiveThreadCount(), fj.getStealCount());
     }
 

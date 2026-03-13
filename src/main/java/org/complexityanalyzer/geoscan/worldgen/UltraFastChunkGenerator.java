@@ -1,19 +1,26 @@
 package org.complexityanalyzer.geoscan.worldgen;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+import net.minecraft.world.level.levelgen.NoiseSettings;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.mixin.NoiseBasedChunkGeneratorAccessor;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -32,6 +39,10 @@ public class UltraFastChunkGenerator {
 
     private final ConcurrentHashMap<Long, CompletableFuture<ChunkAccess>> inProgress = new ConcurrentHashMap<>();
 
+    private final boolean isNoiseGenerator;
+    private final NoiseBasedChunkGeneratorAccessor noiseAccessor;
+    private final Holder<NoiseGeneratorSettings> noiseSettings;
+
     public UltraFastChunkGenerator(ServerLevel level) {
         this.level = level;
         this.generator = level.getChunkSource().getGenerator();
@@ -40,6 +51,15 @@ public class UltraFastChunkGenerator {
 
         String dimensionKey = level.dimension().location().toString();
         this.cache = DIMENSION_CACHES.computeIfAbsent(dimensionKey, k -> new OptimizedChunkCache());
+
+        this.isNoiseGenerator = generator instanceof NoiseBasedChunkGenerator;
+        if (isNoiseGenerator) {
+            this.noiseAccessor = (NoiseBasedChunkGeneratorAccessor) generator;
+            this.noiseSettings = noiseAccessor.getSettings();
+        } else {
+            this.noiseAccessor = null;
+            this.noiseSettings = null;
+        }
     }
 
     private static ForkJoinPool getPool() {
@@ -120,8 +140,13 @@ public class UltraFastChunkGenerator {
         for (ChunkPos pos : toGenerate) {
             long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = getOrCreateChunk(pos);
-                area.put(key, chunk);
+                IsolatedThreadMarker.markIsolated();
+                try {
+                    ChunkAccess chunk = getOrCreateChunk(pos);
+                    area.put(key, chunk);
+                } finally {
+                    IsolatedThreadMarker.unmarkIsolated();
+                }
             }, pool));
         }
         awaitAll(futures);
@@ -129,8 +154,13 @@ public class UltraFastChunkGenerator {
         for (ChunkPos pos : toGenerate) {
             long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = area.get(key);
-                if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
+                IsolatedThreadMarker.markIsolated();
+                try {
+                    ChunkAccess chunk = area.get(key);
+                    if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
+                } finally {
+                    IsolatedThreadMarker.unmarkIsolated();
+                }
             }, pool));
         }
         awaitAll(futures);
@@ -138,8 +168,13 @@ public class UltraFastChunkGenerator {
         for (ChunkPos pos : toGenerate) {
             long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = area.get(key);
-                if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
+                IsolatedThreadMarker.markIsolated();
+                try {
+                    ChunkAccess chunk = area.get(key);
+                    if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
+                } finally {
+                    IsolatedThreadMarker.unmarkIsolated();
+                }
             }, pool));
         }
         awaitAll(futures);
@@ -147,10 +182,15 @@ public class UltraFastChunkGenerator {
         for (ChunkPos pos : toGenerate) {
             long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = area.get(key);
-                if (hasNotStatus(chunk, ChunkStatus.SURFACE)) {
-                    generateSurface(chunk, area);
-                    cache.put(pos, chunk, ChunkStatus.SURFACE);
+                IsolatedThreadMarker.markIsolated();
+                try {
+                    ChunkAccess chunk = area.get(key);
+                    if (hasNotStatus(chunk, ChunkStatus.SURFACE)) {
+                        generateSurface(chunk, area);
+                        cache.put(pos, chunk, ChunkStatus.SURFACE);
+                    }
+                } finally {
+                    IsolatedThreadMarker.unmarkIsolated();
                 }
             }, pool));
         }
@@ -218,7 +258,38 @@ public class UltraFastChunkGenerator {
 
     private void generateNoise(ChunkAccess chunk) {
         try {
-            generator.fillFromNoise(Blender.empty(), randomState, structureManager, chunk).join();
+            if (isNoiseGenerator && noiseAccessor != null && noiseSettings != null) {
+                NoiseSettings noise = noiseSettings.value().noiseSettings()
+                        .clampToHeightAccessor(chunk.getHeightAccessorForGeneration());
+
+                int minY = noise.minY();
+                int cellHeight = noise.getCellHeight();
+                int minCellY = Mth.floorDiv(minY, cellHeight);
+                int cellCountY = Mth.floorDiv(noise.height(), cellHeight);
+
+                if (cellCountY > 0) {
+                    int topSectionIndex = chunk.getSectionIndex(cellCountY * cellHeight - 1 + minY);
+                    int bottomSectionIndex = chunk.getSectionIndex(minY);
+                    Set<LevelChunkSection> acquiredSections = new HashSet<>();
+
+                    for (int i = topSectionIndex; i >= bottomSectionIndex; --i) {
+                        LevelChunkSection section = chunk.getSection(i);
+                        section.acquire();
+                        acquiredSections.add(section);
+                    }
+
+                    try {
+                        noiseAccessor.invokeDoFill(Blender.empty(), structureManager, randomState,
+                                chunk, minCellY, cellCountY);
+                    } finally {
+                        for (LevelChunkSection section : acquiredSections) {
+                            section.release();
+                        }
+                    }
+                }
+            } else {
+                generator.fillFromNoise(Blender.empty(), randomState, structureManager, chunk).join();
+            }
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.NOISE);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.trace("[UltraFast] Noise failed for {}: {}", chunk.getPos(), e.getMessage());

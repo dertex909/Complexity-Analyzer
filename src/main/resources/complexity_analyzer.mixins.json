@@ -6,7 +6,9 @@
   "refmap": "complexity_analyzer.refmap.json",
   "mixins": [
     "ThreadingDetectorMixin",
-    "PalettedContainerMixin"
+    "PalettedContainerMixin",
+    "UtilMixin",
+    "NoiseBasedChunkGeneratorAccessor"
   ],
   "client": [],
   "server": [],

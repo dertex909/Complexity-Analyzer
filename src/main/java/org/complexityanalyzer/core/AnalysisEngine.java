@@ -497,33 +497,69 @@ public class AnalysisEngine {
 
     public void reloadAsync(Level level) {
         if (!isReloading.compareAndSet(false, true)) {
-            ComplexityAnalyzer.LOGGER.warn("Reload is already in progress. Ignoring duplicate request.");
+            ComplexityAnalyzer.LOGGER.warn("Reload already in progress. Ignoring.");
             return;
         }
 
-        ComplexityAnalyzer.LOGGER.info("Reload requested. Scheduling full restart...");
+        if (!(level instanceof ServerLevel serverLevel)) {
+            ComplexityAnalyzer.LOGGER.error("Cannot reload: not a ServerLevel");
+            isReloading.set(false);
+            return;
+        }
 
-        ThreadPoolManager.getInstance().submit(() -> {
+        MinecraftServer srv = serverLevel.getServer();
+
+        ComplexityAnalyzer.LOGGER.info("Reload requested. Scheduling on server thread...");
+
+        srv.execute(() -> {
             try {
-                stateLock.lock();
-                try {
-                    shutdown();
-                    if (Thread.currentThread().isInterrupted()) {
-                        ComplexityAnalyzer.LOGGER.info("Reload cancelled due to server shutdown.");
-                        return;
-                    }
-                    clearAllCaches();
-                } finally {
-                    stateLock.unlock();
-                }
-
-                initializeAsync(level, () -> ComplexityAnalyzer.LOGGER.info("Reload complete."));
+                performReloadOnServerThread(serverLevel);
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Error during reload", e);
-            } finally {
+                ComplexityAnalyzer.LOGGER.error("Critical error during reload", e);
+                currentState.set(State.FAILED);
                 isReloading.set(false);
             }
         });
+    }
+
+    private void performReloadOnServerThread(ServerLevel serverLevel) {
+        ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 1: Shutdown ===");
+        analysisCancelled.set(true);
+        Future<?> currentTask = currentAnalysisTask.getAndSet(null);
+        if (currentTask != null && !currentTask.isDone()) currentTask.cancel(true);
+
+        geoManagerLock.lock();
+        try {
+            GeoAnalysisManager geoMgr = this.geoManager;
+            if (geoMgr != null) {
+                geoMgr.shutdown();
+                this.geoManager = null;
+            }
+        } finally {
+            geoManagerLock.unlock();
+        }
+
+        stateLock.lock();
+        try {
+            clearDataInternal();
+            currentState.set(State.IDLE);
+        } finally {
+            stateLock.unlock();
+        }
+
+        clearAllCaches();
+
+        ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 2: Shutdown Thread Pools ===");
+        ThreadPoolManager.getInstance().shutdown();
+        ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 3: Restart ===");
+        ThreadPoolManager.reinitialize();
+
+        isShuttingDown.set(false);
+        analysisCancelled.set(false);
+        isReloading.set(false);
+
+        ComplexityAnalyzer.LOGGER.info("Starting fresh analysis...");
+        initializeAsync(serverLevel, () -> ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational."));
     }
 
     public void shutdown() {

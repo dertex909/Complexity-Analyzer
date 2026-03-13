@@ -27,6 +27,10 @@ public class UltraFastChunkGenerator {
     private final StructureManager structureManager;
     private final OptimizedChunkCache cache;
 
+    private static final int GENERATION_TIMEOUT_SECONDS = 30;
+
+    private final ConcurrentHashMap<Long, CompletableFuture<ChunkAccess>> inProgress = new ConcurrentHashMap<>();
+
     private static final ForkJoinPool GENERATION_POOL = new ForkJoinPool(
             Runtime.getRuntime().availableProcessors(),
             ForkJoinPool.defaultForkJoinWorkerThreadFactory,
@@ -70,16 +74,22 @@ public class UltraFastChunkGenerator {
 
             for (ChunkPos pos : positions) {
                 ChunkAccess chunk = fullArea.get(pos.toLong());
-                if (chunk != null) {
-                    ChunkAccess cached = cache.get(pos, ChunkStatus.FEATURES);
-                    if (cached != null) {
-                        results.add(cached);
-                    } else {
-                        generateFeatures(chunk, fullArea);
-                        cache.put(pos, chunk, ChunkStatus.FEATURES);
-                        results.add(chunk);
-                    }
+                if (chunk == null) continue;
+
+                ChunkAccess cached = cache.get(pos, ChunkStatus.FEATURES);
+                if (cached != null) {
+                    results.add(cached);
+                    continue;
                 }
+
+                if (hasStatus(chunk, ChunkStatus.FEATURES)) {
+                    results.add(chunk);
+                    continue;
+                }
+
+                generateFeatures(chunk, fullArea);
+                cache.put(pos, chunk, ChunkStatus.FEATURES);
+                results.add(chunk);
             }
 
             return results;
@@ -106,59 +116,94 @@ public class UltraFastChunkGenerator {
 
         if (toGenerate.isEmpty()) return area;
 
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        List<CompletableFuture<Void>> futures = new ArrayList<>(toGenerate.size());
 
         for (ChunkPos pos : toGenerate) {
+            long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ProtoChunk chunk = createProtoChunk(pos);
-                area.put(pos.toLong(), chunk);
+                ChunkAccess chunk = getOrCreateChunk(pos);
+                area.put(key, chunk);
             }, GENERATION_POOL));
         }
-
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-        futures.clear();
+        awaitAll(futures);
 
         for (ChunkPos pos : toGenerate) {
+            long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = area.get(pos.toLong());
-                if (chunk != null) generateBiomes(chunk);
+                ChunkAccess chunk = area.get(key);
+                if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
             }, GENERATION_POOL));
         }
-
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-        futures.clear();
+        awaitAll(futures);
 
         for (ChunkPos pos : toGenerate) {
+            long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = area.get(pos.toLong());
-                if (chunk != null) generateNoise(chunk);
+                ChunkAccess chunk = area.get(key);
+                if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
             }, GENERATION_POOL));
         }
-
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-        futures.clear();
+        awaitAll(futures);
 
         for (ChunkPos pos : toGenerate) {
+            long key = pos.toLong();
             futures.add(CompletableFuture.runAsync(() -> {
-                ChunkAccess chunk = area.get(pos.toLong());
-                if (chunk != null) {
+                ChunkAccess chunk = area.get(key);
+                if (hasNotStatus(chunk, ChunkStatus.SURFACE)) {
                     generateSurface(chunk, area);
                     cache.put(pos, chunk, ChunkStatus.SURFACE);
                 }
             }, GENERATION_POOL));
         }
-
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+        awaitAll(futures);
 
         return area;
     }
 
+    private ChunkAccess getOrCreateChunk(ChunkPos pos) {
+        long key = pos.toLong();
+        ChunkAccess cached = cache.get(pos, ChunkStatus.EMPTY);
+        if (cached != null) return cached;
+
+        CompletableFuture<ChunkAccess> future = inProgress.computeIfAbsent(key, k -> {
+            CompletableFuture<ChunkAccess> f = new CompletableFuture<>();
+            try {
+                f.complete(createProtoChunk(pos));
+            } catch (Exception e) {
+                f.completeExceptionally(e);
+            }
+            return f;
+        });
+
+        try {
+            return future.get(GENERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            return createProtoChunk(pos);
+        } finally {
+            inProgress.remove(key, future);
+        }
+    }
+
+    private void awaitAll(List<CompletableFuture<Void>> futures) {
+        if (futures.isEmpty()) return;
+        try {
+            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+        } finally {
+            futures.clear();
+        }
+    }
+
+    private boolean hasStatus(ChunkAccess chunk, ChunkStatus status) {
+        if (chunk instanceof ProtoChunk proto) return proto.getPersistedStatus().isOrAfter(status);
+        return true;
+    }
+
+    private boolean hasNotStatus(ChunkAccess chunk, ChunkStatus status) {
+        return !hasStatus(chunk, status);
+    }
+
     private ProtoChunk createProtoChunk(ChunkPos pos) {
-        return new ProtoChunk(
-                pos,
-                UpgradeData.EMPTY,
-                level,
-                level.registryAccess().registryOrThrow(Registries.BIOME),
+        return new ProtoChunk(pos, UpgradeData.EMPTY, level, level.registryAccess().registryOrThrow(Registries.BIOME),
                 null
         );
     }
@@ -168,7 +213,7 @@ public class UltraFastChunkGenerator {
             chunk.fillBiomesFromNoise(generator.getBiomeSource(), randomState.sampler());
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.BIOMES);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Biomes failed: {}", e.getMessage());
+            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Biomes failed for {}: {}", chunk.getPos(), e.getMessage());
         }
     }
 
@@ -177,22 +222,20 @@ public class UltraFastChunkGenerator {
             generator.fillFromNoise(Blender.empty(), randomState, structureManager, chunk).join();
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.NOISE);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Noise failed: {}", e.getMessage());
+            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Noise failed for {}: {}", chunk.getPos(), e.getMessage());
         }
     }
 
     private void generateSurface(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
         try {
             List<ChunkAccess> neighbors = new ArrayList<>(area.values());
-
-            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(level, chunk, neighbors, 1,
-                    ChunkStatus.SURFACE
+            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(
+                    level, chunk, neighbors, 1, ChunkStatus.SURFACE
             );
-
             generator.buildSurface(region, structureManager, randomState, chunk);
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.SURFACE);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Surface failed: {}", e.getMessage());
+            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Surface failed for {}: {}", chunk.getPos(), e.getMessage());
         }
     }
 
@@ -203,16 +246,14 @@ public class UltraFastChunkGenerator {
             ));
 
             List<ChunkAccess> neighbors = new ArrayList<>(area.values());
-
-            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(level, chunk, neighbors, 1,
-                    ChunkStatus.FEATURES
+            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(
+                    level, chunk, neighbors, 1, ChunkStatus.FEATURES
             );
-
             generator.applyBiomeDecoration(region, chunk, structureManager);
 
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.FEATURES);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed: {}", e.getMessage());
+            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}", chunk.getPos(), e.getMessage());
         }
     }
 

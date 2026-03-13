@@ -29,7 +29,7 @@ import java.util.concurrent.locks.LockSupport;
 
 public class ThreadPoolManager {
 
-    private static final int PARALLELISM = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
+    private static final int PARALLELISM = Math.max(1, Runtime.getRuntime().availableProcessors() - 2);
     private static final int QUEUE_CAPACITY = 10000;
     private static final long GRACEFUL_TIMEOUT_MS = 500;
     private static final long FORCE_KILL_TIMEOUT_MS = 2000;

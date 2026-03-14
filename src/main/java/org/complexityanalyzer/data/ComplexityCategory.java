@@ -42,8 +42,7 @@ public enum ComplexityCategory {
 
     static {
         List<ComplexityCategory> calculable = Arrays.stream(values())
-                .filter(c -> c != UNCALCULABLE && c != ABSOLUTE)
-                .toList();
+                .filter(c -> c != UNCALCULABLE && c != ABSOLUTE).toList();
 
         CALCULABLE_CATEGORIES = calculable.toArray(new ComplexityCategory[0]);
         UPPER_BOUNDS = new double[calculable.size()];
@@ -63,19 +62,10 @@ public enum ComplexityCategory {
     }
 
     public static ComplexityCategory fromComplexity(double complexity) {
-        if (complexity < 0) {
-            return UNCALCULABLE;
-        }
-        if (complexity == 0) {
-            return ABSOLUTE;
-        }
-
+        if (complexity < 0) return UNCALCULABLE;
+        if (complexity == 0) return ABSOLUTE;
         int categoryIndex = getCategoryIndex(complexity);
-
-        if (categoryIndex >= CALCULABLE_CATEGORIES.length) {
-            return ETERNAL;
-        }
-
+        if (categoryIndex >= CALCULABLE_CATEGORIES.length) return ETERNAL;
         return CALCULABLE_CATEGORIES[categoryIndex];
     }
 

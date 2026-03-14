@@ -63,7 +63,8 @@ public class EmpiricalBlockSource implements IResourceSource {
         double bestCost = Double.POSITIVE_INFINITY;
         BaseResourceData bestData = null;
 
-        for (Map.Entry<ResourceLocation, Map<ResourceLocation, BiomeScanData>> dimEntry : geoDatabase.getAllDimensionData().entrySet()) {
+        for (Map.Entry<ResourceLocation, Map<ResourceLocation, BiomeScanData>> dimEntry :
+                geoDatabase.getAllDimensionData().entrySet()) {
             ResourceLocation dimensionId = dimEntry.getKey();
             Map<ResourceLocation, BiomeScanData> biomeDataMap = dimEntry.getValue();
 

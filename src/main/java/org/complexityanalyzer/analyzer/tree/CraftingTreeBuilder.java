@@ -195,8 +195,7 @@ public class CraftingTreeBuilder {
 
         Map<Item, Integer> ingredientsForOneCraft = new LinkedHashMap<>();
         for (IngredientSlot slot : recipe.getIngredients()) {
-            slot.getVariants().stream()
-                    .min(Comparator.comparingDouble(engine::getComplexity))
+            slot.getVariants().stream().min(Comparator.comparingDouble(engine::getComplexity))
                     .ifPresent(bestVariant ->
                             ingredientsForOneCraft.merge(bestVariant, slot.getCount(), Integer::sum));
         }
@@ -254,13 +253,11 @@ public class CraftingTreeBuilder {
 
         for (IngredientSlot slot : recipe.getIngredients()) {
             Item bestVariant = slot.getVariants().stream()
-                    .min(Comparator.comparingDouble(engine::getComplexity))
-                    .orElse(null);
+                    .min(Comparator.comparingDouble(engine::getComplexity)).orElse(null);
 
             if (bestVariant != null) {
                 double totalIngredientNeeded = craftOperations * slot.getCount();
-                calculateBaseResourcesFor(bestVariant, totalIngredientNeeded, visited,
-                        baseResources, displayMode);
+                calculateBaseResourcesFor(bestVariant, totalIngredientNeeded, visited, baseResources, displayMode);
             }
         }
         visited.remove(item);

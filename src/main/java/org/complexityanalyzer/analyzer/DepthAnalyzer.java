@@ -133,10 +133,7 @@ public class DepthAnalyzer {
 
     private boolean hasFiniteBaseSource(Item item) {
         if (sourceManager == null) return false;
-
-        return sourceManager.analyze(item)
-                .map(data -> !isUnobtainable(data))
-                .orElse(false);
+        return sourceManager.analyze(item).map(data -> !isUnobtainable(data)).orElse(false);
     }
 
     private boolean isUnobtainable(BaseResourceData data) {

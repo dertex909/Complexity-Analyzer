@@ -43,8 +43,7 @@ public class ItemComplexity {
         this.depth = builder.depth;
         this.totalIngredients = builder.totalIngredients;
         this.category = builder.category != null
-                ? builder.category
-                : ComplexityCategory.fromComplexity(builder.complexity);
+                ? builder.category : ComplexityCategory.fromComplexity(builder.complexity);
         this.hasCycle = builder.hasCycle;
         this.hasRecipe = builder.hasRecipe;
         this.errorMessage = builder.errorMessage;

@@ -34,7 +34,6 @@ public class AnalysisBootstrap {
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         AnalysisEngine engine = AnalysisEngine.getInstance();
-
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () ->
                 ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete.")
@@ -45,7 +44,6 @@ public class AnalysisBootstrap {
     public static void onServerStopping(ServerStoppingEvent event) {
         ComplexityAnalyzer.LOGGER.info("Server stopping, shutting down Complexity Analyzer...");
         AnalysisEngine.getInstance().shutdownCompletely();
-
         ComplexityAnalyzer.LOGGER.debug("Cleaning up AdaptiveRecipeConverter resources...");
         AdaptiveRecipeConverter.clearCaches();
     }

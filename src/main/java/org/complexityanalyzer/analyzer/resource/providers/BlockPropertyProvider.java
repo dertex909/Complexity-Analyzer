@@ -73,15 +73,9 @@ public class BlockPropertyProvider {
 
     private Tier determineRequiredTier(Block block) {
         BlockState state = block.defaultBlockState();
-        if (state.is(BlockTags.NEEDS_DIAMOND_TOOL)) {
-            return Tiers.DIAMOND;
-        }
-        if (state.is(BlockTags.NEEDS_IRON_TOOL)) {
-            return Tiers.IRON;
-        }
-        if (state.is(BlockTags.NEEDS_STONE_TOOL)) {
-            return Tiers.STONE;
-        }
+        if (state.is(BlockTags.NEEDS_DIAMOND_TOOL)) return Tiers.DIAMOND;
+        if (state.is(BlockTags.NEEDS_IRON_TOOL)) return Tiers.IRON;
+        if (state.is(BlockTags.NEEDS_STONE_TOOL)) return Tiers.STONE;
         return Tiers.WOOD;
     }
 
@@ -90,9 +84,7 @@ public class BlockPropertyProvider {
     }
 
     public Optional<BlockProperties> getProperties(Item item) {
-        if (item instanceof net.minecraft.world.item.BlockItem blockItem) {
-            return getProperties(blockItem.getBlock());
-        }
+        if (item instanceof net.minecraft.world.item.BlockItem blockItem) return getProperties(blockItem.getBlock());
         return Optional.empty();
     }
 

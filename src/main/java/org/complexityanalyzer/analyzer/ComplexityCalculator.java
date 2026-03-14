@@ -58,9 +58,7 @@ public class ComplexityCalculator {
 
     public Optional<ItemComplexity> getOrCalculateComplexity(Item item) {
         Optional<ItemComplexity> cachedResult = cache.get(item);
-        if (cachedResult.isPresent()) {
-            return cachedResult;
-        }
+        if (cachedResult.isPresent()) return cachedResult;
 
         try {
             ItemComplexity result = buildComplexityResult(item);
@@ -73,8 +71,7 @@ public class ComplexityCalculator {
     }
 
     private ItemComplexity buildComplexityResult(Item item) {
-        double complexity = solverResult.getComplexity(item)
-                .orElseGet(() -> sourceManager.getBaseFactor(item));
+        double complexity = solverResult.getComplexity(item).orElseGet(() -> sourceManager.getBaseFactor(item));
 
         RecipeNode optimalRecipe = solverResult.optimalRecipes().get(item);
 
@@ -101,11 +98,8 @@ public class ComplexityCalculator {
                                 itemName, recipeType, complexity)
                 );
 
-                if (optimalRecipe.hasFluidIngredients()) {
-                    debugMsg.append(String.format(", fluids: %d (total: %d mB)",
-                            optimalRecipe.getFluidIngredientSlotCount(),
-                            optimalRecipe.getTotalFluidAmount()));
-                }
+                if (optimalRecipe.hasFluidIngredients()) debugMsg.append(String.format(", fluids: %d (total: %d mB)",
+                        optimalRecipe.getFluidIngredientSlotCount(), optimalRecipe.getTotalFluidAmount()));
 
                 ComplexityAnalyzer.LOGGER.debug(debugMsg.toString());
             }

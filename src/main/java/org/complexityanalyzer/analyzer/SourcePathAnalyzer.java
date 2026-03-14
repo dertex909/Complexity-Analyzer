@@ -44,8 +44,7 @@ public class SourcePathAnalyzer {
         for (Item item : graph.getAllItems()) {
             if (!graph.hasRecipe(item)) {
                 BaseResourceData.ResourceSourceType type = sourceManager.analyze(item)
-                        .map(BaseResourceData::getSourceType)
-                        .orElse(BaseResourceData.ResourceSourceType.UNKNOWN);
+                        .map(BaseResourceData::getSourceType).orElse(BaseResourceData.ResourceSourceType.UNKNOWN);
 
                 if (type != BaseResourceData.ResourceSourceType.UNKNOWN) itemsWithBasePath.add(item);
             }

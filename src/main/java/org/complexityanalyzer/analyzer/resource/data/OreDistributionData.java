@@ -58,10 +58,7 @@ public class OreDistributionData {
             return;
         }
 
-        double sum = biomeOccurrences.values().stream()
-                .mapToDouble(BiomeOccurrence::frequency)
-                .sum();
-
+        double sum = biomeOccurrences.values().stream().mapToDouble(BiomeOccurrence::frequency).sum();
         globalRarity = sum / biomeOccurrences.size();
     }
 

@@ -88,9 +88,7 @@ public class BaseResourceData {
     @Override
     public String toString() {
         String base = String.format("BaseResource{item=%s, source=%s, factor=%.2f}", item, sourceType, baseFactor);
-        if (isOverride()) {
-            return base + " [OVERRIDE by " + getOverrideModId() + "]";
-        }
+        if (isOverride()) return base + " [OVERRIDE by " + getOverrideModId() + "]";
         return base;
     }
 
@@ -174,9 +172,7 @@ public class BaseResourceData {
         }
 
         public Builder sourceItems(Map<Item, Double> items) {
-            if (items != null) {
-                this.sourceItems.putAll(items);
-            }
+            if (items != null) this.sourceItems.putAll(items);
             return this;
         }
 
@@ -191,9 +187,7 @@ public class BaseResourceData {
         }
 
         public Builder metadata(Map<String, String> meta) {
-            if (meta != null) {
-                this.metadata.putAll(meta);
-            }
+            if (meta != null) this.metadata.putAll(meta);
             return this;
         }
 

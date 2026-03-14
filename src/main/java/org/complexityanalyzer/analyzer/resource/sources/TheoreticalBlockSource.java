@@ -36,7 +36,8 @@ public class TheoreticalBlockSource implements IResourceSource {
     private final BlockPropertyProvider propertyProvider;
     private final TheoreticalDistributionProvider distributionProvider;
 
-    public TheoreticalBlockSource(BlockPropertyProvider propertyProvider, TheoreticalDistributionProvider distributionProvider) {
+    public TheoreticalBlockSource(BlockPropertyProvider propertyProvider,
+                                  TheoreticalDistributionProvider distributionProvider) {
         this.propertyProvider = propertyProvider;
         this.distributionProvider = distributionProvider;
     }
@@ -86,9 +87,7 @@ public class TheoreticalBlockSource implements IResourceSource {
     }
 
     private BaseResourceData.ResourceSourceType determineSourceType(Block block, boolean isOre) {
-        if (isOre) {
-            return BaseResourceData.ResourceSourceType.ORE;
-        }
+        if (isOre) return BaseResourceData.ResourceSourceType.ORE;
         String blockId = BuiltInRegistries.BLOCK.getKey(block).toString();
         if (blockId.contains("log") || blockId.contains("leaves") || blockId.contains("sapling")) {
             return BaseResourceData.ResourceSourceType.RENEWABLE;
@@ -96,11 +95,13 @@ public class TheoreticalBlockSource implements IResourceSource {
         return BaseResourceData.ResourceSourceType.BLOCK;
     }
 
-    private double calculateBaseFactor(BlockPropertyProvider.BlockProperties properties, BaseResourceData.ResourceSourceType sourceType) {
+    private double calculateBaseFactor(BlockPropertyProvider.BlockProperties properties,
+                                       BaseResourceData.ResourceSourceType sourceType) {
         return properties.getToolMultiplier() * properties.getHardnessMultiplier() * sourceType.getBaseMultiplier();
     }
 
-    private double calculateBaseFactor(BlockPropertyProvider.BlockProperties properties, OreDistributionData dist, BaseResourceData.ResourceSourceType sourceType) {
+    private double calculateBaseFactor(BlockPropertyProvider.BlockProperties properties, OreDistributionData dist,
+                                       BaseResourceData.ResourceSourceType sourceType) {
         double baseBlockFactor = calculateBaseFactor(properties, sourceType);
         double rarityFactor = 1.0 + Math.log1p(1.0 / Math.max(1.0E-6, dist.getGlobalRarity()));
         double depthFactor = calculateDepthFactor(dist.getMinY(), dist.getMaxY());

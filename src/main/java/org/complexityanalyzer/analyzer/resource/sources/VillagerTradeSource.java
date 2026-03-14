@@ -21,6 +21,9 @@ package org.complexityanalyzer.analyzer.resource.sources;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -81,7 +84,7 @@ public class VillagerTradeSource implements IResourceSource {
                     }
 
                     try {
-                        net.minecraft.util.RandomSource randomSource = net.minecraft.util.RandomSource.create();
+                        RandomSource randomSource = RandomSource.create();
                         MerchantOffer offer = listing.getOffer(null, randomSource);
 
                         if (offer != null && !offer.getResult().isEmpty()) {
@@ -109,8 +112,8 @@ public class VillagerTradeSource implements IResourceSource {
             ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...",
                     pendingTrades.size());
 
-            net.minecraft.world.entity.npc.Villager villager = new net.minecraft.world.entity.npc.Villager(
-                    net.minecraft.world.entity.EntityType.VILLAGER, level
+            Villager villager = new Villager(
+                    EntityType.VILLAGER, level
             ) {
                 @Override
                 protected void registerGoals() {
@@ -131,7 +134,7 @@ public class VillagerTradeSource implements IResourceSource {
                 }
 
                 try {
-                    net.minecraft.util.RandomSource randomSource = net.minecraft.util.RandomSource.create();
+                    RandomSource randomSource = RandomSource.create();
                     MerchantOffer offer = pending.listing.getOffer(villager, randomSource);
 
                     if (offer != null && !offer.getResult().isEmpty()) {
@@ -143,8 +146,7 @@ public class VillagerTradeSource implements IResourceSource {
 
                 } catch (Exception e) {
                     failedTrades++;
-                    ComplexityAnalyzer.LOGGER.trace("[VTS] Entity trade failed ({}): {}",
-                            pending.type, e.getMessage());
+                    ComplexityAnalyzer.LOGGER.trace("[VTS] Entity trade failed ({}): {}", pending.type, e.getMessage());
                 }
             }
 
@@ -159,9 +161,7 @@ public class VillagerTradeSource implements IResourceSource {
 
         ComplexityAnalyzer.LOGGER.info("[VTS] ===== Initialization complete in {}ms =====", totalTime);
         ComplexityAnalyzer.LOGGER.info("[VTS] Results: {} items, {}/{} trades ({}% success)",
-                tradesByResult.size(),
-                fastParsed + entityParsed,
-                totalTrades,
+                tradesByResult.size(), fastParsed + entityParsed, totalTrades,
                 String.format("%.1f", (fastParsed + entityParsed) * 100.0 / totalTrades));
         ComplexityAnalyzer.LOGGER.info("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}",
                 fastParsed, entityParsed, skippedSlow, failedTrades);
@@ -178,10 +178,7 @@ public class VillagerTradeSource implements IResourceSource {
 
         tradesByResult.computeIfAbsent(resultItem, k -> new ObjectArrayList<>(2))
                 .add(new TradeInfo(
-                        offer.getResult().copy(),
-                        offer.getBaseCostA().copy(),
-                        offer.getCostB().copy(),
-                        level
+                        offer.getResult().copy(), offer.getBaseCostA().copy(), offer.getCostB().copy(), level
                 ));
     }
 
@@ -193,27 +190,20 @@ public class VillagerTradeSource implements IResourceSource {
     @Override
     public Optional<BaseResourceData> analyze(Item item) {
         List<TradeInfo> trades = tradesByResult.get(item);
-        if (trades == null || trades.isEmpty()) {
-            return Optional.empty();
-        }
+        if (trades == null || trades.isEmpty()) return Optional.empty();
 
         TradeInfo bestTrade = trades.getFirst();
         for (int i = 1; i < trades.size(); i++) {
-            if (trades.get(i).level() < bestTrade.level()) {
-                bestTrade = trades.get(i);
-            }
+            if (trades.get(i).level() < bestTrade.level()) bestTrade = trades.get(i);
         }
 
         Map<Item, Double> sourceItems = new Object2ObjectOpenHashMap<>(2);
 
-        if (!bestTrade.costA().isEmpty()) {
-            sourceItems.put(bestTrade.costA().getItem(),
-                    (double) bestTrade.costA().getCount() / bestTrade.result().getCount());
-        }
-        if (!bestTrade.costB().isEmpty()) {
-            sourceItems.put(bestTrade.costB().getItem(),
-                    (double) bestTrade.costB().getCount() / bestTrade.result().getCount());
-        }
+        if (!bestTrade.costA().isEmpty()) sourceItems.put(bestTrade.costA().getItem(),
+                (double) bestTrade.costA().getCount() / bestTrade.result().getCount());
+
+        if (!bestTrade.costB().isEmpty()) sourceItems.put(bestTrade.costB().getItem(),
+                (double) bestTrade.costB().getCount() / bestTrade.result().getCount());
 
         return Optional.of(new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())

@@ -39,9 +39,7 @@ import java.util.Map;
 
 @ParametersAreNonnullByDefault
 public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistration {
-
     private final Map<ResourceLocation, List<ItemStack>> catalysts = new HashMap<>();
-
     private static final IJeiHelpers EMPTY_JEI_HELPERS = new JeiMocks.EmptyJeiHelpers();
 
     public Map<ResourceLocation, List<ItemStack>> getCatalysts() {
@@ -56,8 +54,7 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
                 catalysts.computeIfAbsent(uid, k -> new ArrayList<>()).add(stack.copy());
 
                 ComplexityAnalyzer.LOGGER.debug("JEI Catalyst Intercept: {} -> {}",
-                        uid,
-                        BuiltInRegistries.ITEM.getKey(stack.getItem()));
+                        uid, BuiltInRegistries.ITEM.getKey(stack.getItem()));
             }
         }
     }

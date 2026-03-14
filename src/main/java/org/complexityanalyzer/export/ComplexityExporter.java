@@ -248,9 +248,7 @@ public class ComplexityExporter {
         EntityType<?> mobType = Optional.of(BuiltInRegistries.ENTITY_TYPE.get(mobId))
                 .orElseThrow(() -> new IllegalArgumentException("Mob not found: " + mobIdString));
         MobData mobData = buildMobData(mobType, engine);
-        if (mobData == null) {
-            throw new IllegalStateException("Failed to analyze mob: " + mobIdString);
-        }
+        if (mobData == null) throw new IllegalStateException("Failed to analyze mob: " + mobIdString);
         Path exportFile = exportDir.resolve(mobId.getNamespace() + "_" + mobId.getPath() + ".json");
         Files.writeString(exportFile, GSON.toJson(mobData));
         return exportFile;
@@ -265,9 +263,7 @@ public class ComplexityExporter {
         dir = dir.toAbsolutePath().normalize();
 
         if (!Files.exists(dir)) Files.createDirectories(dir);
-
         ComplexityAnalyzer.LOGGER.info("[Exporter] Resolved export directory to absolute path: {}", dir);
-
         return dir;
     }
 
@@ -371,8 +367,7 @@ public class ComplexityExporter {
         engine.getMobDropSource().ifPresent(source ->
                 drops.addAll(source.getDropsForEntity(type).stream()
                         .map(d -> new ExportData.MobDropData(BuiltInRegistries.ITEM.getKey(d.item()).toString(),
-                                d.item().getDescription().getString(), d.averageYield()))
-                        .toList()));
+                                d.item().getDescription().getString(), d.averageYield())).toList()));
 
         return new MobData(type.getDescription().getString(), BuiltInRegistries.ENTITY_TYPE.getKey(type).toString(),
                 type.getCategory().getName(), props.maxHealth(), props.attackDamage(), props.armor(),

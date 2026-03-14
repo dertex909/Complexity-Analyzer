@@ -84,7 +84,6 @@ public class MachineRegistry {
 
     public Optional<Item> getMachineForRecipe(RecipeType<?> type) {
         if (!initialized) return Optional.empty();
-
         ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(type);
         return Optional.ofNullable((typeId != null) ? mapping.get(typeId) : null);
     }
@@ -117,8 +116,7 @@ public class MachineRegistry {
 
     private void logAllMachines() {
         ComplexityAnalyzer.LOGGER.debug("=== All registered machines ({}) ===", mapping.size());
-        mapping.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(ResourceLocation::toString)))
+        mapping.entrySet().stream().sorted(Map.Entry.comparingByKey(Comparator.comparing(ResourceLocation::toString)))
                 .forEach(entry ->
                         ComplexityAnalyzer.LOGGER.debug("  {} -> {}", entry.getKey(),
                                 BuiltInRegistries.ITEM.getKey(entry.getValue()))

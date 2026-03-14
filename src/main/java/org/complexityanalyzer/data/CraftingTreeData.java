@@ -80,7 +80,6 @@ public class CraftingTreeData {
         return maxDepth;
     }
 
-
     public static class TreeNode {
         private final NodeType type;
         private final Item item;
@@ -169,9 +168,7 @@ public class CraftingTreeData {
 
             public Builder item(Item item) {
                 this.item = item;
-                if (item != null && itemName.isEmpty()) {
-                    this.itemName = item.getDescription().getString();
-                }
+                if (item != null && itemName.isEmpty()) this.itemName = item.getDescription().getString();
                 return this;
             }
 
@@ -200,14 +197,12 @@ public class CraftingTreeData {
                 return this;
             }
 
-            public Builder addItemChild(TreeNode child) {
+            public void addItemChild(TreeNode child) {
                 this.itemChildren.add(child);
-                return this;
             }
 
-            public Builder addFluidChild(FluidNode child) {
+            public void addFluidChild(FluidNode child) {
                 this.fluidChildren.add(child);
-                return this;
             }
 
             public Builder addMetadata(String key, Object value) {
@@ -232,7 +227,6 @@ public class CraftingTreeData {
             this.amount = amount;
             this.fluidType = fluidType;
         }
-
 
         public FluidNode(String fluidName, double amount) {
             this(fluidName, amount, "FLUID");

@@ -54,9 +54,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     public static IHardcodedSourceRegistry getRegistry() {
-        if (INSTANCE == null) {
-            throw new IllegalStateException("HardcodedSourcesProvider not initialized yet!");
-        }
+        if (INSTANCE == null) throw new IllegalStateException("HardcodedSourcesProvider not initialized yet!");
         return INSTANCE;
     }
 
@@ -75,9 +73,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
                                        double baseCost, String description) {
         Map<Item, Double> ingredients = new HashMap<>();
         ingredients.put(input, 1.0);
-        if (toolWear != null) {
-            ingredients.putAll(toolWear);
-        }
+        if (toolWear != null) ingredients.putAll(toolWear);
 
         String modId = getCallingModId();
         normalSources.put(result, new SourceRule(
@@ -90,9 +86,8 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     @Override
-    public void registerComplexSource(Item result, Map<Item, Double> ingredients,
-                                      double baseCost, BaseResourceData.ResourceSourceType type,
-                                      String description) {
+    public void registerComplexSource(Item result, Map<Item, Double> ingredients, double baseCost,
+                                      BaseResourceData.ResourceSourceType type, String description) {
         String modId = getCallingModId();
         normalSources.put(result, new SourceRule(
                 new HashMap<>(ingredients),
@@ -104,8 +99,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     @Override
-    public void registerOverride(Item result, Map<Item, Double> ingredients,
-                                 double baseCost, String description) {
+    public void registerOverride(Item result, Map<Item, Double> ingredients, double baseCost, String description) {
         String modId = getCallingModId();
         overrideSources.put(result, new SourceRule(
                 new HashMap<>(ingredients),
@@ -130,8 +124,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
                 modId
         ));
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Mod {} marked {} as unobtainable: {}",
-                getName(), modId, item, reason);
+        ComplexityAnalyzer.LOGGER.info("[{}] Mod {} marked {} as unobtainable: {}", getName(), modId, item, reason);
     }
 
     @Override
@@ -149,13 +142,8 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         SourceRule rule = overrideSources.get(item);
         boolean isOverride = rule != null;
 
-        if (rule == null) {
-            rule = normalSources.get(item);
-        }
-
-        if (rule == null) {
-            return Optional.empty();
-        }
+        if (rule == null) rule = normalSources.get(item);
+        if (rule == null) return Optional.empty();
 
         var builder = new BaseResourceData.Builder(item, this)
                 .sourceType(rule.type)
@@ -191,13 +179,10 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         for (StackTraceElement element : stack) {
             String className = element.getClassName();
-            if (!className.startsWith("org.complexityanalyzer") &&
-                    !className.startsWith("java.") &&
+            if (!className.startsWith("org.complexityanalyzer") && !className.startsWith("java.") &&
                     !className.startsWith("net.minecraft")) {
                 String[] parts = className.split("\\.");
-                if (parts.length > 0) {
-                    return parts[0];
-                }
+                if (parts.length > 0) return parts[0];
             }
         }
         return "minecraft";
@@ -312,18 +297,12 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         registerTransformation(Items.CHIPPED_ANVIL, Items.ANVIL, null, 0, "Anvil usage damage");
         registerTransformation(Items.DAMAGED_ANVIL, Items.CHIPPED_ANVIL, null, 0, "Anvil usage damage");
 
-        registerComplexSource(Items.ROOTED_DIRT,
-                Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 2.0),
-                2.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION,
-                "Bonemeal on moss");
-        registerComplexSource(Items.AZALEA_LEAVES,
-                Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 1.0),
-                1.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION,
-                "Bonemeal on moss");
-        registerComplexSource(Items.FLOWERING_AZALEA_LEAVES,
-                Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 1.0),
-                1.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION,
-                "Bonemeal on moss");
+        registerComplexSource(Items.ROOTED_DIRT, Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 2.0),
+                2.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, "Bonemeal on moss");
+        registerComplexSource(Items.AZALEA_LEAVES, Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 1.0),
+                1.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, "Bonemeal on moss");
+        registerComplexSource(Items.FLOWERING_AZALEA_LEAVES, Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 1.0),
+                1.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, "Bonemeal on moss");
     }
 
     private void registerBucketInteractions() {
@@ -365,15 +344,13 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     private void registerSpecialCrafts() {
-        registerComplexSource(Items.BUNDLE,
-                Map.of(Items.STRING, 2.0, Items.RABBIT_HIDE, 1.0),
+        registerComplexSource(Items.BUNDLE, Map.of(Items.STRING, 2.0, Items.RABBIT_HIDE, 1.0),
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Bundle crafting");
 
         registerComplexSource(Items.WRITTEN_BOOK, Map.of(Items.WRITABLE_BOOK, 1.0),
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Signing a book");
 
-        registerComplexSource(Items.FIREWORK_STAR,
-                Map.of(Items.GUNPOWDER, 1.0, Items.YELLOW_DYE, 1.0),
+        registerComplexSource(Items.FIREWORK_STAR, Map.of(Items.GUNPOWDER, 1.0, Items.YELLOW_DYE, 1.0),
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Basic firework star");
     }
 
@@ -382,8 +359,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
                 100.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION,
                 "Collecting dragon breath");
 
-        registerComplexSource(Items.LINGERING_POTION,
-                Map.of(Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0),
+        registerComplexSource(Items.LINGERING_POTION, Map.of(Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0),
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Lingering potion brewing");
     }
 

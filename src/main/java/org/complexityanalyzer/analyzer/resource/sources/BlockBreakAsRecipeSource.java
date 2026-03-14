@@ -204,10 +204,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
 
-            LootParams params = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
-                    .withParameter(LootContextParams.TOOL, tool)
-                    .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+            LootParams params = new LootParams.Builder(level).withParameter(LootContextParams.BLOCK_STATE, blockState)
+                    .withParameter(LootContextParams.TOOL, tool).withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
                     .create(LootContextParamSets.BLOCK);
 
             LootContext context = new LootContext.Builder(params).create(Optional.empty());

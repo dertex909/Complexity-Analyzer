@@ -70,11 +70,9 @@ public class MobPropertyProvider {
 
                 double maxHealth = attributes.getBaseValue(Attributes.MAX_HEALTH);
                 double attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
-                        ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE)
-                        : 0.0;
+                        ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.0;
                 double armor = attributes.hasAttribute(Attributes.ARMOR)
-                        ? attributes.getBaseValue(Attributes.ARMOR)
-                        : 0.0;
+                        ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
 
                 attackDamage = Math.max(attackDamage, 0.1);
                 MobCategory classification = type.getCategory();
@@ -118,16 +116,13 @@ public class MobPropertyProvider {
             AttributeSupplier attributes = DefaultAttributes.getSupplier(livingType);
 
             double maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH)
-                    ? attributes.getBaseValue(Attributes.MAX_HEALTH)
-                    : 20.0;
+                    ? attributes.getBaseValue(Attributes.MAX_HEALTH) : 20.0;
 
             double attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
-                    ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE)
-                    : 0.1;
+                    ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.1;
 
             double armor = attributes.hasAttribute(Attributes.ARMOR)
-                    ? attributes.getBaseValue(Attributes.ARMOR)
-                    : 0.0;
+                    ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
 
             MobCategory classification = type.getCategory();
 

@@ -158,7 +158,6 @@ public class JeiMocks {
             return null;
         }
 
-
         @Override
         public <V> IIngredientHelper<V> getIngredientHelper(IIngredientType<V> ingredientType) {
             return null;
@@ -174,7 +173,6 @@ public class JeiMocks {
             return null;
         }
 
-
         @Override
         public <V> Codec<V> getIngredientCodec(IIngredientType<V> ingredientType) {
             return null;
@@ -184,7 +182,6 @@ public class JeiMocks {
         public Collection<IIngredientType<?>> getRegisteredIngredientTypes() {
             return Collections.emptyList();
         }
-
 
         @Override
         public Optional<IIngredientType<?>> getIngredientTypeForUid(String ingredientTypeUid) {
@@ -210,36 +207,30 @@ public class JeiMocks {
             return Optional.empty();
         }
 
-
         @Override
         public <B, I> Optional<IIngredientTypeWithSubtypes<B, I>> getIngredientTypeWithSubtypesFromBase(B baseIngredient) {
             return Optional.empty();
         }
-
 
         @Override
         public <V> Optional<IIngredientType<V>> getIngredientTypeChecked(Class<? extends V> ingredientClass) {
             return Optional.empty();
         }
 
-
         @Override
         public <V> Optional<ITypedIngredient<V>> createTypedIngredient(IIngredientType<V> ingredientType, V ingredient, boolean normalize) {
             return Optional.empty();
         }
-
 
         @Override
         public <V> ITypedIngredient<V> normalizeTypedIngredient(ITypedIngredient<V> typedIngredient) {
             return typedIngredient;
         }
 
-
         @Override
         public IClickableIngredientFactory getClickableIngredientFactory() {
             return null;
         }
-
 
         @Override
         public Collection<String> getIngredientAliases(ITypedIngredient<?> ingredient) {
@@ -255,12 +246,10 @@ public class JeiMocks {
             return Optional.empty();
         }
 
-
         @Override
         public <V> Optional<ITypedIngredient<V>> getTypedIngredientByUid(IIngredientType<V> ingredientType, String ingredientUuid) {
             return Optional.empty();
         }
-
 
         @Override
         public <V> Optional<IClickableIngredient<V>> createClickableIngredient(
@@ -275,7 +264,6 @@ public class JeiMocks {
     private static class SmartIngredientManager extends EmptyIngredientManager {
         @SuppressWarnings("FieldCanBeLocal")
         private final RecipeManager recipeManager;
-
         public SmartIngredientManager(RecipeManager recipeManager) {
             this.recipeManager = recipeManager;
         }
@@ -283,52 +271,63 @@ public class JeiMocks {
 
     private static class EmptyVanillaRecipeFactory implements IVanillaRecipeFactory {
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe(ItemStack leftInput, List<ItemStack> rightInputs, List<ItemStack> outputs, ResourceLocation uid) {
+        public IJeiAnvilRecipe createAnvilRecipe(ItemStack leftInput, List<ItemStack> rightInputs,
+                                                 List<ItemStack> outputs, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe(List<ItemStack> leftInputs, List<ItemStack> rightInputs, List<ItemStack> outputs, ResourceLocation uid) {
+        public IJeiAnvilRecipe createAnvilRecipe(List<ItemStack> leftInputs, List<ItemStack> rightInputs,
+                                                 List<ItemStack> outputs, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiGrindstoneRecipe createGrindstoneRecipe(List<ItemStack> topInputs, List<ItemStack> bottomInputs, List<ItemStack> outputs, int minXp, int maxXp, ResourceLocation uid) {
+        public IJeiGrindstoneRecipe createGrindstoneRecipe(List<ItemStack> topInputs, List<ItemStack> bottomInputs,
+                                                           List<ItemStack> outputs, int minXp, int maxXp,
+                                                           ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, ItemStack potionInput, ItemStack potionOutput, ResourceLocation uid) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, ItemStack potionInput,
+                                                     ItemStack potionOutput, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, List<ItemStack> potionInputs, ItemStack potionOutput, ResourceLocation uid) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, List<ItemStack> potionInputs,
+                                                     ItemStack potionOutput, ResourceLocation uid) {
             return null;
         }
 
         @Override
-        public IJeiShapedRecipeBuilder createShapedRecipeBuilder(CraftingBookCategory category, List<ItemStack> results) {
+        public IJeiShapedRecipeBuilder createShapedRecipeBuilder(CraftingBookCategory category,
+                                                                 List<ItemStack> results) {
             return null;
         }
 
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe(ItemStack leftInput, List<ItemStack> rightInputs, List<ItemStack> outputs) {
+        public IJeiAnvilRecipe createAnvilRecipe(ItemStack leftInput, List<ItemStack> rightInputs,
+                                                 List<ItemStack> outputs) {
             return null;
         }
 
         @Override
-        public IJeiAnvilRecipe createAnvilRecipe(List<ItemStack> leftInputs, List<ItemStack> rightInputs, List<ItemStack> outputs) {
+        public IJeiAnvilRecipe createAnvilRecipe(List<ItemStack> leftInputs, List<ItemStack> rightInputs,
+                                                 List<ItemStack> outputs) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, ItemStack potionInput, ItemStack potionOutput) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, ItemStack potionInput,
+                                                     ItemStack potionOutput) {
             return null;
         }
 
         @Override
-        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, List<ItemStack> potionInputs, ItemStack potionOutput) {
+        public IJeiBrewingRecipe createBrewingRecipe(List<ItemStack> ingredients, List<ItemStack> potionInputs,
+                                                     ItemStack potionOutput) {
             return null;
         }
     }
@@ -336,7 +335,6 @@ public class JeiMocks {
     private static class SmartVanillaRecipeFactory extends EmptyVanillaRecipeFactory {
         @SuppressWarnings("FieldCanBeLocal")
         private final RecipeManager recipeManager;
-
         public SmartVanillaRecipeFactory(RecipeManager recipeManager) {
             this.recipeManager = recipeManager;
         }

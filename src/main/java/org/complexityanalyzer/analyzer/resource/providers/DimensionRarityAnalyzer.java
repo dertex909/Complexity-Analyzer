@@ -150,9 +150,7 @@ public class DimensionRarityAnalyzer {
             return Level.NETHER;
         }
 
-        if (structurePath.contains("end") || structurePath.contains("city")) {
-            return Level.END;
-        }
+        if (structurePath.contains("end") || structurePath.contains("city")) return Level.END;
 
         return Level.OVERWORLD;
     }
@@ -175,12 +173,10 @@ public class DimensionRarityAnalyzer {
             Biome biome = entry.getValue();
 
             if (mobSpawnsInBiome(entityType, biome)) {
-                ResourceKey<Level> dimension = biomeToDimensionMap.getOrDefault(
-                        biomeKey,
+                ResourceKey<Level> dimension = biomeToDimensionMap.getOrDefault(biomeKey,
                         getDimensionForBiome(biomeKey)
                 );
-                dimensionBiomes.computeIfAbsent(dimension, k -> new HashSet<>())
-                        .add(biomeKey);
+                dimensionBiomes.computeIfAbsent(dimension, k -> new HashSet<>()).add(biomeKey);
             }
         }
 
@@ -194,8 +190,7 @@ public class DimensionRarityAnalyzer {
                 double multiplier;
 
                 if (dimension.equals(Level.END)) {
-                    boolean isEndIslands = biomes.stream()
-                            .anyMatch(DimensionRarityAnalyzer::isEndIslandsBiome);
+                    boolean isEndIslands = biomes.stream().anyMatch(DimensionRarityAnalyzer::isEndIslandsBiome);
 
                     multiplier = isEndIslands ? END_ISLANDS_MULTIPLIER : DIMENSION_MULTIPLIERS.get(Level.END);
                 } else {
@@ -218,9 +213,7 @@ public class DimensionRarityAnalyzer {
             net.minecraft.util.random.WeightedRandomList<MobSpawnSettings.SpawnerData> spawners = spawnSettings.getMobs(category);
 
             for (MobSpawnSettings.SpawnerData spawner : spawners.unwrap()) {
-                if (spawner.type == entityType) {
-                    return true;
-                }
+                if (spawner.type == entityType) return true;
             }
         }
 
@@ -234,9 +227,7 @@ public class DimensionRarityAnalyzer {
             return Level.NETHER;
         }
 
-        if (path.contains("end") || path.contains("the_end")) {
-            return Level.END;
-        }
+        if (path.contains("end") || path.contains("the_end")) return Level.END;
 
         return Level.OVERWORLD;
     }

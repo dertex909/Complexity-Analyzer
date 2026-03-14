@@ -25,15 +25,13 @@ import java.util.Map;
 
 public interface IHardcodedSourceRegistry {
 
-    void registerTransformation(Item result, Item input, Map<Item, Double> toolWear,
-                                double baseCost, String description);
+    void registerTransformation(Item result, Item input, Map<Item, Double> toolWear, double baseCost,
+                                String description);
 
-    void registerComplexSource(Item result, Map<Item, Double> ingredients,
-                               double baseCost, BaseResourceData.ResourceSourceType type,
-                               String description);
+    void registerComplexSource(Item result, Map<Item, Double> ingredients, double baseCost,
+                               BaseResourceData.ResourceSourceType type, String description);
 
-    void registerOverride(Item result, Map<Item, Double> ingredients,
-                          double baseCost, String description);
+    void registerOverride(Item result, Map<Item, Double> ingredients, double baseCost, String description);
 
     void registerUnobtainable(Item item, String reason);
 

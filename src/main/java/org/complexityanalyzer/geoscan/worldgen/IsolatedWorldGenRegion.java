@@ -110,9 +110,15 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
 
         if (lx >= 0 && lx < side && lz >= 0 && lz < side) {
             ChunkAccess chunk = localChunks[lx + lz * side];
-            if (chunk != null) try {
-                return chunk.getBlockState(pos);
-            } catch (Throwable ignored) {
+            if (chunk != null) {
+                try {
+                    int y = pos.getY();
+                    if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) {
+                        return Blocks.AIR.defaultBlockState();
+                    }
+                    return chunk.getBlockState(pos);
+                } catch (Throwable ignored) {
+                }
             }
         }
         return Blocks.AIR.defaultBlockState();
@@ -127,9 +133,15 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
 
         if (lx >= 0 && lx < side && lz >= 0 && lz < side) {
             ChunkAccess chunk = localChunks[lx + lz * side];
-            if (chunk != null) try {
-                return chunk.getFluidState(pos);
-            } catch (Throwable ignored) {
+            if (chunk != null) {
+                try {
+                    int y = pos.getY();
+                    if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) {
+                        return Fluids.EMPTY.defaultFluidState();
+                    }
+                    return chunk.getFluidState(pos);
+                } catch (Throwable ignored) {
+                }
             }
         }
         return Fluids.EMPTY.defaultFluidState();

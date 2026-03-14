@@ -39,21 +39,18 @@ public class ChunkAnalyzer {
         for (LevelChunkSection section : sections) {
             if (section == null || section.hasOnlyAir()) continue;
 
-            for (int y = 0; y < 16; y++) {
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        Block block = section.getBlockState(x, y, z).getBlock();
-                        if (block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR)
-                            blockCounts.addTo(block, 1);
-                    }
+            section.getStates().count((state, count) -> {
+                Block block = state.getBlock();
+                if (block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR) {
+                    blockCounts.addTo(block, count);
                 }
-            }
+            });
         }
 
         if (blockCounts.isEmpty()) return null;
 
         Map<String, Integer> finalCounts = new HashMap<>(blockCounts.size());
-        for (Reference2IntOpenHashMap.Entry<Block> entry : blockCounts.reference2IntEntrySet()) {
+        for (var entry : blockCounts.reference2IntEntrySet()) {
             finalCounts.put(BuiltInRegistries.BLOCK.getKey(entry.getKey()).toString(), entry.getIntValue());
         }
 

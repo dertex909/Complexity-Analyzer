@@ -29,6 +29,12 @@ public class UltraFastChunkGenerator {
 
     private static final ConcurrentHashMap<String, OptimizedChunkCache> DIMENSION_CACHES = new ConcurrentHashMap<>();
 
+    private static final int[][] NEIGHBOR_OFFSETS = {
+            {-1, -1}, {0, -1}, {1, -1},
+            {-1, 0}, {0, 0}, {1, 0},
+            {-1, 1}, {0, 1}, {1, 1}
+    };
+
     private final ServerLevel level;
     private final ChunkGenerator generator;
     private final RandomState randomState;
@@ -64,42 +70,47 @@ public class UltraFastChunkGenerator {
         IsolatedThreadMarker.markIsolated();
 
         try {
-            int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
-            int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+            Set<Long> allNeeded = new LinkedHashSet<>(positions.size() * 9);
 
             for (ChunkPos pos : positions) {
-                minX = Math.min(minX, pos.x);
-                maxX = Math.max(maxX, pos.x);
-                minZ = Math.min(minZ, pos.z);
-                maxZ = Math.max(maxZ, pos.z);
+                for (int[] offset : NEIGHBOR_OFFSETS) {
+                    allNeeded.add(ChunkPos.asLong(pos.x + offset[0], pos.z + offset[1]));
+                }
             }
 
-            minX--;
-            minZ--;
-            maxX++;
-            maxZ++;
+            Map<Long, ChunkAccess> area = generateExactChunks(allNeeded);
 
-            Map<Long, ChunkAccess> fullArea = generateAreaParallel(minX, minZ, maxX, maxZ);
-            List<ChunkAccess> results = new ArrayList<>(positions.size());
+            List<ChunkPos> needFeatures = new ArrayList<>();
 
             for (ChunkPos pos : positions) {
-                ChunkAccess chunk = fullArea.get(pos.toLong());
+                ChunkAccess chunk = area.get(pos.toLong());
                 if (chunk == null) continue;
 
                 ChunkAccess cached = cache.get(pos, ChunkStatus.FEATURES);
                 if (cached != null) {
-                    results.add(cached);
+                    area.put(pos.toLong(), cached);
                     continue;
                 }
 
-                if (hasStatus(chunk, ChunkStatus.FEATURES)) {
-                    results.add(chunk);
-                    continue;
-                }
+                if (hasStatus(chunk, ChunkStatus.FEATURES)) continue;
 
-                generateFeatures(chunk, fullArea);
-                cache.put(pos, chunk, ChunkStatus.FEATURES);
-                results.add(chunk);
+                needFeatures.add(pos);
+            }
+
+            if (!needFeatures.isEmpty()) {
+                runParallelPhase(needFeatures, pos -> {
+                    ChunkAccess chunk = area.get(pos.toLong());
+                    if (chunk != null && hasNotStatus(chunk, ChunkStatus.FEATURES)) {
+                        generateFeatures(chunk, area);
+                        cache.put(pos, chunk, ChunkStatus.FEATURES);
+                    }
+                });
+            }
+
+            List<ChunkAccess> results = new ArrayList<>(positions.size());
+            for (ChunkPos pos : positions) {
+                ChunkAccess chunk = area.get(pos.toLong());
+                if (chunk != null) results.add(chunk);
             }
 
             return results;
@@ -108,48 +119,67 @@ public class UltraFastChunkGenerator {
         }
     }
 
-    private Map<Long, ChunkAccess> generateAreaParallel(int minX, int minZ, int maxX, int maxZ) {
-        Map<Long, ChunkAccess> area = new ConcurrentHashMap<>();
-        List<ChunkPos> toGenerate = new ArrayList<>();
+    private Map<Long, ChunkAccess> generateExactChunks(Set<Long> allNeeded) {
+        Map<Long, ChunkAccess> area = new ConcurrentHashMap<>(allNeeded.size() * 2);
+        List<ChunkPos> toCreate = new ArrayList<>();
 
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                ChunkPos pos = new ChunkPos(x, z);
-                ChunkAccess cached = cache.get(pos, ChunkStatus.SURFACE);
-                if (cached != null) {
-                    area.put(pos.toLong(), cached);
-                } else {
-                    toGenerate.add(pos);
-                }
+        for (long key : allNeeded) {
+            ChunkPos pos = new ChunkPos(key);
+
+            ChunkAccess cached = cache.get(pos, ChunkStatus.SURFACE);
+            if (cached != null) {
+                area.put(key, cached);
+            } else {
+                toCreate.add(pos);
             }
         }
 
-        if (toGenerate.isEmpty()) return area;
+        if (toCreate.isEmpty()) return area;
 
-        runParallelPhase(toGenerate, pos -> area.put(pos.toLong(), getOrCreateChunk(pos)));
+        runParallelPhase(toCreate, pos -> area.put(pos.toLong(), getOrCreateChunk(pos)));
 
-        runParallelPhase(toGenerate, pos -> {
-            ChunkAccess chunk = area.get(pos.toLong());
-            if (hasNotStatus(chunk, ChunkStatus.BIOMES)) generateBiomes(chunk);
-        });
+        List<ChunkPos> needBiomes = filterByMissingStatus(toCreate, area, ChunkStatus.BIOMES);
+        if (!needBiomes.isEmpty()) runParallelPhase(needBiomes, pos -> generateBiomes(area.get(pos.toLong())));
 
-        runParallelPhase(toGenerate, pos -> {
-            ChunkAccess chunk = area.get(pos.toLong());
-            if (hasNotStatus(chunk, ChunkStatus.NOISE)) generateNoise(chunk);
-        });
+        List<ChunkPos> needNoise = filterByMissingStatus(toCreate, area, ChunkStatus.NOISE);
+        if (!needNoise.isEmpty()) runParallelPhase(needNoise, pos -> generateNoise(area.get(pos.toLong())));
 
-        runParallelPhase(toGenerate, pos -> {
-            ChunkAccess chunk = area.get(pos.toLong());
-            if (hasNotStatus(chunk, ChunkStatus.SURFACE)) {
-                generateSurface(chunk, area);
-                cache.put(pos, chunk, ChunkStatus.SURFACE);
-            }
-        });
+        List<ChunkPos> needSurface = filterByMissingStatus(toCreate, area, ChunkStatus.SURFACE);
+        if (!needSurface.isEmpty()) {
+            runParallelPhase(needSurface, pos -> {
+                ChunkAccess chunk = area.get(pos.toLong());
+                if (chunk != null) {
+                    generateSurface(chunk, area);
+                    cache.put(pos, chunk, ChunkStatus.SURFACE);
+                }
+            });
+        }
 
         return area;
     }
 
-    private void runParallelPhase(List<ChunkPos> items, java.util.function.Consumer<ChunkPos> task) {
+    private List<ChunkPos> filterByMissingStatus(List<ChunkPos> positions,
+                                                 Map<Long, ChunkAccess> area,
+                                                 ChunkStatus status) {
+        List<ChunkPos> result = new ArrayList<>();
+        for (ChunkPos pos : positions) {
+            ChunkAccess chunk = area.get(pos.toLong());
+            if (chunk != null && hasNotStatus(chunk, status)) result.add(pos);
+        }
+        return result;
+    }
+
+    private void runParallelPhase(List<ChunkPos> items,
+                                  java.util.function.Consumer<ChunkPos> task) {
+        if (items.isEmpty()) return;
+
+        if (items.size() <= 3) {
+            for (ChunkPos pos : items) {
+                task.accept(pos);
+            }
+            return;
+        }
+
         ForkJoinPool pool = ThreadPoolManager.getInstance().getForkJoinPool();
         CountDownLatch latch = new CountDownLatch(items.size());
 
@@ -166,13 +196,10 @@ public class UltraFastChunkGenerator {
         }
 
         try {
-            boolean completed = latch.await(60, TimeUnit.SECONDS);
-            if (!completed) {
-                ComplexityAnalyzer.LOGGER.warn("[UltraFast] Phase timeout! Not all chunks generated in 60s.");
-            }
+            if (!latch.await(60, TimeUnit.SECONDS)) ComplexityAnalyzer.LOGGER.warn(
+                    "[UltraFast] Phase timeout! Not all chunks generated in 60s.");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            ComplexityAnalyzer.LOGGER.warn("[UltraFast] Phase generation interrupted.");
         }
     }
 
@@ -183,6 +210,7 @@ public class UltraFastChunkGenerator {
     }
 
     private boolean hasStatus(ChunkAccess chunk, ChunkStatus status) {
+        if (chunk == null) return false;
         if (chunk instanceof ProtoChunk proto) return proto.getPersistedStatus().isOrAfter(status);
         return true;
     }
@@ -197,15 +225,20 @@ public class UltraFastChunkGenerator {
     }
 
     private void generateBiomes(ChunkAccess chunk) {
+        if (chunk == null) return;
         try {
-            chunk.fillBiomesFromNoise(generator.getBiomeSource(), randomState.sampler());
-            if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.BIOMES);
+            chunk.fillBiomesFromNoise(generator.getBiomeSource(),
+                    randomState.sampler());
+            if (chunk instanceof ProtoChunk proto) {
+                proto.setPersistedStatus(ChunkStatus.BIOMES);
+            }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.trace("[UltraFast] Biomes failed for {}: {}", chunk.getPos(), e.getMessage());
         }
     }
 
     private void generateNoise(ChunkAccess chunk) {
+        if (chunk == null) return;
         try {
             if (isNoiseGenerator && noiseAccessor != null && noiseSettings != null) {
                 NoiseSettings noise = noiseSettings.value().noiseSettings()
@@ -217,21 +250,21 @@ public class UltraFastChunkGenerator {
                 int cellCountY = Mth.floorDiv(noise.height(), cellHeight);
 
                 if (cellCountY > 0) {
-                    int topSectionIndex = chunk.getSectionIndex(cellCountY * cellHeight - 1 + minY);
-                    int bottomSectionIndex = chunk.getSectionIndex(minY);
-                    Set<LevelChunkSection> acquiredSections = new HashSet<>();
+                    int topSection = chunk.getSectionIndex(cellCountY * cellHeight - 1 + minY);
+                    int bottomSection = chunk.getSectionIndex(minY);
+                    Set<LevelChunkSection> acquired = new HashSet<>();
 
-                    for (int i = topSectionIndex; i >= bottomSectionIndex; --i) {
+                    for (int i = topSection; i >= bottomSection; --i) {
                         LevelChunkSection section = chunk.getSection(i);
                         section.acquire();
-                        acquiredSections.add(section);
+                        acquired.add(section);
                     }
 
                     try {
                         noiseAccessor.invokeDoFill(Blender.empty(), structureManager, randomState,
                                 chunk, minCellY, cellCountY);
                     } finally {
-                        for (LevelChunkSection section : acquiredSections) {
+                        for (LevelChunkSection section : acquired) {
                             section.release();
                         }
                     }
@@ -246,34 +279,45 @@ public class UltraFastChunkGenerator {
     }
 
     private void generateSurface(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
+        if (chunk == null) return;
         try {
-            List<ChunkAccess> neighbors = new ArrayList<>(area.values());
-            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(
-                    level, chunk, neighbors, 1, ChunkStatus.SURFACE
-            );
+            List<ChunkAccess> neighbors = collectNeighbors(chunk.getPos(), area);
+            IsolatedWorldGenRegion region =
+                    new IsolatedWorldGenRegion(level, chunk, neighbors, 1, ChunkStatus.SURFACE);
             generator.buildSurface(region, structureManager, randomState, chunk);
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.SURFACE);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Surface failed for {}: {}", chunk.getPos(), e.getMessage());
+            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Surface failed for {}: {}",
+                    chunk.getPos(), e.getMessage());
         }
     }
 
     private void generateFeatures(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
+        if (chunk == null) return;
         try {
             Heightmap.primeHeightmaps(chunk, EnumSet.of(Heightmap.Types.MOTION_BLOCKING, Heightmap.Types.OCEAN_FLOOR,
                     Heightmap.Types.WORLD_SURFACE
             ));
 
-            List<ChunkAccess> neighbors = new ArrayList<>(area.values());
-            IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(
-                    level, chunk, neighbors, 1, ChunkStatus.FEATURES
-            );
+            List<ChunkAccess> neighbors = collectNeighbors(chunk.getPos(), area);
+            IsolatedWorldGenRegion region =
+                    new IsolatedWorldGenRegion(level, chunk, neighbors, 1, ChunkStatus.FEATURES);
             generator.applyBiomeDecoration(region, chunk, structureManager);
 
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.FEATURES);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}", chunk.getPos(), e.getMessage());
         }
+    }
+
+    private List<ChunkAccess> collectNeighbors(ChunkPos center, Map<Long, ChunkAccess> area) {
+        List<ChunkAccess> neighbors = new ArrayList<>(9);
+        for (int[] offset : NEIGHBOR_OFFSETS) {
+            long key = ChunkPos.asLong(center.x + offset[0], center.z + offset[1]);
+            ChunkAccess neighbor = area.get(key);
+            if (neighbor != null) neighbors.add(neighbor);
+        }
+        return neighbors;
     }
 
     public static void clearAllCaches() {

@@ -62,9 +62,7 @@ public class OutputManager {
                 .append(message.copy().withStyle(ChatFormatting.ITALIC));
 
         server.getPlayerList().getPlayers().forEach(player -> {
-            if (player.hasPermissions(2)) {
-                player.sendSystemMessage(adminMessage);
-            }
+            if (player.hasPermissions(2)) player.sendSystemMessage(adminMessage);
         });
 
         server.sendSystemMessage(adminMessage);

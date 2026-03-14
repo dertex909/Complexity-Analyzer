@@ -326,7 +326,6 @@ public class TreeCommand {
                 break;
         }
 
-
         component.withStyle(style -> style.withHoverEvent(new HoverEvent(
                 HoverEvent.Action.SHOW_TEXT,
                 createDetailedHoverText(node, engine)
@@ -338,7 +337,6 @@ public class TreeCommand {
 
     private static Component createDetailedHoverText(TreeNode node, AnalysisEngine engine) {
         MutableComponent hover = Component.empty();
-
 
         switch (node.getType()) {
             case NO_DATA:
@@ -405,7 +403,6 @@ public class TreeCommand {
                 }
                 break;
         }
-
 
         if (node.getItem() != null) {
             Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(node.getItem());

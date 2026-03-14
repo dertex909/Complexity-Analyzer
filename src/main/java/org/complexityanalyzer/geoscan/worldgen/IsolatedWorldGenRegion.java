@@ -1,24 +1,7 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.geoscan.worldgen;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
@@ -27,10 +10,13 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.status.ChunkStep;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -47,7 +33,7 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
                                   List<ChunkAccess> neighborChunks, int radius,
                                   ChunkStatus targetStatus) {
 
-        super(level, createCache(centerChunk, neighborChunks, radius), getChunkStep(targetStatus), centerChunk);
+        super(level, createCache(level, centerChunk, neighborChunks, radius), getChunkStep(targetStatus), centerChunk);
 
         this.centerChunk = centerChunk;
         this.side = 2 * radius + 1;
@@ -63,6 +49,7 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     }
 
     private void putChunkInArray(ChunkAccess chunk) {
+        if (chunk == null) return;
         int lx = chunk.getPos().x - originX;
         int lz = chunk.getPos().z - originZ;
 
@@ -73,9 +60,8 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
         return net.minecraft.world.level.chunk.status.ChunkPyramid.GENERATION_PYRAMID.getStepTo(status);
     }
 
-    private static StaticCache2D<GenerationChunkHolder> createCache(ChunkAccess centerChunk,
-                                                                    List<ChunkAccess> neighbors,
-                                                                    int radius) {
+    private static StaticCache2D<GenerationChunkHolder> createCache(ServerLevel level, ChunkAccess centerChunk,
+                                                                    List<ChunkAccess> neighbors, int radius) {
         int side = 2 * radius + 1;
         int originX = centerChunk.getPos().x - radius;
         int originZ = centerChunk.getPos().z - radius;
@@ -83,21 +69,47 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
         ChunkAccess[] tempArray = new ChunkAccess[side * side];
 
         for (ChunkAccess chunk : neighbors) {
+            if (chunk == null) continue;
             int lx = chunk.getPos().x - originX;
             int lz = chunk.getPos().z - originZ;
             if (lx >= 0 && lx < side && lz >= 0 && lz < side) tempArray[lx + lz * side] = chunk;
         }
-        tempArray[(centerChunk.getPos().x - originX) + (centerChunk.getPos().z - originZ) * side] = centerChunk;
+
+        int centerLx = centerChunk.getPos().x - originX;
+        int centerLz = centerChunk.getPos().z - originZ;
+        if (centerLx >= 0 && centerLx < side && centerLz >= 0 && centerLz < side) {
+            tempArray[centerLx + centerLz * side] = centerChunk;
+        }
 
         return StaticCache2D.create(centerChunk.getPos().x, centerChunk.getPos().z, radius, (x, z) -> {
             int lx = x - originX;
             int lz = z - originZ;
-            if (lx < 0 || lz < 0 || lx >= side || lz >= side) return null;
-            ChunkAccess chunk = tempArray[lx + lz * side];
 
-            if (chunk == null) return null;
+            ChunkAccess chunk = null;
+            boolean b = lx >= 0 && lz >= 0 && lx < side && lz < side;
+            if (b) chunk = tempArray[lx + lz * side];
+
+            if (chunk == null) {
+                chunk = createPlaceholderChunk(level, new ChunkPos(x, z));
+                if (b) tempArray[lx + lz * side] = chunk;
+            }
+
             return new FakeGenerationChunkHolder(chunk);
         });
+    }
+
+    private static ChunkAccess createPlaceholderChunk(ServerLevel level, ChunkPos pos) {
+        try {
+            return new ProtoChunk(pos, UpgradeData.EMPTY, level, level.registryAccess().registryOrThrow(
+                    Registries.BIOME), null
+            );
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.trace(
+                    "[IsolatedWorldGenRegion] Failed to create placeholder for {}: {}", pos, e.getMessage());
+            return new ProtoChunk(pos, UpgradeData.EMPTY, level, level.registryAccess().registryOrThrow(
+                    Registries.BIOME), null
+            );
+        }
     }
 
     @Override

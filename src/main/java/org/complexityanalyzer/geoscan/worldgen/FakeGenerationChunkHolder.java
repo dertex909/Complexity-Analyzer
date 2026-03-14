@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.geoscan.worldgen;
 
 import net.minecraft.server.level.GenerationChunkHolder;
@@ -31,7 +13,7 @@ public class FakeGenerationChunkHolder extends GenerationChunkHolder {
     private final ChunkAccess chunk;
 
     public FakeGenerationChunkHolder(ChunkAccess chunk) {
-        super(chunk.getPos());
+        super(chunk != null ? chunk.getPos() : new ChunkPos(0, 0));
         this.chunk = chunk;
     }
 
@@ -48,7 +30,11 @@ public class FakeGenerationChunkHolder extends GenerationChunkHolder {
     @Nullable
     @Override
     public ChunkAccess getChunkIfPresentUnchecked(@NotNull ChunkStatus status) {
-        if (chunk != null && chunk.getPersistedStatus().isOrAfter(status)) return chunk;
+        if (chunk != null) {
+            ChunkStatus persisted = chunk.getPersistedStatus();
+            if (persisted.isOrAfter(status)) return chunk;
+            return chunk;
+        }
         return null;
     }
 
@@ -60,13 +46,14 @@ public class FakeGenerationChunkHolder extends GenerationChunkHolder {
 
     @Override
     public @NotNull ChunkPos getPos() {
-        return chunk.getPos();
+        return chunk != null ? chunk.getPos() : new ChunkPos(0, 0);
     }
 
     @Nullable
     @Override
     public ChunkStatus getPersistedStatus() {
-        return chunk != null ? chunk.getPersistedStatus() : null;
+        if (chunk != null) return chunk.getPersistedStatus();
+        return ChunkStatus.EMPTY;
     }
 
     @Nullable

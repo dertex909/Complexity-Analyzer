@@ -23,6 +23,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 
@@ -160,8 +161,7 @@ public class RecipeNode {
         if (o == null || getClass() != o.getClass()) return false;
         RecipeNode that = (RecipeNode) o;
         return resultItem.equals(that.resultItem) &&
-                recipeType.equals(that.recipeType) &&
-                ingredients.equals(that.ingredients);
+                recipeType.equals(that.recipeType) && ingredients.equals(that.ingredients);
     }
 
     @Override
@@ -204,14 +204,12 @@ public class RecipeNode {
             this.resultItem = resultItem;
         }
 
-        public Builder addIngredient(List<Item> variants, int count) {
+        public void addIngredient(List<Item> variants, int count) {
             this.ingredients.add(new IngredientSlot(variants, count));
-            return this;
         }
 
-        public Builder addFluidIngredient(List<net.minecraft.world.level.material.Fluid> variants, int amount) {
+        public void addFluidIngredient(List<Fluid> variants, int amount) {
             this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
-            return this;
         }
 
         public Builder chemicalOutputs(List<AdaptiveRecipeConverter.ChemicalOutput> outputs) {
@@ -219,9 +217,8 @@ public class RecipeNode {
             return this;
         }
 
-        public Builder addChemicalIngredient(ResourceLocation chemicalId, int amount) {
+        public void addChemicalIngredient(ResourceLocation chemicalId, int amount) {
             this.chemicalIngredients.add(new ChemicalIngredient(chemicalId, amount));
-            return this;
         }
 
         public Builder itemOutputs(List<ItemStack> outputs) {
@@ -254,9 +251,8 @@ public class RecipeNode {
             return this;
         }
 
-        public Builder priority(int priority) {
+        public void priority(int priority) {
             this.priority = priority;
-            return this;
         }
 
         public Builder isPlaceholder(boolean placeholder) {
@@ -264,9 +260,8 @@ public class RecipeNode {
             return this;
         }
 
-        public Builder placeholderId(String id) {
+        public void placeholderId(String id) {
             this.placeholderId = id;
-            return this;
         }
 
         public Builder rawRecipe(Object raw) {
@@ -281,9 +276,7 @@ public class RecipeNode {
                         .mapToInt(ItemStack::getCount)
                         .sum();
             }
-            if (this.resultCount == 0) {
-                this.resultCount = 1;
-            }
+            if (this.resultCount == 0) this.resultCount = 1;
             return new RecipeNode(this);
         }
     }

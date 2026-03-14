@@ -20,6 +20,7 @@ package org.complexityanalyzer.graph;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 import net.minecraft.world.item.ItemStack;
@@ -240,7 +241,7 @@ public class RecipeGraph {
                 .sum();
     }
 
-    private static net.minecraft.world.level.material.Fluid normalizeFluid(net.minecraft.world.level.material.Fluid fluid) {
+    private static Fluid normalizeFluid(Fluid fluid) {
         String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
 
         if (fluidName.contains("flowing_")) {
@@ -276,9 +277,9 @@ public class RecipeGraph {
         return allItems;
     }
 
-    public List<RecipeNode> getRecipesProducingFluid(net.minecraft.world.level.material.Fluid fluid) {
+    public List<RecipeNode> getRecipesProducingFluid(Fluid fluid) {
         fluid = normalizeFluid(fluid);
-        final net.minecraft.world.level.material.Fluid normalizedFluid = fluid;
+        final Fluid normalizedFluid = fluid;
 
         ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(normalizedFluid);
 
@@ -295,9 +296,9 @@ public class RecipeGraph {
         return combined;
     }
 
-    public List<Item> getItemsUsingFluid(net.minecraft.world.level.material.Fluid fluid) {
+    public List<Item> getItemsUsingFluid(Fluid fluid) {
         fluid = normalizeFluid(fluid);
-        final net.minecraft.world.level.material.Fluid normalizedFluid = fluid;
+        final Fluid normalizedFluid = fluid;
 
         return getAllRecipes().stream()
                 .filter(recipe -> recipe.getFluidIngredients().stream()
@@ -308,8 +309,8 @@ public class RecipeGraph {
                 .toList();
     }
 
-    public Set<net.minecraft.world.level.material.Fluid> getAllUsedFluids() {
-        Set<net.minecraft.world.level.material.Fluid> fluids = new HashSet<>();
+    public Set<Fluid> getAllUsedFluids() {
+        Set<Fluid> fluids = new HashSet<>();
         for (RecipeNode recipe : getAllRecipes()) {
 
             recipe.getFluidIngredients().forEach(slot ->

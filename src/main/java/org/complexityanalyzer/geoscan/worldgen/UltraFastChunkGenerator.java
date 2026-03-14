@@ -21,9 +21,11 @@ import net.minecraft.world.level.levelgen.blending.Blender;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.mixin.NoiseBasedChunkGeneratorAccessor;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public class UltraFastChunkGenerator {
 
@@ -80,6 +82,8 @@ public class UltraFastChunkGenerator {
 
             Map<Long, ChunkAccess> area = generateExactChunks(allNeeded);
 
+            ensureAllPositionsPresent(allNeeded, area);
+
             List<ChunkPos> needFeatures = new ArrayList<>();
 
             for (ChunkPos pos : positions) {
@@ -101,8 +105,13 @@ public class UltraFastChunkGenerator {
                 runParallelPhase(needFeatures, pos -> {
                     ChunkAccess chunk = area.get(pos.toLong());
                     if (chunk != null && hasNotStatus(chunk, ChunkStatus.FEATURES)) {
-                        generateFeatures(chunk, area);
-                        cache.put(pos, chunk, ChunkStatus.FEATURES);
+                        try {
+                            generateFeatures(chunk, area);
+                            cache.put(pos, chunk, ChunkStatus.FEATURES);
+                        } catch (Exception e) {
+                            ComplexityAnalyzer.LOGGER.trace(
+                                    "[UltraFast] Features generation failed for {}: {}", pos, e.getMessage());
+                        }
                     }
                 });
             }
@@ -114,8 +123,20 @@ public class UltraFastChunkGenerator {
             }
 
             return results;
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[UltraFast] Batch generation error: {}", e.getMessage());
+            return Collections.emptyList();
         } finally {
             IsolatedThreadMarker.unmarkIsolated();
+        }
+    }
+
+    private void ensureAllPositionsPresent(Set<Long> allNeeded, Map<Long, ChunkAccess> area) {
+        for (long key : allNeeded) {
+            if (!area.containsKey(key)) {
+                ChunkPos pos = new ChunkPos(key);
+                area.put(key, createProtoChunk(pos));
+            }
         }
     }
 
@@ -175,11 +196,26 @@ public class UltraFastChunkGenerator {
 
         if (items.size() <= 3) {
             for (ChunkPos pos : items) {
-                task.accept(pos);
+                try {
+                    task.accept(pos);
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.trace("[UltraFast] Task failed for {}: {}", pos, e.getMessage());
+                }
             }
             return;
         }
 
+        CountDownLatch latch = getCountDownLatch(items, task);
+
+        try {
+            if (!latch.await(60, TimeUnit.SECONDS)) ComplexityAnalyzer.LOGGER.warn(
+                    "[UltraFast] Phase timeout! Not all chunks generated in 60s.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static @NotNull CountDownLatch getCountDownLatch(List<ChunkPos> items, Consumer<ChunkPos> task) {
         ForkJoinPool pool = ThreadPoolManager.getInstance().getForkJoinPool();
         CountDownLatch latch = new CountDownLatch(items.size());
 
@@ -188,19 +224,15 @@ public class UltraFastChunkGenerator {
                 IsolatedThreadMarker.markIsolated();
                 try {
                     task.accept(pos);
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.trace("[UltraFast] Parallel task failed for {}: {}", pos, e.getMessage());
                 } finally {
                     IsolatedThreadMarker.unmarkIsolated();
                     latch.countDown();
                 }
             });
         }
-
-        try {
-            if (!latch.await(60, TimeUnit.SECONDS)) ComplexityAnalyzer.LOGGER.warn(
-                    "[UltraFast] Phase timeout! Not all chunks generated in 60s.");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        return latch;
     }
 
     private ChunkAccess getOrCreateChunk(ChunkPos pos) {
@@ -211,7 +243,10 @@ public class UltraFastChunkGenerator {
 
     private boolean hasStatus(ChunkAccess chunk, ChunkStatus status) {
         if (chunk == null) return false;
-        if (chunk instanceof ProtoChunk proto) return proto.getPersistedStatus().isOrAfter(status);
+        if (chunk instanceof ProtoChunk proto) {
+            ChunkStatus persisted = proto.getPersistedStatus();
+            return persisted.isOrAfter(status);
+        }
         return true;
     }
 
@@ -252,12 +287,26 @@ public class UltraFastChunkGenerator {
                 if (cellCountY > 0) {
                     int topSection = chunk.getSectionIndex(cellCountY * cellHeight - 1 + minY);
                     int bottomSection = chunk.getSectionIndex(minY);
+
+                    int sectionCount = chunk.getSectionsCount();
+                    topSection = Math.min(topSection, sectionCount - 1);
+                    bottomSection = Math.max(bottomSection, 0);
+
+                    if (topSection < 0 || bottomSection >= sectionCount) {
+                        ComplexityAnalyzer.LOGGER.trace(
+                                "[UltraFast] Invalid section indices for {}: top={}, bottom={}, count={}",
+                                chunk.getPos(), topSection, bottomSection, sectionCount);
+                        return;
+                    }
+
                     Set<LevelChunkSection> acquired = new HashSet<>();
 
                     for (int i = topSection; i >= bottomSection; --i) {
-                        LevelChunkSection section = chunk.getSection(i);
-                        section.acquire();
-                        acquired.add(section);
+                        if (i < sectionCount) {
+                            LevelChunkSection section = chunk.getSection(i);
+                            section.acquire();
+                            acquired.add(section);
+                        }
                     }
 
                     try {
@@ -295,7 +344,9 @@ public class UltraFastChunkGenerator {
     private void generateFeatures(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
         if (chunk == null) return;
         try {
-            Heightmap.primeHeightmaps(chunk, EnumSet.of(Heightmap.Types.MOTION_BLOCKING, Heightmap.Types.OCEAN_FLOOR,
+            Heightmap.primeHeightmaps(chunk, EnumSet.of(
+                    Heightmap.Types.MOTION_BLOCKING,
+                    Heightmap.Types.OCEAN_FLOOR,
                     Heightmap.Types.WORLD_SURFACE
             ));
 
@@ -306,16 +357,23 @@ public class UltraFastChunkGenerator {
 
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.FEATURES);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}", chunk.getPos(), e.getMessage());
+            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}",
+                    chunk.getPos(), e.getMessage());
         }
     }
 
     private List<ChunkAccess> collectNeighbors(ChunkPos center, Map<Long, ChunkAccess> area) {
         List<ChunkAccess> neighbors = new ArrayList<>(9);
         for (int[] offset : NEIGHBOR_OFFSETS) {
-            long key = ChunkPos.asLong(center.x + offset[0], center.z + offset[1]);
+            int nx = center.x + offset[0];
+            int nz = center.z + offset[1];
+            long key = ChunkPos.asLong(nx, nz);
             ChunkAccess neighbor = area.get(key);
-            if (neighbor != null) neighbors.add(neighbor);
+            if (neighbor == null) {
+                neighbor = createProtoChunk(new ChunkPos(nx, nz));
+                area.put(key, neighbor);
+            }
+            neighbors.add(neighbor);
         }
         return neighbors;
     }

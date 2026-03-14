@@ -27,10 +27,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.*;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
@@ -165,8 +162,7 @@ public class GeoScanCommands {
 
             profileLine.setStyle(profileLine.getStyle()
                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))
-                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(
-                            net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND,
+                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
                             "/complexity geoscan start " + profile.name().toLowerCase())));
 
             output.sendInfo(source, profileLine);

@@ -120,8 +120,7 @@ public class MachineRegistry {
         mapping.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey(Comparator.comparing(ResourceLocation::toString)))
                 .forEach(entry ->
-                        ComplexityAnalyzer.LOGGER.debug("  {} -> {}",
-                                entry.getKey(),
+                        ComplexityAnalyzer.LOGGER.debug("  {} -> {}", entry.getKey(),
                                 BuiltInRegistries.ITEM.getKey(entry.getValue()))
                 );
     }

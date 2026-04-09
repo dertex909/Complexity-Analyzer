@@ -33,7 +33,7 @@ public class OptimizedChunkCache {
     private static final int CLEANUP_BATCH = 2048;
     private static final int CLEANUP_TRIGGER = MAX_CACHE_SIZE + CLEANUP_BATCH;
     private static final int SAMPLE_SIZE = 1024;
-    private static final int GENERATION_TIMEOUT_SECONDS = 30;
+    private static final int GENERATION_TIMEOUT_SECONDS = 12;
 
     private final ConcurrentHashMap<Long, CacheEntry> cache = new ConcurrentHashMap<>(MAX_CACHE_SIZE, 0.75f, 16);
     private final ConcurrentHashMap<Long, CompletableFuture<ChunkAccess>> generationInProgress = new ConcurrentHashMap<>();
@@ -85,25 +85,30 @@ public class OptimizedChunkCache {
             return existing.chunk;
         }
 
-        CompletableFuture<ChunkAccess> future = generationInProgress.computeIfAbsent(key, k ->
-                CompletableFuture.supplyAsync(() -> generateChunk(key, pos, minStatus, generator))
-        );
+        CompletableFuture<ChunkAccess> newFuture = new CompletableFuture<>();
+        CompletableFuture<ChunkAccess> future = generationInProgress.putIfAbsent(key, newFuture);
+
+        if (future == null) try {
+            ChunkAccess result = generateChunk(key, pos, minStatus, generator);
+            newFuture.complete(result);
+            return result;
+        } catch (Throwable t) {
+            newFuture.completeExceptionally(t);
+            return null;
+        } finally {
+            generationInProgress.remove(key, newFuture);
+        }
+
 
         try {
             ChunkAccess result = future.get(GENERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             CacheEntry entry = cache.get(key);
             if (entry != null && entry.chunk == result) entry.lastAccess = accessCounter.incrementAndGet();
             return result;
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            generationInProgress.remove(key, future);
+        } catch (TimeoutException | ExecutionException e) {
             return null;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            generationInProgress.remove(key, future);
-            return null;
-        } catch (ExecutionException e) {
-            generationInProgress.remove(key, future);
             return null;
         }
     }
@@ -118,8 +123,6 @@ public class OptimizedChunkCache {
             return chunk;
         } catch (Exception e) {
             return null;
-        } finally {
-            generationInProgress.remove(key);
         }
     }
 

@@ -8,7 +8,9 @@
     "ThreadingDetectorMixin",
     "PalettedContainerMixin",
     "UtilMixin",
-    "NoiseBasedChunkGeneratorAccessor"
+    "ChunkGeneratorAccessor",
+    "NoiseBasedChunkGeneratorAccessor",
+    "StructureManagerAccessor"
   ],
   "client": [],
   "server": [],

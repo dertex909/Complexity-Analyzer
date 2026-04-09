@@ -155,8 +155,7 @@ public class EnhancedIterativeSolver {
                 }, pool));
             }
             try {
-                CompletableFuture.allOf(cleanups.toArray(new CompletableFuture[0]))
-                        .get(5, TimeUnit.SECONDS);
+                CompletableFuture.allOf(cleanups.toArray(new CompletableFuture[0])).get(5, TimeUnit.SECONDS);
             } catch (Exception ignored) {
             }
         } catch (Exception e) {

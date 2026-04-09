@@ -1,11 +1,21 @@
 package org.complexityanalyzer.geoscan.worldgen;
 
+import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.Registry;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeGenerationSettings;
+import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -13,21 +23,29 @@ import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.RandomSupport;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.NoiseSettings;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.WorldgenRandom;
+import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.mixin.ChunkGeneratorAccessor;
 import org.complexityanalyzer.mixin.NoiseBasedChunkGeneratorAccessor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class UltraFastChunkGenerator {
+    private static final int PHASE_TIMEOUT_SECONDS = 12;
 
     private static final ConcurrentHashMap<String, OptimizedChunkCache> DIMENSION_CACHES = new ConcurrentHashMap<>();
 
@@ -42,19 +60,26 @@ public class UltraFastChunkGenerator {
     private final RandomState randomState;
     private final StructureManager structureManager;
     private final OptimizedChunkCache cache;
+    private final List<FeatureSorter.StepFeatureData> featureSteps;
+    private final Function<Holder<Biome>, BiomeGenerationSettings> generationSettingsGetter;
 
     private final boolean isNoiseGenerator;
     private final NoiseBasedChunkGeneratorAccessor noiseAccessor;
     private final Holder<NoiseGeneratorSettings> noiseSettings;
 
+    private static final Set<String> DISABLED_FEATURES = ConcurrentHashMap.newKeySet();
+    private static final Set<String> LOGGED_FEATURE_FAILURES = ConcurrentHashMap.newKeySet();
+
     public UltraFastChunkGenerator(ServerLevel level) {
         this.level = level;
         this.generator = level.getChunkSource().getGenerator();
         this.randomState = level.getChunkSource().randomState();
-        this.structureManager = level.structureManager();
+        this.structureManager = new StructurelessStructureManager(level.structureManager());
 
         String dimensionKey = level.dimension().location().toString();
         this.cache = DIMENSION_CACHES.computeIfAbsent(dimensionKey, k -> new OptimizedChunkCache());
+        this.generationSettingsGetter = ((ChunkGeneratorAccessor) generator).getGenerationSettingsGetter();
+        this.featureSteps = buildFeatureSteps(generator);
 
         this.isNoiseGenerator = generator instanceof NoiseBasedChunkGenerator;
         if (isNoiseGenerator) {
@@ -63,6 +88,19 @@ public class UltraFastChunkGenerator {
         } else {
             this.noiseAccessor = null;
             this.noiseSettings = null;
+        }
+    }
+
+    private List<FeatureSorter.StepFeatureData> buildFeatureSteps(ChunkGenerator chunkGenerator) {
+        try {
+            return FeatureSorter.buildFeaturesPerStep(
+                    List.copyOf(chunkGenerator.getBiomeSource().possibleBiomes()),
+                    biome -> generationSettingsGetter.apply(biome).features(),
+                    true
+            );
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[UltraFast] Failed to precompute feature steps: {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 
@@ -103,16 +141,14 @@ public class UltraFastChunkGenerator {
 
             if (!needFeatures.isEmpty()) {
                 runParallelPhase(needFeatures, pos -> {
-                    ChunkAccess chunk = area.get(pos.toLong());
-                    if (chunk != null && hasNotStatus(chunk, ChunkStatus.FEATURES)) {
-                        try {
-                            generateFeatures(chunk, area);
-                            cache.put(pos, chunk, ChunkStatus.FEATURES);
-                        } catch (Exception e) {
-                            ComplexityAnalyzer.LOGGER.trace(
-                                    "[UltraFast] Features generation failed for {}: {}", pos, e.getMessage());
+                    ChunkAccess chunk = cache.computeIfAbsent(pos, ChunkStatus.FEATURES, () -> {
+                        ChunkAccess localChunk = area.get(pos.toLong());
+                        if (localChunk != null && hasNotStatus(localChunk, ChunkStatus.FEATURES)) {
+                            generateFeatures(localChunk, area);
                         }
-                    }
+                        return localChunk;
+                    });
+                    if (chunk != null) area.put(pos.toLong(), chunk);
                 });
             }
 
@@ -168,11 +204,14 @@ public class UltraFastChunkGenerator {
         List<ChunkPos> needSurface = filterByMissingStatus(toCreate, area, ChunkStatus.SURFACE);
         if (!needSurface.isEmpty()) {
             runParallelPhase(needSurface, pos -> {
-                ChunkAccess chunk = area.get(pos.toLong());
-                if (chunk != null) {
-                    generateSurface(chunk, area);
-                    cache.put(pos, chunk, ChunkStatus.SURFACE);
-                }
+                ChunkAccess chunk = cache.computeIfAbsent(pos, ChunkStatus.SURFACE, () -> {
+                    ChunkAccess localChunk = area.get(pos.toLong());
+                    if (localChunk != null) {
+                        generateSurface(localChunk, area);
+                    }
+                    return localChunk;
+                });
+                if (chunk != null) area.put(pos.toLong(), chunk);
             });
         }
 
@@ -208,8 +247,12 @@ public class UltraFastChunkGenerator {
         CountDownLatch latch = getCountDownLatch(items, task);
 
         try {
-            if (!latch.await(60, TimeUnit.SECONDS)) ComplexityAnalyzer.LOGGER.warn(
-                    "[UltraFast] Phase timeout! Not all chunks generated in 60s.");
+            if (!latch.await(PHASE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) ComplexityAnalyzer.LOGGER.warn(
+                    "[UltraFast] Phase timeout after {}s: {}/{} tasks still running",
+                    PHASE_TIMEOUT_SECONDS,
+                    latch.getCount(),
+                    items.size()
+            );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -353,13 +396,94 @@ public class UltraFastChunkGenerator {
             List<ChunkAccess> neighbors = collectNeighbors(chunk.getPos(), area);
             IsolatedWorldGenRegion region =
                     new IsolatedWorldGenRegion(level, chunk, neighbors, 1, ChunkStatus.FEATURES);
-            generator.applyBiomeDecoration(region, chunk, structureManager);
+            applyBiomeDecorationSafely(region, chunk);
 
             if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.FEATURES);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}",
                     chunk.getPos(), e.getMessage());
         }
+    }
+
+    private void applyBiomeDecorationSafely(IsolatedWorldGenRegion region, ChunkAccess centerChunk) {
+        if (featureSteps.isEmpty()) {
+            generator.applyBiomeDecoration(region, centerChunk, structureManager);
+            return;
+        }
+
+        ChunkPos chunkPos = centerChunk.getPos();
+        SectionPos sectionPos = SectionPos.of(chunkPos, region.getMinSection());
+        BlockPos origin = sectionPos.origin();
+
+        Set<Holder<Biome>> presentBiomes = new HashSet<>();
+        Set<Holder<Biome>> supportedBiomes = new HashSet<>(generator.getBiomeSource().possibleBiomes());
+
+        ChunkPos.rangeClosed(sectionPos.chunk(), 1).forEach(pos -> {
+            ChunkAccess chunk = region.getChunk(pos.x, pos.z, ChunkStatus.EMPTY, false);
+            for (LevelChunkSection section : chunk.getSections()) {
+                section.getBiomes().getAll(presentBiomes::add);
+            }
+        });
+        presentBiomes.retainAll(supportedBiomes);
+
+        Registry<PlacedFeature> featureRegistry = level.registryAccess().registryOrThrow(Registries.PLACED_FEATURE);
+        WorldgenRandom random = new WorldgenRandom(new XoroshiroRandomSource(RandomSupport.generateUniqueSeed()));
+        long decorationSeed = random.setDecorationSeed(region.getSeed(), origin.getX(), origin.getZ());
+
+        int maxSteps = Math.min(featureSteps.size(), GenerationStep.Decoration.values().length);
+        for (int step = 0; step < maxSteps; step++) {
+            IntSet featureIndices = new IntArraySet();
+
+            for (Holder<Biome> biome : presentBiomes) {
+                List<HolderSet<PlacedFeature>> biomeFeatures = generationSettingsGetter.apply(biome).features();
+                if (step >= biomeFeatures.size()) continue;
+
+                FeatureSorter.StepFeatureData stepData = featureSteps.get(step);
+                biomeFeatures.get(step).stream()
+                        .map(Holder::value)
+                        .forEach(feature -> featureIndices.add(stepData.indexMapping().applyAsInt(feature)));
+            }
+
+            int[] sortedIndices = featureIndices.toIntArray();
+            Arrays.sort(sortedIndices);
+
+            FeatureSorter.StepFeatureData stepData = featureSteps.get(step);
+            for (int featureIndex : sortedIndices) {
+                PlacedFeature feature = stepData.features().get(featureIndex);
+                ResourceLocation featureId = featureRegistry.getResourceKey(feature)
+                        .map(net.minecraft.resources.ResourceKey::location)
+                        .orElse(null);
+                String featureName = featureId != null ? featureId.toString() : feature.toString();
+                String featureKey = step + "|" + featureName;
+
+                if (DISABLED_FEATURES.contains(featureKey)) {
+                    continue;
+                }
+
+                random.setFeatureSeed(decorationSeed, featureIndex, step);
+                region.setCurrentlyGenerating(() -> featureName);
+
+                try {
+                    feature.placeWithBiomeCheck(region, generator, random, origin);
+                } catch (Throwable t) {
+                    DISABLED_FEATURES.add(featureKey);
+                    logFeatureFailure(chunkPos, featureName, step, t);
+                }
+            }
+        }
+
+        region.setCurrentlyGenerating(null);
+    }
+
+    private void logFeatureFailure(ChunkPos chunkPos, String featureName, int step, Throwable error) {
+        String failureKey = featureName + "|" + step;
+        if (LOGGED_FEATURE_FAILURES.add(failureKey)) ComplexityAnalyzer.LOGGER.debug(
+                "[UltraFast] Disabling failing feature {} at step {} after error in {}: {}",
+                featureName,
+                step,
+                chunkPos,
+                error.toString()
+        );
     }
 
     private List<ChunkAccess> collectNeighbors(ChunkPos center, Map<Long, ChunkAccess> area) {
@@ -369,9 +493,17 @@ public class UltraFastChunkGenerator {
             int nz = center.z + offset[1];
             long key = ChunkPos.asLong(nx, nz);
             ChunkAccess neighbor = area.get(key);
-            if (neighbor == null) {
-                neighbor = createProtoChunk(new ChunkPos(nx, nz));
-                area.put(key, neighbor);
+
+            ChunkPos neighborPos = new ChunkPos(nx, nz);
+            if (neighbor == null || hasNotStatus(neighbor, ChunkStatus.SURFACE)) {
+                ChunkAccess cached = cache.get(neighborPos, ChunkStatus.SURFACE);
+                if (cached != null) {
+                    neighbor = cached;
+                    area.put(key, cached);
+                } else if (neighbor == null) {
+                    neighbor = createProtoChunk(neighborPos);
+                    area.put(key, neighbor);
+                }
             }
             neighbors.add(neighbor);
         }

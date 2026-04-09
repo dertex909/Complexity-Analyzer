@@ -21,6 +21,7 @@ package org.complexityanalyzer.geoscan.task;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -37,6 +38,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class WorldScanner {
+    private static final int MAX_CACHED_LOCATIONS_PER_BIOME = 24;
+    private static final int MIN_CACHED_LOCATION_DISTANCE_BLOCKS = 192;
 
     private final MinecraftServer server;
     private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
@@ -73,6 +76,15 @@ public class WorldScanner {
             ResourceKey<Biome> biomeKey,
             boolean isRelocation
     ) {
+        return findBiomeLocation(dimension, biomeKey, isRelocation, true);
+    }
+
+    public Optional<ChunkPos> findBiomeLocation(
+            ResourceKey<Level> dimension,
+            ResourceKey<Biome> biomeKey,
+            boolean isRelocation,
+            boolean allowCachedLocation
+    ) {
         if (shouldStop()) return Optional.empty();
         ServerLevel level = server.getLevel(dimension);
         if (level == null) return Optional.empty();
@@ -86,14 +98,13 @@ public class WorldScanner {
 
         String cacheKey = dimension.location() + "|" + biomeKey.location();
 
-        if (isRelocation) return findNewLocation(level, biomeKey, cacheKey);
-
-        List<BlockPos> cached = biomeLocationCache.get(cacheKey);
-        if (cached != null && !cached.isEmpty()) {
-            BlockPos pos = cached.get(ThreadLocalRandom.current().nextInt(cached.size()));
-            ComplexityAnalyzer.LOGGER.debug("Using cached location for {}: [{}, {}]",
-                    biomeKey.location().getPath(), pos.getX(), pos.getZ());
-            return Optional.of(new ChunkPos(pos));
+        if (allowCachedLocation) {
+            BlockPos cachedPos = getCachedLocation(cacheKey, isRelocation);
+            if (cachedPos != null) {
+                ComplexityAnalyzer.LOGGER.trace("Using cached location for {}: [{}, {}]",
+                        biomeKey.location().getPath(), cachedPos.getX(), cachedPos.getZ());
+                return Optional.of(new ChunkPos(cachedPos));
+            }
         }
 
         return findNewLocation(level, biomeKey, cacheKey);
@@ -130,6 +141,13 @@ public class WorldScanner {
         return possibleBiomes.contains(biomeId);
     }
 
+    public void recordDiscoveredBiomeChunk(ResourceKey<Level> dimension, ResourceLocation biome, ChunkPos pos) {
+        if (shouldStop()) return;
+        String cacheKey = dimension.location() + "|" + biome;
+        BlockPos center = new BlockPos(pos.getMiddleBlockX(), 64, pos.getMiddleBlockZ());
+        cacheLocation(cacheKey, center);
+    }
+
     private Optional<ChunkPos> findNewLocation(ServerLevel level, ResourceKey<Biome> biomeKey, String cacheKey) {
         if (shouldStop()) return Optional.empty();
 
@@ -157,10 +175,45 @@ public class WorldScanner {
         return Optional.empty();
     }
 
+    private BlockPos getCachedLocation(String cacheKey, boolean isRelocation) {
+        List<BlockPos> cached = biomeLocationCache.get(cacheKey);
+        if (cached == null) return null;
+
+        synchronized (cached) {
+            int size = cached.size();
+            if (size == 0) return null;
+            if (isRelocation && size < 2) return null;
+            return cached.get(ThreadLocalRandom.current().nextInt(size));
+        }
+    }
+
     private void cacheLocation(String cacheKey, BlockPos pos) {
         if (shouldStop()) return;
-        biomeLocationCache
-                .computeIfAbsent(cacheKey, k -> Collections.synchronizedList(new ArrayList<>())).add(pos);
+        List<BlockPos> cached = biomeLocationCache
+                .computeIfAbsent(cacheKey, k -> Collections.synchronizedList(new ArrayList<>()));
+
+        synchronized (cached) {
+            for (BlockPos existing : cached) {
+                if (isNear(existing, pos)) {
+                    return;
+                }
+                if (existing.getX() == pos.getX() && existing.getZ() == pos.getZ()) {
+                    return;
+                }
+            }
+
+            BlockPos immutable = pos.immutable();
+            if (cached.size() >= MAX_CACHED_LOCATIONS_PER_BIOME) {
+                cached.set(ThreadLocalRandom.current().nextInt(cached.size()), immutable);
+            } else {
+                cached.add(immutable);
+            }
+        }
+    }
+
+    private boolean isNear(BlockPos a, BlockPos b) {
+        return Math.abs(a.getX() - b.getX()) < MIN_CACHED_LOCATION_DISTANCE_BLOCKS
+                && Math.abs(a.getZ() - b.getZ()) < MIN_CACHED_LOCATION_DISTANCE_BLOCKS;
     }
 
     public void shutdown() {

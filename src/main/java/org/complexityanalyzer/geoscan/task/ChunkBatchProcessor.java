@@ -37,6 +37,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkBatchProcessor {
+    private static final int MAX_TARGET_CHUNKS_PER_BATCH = 64;
 
     private final MinecraftServer server;
     private final ChunkAnalyzer analyzer;
@@ -112,8 +113,9 @@ public class ChunkBatchProcessor {
         if (level == null) return Collections.emptyList();
         ResourceLocation dimId = dimension.location();
         BiomeContext ctx = getBiomeContext(dimension);
-        List<ChunkPos> toGenerate = new ArrayList<>(32);
-        Map<ChunkPos, ResourceLocation> biomeMap = new HashMap<>(32);
+        int targetCount = Math.min(positions.size(), MAX_TARGET_CHUNKS_PER_BATCH);
+        List<ChunkPos> toGenerate = new ArrayList<>(targetCount);
+        Map<ChunkPos, ResourceLocation> biomeMap = new HashMap<>(targetCount * 2);
 
         for (ChunkPos pos : positions) {
             if (!session.isValid()) break;
@@ -122,7 +124,7 @@ public class ChunkBatchProcessor {
             if (session.doesNotNeedBiome(dimId, biome)) continue;
             toGenerate.add(pos);
             biomeMap.put(pos, biome);
-            if (toGenerate.size() >= 24) break;
+            if (toGenerate.size() >= targetCount) break;
         }
 
         if (toGenerate.isEmpty()) return Collections.emptyList();

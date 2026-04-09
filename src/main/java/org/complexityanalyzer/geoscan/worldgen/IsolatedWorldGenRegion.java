@@ -14,20 +14,25 @@ import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.status.ChunkStep;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IsolatedWorldGenRegion extends WorldGenRegion {
 
+    private final ServerLevel level;
     private final ChunkAccess centerChunk;
     private final ChunkAccess[] localChunks;
+    private final ConcurrentHashMap<Long, ChunkAccess> syntheticChunks = new ConcurrentHashMap<>();
     private final int side;
     private final int originX;
     private final int originZ;
+    private final int safeReadRadius;
 
     public IsolatedWorldGenRegion(ServerLevel level, ChunkAccess centerChunk,
                                   List<ChunkAccess> neighborChunks, int radius,
@@ -35,10 +40,12 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
 
         super(level, createCache(level, centerChunk, neighborChunks, radius), getChunkStep(targetStatus), centerChunk);
 
+        this.level = level;
         this.centerChunk = centerChunk;
         this.side = 2 * radius + 1;
         this.originX = centerChunk.getPos().x - radius;
         this.originZ = centerChunk.getPos().z - radius;
+        this.safeReadRadius = Math.max(radius, getChunkStep(targetStatus).directDependencies().size() - 1);
 
         this.localChunks = new ChunkAccess[side * side];
 
@@ -54,6 +61,23 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
         int lz = chunk.getPos().z - originZ;
 
         if (lx >= 0 && lx < side && lz >= 0 && lz < side) localChunks[lx + lz * side] = chunk;
+    }
+
+    private ChunkAccess getLocalChunk(int x, int z) {
+        int lx = x - originX;
+        int lz = z - originZ;
+        if (lx < 0 || lx >= side || lz < 0 || lz >= side) return null;
+        return localChunks[lx + lz * side];
+    }
+
+    private ChunkAccess getSyntheticChunk(int x, int z) {
+        long key = ChunkPos.asLong(x, z);
+        return syntheticChunks.computeIfAbsent(key, ignored -> createPlaceholderChunk(level, new ChunkPos(x, z)));
+    }
+
+    private ChunkAccess getChunkOrPlaceholder(int x, int z) {
+        ChunkAccess local = getLocalChunk(x, z);
+        return local != null ? local : getSyntheticChunk(x, z);
     }
 
     private static ChunkStep getChunkStep(ChunkStatus status) {
@@ -116,62 +140,55 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     public @NotNull BlockState getBlockState(@NotNull BlockPos pos) {
         int cx = pos.getX() >> 4;
         int cz = pos.getZ() >> 4;
-
-        int lx = cx - originX;
-        int lz = cz - originZ;
-
-        if (lx >= 0 && lx < side && lz >= 0 && lz < side) {
-            ChunkAccess chunk = localChunks[lx + lz * side];
-            if (chunk != null) {
-                try {
-                    int y = pos.getY();
-                    if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) {
-                        return Blocks.AIR.defaultBlockState();
-                    }
-                    return chunk.getBlockState(pos);
-                } catch (Throwable ignored) {
-                }
-            }
+        ChunkAccess chunk = getChunkOrPlaceholder(cx, cz);
+        try {
+            int y = pos.getY();
+            if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) return Blocks.AIR.defaultBlockState();
+            return chunk.getBlockState(pos);
+        } catch (Throwable ignored) {
+            return Blocks.AIR.defaultBlockState();
         }
-        return Blocks.AIR.defaultBlockState();
     }
 
     @Override
     public @NotNull FluidState getFluidState(@NotNull BlockPos pos) {
         int cx = pos.getX() >> 4;
         int cz = pos.getZ() >> 4;
-        int lx = cx - originX;
-        int lz = cz - originZ;
-
-        if (lx >= 0 && lx < side && lz >= 0 && lz < side) {
-            ChunkAccess chunk = localChunks[lx + lz * side];
-            if (chunk != null) {
-                try {
-                    int y = pos.getY();
-                    if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) {
-                        return Fluids.EMPTY.defaultFluidState();
-                    }
-                    return chunk.getFluidState(pos);
-                } catch (Throwable ignored) {
-                }
+        ChunkAccess chunk = getChunkOrPlaceholder(cx, cz);
+        try {
+            int y = pos.getY();
+            if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) {
+                return Fluids.EMPTY.defaultFluidState();
             }
+            return chunk.getFluidState(pos);
+        } catch (Throwable ignored) {
+            return Fluids.EMPTY.defaultFluidState();
         }
-        return Fluids.EMPTY.defaultFluidState();
     }
 
     @Override
     public boolean hasChunk(int x, int z) {
-        int lx = x - originX;
-        int lz = z - originZ;
-        return lx >= 0 && lx < side && lz >= 0 && lz < side && localChunks[lx + lz * side] != null;
+        return centerChunk.getPos().getChessboardDistance(x, z) <= safeReadRadius || getLocalChunk(x, z) != null;
     }
 
     @Override
     public ChunkAccess getChunk(int x, int z, @NotNull ChunkStatus status, boolean required) {
-        int lx = x - originX;
-        int lz = z - originZ;
-        if (lx >= 0 && lx < side && lz >= 0 && lz < side) return localChunks[lx + lz * side];
-        return null;
+        return getChunkOrPlaceholder(x, z);
+    }
+
+    @Override
+    public int getHeight(Heightmap.@NotNull Types heightmap, int x, int z) {
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+
+        ChunkAccess chunk = getLocalChunk(chunkX, chunkZ);
+        if (chunk == null) return this.getMinBuildHeight();
+
+        try {
+            return chunk.getHeight(heightmap, x & 15, z & 15) + 1;
+        } catch (Throwable ignored) {
+            return this.getMinBuildHeight();
+        }
     }
 
     @Override

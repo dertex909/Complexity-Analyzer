@@ -177,6 +177,19 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     }
 
     @Override
+    public boolean ensureCanWrite(@NotNull BlockPos pos) {
+        int chunkX = pos.getX() >> 4;
+        int chunkZ = pos.getZ() >> 4;
+
+        if (centerChunk.getPos().getChessboardDistance(chunkX, chunkZ) > safeReadRadius) {
+            return false;
+        }
+
+        int y = pos.getY();
+        return y >= this.getMinBuildHeight() && y < this.getMaxBuildHeight();
+    }
+
+    @Override
     public int getHeight(Heightmap.@NotNull Types heightmap, int x, int z) {
         int chunkX = x >> 4;
         int chunkZ = z >> 4;

@@ -133,6 +133,8 @@ public class ScanExecutor {
             ComplexityAnalyzer.LOGGER.warn("[SCAN] {} old workers still running after 2s wait", activeWorkerCount.get());
         }
 
+        batchProcessor.resetForNewSession();
+
         synchronized (sessionLock) {
             if (isShutdown.get()) {
                 onComplete.run();

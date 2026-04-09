@@ -41,6 +41,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -62,6 +63,7 @@ public class UltraFastChunkGenerator {
     private final OptimizedChunkCache cache;
     private final List<FeatureSorter.StepFeatureData> featureSteps;
     private final Function<Holder<Biome>, BiomeGenerationSettings> generationSettingsGetter;
+    private final ConcurrentHashMap<Long, ReentrantLock> featureRegionLocks = new ConcurrentHashMap<>();
 
     private final boolean isNoiseGenerator;
     private final NoiseBasedChunkGeneratorAccessor noiseAccessor;
@@ -386,23 +388,64 @@ public class UltraFastChunkGenerator {
 
     private void generateFeatures(ChunkAccess chunk, Map<Long, ChunkAccess> area) {
         if (chunk == null) return;
-        try {
-            Heightmap.primeHeightmaps(chunk, EnumSet.of(
-                    Heightmap.Types.MOTION_BLOCKING,
-                    Heightmap.Types.OCEAN_FLOOR,
-                    Heightmap.Types.WORLD_SURFACE
-            ));
+        withFeatureRegionLocks(chunk.getPos(), () -> {
+            try {
+                Heightmap.primeHeightmaps(chunk, EnumSet.of(
+                        Heightmap.Types.MOTION_BLOCKING,
+                        Heightmap.Types.OCEAN_FLOOR,
+                        Heightmap.Types.WORLD_SURFACE
+                ));
 
-            List<ChunkAccess> neighbors = collectNeighbors(chunk.getPos(), area);
-            IsolatedWorldGenRegion region =
-                    new IsolatedWorldGenRegion(level, chunk, neighbors, 1, ChunkStatus.FEATURES);
-            applyBiomeDecorationSafely(region, chunk);
+                List<ChunkAccess> neighbors = collectNeighbors(chunk.getPos(), area);
+                IsolatedWorldGenRegion region =
+                        new IsolatedWorldGenRegion(level, chunk, neighbors, 1, ChunkStatus.FEATURES);
+                applyBiomeDecorationSafely(region, chunk);
 
-            if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.FEATURES);
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}",
-                    chunk.getPos(), e.getMessage());
+                if (chunk instanceof ProtoChunk proto) proto.setPersistedStatus(ChunkStatus.FEATURES);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.trace("[UltraFast] Features failed for {}: {}",
+                        chunk.getPos(), e.getMessage());
+            }
+        });
+    }
+
+    private void withFeatureRegionLocks(ChunkPos center, Runnable action) {
+        long[] regionKeys = collectRegionKeys(center);
+        ReentrantLock[] locks = new ReentrantLock[regionKeys.length];
+
+        for (int i = 0; i < regionKeys.length; i++) {
+            ReentrantLock lock = featureRegionLocks.computeIfAbsent(regionKeys[i], ignored -> new ReentrantLock());
+            locks[i] = lock;
+            lock.lock();
         }
+
+        try {
+            action.run();
+        } finally {
+            for (int i = locks.length - 1; i >= 0; i--) {
+                locks[i].unlock();
+            }
+        }
+    }
+
+    private long[] collectRegionKeys(ChunkPos center) {
+        long[] keys = new long[NEIGHBOR_OFFSETS.length];
+        int count = 0;
+
+        for (int[] offset : NEIGHBOR_OFFSETS) {
+            keys[count++] = ChunkPos.asLong(center.x + offset[0], center.z + offset[1]);
+        }
+
+        Arrays.sort(keys, 0, count);
+
+        int uniqueCount = 0;
+        for (int i = 0; i < count; i++) {
+            if (i == 0 || keys[i] != keys[i - 1]) {
+                keys[uniqueCount++] = keys[i];
+            }
+        }
+
+        return Arrays.copyOf(keys, uniqueCount);
     }
 
     private void applyBiomeDecorationSafely(IsolatedWorldGenRegion region, ChunkAccess centerChunk) {
@@ -513,5 +556,7 @@ public class UltraFastChunkGenerator {
     public static void clearAllCaches() {
         DIMENSION_CACHES.values().forEach(OptimizedChunkCache::clear);
         DIMENSION_CACHES.clear();
+        DISABLED_FEATURES.clear();
+        LOGGED_FEATURE_FAILURES.clear();
     }
 }

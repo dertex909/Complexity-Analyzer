@@ -153,4 +153,9 @@ public class ChunkBatchProcessor {
         biomeCache.clear();
         UltraFastChunkGenerator.clearAllCaches();
     }
+
+    public void resetForNewSession() {
+        generators.clear();
+        UltraFastChunkGenerator.clearAllCaches();
+    }
 }

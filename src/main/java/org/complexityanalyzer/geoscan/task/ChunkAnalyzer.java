@@ -29,8 +29,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkAnalyzer {
+    private final ConcurrentHashMap<Block, String> blockIdCache = new ConcurrentHashMap<>();
 
     public @Nullable ChunkSnapshot createSnapshot(ChunkAccess chunk) {
         Reference2IntOpenHashMap<Block> blockCounts = new Reference2IntOpenHashMap<>();
@@ -51,7 +53,10 @@ public class ChunkAnalyzer {
 
         Map<String, Integer> finalCounts = new HashMap<>(blockCounts.size());
         for (var entry : blockCounts.reference2IntEntrySet()) {
-            finalCounts.put(BuiltInRegistries.BLOCK.getKey(entry.getKey()).toString(), entry.getIntValue());
+            String blockId = blockIdCache.computeIfAbsent(
+                    entry.getKey(), block -> BuiltInRegistries.BLOCK.getKey(block).toString()
+            );
+            finalCounts.put(blockId, entry.getIntValue());
         }
 
         return new ChunkSnapshot(chunk.getPos().x, chunk.getPos().z, finalCounts);

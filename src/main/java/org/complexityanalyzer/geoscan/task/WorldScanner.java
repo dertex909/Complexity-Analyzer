@@ -38,8 +38,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class WorldScanner {
-    private static final int MAX_CACHED_LOCATIONS_PER_BIOME = 24;
-    private static final int MIN_CACHED_LOCATION_DISTANCE_BLOCKS = 192;
+    private static final int MAX_CACHED_LOCATIONS_PER_BIOME = 96;
+    private static final int MIN_CACHED_LOCATION_DISTANCE_BLOCKS = 768;
+    private static final int RELOCATION_CACHE_WINDOW = 12;
+    private static final int RELOCATION_JITTER_CHUNKS = 40;
 
     private final MinecraftServer server;
     private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
@@ -120,8 +122,7 @@ public class WorldScanner {
 
                 Set<String> biomes = biomeSource.possibleBiomes().stream()
                         .map(holder -> holder.unwrapKey()
-                                .map(k -> k.location().toString())
-                                .orElse(null))
+                                .map(k -> k.location().toString()).orElse(null))
                         .filter(Objects::nonNull)
                         .collect(Collectors.toSet());
 
@@ -183,7 +184,17 @@ public class WorldScanner {
             int size = cached.size();
             if (size == 0) return null;
             if (isRelocation && size < 2) return null;
-            return cached.get(ThreadLocalRandom.current().nextInt(size));
+
+            BlockPos selected;
+            if (isRelocation) {
+                int window = Math.min(size, RELOCATION_CACHE_WINDOW);
+                int index = size - 1 - ThreadLocalRandom.current().nextInt(window);
+                selected = cached.get(index);
+                return applyRelocationJitter(selected);
+            }
+
+            selected = cached.get(ThreadLocalRandom.current().nextInt(size));
+            return selected;
         }
     }
 
@@ -194,21 +205,20 @@ public class WorldScanner {
 
         synchronized (cached) {
             for (BlockPos existing : cached) {
-                if (isNear(existing, pos)) {
-                    return;
-                }
-                if (existing.getX() == pos.getX() && existing.getZ() == pos.getZ()) {
-                    return;
-                }
+                if (isNear(existing, pos)) return;
+                if (existing.getX() == pos.getX() && existing.getZ() == pos.getZ()) return;
             }
 
             BlockPos immutable = pos.immutable();
-            if (cached.size() >= MAX_CACHED_LOCATIONS_PER_BIOME) {
-                cached.set(ThreadLocalRandom.current().nextInt(cached.size()), immutable);
-            } else {
-                cached.add(immutable);
-            }
+            if (cached.size() >= MAX_CACHED_LOCATIONS_PER_BIOME) cached.removeFirst();
+            cached.add(immutable);
         }
+    }
+
+    private BlockPos applyRelocationJitter(BlockPos pos) {
+        int jitterX = ThreadLocalRandom.current().nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
+        int jitterZ = ThreadLocalRandom.current().nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
+        return new BlockPos(pos.getX() + jitterX, pos.getY(), pos.getZ() + jitterZ);
     }
 
     private boolean isNear(BlockPos a, BlockPos b) {

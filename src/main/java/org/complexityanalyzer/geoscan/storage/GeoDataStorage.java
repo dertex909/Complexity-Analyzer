@@ -321,16 +321,19 @@ public class GeoDataStorage {
         }
     }
 
-    public Set<Long> loadAllReconChunkCoordinates() {
-        Set<Long> allCoordinates = ConcurrentHashMap.newKeySet();
+    public Map<ResourceLocation, Set<Long>> loadAllReconChunkCoordinates() {
+        Map<ResourceLocation, Set<Long>> allCoordinates = new ConcurrentHashMap<>();
         Map<ResourceLocation, Map<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
 
         allPaths.forEach((dim, biomeMap) -> biomeMap.forEach((biome, path) -> {
+            Set<Long> coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet());
             try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
                 lines.forEach(line -> {
                     try {
                         ChunkSnapshot snapshot = GSON.fromJson(line, ChunkSnapshot.class);
-                        if (snapshot != null) allCoordinates.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
+                        if (snapshot != null) {
+                            coordinatesForDimension.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
+                        }
                     } catch (JsonSyntaxException ignored) {
                     }
                 });

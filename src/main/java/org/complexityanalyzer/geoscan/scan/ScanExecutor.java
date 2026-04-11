@@ -336,13 +336,15 @@ public class ScanExecutor {
         final ResourceLocation biomeId;
         final SpiralChunkSearcher searcher = new SpiralChunkSearcher();
         final Map<ResourceLocation, Integer> foundByBiome = new HashMap<>();
+        final int maxScannedBudget;
+        final int emptyBatchTolerance;
+        final int stagnantBatchTolerance;
 
         int scanned = 0;
         int found = 0;
         int emptyBatches = 0;
         int stagnantBatches = 0;
         int relocations = 0;
-        static final int MAX_SCANNED = 256;
 
         ScanContext(String workerName, ScanSession mySession,
                     ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
@@ -353,10 +355,13 @@ public class ScanExecutor {
             this.biomeKey = biomeKey;
             this.dimId = dimId;
             this.biomeId = biomeId;
+            this.maxScannedBudget = calculateMaxScannedBudget(mySession);
+            this.emptyBatchTolerance = calculateEmptyBatchTolerance(mySession);
+            this.stagnantBatchTolerance = calculateStagnantBatchTolerance(mySession);
         }
 
         boolean canContinue() {
-            return scanned < MAX_SCANNED && mySession.isValid() && currentSession == mySession && !isShutdown.get()
+            return scanned < maxScannedBudget && mySession.isValid() && currentSession == mySession && !isShutdown.get()
                     && mySession.hasAnyNeeds();
         }
 
@@ -386,25 +391,25 @@ public class ScanExecutor {
     }
 
     private List<ChunkPos> collectBatch(ScanContext ctx) {
-        int batchSize = calculateBatchSize();
+        int batchSize = calculateBatchSize(ctx.mySession);
         List<ChunkPos> batch = new ArrayList<>(batchSize);
-        for (int i = 0; i < batchSize && ctx.scanned < ScanContext.MAX_SCANNED; i++) {
+        for (int i = 0; i < batchSize && ctx.scanned < ctx.maxScannedBudget; i++) {
             ChunkPos pos = ctx.searcher.next();
             ctx.scanned++;
-            if (ctx.mySession.tryMarkChunk(pos)) batch.add(pos);
+            if (ctx.mySession.tryMarkChunk(ctx.dimId, pos)) batch.add(pos);
         }
         return batch;
     }
 
     private boolean handleEmptyBatch(ScanContext ctx) {
         ctx.emptyBatches++;
-        if (ctx.emptyBatches < 2) return false;
+        if (ctx.emptyBatches < ctx.emptyBatchTolerance) return false;
         return relocateSearch(ctx, false);
     }
 
     private boolean handleStagnantBatch(ScanContext ctx) {
         ctx.stagnantBatches++;
-        if (ctx.stagnantBatches < 2) return false;
+        if (ctx.stagnantBatches < ctx.stagnantBatchTolerance) return false;
         return relocateSearch(ctx, true);
     }
 
@@ -464,9 +469,42 @@ public class ScanExecutor {
                 ctx.workerName, ctx.biomeId.getPath(), ctx.found, biomeStats);
     }
 
-    private int calculateBatchSize() {
+    private int calculateMaxScannedBudget(ScanSession session) {
+        int chunksPerBiome = Math.max(1, session.getChunksPerBiome());
+        return switch (session.getProfile()) {
+            case FULL -> Math.max(2048, Math.min(chunksPerBiome * 2, 4096));
+            case MOST -> Math.max(1024, Math.min(chunksPerBiome * 2, 2048));
+            case HALF -> Math.max(512, Math.min(chunksPerBiome * 2, 1024));
+            case QUARTER -> 256;
+        };
+    }
+
+    private int calculateEmptyBatchTolerance(ScanSession session) {
+        return switch (session.getProfile()) {
+            case FULL -> 4;
+            case MOST -> 3;
+            case HALF, QUARTER -> 2;
+        };
+    }
+
+    private int calculateStagnantBatchTolerance(ScanSession session) {
+        return switch (session.getProfile()) {
+            case FULL -> 4;
+            case MOST -> 3;
+            case HALF, QUARTER -> 2;
+        };
+    }
+
+    private int calculateBatchSize(ScanSession session) {
         MsptMonitor monitor = msptMonitor;
-        if (monitor == null || !monitor.hasLimit()) return 128;
+        if (monitor == null || !monitor.hasLimit()) {
+            return switch (session.getProfile()) {
+                case FULL -> 256;
+                case MOST -> 192;
+                case HALF -> 128;
+                case QUARTER -> 64;
+            };
+        }
         float currentMspt = monitor.getCurrentMspt();
         float limit = monitor.getMsptLimit();
 

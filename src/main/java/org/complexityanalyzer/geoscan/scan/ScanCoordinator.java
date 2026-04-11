@@ -159,7 +159,7 @@ public class ScanCoordinator {
 
         session.setTotalChunksNeeded(totalChunks);
 
-        Set<Long> existing = database.loadAllReconChunkCoordinates();
+        Map<ResourceLocation, Set<Long>> existing = database.loadAllReconChunkCoordinates();
         session.loadAttemptedChunks(existing);
 
         notifier.logInfo(String.format("Starting scan: %d biomes, %d chunks needed", tasks.size(), totalChunks));

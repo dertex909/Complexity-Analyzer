@@ -274,7 +274,7 @@ public class UltraFastChunkGenerator {
     }
 
     private void runParallelPhase(List<ChunkPos> items,
-                                  java.util.function.Consumer<ChunkPos> task) {
+                                  Consumer<ChunkPos> task) {
         if (items.isEmpty()) return;
 
         if (items.size() <= 3) {

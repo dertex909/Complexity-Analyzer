@@ -46,7 +46,7 @@ public class ScanSession {
     private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
 
-    private final Set<Long> attemptedChunks = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<ResourceLocation, Set<Long>> attemptedChunksByDimension = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
 
     private volatile ScanMetadata.ScanPhase phase = ScanMetadata.ScanPhase.RECONNAISSANCE;
@@ -193,12 +193,16 @@ public class ScanSession {
         return remainingNeeds.size();
     }
 
-    public boolean tryMarkChunk(ChunkPos pos) {
-        return attemptedChunks.add(pos.toLong());
+    public boolean tryMarkChunk(ResourceLocation dim, ChunkPos pos) {
+        return attemptedChunksByDimension
+                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet())
+                .add(pos.toLong());
     }
 
-    public void loadAttemptedChunks(Set<Long> chunks) {
-        attemptedChunks.addAll(chunks);
+    public void loadAttemptedChunks(Map<ResourceLocation, Set<Long>> chunksByDimension) {
+        chunksByDimension.forEach((dim, chunks) -> attemptedChunksByDimension
+                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet())
+                .addAll(chunks));
     }
 
     public String getStatusString() {
@@ -213,7 +217,7 @@ public class ScanSession {
     }
 
     public void clear() {
-        attemptedChunks.clear();
+        attemptedChunksByDimension.clear();
         remainingNeeds.clear();
         totalChunksNeeded.set(0);
         totalChunksFound.set(0);

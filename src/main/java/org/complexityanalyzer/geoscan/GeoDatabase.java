@@ -74,7 +74,7 @@ public class GeoDatabase {
         return storage.countReconChunks(dimension, biome);
     }
 
-    public Set<Long> loadAllReconChunkCoordinates() {
+    public Map<ResourceLocation, Set<Long>> loadAllReconChunkCoordinates() {
         return storage.loadAllReconChunkCoordinates();
     }
 

@@ -10,3 +10,4 @@ todo.md
 /logo.png
 /.vscode/
 /.eclipse/
+/net/minecraft/server/level/WorldGenRegion.java

@@ -61,6 +61,15 @@ public class OptimizedChunkCache {
         return null;
     }
 
+    public CacheEntry getEntry(ChunkPos pos, ChunkStatus minStatus) {
+        CacheEntry entry = cache.get(pos.toLong());
+        if (entry != null && entry.status.isOrAfter(minStatus)) {
+            entry.lastAccess = accessCounter.incrementAndGet();
+            return entry;
+        }
+        return null;
+    }
+
     public void put(ChunkPos pos, ChunkAccess chunk, ChunkStatus status) {
         long key = pos.toLong();
         long accessTime = accessCounter.incrementAndGet();

@@ -8,6 +8,7 @@
     "ThreadingDetectorMixin",
     "PalettedContainerMixin",
     "UtilMixin",
+    "ChunkGeneratorFeatureOrderMixin",
     "ChunkGeneratorAccessor",
     "NoiseBasedChunkGeneratorAccessor",
     "StructureManagerAccessor"

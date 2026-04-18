@@ -250,6 +250,9 @@ public class ComplexityCommand {
 
                         .then(GeoScanCommands.register())
         );
+
+        dispatcher.register(ScanThisCommand.register());
+
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command with role-based permissions");
     }
 

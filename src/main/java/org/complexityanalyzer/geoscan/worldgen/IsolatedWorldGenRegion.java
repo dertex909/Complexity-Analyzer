@@ -32,7 +32,8 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     private final int side;
     private final int originX;
     private final int originZ;
-    private final int safeReadRadius;
+    private final int localRadius;
+    private final int writeRadius;
 
     public IsolatedWorldGenRegion(ServerLevel level, ChunkAccess centerChunk,
                                   List<ChunkAccess> neighborChunks, int radius,
@@ -42,10 +43,11 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
 
         this.level = level;
         this.centerChunk = centerChunk;
+        this.localRadius = radius;
+        this.writeRadius = getChunkStep(targetStatus).blockStateWriteRadius();
         this.side = 2 * radius + 1;
         this.originX = centerChunk.getPos().x - radius;
         this.originZ = centerChunk.getPos().z - radius;
-        this.safeReadRadius = Math.max(radius, getChunkStep(targetStatus).directDependencies().size() - 1);
 
         this.localChunks = new ChunkAccess[side * side];
 
@@ -168,7 +170,12 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
 
     @Override
     public boolean hasChunk(int x, int z) {
-        return centerChunk.getPos().getChessboardDistance(x, z) <= safeReadRadius || getLocalChunk(x, z) != null;
+        return centerChunk.getPos().getChessboardDistance(x, z) <= localRadius && getLocalChunk(x, z) != null;
+    }
+
+    @Override
+    public @NotNull ChunkAccess getChunk(int x, int z) {
+        return getChunkOrPlaceholder(x, z);
     }
 
     @Override
@@ -181,9 +188,7 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
         int chunkX = pos.getX() >> 4;
         int chunkZ = pos.getZ() >> 4;
 
-        if (centerChunk.getPos().getChessboardDistance(chunkX, chunkZ) > safeReadRadius) {
-            return false;
-        }
+        if (centerChunk.getPos().getChessboardDistance(chunkX, chunkZ) > writeRadius) return false;
 
         int y = pos.getY();
         return y >= this.getMinBuildHeight() && y < this.getMaxBuildHeight();

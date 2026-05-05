@@ -119,7 +119,7 @@ public class ScanCoordinator {
         }
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Created {} scan tasks", tasks.size());
-        ObjectArrays.unstableSort(tasks.elements(), 0, tasks.size());
+        tasks.sort(null);
         return tasks;
     }
 

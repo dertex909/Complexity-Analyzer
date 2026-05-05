@@ -18,28 +18,28 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.Item;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import org.jetbrains.annotations.Nullable;
 
 public class IngredientSlot {
-    private final List<Item> variants;
+    private final ObjectList<Item> variants;
     private final int count;
 
-    public IngredientSlot(List<Item> variants, int count) {
-        this.variants = new ArrayList<>(variants);
+    public IngredientSlot(ObjectList<Item> variants, int count) {
+        this.variants = new ObjectArrayList<>(variants);
         this.count = Math.max(1, count);
     }
 
     public IngredientSlot(Item singleItem, int count) {
-        this.variants = List.of(singleItem);
+        this.variants = ObjectLists.singleton(singleItem);
         this.count = Math.max(1, count);
     }
 
-    public List<Item> getVariants() {
-        return Collections.unmodifiableList(variants);
+    public ObjectList<Item> getVariants() {
+        return ObjectLists.unmodifiable(variants);
     }
 
     public int getCount() {
@@ -50,15 +50,14 @@ public class IngredientSlot {
         return variants.size() > 1;
     }
 
+    @Nullable
     public Item getFirstVariant() {
         return variants.isEmpty() ? null : variants.getFirst();
     }
 
     @Override
     public String toString() {
-        if (variants.size() == 1) {
-            return count + "x " + variants.getFirst();
-        }
+        if (variants.size() == 1) return count + "x " + variants.getFirst();
         return count + "x [" + variants.size() + " variants]";
     }
 }

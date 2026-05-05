@@ -18,6 +18,9 @@
 
 package org.complexityanalyzer.core;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
@@ -27,24 +30,26 @@ import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.SourcePathAnalyzer;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.providers.*;
 import org.complexityanalyzer.analyzer.resource.sources.*;
 import org.complexityanalyzer.analyzer.solver.EnhancedIterativeSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeGraph;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.*;
+import javax.annotation.Nullable;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -86,9 +91,10 @@ public class AnalysisEngine {
         this.complexityCache = new ComplexityCache();
     }
 
-    public Optional<SolverResult> getSolverResult() {
+    @Nullable
+    public SolverResult getSolverResult() {
         ComplexityCalculator calc = this.calculator;
-        return (calc != null) ? Optional.of(calc.getSolverResult()) : Optional.empty();
+        return (calc != null) ? calc.getSolverResult() : null;
     }
 
     public void initializeAsync(Level level, Runnable onComplete) {
@@ -208,10 +214,8 @@ public class AnalysisEngine {
             MinecraftServer srv = this.server;
             if (srv != null && !isInterrupted()) {
                 createGeoManager(srv);
-                Optional<GeoAnalysisManager> geoMgr = getGeoManager();
-                if (!isInterrupted()) {
-                    geoMgr.ifPresent(GeoAnalysisManager::startInitialScanIfNeeded);
-                }
+                GeoAnalysisManager geoMgr = getGeoManager();
+                if (geoMgr != null && !isInterrupted()) geoMgr.startInitialScanIfNeeded();
             }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
@@ -221,9 +225,7 @@ public class AnalysisEngine {
     }
 
     private boolean isInterrupted() {
-        return analysisCancelled.get() ||
-                isShuttingDown.get() ||
-                Thread.currentThread().isInterrupted();
+        return analysisCancelled.get() || isShuttingDown.get() || Thread.currentThread().isInterrupted();
     }
 
     private void safeRunCallback(Runnable callback) {
@@ -264,7 +266,7 @@ public class AnalysisEngine {
     }
 
     private void initializeResourceSources(ServerLevel serverLevel) {
-        List<IResourceSource> initialSources = new ArrayList<>();
+        ObjectList<IResourceSource> initialSources = new ObjectArrayList<>();
 
         GeoDatabase geoDB = this.geoDatabase;
         BlockPropertyProvider blockProp = this.blockPropProvider;
@@ -289,10 +291,8 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("Resource sources configured with {} providers. Initializing all...", initialSources.size());
         this.sourceManager.initialize(serverLevel);
 
-        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-            for (IResourceSource source : initialSources) {
-                ComplexityAnalyzer.LOGGER.debug("  - {} (priority: {})", source.getName(), source.getPriority());
-            }
+        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) for (IResourceSource source : initialSources) {
+            ComplexityAnalyzer.LOGGER.debug("  - {} (priority: {})", source.getName(), source.getPriority());
         }
 
         ComplexityAnalyzer.LOGGER.info("All resource sources initialized successfully.");
@@ -387,14 +387,10 @@ public class AnalysisEngine {
         geoManagerLock.lock();
         try {
             if (isShuttingDown.get()) return;
-
             GeoAnalysisManager oldManager = this.geoManager;
             if (oldManager != null) oldManager.shutdown();
-
             GeoDatabase geoDB = this.geoDatabase;
-            if (geoDB != null) {
-                this.geoManager = new GeoAnalysisManager(server, geoDB, this);
-            }
+            if (geoDB != null) this.geoManager = new GeoAnalysisManager(server, geoDB, this);
         } finally {
             geoManagerLock.unlock();
         }
@@ -451,28 +447,30 @@ public class AnalysisEngine {
         return this.graph;
     }
 
-    public Optional<SourceManager> getSourceManager() {
-        return Optional.ofNullable(this.sourceManager);
+    @Nullable
+    public SourceManager getSourceManager() {
+        return this.sourceManager;
     }
 
     public State getCurrentState() {
         return currentState.get();
     }
 
-    public Optional<ItemComplexity> getComplexityResult(Item item) {
+    @Nullable
+    public ItemComplexity getComplexityResult(Item item) {
         ComplexityCalculator calc = this.calculator;
-        if (calc == null || !isReady()) return Optional.empty();
+        if (calc == null || !isReady()) return null;
         return calc.getOrCalculateComplexity(item);
     }
 
-    public Optional<DepthAnalyzer> getDepthAnalyzer() {
-        return Optional.ofNullable(this.depthAnalyzer);
+    @Nullable
+    public DepthAnalyzer getDepthAnalyzer() {
+        return this.depthAnalyzer;
     }
 
     public double getComplexity(Item item) {
-        return getComplexityResult(item)
-                .map(ItemComplexity::getComplexity)
-                .orElse(-1.0);
+        var result = getComplexityResult(item);
+        return (result != null) ? result.getComplexity() : -1.0;
     }
 
     public int getUsageCount(Item item) {
@@ -485,14 +483,15 @@ public class AnalysisEngine {
         return currentGraph != null && isReady() && currentGraph.hasRecipe(item);
     }
 
-    public List<BaseResourceData> findAllSourcesForItem(Item item) {
+    public ObjectList<BaseResourceData> findAllSourcesForItem(Item item) {
         SourceManager sm = this.sourceManager;
-        return (sm != null && isReady()) ? sm.findAllSources(item) : new ArrayList<>();
+        return (sm != null && isReady()) ? sm.findAllSources(item) : ObjectLists.emptyList();
     }
 
-    public Optional<BaseResourceData> getBaseResourceData(Item item) {
+    @Nullable
+    public BaseResourceData getBaseResourceData(Item item) {
         SourceManager sm = this.sourceManager;
-        return (sm != null && isReady()) ? sm.analyze(item) : Optional.empty();
+        return (sm != null && isReady()) ? sm.analyze(item) : null;
     }
 
     public void reloadAsync(Level level) {
@@ -548,6 +547,7 @@ public class AnalysisEngine {
         }
 
         clearAllCaches();
+        ComplexityConfig.resetThreadCache();
 
         ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 2: Shutdown Thread Pools ===");
         ThreadPoolManager.getInstance().shutdown();
@@ -621,22 +621,26 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("All caches cleared.");
     }
 
-    public Optional<MobDropSource> getMobDropSource() {
+    @Nullable
+    public MobDropSource getMobDropSource() {
         SourceManager sm = this.sourceManager;
-        if (sm == null) return Optional.empty();
+        if (sm == null) return null;
         return sm.getSourceByType(MobDropSource.class);
     }
 
-    public Optional<MobPropertyProvider> getMobPropertyProvider() {
-        return Optional.ofNullable(this.mobPropProvider);
+    @Nullable
+    public MobPropertyProvider getMobPropertyProvider() {
+        return this.mobPropProvider;
     }
 
-    public Optional<GeoAnalysisManager> getGeoManager() {
-        return Optional.ofNullable(this.geoManager);
+    @Nullable
+    public GeoAnalysisManager getGeoManager() {
+        return this.geoManager;
     }
 
-    public Optional<MachineRegistry> getMachineRegistry() {
-        return Optional.ofNullable(this.machineRegistry);
+    @Nullable
+    public MachineRegistry getMachineRegistry() {
+        return this.machineRegistry;
     }
 
     public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {
@@ -648,17 +652,13 @@ public class AnalysisEngine {
         RecipeGraph currentGraph = this.graph;
         if (currentGraph == null) return new EngineStats(currentState.get(), 0, 0, 0);
 
-        return new EngineStats(
-                currentState.get(),
-                currentGraph.getAllItems().size(),
-                currentGraph.getTotalRecipeCount(),
-                0
-        );
+        return new EngineStats(currentState.get(), currentGraph.getAllItems().size(), currentGraph.getTotalRecipeCount(), 0);
     }
 
-    public <T extends IResourceSource> Optional<T> getSourceByType(Class<T> type) {
+    @Nullable
+    public <T extends IResourceSource> T getSourceByType(Class<T> type) {
         SourceManager sm = this.sourceManager;
-        if (sm == null) return Optional.empty();
+        if (sm == null) return null;
         return sm.getSourceByType(type);
     }
 }

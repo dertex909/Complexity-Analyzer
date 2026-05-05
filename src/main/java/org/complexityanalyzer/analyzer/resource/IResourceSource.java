@@ -22,7 +22,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public interface IResourceSource {
 
@@ -30,7 +30,8 @@ public interface IResourceSource {
 
     boolean canProvide(Item item);
 
-    Optional<BaseResourceData> analyze(Item item);
+    @Nullable
+    BaseResourceData analyze(Item item);
 
     BaseResourceData.ResourceSourceType getSourceType();
 

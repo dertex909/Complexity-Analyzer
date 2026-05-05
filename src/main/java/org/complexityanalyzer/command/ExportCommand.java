@@ -38,11 +38,16 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("💾 ").withStyle(ChatFormatting.AQUA).append(Component.literal("FULL ITEM EXPORT").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("💾 ").withStyle(ChatFormatting.AQUA)
+                .append(Component.literal("FULL ITEM EXPORT")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  🔄 Starting export process...").withStyle(ChatFormatting.YELLOW));
+        output.sendInfo(source, Component.literal("  🔄 Starting export process...")
+                .withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
 
         try {
@@ -62,11 +67,16 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("📦 ").withStyle(ChatFormatting.GOLD).append(Component.literal("ITEM CATEGORY EXPORT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("📦 ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("ITEM CATEGORY EXPORT")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  📋 Category: ").withStyle(ChatFormatting.GRAY).append(Component.literal(categoryName).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  📋 Category: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(categoryName).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
         output.sendInfo(source, Component.literal("  🔄 Exporting...").withStyle(ChatFormatting.AQUA));
         output.sendInfo(source, Component.literal(""));
 
@@ -87,12 +97,18 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("🏆 ").withStyle(ChatFormatting.GOLD).append(Component.literal("TOP ITEMS EXPORT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("🏆 ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("TOP ITEMS EXPORT")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  🔢 Count: ").withStyle(ChatFormatting.GRAY).append(Component.literal(String.valueOf(count)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("  🔄 Calculating and exporting...").withStyle(ChatFormatting.YELLOW));
+        output.sendInfo(source, Component.literal("  🔢 Count: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.valueOf(count)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  🔄 Calculating and exporting...")
+                .withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
 
         try {
@@ -112,9 +128,13 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("📊 ").withStyle(ChatFormatting.GREEN).append(Component.literal("ITEMS CSV EXPORT").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("📊 ").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal("ITEMS CSV EXPORT")
+                        .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("  🔄 Exporting...").withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
@@ -136,11 +156,16 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("📄 ").withStyle(ChatFormatting.AQUA).append(Component.literal("SINGLE ITEM EXPORT").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("📄 ").withStyle(ChatFormatting.AQUA)
+                .append(Component.literal("SINGLE ITEM EXPORT")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  🏷 Item: ").withStyle(ChatFormatting.GRAY).append(Component.literal(itemId).withStyle(ChatFormatting.WHITE)));
+        output.sendInfo(source, Component.literal("  🏷 Item: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(itemId).withStyle(ChatFormatting.WHITE)));
         output.sendInfo(source, Component.literal("  🔄 Exporting...").withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
 
@@ -166,11 +191,16 @@ public class ExportCommand {
         }
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("🧟 ").withStyle(ChatFormatting.RED).append(Component.literal("ALL MOBS EXPORT").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("🧟 ").withStyle(ChatFormatting.RED)
+                .append(Component.literal("ALL MOBS EXPORT")
+                        .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  📋 Format: ").withStyle(ChatFormatting.GRAY).append(Component.literal(format.toUpperCase()).withStyle(ChatFormatting.AQUA)));
+        output.sendInfo(source, Component.literal("  📋 Format: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(format.toUpperCase()).withStyle(ChatFormatting.AQUA)));
         output.sendInfo(source, Component.literal("  🔄 Exporting...").withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
 
@@ -191,11 +221,16 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("📦 ").withStyle(ChatFormatting.GOLD).append(Component.literal("MOB CATEGORY EXPORT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("📦 ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("MOB CATEGORY EXPORT")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  📋 Category: ").withStyle(ChatFormatting.GRAY).append(Component.literal(categoryName).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  📋 Category: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(categoryName).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
         output.sendInfo(source, Component.literal("  🔄 Exporting...").withStyle(ChatFormatting.AQUA));
         output.sendInfo(source, Component.literal(""));
 
@@ -216,12 +251,19 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("🏆 ").withStyle(ChatFormatting.GOLD).append(Component.literal("TOP MOBS EXPORT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("🏆 ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("TOP MOBS EXPORT")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  🔢 Count: ").withStyle(ChatFormatting.GRAY).append(Component.literal(String.valueOf(count)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("  🔄 Calculating and exporting...").withStyle(ChatFormatting.YELLOW));
+        output.sendInfo(source, Component.literal("  🔢 Count: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.valueOf(count))
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  🔄 Calculating and exporting...")
+                .withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
 
         try {
@@ -241,11 +283,16 @@ public class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal("📄 ").withStyle(ChatFormatting.AQUA).append(Component.literal("SINGLE MOB EXPORT").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("📄 ").withStyle(ChatFormatting.AQUA)
+                .append(Component.literal("SINGLE MOB EXPORT")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("  🧟 Mob: ").withStyle(ChatFormatting.GRAY).append(Component.literal(mobId).withStyle(ChatFormatting.WHITE)));
+        output.sendInfo(source, Component.literal("  🧟 Mob: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(mobId).withStyle(ChatFormatting.WHITE)));
         output.sendInfo(source, Component.literal("  🔄 Exporting...").withStyle(ChatFormatting.YELLOW));
         output.sendInfo(source, Component.literal(""));
 
@@ -260,24 +307,30 @@ public class ExportCommand {
     }
 
     private static int sendEngineNotReady(OutputManager output, CommandSourceStack source, AnalysisEngine engine) {
-        output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!").withStyle(ChatFormatting.RED));
-        output.sendInfo(source, Component.literal("Current state: " + engine.getCurrentState()).withStyle(ChatFormatting.GRAY));
+        output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!")
+                .withStyle(ChatFormatting.RED));
+        output.sendInfo(source, Component.literal("Current state: " + engine.getCurrentState())
+                .withStyle(ChatFormatting.GRAY));
         return 0;
     }
 
     private static void sendSuccess(OutputManager output, CommandSourceStack source, String exportType, Path exportPath) {
-        output.sendInfo(source, Component.literal("  ✓ Export successful!").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+        output.sendInfo(source, Component.literal("  ✓ Export successful!")
+                .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("  📁 File: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(exportPath.getFileName().toString()).withStyle(ChatFormatting.WHITE)));
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendToAdmins(Component.literal("✓ " + exportType + " completed."));
     }
 
     private static void sendFailure(OutputManager output, CommandSourceStack source, String exportType, Exception e) {
-        output.sendFailure(source, Component.literal("❌ " + exportType + " export failed: " + e.getMessage()));
-        output.sendInfo(source, Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY));
+        output.sendFailure(source,
+                Component.literal("❌ " + exportType + " export failed: " + e.getMessage()));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         ComplexityAnalyzer.LOGGER.error("Error exporting {}", exportType, e);
     }
 }

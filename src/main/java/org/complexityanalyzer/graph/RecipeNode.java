@@ -18,6 +18,9 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -26,19 +29,20 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 public class RecipeNode {
-    private final List<IngredientSlot> ingredients;
-    private final List<FluidIngredientSlot> fluidIngredients;
-    private final List<ChemicalIngredient> chemicalIngredients;
-    private final List<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs;
-    private final List<ItemStack> itemOutputs;
-    private final List<FluidStack> fluidOutputs;
+    public record ChemicalIngredient(ResourceLocation id, int amount) {
+    }
+
+    private final ObjectList<IngredientSlot> ingredients;
+    private final ObjectList<FluidIngredientSlot> fluidIngredients;
+    private final ObjectList<ChemicalIngredient> chemicalIngredients;
+    private final ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs;
+    private final ObjectList<ItemStack> itemOutputs;
+    private final ObjectList<FluidStack> fluidOutputs;
     private final Item resultItem;
     private final String placeholderId;
     private final RecipeType<?> recipeType;
@@ -50,12 +54,12 @@ public class RecipeNode {
     private RecipeCategory category;
 
     private RecipeNode(Builder builder) {
-        this.ingredients = Collections.unmodifiableList(builder.ingredients);
-        this.fluidIngredients = Collections.unmodifiableList(builder.fluidIngredients);
-        this.chemicalIngredients = Collections.unmodifiableList(builder.chemicalIngredients);
-        this.itemOutputs = Collections.unmodifiableList(builder.itemOutputs);
-        this.fluidOutputs = Collections.unmodifiableList(builder.fluidOutputs);
-        this.chemicalOutputs = Collections.unmodifiableList(builder.chemicalOutputs);
+        this.ingredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.ingredients));
+        this.fluidIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidIngredients));
+        this.chemicalIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.chemicalIngredients));
+        this.itemOutputs = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.itemOutputs));
+        this.fluidOutputs = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidOutputs));
+        this.chemicalOutputs = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.chemicalOutputs));
         this.recipeMultiplier = builder.recipeMultiplier;
         this.resultItem = builder.resultItem;
         this.resultCount = builder.resultCount;
@@ -75,30 +79,31 @@ public class RecipeNode {
         this.category = category;
     }
 
-    public List<AdaptiveRecipeConverter.ChemicalOutput> getChemicalOutputs() {
+    public ObjectList<AdaptiveRecipeConverter.ChemicalOutput> getChemicalOutputs() {
         return chemicalOutputs;
     }
 
-    public List<ChemicalIngredient> getChemicalIngredients() {
+    public ObjectList<ChemicalIngredient> getChemicalIngredients() {
         return chemicalIngredients;
     }
 
-    public List<IngredientSlot> getIngredients() {
+    public ObjectList<IngredientSlot> getIngredients() {
         return ingredients;
     }
 
-    public List<FluidIngredientSlot> getFluidIngredients() {
+    public ObjectList<FluidIngredientSlot> getFluidIngredients() {
         return fluidIngredients;
     }
 
-    public List<ItemStack> getItemOutputs() {
+    public ObjectList<ItemStack> getItemOutputs() {
         return itemOutputs;
     }
 
-    public List<FluidStack> getFluidOutputs() {
+    public ObjectList<FluidStack> getFluidOutputs() {
         return fluidOutputs;
     }
 
+    @Nullable
     public Object getRawRecipeRef() {
         return rawRecipeRef;
     }
@@ -128,7 +133,9 @@ public class RecipeNode {
     }
 
     public int getTotalIngredientCount() {
-        return ingredients.stream().mapToInt(IngredientSlot::getCount).sum();
+        int total = 0;
+        for (var slot : ingredients) total += slot.getCount();
+        return total;
     }
 
     public int getIngredientSlotCount() {
@@ -160,37 +167,38 @@ public class RecipeNode {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RecipeNode that = (RecipeNode) o;
-        return resultItem.equals(that.resultItem) &&
-                recipeType.equals(that.recipeType) && ingredients.equals(that.ingredients);
+        if (!resultItem.equals(that.resultItem)) return false;
+        if (!Objects.equals(recipeType, that.recipeType)) return false;
+        return ingredients.equals(that.ingredients);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(resultItem, recipeType, ingredients);
+        int result = resultItem.hashCode();
+        result = 31 * result + (recipeType != null ? recipeType.hashCode() : 0);
+        result = 31 * result + ingredients.hashCode();
+        return result;
     }
 
     @Override
     public String toString() {
-        return "RecipeNode{" +
-                "result=" + BuiltInRegistries.ITEM.getKey(resultItem) +
-                ", type=" + recipeType +
-                '}';
+        return "RecipeNode{" + "result=" + BuiltInRegistries.ITEM.getKey(resultItem) + ", type=" + recipeType + '}';
     }
 
     public int getTotalFluidAmount() {
-        return fluidOutputs.stream()
-                .mapToInt(FluidStack::getAmount)
-                .sum();
+        int total = 0;
+        for (var stack : fluidOutputs) total += stack.getAmount();
+        return total;
     }
 
     public static class Builder {
         private final Item resultItem;
-        private final List<ChemicalIngredient> chemicalIngredients = new ArrayList<>();
-        private final List<IngredientSlot> ingredients = new ArrayList<>();
-        private final List<FluidIngredientSlot> fluidIngredients = new ArrayList<>();
-        private List<ItemStack> itemOutputs = new ArrayList<>();
-        private List<FluidStack> fluidOutputs = new ArrayList<>();
-        private List<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs = new ArrayList<>();
+        private final ObjectList<ChemicalIngredient> chemicalIngredients = new ObjectArrayList<>();
+        private final ObjectList<IngredientSlot> ingredients = new ObjectArrayList<>();
+        private final ObjectList<FluidIngredientSlot> fluidIngredients = new ObjectArrayList<>();
+        private ObjectList<ItemStack> itemOutputs = new ObjectArrayList<>();
+        private ObjectList<FluidStack> fluidOutputs = new ObjectArrayList<>();
+        private ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
         private RecipeType<?> recipeType;
         private RecipeCategory category = RecipeCategory.PRIMARY;
         private double recipeMultiplier = 1.0;
@@ -204,16 +212,16 @@ public class RecipeNode {
             this.resultItem = resultItem;
         }
 
-        public void addIngredient(List<Item> variants, int count) {
+        public void addIngredient(ObjectList<Item> variants, int count) {
             this.ingredients.add(new IngredientSlot(variants, count));
         }
 
-        public void addFluidIngredient(List<Fluid> variants, int amount) {
+        public void addFluidIngredient(ObjectList<Fluid> variants, int amount) {
             this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
         }
 
-        public Builder chemicalOutputs(List<AdaptiveRecipeConverter.ChemicalOutput> outputs) {
-            this.chemicalOutputs = outputs != null ? outputs : new ArrayList<>();
+        public Builder chemicalOutputs(ObjectList<AdaptiveRecipeConverter.ChemicalOutput> outputs) {
+            this.chemicalOutputs = outputs != null ? outputs : new ObjectArrayList<>();
             return this;
         }
 
@@ -221,12 +229,12 @@ public class RecipeNode {
             this.chemicalIngredients.add(new ChemicalIngredient(chemicalId, amount));
         }
 
-        public Builder itemOutputs(List<ItemStack> outputs) {
+        public Builder itemOutputs(ObjectList<ItemStack> outputs) {
             this.itemOutputs = outputs;
             return this;
         }
 
-        public Builder fluidOutputs(List<FluidStack> outputs) {
+        public Builder fluidOutputs(ObjectList<FluidStack> outputs) {
             this.fluidOutputs = outputs;
             return this;
         }
@@ -271,16 +279,12 @@ public class RecipeNode {
 
         public RecipeNode build() {
             if (this.resultCount == 0 && !itemOutputs.isEmpty()) {
-                this.resultCount = itemOutputs.stream()
-                        .filter(s -> s.getItem().equals(resultItem))
-                        .mapToInt(ItemStack::getCount)
-                        .sum();
+                int sum = 0;
+                for (var s : itemOutputs) if (s.getItem().equals(resultItem)) sum += s.getCount();
+                this.resultCount = sum;
             }
             if (this.resultCount == 0) this.resultCount = 1;
             return new RecipeNode(this);
         }
     }
-}
-
-record ChemicalIngredient(ResourceLocation id, int amount) {
 }

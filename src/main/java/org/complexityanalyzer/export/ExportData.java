@@ -18,13 +18,13 @@
 
 package org.complexityanalyzer.export;
 
-import java.util.List;
-import java.util.Map;
+import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
 public record ExportData(
         String exportTimestamp,
         int totalItems,
-        List<ItemData> items
+        ObjectList<ItemData> items
 ) {
     public record ItemData(
             String itemId,
@@ -37,7 +37,7 @@ public record ExportData(
             boolean isValid,
             boolean hasCycle,
             boolean isHardcoded,
-            List<SourceData> alternativeSources
+            ObjectList<SourceData> alternativeSources
     ) {
     }
 
@@ -46,7 +46,7 @@ public record ExportData(
             double baseFactor,
             double estimatedCost,
             String details,
-            Map<String, Double> requiredItems
+            Object2DoubleMap<String> requiredItems
     ) {
     }
 
@@ -63,7 +63,7 @@ public record ExportData(
             double rarity,
             boolean isBoss,
             boolean isMiniBoss,
-            List<MobDropData> drops
+            ObjectList<MobDropData> drops
     ) {
     }
 

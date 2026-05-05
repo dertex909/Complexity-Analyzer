@@ -18,25 +18,24 @@
 
 package org.complexityanalyzer.analyzer.resource.data;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 
-import java.util.*;
-
 public class OreDistributionData {
     private final Block block;
-    private final Set<ResourceKey<Level>> dimensions;
-    private final Map<ResourceKey<Biome>, BiomeOccurrence> biomeOccurrences;
+    private final ObjectSet<ResourceKey<Level>> dimensions;
+    private final Object2ObjectMap<ResourceKey<Biome>, BiomeOccurrence> biomeOccurrences;
     private int minY = Integer.MAX_VALUE;
     private int maxY = Integer.MIN_VALUE;
     private double globalRarity = 0.0;
 
     public OreDistributionData(Block block) {
         this.block = block;
-        this.dimensions = new HashSet<>();
-        this.biomeOccurrences = new HashMap<>();
+        this.dimensions = new ObjectOpenHashSet<>();
+        this.biomeOccurrences = new Object2ObjectOpenHashMap<>();
     }
 
     public void addDimension(ResourceKey<Level> dimension) {
@@ -66,8 +65,8 @@ public class OreDistributionData {
         return block;
     }
 
-    public Set<ResourceKey<Level>> getDimensions() {
-        return Collections.unmodifiableSet(dimensions);
+    public ObjectSet<ResourceKey<Level>> getDimensions() {
+        return ObjectSets.unmodifiable(dimensions);
     }
 
     public int getMinY() {

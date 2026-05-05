@@ -18,6 +18,9 @@
 
 package org.complexityanalyzer.geoscan.task;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -30,12 +33,11 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 public class WorldScanner {
     private static final int MAX_CACHED_LOCATIONS_PER_BIOME = 96;
@@ -49,8 +51,8 @@ public class WorldScanner {
 
     private volatile boolean fullWorldMode = false;
 
-    private final ConcurrentHashMap<String, List<BlockPos>> biomeLocationCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Set<String>> dimensionBiomeCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ObjectList<BlockPos>> biomeLocationCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ObjectOpenHashSet<String>> dimensionBiomeCache = new ConcurrentHashMap<>();
 
     public WorldScanner(MinecraftServer server) {
         this.server = server;
@@ -73,7 +75,7 @@ public class WorldScanner {
         this.stopRequested.set(false);
     }
 
-    public Optional<ChunkPos> findBiomeLocation(
+    public @Nullable ChunkPos findBiomeLocation(
             ResourceKey<Level> dimension,
             ResourceKey<Biome> biomeKey,
             boolean isRelocation
@@ -81,21 +83,21 @@ public class WorldScanner {
         return findBiomeLocation(dimension, biomeKey, isRelocation, true);
     }
 
-    public Optional<ChunkPos> findBiomeLocation(
+    public @Nullable ChunkPos findBiomeLocation(
             ResourceKey<Level> dimension,
             ResourceKey<Biome> biomeKey,
             boolean isRelocation,
             boolean allowCachedLocation
     ) {
-        if (shouldStop()) return Optional.empty();
+        if (shouldStop()) return null;
         ServerLevel level = server.getLevel(dimension);
-        if (level == null) return Optional.empty();
-        if (!level.registryAccess().registryOrThrow(Registries.BIOME).containsKey(biomeKey)) return Optional.empty();
+        if (level == null) return null;
+        if (!level.registryAccess().registryOrThrow(Registries.BIOME).containsKey(biomeKey)) return null;
 
         if (!canBiomeGenerateInDimension(level, biomeKey)) {
             ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Skipping {} - cannot generate in {}",
                     biomeKey.location(), dimension.location());
-            return Optional.empty();
+            return null;
         }
 
         String cacheKey = dimension.location() + "|" + biomeKey.location();
@@ -105,7 +107,7 @@ public class WorldScanner {
             if (cachedPos != null) {
                 ComplexityAnalyzer.LOGGER.trace("Using cached location for {}: [{}, {}]",
                         biomeKey.location().getPath(), cachedPos.getX(), cachedPos.getZ());
-                return Optional.of(new ChunkPos(cachedPos));
+                return new ChunkPos(cachedPos);
             }
         }
 
@@ -116,15 +118,13 @@ public class WorldScanner {
         String dimensionId = level.dimension().location().toString();
         String biomeId = biomeKey.location().toString();
 
-        Set<String> possibleBiomes = dimensionBiomeCache.computeIfAbsent(dimensionId, key -> {
+        ObjectOpenHashSet<String> possibleBiomes = dimensionBiomeCache.computeIfAbsent(dimensionId, key -> {
             try {
                 BiomeSource biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
-                Set<String> biomes = biomeSource.possibleBiomes().stream()
-                        .map(holder -> holder.unwrapKey()
-                                .map(k -> k.location().toString()).orElse(null))
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet());
+                ObjectOpenHashSet<String> biomes = new ObjectOpenHashSet<>();
+                biomeSource.possibleBiomes().forEach(holder ->
+                        holder.unwrapKey().ifPresent(k -> biomes.add(k.location().toString())));
 
                 if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
                     ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Dimension {} has {} possible biomes",
@@ -135,7 +135,7 @@ public class WorldScanner {
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Failed to get biomes for {}: {}",
                         dimensionId, e.getMessage());
-                return Collections.emptySet();
+                return new ObjectOpenHashSet<>();
             }
         });
 
@@ -149,8 +149,8 @@ public class WorldScanner {
         cacheLocation(cacheKey, center);
     }
 
-    private Optional<ChunkPos> findNewLocation(ServerLevel level, ResourceKey<Biome> biomeKey, String cacheKey) {
-        if (shouldStop()) return Optional.empty();
+    private @Nullable ChunkPos findNewLocation(ServerLevel level, ResourceKey<Biome> biomeKey, String cacheKey) {
+        if (shouldStop()) return null;
 
         ThreadLocalRandom random = ThreadLocalRandom.current();
         int range = fullWorldMode ? 50000 : 20000;
@@ -162,22 +162,22 @@ public class WorldScanner {
 
         BlockPos result = FastBiomeFinder.findBiome(level, holder -> holder.is(biomeKey), origin, radius);
 
-        if (shouldStop()) return Optional.empty();
+        if (shouldStop()) return null;
 
         if (result != null) {
             ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Found {} at [{}, {}]",
                     biomeKey.location(), result.getX(), result.getZ());
             cacheLocation(cacheKey, result);
-            return Optional.of(new ChunkPos(result));
+            return new ChunkPos(result);
         }
 
         ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Could not find {} within {} blocks",
                 biomeKey.location(), radius);
-        return Optional.empty();
+        return null;
     }
 
     private BlockPos getCachedLocation(String cacheKey, boolean isRelocation) {
-        List<BlockPos> cached = biomeLocationCache.get(cacheKey);
+        ObjectList<BlockPos> cached = biomeLocationCache.get(cacheKey);
         if (cached == null) return null;
 
         synchronized (cached) {
@@ -200,8 +200,8 @@ public class WorldScanner {
 
     private void cacheLocation(String cacheKey, BlockPos pos) {
         if (shouldStop()) return;
-        List<BlockPos> cached = biomeLocationCache
-                .computeIfAbsent(cacheKey, k -> Collections.synchronizedList(new ArrayList<>()));
+        ObjectList<BlockPos> cached = biomeLocationCache
+                .computeIfAbsent(cacheKey, k -> new ObjectArrayList<>());
 
         synchronized (cached) {
             for (BlockPos existing : cached) {

@@ -21,10 +21,8 @@ package org.complexityanalyzer.data;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
-
-@SuppressWarnings("unused")
 public class ItemComplexity {
     private final Item item;
     private final double complexity;
@@ -83,12 +81,14 @@ public class ItemComplexity {
         return errorMessage;
     }
 
-    public Optional<RecipeNode> getOptimalRecipe() {
-        return Optional.ofNullable(optimalRecipe);
+    @Nullable
+    public RecipeNode getOptimalRecipe() {
+        return optimalRecipe;
     }
 
-    public Optional<BaseResourceData> getBaseData() {
-        return Optional.ofNullable(baseData);
+    @Nullable
+    public BaseResourceData getBaseData() {
+        return baseData;
     }
 
     public boolean isValid() {

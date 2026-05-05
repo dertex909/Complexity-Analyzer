@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -32,10 +34,8 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 
 import java.lang.reflect.Field;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 public class GraphBuilder {
     private static final TagKey<Item> STORAGE_BLOCKS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
@@ -44,23 +44,38 @@ public class GraphBuilder {
     private static final TagKey<Item> GEMS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:gems"));
     private static final TagKey<Item> RAW_MATERIALS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
 
+    private static Field smithingTemplate;
+    private static Field smithingBase;
+    private static Field smithingAddition;
+
+    static {
+        try {
+            smithingTemplate = SmithingTransformRecipe.class.getDeclaredField("template");
+            smithingBase = SmithingTransformRecipe.class.getDeclaredField("base");
+            smithingAddition = SmithingTransformRecipe.class.getDeclaredField("addition");
+            smithingTemplate.setAccessible(true);
+            smithingBase.setAccessible(true);
+            smithingAddition.setAccessible(true);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to initialize SmithingTransformRecipe reflection fields", e);
+        }
+    }
+
     public static RecipeGraph buildFromWorld(Level level) {
         ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification ({} threads)...",
                 ThreadPoolManager.getInstance().getParallelism());
 
-        RecipeGraph graph = new RecipeGraph();
-        RecipeManager recipeManager = level.getRecipeManager();
+        var graph = new RecipeGraph();
+        var recipeManager = level.getRecipeManager();
+        var allRecipes = new ObjectArrayList<>(recipeManager.getRecipes());
 
-        List<RecipeHolder<?>> allRecipes = recipeManager.getRecipes().stream().toList();
-
-        AtomicInteger processedCount = new AtomicInteger(0);
-        AtomicInteger skippedCount = new AtomicInteger(0);
-
-        ConcurrentLinkedQueue<RecipeNode> processedNodes = new ConcurrentLinkedQueue<>();
+        var processedCount = new AtomicInteger(0);
+        var skippedCount = new AtomicInteger(0);
+        var processedNodes = new ConcurrentLinkedQueue<RecipeNode>();
 
         allRecipes.parallelStream().forEach(holder -> {
             try {
-                RecipeNode node = buildNode(holder.value(), level);
+                var node = buildNode(holder.value(), level);
                 if (node != null) {
                     processedNodes.add(node);
                     processedCount.incrementAndGet();
@@ -73,9 +88,7 @@ public class GraphBuilder {
             }
         });
 
-        for (RecipeNode node : processedNodes) {
-            graph.addRecipe(node);
-        }
+        for (var node : processedNodes) graph.addRecipe(node);
 
         ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped",
                 processedCount.get(), skippedCount.get());
@@ -89,105 +102,98 @@ public class GraphBuilder {
         return graph;
     }
 
-    private static RecipeNode buildSmithingNode(
-            SmithingTransformRecipe recipe,
-            Item resultItem
-    ) {
-        RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
+    private static RecipeNode buildSmithingNode(SmithingTransformRecipe recipe, Item resultItem) {
+        if (smithingTemplate == null) return null;
+
+        var builder = new RecipeNode.Builder(resultItem)
                 .recipeType(RecipeType.SMITHING)
                 .category(RecipeCategory.PRIMARY)
                 .resultCount(1)
                 .rawRecipe(recipe);
         try {
-            Field templateField = SmithingTransformRecipe.class.getDeclaredField("template");
-            Field baseField = SmithingTransformRecipe.class.getDeclaredField("base");
-            Field additionField = SmithingTransformRecipe.class.getDeclaredField("addition");
-
-            templateField.setAccessible(true);
-            baseField.setAccessible(true);
-            additionField.setAccessible(true);
-
-            Ingredient template = (Ingredient) templateField.get(recipe);
-            Ingredient base = (Ingredient) baseField.get(recipe);
-            Ingredient addition = (Ingredient) additionField.get(recipe);
+            var template = (Ingredient) smithingTemplate.get(recipe);
+            var base = (Ingredient) smithingBase.get(recipe);
+            var addition = (Ingredient) smithingAddition.get(recipe);
 
             if (!template.isEmpty()) {
-                List<Item> templateVariants = Stream.of(template.getItems())
-                        .map(ItemStack::getItem)
-                        .distinct()
-                        .toList();
-                if (!templateVariants.isEmpty()) builder.addIngredient(templateVariants, 1);
+                var variants = extractVariants(template);
+                if (!variants.isEmpty()) builder.addIngredient(variants, 1);
             }
 
             if (!base.isEmpty()) {
-                List<Item> baseVariants = Stream.of(base.getItems())
-                        .map(ItemStack::getItem)
-                        .distinct()
-                        .toList();
-                if (!baseVariants.isEmpty()) builder.addIngredient(baseVariants, 1);
+                var variants = extractVariants(base);
+                if (!variants.isEmpty()) builder.addIngredient(variants, 1);
             }
 
             if (!addition.isEmpty()) {
-                List<Item> additionVariants = Stream.of(addition.getItems())
-                        .map(ItemStack::getItem)
-                        .distinct()
-                        .toList();
-                if (!additionVariants.isEmpty()) builder.addIngredient(additionVariants, 1);
+                var variants = extractVariants(addition);
+                if (!variants.isEmpty()) builder.addIngredient(variants, 1);
             }
 
-
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to process SmithingTransformRecipe for {}: {}",
-                    BuiltInRegistries.ITEM.getKey(resultItem),
-                    e.getMessage());
+        } catch (IllegalAccessException e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to access SmithingTransformRecipe fields for {}: {}",
+                    BuiltInRegistries.ITEM.getKey(resultItem), e.getMessage());
             return null;
         }
 
         return builder.build();
     }
 
+    private static ObjectList<Item> extractVariants(Ingredient ingredient) {
+        var items = new ObjectArrayList<Item>();
+        var stacks = ingredient.getItems();
+        for (var stack : stacks) {
+            var item = stack.getItem();
+            if (!items.contains(item)) items.add(item);
+        }
+        return items;
+    }
+
     private static RecipeNode buildNode(Recipe<?> recipe, Level level) {
-        ItemStack resultStack = recipe.getResultItem(level.registryAccess());
+        var resultStack = recipe.getResultItem(level.registryAccess());
         if (resultStack.isEmpty()) return null;
 
-        Item resultItem = resultStack.getItem();
-        List<Ingredient> ingredients = recipe.getIngredients();
+        var resultItem = resultStack.getItem();
+        var ingredients = new ObjectArrayList<>(recipe.getIngredients());
 
         if (recipe instanceof SmithingTransformRecipe smithing) return buildSmithingNode(smithing, resultItem);
         if (ingredients.isEmpty()) return null;
 
-        RecipeCategory category = classifyRecipe(recipe, resultItem, ingredients);
+        var category = classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 
-        RecipeNode.Builder builder = new RecipeNode.Builder(resultItem)
+        var builder = new RecipeNode.Builder(resultItem)
                 .recipeType(recipe.getType())
                 .category(category)
                 .resultCount(resultStack.getCount())
                 .rawRecipe(recipe);
 
-        for (Ingredient ingredient : ingredients) {
+        for (var ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
-            List<Item> itemVariants = Stream.of(ingredient.getItems())
-                    .limit(ComplexityConfig.MAX_INGREDIENT_VARIANTS.get())
-                    .map(ItemStack::getItem).distinct().toList();
-            if (!itemVariants.isEmpty()) builder.addIngredient(itemVariants, 1);
+            var variants = new ObjectArrayList<Item>();
+            var stacks = ingredient.getItems();
+            int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
+            for (int i = 0; i < Math.min(stacks.length, limit); i++) {
+                var item = stacks[i].getItem();
+                if (!variants.contains(item)) variants.add(item);
+            }
+            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
         }
         return builder.build();
     }
 
-    public static RecipeCategory classifyRecipe(Recipe<?> recipe, Item resultItem, List<Ingredient> ingredients) {
+    public static RecipeCategory classifyRecipe(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {
         if (isUnprocessable(recipe, resultItem, ingredients)) return RecipeCategory.UNPROCESSABLE;
         if (isRecyclingRecipe(recipe, ingredients)) return RecipeCategory.RECYCLING;
 
-        ItemStack resultStack = new ItemStack(resultItem);
+        var resultStack = new ItemStack(resultItem);
 
         if (ingredients.size() == 1) {
-            ItemStack[] ingredientStacks = ingredients.getFirst().getItems();
-            for (ItemStack ingredientStack : ingredientStacks) {
+            var ingredientStacks = ingredients.getFirst().getItems();
+            for (var ingredientStack : ingredientStacks) {
                 if (ingredientStack.isEmpty()) continue;
 
-                boolean ingredientIsStorageBlock = ingredientStack.is(STORAGE_BLOCKS_TAG);
-                if (ingredientIsStorageBlock && (resultStack.is(INGOTS_TAG) || resultStack.is(GEMS_TAG) || resultStack.is(RAW_MATERIALS_TAG))) {
+                if (ingredientStack.is(STORAGE_BLOCKS_TAG) && (resultStack.is(INGOTS_TAG) || resultStack.is(GEMS_TAG) || resultStack.is(RAW_MATERIALS_TAG))) {
                     return RecipeCategory.STORAGE_DECOMPRESSION;
                 }
 
@@ -197,54 +203,59 @@ public class GraphBuilder {
             }
         }
 
-        if (areAllIngredientsOfTag(ingredients, NUGGETS_TAG) && resultStack.is(INGOTS_TAG)) {
+        if (areAllIngredientsOfTag(ingredients, NUGGETS_TAG) && resultStack.is(INGOTS_TAG))
             return RecipeCategory.STORAGE_COMPRESSION;
-        }
-        if (areAllIngredientsOfTag(ingredients, INGOTS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG)) {
+        if (areAllIngredientsOfTag(ingredients, INGOTS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG))
             return RecipeCategory.STORAGE_COMPRESSION;
-        }
-        if (areAllIngredientsOfTag(ingredients, GEMS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG)) {
+        if (areAllIngredientsOfTag(ingredients, GEMS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG))
             return RecipeCategory.STORAGE_COMPRESSION;
-        }
-        if (areAllIngredientsRawBlocks(ingredients) && resultStack.is(STORAGE_BLOCKS_TAG)) {
+        if (areAllIngredientsRawBlocks(ingredients) && resultStack.is(STORAGE_BLOCKS_TAG))
             return RecipeCategory.STORAGE_COMPRESSION;
-        }
 
         return RecipeCategory.PRIMARY;
     }
 
-    private static boolean areAllIngredientsOfTag(List<Ingredient> ingredients, TagKey<Item> tag) {
+    private static boolean areAllIngredientsOfTag(ObjectList<Ingredient> ingredients, TagKey<Item> tag) {
         if (ingredients.isEmpty()) return false;
-        return ingredients.stream()
-                .flatMap(ing -> Stream.of(ing.getItems()))
-                .allMatch(stack -> !stack.isEmpty() && stack.is(tag));
+        for (var ing : ingredients) {
+            var stacks = ing.getItems();
+            for (var stack : stacks) if (stack.isEmpty() || !stack.is(tag)) return false;
+        }
+        return true;
     }
 
-    private static boolean areAllIngredientsRawBlocks(List<Ingredient> ingredients) {
+    private static boolean areAllIngredientsRawBlocks(ObjectList<Ingredient> ingredients) {
         if (ingredients.isEmpty()) return false;
+        var rawStorage = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
 
-        TagKey<Item> rawStorage = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
-
-        return ingredients.stream()
-                .flatMap(ing -> Stream.of(ing.getItems()))
-                .allMatch(stack -> {
-                    if (stack.isEmpty()) return false;
-                    ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    String path = rl.getPath();
-                    return stack.is(rawStorage) || path.contains("raw_") || path.contains("crude_");
-                });
+        for (var ing : ingredients) {
+            var stacks = ing.getItems();
+            for (var stack : stacks) {
+                if (stack.isEmpty()) return false;
+                var rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                var path = rl.getPath();
+                if (!(stack.is(rawStorage) || path.contains("raw_") || path.contains("crude_"))) return false;
+            }
+        }
+        return true;
     }
 
-    private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, List<Ingredient> ingredients) {
-        if (new ItemStack(resultItem).isDamageableItem()) {
-            return ingredients.stream().flatMap(ing -> Stream.of(ing.getItems())).anyMatch(stack -> stack.getItem() == resultItem);
+    private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {
+        if (new ItemStack(resultItem).isDamageableItem()) for (var ing : ingredients) {
+            for (var stack : ing.getItems()) if (stack.getItem() == resultItem) return true;
         }
         return recipe instanceof TippedArrowRecipe || recipe instanceof MapCloningRecipe || recipe instanceof ArmorDyeRecipe || recipe instanceof BannerDuplicateRecipe;
     }
 
-    private static boolean isRecyclingRecipe(Recipe<?> recipe, List<Ingredient> ingredients) {
+    private static boolean isRecyclingRecipe(Recipe<?> recipe, ObjectList<Ingredient> ingredients) {
         if (ingredients.size() != 1) return false;
-        boolean ingredientIsDamageable = Stream.of(ingredients.getFirst().getItems()).anyMatch(ItemStack::isDamageableItem);
-        return ingredientIsDamageable && (recipe.getType() == RecipeType.SMELTING || recipe.getType() == RecipeType.BLASTING);
+        var damageable = false;
+        for (var stack : ingredients.getFirst().getItems()) {
+            if (stack.isDamageableItem()) {
+                damageable = true;
+                break;
+            }
+        }
+        return damageable && (recipe.getType() == RecipeType.SMELTING || recipe.getType() == RecipeType.BLASTING);
     }
 }

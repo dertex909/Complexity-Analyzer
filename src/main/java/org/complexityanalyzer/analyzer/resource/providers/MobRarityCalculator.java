@@ -18,33 +18,30 @@
 
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.api.IBossRegistry;
 
-import javax.annotation.Nullable;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import org.jetbrains.annotations.Nullable;
 
 public class MobRarityCalculator implements IBossRegistry {
 
     private final DimensionRarityAnalyzer dimensionAnalyzer;
 
-    private final Map<EntityType<?>, Double> rarityCache = new ConcurrentHashMap<>();
-    private final Map<EntityType<?>, Double> healthCache = new ConcurrentHashMap<>();
-    private final Map<EntityType<?>, BossLevel> bossCache = new ConcurrentHashMap<>();
+    private final Reference2DoubleMap<EntityType<?>> rarityCache = Reference2DoubleMaps.synchronize(new Reference2DoubleOpenHashMap<>());
+    private final Reference2DoubleMap<EntityType<?>> healthCache = Reference2DoubleMaps.synchronize(new Reference2DoubleOpenHashMap<>());
+    private final Reference2ObjectMap<EntityType<?>, BossLevel> bossCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
-    private final Map<EntityType<?>, BossLevel> registeredBosses = new ConcurrentHashMap<>();
+    private final Reference2ObjectMap<EntityType<?>, BossLevel> registeredBosses = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
     private static final double BOSS_RARITY = 50.0;
     private static final double MINI_BOSS_RARITY = 15.0;
@@ -59,13 +56,13 @@ public class MobRarityCalculator implements IBossRegistry {
     private static final double MINI_BOSS_HEALTH_THRESHOLD = 80.0;
     private static final double HIGH_HEALTH_THRESHOLD = 50.0;
 
-    private static final Set<String> BOSS_KEYWORDS = Set.of(
+    private static final ObjectSet<String> BOSS_KEYWORDS = new ObjectOpenHashSet<>(java.util.List.of(
             "boss", "dragon", "king", "queen", "lord", "ancient", "elder", "wither"
-    );
+    ));
 
-    private static final Set<String> RARE_KEYWORDS = Set.of(
+    private static final ObjectSet<String> RARE_KEYWORDS = new ObjectOpenHashSet<>(java.util.List.of(
             "rare", "elite", "champion", "alpha", "mutant", "titan", "legendary", "prime"
-    );
+    ));
 
     private enum BossLevel {NONE, MINI_BOSS, BOSS}
 
@@ -75,7 +72,7 @@ public class MobRarityCalculator implements IBossRegistry {
 
     @Override
     public void registerBoss(EntityType<?> entityType, IBossRegistry.BossType type) {
-        BossLevel level = type == IBossRegistry.BossType.BOSS ? BossLevel.BOSS : BossLevel.MINI_BOSS;
+        var level = type == IBossRegistry.BossType.BOSS ? BossLevel.BOSS : BossLevel.MINI_BOSS;
         registeredBosses.put(entityType, level);
         bossCache.put(entityType, level);
         ComplexityAnalyzer.LOGGER.info("[BossRegistry] Registered {} as {}",
@@ -84,38 +81,41 @@ public class MobRarityCalculator implements IBossRegistry {
 
     @Override
     public void registerBoss(String entityId, IBossRegistry.BossType type) {
-        ResourceLocation id = ResourceLocation.tryParse(entityId);
+        var id = ResourceLocation.tryParse(entityId);
         if (id == null) {
             ComplexityAnalyzer.LOGGER.warn("[BossRegistry] Invalid entity ID: {}", entityId);
             return;
         }
 
-        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(id);
+        var entityType = BuiltInRegistries.ENTITY_TYPE.get(id);
 
         registerBoss(entityType, type);
     }
 
     @Override
     public boolean isBoss(EntityType<?> entityType) {
-        BossLevel level = detectBossLevel(entityType);
+        var level = detectBossLevel(entityType);
         return level == BossLevel.BOSS;
     }
 
     @Override
     public boolean isMiniBoss(EntityType<?> entityType) {
-        BossLevel level = detectBossLevel(entityType);
+        var level = detectBossLevel(entityType);
         return level == BossLevel.MINI_BOSS;
     }
 
     public double calculateRarity(EntityType<?> entityType) {
-        return rarityCache.computeIfAbsent(entityType, this::calculateRarityInternal);
+        if (rarityCache.containsKey(entityType)) return rarityCache.getDouble(entityType);
+        var result = calculateRarityInternal(entityType);
+        rarityCache.put(entityType, result);
+        return result;
     }
 
     private double calculateRarityInternal(EntityType<?> entityType) {
-        boolean isModded = isModdedEntity(entityType);
+        var isModded = isModdedEntity(entityType);
 
         if (!isModded) {
-            Double hardcoded = getHardcodedRarity(entityType);
+            var hardcoded = getHardcodedRarity(entityType);
             if (hardcoded != null) return hardcoded;
         }
 
@@ -137,7 +137,7 @@ public class MobRarityCalculator implements IBossRegistry {
             if (biomeRarity > 0) rarity += biomeRarity;
         }
 
-        double health = getEntityHealth(entityType);
+        var health = getEntityHealth(entityType);
         if (health >= BOSS_HEALTH_THRESHOLD && bossLevel != BossLevel.BOSS) {
             rarity += VERY_HIGH_HEALTH_BONUS;
         } else if (health >= HIGH_HEALTH_THRESHOLD && bossLevel == BossLevel.NONE) {
@@ -151,7 +151,7 @@ public class MobRarityCalculator implements IBossRegistry {
         if (dimensionBonus > 0) rarity += dimensionBonus;
 
         if (isModded) {
-            double nameBonus = analyzeEntityName(entityType);
+            var nameBonus = analyzeEntityName(entityType);
             if (nameBonus > 0) rarity += nameBonus;
             rarity += MODDED_BONUS;
         }
@@ -164,13 +164,13 @@ public class MobRarityCalculator implements IBossRegistry {
 
 
     private BossLevel detectBossLevel(EntityType<?> entityType) {
-        BossLevel registered = registeredBosses.get(entityType);
+        var registered = registeredBosses.get(entityType);
         if (registered != null) return registered;
 
-        BossLevel cached = bossCache.get(entityType);
+        var cached = bossCache.get(entityType);
         if (cached != null) return cached;
 
-        BossLevel detected = detectBossLevelInternal(entityType);
+        var detected = detectBossLevelInternal(entityType);
         bossCache.put(entityType, detected);
         return detected;
     }
@@ -200,7 +200,7 @@ public class MobRarityCalculator implements IBossRegistry {
         }
 
         if (isModdedEntity(entityType) && health >= 40.0) {
-            BossLevel nameCheck = detectByName(entityType);
+            var nameCheck = detectByName(entityType);
             if (nameCheck != BossLevel.NONE) {
                 ComplexityAnalyzer.LOGGER.debug("[BossDetection] {} detected as {} by name pattern",
                         getEntityName(entityType), nameCheck);
@@ -219,21 +219,21 @@ public class MobRarityCalculator implements IBossRegistry {
             if (WitherBoss.class.isAssignableFrom(entityClass)) return BossLevel.BOSS;
             if (EnderDragon.class.isAssignableFrom(entityClass)) return BossLevel.BOSS;
 
-            String className = entityClass.getSimpleName();
+            var className = entityClass.getSimpleName();
             if (className.endsWith("Boss") || className.contains("BossEntity")) return BossLevel.BOSS;
 
-            Class<?> superClass = entityClass.getSuperclass();
+            var superClass = entityClass.getSuperclass();
             while (superClass != null && superClass != Object.class) {
-                String superName = superClass.getSimpleName();
+                var superName = superClass.getSimpleName();
                 if (superName.endsWith("Boss") || superName.equals("BossEntity")) return BossLevel.BOSS;
                 superClass = superClass.getSuperclass();
             }
 
-            String packageName = entityClass.getPackage() != null ?
+            var packageName = entityClass.getPackage() != null ?
                     entityClass.getPackage().getName() : "";
             if (packageName.contains(".boss.") || packageName.endsWith(".boss")) {
 
-                double health = getEntityHealth(entityType);
+                var health = getEntityHealth(entityType);
                 if (health >= MINI_BOSS_HEALTH_THRESHOLD) {
                     return health >= BOSS_HEALTH_THRESHOLD ? BossLevel.BOSS : BossLevel.MINI_BOSS;
                 }
@@ -256,15 +256,15 @@ public class MobRarityCalculator implements IBossRegistry {
 
 
     private BossLevel detectByName(EntityType<?> entityType) {
-        String name = getEntityName(entityType).toLowerCase();
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
-        String idString = id.getPath().toLowerCase();
+        var name = getEntityName(entityType).toLowerCase();
+        var id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        var idString = id.getPath().toLowerCase();
 
-        for (String keyword : BOSS_KEYWORDS) {
+        for (var keyword : BOSS_KEYWORDS) {
             if (name.contains(keyword) || idString.contains(keyword)) return BossLevel.BOSS;
         }
 
-        for (String keyword : RARE_KEYWORDS) {
+        for (var keyword : RARE_KEYWORDS) {
             if (name.contains(keyword) || idString.contains(keyword)) return BossLevel.MINI_BOSS;
         }
 
@@ -275,7 +275,7 @@ public class MobRarityCalculator implements IBossRegistry {
     private boolean hasMiniBossIndicators(EntityType<?> entityType) {
         if (entityType.getCategory() == MobCategory.MISC) return true;
         if (isModdedEntity(entityType)) {
-            BossLevel nameCheck = detectByName(entityType);
+            var nameCheck = detectByName(entityType);
             return nameCheck == BossLevel.MINI_BOSS;
         }
 
@@ -289,26 +289,31 @@ public class MobRarityCalculator implements IBossRegistry {
     }
 
     private double getEntityHealth(EntityType<?> entityType) {
-        return healthCache.computeIfAbsent(entityType, type -> {
-            try {
-                @SuppressWarnings("unchecked")
-                EntityType<? extends LivingEntity> livingType = (EntityType<? extends LivingEntity>) type;
+        if (healthCache.containsKey(entityType)) return healthCache.getDouble(entityType);
+        var result = getEntityHealthInternal(entityType);
+        healthCache.put(entityType, result);
+        return result;
+    }
 
-                AttributeSupplier attributes = DefaultAttributes.getSupplier(livingType);
-                if (attributes.hasAttribute(Attributes.MAX_HEALTH)) return attributes.getValue(Attributes.MAX_HEALTH);
-            } catch (ClassCastException ignored) {
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.debug("Could not get attributes for {}: {}",
-                        getEntityName(type), e.getMessage());
-            }
+    private double getEntityHealthInternal(EntityType<?> entityType) {
+        try {
+            @SuppressWarnings("unchecked")
+            var livingType = (EntityType<? extends LivingEntity>) entityType;
 
-            if (!isModdedEntity(type)) {
-                Double vanillaHealth = getVanillaHealth(type);
-                if (vanillaHealth != null) return vanillaHealth;
-            }
+            var attributes = DefaultAttributes.getSupplier(livingType);
+            if (attributes.hasAttribute(Attributes.MAX_HEALTH)) return attributes.getValue(Attributes.MAX_HEALTH);
+        } catch (ClassCastException ignored) {
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("Could not get attributes for {}: {}",
+                    getEntityName(entityType), e.getMessage());
+        }
 
-            return 20.0;
-        });
+        if (!isModdedEntity(entityType)) {
+            var vanillaHealth = getVanillaHealth(entityType);
+            if (vanillaHealth != null) return vanillaHealth;
+        }
+
+        return 20.0;
     }
 
     @Nullable
@@ -330,9 +335,9 @@ public class MobRarityCalculator implements IBossRegistry {
     }
 
     private double analyzeEntityName(EntityType<?> entityType) {
-        String name = getEntityName(entityType).toLowerCase();
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
-        String idString = id.getPath().toLowerCase();
+        var name = getEntityName(entityType).toLowerCase();
+        var id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        var idString = id.getPath().toLowerCase();
 
         double bonus = 0.0;
         if (name.contains("rare") || idString.contains("rare")) bonus += 5.0;

@@ -18,8 +18,8 @@
 
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -34,13 +34,13 @@ import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguratio
 import net.minecraft.world.level.levelgen.placement.*;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.OreDistributionData;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 
 public class TheoreticalDistributionProvider {
 
-    private final Map<Block, OreDistributionData> distributionData = new ConcurrentHashMap<>();
+    private final Reference2ObjectMap<Block, OreDistributionData> distributionData = new Reference2ObjectOpenHashMap<>();
     private boolean initialized = false;
 
     public void initialize(Level level) {
@@ -71,7 +71,7 @@ public class TheoreticalDistributionProvider {
     }
 
     private void analyzeBiome(ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey, Holder<Biome> biomeHolder) {
-        List<HolderSet<PlacedFeature>> generationSteps = biomeHolder.value().getGenerationSettings().features();
+        var generationSteps = biomeHolder.value().getGenerationSettings().features();
         int oreStepIndex = GenerationStep.Decoration.UNDERGROUND_ORES.ordinal();
 
         if (oreStepIndex < generationSteps.size()) {
@@ -86,7 +86,7 @@ public class TheoreticalDistributionProvider {
         HeightRange heightRange = extractHeightRange(placedFeature.placement());
         int count = extractCount(placedFeature.placement());
         Holder<ConfiguredFeature<?, ?>> configuredFeatureHolder = placedFeature.feature();
-        Set<Block> blocks = extractBlocks(configuredFeatureHolder.value());
+        ObjectSet<Block> blocks = extractBlocks(configuredFeatureHolder.value());
 
         if (blocks.isEmpty()) return;
 
@@ -106,8 +106,8 @@ public class TheoreticalDistributionProvider {
         return 4;
     }
 
-    private Set<Block> extractBlocks(ConfiguredFeature<?, ?> feature) {
-        Set<Block> blocks = new HashSet<>();
+    private ObjectSet<Block> extractBlocks(ConfiguredFeature<?, ?> feature) {
+        ObjectSet<Block> blocks = new ObjectOpenHashSet<>();
         if (feature.feature() == Feature.ORE && feature.config() instanceof OreConfiguration oreConfig) {
             for (OreConfiguration.TargetBlockState target : oreConfig.targetStates) {
                 blocks.add(target.state.getBlock());
@@ -120,8 +120,9 @@ public class TheoreticalDistributionProvider {
         return Math.min(1.0, count * 0.1);
     }
 
-    public Optional<OreDistributionData> getDistribution(Block block) {
-        return Optional.ofNullable(distributionData.get(block));
+    @Nullable
+    public OreDistributionData getDistribution(Block block) {
+        return distributionData.get(block);
     }
 
     public boolean isInitialized() {

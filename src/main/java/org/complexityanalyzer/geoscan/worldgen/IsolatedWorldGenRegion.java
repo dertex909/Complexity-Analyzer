@@ -20,7 +20,8 @@ import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 public class IsolatedWorldGenRegion extends WorldGenRegion {
@@ -36,7 +37,7 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     private final int writeRadius;
 
     public IsolatedWorldGenRegion(ServerLevel level, ChunkAccess centerChunk,
-                                  List<ChunkAccess> neighborChunks, int radius,
+                                  ObjectList<ChunkAccess> neighborChunks, int radius,
                                   ChunkStatus targetStatus) {
 
         super(level, createCache(level, centerChunk, neighborChunks, radius), getChunkStep(targetStatus), centerChunk);
@@ -48,12 +49,9 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
         this.side = 2 * radius + 1;
         this.originX = centerChunk.getPos().x - radius;
         this.originZ = centerChunk.getPos().z - radius;
-
         this.localChunks = new ChunkAccess[side * side];
 
-        for (ChunkAccess chunk : neighborChunks) {
-            putChunkInArray(chunk);
-        }
+        for (ChunkAccess chunk : neighborChunks) putChunkInArray(chunk);
         putChunkInArray(centerChunk);
     }
 
@@ -61,7 +59,6 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
         if (chunk == null) return;
         int lx = chunk.getPos().x - originX;
         int lz = chunk.getPos().z - originZ;
-
         if (lx >= 0 && lx < side && lz >= 0 && lz < side) localChunks[lx + lz * side] = chunk;
     }
 
@@ -87,7 +84,7 @@ public class IsolatedWorldGenRegion extends WorldGenRegion {
     }
 
     private static StaticCache2D<GenerationChunkHolder> createCache(ServerLevel level, ChunkAccess centerChunk,
-                                                                    List<ChunkAccess> neighbors, int radius) {
+                                                                    ObjectList<ChunkAccess> neighbors, int radius) {
         int side = 2 * radius + 1;
         int originX = centerChunk.getPos().x - radius;
         int originZ = centerChunk.getPos().z - radius;

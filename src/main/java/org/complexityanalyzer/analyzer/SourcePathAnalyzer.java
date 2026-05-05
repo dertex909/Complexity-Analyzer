@@ -18,15 +18,11 @@
 
 package org.complexityanalyzer.analyzer;
 
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
-import org.complexityanalyzer.graph.IngredientSlot;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.graph.RecipeNode;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class SourcePathAnalyzer {
 
@@ -39,13 +35,12 @@ public class SourcePathAnalyzer {
     }
 
     public void findItemsWithBasePath() {
-        Set<Item> itemsWithBasePath = new HashSet<>();
+        var itemsWithBasePath = new ReferenceOpenHashSet<Item>();
 
-        for (Item item : graph.getAllItems()) {
+        for (var item : graph.getAllItems()) {
             if (!graph.hasRecipe(item)) {
-                BaseResourceData.ResourceSourceType type = sourceManager.analyze(item)
-                        .map(BaseResourceData::getSourceType).orElse(BaseResourceData.ResourceSourceType.UNKNOWN);
-
+                var data = sourceManager.analyze(item);
+                var type = (data != null) ? data.getSourceType() : BaseResourceData.ResourceSourceType.UNKNOWN;
                 if (type != BaseResourceData.ResourceSourceType.UNKNOWN) itemsWithBasePath.add(item);
             }
         }
@@ -53,13 +48,20 @@ public class SourcePathAnalyzer {
         int lastSize;
         do {
             lastSize = itemsWithBasePath.size();
-            for (RecipeNode recipe : graph.getAllRecipes()) {
-                Item result = recipe.getResultItem();
+            for (var recipe : graph.getAllRecipes()) {
+                var result = recipe.getResultItem();
                 if (itemsWithBasePath.contains(result)) continue;
 
                 boolean allIngredientsHaveBasePath = true;
-                for (IngredientSlot slot : recipe.getIngredients()) {
-                    if (slot.getVariants().stream().noneMatch(itemsWithBasePath::contains)) {
+                for (var slot : recipe.getIngredients()) {
+                    boolean hasVariantWithBasePath = false;
+                    for (var variant : slot.getVariants()) {
+                        if (itemsWithBasePath.contains(variant)) {
+                            hasVariantWithBasePath = true;
+                            break;
+                        }
+                    }
+                    if (!hasVariantWithBasePath) {
                         allIngredientsHaveBasePath = false;
                         break;
                     }
@@ -68,6 +70,5 @@ public class SourcePathAnalyzer {
                 if (allIngredientsHaveBasePath) itemsWithBasePath.add(result);
             }
         } while (itemsWithBasePath.size() > lastSize);
-
     }
 }

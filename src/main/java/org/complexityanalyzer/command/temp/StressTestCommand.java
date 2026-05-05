@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.command;
+package org.complexityanalyzer.command.temp;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -37,8 +37,9 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
 
-import java.util.ArrayList;
-import java.util.List;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -106,8 +107,8 @@ public class StressTestCommand {
                 Component.literal("  ⏳ Running tests in parallel...")
                         .withStyle(ChatFormatting.YELLOW));
 
-        List<Item> testItems = getRandomItems(Math.min(iterations, 500));
-        List<EntityType<?>> testEntities = getRandomEntities(Math.min(iterations / 5, 100));
+        ObjectList<Item> testItems = getRandomItems(Math.min(iterations, 500));
+        ObjectList<EntityType<?>> testEntities = getRandomEntities(Math.min(iterations / 5, 100));
 
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failCount = new AtomicInteger(0);
@@ -115,7 +116,7 @@ public class StressTestCommand {
 
         long startTime = System.nanoTime();
 
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        ObjectList<CompletableFuture<Void>> futures = new ObjectArrayList<>(iterations);
 
         for (Item item : testItems) {
             futures.add(CompletableFuture.runAsync(() -> {
@@ -135,12 +136,15 @@ public class StressTestCommand {
             }, ThreadPoolManager.getInstance().getComputePool()));
         }
 
+        var mobProvider = engine.getMobPropertyProvider();
+        var mobDropSource = engine.getMobDropSource();
+
         for (EntityType<?> entityType : testEntities) {
             futures.add(CompletableFuture.runAsync(() -> {
                 long taskStart = System.nanoTime();
                 try {
-                    engine.getMobPropertyProvider().ifPresent(provider -> provider.getProperties(entityType));
-                    engine.getMobDropSource().ifPresent(dropSource -> dropSource.getDropsForEntity(entityType));
+                    if (mobProvider != null) mobProvider.getProperties(entityType);
+                    if (mobDropSource != null) mobDropSource.getDropsForEntity(entityType);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
@@ -211,17 +215,19 @@ public class StressTestCommand {
             }, ThreadPoolManager.getInstance().getComputePool()));
         }
 
+        var sourceManager = engine.getSourceManager();
+
         for (int i = 0; i < Math.min(iterations / 5, 100); i++) {
             final Item randomItem = testItems.get(RANDOM.nextInt(testItems.size()));
             futures.add(CompletableFuture.runAsync(() -> {
                 long taskStart = System.nanoTime();
                 try {
-                    engine.getSourceManager().ifPresent(sm -> {
-                        sm.analyze(randomItem);
-                        sm.findAllSources(randomItem);
-                        sm.getBaseFactor(randomItem);
-                        sm.getSources();
-                    });
+                    if (sourceManager != null) {
+                        sourceManager.analyze(randomItem);
+                        sourceManager.findAllSources(randomItem);
+                        sourceManager.getBaseFactor(randomItem);
+                        sourceManager.getSources();
+                    }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
@@ -338,25 +344,28 @@ public class StressTestCommand {
         return 1;
     }
 
-    private static List<Item> getRandomItems(int count) {
-        List<Item> allItems = new ArrayList<>(BuiltInRegistries.ITEM.stream().toList());
-        List<Item> result = new ArrayList<>(count);
+    private static ObjectList<Item> getRandomItems(int count) {
+        ObjectList<Item> result = new ObjectArrayList<>(count);
+        int registrySize = BuiltInRegistries.ITEM.size();
+        if (registrySize == 0) return result;
 
-        for (int i = 0; i < count && !allItems.isEmpty(); i++) {
-            int index = RANDOM.nextInt(allItems.size());
-            result.add(allItems.get(index));
+        for (int i = 0; i < count; i++) {
+            result.add(BuiltInRegistries.ITEM.byId(RANDOM.nextInt(registrySize)));
         }
 
         return result;
     }
 
-    private static List<EntityType<?>> getRandomEntities(int count) {
-        List<EntityType<?>> livingEntities = BuiltInRegistries.ENTITY_TYPE.stream()
-                .filter(type -> type.getCategory() != MobCategory.MISC)
-                .toList();
+    private static ObjectList<EntityType<?>> getRandomEntities(int count) {
+        ObjectList<EntityType<?>> livingEntities = new ObjectArrayList<>();
+        BuiltInRegistries.ENTITY_TYPE.forEach(type -> {
+            if (type.getCategory() != MobCategory.MISC) livingEntities.add(type);
+        });
 
-        List<EntityType<?>> result = new ArrayList<>(count);
-        for (int i = 0; i < count && !livingEntities.isEmpty(); i++) {
+        if (livingEntities.isEmpty()) return livingEntities;
+
+        ObjectList<EntityType<?>> result = new ObjectArrayList<>(count);
+        for (int i = 0; i < count; i++) {
             result.add(livingEntities.get(RANDOM.nextInt(livingEntities.size())));
         }
 

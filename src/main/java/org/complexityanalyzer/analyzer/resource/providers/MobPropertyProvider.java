@@ -18,25 +18,22 @@
 
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public class MobPropertyProvider {
-    private final Map<EntityType<?>, MobProperties> propertiesCache = new HashMap<>();
+    private final Reference2ObjectMap<EntityType<?>, MobProperties> propertiesCache = new Reference2ObjectOpenHashMap<>();
     private MobRarityCalculator rarityCalculator;
 
-    private static final Map<EntityType<?>, MobProperties> MANUAL_OVERRIDES = new HashMap<>();
+    private static final Reference2ObjectMap<EntityType<?>, MobProperties> MANUAL_OVERRIDES = new Reference2ObjectOpenHashMap<>();
 
     static {
         MANUAL_OVERRIDES.put(EntityType.SHULKER, new MobProperties(30.0, 0.1, 20.0, MobCategory.MONSTER));
@@ -53,25 +50,25 @@ public class MobPropertyProvider {
 
         int failedCount = 0;
 
-        for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
+        for (var type : BuiltInRegistries.ENTITY_TYPE) {
             if (MANUAL_OVERRIDES.containsKey(type)) continue;
             if (type.getCategory() == MobCategory.MISC) continue;
 
             try {
                 @SuppressWarnings("unchecked")
-                EntityType<? extends LivingEntity> livingType = (EntityType<? extends LivingEntity>) type;
+                var livingType = (EntityType<? extends LivingEntity>) type;
 
                 if (!DefaultAttributes.hasSupplier(livingType)) {
                     failedCount++;
                     continue;
                 }
 
-                AttributeSupplier attributes = DefaultAttributes.getSupplier(livingType);
+                var attributes = DefaultAttributes.getSupplier(livingType);
 
-                double maxHealth = attributes.getBaseValue(Attributes.MAX_HEALTH);
-                double attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
+                var maxHealth = attributes.getBaseValue(Attributes.MAX_HEALTH);
+                var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
                         ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.0;
-                double armor = attributes.hasAttribute(Attributes.ARMOR)
+                var armor = attributes.hasAttribute(Attributes.ARMOR)
                         ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
 
                 attackDamage = Math.max(attackDamage, 0.1);
@@ -87,7 +84,7 @@ public class MobPropertyProvider {
             } catch (ClassCastException e) {
                 failedCount++;
             } catch (Exception e) {
-                ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+                var id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
                 ComplexityAnalyzer.LOGGER.warn("Could not analyze entity type: {}", id);
                 failedCount++;
             }
@@ -99,37 +96,38 @@ public class MobPropertyProvider {
         ComplexityAnalyzer.LOGGER.debug("  ⚠ Failed/Skipped: {}", failedCount);
     }
 
-    public Optional<MobProperties> getProperties(EntityType<?> type) {
-        if (MANUAL_OVERRIDES.containsKey(type)) return Optional.of(MANUAL_OVERRIDES.get(type));
+    @Nullable
+    public MobProperties getProperties(EntityType<?> type) {
+        if (MANUAL_OVERRIDES.containsKey(type)) return MANUAL_OVERRIDES.get(type);
 
-        MobProperties cached = propertiesCache.get(type);
-        if (cached != null) return Optional.of(cached);
+        var cached = propertiesCache.get(type);
+        if (cached != null) return cached;
 
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        var id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
 
         try {
             @SuppressWarnings("unchecked")
-            EntityType<? extends LivingEntity> livingType = (EntityType<? extends LivingEntity>) type;
+            var livingType = (EntityType<? extends LivingEntity>) type;
 
-            if (!DefaultAttributes.hasSupplier(livingType)) return Optional.empty();
+            if (!DefaultAttributes.hasSupplier(livingType)) return null;
 
-            AttributeSupplier attributes = DefaultAttributes.getSupplier(livingType);
+            var attributes = DefaultAttributes.getSupplier(livingType);
 
-            double maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH)
+            var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH)
                     ? attributes.getBaseValue(Attributes.MAX_HEALTH) : 20.0;
 
-            double attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
+            var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
                     ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.1;
 
-            double armor = attributes.hasAttribute(Attributes.ARMOR)
+            var armor = attributes.hasAttribute(Attributes.ARMOR)
                     ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
 
-            MobCategory classification = type.getCategory();
+            var classification = type.getCategory();
 
-            MobProperties props = new MobProperties(maxHealth, attackDamage, armor, classification);
+            var props = new MobProperties(maxHealth, attackDamage, armor, classification);
             propertiesCache.put(type, props);
 
-            return Optional.of(props);
+            return props;
 
         } catch (ClassCastException e) {
             ComplexityAnalyzer.LOGGER.debug("Entity {} cannot be cast to LivingEntity type", id);
@@ -137,7 +135,7 @@ public class MobPropertyProvider {
             ComplexityAnalyzer.LOGGER.warn("Error loading properties for {}: {}", id, e.getMessage());
         }
 
-        return Optional.empty();
+        return null;
     }
 
     public void setRarityCalculator(MobRarityCalculator calculator) {

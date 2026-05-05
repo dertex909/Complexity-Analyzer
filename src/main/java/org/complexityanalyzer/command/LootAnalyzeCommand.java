@@ -24,13 +24,15 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 
-import java.util.*;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
+
 
 public class LootAnalyzeCommand {
 
@@ -45,54 +47,42 @@ public class LootAnalyzeCommand {
             return 0;
         }
 
-        Optional<UniversalLootSource> ulsOpt = engine.getSourceByType(UniversalLootSource.class);
-        if (ulsOpt.isEmpty()) {
-            output.sendFailure(source,
-                    Component.literal("⚠ UniversalLootSource is not initialized!")
-                            .withStyle(ChatFormatting.RED));
-            output.sendInfo(source,
-                    Component.literal("This feature may be disabled in the config.")
-                            .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        UniversalLootSource uls = engine.getSourceByType(UniversalLootSource.class);
+        if (uls == null) {
+            output.sendFailure(source, Component.literal("⚠ UniversalLootSource is not initialized!")
+                    .withStyle(ChatFormatting.RED));
+            output.sendInfo(source, Component.literal("This feature may be disabled in the config.")
+                    .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
             return 0;
         }
-        UniversalLootSource uls = ulsOpt.get();
 
-        List<BaseResourceData> itemsFromTable = new ArrayList<>();
-        for (Map.Entry<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> typeEntry : uls.getAllLootData().entrySet()) {
+        ObjectList<BaseResourceData> itemsFromTable = new ObjectArrayList<>();
+        for (var typeEntry : Reference2ObjectMaps.fastIterable(uls.getAllLootData())) {
             for (BaseResourceData data : typeEntry.getValue().values()) {
                 if (data.getDetails().contains(lootTableId.toString())) itemsFromTable.add(data);
             }
         }
 
         if (itemsFromTable.isEmpty()) {
-            output.sendFailure(source,
-                    Component.literal("❌ No items found for loot table")
-                            .withStyle(ChatFormatting.RED));
+            output.sendFailure(source, Component.literal("❌ No items found for loot table")
+                    .withStyle(ChatFormatting.RED));
 
-            output.sendInfo(source,
-                    Component.literal("Table: ")
-                            .withStyle(ChatFormatting.GRAY)
-                            .append(Component.literal(lootTableId.toString())
-                                    .withStyle(ChatFormatting.YELLOW)));
+            output.sendInfo(source, Component.literal("Table: ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.YELLOW)));
 
             output.sendInfo(source, Component.literal(""));
-            output.sendInfo(source,
-                    Component.literal("Possible reasons:")
-                            .withStyle(ChatFormatting.GRAY));
-            output.sendInfo(source,
-                    Component.literal("  • Table is empty")
-                            .withStyle(ChatFormatting.DARK_GRAY));
-            output.sendInfo(source,
-                    Component.literal("  • Table doesn't exist")
-                            .withStyle(ChatFormatting.DARK_GRAY));
-            output.sendInfo(source,
-                    Component.literal("  • Not cached yet")
-                            .withStyle(ChatFormatting.DARK_GRAY));
+            output.sendInfo(source, Component.literal("Possible reasons:").withStyle(ChatFormatting.GRAY));
+            output.sendInfo(source, Component.literal("  • Table is empty")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+            output.sendInfo(source, Component.literal("  • Table doesn't exist")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+            output.sendInfo(source, Component.literal("  • Not cached yet")
+                    .withStyle(ChatFormatting.DARK_GRAY));
 
             return 0;
         }
 
-        itemsFromTable.sort(Comparator.comparingDouble(LootAnalyzeCommand::extractChance).reversed());
+        itemsFromTable.sort((a, b) -> Double.compare(extractChance(b), extractChance(a)));
 
         displayLootAnalysis(source, lootTableId, itemsFromTable, output);
         return 1;
@@ -101,47 +91,35 @@ public class LootAnalyzeCommand {
     private static void displayLootAnalysis(
             CommandSourceStack source,
             ResourceLocation lootTableId,
-            List<BaseResourceData> items,
+            ObjectList<BaseResourceData> items,
             OutputManager output
     ) {
         output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source,
-                Component.literal("═══════════════════════════════")
-                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
 
         String tableIcon = getLootTableIcon(lootTableId);
-        output.sendInfo(source,
-                Component.literal(tableIcon + " ")
-                        .withStyle(ChatFormatting.GOLD)
-                        .append(Component.literal("Loot Table Analysis")
-                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal(tableIcon + " ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("Loot Table Analysis")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
 
-        output.sendInfo(source,
-                Component.literal("═══════════════════════════════")
-                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
         output.sendInfo(source, Component.literal(""));
 
         String tablePath = lootTableId.toString();
         String tableType = getLootTableType(tablePath);
         ChatFormatting typeColor = getTableTypeColor(tableType);
 
-        output.sendInfo(source,
-                Component.literal("  📋 Table: ")
-                        .withStyle(ChatFormatting.GRAY)
-                        .append(Component.literal(lootTableId.getPath())
-                                .withStyle(ChatFormatting.WHITE)));
+        output.sendInfo(source, Component.literal("  📋 Table: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(lootTableId.getPath()).withStyle(ChatFormatting.WHITE)));
 
-        output.sendInfo(source,
-                Component.literal("  🏷 Type: ")
-                        .withStyle(ChatFormatting.GRAY)
-                        .append(Component.literal(tableType)
-                                .withStyle(typeColor, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  🏷 Type: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(tableType).withStyle(typeColor, ChatFormatting.BOLD)));
 
-        output.sendInfo(source,
-                Component.literal("  📦 Items Found: ")
-                        .withStyle(ChatFormatting.GRAY)
-                        .append(Component.literal(String.valueOf(items.size()))
-                                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  📦 Items Found: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.valueOf(items.size()))
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
 
         output.sendInfo(source, Component.literal(""));
 
@@ -149,14 +127,13 @@ public class LootAnalyzeCommand {
 
         displayItemsByRarity(source, items, output);
 
-        output.sendInfo(source,
-                Component.literal("═══════════════════════════════")
-                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("═══════════════════════════════")
+                .withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private static void displayStatistics(
             CommandSourceStack source,
-            List<BaseResourceData> items,
+            ObjectList<BaseResourceData> items,
             OutputManager output
     ) {
         double totalChance = 0.0;
@@ -172,41 +149,31 @@ public class LootAnalyzeCommand {
 
         double avgChance = totalChance / items.size();
 
-        output.sendInfo(source,
-                Component.literal("  📊 Statistics")
-                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+        output.sendInfo(source, Component.literal("  📊 Statistics")
+                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
 
-        output.sendInfo(source,
-                Component.literal("    Average Chance: ")
-                        .withStyle(ChatFormatting.DARK_GRAY)
-                        .append(Component.literal(String.format("%.2f%%", avgChance))
-                                .withStyle(ChatFormatting.AQUA)));
+        output.sendInfo(source, Component.literal("    Average Chance: ").withStyle(ChatFormatting.DARK_GRAY)
+                .append(Component.literal(String.format("%.2f%%", avgChance)).withStyle(ChatFormatting.AQUA)));
 
-        output.sendInfo(source,
-                Component.literal("    Highest: ")
-                        .withStyle(ChatFormatting.DARK_GRAY)
-                        .append(Component.literal(String.format("%.2f%%", highestChance))
-                                .withStyle(ChatFormatting.GREEN)));
+        output.sendInfo(source, Component.literal("    Highest: ").withStyle(ChatFormatting.DARK_GRAY)
+                .append(Component.literal(String.format("%.2f%%", highestChance)).withStyle(ChatFormatting.GREEN)));
 
-        output.sendInfo(source,
-                Component.literal("    Lowest: ")
-                        .withStyle(ChatFormatting.DARK_GRAY)
-                        .append(Component.literal(String.format("%.2f%%", lowestChance))
-                                .withStyle(ChatFormatting.RED)));
+        output.sendInfo(source, Component.literal("    Lowest: ").withStyle(ChatFormatting.DARK_GRAY)
+                .append(Component.literal(String.format("%.2f%%", lowestChance)).withStyle(ChatFormatting.RED)));
 
         output.sendInfo(source, Component.literal(""));
     }
 
     private static void displayItemsByRarity(
             CommandSourceStack source,
-            List<BaseResourceData> items,
+            ObjectList<BaseResourceData> items,
             OutputManager output
     ) {
-        List<BaseResourceData> common = new ArrayList<>();
-        List<BaseResourceData> uncommon = new ArrayList<>();
-        List<BaseResourceData> rare = new ArrayList<>();
-        List<BaseResourceData> veryRare = new ArrayList<>();
-        List<BaseResourceData> legendary = new ArrayList<>();
+        ObjectList<BaseResourceData> common = new ObjectArrayList<>();
+        ObjectList<BaseResourceData> uncommon = new ObjectArrayList<>();
+        ObjectList<BaseResourceData> rare = new ObjectArrayList<>();
+        ObjectList<BaseResourceData> veryRare = new ObjectArrayList<>();
+        ObjectList<BaseResourceData> legendary = new ObjectArrayList<>();
 
         for (BaseResourceData data : items) {
             double chance = extractChance(data);
@@ -223,9 +190,8 @@ public class LootAnalyzeCommand {
             }
         }
 
-        output.sendInfo(source,
-                Component.literal("  💎 Drops by Rarity")
-                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+        output.sendInfo(source, Component.literal("  💎 Drops by Rarity")
+                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
         output.sendInfo(source, Component.literal(""));
 
         if (!common.isEmpty()) {
@@ -250,19 +216,14 @@ public class LootAnalyzeCommand {
             String categoryName,
             String icon,
             ChatFormatting color,
-            List<BaseResourceData> items,
+            ObjectList<BaseResourceData> items,
             OutputManager output
     ) {
-        output.sendInfo(source,
-                Component.literal("  " + icon + " ")
-                        .withStyle(color)
-                        .append(Component.literal(categoryName + " (" + items.size() + ")")
-                                .withStyle(color, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  " + icon + " ").withStyle(color)
+                .append(Component.literal(categoryName + " (" + items.size() + ")")
+                        .withStyle(color, ChatFormatting.BOLD)));
 
-        for (BaseResourceData data : items) {
-            displayItem(source, data, output);
-        }
-
+        for (BaseResourceData data : items) displayItem(source, data, output);
         output.sendInfo(source, Component.literal(""));
     }
 
@@ -278,19 +239,14 @@ public class LootAnalyzeCommand {
 
         String chanceBar = getChanceBar(chance);
 
-        MutableComponent itemLine = Component.literal("    • ")
-                .withStyle(ChatFormatting.DARK_GRAY)
-                .append(itemComponent.copy().withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(": ")
+        MutableComponent itemLine = Component.literal("    • ").withStyle(ChatFormatting.DARK_GRAY)
+                .append(itemComponent.copy().withStyle(ChatFormatting.WHITE)).append(Component.literal(": ")
                         .withStyle(ChatFormatting.DARK_GRAY))
-                .append(Component.literal(String.format("%.2f%%", chance))
-                        .withStyle(chanceColor, ChatFormatting.BOLD));
+                .append(Component.literal(String.format("%.2f%%", chance)).withStyle(chanceColor, ChatFormatting.BOLD));
 
         output.sendInfo(source, itemLine);
 
-        output.sendInfo(source,
-                Component.literal("      " + chanceBar)
-                        .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendInfo(source, Component.literal("      " + chanceBar).withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private static String getLootTableIcon(ResourceLocation lootTableId) {
@@ -338,16 +294,7 @@ public class LootAnalyzeCommand {
 
     private static String getChanceBar(double chance) {
         int filled = (int) Math.min(10, Math.ceil(chance / 10.0));
-        StringBuilder bar = new StringBuilder("[");
-        for (int i = 0; i < 10; i++) {
-            if (i < filled) {
-                bar.append("█");
-            } else {
-                bar.append("░");
-            }
-        }
-        bar.append("]");
-        return bar.toString();
+        return "[" + "██████████".substring(0, filled) + "░░░░░░░░░░".substring(filled) + "]";
     }
 
     private static double extractChance(BaseResourceData data) {

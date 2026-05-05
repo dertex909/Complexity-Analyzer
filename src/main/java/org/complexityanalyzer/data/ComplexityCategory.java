@@ -20,9 +20,6 @@ package org.complexityanalyzer.data;
 
 import net.minecraft.ChatFormatting;
 
-import java.util.Arrays;
-import java.util.List;
-
 public enum ComplexityCategory {
     ABSOLUTE(0, "Absolute", ChatFormatting.WHITE),
     TRIVIAL(10, "Trivial", ChatFormatting.GRAY),
@@ -41,13 +38,20 @@ public enum ComplexityCategory {
     private static final double[] UPPER_BOUNDS;
 
     static {
-        List<ComplexityCategory> calculable = Arrays.stream(values())
-                .filter(c -> c != UNCALCULABLE && c != ABSOLUTE).toList();
+        var allValues = values();
+        int count = 0;
+        for (var v : allValues) if (v != UNCALCULABLE && v != ABSOLUTE) count++;
 
-        CALCULABLE_CATEGORIES = calculable.toArray(new ComplexityCategory[0]);
-        UPPER_BOUNDS = new double[calculable.size()];
-        for (int i = 0; i < calculable.size(); i++) {
-            UPPER_BOUNDS[i] = calculable.get(i).maxComplexity;
+        CALCULABLE_CATEGORIES = new ComplexityCategory[count];
+        UPPER_BOUNDS = new double[count];
+
+        int idx = 0;
+        for (var v : allValues) {
+            if (v != UNCALCULABLE && v != ABSOLUTE) {
+                CALCULABLE_CATEGORIES[idx] = v;
+                UPPER_BOUNDS[idx] = v.maxComplexity;
+                idx++;
+            }
         }
     }
 
@@ -70,15 +74,17 @@ public enum ComplexityCategory {
     }
 
     private static int getCategoryIndex(double complexity) {
-        int searchIndex = Arrays.binarySearch(UPPER_BOUNDS, complexity);
+        int low = 0;
+        int high = UPPER_BOUNDS.length - 1;
 
-        int categoryIndex;
-        if (searchIndex >= 0) {
-            categoryIndex = searchIndex;
-        } else {
-            categoryIndex = -(searchIndex + 1);
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            double midVal = UPPER_BOUNDS[mid];
+            if (midVal < complexity) low = mid + 1;
+            else if (midVal > complexity) high = mid - 1;
+            else return mid;
         }
-        return categoryIndex;
+        return low;
     }
 
     public String getDisplayName() {

@@ -21,16 +21,12 @@ package org.complexityanalyzer.analyzer.resource.sources;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
 import org.complexityanalyzer.geoscan.GeoDatabase;
-import org.complexityanalyzer.geoscan.data.BiomeScanData;
 
-import java.util.Map;
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public class EmpiricalBlockSource implements IResourceSource {
 
@@ -52,25 +48,24 @@ public class EmpiricalBlockSource implements IResourceSource {
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        if (!canProvide(item)) return Optional.empty();
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        if (!canProvide(item)) return null;
 
-        Block block = ((BlockItem) item).getBlock();
-        var propertiesOpt = propertyProvider.getProperties(block);
-        if (propertiesOpt.isEmpty()) return Optional.empty();
-        var properties = propertiesOpt.get();
+        var block = ((BlockItem) item).getBlock();
+        var properties = propertyProvider.getProperties(block);
+        if (properties == null) return null;
 
         double bestCost = Double.POSITIVE_INFINITY;
         BaseResourceData bestData = null;
 
-        for (Map.Entry<ResourceLocation, Map<ResourceLocation, BiomeScanData>> dimEntry :
-                geoDatabase.getAllDimensionData().entrySet()) {
-            ResourceLocation dimensionId = dimEntry.getKey();
-            Map<ResourceLocation, BiomeScanData> biomeDataMap = dimEntry.getValue();
+        for (var dimEntry : geoDatabase.getAllDimensionData().entrySet()) {
+            var dimensionId = dimEntry.getKey();
+            var biomeDataMap = dimEntry.getValue();
 
             long totalBlocksInDim = 0;
             long targetBlockCount = 0;
-            for (BiomeScanData biomeData : biomeDataMap.values()) {
+            for (var biomeData : biomeDataMap.values()) {
                 totalBlocksInDim += biomeData.getTotalBlocks();
                 targetBlockCount += biomeData.getBlockCount(block);
             }
@@ -103,13 +98,13 @@ public class EmpiricalBlockSource implements IResourceSource {
             }
         }
 
-        if (bestData != null) return Optional.of(bestData);
+        if (bestData != null) return bestData;
 
-        return Optional.of(new BaseResourceData.Builder(item, this)
+        return new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.UNOBTAINABLE)
                 .baseFactor(BaseResourceData.ResourceSourceType.UNOBTAINABLE.getBaseMultiplier())
                 .details("Not found in any scanned dimension.")
-                .build());
+                .build();
     }
 
     public boolean isReady() {

@@ -18,12 +18,12 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.world.level.material.Fluid;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-
-public record FluidIngredientSlot(List<Fluid> fluidVariants, int amount) {
-    public List<Fluid> getFluidVariants() {
+public record FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
+    public ObjectList<Fluid> getFluidVariants() {
         return fluidVariants;
     }
 
@@ -31,6 +31,7 @@ public record FluidIngredientSlot(List<Fluid> fluidVariants, int amount) {
         return amount;
     }
 
+    @Nullable
     public Fluid getPrimaryFluid() {
         return fluidVariants.isEmpty() ? null : fluidVariants.getFirst();
     }

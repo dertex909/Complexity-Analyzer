@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -26,22 +27,20 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import org.jetbrains.annotations.Nullable;
 
 public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSourceRegistry {
 
     private static final int NORMAL_PRIORITY = 35;
     private static final int OVERRIDE_PRIORITY = 1000;
 
-    private final Map<Item, SourceRule> normalSources = new ConcurrentHashMap<>();
-    private final Map<Item, SourceRule> overrideSources = new ConcurrentHashMap<>();
+    private final Reference2ObjectMap<Item, SourceRule> normalSources = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private final Reference2ObjectMap<Item, SourceRule> overrideSources = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
     private static HardcodedSourcesProvider INSTANCE;
 
     private record SourceRule(
-            Map<Item, Double> ingredients,
+            Reference2DoubleMap<Item> ingredients,
             double baseCost,
             BaseResourceData.ResourceSourceType type,
             String description,
@@ -69,13 +68,13 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     @Override
-    public void registerTransformation(Item result, Item input, Map<Item, Double> toolWear,
+    public void registerTransformation(Item result, Item input, Reference2DoubleMap<Item> toolWear,
                                        double baseCost, String description) {
-        Map<Item, Double> ingredients = new HashMap<>();
+        var ingredients = new Reference2DoubleOpenHashMap<Item>();
         ingredients.put(input, 1.0);
         if (toolWear != null) ingredients.putAll(toolWear);
 
-        String modId = getCallingModId();
+        var modId = getCallingModId();
         normalSources.put(result, new SourceRule(
                 ingredients,
                 baseCost,
@@ -86,11 +85,11 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     @Override
-    public void registerComplexSource(Item result, Map<Item, Double> ingredients, double baseCost,
+    public void registerComplexSource(Item result, Reference2DoubleMap<Item> ingredients, double baseCost,
                                       BaseResourceData.ResourceSourceType type, String description) {
-        String modId = getCallingModId();
+        var modId = getCallingModId();
         normalSources.put(result, new SourceRule(
-                new HashMap<>(ingredients),
+                new Reference2DoubleOpenHashMap<>(ingredients),
                 baseCost,
                 type,
                 description,
@@ -99,10 +98,10 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     @Override
-    public void registerOverride(Item result, Map<Item, Double> ingredients, double baseCost, String description) {
-        String modId = getCallingModId();
+    public void registerOverride(Item result, Reference2DoubleMap<Item> ingredients, double baseCost, String description) {
+        var modId = getCallingModId();
         overrideSources.put(result, new SourceRule(
-                new HashMap<>(ingredients),
+                new Reference2DoubleOpenHashMap<>(ingredients),
                 baseCost,
                 BaseResourceData.ResourceSourceType.CRAFTING,
                 "[OVERRIDE by " + modId + "] " + description,
@@ -115,9 +114,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
 
     @Override
     public void registerUnobtainable(Item item, String reason) {
-        String modId = getCallingModId();
+        var modId = getCallingModId();
         overrideSources.put(item, new SourceRule(
-                Collections.emptyMap(),
+                Reference2DoubleMaps.emptyMap(),
                 Double.POSITIVE_INFINITY,
                 BaseResourceData.ResourceSourceType.UNOBTAINABLE,
                 "[UNOBTAINABLE by " + modId + "] " + reason,
@@ -138,12 +137,13 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        SourceRule rule = overrideSources.get(item);
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        var rule = overrideSources.get(item);
         boolean isOverride = rule != null;
 
         if (rule == null) rule = normalSources.get(item);
-        if (rule == null) return Optional.empty();
+        if (rule == null) return null;
 
         var builder = new BaseResourceData.Builder(item, this)
                 .sourceType(rule.type)
@@ -157,7 +157,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
             builder.addMetadata("override_by", rule.modId);
         }
 
-        return Optional.of(builder.build());
+        return builder.build();
     }
 
     @Override
@@ -176,12 +176,12 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     private String getCallingModId() {
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        for (StackTraceElement element : stack) {
-            String className = element.getClassName();
+        var stack = Thread.currentThread().getStackTrace();
+        for (var element : stack) {
+            var className = element.getClassName();
             if (!className.startsWith("org.complexityanalyzer") && !className.startsWith("java.") &&
                     !className.startsWith("net.minecraft")) {
-                String[] parts = className.split("\\.");
+                var parts = className.split("\\.");
                 if (parts.length > 0) return parts[0];
             }
         }
@@ -241,9 +241,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         registerStripping(Items.WARPED_HYPHAE, Items.STRIPPED_WARPED_HYPHAE);
 
         registerTransformation(Items.CARVED_PUMPKIN, Items.PUMPKIN,
-                Map.of(Items.SHEARS, 0.01), 1.0, "Carving pumpkin");
+                Reference2DoubleMaps.singleton(Items.SHEARS, 0.01), 1.0, "Carving pumpkin");
         registerTransformation(Items.FARMLAND, Items.DIRT,
-                Map.of(Items.WOODEN_HOE, 0.01), 1.0, "Tilling dirt");
+                Reference2DoubleMaps.singleton(Items.WOODEN_HOE, 0.01), 1.0, "Tilling dirt");
 
         registerConcrete(Items.WHITE_CONCRETE_POWDER, Items.WHITE_CONCRETE);
         registerConcrete(Items.ORANGE_CONCRETE_POWDER, Items.ORANGE_CONCRETE);
@@ -297,69 +297,89 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         registerTransformation(Items.CHIPPED_ANVIL, Items.ANVIL, null, 0, "Anvil usage damage");
         registerTransformation(Items.DAMAGED_ANVIL, Items.CHIPPED_ANVIL, null, 0, "Anvil usage damage");
 
-        registerComplexSource(Items.ROOTED_DIRT, Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 2.0),
+        var mossIng = new Reference2DoubleOpenHashMap<Item>();
+        mossIng.put(Items.MOSS_BLOCK, 1.0);
+        mossIng.put(Items.BONE_MEAL, 2.0);
+        registerComplexSource(Items.ROOTED_DIRT, mossIng,
                 2.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, "Bonemeal on moss");
-        registerComplexSource(Items.AZALEA_LEAVES, Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 1.0),
+
+        var azaleaIng = new Reference2DoubleOpenHashMap<Item>();
+        azaleaIng.put(Items.MOSS_BLOCK, 1.0);
+        azaleaIng.put(Items.BONE_MEAL, 1.0);
+        registerComplexSource(Items.AZALEA_LEAVES, azaleaIng,
                 1.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, "Bonemeal on moss");
-        registerComplexSource(Items.FLOWERING_AZALEA_LEAVES, Map.of(Items.MOSS_BLOCK, 1.0, Items.BONE_MEAL, 1.0),
+
+        var flowerAzaleaIng = new Reference2DoubleOpenHashMap<Item>();
+        flowerAzaleaIng.put(Items.MOSS_BLOCK, 1.0);
+        flowerAzaleaIng.put(Items.BONE_MEAL, 1.0);
+        registerComplexSource(Items.FLOWERING_AZALEA_LEAVES, flowerAzaleaIng,
                 1.0, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, "Bonemeal on moss");
     }
 
     private void registerBucketInteractions() {
-        registerComplexSource(Items.LAVA_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.LAVA_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 10.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Collecting lava");
 
-        registerComplexSource(Items.PUFFERFISH_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.PUFFERFISH_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 15.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Catching pufferfish");
-        registerComplexSource(Items.SALMON_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.SALMON_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 15.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Catching salmon");
-        registerComplexSource(Items.COD_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.COD_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 15.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Catching cod");
-        registerComplexSource(Items.TROPICAL_FISH_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.TROPICAL_FISH_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 20.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Catching tropical fish");
-        registerComplexSource(Items.AXOLOTL_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.AXOLOTL_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 25.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Catching axolotl");
-        registerComplexSource(Items.TADPOLE_BUCKET, Map.of(Items.BUCKET, 1.0),
+        registerComplexSource(Items.TADPOLE_BUCKET, Reference2DoubleMaps.singleton(Items.BUCKET, 1.0),
                 20.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Catching tadpole");
     }
 
     private void registerSpecialLoot() {
-        registerComplexSource(Items.ELYTRA, Collections.emptyMap(),
+        registerComplexSource(Items.ELYTRA, Reference2DoubleMaps.emptyMap(),
                 1000.0, BaseResourceData.ResourceSourceType.SPECIAL_LOOT,
                 "End Ship treasure (extremely rare)");
 
-        registerComplexSource(Items.FLOW_POTTERY_SHERD, Collections.emptyMap(),
+        registerComplexSource(Items.FLOW_POTTERY_SHERD, Reference2DoubleMaps.emptyMap(),
                 150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY,
                 "Trial Chambers archaeology");
-        registerComplexSource(Items.GUSTER_POTTERY_SHERD, Collections.emptyMap(),
+        registerComplexSource(Items.GUSTER_POTTERY_SHERD, Reference2DoubleMaps.emptyMap(),
                 150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY,
                 "Trial Chambers archaeology");
-        registerComplexSource(Items.SCRAPE_POTTERY_SHERD, Collections.emptyMap(),
+        registerComplexSource(Items.SCRAPE_POTTERY_SHERD, Reference2DoubleMaps.emptyMap(),
                 150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY,
                 "Trial Chambers archaeology");
 
-        registerComplexSource(Items.OMINOUS_TRIAL_KEY, Map.of(Items.TRIAL_KEY, 1.0),
+        registerComplexSource(Items.OMINOUS_TRIAL_KEY, Reference2DoubleMaps.singleton(Items.TRIAL_KEY, 1.0),
                 200.0, BaseResourceData.ResourceSourceType.SPECIAL_LOOT,
                 "Ominous Vault drop");
     }
 
     private void registerSpecialCrafts() {
-        registerComplexSource(Items.BUNDLE, Map.of(Items.STRING, 2.0, Items.RABBIT_HIDE, 1.0),
+        var bundleIng = new Reference2DoubleOpenHashMap<Item>();
+        bundleIng.put(Items.STRING, 2.0);
+        bundleIng.put(Items.RABBIT_HIDE, 1.0);
+        registerComplexSource(Items.BUNDLE, bundleIng,
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Bundle crafting");
 
-        registerComplexSource(Items.WRITTEN_BOOK, Map.of(Items.WRITABLE_BOOK, 1.0),
+        registerComplexSource(Items.WRITTEN_BOOK, Reference2DoubleMaps.singleton(Items.WRITABLE_BOOK, 1.0),
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Signing a book");
 
-        registerComplexSource(Items.FIREWORK_STAR, Map.of(Items.GUNPOWDER, 1.0, Items.YELLOW_DYE, 1.0),
+        var starIng = new Reference2DoubleOpenHashMap<Item>();
+        starIng.put(Items.GUNPOWDER, 1.0);
+        starIng.put(Items.YELLOW_DYE, 1.0);
+        registerComplexSource(Items.FIREWORK_STAR, starIng,
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Basic firework star");
     }
 
     private void registerDragonItems() {
-        registerComplexSource(Items.DRAGON_BREATH, Map.of(Items.GLASS_BOTTLE, 1.0),
+        registerComplexSource(Items.DRAGON_BREATH, Reference2DoubleMaps.singleton(Items.GLASS_BOTTLE, 1.0),
                 100.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION,
                 "Collecting dragon breath");
 
-        registerComplexSource(Items.LINGERING_POTION, Map.of(Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0),
+        var lingerIng = new Reference2DoubleOpenHashMap<Item>();
+        lingerIng.put(Items.DRAGON_BREATH, 1.0);
+        lingerIng.put(Items.SPLASH_POTION, 1.0);
+        registerComplexSource(Items.LINGERING_POTION, lingerIng,
                 1.0, BaseResourceData.ResourceSourceType.CRAFTING, "Lingering potion brewing");
     }
 
@@ -368,7 +388,7 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     }
 
     private void registerStripping(Item normal, Item stripped) {
-        registerTransformation(stripped, normal, Map.of(Items.WOODEN_AXE, 0.01), 1.0, "Stripping with axe");
+        registerTransformation(stripped, normal, Reference2DoubleMaps.singleton(Items.WOODEN_AXE, 0.01), 1.0, "Stripping with axe");
     }
 
     private void registerConcrete(Item powder, Item concrete) {

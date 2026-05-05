@@ -18,30 +18,30 @@
 
 package org.complexityanalyzer.analyzer;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Comparator;
 
 public class MachineRegistry {
 
-    private final Map<ResourceLocation, Item> mapping = new HashMap<>();
+    private final Object2ObjectMap<ResourceLocation, Item> mapping = new Object2ObjectOpenHashMap<>();
     private boolean initialized = false;
 
     public void initialize() {
         if (initialized) return;
-
         int vanilla = registerVanilla();
         ComplexityAnalyzer.LOGGER.info("Registered {} vanilla machines", vanilla);
-
         initialized = true;
     }
 
-    public void loadFromJEI(Map<ResourceLocation, List<Item>> jeiCatalysts) {
+    public void loadFromJEI(Object2ObjectMap<ResourceLocation, ObjectList<Item>> jeiCatalysts) {
         if (jeiCatalysts.isEmpty()) {
             ComplexityAnalyzer.LOGGER.warn("JEI provided 0 catalysts");
             return;
@@ -52,20 +52,18 @@ public class MachineRegistry {
         int updated = 0;
         int skipped = 0;
 
-        for (Map.Entry<ResourceLocation, List<Item>> entry : jeiCatalysts.entrySet()) {
-            ResourceLocation typeId = entry.getKey();
-            List<Item> machines = entry.getValue();
+        for (var entry : Object2ObjectMaps.fastIterable(jeiCatalysts)) {
+            var typeId = entry.getKey();
+            var machines = entry.getValue();
 
             if (machines.isEmpty()) continue;
 
-            if (typeId.getNamespace().equals("minecraft")) {
-                if (mapping.containsKey(typeId)) {
-                    skipped++;
-                    continue;
-                }
+            if (typeId.getNamespace().equals("minecraft")) if (mapping.containsKey(typeId)) {
+                skipped++;
+                continue;
             }
 
-            Item machine = machines.getFirst();
+            var machine = machines.getFirst();
 
             if (mapping.containsKey(typeId)) {
                 updated++;
@@ -82,10 +80,11 @@ public class MachineRegistry {
         if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) logAllMachines();
     }
 
-    public Optional<Item> getMachineForRecipe(RecipeType<?> type) {
-        if (!initialized) return Optional.empty();
-        ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(type);
-        return Optional.ofNullable((typeId != null) ? mapping.get(typeId) : null);
+    @Nullable
+    public Item getMachineForRecipe(RecipeType<?> type) {
+        if (!initialized) return null;
+        var typeId = BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        return (typeId != null) ? mapping.get(typeId) : null;
     }
 
     private int registerVanilla() {
@@ -100,14 +99,13 @@ public class MachineRegistry {
     }
 
     private void register(String recipeTypeId, String itemId) {
-        ResourceLocation typeRL = ResourceLocation.parse(recipeTypeId);
-        ResourceLocation itemRL = ResourceLocation.parse(itemId);
+        var typeRL = ResourceLocation.parse(recipeTypeId);
+        var itemRL = ResourceLocation.parse(itemId);
 
-        Item item = BuiltInRegistries.ITEM.get(itemRL);
+        var item = BuiltInRegistries.ITEM.get(itemRL);
 
         if (item == Items.AIR) {
-            ComplexityAnalyzer.LOGGER.warn("Failed to register machine: {} -> {} (item not found)",
-                    recipeTypeId, itemId);
+            ComplexityAnalyzer.LOGGER.warn("Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
             return;
         }
 
@@ -116,10 +114,11 @@ public class MachineRegistry {
 
     private void logAllMachines() {
         ComplexityAnalyzer.LOGGER.debug("=== All registered machines ({}) ===", mapping.size());
-        mapping.entrySet().stream().sorted(Map.Entry.comparingByKey(Comparator.comparing(ResourceLocation::toString)))
-                .forEach(entry ->
-                        ComplexityAnalyzer.LOGGER.debug("  {} -> {}", entry.getKey(),
-                                BuiltInRegistries.ITEM.getKey(entry.getValue()))
-                );
+        var keys = new ObjectArrayList<>(mapping.keySet());
+        keys.sort(Comparator.comparing(ResourceLocation::toString));
+        for (var key : keys) {
+            var item = mapping.get(key);
+            ComplexityAnalyzer.LOGGER.debug("  {} -> {}", key, BuiltInRegistries.ITEM.getKey(item));
+        }
     }
 }

@@ -18,8 +18,11 @@
 
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.Tiers;
@@ -27,13 +30,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public class BlockPropertyProvider {
 
-    private final Map<Block, BlockProperties> propertiesCache = new HashMap<>();
+    private final Reference2ObjectMap<Block, BlockProperties> propertiesCache = new Reference2ObjectOpenHashMap<>();
     private boolean initialized = false;
 
     public void initialize() {
@@ -79,13 +80,15 @@ public class BlockPropertyProvider {
         return Tiers.WOOD;
     }
 
-    public Optional<BlockProperties> getProperties(Block block) {
-        return Optional.ofNullable(propertiesCache.get(block));
+    @Nullable
+    public BlockProperties getProperties(Block block) {
+        return propertiesCache.get(block);
     }
 
-    public Optional<BlockProperties> getProperties(Item item) {
-        if (item instanceof net.minecraft.world.item.BlockItem blockItem) return getProperties(blockItem.getBlock());
-        return Optional.empty();
+    @Nullable
+    public BlockProperties getProperties(Item item) {
+        if (item instanceof BlockItem blockItem) return getProperties(blockItem.getBlock());
+        return null;
     }
 
     public boolean isInitialized() {

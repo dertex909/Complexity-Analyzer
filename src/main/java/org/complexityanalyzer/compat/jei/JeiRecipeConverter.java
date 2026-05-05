@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.compat.jei;
 
+import it.unimi.dsi.fastutil.objects.*;
 import mezz.jei.api.recipe.RecipeType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -33,32 +34,30 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
-import java.util.*;
-
 public class JeiRecipeConverter {
-    public static List<RecipeNode> convertAllFromJei(Map<RecipeType<?>, List<?>> recipesByType, Level level) {
-        int totalRecipes = recipesByType.values().stream().mapToInt(List::size).sum();
+    public static ObjectList<RecipeNode> convertAllFromJei(Reference2ObjectMap<RecipeType<?>, ObjectList<?>> recipesByType, Level level) {
+        int totalRecipes = 0;
+        for (var list : recipesByType.values()) totalRecipes += list.size();
 
-        Map<Class<?>, List<RecipeWithType>> recipesByClass = new HashMap<>();
+        Reference2ObjectMap<Class<?>, ObjectList<RecipeWithType>> recipesByClass = new Reference2ObjectOpenHashMap<>();
 
-        for (Map.Entry<RecipeType<?>, List<?>> entry : recipesByType.entrySet()) {
+        for (var entry : recipesByType.reference2ObjectEntrySet()) {
             RecipeType<?> jeiType = entry.getKey();
-            List<?> recipes = entry.getValue();
+            ObjectList<?> recipes = entry.getValue();
             if (recipes.isEmpty()) continue;
 
             ResourceLocation jeiTypeId = jeiType.getUid();
-
             for (Object recipe : recipes) {
-                recipesByClass.computeIfAbsent(recipe.getClass(), k -> new ArrayList<>())
+                recipesByClass.computeIfAbsent(recipe.getClass(), k -> new ObjectArrayList<>())
                         .add(new RecipeWithType(recipe, jeiTypeId));
             }
         }
 
         long learnStart = System.currentTimeMillis();
-        for (Map.Entry<Class<?>, List<RecipeWithType>> entry : recipesByClass.entrySet()) {
-            if (entry.getValue().isEmpty()) continue;
-            Object sampleRecipe = entry.getValue().getFirst().recipe();
-            AdaptiveRecipeConverter.warmupClass(sampleRecipe, level);
+        for (var list : recipesByClass.values()) {
+            if (list.isEmpty()) continue;
+            Object sampleRecipe = list.getFirst().recipe();
+            AdaptiveRecipeConverter.warmupClass(sampleRecipe);
         }
         long learnTime = System.currentTimeMillis() - learnStart;
         if (learnTime > 500) {
@@ -67,11 +66,10 @@ public class JeiRecipeConverter {
         }
 
         long convertStart = System.currentTimeMillis();
-        List<RecipeWithType> allRecipes = recipesByClass.values().stream()
-                .flatMap(List::stream)
-                .toList();
+        ObjectList<RecipeWithType> allRecipes = new ObjectArrayList<>(totalRecipes);
+        for (var list : recipesByClass.values()) allRecipes.addAll(list);
 
-        List<RecipeNode> result = new ArrayList<>(AdaptiveRecipeConverter.convertJeiBatch(allRecipes, level));
+        ObjectList<RecipeNode> result = new ObjectArrayList<>(AdaptiveRecipeConverter.convertJeiBatch(allRecipes, level));
 
         long convertTime = System.currentTimeMillis() - convertStart;
 
@@ -86,12 +84,11 @@ public class JeiRecipeConverter {
     public record RecipeWithType(Object recipe, ResourceLocation jeiTypeId) {
     }
 
-    public static List<RecipeNode> convertAllFromRecipeManager(Level level) {
+    public static ObjectList<RecipeNode> convertAllFromRecipeManager(Level level) {
         ComplexityAnalyzer.LOGGER.info("Processing recipes from RecipeManager...");
 
         RecipeManager recipeManager = level.getRecipeManager();
-
-        List<Recipe<?>> moddedRecipes = new ArrayList<>();
+        ObjectList<Recipe<?>> moddedRecipes = new ObjectArrayList<>();
         int skipped = 0;
 
         for (RecipeHolder<?> holder : recipeManager.getRecipes()) {
@@ -111,10 +108,10 @@ public class JeiRecipeConverter {
                 moddedRecipes.size(), skipped);
 
         if (moddedRecipes.isEmpty()) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
 
-        List<RecipeNode> result = AdaptiveRecipeConverter.convertRecipesBatch(moddedRecipes, level);
+        ObjectList<RecipeNode> result = AdaptiveRecipeConverter.convertRecipesBatch(moddedRecipes, level);
 
         ComplexityAnalyzer.LOGGER.info(
                 "RecipeManager processing complete: {} converted, {} skipped",
@@ -125,9 +122,9 @@ public class JeiRecipeConverter {
     }
 
     public static RecipeNode convert(Object recipe, Level level, ResourceLocation jeiTypeId) {
-        List<ItemStack> itemOutputs = AdaptiveRecipeConverter.extractOutputs(recipe, level);
-        List<FluidStack> fluidOutputs = AdaptiveRecipeConverter.extractFluidOutputs(recipe, level);
-        List<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs =
+        ObjectList<ItemStack> itemOutputs = AdaptiveRecipeConverter.extractOutputs(recipe, level);
+        ObjectList<FluidStack> fluidOutputs = AdaptiveRecipeConverter.extractFluidOutputs(recipe, level);
+        ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs =
                 AdaptiveRecipeConverter.extractChemicalOutputs(recipe, level);
 
         if (itemOutputs.isEmpty() && fluidOutputs.isEmpty() && chemicalOutputs.isEmpty()) return null;
@@ -166,11 +163,11 @@ public class JeiRecipeConverter {
             recipeType = BuiltInRegistries.RECIPE_TYPE.get(jeiTypeId);
 
             if (recipeType == null) {
-                final String typeId = jeiTypeId.toString();
+                final String typeIdStr = jeiTypeId.toString();
                 recipeType = new net.minecraft.world.item.crafting.RecipeType<>() {
                     @Override
                     public String toString() {
-                        return typeId;
+                        return typeIdStr;
                     }
                 };
             }
@@ -180,27 +177,33 @@ public class JeiRecipeConverter {
 
         builder.recipeType(recipeType);
 
-        List<List<ItemStack>> itemInputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
-        List<List<FluidStack>> fluidInputs = AdaptiveRecipeConverter.extractFluidInputs(recipe, level);
-        List<AdaptiveRecipeConverter.ChemicalOutput> chemicalInputs =
+        ObjectList<ObjectList<ItemStack>> itemInputs = AdaptiveRecipeConverter.extractInputs(recipe, level);
+        ObjectList<ObjectList<FluidStack>> fluidInputs = AdaptiveRecipeConverter.extractFluidInputs(recipe, level);
+        ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemicalInputs =
                 AdaptiveRecipeConverter.extractChemicalInputs(recipe);
 
-        for (List<ItemStack> inputVariants : itemInputs) {
+        for (ObjectList<ItemStack> inputVariants : itemInputs) {
             if (inputVariants.isEmpty()) continue;
-            List<Item> items = inputVariants.stream()
-                    .map(ItemStack::getItem)
-                    .distinct()
-                    .toList();
+
+            ObjectList<Item> items = new ObjectArrayList<>();
+            for (ItemStack stack : inputVariants) {
+                Item item = stack.getItem();
+                if (!items.contains(item)) items.add(item);
+            }
+
             int count = inputVariants.getFirst().getCount();
             builder.addIngredient(items, count);
         }
 
-        for (List<FluidStack> inputVariants : fluidInputs) {
+        for (ObjectList<FluidStack> inputVariants : fluidInputs) {
             if (inputVariants.isEmpty()) continue;
-            List<net.minecraft.world.level.material.Fluid> fluids = inputVariants.stream()
-                    .map(FluidStack::getFluid)
-                    .distinct()
-                    .toList();
+
+            ObjectList<net.minecraft.world.level.material.Fluid> fluids = new ObjectArrayList<>();
+            for (FluidStack stack : inputVariants) {
+                net.minecraft.world.level.material.Fluid fluid = stack.getFluid();
+                if (!fluids.contains(fluid)) fluids.add(fluid);
+            }
+
             int amount = inputVariants.getFirst().getAmount();
             builder.addFluidIngredient(fluids, amount);
         }

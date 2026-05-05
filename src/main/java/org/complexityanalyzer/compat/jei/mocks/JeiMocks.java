@@ -19,6 +19,7 @@
 package org.complexityanalyzer.compat.jei.mocks;
 
 import com.mojang.serialization.Codec;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import mezz.jei.api.gui.builder.IClickableIngredientFactory;
 import mezz.jei.api.helpers.*;
 import mezz.jei.api.ingredients.*;
@@ -40,9 +41,7 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -145,12 +144,12 @@ public class JeiMocks {
     private static class EmptyIngredientManager implements IIngredientManager {
         @Override
         public <V> Collection<V> getAllIngredients(IIngredientType<V> ingredientType) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
 
         @Override
         public <V> Collection<ITypedIngredient<V>> getAllTypedIngredients(IIngredientType<V> ingredientType) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
 
         @Override
@@ -180,7 +179,7 @@ public class JeiMocks {
 
         @Override
         public Collection<IIngredientType<?>> getRegisteredIngredientTypes() {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
 
         @Override
@@ -234,7 +233,7 @@ public class JeiMocks {
 
         @Override
         public Collection<String> getIngredientAliases(ITypedIngredient<?> ingredient) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
 
         @Override
@@ -264,7 +263,9 @@ public class JeiMocks {
     private static class SmartIngredientManager extends EmptyIngredientManager {
         @SuppressWarnings("FieldCanBeLocal")
         private final RecipeManager recipeManager;
+
         public SmartIngredientManager(RecipeManager recipeManager) {
+            super();
             this.recipeManager = recipeManager;
         }
     }
@@ -335,7 +336,9 @@ public class JeiMocks {
     private static class SmartVanillaRecipeFactory extends EmptyVanillaRecipeFactory {
         @SuppressWarnings("FieldCanBeLocal")
         private final RecipeManager recipeManager;
+
         public SmartVanillaRecipeFactory(RecipeManager recipeManager) {
+            super();
             this.recipeManager = recipeManager;
         }
     }

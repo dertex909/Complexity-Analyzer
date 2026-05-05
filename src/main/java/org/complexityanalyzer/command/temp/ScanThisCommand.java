@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.command;
+package org.complexityanalyzer.command.temp;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -37,6 +37,8 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.task.ChunkAnalyzer;
 import org.complexityanalyzer.geoscan.worldgen.UltraFastChunkGenerator;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -588,10 +590,8 @@ public final class ScanThisCommand {
         CACHED_FEATURES() {
             @Override
             Map<String, Integer> generate(UltraFastChunkGenerator generator, ChunkPos chunkPos, ChunkAnalyzer analyzer) {
-                List<ChunkAccess> generatedChunks = generator.generateBatch(List.of(chunkPos));
-                if (generatedChunks.isEmpty()) {
-                    return Collections.emptyMap();
-                }
+                ObjectList<ChunkAccess> generatedChunks = generator.generateBatch(ObjectLists.singleton(chunkPos));
+                if (generatedChunks.isEmpty()) return Collections.emptyMap();
                 return extractCounts(analyzer.createSnapshot(generatedChunks.getFirst()));
             }
         },

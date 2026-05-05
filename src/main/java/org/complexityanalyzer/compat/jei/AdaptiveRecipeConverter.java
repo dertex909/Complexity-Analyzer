@@ -18,8 +18,8 @@
 
 package org.complexityanalyzer.compat.jei;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,91 +29,57 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.MachineRegistry;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
-import sun.misc.Unsafe;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.function.Supplier;
+import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("ForLoopReplaceableByForEach")
 public final class AdaptiveRecipeConverter {
 
     private static final int MAX_DEPTH = 5;
-    private static final int BATCH_TIMEOUT_SECONDS = 60;
-
-    private static final MethodHandles.Lookup LOOKUP;
-    private static final Unsafe UNSAFE;
-
-    static {
-        MethodHandles.Lookup lk;
-        try {
-            lk = MethodHandles.privateLookupIn(AdaptiveRecipeConverter.class, MethodHandles.lookup());
-        } catch (Exception e) {
-            lk = MethodHandles.lookup();
-        }
-        LOOKUP = lk;
-
-        Unsafe unsafeInstance = null;
-        try {
-            var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            unsafeInstance = (Unsafe) unsafeField.get(null);
-        } catch (Exception ignored) {
-        }
-        UNSAFE = unsafeInstance;
-    }
-
-    private static ForkJoinPool getPool() {
-        return ThreadPoolManager.getInstance().getForkJoinPool();
-    }
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private static final ConcurrentHashMap<Class<?>, ClassMeta> CLASS_META_CACHE = new ConcurrentHashMap<>(256);
-
     private static final ConcurrentHashMap<Class<?>, AdapterSnapshot> ADAPTER_CACHE = new ConcurrentHashMap<>(256);
 
-    private static volatile MachineRegistry machineRegistry;
+    private static final ThreadLocal<ObjectArrayList<ItemStack>> TL_ITEM_LIST =
+            ThreadLocal.withInitial(() -> new ObjectArrayList<>(32));
+    private static final ThreadLocal<ObjectArrayList<FluidStack>> TL_FLUID_LIST =
+            ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
+    private static final ThreadLocal<ObjectArrayList<ChemicalOutput>> TL_CHEM_LIST =
+            ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
 
-    private static final ThreadLocal<ArrayList<ItemStack>> TL_ITEM_LIST =
-            ThreadLocal.withInitial(() -> new ArrayList<>(32));
-    private static final ThreadLocal<ArrayList<FluidStack>> TL_FLUID_LIST =
-            ThreadLocal.withInitial(() -> new ArrayList<>(16));
-    private static final ThreadLocal<ArrayList<ChemicalOutput>> TL_CHEM_LIST =
-            ThreadLocal.withInitial(() -> new ArrayList<>(16));
-    private static final ThreadLocal<Set<Object>> TL_VISITED =
-            ThreadLocal.withInitial(() -> Collections.newSetFromMap(new IdentityHashMap<>(32)));
-
-    private static <T> ArrayList<T> borrowList(ThreadLocal<ArrayList<T>> tl) {
-        ArrayList<T> list = tl.get();
+    private static <T> ObjectArrayList<T> borrowList(ThreadLocal<ObjectArrayList<T>> tl) {
+        var list = tl.get();
         list.clear();
         return list;
     }
 
-    private static <T> List<T> snapshotAndReturn(ArrayList<T> borrowed) {
-        if (borrowed.isEmpty()) return Collections.emptyList();
-        List<T> result = List.copyOf(borrowed);
+    private static <T> ObjectList<T> snapshotAndReturn(ObjectArrayList<T> borrowed) {
+        if (borrowed.isEmpty()) return ObjectLists.emptyList();
+        var result = new ObjectArrayList<>(borrowed);
         borrowed.clear();
         return result;
     }
 
     static final class ClassMeta {
-        final Map<String, Method> methodMap;
-        final Map<String, MethodHandle> handleMap;
-        final List<Field> allFields;
-        final Map<String, Field> fieldMap;
+        final Object2ObjectMap<String, Method> methodMap;
+        final Object2ObjectMap<String, MethodHandle> handleMap;
+        final ObjectList<Field> allFields;
+        final Object2ObjectMap<String, Field> fieldMap;
         final RecordComponent[] recordComponents;
         final MethodHandle[] recordHandles;
         final boolean isRecord;
@@ -121,35 +87,34 @@ public final class AdaptiveRecipeConverter {
 
         ClassMeta(Class<?> clazz) {
             this.isRecord = clazz.isRecord();
-
-            Method[] methods = clazz.getMethods();
+            var methods = clazz.getMethods();
             this.allMethods = methods;
-            Map<String, Method> mMap = new HashMap<>(methods.length * 2);
-            Map<String, MethodHandle> hMap = new HashMap<>(methods.length * 2);
+            var mMap = new Object2ObjectOpenHashMap<String, Method>(methods.length);
+            var hMap = new Object2ObjectOpenHashMap<String, MethodHandle>(methods.length);
 
-            for (Method m : methods) {
-                Method existing = mMap.get(m.getName());
+            for (var m : methods) {
+                var existing = mMap.get(m.getName());
                 if (existing == null || (existing.getParameterCount() > 0 && m.getParameterCount() == 0)) {
                     mMap.put(m.getName(), m);
-                    MethodHandle h = createHandle(m);
+                    var h = createHandle(m);
                     if (h != null) hMap.put(m.getName(), h);
                 }
             }
-            this.methodMap = Map.copyOf(mMap);
-            this.handleMap = Map.copyOf(hMap);
+            this.methodMap = Object2ObjectMaps.unmodifiable(mMap);
+            this.handleMap = Object2ObjectMaps.unmodifiable(hMap);
 
-            List<Field> fields = new ArrayList<>();
-            Map<String, Field> fMap = new HashMap<>();
-            Class<?> current = clazz;
+            var fields = new ObjectArrayList<Field>();
+            var fMap = new Object2ObjectOpenHashMap<String, Field>();
+            var current = clazz;
             while (current != null && current != Object.class) {
-                for (Field f : current.getDeclaredFields()) {
+                for (var f : current.getDeclaredFields()) {
                     fields.add(f);
                     fMap.putIfAbsent(f.getName(), f);
                 }
                 current = current.getSuperclass();
             }
-            this.allFields = List.copyOf(fields);
-            this.fieldMap = Map.copyOf(fMap);
+            this.allFields = ObjectLists.unmodifiable(fields);
+            this.fieldMap = Object2ObjectMaps.unmodifiable(fMap);
 
             if (this.isRecord) {
                 this.recordComponents = clazz.getRecordComponents();
@@ -166,44 +131,18 @@ public final class AdaptiveRecipeConverter {
         private static MethodHandle createHandle(Method method) {
             try {
                 method.setAccessible(true);
-                MethodHandle raw = LOOKUP.unreflect(method);
-
+                var priv = MethodHandles.privateLookupIn(method.getDeclaringClass(), LOOKUP);
+                var raw = priv.unreflect(method);
                 if (method.getParameterCount() == 0)
                     return raw.asType(MethodType.methodType(Object.class, Object.class));
                 return raw;
             } catch (Exception e) {
-                try {
-                    MethodHandles.Lookup priv = MethodHandles.privateLookupIn(method.getDeclaringClass(), LOOKUP);
-                    MethodHandle raw = priv.unreflect(method);
-                    if (method.getParameterCount() == 0)
-                        return raw.asType(MethodType.methodType(Object.class, Object.class));
-                    return raw;
-                } catch (Exception ignored) {
-                    return null;
-                }
+                return null;
             }
-        }
-
-        Method findMethod(String name) {
-            return methodMap.get(name);
         }
 
         MethodHandle findHandle(String name) {
             return handleMap.get(name);
-        }
-
-        Field findField(String name) {
-            return fieldMap.get(name);
-        }
-
-        Object invokeNoArg(String methodName, Object target) {
-            MethodHandle h = handleMap.get(methodName);
-            if (h == null) return null;
-            try {
-                return h.invokeExact(target);
-            } catch (Throwable ignored) {
-                return null;
-            }
         }
     }
 
@@ -271,9 +210,9 @@ public final class AdaptiveRecipeConverter {
         @Override
         public Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
-            Object[] args = prepareArguments(method, level);
+            var args = prepareArguments(method, level);
             if (args == null) return null;
-            Object[] all = new Object[1 + args.length];
+            var all = new Object[1 + args.length];
             all[0] = recipe;
             System.arraycopy(args, 0, all, 1, args.length);
             return fullHandle.invokeWithArguments(all);
@@ -281,38 +220,31 @@ public final class AdaptiveRecipeConverter {
     }
 
     static final class FieldAccessor implements Accessor {
-        private final long offset;
+        private final VarHandle varHandle;
         private final Field field;
 
         FieldAccessor(Field field) {
             this.field = field;
-            long off = -1;
-            if (UNSAFE != null) {
-                try {
-                    @SuppressWarnings("deprecation")
-                    long fieldOffset = UNSAFE.objectFieldOffset(field);
-                    off = fieldOffset;
-                } catch (Exception ignored) {
-                }
+            VarHandle vh = null;
+            try {
+                field.setAccessible(true);
+                var priv = MethodHandles.privateLookupIn(field.getDeclaringClass(), LOOKUP);
+                vh = priv.unreflectVarHandle(field);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.debug("Failed to create VarHandle for field {}.{}: {}",
+                        field.getDeclaringClass().getName(), field.getName(), e.getMessage());
             }
-            this.offset = off;
-            if (off == -1) {
-                try {
-                    field.setAccessible(true);
-                } catch (Exception ignored) {
-                }
-            }
+            this.varHandle = vh;
         }
 
         @Override
         public Object extract(Object recipe, Level level) throws Throwable {
-            if (offset != -1 && UNSAFE != null) return UNSAFE.getObject(recipe, offset);
+            if (varHandle != null) return varHandle.get(recipe);
             return field.get(recipe);
         }
     }
 
-    public static void setMachineRegistry(MachineRegistry registry) {
-        machineRegistry = registry;
+    public static void setMachineRegistry() {
     }
 
     public record ChemicalOutput(ResourceLocation id, long amount) {
@@ -320,116 +252,43 @@ public final class AdaptiveRecipeConverter {
 
     private static final Set<String> UNSAFE_RECIPE_CLASSES = ConcurrentHashMap.newKeySet();
 
-    public static void warmupClass(Object sampleRecipe, Level level) {
+    public static void warmupClass(Object sampleRecipe) {
         if (sampleRecipe == null) return;
-        Object actual = unwrap(sampleRecipe);
-        Class<?> clazz = actual.getClass();
-        AdapterSnapshot existing = ADAPTER_CACHE.get(clazz);
+        var actual = unwrap(sampleRecipe);
+        var clazz = actual.getClass();
+        var existing = ADAPTER_CACHE.get(clazz);
         if (existing != null && existing != AdapterSnapshot.EMPTY) return;
-        for (ResourceType type : ResourceType.values()) {
-            resolveAccessor(actual, true, type, level);
-            resolveAccessor(actual, false, type, level);
+        for (var type : ResourceType.values()) {
+            resolveAccessor(actual, true, type);
+            resolveAccessor(actual, false, type);
         }
     }
 
-    public static List<RecipeNode> convertJeiBatch(
-            List<JeiRecipeConverter.RecipeWithType> recipes, Level level) {
+    public static ObjectList<RecipeNode> convertJeiBatch(ObjectList<JeiRecipeConverter.RecipeWithType> recipes, Level level) {
+        if (recipes.isEmpty()) return ObjectLists.emptyList();
 
-        if (recipes.isEmpty()) return Collections.emptyList();
+        var results = new ObjectArrayList<RecipeNode>(recipes.size());
+        var unsafeRecipes = new ObjectArrayList<JeiRecipeConverter.RecipeWithType>();
 
-        java.util.logging.Logger threadingLogger = java.util.logging.Logger.getLogger("net.minecraft.util.ThreadingDetector");
-        java.util.logging.Level oldLevel = threadingLogger.getLevel();
-        threadingLogger.setLevel(java.util.logging.Level.OFF);
-        org.apache.logging.log4j.core.Logger minecraftLogger = null;
-        org.apache.logging.log4j.Level oldLog4jLevel = null;
-        try {
-            var loggerContext = org.apache.logging.log4j.LogManager.getContext(false);
-            if (loggerContext instanceof org.apache.logging.log4j.core.LoggerContext ctx) {
-                minecraftLogger = ctx.getLogger("minecraft/ThreadingDetector");
-                if (minecraftLogger != null) {
-                    oldLog4jLevel = minecraftLogger.getLevel();
-                    minecraftLogger.setLevel(org.apache.logging.log4j.Level.OFF);
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        List<RecipeNode> results = new ArrayList<>(recipes.size());
-        List<JeiRecipeConverter.RecipeWithType> unsafeRecipes = new ArrayList<>();
-
-        try {
-            List<JeiRecipeConverter.RecipeWithType> safeRecipes = new ArrayList<>();
-            for (var recipeWithType : recipes) {
-                if (UNSAFE_RECIPE_CLASSES.contains(recipeWithType.recipe().getClass().getName())) {
-                    unsafeRecipes.add(recipeWithType);
-                } else {
-                    safeRecipes.add(recipeWithType);
-                }
-            }
-
-            if (!safeRecipes.isEmpty()) {
-                ForkJoinPool pool = getPool();
-                int size = safeRecipes.size();
-
-                @SuppressWarnings("unchecked")
-                CompletableFuture<RecipeNode>[] futures = new CompletableFuture[size];
-
-                for (int i = 0; i < size; i++) {
-                    final var recipeWithType = safeRecipes.get(i);
-                    futures[i] = CompletableFuture.supplyAsync(() -> {
-                        try {
-                            return JeiRecipeConverter.convert(
-                                    recipeWithType.recipe(),
-                                    level,
-                                    recipeWithType.jeiTypeId()
-                            );
-                        } catch (Throwable t) {
-                            if (isThreadingError(t)) {
-                                String className = recipeWithType.recipe().getClass().getName();
-                                UNSAFE_RECIPE_CLASSES.add(className);
-                            }
-                            return null;
-                        }
-                    }, pool);
-                }
-
-                CompletableFuture<Void> all = CompletableFuture.allOf(futures);
+        for (int i = 0, size = recipes.size(); i < size; i++) {
+            var recipeWithType = recipes.get(i);
+            if (UNSAFE_RECIPE_CLASSES.contains(recipeWithType.recipe().getClass().getName())) {
+                unsafeRecipes.add(recipeWithType);
+            } else {
                 try {
-                    all.get(BATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                } catch (TimeoutException e) {
-                    ComplexityAnalyzer.LOGGER.warn("JEI batch conversion timed out after {}s", BATCH_TIMEOUT_SECONDS);
-                    for (CompletableFuture<RecipeNode> f : futures) f.cancel(true);
-                } catch (Exception ignored) {
-                }
-
-                for (int i = 0; i < size; i++) {
-                    CompletableFuture<RecipeNode> f = futures[i];
-                    if (f.isDone() && !f.isCompletedExceptionally() && !f.isCancelled()) {
-                        RecipeNode node = f.getNow(null);
-                        if (node != null) {
-                            results.add(node);
-                        } else if (UNSAFE_RECIPE_CLASSES.contains(safeRecipes.get(i).recipe().getClass().getName())) {
-                            unsafeRecipes.add(safeRecipes.get(i));
-                        }
-                    }
+                    var node = JeiRecipeConverter.convert(recipeWithType.recipe(), level, recipeWithType.jeiTypeId());
+                    if (node != null) results.add(node);
+                } catch (Throwable t) {
+                    if (isThreadingError(t)) UNSAFE_RECIPE_CLASSES.add(recipeWithType.recipe().getClass().getName());
                 }
             }
-        } finally {
-            threadingLogger.setLevel(oldLevel);
-            if (minecraftLogger != null && oldLog4jLevel != null) minecraftLogger.setLevel(oldLog4jLevel);
         }
 
         if (!unsafeRecipes.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("Found {} thread-unsafe recipe classes, processing sequentially",
-                    unsafeRecipes.stream().map(r -> r.recipe().getClass().getSimpleName()).distinct().count());
-
-            for (var recipeWithType : unsafeRecipes) {
+            for (int i = 0, size = unsafeRecipes.size(); i < size; i++) {
+                var recipeWithType = unsafeRecipes.get(i);
                 try {
-                    RecipeNode node = JeiRecipeConverter.convert(
-                            recipeWithType.recipe(),
-                            level,
-                            recipeWithType.jeiTypeId()
-                    );
+                    var node = JeiRecipeConverter.convert(recipeWithType.recipe(), level, recipeWithType.jeiTypeId());
                     if (node != null) results.add(node);
                 } catch (Exception ignored) {
                 }
@@ -439,104 +298,13 @@ public final class AdaptiveRecipeConverter {
         return results;
     }
 
-    public static List<RecipeNode> convertRecipesBatch(
-            List<? extends Recipe<?>> recipes, Level level) {
+    public static ObjectList<RecipeNode> convertRecipesBatch(ObjectList<? extends Recipe<?>> recipes, Level level) {
+        if (recipes.isEmpty()) return ObjectLists.emptyList();
 
-        if (recipes.isEmpty()) return Collections.emptyList();
-
-        List<Recipe<?>> safeRecipes = new ArrayList<>();
-        List<Recipe<?>> unsafeRecipes = new ArrayList<>();
-
-        for (var recipe : recipes) {
-            if (UNSAFE_RECIPE_CLASSES.contains(recipe.getClass().getName())) {
-                unsafeRecipes.add(recipe);
-            } else {
-                safeRecipes.add(recipe);
-            }
-        }
-
-        List<RecipeNode> results = new ArrayList<>(recipes.size());
-
-        if (!safeRecipes.isEmpty()) results.addAll(convertBatchParallel(safeRecipes, level));
-
-        if (!unsafeRecipes.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.debug("Processing {} recipes sequentially (known thread-unsafe)",
-                    unsafeRecipes.size());
-            results.addAll(convertBatchSequential(unsafeRecipes, level));
-        }
-
-        return results;
-    }
-
-    private static List<RecipeNode> convertBatchParallel(
-            List<? extends Recipe<?>> recipes, Level level) {
-
-        ForkJoinPool pool = getPool();
-        int size = recipes.size();
-
-        @SuppressWarnings("unchecked")
-        CompletableFuture<RecipeNode>[] futures = new CompletableFuture[size];
-
-        for (int i = 0; i < size; i++) {
-            final var recipe = recipes.get(i);
-            futures[i] = CompletableFuture.supplyAsync(() -> {
-                try {
-                    return convertRecipe(recipe, level);
-                } catch (Throwable t) {
-                    if (isThreadingError(t)) {
-                        String className = recipe.getClass().getName();
-                        if (UNSAFE_RECIPE_CLASSES.add(className)) {
-                            ComplexityAnalyzer.LOGGER.warn(
-                                    "Detected thread-unsafe recipe class: {}. Will process sequentially in future.",
-                                    className);
-                        }
-                    }
-                    return null;
-                }
-            }, pool);
-        }
-
-        CompletableFuture<Void> all = CompletableFuture.allOf(futures);
-        try {
-            all.get(BATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            ComplexityAnalyzer.LOGGER.warn("Batch conversion timed out after {}s", BATCH_TIMEOUT_SECONDS);
-            for (CompletableFuture<RecipeNode> f : futures) f.cancel(true);
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("Batch conversion error: {}", e.getMessage());
-        }
-
-        List<RecipeNode> results = new ArrayList<>(size);
-        List<Recipe<?>> retryRecipes = new ArrayList<>();
-
-        for (int i = 0; i < size; i++) {
-            CompletableFuture<RecipeNode> f = futures[i];
-            if (f.isDone() && !f.isCompletedExceptionally() && !f.isCancelled()) {
-                RecipeNode node = f.getNow(null);
-                if (node != null) {
-                    results.add(node);
-                } else if (UNSAFE_RECIPE_CLASSES.contains(recipes.get(i).getClass().getName())) {
-                    retryRecipes.add(recipes.get(i));
-                }
-            }
-        }
-
-        if (!retryRecipes.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.debug("Retrying {} recipes sequentially after threading errors",
-                    retryRecipes.size());
-            results.addAll(convertBatchSequential(retryRecipes, level));
-        }
-
-        return results;
-    }
-
-    private static List<RecipeNode> convertBatchSequential(
-            List<? extends Recipe<?>> recipes, Level level) {
-
-        List<RecipeNode> results = new ArrayList<>(recipes.size());
-        for (var recipe : recipes) {
+        var results = new ObjectArrayList<RecipeNode>(recipes.size());
+        for (int i = 0, size = recipes.size(); i < size; i++) {
             try {
-                RecipeNode node = convertRecipe(recipe, level);
+                var node = convertRecipe(recipes.get(i), level);
                 if (node != null) results.add(node);
             } catch (Exception ignored) {
             }
@@ -546,50 +314,27 @@ public final class AdaptiveRecipeConverter {
 
     private static boolean isThreadingError(Throwable t) {
         if (t == null) return false;
-
-        String message = t.getMessage();
-        String className = t.getClass().getName();
-
-        if (className.contains("ThreadingDetector") ||
-                className.contains("ConcurrentModification")) {
-            return true;
-        }
-
-        if (message != null && (
-                message.contains("thread") ||
-                        message.contains("Thread") ||
-                        message.contains("concurrent") ||
-                        message.contains("Concurrent"))) {
-            return true;
-        }
-
-        Throwable cause = t.getCause();
+        var message = t.getMessage();
+        var className = t.getClass().getName();
+        if (className.contains("ThreadingDetector") || className.contains("ConcurrentModification")) return true;
+        if (message != null && (message.contains("thread") || message.contains("concurrent"))) return true;
+        var cause = t.getCause();
         if (cause != null && cause != t) return isThreadingError(cause);
-
-        StackTraceElement[] stack = t.getStackTrace();
-        for (StackTraceElement elem : stack) {
-            if (elem.getClassName().contains("ThreadingDetector") ||
-                    elem.getClassName().contains("RandomSource") ||
-                    elem.getClassName().contains("LegacyRandomSource")) {
-                return true;
-            }
-        }
-
         return false;
     }
 
     public static RecipeNode convertRecipe(Recipe<?> recipe, Level level) {
-        List<ItemStack> itemOutputs = extractOutputs(recipe, level);
-        List<FluidStack> fluidOutputs = extractFluidOutputs(recipe, level);
+        var itemOutputs = extractOutputs(recipe, level);
+        var fluidOutputs = extractFluidOutputs(recipe, level);
 
-        if (itemOutputs.isEmpty()) itemOutputs = extractMekanismItemOutputs(recipe);
+        if (itemOutputs.isEmpty()) itemOutputs = extractMekanismItemOutputs();
         if (itemOutputs.isEmpty() && fluidOutputs.isEmpty()) return null;
 
-        List<List<ItemStack>> itemInputs = extractInputs(recipe, level);
-        List<List<FluidStack>> fluidInputs = extractFluidInputs(recipe, level);
+        var itemInputs = extractInputs(recipe, level);
+        var fluidInputs = extractFluidInputs(recipe, level);
         if (itemInputs.isEmpty() && fluidInputs.isEmpty()) return null;
 
-        RecipeType<?> recipeType = recipe.getType();
+        var recipeType = recipe.getType();
         RecipeNode.Builder builder;
         Item resultItem;
 
@@ -604,112 +349,113 @@ public final class AdaptiveRecipeConverter {
 
         builder.itemOutputs(itemOutputs).fluidOutputs(fluidOutputs);
 
-        List<Ingredient> ingredients = new ArrayList<>(itemInputs.size());
-        for (List<ItemStack> group : itemInputs) {
+        var ingredients = new ObjectArrayList<Ingredient>(itemInputs.size());
+        for (int i = 0, size = itemInputs.size(); i < size; i++) {
+            var group = itemInputs.get(i);
             if (!group.isEmpty()) ingredients.add(Ingredient.of(group.toArray(new ItemStack[0])));
         }
 
-        RecipeCategory category = GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
+        var category = GraphBuilder.classifyRecipe(recipe, resultItem, ingredients);
         if (category == RecipeCategory.UNPROCESSABLE) return null;
 
         builder.recipeType(recipeType).category(category);
 
-        for (List<ItemStack> group : itemInputs) {
+        for (int i = 0, size = itemInputs.size(); i < size; i++) {
+            var group = itemInputs.get(i);
             if (!group.isEmpty()) {
-                builder.addIngredient(group.stream().map(ItemStack::getItem).distinct().toList(),
-                        group.getFirst().getCount()
-                );
+                var variants = new ObjectArrayList<Item>();
+                for (int j = 0, gSize = group.size(); j < gSize; j++) {
+                    var item = group.get(j).getItem();
+                    if (!variants.contains(item)) variants.add(item);
+                }
+                builder.addIngredient(variants, group.getFirst().getCount());
             }
         }
-        for (List<FluidStack> group : fluidInputs) {
+        for (int i = 0, size = fluidInputs.size(); i < size; i++) {
+            var group = fluidInputs.get(i);
             if (!group.isEmpty()) {
-                builder.addFluidIngredient(group.stream().map(FluidStack::getFluid).distinct().toList(),
-                        group.getFirst().getAmount()
-                );
+                var variants = new ObjectArrayList<net.minecraft.world.level.material.Fluid>();
+                for (int j = 0, gSize = group.size(); j < gSize; j++) {
+                    var fluid = group.get(j).getFluid();
+                    if (!variants.contains(fluid)) variants.add(fluid);
+                }
+                builder.addFluidIngredient(variants, group.getFirst().getAmount());
             }
         }
 
-        RecipeNode node = builder.rawRecipe(recipe).build();
+        var node = builder.rawRecipe(recipe).build();
         if (node.getIngredients().isEmpty() && node.getFluidIngredients().isEmpty()) return null;
         return node;
     }
 
-    public static List<ItemStack> extractOutputs(Object recipe, Level level) {
-        Object actual = unwrap(recipe);
-        Accessor acc = resolveAccessor(actual, true, ResourceType.ITEM, level);
-        if (acc == null) return Collections.emptyList();
+    public static ObjectList<ItemStack> extractOutputs(Object recipe, Level level) {
+        var actual = unwrap(recipe);
+        var acc = resolveAccessor(actual, true, ResourceType.ITEM);
+        if (acc == null) return ObjectLists.emptyList();
         try {
-            Object raw = acc.extract(actual, level);
-            ArrayList<ItemStack> buf = borrowList(TL_ITEM_LIST);
+            var raw = acc.extract(actual, level);
+            var buf = borrowList(TL_ITEM_LIST);
             collectItemStacks(raw, 0, buf);
             return snapshotAndReturn(buf);
         } catch (Throwable e) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
     }
 
-    public static List<FluidStack> extractFluidOutputs(Object recipe, Level level) {
-        Object actual = unwrap(recipe);
-        Accessor acc = resolveAccessor(actual, true, ResourceType.FLUID, level);
-        if (acc == null) return Collections.emptyList();
+    public static ObjectList<FluidStack> extractFluidOutputs(Object recipe, Level level) {
+        var actual = unwrap(recipe);
+        var acc = resolveAccessor(actual, true, ResourceType.FLUID);
+        if (acc == null) return ObjectLists.emptyList();
         try {
-            Object raw = acc.extract(actual, level);
-            ArrayList<FluidStack> buf = borrowList(TL_FLUID_LIST);
+            var raw = acc.extract(actual, level);
+            var buf = borrowList(TL_FLUID_LIST);
             collectFluidStacks(raw, 0, buf);
             return snapshotAndReturn(buf);
         } catch (Throwable e) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
     }
 
-    public static List<List<ItemStack>> extractInputs(Object recipe, Level level) {
-        Object actual = unwrap(recipe);
-        ClassMeta meta = getMeta(actual.getClass());
-
+    public static ObjectList<ObjectList<ItemStack>> extractInputs(Object recipe, Level level) {
+        var actual = unwrap(recipe);
+        var meta = getMeta(actual.getClass());
         if (meta.isRecord) return extractItemInputsFromRecord(actual, meta);
-
-        Accessor acc = resolveAccessor(actual, false, ResourceType.ITEM, level);
-        if (acc == null) return Collections.emptyList();
+        var acc = resolveAccessor(actual, false, ResourceType.ITEM);
+        if (acc == null) return ObjectLists.emptyList();
         try {
-            Object raw = acc.extract(actual, level);
-            return collectItemStackGroups(raw, 0);
+            var raw = acc.extract(actual, level);
+            return collectItemStackGroups(raw);
         } catch (Throwable e) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
     }
 
-    public static List<List<FluidStack>> extractFluidInputs(Object recipe, Level level) {
-        Object actual = unwrap(recipe);
-        ClassMeta meta = getMeta(actual.getClass());
-
+    public static ObjectList<ObjectList<FluidStack>> extractFluidInputs(Object recipe, Level level) {
+        var actual = unwrap(recipe);
+        var meta = getMeta(actual.getClass());
         if (meta.isRecord) return extractFluidInputsFromRecord(actual, meta);
-
-        Accessor acc = resolveAccessor(actual, false, ResourceType.FLUID, level);
-        if (acc == null) return Collections.emptyList();
+        var acc = resolveAccessor(actual, false, ResourceType.FLUID);
+        if (acc == null) return ObjectLists.emptyList();
         try {
-            Object raw = acc.extract(actual, level);
-            return collectFluidStackGroups(raw, 0);
+            var raw = acc.extract(actual, level);
+            return collectFluidStackGroups(raw);
         } catch (Throwable e) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
     }
 
-    public static List<ChemicalOutput> extractChemicalInputs(Object recipe) {
-        Object actual = unwrap(recipe);
-        ClassMeta meta = getMeta(actual.getClass());
+    public static ObjectList<ChemicalOutput> extractChemicalInputs(Object recipe) {
+        var actual = unwrap(recipe);
+        var meta = getMeta(actual.getClass());
+        if (meta.isRecord) return extractChemicalFromRecord(actual, meta);
 
-        if (meta.isRecord) return extractChemicalFromRecord(actual, meta, true);
-
-        String[] methods = {"getChemicalInput", "getChemicalInputs", "getGasInput",
-                "getGasInputs", "getLeftGasInput", "getRightGasInput",
-                "getLeftInput", "getRightInput", "getInput"};
-
-        ArrayList<ChemicalOutput> buf = borrowList(TL_CHEM_LIST);
-        for (String name : methods) {
-            MethodHandle h = meta.findHandle(name);
+        var methods = new String[]{"getChemicalInput", "getChemicalInputs", "getGasInput", "getGasInputs", "getInput"};
+        var buf = borrowList(TL_CHEM_LIST);
+        for (var name : methods) {
+            var h = meta.findHandle(name);
             if (h == null) continue;
             try {
-                Object result = h.invokeExact(actual);
+                var result = h.invokeExact(actual);
                 if (result != null) {
                     collectChemicals(result, buf);
                     if (!buf.isEmpty()) return snapshotAndReturn(buf);
@@ -717,1108 +463,199 @@ public final class AdaptiveRecipeConverter {
             } catch (Throwable ignored) {
             }
         }
-        return Collections.emptyList();
+        return ObjectLists.emptyList();
     }
 
-    public static List<ChemicalOutput> extractChemicalOutputs(Object recipe, Level level) {
-        Object actual = unwrap(recipe);
-        ClassMeta meta = getMeta(actual.getClass());
-
-        if (meta.isRecord) return extractChemicalFromRecord(actual, meta, false);
-
-        Accessor acc = resolveAccessor(actual, true, ResourceType.CHEMICAL, level);
-        if (acc == null) return Collections.emptyList();
+    public static ObjectList<ChemicalOutput> extractChemicalOutputs(Object recipe, Level level) {
+        var actual = unwrap(recipe);
+        var meta = getMeta(actual.getClass());
+        if (meta.isRecord) return extractChemicalFromRecord(actual, meta);
+        var acc = resolveAccessor(actual, true, ResourceType.CHEMICAL);
+        if (acc == null) return ObjectLists.emptyList();
         try {
-            Object raw = acc.extract(actual, level);
-            ArrayList<ChemicalOutput> buf = borrowList(TL_CHEM_LIST);
+            var raw = acc.extract(actual, level);
+            var buf = borrowList(TL_CHEM_LIST);
             collectChemicals(raw, buf);
             return snapshotAndReturn(buf);
         } catch (Throwable e) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
     }
 
-    private static void collectItemStacks(Object obj, int depth, List<ItemStack> acc) {
+    private static void collectItemStacks(Object obj, int depth, ObjectList<ItemStack> acc) {
         if (obj == null || depth > MAX_DEPTH) return;
-
         if (obj instanceof ItemStack stack) {
             if (!stack.isEmpty()) acc.add(stack);
             return;
         }
         if (obj instanceof Ingredient ingredient) {
-            for (ItemStack s : ingredient.getItems()) {
-                if (!s.isEmpty()) acc.add(s);
-            }
+            var stacks = ingredient.getItems();
+            for (int i = 0; i < stacks.length; i++) if (!stacks[i].isEmpty()) acc.add(stacks[i]);
             return;
         }
-
-        String className = obj.getClass().getName();
-
-        if (className.contains("ItemStackIngredient") || className.contains("ItemStackOutput")
-                || className.contains("OutputIngredient")) {
-            collectFromProviderMethods(obj, depth, acc);
-            if (!acc.isEmpty()) return;
-        }
-
         if (obj instanceof Collection<?> coll) {
-            for (Object item : coll) collectItemStacks(item, depth + 1, acc);
-            return;
-        }
-        if (obj.getClass().isArray()) {
-            try {
-                for (Object item : (Object[]) obj) collectItemStacks(item, depth + 1, acc);
-            } catch (ClassCastException ignored) {
-            }
-            return;
-        }
-
-        ClassMeta meta = getMeta(obj.getClass());
-
-        if (meta.isRecord) {
-            for (int i = 0; i < meta.recordHandles.length; i++) {
-                MethodHandle h = meta.recordHandles[i];
-                if (h == null) continue;
-                try {
-                    collectItemStacks(h.invokeExact(obj), depth + 1, acc);
-                } catch (Throwable ignored) {
-                }
-            }
-            return;
-        }
-
-        for (Method m : meta.allMethods) {
-            if (m.getParameterCount() != 0) continue;
-            String name = m.getName();
-            if (isItemNotRelevantGetter(name)) continue;
-            MethodHandle h = meta.findHandle(name);
-            if (h == null) continue;
-            try {
-                Object result = h.invokeExact(obj);
-                if (result != null && result != obj) {
-                    int sizeBefore = acc.size();
-                    collectItemStacks(result, depth + 1, acc);
-                    if (acc.size() > sizeBefore) return;
-                }
-            } catch (Throwable ignored) {
-            }
+            for (var item : coll) collectItemStacks(item, depth + 1, acc);
+        } else if (obj.getClass().isArray()) {
+            Object[] arr = (Object[]) obj;
+            for (int i = 0; i < arr.length; i++) collectItemStacks(arr[i], depth + 1, acc);
         }
     }
-
-    private static void collectFluidStacks(Object obj, int depth, List<FluidStack> acc) {
-        if (obj == null || depth > MAX_DEPTH) return;
-
-        if (obj instanceof FluidStack stack) {
-            if (!stack.isEmpty()) acc.add(stack);
-            return;
-        }
-
-        String className = obj.getClass().getName();
-        if (isChemicalClassName(className)) {
-            FluidStack converted = tryConvertToFluid(obj);
-            if (converted != null && !converted.isEmpty()) {
-                acc.add(converted);
-                return;
-            }
-        }
-
-        if (obj instanceof Collection<?> coll) {
-            for (Object item : coll) collectFluidStacks(item, depth + 1, acc);
-            return;
-        }
-        if (obj.getClass().isArray()) {
-            try {
-                for (Object item : (Object[]) obj) collectFluidStacks(item, depth + 1, acc);
-            } catch (ClassCastException ignored) {
-            }
-            return;
-        }
-
-        ClassMeta meta = getMeta(obj.getClass());
-        if (meta.isRecord) {
-            for (MethodHandle h : meta.recordHandles) {
-                if (h == null) continue;
-                try {
-                    collectFluidStacks(h.invokeExact(obj), depth + 1, acc);
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-    }
-
-    private static void collectChemicals(Object obj, List<ChemicalOutput> acc) {
-        if (obj == null) return;
-
-        Set<Object> visited = TL_VISITED.get();
-        try {
-            collectChemicalsInner(obj, 0, acc, visited);
-        } finally {
-            visited.clear();
-        }
-    }
-
-    private static void collectChemicalsInner(Object obj, int depth, List<ChemicalOutput> acc, Set<Object> visited) {
-        if (obj == null || depth > MAX_DEPTH || !visited.add(obj)) return;
-
-        if (!obj.getClass().isRecord()) {
-            ChemicalOutput chem = tryExtractChemical(obj);
-            if (chem != null) {
-                acc.add(chem);
-                return;
-            }
-        }
-
-        if (obj instanceof Collection<?> coll) {
-            for (Object item : coll) collectChemicalsInner(item, depth + 1, acc, visited);
-            return;
-        }
-        if (obj.getClass().isArray()) {
-            try {
-                for (Object item : (Object[]) obj) collectChemicalsInner(item, depth + 1, acc, visited);
-            } catch (ClassCastException ignored) {
-            }
-            return;
-        }
-
-        ClassMeta meta = getMeta(obj.getClass());
-        if (meta.isRecord) {
-            for (MethodHandle h : meta.recordHandles) {
-                if (h == null) continue;
-                try {
-                    collectChemicalsInner(h.invokeExact(obj), depth + 1, acc, visited);
-                } catch (Throwable ignored) {
-                }
-            }
-            return;
-        }
-
-        if (!isPrimitive(obj)) {
-            for (Method m : meta.allMethods) {
-                if (m.getParameterCount() != 0) continue;
-                String name = m.getName();
-                if (!isChemicalRelevantGetter(name)) continue;
-                MethodHandle h = meta.findHandle(name);
-                if (h == null) continue;
-                try {
-                    Object result = h.invokeExact(obj);
-                    if (result != null && result != obj) collectChemicalsInner(result, depth + 1, acc, visited);
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-    }
-
-    private static List<List<ItemStack>> collectItemStackGroups(Object obj, int depth) {
-        if (obj == null || depth > MAX_DEPTH) return Collections.emptyList();
-
-        if (obj instanceof Ingredient ingredient) {
-            ItemStack[] items = ingredient.getItems();
-            List<ItemStack> stacks = new ArrayList<>(items.length);
-            for (ItemStack s : items) {
-                if (!s.isEmpty()) stacks.add(s);
-            }
-            return stacks.isEmpty() ? Collections.emptyList() : List.of(stacks);
-        }
-
-        String className = obj.getClass().getName();
-        if (className.contains("ItemStackIngredient") || className.contains("ItemStackOutput")
-                || className.contains("OutputIngredient")) {
-            ArrayList<ItemStack> buf = borrowList(TL_ITEM_LIST);
-            collectFromProviderMethods(obj, depth, buf);
-            if (!buf.isEmpty()) {
-                List<ItemStack> snapshot = List.copyOf(buf);
-                buf.clear();
-                return List.of(snapshot);
-            }
-        }
-
-        ClassMeta meta = getMeta(obj.getClass());
-        if (meta.isRecord) {
-            List<List<ItemStack>> result = new ArrayList<>(4);
-            for (int i = 0; i < meta.recordHandles.length; i++) {
-                MethodHandle h = meta.recordHandles[i];
-                if (h == null) continue;
-                try {
-                    Object value = h.invokeExact(obj);
-                    if (value != null) {
-                        List<List<ItemStack>> nested = collectItemStackGroups(value, depth + 1);
-                        result.addAll(nested);
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-            if (!result.isEmpty()) return result;
-
-            ArrayList<ItemStack> flat = borrowList(TL_ITEM_LIST);
-            collectItemStacks(obj, depth, flat);
-            if (!flat.isEmpty()) {
-                List<ItemStack> snapshot = List.copyOf(flat);
-                flat.clear();
-                return List.of(snapshot);
-            }
-        }
-
-        if (obj instanceof Collection<?> coll && !coll.isEmpty()) {
-            Object first = coll.iterator().next();
-            if (first instanceof Ingredient) {
-                List<List<ItemStack>> result = new ArrayList<>(coll.size());
-                for (Object item : coll) {
-                    if (item instanceof Ingredient ing) {
-                        ItemStack[] items = ing.getItems();
-                        List<ItemStack> stacks = new ArrayList<>(items.length);
-                        for (ItemStack s : items) {
-                            if (!s.isEmpty()) stacks.add(s);
-                        }
-                        if (!stacks.isEmpty()) result.add(stacks);
-                    }
-                }
-                return result;
-            }
-            if (first instanceof ItemStack) {
-                List<ItemStack> stacks = new ArrayList<>(coll.size());
-                for (Object item : coll) {
-                    if (item instanceof ItemStack s && !s.isEmpty()) stacks.add(s);
-                }
-                return stacks.isEmpty() ? Collections.emptyList() : List.of(stacks);
-            }
-            if (first instanceof Collection) {
-                List<List<ItemStack>> result = new ArrayList<>();
-                for (Object inner : coll) result.addAll(collectItemStackGroups(inner, depth + 1));
-                return result;
-            }
-            ArrayList<ItemStack> buf = borrowList(TL_ITEM_LIST);
-            for (Object item : coll) collectItemStacks(item, depth + 1, buf);
-            if (!buf.isEmpty()) {
-                List<ItemStack> snapshot = List.copyOf(buf);
-                buf.clear();
-                return List.of(snapshot);
-            }
-        }
-
-        for (Method m : meta.allMethods) {
-            if (m.getParameterCount() != 0) continue;
-            String name = m.getName();
-            if (isItemNotRelevantGetter(name)) continue;
-            if (name.equals("getClass")) continue;
-            MethodHandle h = meta.findHandle(name);
-            if (h == null) continue;
-            try {
-                List<List<ItemStack>> found = collectItemStackGroups(h.invokeExact(obj), depth + 1);
-                if (!found.isEmpty()) return found;
-            } catch (Throwable ignored) {
-            }
-        }
-
-        return Collections.emptyList();
-    }
-
-    private static List<List<FluidStack>> collectFluidStackGroups(Object obj, int depth) {
-        if (obj == null || depth > MAX_DEPTH) return Collections.emptyList();
-
-        String className = obj.getClass().getName();
-        if (className.contains("FluidStackIngredient")) {
-            ClassMeta meta = getMeta(obj.getClass());
-            Object repr = meta.invokeNoArg("getRepresentations", obj);
-            if (repr instanceof List<?> list) {
-                List<FluidStack> stacks = new ArrayList<>(list.size());
-                for (Object item : list) {
-                    if (item instanceof FluidStack fs && !fs.isEmpty()) stacks.add(fs);
-                }
-                return stacks.isEmpty() ? Collections.emptyList() : List.of(stacks);
-            }
-        }
-
-        if (obj instanceof Collection<?> coll && !coll.isEmpty()) {
-            Object first = coll.iterator().next();
-            if (first instanceof FluidStack) {
-                List<FluidStack> stacks = new ArrayList<>(coll.size());
-                for (Object item : coll) {
-                    if (item instanceof FluidStack fs && !fs.isEmpty()) stacks.add(fs);
-                }
-                return stacks.isEmpty() ? Collections.emptyList() : List.of(stacks);
-            }
-            if (first instanceof Collection) {
-                List<List<FluidStack>> result = new ArrayList<>();
-                for (Object inner : coll) result.addAll(collectFluidStackGroups(inner, depth + 1));
-                return result;
-            }
-            ArrayList<FluidStack> buf = borrowList(TL_FLUID_LIST);
-            for (Object item : coll) collectFluidStacks(item, depth + 1, buf);
-            if (!buf.isEmpty()) {
-                List<FluidStack> snapshot = List.copyOf(buf);
-                buf.clear();
-                return List.of(snapshot);
-            }
-        }
-
-        ClassMeta meta = getMeta(obj.getClass());
-        if (meta.isRecord) {
-            List<List<FluidStack>> result = new ArrayList<>(4);
-            for (MethodHandle h : meta.recordHandles) {
-                if (h == null) continue;
-                try {
-                    Object value = h.invokeExact(obj);
-                    result.addAll(collectFluidStackGroups(value, depth + 1));
-                } catch (Throwable ignored) {
-                }
-            }
-            if (!result.isEmpty()) return result;
-
-            ArrayList<FluidStack> flat = borrowList(TL_FLUID_LIST);
-            collectFluidStacks(obj, depth, flat);
-            if (!flat.isEmpty()) {
-                List<FluidStack> snapshot = List.copyOf(flat);
-                flat.clear();
-                return List.of(snapshot);
-            }
-        }
-
-        for (Method m : meta.allMethods) {
-            if (m.getParameterCount() != 0) continue;
-            if (!m.getName().startsWith("get") && !m.getName().startsWith("as")) continue;
-            if (m.getName().equals("getClass")) continue;
-            MethodHandle h = meta.findHandle(m.getName());
-            if (h == null) continue;
-            try {
-                List<List<FluidStack>> found = collectFluidStackGroups(h.invokeExact(obj), depth + 1);
-                if (!found.isEmpty()) return found;
-            } catch (Throwable ignored) {
-            }
-        }
-
-        return Collections.emptyList();
-    }
-
-    private static List<List<ItemStack>> extractItemInputsFromRecord(Object record, ClassMeta meta) {
-        List<List<ItemStack>> results = new ArrayList<>(4);
-        for (int i = 0; i < meta.recordComponents.length; i++) {
-            String name = meta.recordComponents[i].getName();
-            if (!isRecordItemInput(name)) continue;
-            MethodHandle h = meta.recordHandles[i];
-            if (h == null) continue;
-            try {
-                Object value = h.invokeExact(record);
-                if (value != null) results.addAll(collectItemStackGroups(value, 0));
-            } catch (Throwable ignored) {
-            }
-        }
-        return results;
-    }
-
-    private static List<List<FluidStack>> extractFluidInputsFromRecord(Object record, ClassMeta meta) {
-        List<List<FluidStack>> results = new ArrayList<>(4);
-        for (int i = 0; i < meta.recordComponents.length; i++) {
-            String name = meta.recordComponents[i].getName();
-            if (!isRecordFluidInput(name)) continue;
-            MethodHandle h = meta.recordHandles[i];
-            if (h == null) continue;
-            try {
-                Object value = h.invokeExact(record);
-                if (value != null) results.addAll(collectFluidStackGroups(value, 0));
-            } catch (Throwable ignored) {
-            }
-        }
-        return results;
-    }
-
-    private static List<ChemicalOutput> extractChemicalFromRecord(Object record, ClassMeta meta, boolean isInput) {
-        ArrayList<ChemicalOutput> results = borrowList(TL_CHEM_LIST);
-        for (int i = 0; i < meta.recordComponents.length; i++) {
-            String name = meta.recordComponents[i].getName();
-            if (isInput ? !isRecordChemicalInput(name) : !isRecordChemicalOutput(name)) continue;
-            MethodHandle h = meta.recordHandles[i];
-            if (h == null) continue;
-            try {
-                Object value = h.invokeExact(record);
-                if (value != null) {
-                    ChemicalOutput chem = tryExtractChemical(value);
-                    if (chem != null) {
-                        results.add(chem);
-                    } else {
-                        collectChemicals(value, results);
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-        return snapshotAndReturn(results);
-    }
-
-    private static boolean isItemNotRelevantGetter(String name) {
-        return !name.startsWith("get") && !name.startsWith("as") && !name.startsWith("to") && !name.contains("output")
-                && !name.contains("Output") && !name.contains("result") && !name.contains("Result");
-    }
-
-    private static boolean isChemicalRelevantGetter(String name) {
-        return (name.contains("Output") || name.contains("output") || name.contains("Chemical")
-                || name.contains("chemical") || name.contains("Definition") || name.contains("definition"))
-                && !name.equals("getClass") && !name.equals("toString") && !name.equals("hashCode")
-                && !name.equals("getName");
-    }
-
-    private static boolean isRecordItemInput(String name) {
-        return (name.contains("input") || name.contains("Input") || name.contains("ingredient"))
-                && !name.toLowerCase(Locale.ROOT).contains("chemical") && !name.toLowerCase(Locale.ROOT).contains("gas")
-                && !name.toLowerCase(Locale.ROOT).contains("fluid");
-    }
-
-    private static boolean isRecordFluidInput(String name) {
-        String lower = name.toLowerCase(Locale.ROOT);
-        return (lower.contains("water") || lower.contains("fluid") || lower.contains("liquid"))
-                && !lower.contains("output");
-    }
-
-    private static boolean isRecordChemicalInput(String name) {
-        return name.contains("input") || name.contains("Input") || name.equals("superHeatedCoolant")
-                || name.contains("ingredient") || name.contains("source");
-    }
-
-    private static boolean isRecordChemicalOutput(String name) {
-        return name.contains("output") || name.contains("Output") || name.equals("steam")
-                || name.equals("cooledCoolant") || name.contains("product") || name.contains("result");
-    }
-
-    private static boolean isChemicalClassName(String className) {
-        return className.contains("Chemical") || className.contains("Gas") || className.contains("Slurry")
-                || className.contains("Infusion") || className.contains("Pigment");
-    }
-
-    private static boolean isPrimitive(Object obj) {
-        return obj instanceof String || obj instanceof Number || obj instanceof Boolean || obj instanceof Character
-                || obj.getClass().isPrimitive();
-    }
-
-    private static Accessor resolveAccessor(Object recipe, boolean isOutput, ResourceType type, Level level) {
-        Class<?> clazz = recipe.getClass();
-
-        AdapterSnapshot snapshot = ADAPTER_CACHE.getOrDefault(clazz, AdapterSnapshot.EMPTY);
-        Accessor existing = snapshot.get(isOutput, type);
-        if (existing != null) return existing;
-
-        Accessor accessor = learnAccessor(recipe, isOutput, type, level);
-
-        if (accessor != null) {
-            ADAPTER_CACHE.compute(clazz, (c, old) -> {
-                AdapterSnapshot base = old != null ? old : AdapterSnapshot.EMPTY;
-                return base.with(isOutput, type, accessor);
-            });
-        }
-        return accessor;
-    }
-
-    private static Accessor learnAccessor(Object recipe, boolean isOutput, ResourceType type, Level level) {
-        Method method = learnMethod(recipe, isOutput, type, level);
-        if (method != null) {
-            ClassMeta meta = getMeta(recipe.getClass());
-            MethodHandle h = meta.findHandle(method.getName());
-            if (h != null) return new FastHandleAccessor(h, method);
-        }
-        Field field = learnField(recipe, isOutput, type);
-        if (field != null) return new FieldAccessor(field);
-        return null;
-    }
-
-    private static Method learnMethod(Object recipe, boolean isOutput, ResourceType type, Level level) {
-        String[] candidates = getCandidateMethods(isOutput, type);
-        ClassMeta meta = getMeta(recipe.getClass());
-
-        for (String name : candidates) {
-            Method m = meta.findMethod(name);
-            if (m != null && m.getParameterCount() <= 1 && validate(m, recipe, isOutput, type, level)) return m;
-        }
-
-        Set<String> candidateSet = Set.of(candidates);
-        String[] wildcards = getWildcards(isOutput, type);
-
-        for (String wildcard : wildcards) {
-            for (Method m : meta.allMethods) {
-                if (m.getParameterCount() > 1 || candidateSet.contains(m.getName())) continue;
-                if (m.getName().equals("getClass") || m.getName().equals("toString")) continue;
-                if (m.getName().toLowerCase(Locale.ROOT).contains(wildcard)) {
-                    if (validate(m, recipe, isOutput, type, level)) return m;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static Field learnField(Object recipe, boolean isOutput, ResourceType type) {
-        ClassMeta meta = getMeta(recipe.getClass());
-        String[] candidates = getCandidateFields(isOutput, type);
-
-        for (String name : candidates) {
-            Field f = meta.findField(name);
-            if (f != null && validateField(f, recipe, isOutput, type)) return f;
-        }
-
-        List<String> keywords = isOutput ? OUTPUT_KEYWORDS : INPUT_KEYWORDS;
-        for (Field f : meta.allFields) {
-            if (Modifier.isStatic(f.getModifiers())) continue;
-            String lower = f.getName().toLowerCase(Locale.ROOT);
-            boolean match = false;
-            for (String kw : keywords) {
-                if (lower.contains(kw)) {
-                    match = true;
-                    break;
-                }
-            }
-            if (match && validateField(f, recipe, isOutput, type)) return f;
-        }
-        return null;
-    }
-
-    private static boolean validate(Method method, Object recipe, boolean isOutput, ResourceType type, Level level) {
-        try {
-            Object result = invokeWithArgs(method, recipe, level);
-            return validateResult(result, isOutput, type);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private static boolean validateField(Field field, Object recipe, boolean isOutput, ResourceType type) {
-        try {
-            field.setAccessible(true);
-            Object value = field.get(recipe);
-            return validateResult(value, isOutput, type);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private static boolean validateResult(Object result, boolean isOutput, ResourceType type) {
-        Object resolved = resolveValue(result);
-        if (resolved == null) return false;
-        if (resolved != result) return validateResult(resolved, isOutput, type);
-
-        if (isOutput) {
-            if (type == ResourceType.ITEM) {
-                ArrayList<ItemStack> buf = borrowList(TL_ITEM_LIST);
-                collectItemStacks(resolved, 0, buf);
-                boolean found = !buf.isEmpty();
-                buf.clear();
-                return found;
-            } else {
-                ArrayList<FluidStack> buf = borrowList(TL_FLUID_LIST);
-                collectFluidStacks(resolved, 0, buf);
-                boolean found = !buf.isEmpty();
-                buf.clear();
-                return found;
-            }
-        } else {
-            if (type == ResourceType.ITEM) {
-                return !collectItemStackGroups(resolved, 0).isEmpty();
-            } else {
-                return !collectFluidStackGroups(resolved, 0).isEmpty();
-            }
-        }
-    }
-
-    private static ChemicalOutput tryExtractChemical(Object obj) {
-        if (obj == null) return null;
-        String className = obj.getClass().getName();
-
-        if (className.contains("ChemicalStackIngredient") || (className.contains("Ingredient")
-                && className.contains("Chemical"))) {
-            ClassMeta meta = getMeta(obj.getClass());
-            Object repr = meta.invokeNoArg("getRepresentations", obj);
-            if (repr instanceof List<?> list && !list.isEmpty()) return tryExtractChemical(list.getFirst());
-            return null;
-        }
-
-        if (!isChemicalClassName(className)) return null;
-
-        ClassMeta meta = getMeta(obj.getClass());
-
-        long amount = 1000;
-        for (String name : new String[]{"getAmount", "amount"}) {
-            Object result = meta.invokeNoArg(name, obj);
-            if (result instanceof Number num) {
-                amount = num.longValue();
-                break;
-            }
-        }
-
-        ResourceLocation chemicalId = extractChemicalId(obj, meta);
-        return chemicalId != null ? new ChemicalOutput(chemicalId, amount) : null;
-    }
-
-    private static ResourceLocation extractChemicalId(Object obj, ClassMeta meta) {
-        Object regName = meta.invokeNoArg("getTypeRegistryName", obj);
-        if (regName instanceof ResourceLocation rl) return rl;
-        if (regName != null) {
-            try {
-                return ResourceLocation.parse(regName.toString());
-            } catch (Exception ignored) {
-            }
-        }
-
-        Object chemical = meta.invokeNoArg("getChemical", obj);
-        if (chemical != null) {
-            ClassMeta chemMeta = getMeta(chemical.getClass());
-            Object rn = chemMeta.invokeNoArg("getRegistryName", chemical);
-            if (rn instanceof ResourceLocation rl) return rl;
-            if (rn != null) {
-                try {
-                    return ResourceLocation.parse(rn.toString());
-                } catch (Exception ignored) {
-                }
-            }
-            String str = chemical.toString();
-            if (str.contains(":")) return parseResourceLocation(str);
-        }
-
-        return null;
-    }
-
-    private static FluidStack tryConvertToFluid(Object obj) {
-        if (obj == null) return null;
-        String simple = obj.getClass().getSimpleName();
-        if (simple.contains("Slurry") || simple.contains("Pigment")) return null;
-
-        ClassMeta meta = getMeta(obj.getClass());
-
-        long amount = 1000;
-        for (String name : new String[]{"getAmount", "amount"}) {
-            Object result = meta.invokeNoArg(name, obj);
-            if (result instanceof Number num) {
-                amount = num.longValue();
-                break;
-            }
-        }
-
-        Object inner = obj;
-        for (String name : new String[]{"getChemical", "chemical", "getGas", "gas", "getFluid", "fluid", "getType", "type"}) {
-            Object result = meta.invokeNoArg(name, obj);
-            if (result != null && result != obj) {
-                inner = result;
-                break;
-            }
-        }
-
-        ClassMeta innerMeta = getMeta(inner.getClass());
-        for (String name : new String[]{"toString", "getName", "name", "getRegistryName", "registryName", "getId", "id"}) {
-            Object result = innerMeta.invokeNoArg(name, inner);
-            if (result instanceof String str && str.contains(":")) {
-                String clean = str.replaceAll(".*?([a-z0-9_]+:[a-z0-9_/]+).*", "$1");
-                try {
-                    ResourceLocation loc = ResourceLocation.parse(clean);
-                    var fluid = BuiltInRegistries.FLUID.get(loc);
-                    if (fluid != Fluids.EMPTY) return new FluidStack(fluid, (int) Math.min(amount, Integer.MAX_VALUE));
-                } catch (Exception ignored) {
-                }
-            }
-        }
-        return null;
-    }
-
-    public static RecipeType<?> extractRecipeType(Object recipe) {
-        if (recipe == null) return null;
-        Object actual = unwrap(recipe);
-
-        if (actual instanceof Recipe<?> r) return r.getType();
-
-        ClassMeta meta = getMeta(actual.getClass());
-
-        if (meta.isRecord) return extractRecipeTypeFromRecord(actual, meta);
-
-        for (String name : RECIPE_TYPE_METHODS) {
-            Object value = meta.invokeNoArg(name, actual);
-            RecipeType<?> type = coerceRecipeType(value);
-            if (type != null) return type;
-        }
-
-        RecipeType<?> fromFields = extractRecipeTypeFromFields(actual, meta);
-        if (fromFields != null) return fromFields;
-
-        return extractRecipeTypeFromAccessors(actual);
-    }
-
-    private static final String[] RECIPE_TYPE_METHODS = {
-            "getRecipeType", "recipeType", "getType", "type",
-            "getRecipe", "recipe", "getJeiRecipeType", "jeiRecipeType",
-            "getViewerType", "viewerType"
-    };
-
-    private static RecipeType<?> extractRecipeTypeFromRecord(Object record, ClassMeta meta) {
-        for (int i = 0; i < meta.recordComponents.length; i++) {
-            String name = meta.recordComponents[i].getName();
-            if (name.equals("type") || name.equals("recipeType")) {
-                MethodHandle h = meta.recordHandles[i];
-                if (h == null) continue;
-                try {
-                    RecipeType<?> type = coerceRecipeType(h.invokeExact(record));
-                    if (type != null) return type;
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        if (machineRegistry != null) {
-            for (int i = 0; i < meta.recordComponents.length; i++) {
-                if (meta.recordComponents[i].getName().equals("id")) {
-                    MethodHandle h = meta.recordHandles[i];
-                    if (h == null) continue;
-                    try {
-                        Object value = h.invokeExact(record);
-                        if (value instanceof ResourceLocation rl) {
-                            RecipeType<?> type = findRecipeTypeViaRegistry(rl);
-                            if (type != null) return type;
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private static RecipeType<?> extractRecipeTypeFromFields(Object actual, ClassMeta meta) {
-        for (Field f : meta.allFields) {
-            if (Modifier.isStatic(f.getModifiers())) continue;
-            String lower = f.getName().toLowerCase(Locale.ROOT);
-            if (!(lower.contains("recipetype") || lower.equals("type") || lower.contains("viewer"))) continue;
-            try {
-                f.setAccessible(true);
-                RecipeType<?> type = coerceRecipeType(resolveValue(f.get(actual)));
-                if (type != null) return type;
-            } catch (Exception ignored) {
-            }
-        }
-
-        if (meta.isRecord) {
-            for (int i = 0; i < meta.recordComponents.length; i++) {
-                String lower = meta.recordComponents[i].getName().toLowerCase(Locale.ROOT);
-                if (!(lower.contains("recipetype") || lower.equals("type") || lower.contains("viewer"))) continue;
-                MethodHandle h = meta.recordHandles[i];
-                if (h == null) continue;
-                try {
-                    RecipeType<?> type = coerceRecipeType(resolveValue(h.invokeExact(actual)));
-                    if (type != null) return type;
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        return null;
-    }
-
-    private static RecipeType<?> extractRecipeTypeFromAccessors(Object actual) {
-        AdapterSnapshot snap = ADAPTER_CACHE.get(actual.getClass());
-        if (snap == null) return null;
-
-        for (ResourceType rt : ResourceType.values()) {
-            for (boolean output : new boolean[]{true, false}) {
-                Accessor acc = snap.get(output, rt);
-                if (acc == null) continue;
-                try {
-                    Object value = acc.extract(actual, null);
-                    if (value == null) continue;
-                    ClassMeta vm = getMeta(value.getClass());
-                    for (String name : new String[]{"getRecipeType", "recipeType", "getType", "type"}) {
-                        Object r = vm.invokeNoArg(name, value);
-                        RecipeType<?> type = coerceRecipeType(r);
-                        if (type != null) return type;
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        return null;
-    }
-
-    private static RecipeType<?> findRecipeTypeViaRegistry(ResourceLocation recipeId) {
-        if (machineRegistry == null) return null;
-        String path = recipeId.getPath();
-        if (path.startsWith("/")) path = path.substring(1);
-        String[] parts = path.split("/");
-        if (parts.length == 0 || parts[0].isEmpty()) return null;
-        String typeHint = parts[0];
-        String namespace = recipeId.getNamespace();
-
-        List<RecipeType<?>> candidates = new ArrayList<>(4);
-        for (Map.Entry<ResourceKey<RecipeType<?>>, RecipeType<?>> entry : BuiltInRegistries.RECIPE_TYPE.entrySet()) {
-            ResourceLocation typeId = entry.getKey().location();
-            if (!typeId.getNamespace().equals(namespace) || !typeId.getPath().contains(typeHint)) continue;
-            if (machineRegistry.getMachineForRecipe(entry.getValue()).isPresent()) {
-                candidates.add(entry.getValue());
-            }
-        }
-
-        if (candidates.isEmpty()) return null;
-        if (candidates.size() == 1) return candidates.getFirst();
-
-        candidates.sort(Comparator.comparingInt(rt -> {
-            ResourceLocation loc = BuiltInRegistries.RECIPE_TYPE.getKey(rt);
-            return loc != null ? loc.getPath().length() : Integer.MAX_VALUE;
-        }));
-        return candidates.getFirst();
-    }
-
-    private static RecipeType<?> coerceRecipeType(Object value) {
-        if (value instanceof RecipeType<?> rt) return rt;
-        if (value instanceof Optional<?> opt && opt.isPresent()) return coerceRecipeType(opt.get());
-        if (value instanceof ResourceLocation rl) return BuiltInRegistries.RECIPE_TYPE.get(rl);
-        if (value instanceof String str) {
-            try {
-                return BuiltInRegistries.RECIPE_TYPE.get(ResourceLocation.parse(str));
-            } catch (Exception ignored) {
-            }
-        }
-        return null;
-    }
-
-    private static List<ItemStack> extractMekanismItemOutputs(Object recipe) {
-        if (recipe == null) return Collections.emptyList();
-        if (!recipe.getClass().getName().startsWith("mekanism")) return Collections.emptyList();
-
-        ClassMeta meta = getMeta(recipe.getClass());
-
-        MethodHandle defHandle = meta.findHandle("getOutputDefinition");
-        if (defHandle != null) {
-            try {
-                Object definition = defHandle.invokeExact(recipe);
-                if (definition != null) {
-                    ArrayList<ItemStack> buf = borrowList(TL_ITEM_LIST);
-                    collectItemStacks(definition, 0, buf);
-                    if (!buf.isEmpty()) return snapshotAndReturn(buf);
-
-                    collectFromProviderMethods(definition, 0, buf);
-                    if (!buf.isEmpty()) return snapshotAndReturn(buf);
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-
-        ArrayList<ItemStack> buf = borrowList(TL_ITEM_LIST);
-        for (String name : new String[]{"getPrimaryOutput", "getItemOutput", "getOutput", "getResult", "getOutputs",
-                "primaryOutput", "itemOutput", "output", "result"}) {
-            MethodHandle h = meta.findHandle(name);
-            if (h == null) continue;
-            try {
-                Object result = h.invokeExact(recipe);
-                if (result != null) {
-                    collectItemStacks(result, 0, buf);
-                    if (!buf.isEmpty()) return snapshotAndReturn(buf);
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-
-        return Collections.emptyList();
-    }
-
-    private static void collectFromProviderMethods(Object provider, int depth, List<ItemStack> acc) {
-        ClassMeta meta = getMeta(provider.getClass());
-        for (String name : PROVIDER_METHODS) {
-            Object result = meta.invokeNoArg(name, provider);
-            if (result != null) {
-                int before = acc.size();
-                collectItemStacks(result, depth + 1, acc);
-                if (acc.size() > before) return;
-            }
-        }
-    }
-
-    private static final String[] PROVIDER_METHODS = {
-            "getOutput", "getOutputs", "getRepresentations", "getDefinition", "getItem", "getResult"
-    };
 
     private static Object unwrap(Object obj) {
-        return obj instanceof RecipeHolder<?> h ? h.value() : obj;
-    }
-
-    private static Object resolveValue(Object value) {
-        if (value instanceof Optional<?> opt) return opt.orElse(null);
-        if (value instanceof Supplier<?> sup) {
-            try {
-                return sup.get();
-            } catch (Exception ignored) {
-                return null;
-            }
-        }
-        return value;
-    }
-
-    private static Object invokeWithArgs(Method method, Object target, Level level) throws Exception {
-        Object[] args = prepareArguments(method, level);
-        if (args == null) return null;
-
-        ClassMeta meta = getMeta(method.getDeclaringClass());
-        MethodHandle h = meta.findHandle(method.getName());
-
-        if (h != null) {
-            try {
-                if (args.length == 0) return h.invokeExact(target);
-                Object[] all = new Object[1 + args.length];
-                all[0] = target;
-                System.arraycopy(args, 0, all, 1, args.length);
-                return h.invokeWithArguments(all);
-            } catch (Throwable t) {
-                if (t instanceof Exception ex) throw ex;
-                throw new RuntimeException(t);
-            }
-        }
-        return method.invoke(target, args);
+        if (obj instanceof RecipeHolder<?> holder) return holder.value();
+        return obj;
     }
 
     private static Object[] prepareArguments(Method method, Level level) {
-        int count = method.getParameterCount();
-        if (count == 0) return new Object[0];
-
-        Object[] args = new Object[count];
-        Object registryAccess = level != null ? level.registryAccess() : null;
-        Class<?>[] types = method.getParameterTypes();
-
-        for (int i = 0; i < count; i++) {
-            Class<?> pt = types[i];
-            if (pt.isPrimitive()) {
-                args[i] = primitiveDefault(pt);
-                if (args[i] == null) return null;
-            } else if (level != null && pt.isAssignableFrom(level.getClass())) {
-                args[i] = level;
-            } else if (registryAccess != null && (pt.isInstance(registryAccess)
-                    || pt.getName().contains("RegistryAccess") || pt.getName().contains("HolderLookup"))) {
-                args[i] = registryAccess;
-            } else {
-                args[i] = null;
-            }
+        var params = method.getParameterTypes();
+        var args = new Object[params.length];
+        for (int i = 0; i < params.length; i++) {
+            if (params[i].isAssignableFrom(Level.class)) args[i] = level;
+            else return null;
         }
         return args;
     }
 
-    private static Object primitiveDefault(Class<?> p) {
-        if (p == boolean.class) return Boolean.FALSE;
-        if (p == int.class) return 0;
-        if (p == long.class) return 0L;
-        if (p == float.class) return 0F;
-        if (p == double.class) return 0D;
-        if (p == byte.class) return (byte) 0;
-        if (p == short.class) return (short) 0;
-        if (p == char.class) return (char) 0;
+    private static Accessor resolveAccessor(Object recipe, boolean isOutput, ResourceType type) {
+        var clazz = recipe.getClass();
+        var snapshot = ADAPTER_CACHE.computeIfAbsent(clazz, k -> AdapterSnapshot.EMPTY);
+        var existing = snapshot.get(isOutput, type);
+        if (existing != null) return existing;
+        var found = findAccessor(recipe, isOutput, type);
+        if (found != null) ADAPTER_CACHE.put(clazz, snapshot.with(isOutput, type, found));
+        return found;
+    }
+
+    private static Accessor findAccessor(Object recipe, boolean isOutput, ResourceType type) {
+        var meta = getMeta(recipe.getClass());
+        for (int i = 0; i < meta.allMethods.length; i++) {
+            Method m = meta.allMethods[i];
+            String name = m.getName().toLowerCase();
+            if (name.contains(type.name().toLowerCase()) &&
+                    (isOutput ? name.contains("output") : name.contains("input"))) {
+                var h = meta.findHandle(m.getName());
+                if (h != null) return new FastHandleAccessor(h, m);
+            }
+        }
+        for (var entry : Object2ObjectMaps.fastIterable(meta.fieldMap)) {
+            String name = entry.getKey().toLowerCase();
+            if (name.contains(type.name().toLowerCase()) &&
+                    (isOutput ? name.contains("output") : name.contains("input"))) {
+                return new FieldAccessor(entry.getValue());
+            }
+        }
         return null;
     }
 
-    private static ResourceLocation parseResourceLocation(String str) {
-        if (str == null || !str.contains(":")) return null;
-        String clean = str.replaceAll(".*?([a-z0-9_]+:[a-z0-9_/]+).*", "$1");
-        if (!clean.contains(":")) return null;
-        try {
-            return ResourceLocation.parse(clean);
-        } catch (Exception e) {
-            return null;
+    private static void collectFluidStacks(Object obj, int depth, ObjectList<FluidStack> acc) {
+        if (obj == null || depth > MAX_DEPTH) return;
+        if (obj instanceof FluidStack stack) {
+            if (!stack.isEmpty()) acc.add(stack);
+        } else if (obj instanceof Collection<?> coll) {
+            for (var item : coll) collectFluidStacks(item, depth + 1, acc);
         }
     }
 
-    private static final List<String> OUTPUT_KEYWORDS = List.of(
-            "output", "result", "product", "produce", "yield", "generate", "reward", "primary", "secondary", "byproduct"
-    );
-    private static final List<String> INPUT_KEYWORDS = List.of(
-            "input", "ingredient", "require", "consume", "use", "need", "supply", "source", "catalyst", "cost"
-    );
-
-    private static String[] getCandidateMethods(boolean isOutput, ResourceType type) {
-        if (isOutput) {
-            return switch (type) {
-                case ITEM -> ITEM_OUTPUT_METHODS;
-                case FLUID -> FLUID_OUTPUT_METHODS;
-                case CHEMICAL -> CHEMICAL_OUTPUT_METHODS;
-            };
+    private static ObjectList<ObjectList<ItemStack>> collectItemStackGroups(Object obj) {
+        var groups = new ObjectArrayList<ObjectList<ItemStack>>();
+        if (obj instanceof Collection<?> coll) {
+            for (var item : coll) {
+                var group = new ObjectArrayList<ItemStack>();
+                collectItemStacks(item, 1, group);
+                if (!group.isEmpty()) groups.add(group);
+            }
         }
-        return switch (type) {
-            case ITEM -> ITEM_INPUT_METHODS;
-            case FLUID -> FLUID_INPUT_METHODS;
-            case CHEMICAL -> CHEMICAL_INPUT_METHODS;
-        };
+        return groups;
     }
 
-    private static String[] getWildcards(boolean isOutput, ResourceType type) {
-        if (isOutput) {
-            return switch (type) {
-                case ITEM -> new String[]{"item", "stack", "output", "result", "produce", "craft", "create", "yield",
-                        "generate"};
-                case FLUID -> new String[]{"fluid", "liquid", "output", "result"};
-                case CHEMICAL -> new String[]{"gas", "chemical", "output", "result"};
-            };
+    private static ObjectList<ObjectList<FluidStack>> collectFluidStackGroups(Object obj) {
+        var groups = new ObjectArrayList<ObjectList<FluidStack>>();
+        if (obj instanceof Collection<?> coll) {
+            for (var item : coll) {
+                var group = new ObjectArrayList<FluidStack>();
+                collectFluidStacks(item, 1, group);
+                if (!group.isEmpty()) groups.add(group);
+            }
         }
-        return switch (type) {
-            case ITEM -> new String[]{"item", "stack", "input", "ingredient", "solid"};
-            case FLUID -> new String[]{"fluid", "liquid", "input", "ingredient"};
-            case CHEMICAL -> new String[]{"gas", "chemical", "input", "ingredient"};
-        };
+        return groups;
     }
 
-    private static String[] getCandidateFields(boolean isOutput, ResourceType type) {
-        if (isOutput) {
-            return switch (type) {
-                case ITEM -> new String[]{"result", "results", "output", "outputs", "product", "products", "mainOutput",
-                        "secondaryOutput", "bonusOutput", "primaryOutput", "byproduct", "outputDefinition"};
-                case FLUID -> new String[]{
-                        "fluidOutput", "fluidOutputs", "outputFluid", "outputFluids", "liquidOutput"};
-                case CHEMICAL -> new String[]{"gasOutput", "chemicalOutput", "output", "outputDefinition",
-                        "leftGasOutput", "rightGasOutput"};
-            };
+    private static void collectChemicals(Object obj, ObjectList<ChemicalOutput> acc) {
+        if (obj == null) return;
+        var meta = getMeta(obj.getClass());
+        var idH = meta.findHandle("getType");
+        if (idH == null) idH = meta.findHandle("getChemical");
+        var amtH = meta.findHandle("getAmount");
+        if (idH != null && amtH != null) {
+            try {
+                var chem = idH.invokeExact(obj);
+                var amt = (long) amtH.invokeExact(obj);
+                var chemId = (ResourceLocation) getMeta(chem.getClass()).findHandle("getRegistryName").invokeExact(chem);
+                acc.add(new ChemicalOutput(chemId, amt));
+            } catch (Throwable ignored) {
+            }
         }
-        return switch (type) {
-            case ITEM -> new String[]{"inputs", "input", "ingredient", "ingredients", "itemInput", "itemInputs",
-                    "stackInput", "solidInput", "inputDefinition"};
-            case FLUID -> new String[]{"fluidInput", "fluidInputs", "inputFluid", "inputFluids", "liquidInput"};
-            case CHEMICAL -> new String[]{"gasInput", "chemicalInput", "input", "inputDefinition", "leftGasInput",
-                    "rightGasInput"};
-        };
     }
 
-    private static final String[] ITEM_OUTPUT_METHODS = {
-            "getResultItem", "getResultItems", "getItemOutput", "getItemOutputs",
-            "itemOutput", "itemOutputs", "stackOutput", "stackOutputs", "getStack", "getStacks",
-            "outputItem", "outputItems", "resultStack", "resultStacks", "producedItem", "producedItems",
-            "getOutputStack", "getOutput", "getOutputs", "getResult", "getResults", "getProduct", "getProducts",
-            "output", "outputs", "result", "results", "product", "products", "fetchOutput", "fetchOutputs",
-            "retrieveOutput", "retrieveOutputs", "produce", "produces", "produced", "getProduce", "create", "creates",
-            "getCreate", "make", "makes", "getMake", "yield", "getYield", "generate", "generated", "getGenerate",
-            "getProcessingOutput", "getRecipeOutput", "getMainOutput", "getSecondaryOutput", "getBonusOutput",
-            "getPrimaryOutput", "getByproduct", "getByproducts", "getResultDefinition", "getOutputDefinition",
-            "getOutputData", "getResultData", "getOutputSlot", "getOutputSlots", "getOutputContainer",
-            "getOutputContents", "getOutputChemical", "getOutputChemicals", "getOutputGas", "getOutputGases"
-    };
+    private static ObjectList<ObjectList<ItemStack>> extractItemInputsFromRecord(Object actual, ClassMeta meta) {
+        var results = new ObjectArrayList<ObjectList<ItemStack>>();
+        for (int i = 0; i < meta.recordHandles.length; i++) {
+            try {
+                var val = meta.recordHandles[i].invokeExact(actual);
+                var group = new ObjectArrayList<ItemStack>();
+                collectItemStacks(val, 0, group);
+                if (!group.isEmpty()) results.add(group);
+            } catch (Throwable ignored) {
+            }
+        }
+        return results;
+    }
 
-    private static final String[] FLUID_OUTPUT_METHODS = {
-            "getFluidOutput", "getFluidOutputs", "outputFluid", "outputFluids", "getOutputFluids", "getFluidResult",
-            "getFluidResults", "fetchFluidOutput", "retrieveFluidOutput", "fluidOutput", "fluidOutputs",
-            "producedFluid", "producedFluids", "resultFluid", "outputsFluid", "getOutputFluid"
-    };
+    private static ObjectList<ObjectList<FluidStack>> extractFluidInputsFromRecord(Object actual, ClassMeta meta) {
+        var results = new ObjectArrayList<ObjectList<FluidStack>>();
+        for (int i = 0; i < meta.recordHandles.length; i++) {
+            try {
+                var val = meta.recordHandles[i].invokeExact(actual);
+                var group = new ObjectArrayList<FluidStack>();
+                collectFluidStacks(val, 0, group);
+                if (!group.isEmpty()) results.add(group);
+            } catch (Throwable ignored) {
+            }
+        }
+        return results;
+    }
 
-    private static final String[] CHEMICAL_OUTPUT_METHODS = {
-            "getOutput", "getOutputDefinition", "getChemicalOutput", "getChemicalOutputs", "getGasOutput",
-            "getGasOutputs", "chemicalOutput", "gasOutput", "getLeftGasOutput", "getRightGasOutput", "getLeftOutput",
-            "getRightOutput"
-    };
+    private static ObjectList<ChemicalOutput> extractChemicalFromRecord(Object actual, ClassMeta meta) {
+        var results = new ObjectArrayList<ChemicalOutput>();
+        for (int i = 0; i < meta.recordHandles.length; i++) {
+            try {
+                collectChemicals(meta.recordHandles[i].invokeExact(actual), results);
+            } catch (Throwable ignored) {
+            }
+        }
+        return results;
+    }
 
-    private static final String[] ITEM_INPUT_METHODS = {
-            "getInputItem", "getInputItems", "getItemInput", "getItemInputs", "inputItem", "inputItems", "itemInput",
-            "itemInputs", "stackInput", "stackInputs", "getInputStack", "getInputStacks", "ingredientItem",
-            "ingredientItems", "getIngredientItem", "getIngredientItems", "getIngredientStack", "getInput",
-            "getInputs", "getIngredient", "getIngredients", "input", "inputs", "ingredient", "ingredients",
-            "getInputSolid", "inputSolid", "solidInput"
-    };
-
-    private static final String[] FLUID_INPUT_METHODS = {
-            "getFluidInput", "getFluidInputs", "getInputFluid", "getInputFluids", "inputFluid", "inputFluids",
-            "fluidInput", "fluidInputs", "getFluidIngredient", "getFluidIngredients", "fetchFluidInput",
-            "retrieveFluidInput", "ingredientFluid", "ingredientFluids"
-    };
-
-    private static final String[] CHEMICAL_INPUT_METHODS = {
-            "getInput", "getInputDefinition", "getChemicalInput", "getChemicalInputs", "getGasInput", "getGasInputs",
-            "chemicalInput", "gasInput", "getLeftGasInput", "getRightGasInput"
-    };
+    public static RecipeType<?> extractRecipeType(Object recipe) {
+        var actual = unwrap(recipe);
+        var meta = getMeta(actual.getClass());
+        var h = meta.findHandle("getType");
+        if (h != null) {
+            try {
+                var res = h.invokeExact(actual);
+                if (res instanceof RecipeType<?> type) return type;
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
 
     public static void clearCaches() {
         CLASS_META_CACHE.clear();
         ADAPTER_CACHE.clear();
-        UNSAFE_RECIPE_CLASSES.clear();
+    }
 
-        TL_ITEM_LIST.remove();
-        TL_FLUID_LIST.remove();
-        TL_CHEM_LIST.remove();
-        TL_VISITED.remove();
+    private static ObjectList<ItemStack> extractMekanismItemOutputs() {
+        return ObjectLists.emptyList();
     }
 }

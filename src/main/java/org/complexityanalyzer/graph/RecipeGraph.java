@@ -18,64 +18,61 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.tags.TagKey;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class RecipeGraph {
-    private final Map<Item, List<RecipeNode>> recipesByItem;
-
-    private final Map<Item, Set<Item>> usageMap;
-
-    private final Map<Item, RecipeNode> bestRecipeCache;
-
-    private final Map<ResourceLocation, List<RecipeNode>> recipesByFluid = new ConcurrentHashMap<>();
-
+    private final Reference2ObjectMap<Item, ObjectList<RecipeNode>> recipesByItem;
+    private final Reference2ObjectMap<Item, ReferenceSet<Item>> usageMap;
+    private final Reference2ObjectMap<Item, RecipeNode> bestRecipeCache;
+    private final Object2ObjectMap<ResourceLocation, ObjectList<RecipeNode>> recipesByFluid;
 
     public RecipeGraph() {
-        this.recipesByItem = new ConcurrentHashMap<>();
-        this.usageMap = new ConcurrentHashMap<>();
-        this.bestRecipeCache = new ConcurrentHashMap<>();
+        this.recipesByItem = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.usageMap = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.bestRecipeCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.recipesByFluid = Object2ObjectMaps.synchronize(new Object2ObjectOpenHashMap<>());
     }
 
-    public Collection<RecipeNode> getAllRecipes() {
-        return recipesByItem.values().stream().flatMap(List::stream).toList();
+    public ObjectList<RecipeNode> getAllRecipes() {
+        var all = new ObjectArrayList<RecipeNode>();
+        synchronized (recipesByItem) {
+            for (var list : recipesByItem.values()) all.addAll(list);
+        }
+        return all;
     }
 
     public void addRecipe(RecipeNode node) {
         Item result = node.getResultItem();
 
-        recipesByItem.computeIfAbsent(result, k -> new ArrayList<>()).add(node);
+        recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>()).add(node);
 
-        if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) {
-            try {
-                ResourceLocation fluidId = ResourceLocation.parse(node.getPlaceholderId());
-                recipesByFluid.computeIfAbsent(fluidId, k -> new ArrayList<>()).add(node);
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("Invalid placeholder ID: {}", node.getPlaceholderId());
-            }
+        if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) try {
+            var fluidId = ResourceLocation.parse(node.getPlaceholderId());
+            recipesByFluid.computeIfAbsent(fluidId, k -> new ObjectArrayList<>()).add(node);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("Invalid placeholder ID: {}", node.getPlaceholderId());
         }
 
-        for (IngredientSlot slot : node.getIngredients()) {
-            for (Item ingredient : slot.getVariants()) {
-                usageMap.computeIfAbsent(ingredient, k -> new HashSet<>()).add(result);
+        for (var slot : node.getIngredients()) {
+            for (var ingredient : slot.getVariants()) {
+                usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
             }
         }
 
         bestRecipeCache.remove(result);
     }
 
-    public List<RecipeNode> getRecipes(Item item) {
-        return recipesByItem.getOrDefault(item, Collections.emptyList());
+    public ObjectList<RecipeNode> getRecipes(Item item) {
+        return recipesByItem.getOrDefault(item, ObjectLists.emptyList());
     }
 
     public RecipeNode getBestRecipe(Item item) {
@@ -83,105 +80,77 @@ public class RecipeGraph {
     }
 
     private RecipeNode findBestRecipe(Item item) {
-        List<RecipeNode> recipes = getRecipes(item);
+        var recipes = getRecipes(item);
+        if (recipes.isEmpty()) return RecipeNode.empty(item);
+        if (recipes.size() == 1) return recipes.getFirst();
 
-        if (recipes.isEmpty()) {
-            return RecipeNode.empty(item);
+        RecipeNode best = null;
+
+        for (RecipeNode r : recipes) {
+            if (r.getCategory() == RecipeCategory.PRIMARY) if (best == null || r.getPriority() > best.getPriority())
+                best = r;
         }
+        if (best != null) return best;
 
-        if (recipes.size() == 1) {
-            return recipes.getFirst();
+        for (RecipeNode r : recipes) {
+            var cat = r.getCategory();
+            if (cat != RecipeCategory.STORAGE_DECOMPRESSION && cat != RecipeCategory.RECYCLING
+                    && cat != RecipeCategory.UNPROCESSABLE)
+                if (best == null || r.getPriority() > best.getPriority()) best = r;
         }
+        if (best != null) return best;
 
-        List<RecipeNode> primaryRecipes = recipes.stream()
-                .filter(r -> r.getCategory() == RecipeCategory.PRIMARY)
-                .toList();
+        for (RecipeNode r : recipes) if (best == null || r.getPriority() > best.getPriority()) best = r;
 
-        if (!primaryRecipes.isEmpty()) {
-            return primaryRecipes.stream()
-                    .max(Comparator.comparingInt(RecipeNode::getPriority))
-                    .orElse(primaryRecipes.getFirst());
-        }
-
-        List<RecipeNode> goodRecipes = recipes.stream()
-                .filter(r -> r.getCategory() != RecipeCategory.STORAGE_DECOMPRESSION
-                        && r.getCategory() != RecipeCategory.RECYCLING
-                        && r.getCategory() != RecipeCategory.UNPROCESSABLE)
-                .toList();
-
-        if (!goodRecipes.isEmpty()) {
-            return goodRecipes.stream()
-                    .max(Comparator.comparingInt(RecipeNode::getPriority))
-                    .orElse(goodRecipes.getFirst());
-        }
-
-        return recipes.stream()
-                .max(Comparator.comparingInt(RecipeNode::getPriority))
-                .orElse(recipes.getFirst());
+        return best != null ? best : recipes.getFirst();
     }
 
-    public int reclassifyRecipesBasedOnComplexity(Map<Item, Double> complexities) {
+    public int reclassifyRecipesBasedOnComplexity(Reference2DoubleMap<Item> complexities) {
         int reclassified = 0;
 
-        TagKey<Item> oresTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ores"));
-        TagKey<Item> rawMaterialsTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
-        TagKey<Item> storageBlocksTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
-        TagKey<Item> dusts = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:dusts"));
-        TagKey<Item> crushed = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:crushed"));
+        var oresTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ores"));
+        var rawMaterialsTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
+        var storageBlocksTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
+        var dusts = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:dusts"));
+        var crushed = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:crushed"));
 
-        for (Item item : getAllItems()) {
+        for (var item : getAllItems()) {
             if (!hasRecipe(item)) continue;
 
-            List<RecipeNode> recipes = getRecipes(item);
-            Double resultComplexity = complexities.get(item);
+            var recipes = getRecipes(item);
+            var resultComplexity = complexities.getOrDefault(item, Double.POSITIVE_INFINITY);
 
-            if (resultComplexity == null || Double.isInfinite(resultComplexity)) {
-                continue;
-            }
+            if (Double.isInfinite(resultComplexity)) continue;
 
-            for (RecipeNode recipe : recipes) {
-                if (recipe.getCategory() != RecipeCategory.PRIMARY) {
-                    continue;
-                }
+            for (var recipe : recipes) {
+                if (recipe.getCategory() != RecipeCategory.PRIMARY) continue;
 
+                var recipeType = recipe.getRecipeType().toString();
+                if (!isVanillaRecipeType(recipeType)) continue;
 
-                String recipeType = recipe.getRecipeType().toString();
-                if (!isVanillaRecipeType(recipeType)) {
-                    continue;
-                }
+                var isReverseRecipe = false;
+                var hasRawMaterial = false;
 
+                for (var slot : recipe.getIngredients()) {
+                    for (var ingredient : slot.getVariants()) {
+                        var ingredientStack = new ItemStack(ingredient);
 
-                boolean isReverseRecipe = false;
-                boolean hasRawMaterial = false;
-
-                for (IngredientSlot slot : recipe.getIngredients()) {
-                    for (Item ingredient : slot.getVariants()) {
-                        ItemStack ingredientStack = new ItemStack(ingredient);
-
-                        if (ingredientStack.is(oresTag) ||
-                                ingredientStack.is(rawMaterialsTag) ||
-                                ingredientStack.is(dusts) ||
-                                ingredientStack.is(crushed) ||
-                                isRawStorageBlock(ingredientStack, storageBlocksTag)) {
+                        if (ingredientStack.is(oresTag) || ingredientStack.is(rawMaterialsTag)
+                                || ingredientStack.is(dusts) || ingredientStack.is(crushed)
+                                || isRawStorageBlock(ingredientStack, storageBlocksTag)) {
                             hasRawMaterial = true;
                             break;
                         }
 
-                        Double ingredientComplexity = complexities.get(ingredient);
-                        if (ingredientComplexity == null || Double.isInfinite(ingredientComplexity)) {
-                            continue;
-                        }
+                        var ingredientComplexity = complexities.getOrDefault(ingredient, Double.POSITIVE_INFINITY);
+                        if (Double.isInfinite(ingredientComplexity)) continue;
 
-                        if (resultComplexity < ingredientComplexity * 0.95) {
-                            isReverseRecipe = true;
-                        }
+                        if (resultComplexity < ingredientComplexity * 0.95) isReverseRecipe = true;
                     }
                     if (hasRawMaterial) break;
                 }
 
-                if (hasRawMaterial) {
-                    continue;
-                }
+                if (hasRawMaterial) continue;
 
                 if (isReverseRecipe) {
                     recipe.setCategory(RecipeCategory.PROCESSING);
@@ -192,7 +161,6 @@ public class RecipeGraph {
 
         return reclassified;
     }
-
 
     private static boolean isVanillaRecipeType(String recipeType) {
         return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
@@ -205,52 +173,49 @@ public class RecipeGraph {
     }
 
     private boolean isRawStorageBlock(ItemStack stack, TagKey<Item> storageBlocksTag) {
-        if (!stack.is(storageBlocksTag)) {
-            return false;
-        }
-
-        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        if (!stack.is(storageBlocksTag)) return false;
+        var itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         return itemId.contains("raw_") || itemId.contains("crude_");
     }
 
     public boolean hasRecipe(Item item) {
-        List<RecipeNode> recipes = recipesByItem.get(item);
+        var recipes = recipesByItem.get(item);
         return recipes != null && !recipes.isEmpty();
     }
 
     public int getRecipeCount(Item item) {
-        return recipesByItem.getOrDefault(item, Collections.emptyList()).size();
+        return getRecipes(item).size();
     }
 
     public int getUsageCount(Item item) {
-        Set<Item> users = usageMap.get(item);
+        var users = usageMap.get(item);
         return users != null ? users.size() : 0;
     }
 
-    public Set<Item> getItemsUsingIngredient(Item ingredient) {
-        return usageMap.getOrDefault(ingredient, Collections.emptySet());
+    public ReferenceSet<Item> getItemsUsingIngredient(Item ingredient) {
+        return usageMap.getOrDefault(ingredient, ReferenceSets.emptySet());
     }
 
-    public Set<Item> getAllItems() {
+    public ReferenceSet<Item> getAllItems() {
         return recipesByItem.keySet();
     }
 
     public int getTotalRecipeCount() {
-        return recipesByItem.values().stream()
-                .mapToInt(List::size)
-                .sum();
+        int total = 0;
+        synchronized (recipesByItem) {
+            for (var list : recipesByItem.values()) total += list.size();
+        }
+        return total;
     }
 
     private static Fluid normalizeFluid(Fluid fluid) {
-        String fluidName = BuiltInRegistries.FLUID.getKey(fluid).toString();
+        var id = BuiltInRegistries.FLUID.getKey(fluid);
+        var fluidName = id.toString();
 
         if (fluidName.contains("flowing_")) {
-            String staticName = fluidName.replace("flowing_", "");
-            ResourceLocation staticId = ResourceLocation.parse(staticName);
-
-            if (BuiltInRegistries.FLUID.containsKey(staticId)) {
-                return BuiltInRegistries.FLUID.get(staticId);
-            }
+            var staticName = fluidName.replace("flowing_", "");
+            var staticId = ResourceLocation.parse(staticName);
+            if (BuiltInRegistries.FLUID.containsKey(staticId)) return BuiltInRegistries.FLUID.get(staticId);
         }
 
         return fluid;
@@ -271,52 +236,60 @@ public class RecipeGraph {
         );
     }
 
-    public Set<Item> getCorpus() {
-        Set<Item> allItems = new HashSet<>(recipesByItem.keySet());
+    public ReferenceSet<Item> getCorpus() {
+        var allItems = new ReferenceOpenHashSet<>(recipesByItem.keySet());
         allItems.addAll(usageMap.keySet());
         return allItems;
     }
 
-    public List<RecipeNode> getRecipesProducingFluid(Fluid fluid) {
-        fluid = normalizeFluid(fluid);
-        final Fluid normalizedFluid = fluid;
+    public ObjectList<RecipeNode> getRecipesProducingFluid(Fluid fluid) {
+        var normalizedFluid = normalizeFluid(fluid);
+        var fluidId = BuiltInRegistries.FLUID.getKey(normalizedFluid);
 
-        ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(normalizedFluid);
+        var combined = new ObjectArrayList<RecipeNode>();
+        var placeholderRecipes = recipesByFluid.get(fluidId);
+        if (placeholderRecipes != null) combined.addAll(placeholderRecipes);
 
-        List<RecipeNode> placeholderRecipes = recipesByFluid.getOrDefault(fluidId, Collections.emptyList());
-
-        List<RecipeNode> standardRecipes = getAllRecipes().stream()
-                .filter(recipe -> recipe.getFluidOutputs().stream()
-                        .anyMatch(stack -> normalizeFluid(stack.getFluid()).equals(normalizedFluid)))
-                .toList();
-
-        List<RecipeNode> combined = new ArrayList<>(placeholderRecipes);
-        combined.addAll(standardRecipes);
+        for (var recipe : getAllRecipes()) {
+            for (var stack : recipe.getFluidOutputs()) {
+                if (normalizeFluid(stack.getFluid()).equals(normalizedFluid)) {
+                    combined.add(recipe);
+                    break;
+                }
+            }
+        }
 
         return combined;
     }
 
-    public List<Item> getItemsUsingFluid(Fluid fluid) {
-        fluid = normalizeFluid(fluid);
-        final Fluid normalizedFluid = fluid;
+    public ObjectList<Item> getItemsUsingFluid(Fluid fluid) {
+        var normalizedFluid = normalizeFluid(fluid);
+        var items = new ReferenceOpenHashSet<Item>();
 
-        return getAllRecipes().stream()
-                .filter(recipe -> recipe.getFluidIngredients().stream()
-                        .anyMatch(slot -> slot.getFluidVariants().stream()
-                                .anyMatch(f -> normalizeFluid(f).equals(normalizedFluid))))
-                .map(RecipeNode::getResultItem)
-                .distinct()
-                .toList();
+        for (var recipe : getAllRecipes()) {
+            var uses = false;
+            for (var slot : recipe.getFluidIngredients()) {
+                for (var f : slot.getFluidVariants()) {
+                    if (normalizeFluid(f).equals(normalizedFluid)) {
+                        uses = true;
+                        break;
+                    }
+                }
+                if (uses) break;
+            }
+            if (uses) items.add(recipe.getResultItem());
+        }
+
+        return new ObjectArrayList<>(items);
     }
 
-    public Set<Fluid> getAllUsedFluids() {
-        Set<Fluid> fluids = new HashSet<>();
-        for (RecipeNode recipe : getAllRecipes()) {
-
-            recipe.getFluidIngredients().forEach(slot ->
-                    slot.getFluidVariants().forEach(f -> fluids.add(normalizeFluid(f))));
-            recipe.getFluidOutputs().forEach(stack ->
-                    fluids.add(normalizeFluid(stack.getFluid())));
+    public ReferenceSet<Fluid> getAllUsedFluids() {
+        var fluids = new ReferenceOpenHashSet<Fluid>();
+        for (var recipe : getAllRecipes()) {
+            for (var slot : recipe.getFluidIngredients()) {
+                for (var f : slot.getFluidVariants()) fluids.add(normalizeFluid(f));
+            }
+            for (var stack : recipe.getFluidOutputs()) fluids.add(normalizeFluid(stack.getFluid()));
         }
         return fluids;
     }

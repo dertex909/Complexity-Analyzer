@@ -18,40 +18,43 @@
 
 package org.complexityanalyzer.compat.jei;
 
+import it.unimi.dsi.fastutil.objects.*;
 import mezz.jei.api.IModPlugin;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforgespi.language.IModInfo;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
-import java.util.*;
+import java.util.List;
 
 public class JeiPluginScanner {
     public static void scanAndImportRecipes(RecipeGraph graph, Level level) {
-        List<IModPlugin> cleanPlugins = new ArrayList<>();
+        ObjectList<IModPlugin> cleanPlugins = new ObjectArrayList<>();
 
-        ModList.get().getMods().forEach(modInfo -> {
+        List<IModInfo> mods = ModList.get().getMods();
+        for (IModInfo modInfo : mods) {
             String modId = modInfo.getModId();
-            if (modId.equals("jei") || modId.equals(ComplexityAnalyzer.MODID)) return;
+            if (modId.equals("jei") || modId.equals(ComplexityAnalyzer.MODID)) continue;
 
             try {
                 var scanData = modInfo.getOwningFile().getFile().getScanResult();
-                scanData.getAnnotations().stream()
-                        .filter(ad -> ad.annotationType().getClassName().equals("mezz.jei.api.JeiPlugin"))
-                        .forEach(ad -> {
-                            IModPlugin plugin = SafePluginLoader.tryLoadPlugin(ad.clazz().getClassName(), modId);
-                            if (plugin != null) cleanPlugins.add(plugin);
-                        });
+                for (var ad : scanData.getAnnotations()) {
+                    if (ad.annotationType().getClassName().equals("mezz.jei.api.JeiPlugin")) {
+                        IModPlugin plugin = SafePluginLoader.tryLoadPlugin(ad.clazz().getClassName(), modId);
+                        if (plugin != null) cleanPlugins.add(plugin);
+                    }
+                }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.warn("Error scanning mod {} for JEI plugins: {}", modId, e.getMessage());
             }
-        });
+        }
 
         if (cleanPlugins.isEmpty()) {
             ComplexityAnalyzer.LOGGER.info("No server-safe JEI plugins found to import recipes from.");
@@ -60,7 +63,7 @@ public class JeiPluginScanner {
 
         ComplexityAnalyzer.LOGGER.info("Found {} server-safe JEI plugin(s), extracting recipes...", cleanPlugins.size());
 
-        Map<ResourceLocation, List<ItemStack>> allCatalysts = new HashMap<>();
+        Object2ObjectMap<ResourceLocation, ObjectList<ItemStack>> allCatalysts = new Object2ObjectOpenHashMap<>();
 
         for (IModPlugin plugin : cleanPlugins) {
             String pluginId = plugin.getPluginUid().toString();
@@ -79,12 +82,17 @@ public class JeiPluginScanner {
                         pluginId, t.getClass().getSimpleName());
             }
 
-            Map<ResourceLocation, List<ItemStack>> pluginCatalysts = mockCatalystReg.getCatalysts();
+            var pluginCatalysts = mockCatalystReg.getCatalysts();
             if (!pluginCatalysts.isEmpty()) {
                 ComplexityAnalyzer.LOGGER.info("Plugin {} registered {} catalyst entries", pluginId, pluginCatalysts.size());
 
-                for (var entry : pluginCatalysts.entrySet()) {
-                    allCatalysts.computeIfAbsent(entry.getKey(), k -> new ArrayList<>()).addAll(entry.getValue());
+                for (var entry : Object2ObjectMaps.fastIterable(pluginCatalysts)) {
+                    ObjectList<ItemStack> list = allCatalysts.get(entry.getKey());
+                    if (list == null) {
+                        list = new ObjectArrayList<>();
+                        allCatalysts.put(entry.getKey(), list);
+                    }
+                    list.addAll(entry.getValue());
                 }
             }
         }
@@ -93,15 +101,20 @@ public class JeiPluginScanner {
             ComplexityAnalyzer.LOGGER.info("Loading {} catalyst types to MachineRegistry...", allCatalysts.size());
 
             try {
-                AnalysisEngine.getInstance().getMachineRegistry().ifPresent(registry -> {
-                    Map<ResourceLocation, List<Item>> catalystItemMap = new HashMap<>();
+                var registry = AnalysisEngine.getInstance().getMachineRegistry();
+                if (registry != null) {
+                    Object2ObjectMap<ResourceLocation, ObjectList<Item>> catalystItemMap = new Object2ObjectOpenHashMap<>();
 
-                    for (var entry : allCatalysts.entrySet()) {
+                    for (var entry : Object2ObjectMaps.fastIterable(allCatalysts)) {
                         ResourceLocation recipeType = entry.getKey();
-                        List<Item> items = entry.getValue().stream()
-                                .map(ItemStack::getItem)
-                                .distinct()
-                                .toList();
+                        ObjectList<Item> items = new ObjectArrayList<>();
+                        ReferenceSet<Item> itemSet = new ReferenceOpenHashSet<>();
+
+                        ObjectList<ItemStack> catalystStacks = entry.getValue();
+                        for (ItemStack catalystStack : catalystStacks) {
+                            Item item = catalystStack.getItem();
+                            if (itemSet.add(item)) items.add(item);
+                        }
 
                         if (!items.isEmpty()) catalystItemMap.put(recipeType, items);
                     }
@@ -109,9 +122,9 @@ public class JeiPluginScanner {
                     ComplexityAnalyzer.LOGGER.info("Converted {} catalyst types to item mapping", catalystItemMap.size());
                     registry.loadFromJEI(catalystItemMap);
 
-                    AdaptiveRecipeConverter.setMachineRegistry(registry);
+                    AdaptiveRecipeConverter.setMachineRegistry();
                     ComplexityAnalyzer.LOGGER.info("MachineRegistry loaded and connected to AdaptiveRecipeConverter");
-                });
+                }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Failed to load MachineRegistry", e);
             }
@@ -140,14 +153,14 @@ public class JeiPluginScanner {
             long registerTime = System.currentTimeMillis() - pluginStart;
 
             long convertStart = System.currentTimeMillis();
-            List<RecipeNode> recipes = JeiRecipeConverter.convertAllFromJei(
+            ObjectList<RecipeNode> recipes = JeiRecipeConverter.convertAllFromJei(
                     mockRegistration.getCollectedRecipes(),
                     mockRegistration.getLevel()
             );
             long convertTime = System.currentTimeMillis() - convertStart;
 
             if (!recipes.isEmpty()) {
-                recipes.forEach(graph::addRecipe);
+                for (RecipeNode recipe : recipes) graph.addRecipe(recipe);
                 pluginsProcessed++;
                 totalJeiRecipesImported += recipes.size();
             }
@@ -168,9 +181,8 @@ public class JeiPluginScanner {
         try {
             ComplexityAnalyzer.LOGGER.info("Starting RecipeManager processing (this may take a while)...");
 
-            List<RecipeNode> mcRecipes = JeiRecipeConverter.convertAllFromRecipeManager(level);
-
-            mcRecipes.forEach(graph::addRecipe);
+            ObjectList<RecipeNode> mcRecipes = JeiRecipeConverter.convertAllFromRecipeManager(level);
+            for (RecipeNode mcRecipe : mcRecipes) graph.addRecipe(mcRecipe);
 
             ComplexityAnalyzer.LOGGER.info("RecipeManager import complete: {} recipes added.", mcRecipes.size());
 
@@ -185,6 +197,6 @@ public class JeiPluginScanner {
     }
 
     private static boolean isBlacklisted(String modId) {
-        return ComplexityConfig.JEI_PLUGIN_BLACKLIST.get().contains(modId);
+        return ComplexityConfig.isJeiPluginBlacklisted(modId);
     }
 }

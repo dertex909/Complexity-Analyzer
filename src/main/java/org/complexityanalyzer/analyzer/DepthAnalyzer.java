@@ -18,21 +18,20 @@
 
 package org.complexityanalyzer.analyzer;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.*;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import org.jetbrains.annotations.Nullable;
 
 public class DepthAnalyzer {
     private final RecipeGraph graph;
-    private final Map<Item, Integer> cache;
-    private final Map<Item, Optional<RecipeNode>> recipeCache = new ConcurrentHashMap<>();
-
-    private Map<Item, RecipeNode> optimalRecipes = new HashMap<>();
+    private final Reference2IntMap<Item> cache;
+    private final Reference2ObjectMap<Item, RecipeNode> recipeCache;
+    private Reference2ObjectMap<Item, RecipeNode> optimalRecipes;
     private final SourceManager sourceManager;
 
     private static final int CYCLE_DEPTH = Integer.MAX_VALUE;
@@ -40,48 +39,50 @@ public class DepthAnalyzer {
 
     public DepthAnalyzer(RecipeGraph graph, SourceManager sourceManager) {
         this.graph = graph;
-        this.cache = new ConcurrentHashMap<>();
+        this.cache = Reference2IntMaps.synchronize(new Reference2IntOpenHashMap<>());
+        this.recipeCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.optimalRecipes = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
         this.sourceManager = sourceManager;
+        this.cache.defaultReturnValue(-1);
     }
 
-    public void setOptimalRecipes(Map<Item, RecipeNode> optimalRecipes) {
-        this.optimalRecipes = new HashMap<>(optimalRecipes);
+    public void setOptimalRecipes(Reference2ObjectMap<Item, RecipeNode> optimalRecipes) {
+        this.optimalRecipes = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>(optimalRecipes));
         this.recipeCache.clear();
+        this.cache.clear();
     }
 
     public int getDepth(Item item) {
-        Integer cachedDepth = cache.get(item);
-        if (cachedDepth != null) return cachedDepth;
+        int cachedDepth = cache.getInt(item);
+        if (cachedDepth != -1) return cachedDepth;
         return calculateDepth(item);
     }
 
     private int calculateDepth(Item item) {
-        Integer cached = cache.get(item);
-        if (cached != null) {
+        int cached = cache.getInt(item);
+        if (cached != -1) {
             if (cached == IN_PROGRESS) return CYCLE_DEPTH;
             return cached;
         }
 
         cache.put(item, IN_PROGRESS);
 
-        Optional<RecipeNode> recipeOpt = getRecipeToFollow(item);
-        if (recipeOpt.isEmpty()) {
+        RecipeNode recipeToFollow = getRecipeToFollow(item);
+        if (recipeToFollow == null) {
             cache.put(item, 0);
             return 0;
         }
 
-        RecipeNode recipeToFollow = recipeOpt.get();
-
         int maxIngredientDepth = 0;
         boolean cycleDetected = false;
 
-        for (IngredientSlot slot : recipeToFollow.getIngredients()) {
+        for (var slot : recipeToFollow.getIngredients()) {
             int slotDepth = calculateSlotDepth(slot);
             if (slotDepth == CYCLE_DEPTH) {
                 cycleDetected = true;
                 break;
             }
-            maxIngredientDepth = Math.max(maxIngredientDepth, slotDepth);
+            if (slotDepth > maxIngredientDepth) maxIngredientDepth = slotDepth;
         }
 
         int finalDepth;
@@ -93,47 +94,54 @@ public class DepthAnalyzer {
         }
 
         int limitedDepth = Math.min(finalDepth, ComplexityConfig.MAX_DEPTH.get());
-
         cache.put(item, limitedDepth);
         return limitedDepth;
     }
 
     private int calculateSlotDepth(IngredientSlot slot) {
-        if (slot.getVariants().isEmpty()) return 0;
+        var variants = slot.getVariants();
+        if (variants.isEmpty()) return 0;
 
         int minDepth = CYCLE_DEPTH;
-        for (Item variant : slot.getVariants()) {
+        for (var variant : variants) {
             int variantDepth = getDepth(variant);
-            minDepth = Math.min(minDepth, variantDepth);
+            if (variantDepth < minDepth) minDepth = variantDepth;
         }
 
         return minDepth;
     }
 
-    public Optional<RecipeNode> getRecipeToFollow(Item item) {
-        return recipeCache.computeIfAbsent(item, key -> {
-            RecipeNode optimalRecipe = optimalRecipes.get(key);
-            if (optimalRecipe != null) return Optional.of(optimalRecipe);
+    @Nullable
+    public RecipeNode getRecipeToFollow(Item item) {
+        var cached = recipeCache.get(item);
+        if (cached != null) return cached;
 
-            if (hasFiniteBaseSource(key)) return Optional.empty();
+        var optimal = optimalRecipes.get(item);
+        if (optimal != null) {
+            recipeCache.put(item, optimal);
+            return optimal;
+        }
 
-            if (graph != null && graph.hasRecipe(key)) {
-                RecipeNode bestFromGraph = graph.getBestRecipe(key);
-                if (bestFromGraph != null && !bestFromGraph.isBaseRecipe()) {
-                    if (bestFromGraph.getCategory() == RecipeCategory.STORAGE_DECOMPRESSION && hasFiniteBaseSource(key)) {
-                        return Optional.empty();
-                    }
-                    return Optional.of(bestFromGraph);
+        if (hasFiniteBaseSource(item)) return null;
+
+        if (graph != null && graph.hasRecipe(item)) {
+            var bestFromGraph = graph.getBestRecipe(item);
+            if (bestFromGraph != null && !bestFromGraph.isBaseRecipe()) {
+                if (bestFromGraph.getCategory() == RecipeCategory.STORAGE_DECOMPRESSION && hasFiniteBaseSource(item)) {
+                    return null;
                 }
+                recipeCache.put(item, bestFromGraph);
+                return bestFromGraph;
             }
+        }
 
-            return Optional.empty();
-        });
+        return null;
     }
 
     private boolean hasFiniteBaseSource(Item item) {
         if (sourceManager == null) return false;
-        return sourceManager.analyze(item).map(data -> !isUnobtainable(data)).orElse(false);
+        var data = sourceManager.analyze(item);
+        return data != null && !isUnobtainable(data);
     }
 
     private boolean isUnobtainable(BaseResourceData data) {

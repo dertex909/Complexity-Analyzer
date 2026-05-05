@@ -19,6 +19,9 @@
 package org.complexityanalyzer.geoscan.storage;
 
 import com.google.gson.*;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
@@ -38,7 +41,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
@@ -108,7 +110,7 @@ public class GeoDataStorage {
         }
     }
 
-    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, List<ChunkSnapshot> newSnapshots) {
+    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, ObjectList<ChunkSnapshot> newSnapshots) {
         if (newSnapshots.isEmpty()) return;
         Path file = getReconFilePath(dimension, biome);
 
@@ -130,8 +132,8 @@ public class GeoDataStorage {
         }
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, Path>> getAllReconFilePaths() {
-        Map<ResourceLocation, Map<ResourceLocation, Path>> allPaths = new HashMap<>();
+    public Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectOpenHashMap<ResourceLocation, Path>> getAllReconFilePaths() {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectOpenHashMap<ResourceLocation, Path>> allPaths = new Object2ObjectOpenHashMap<>();
         if (!Files.exists(reconDir)) return allPaths;
 
         try (Stream<Path> dimNamespaces = Files.list(reconDir)) {
@@ -142,7 +144,7 @@ public class GeoDataStorage {
                                 dimNamespaceDir.getFileName().toString(),
                                 dimPathDir.getFileName().toString()
                         );
-                        Map<ResourceLocation, Path> biomeFiles = new HashMap<>();
+                        Object2ObjectOpenHashMap<ResourceLocation, Path> biomeFiles = new Object2ObjectOpenHashMap<>();
                         try (Stream<Path> files = Files.list(dimPathDir)) {
                             files.filter(f -> f.toString().endsWith(".jsonl")).forEach(filePath -> {
                                 String fileName = filePath.getFileName().toString();
@@ -171,16 +173,15 @@ public class GeoDataStorage {
             return Stream.empty();
         }
         try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
-            List<ChunkSnapshot> snapshots = lines.map(line -> {
-                        try {
-                            return GSON.fromJson(line, ChunkSnapshot.class);
-                        } catch (JsonSyntaxException e) {
-                            ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .toList();
+            ObjectArrayList<ChunkSnapshot> snapshots = new ObjectArrayList<>();
+            lines.forEach(line -> {
+                try {
+                    ChunkSnapshot snap = GSON.fromJson(line, ChunkSnapshot.class);
+                    if (snap != null) snapshots.add(snap);
+                } catch (JsonSyntaxException e) {
+                    ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
+                }
+            });
             return snapshots.stream();
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to stream recon file {}", path, e);
@@ -188,16 +189,18 @@ public class GeoDataStorage {
         }
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
-        Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
+    public ConcurrentHashMap<ResourceLocation, ConcurrentHashMap<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectOpenHashMap<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
             BiomeScanData data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
             if (data != null) mapper.afterLoad(data);
             return data;
         });
 
-        Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> concurrentData = new ConcurrentHashMap<>();
-        loadedData.forEach((dim, biomeMap) -> concurrentData.put(dim,
-                new ConcurrentHashMap<>(biomeMap)));
+        ConcurrentHashMap<ResourceLocation, ConcurrentHashMap<ResourceLocation, BiomeScanData>> concurrentData = new ConcurrentHashMap<>();
+        loadedData.forEach((dim, biomeMap) -> {
+            ConcurrentHashMap<ResourceLocation, BiomeScanData> inner = new ConcurrentHashMap<>(biomeMap);
+            concurrentData.put(dim, inner);
+        });
         return concurrentData;
     }
 
@@ -209,30 +212,24 @@ public class GeoDataStorage {
     }
 
     public void deleteAllData() {
-        try {
-            if (Files.exists(dataDir)) try (Stream<Path> walk = Files.walk(dataDir)) {
-                walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
-            }
-        } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to clear geo-data directory.", e);
-        } finally {
+        if (Files.exists(dataDir)) {
+            deleteRecursive(dataDir);
             ensureDirectoriesExist();
         }
     }
 
     public void deleteFinalData() throws IOException {
-        deleteDirectory(finalDir);
-    }
-
-    private void deleteDirectory(Path dir) throws IOException {
-        if (Files.exists(dir)) try (Stream<Path> walk = Files.walk(dir)) {
-            walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
+        if (Files.exists(finalDir)) {
+            deleteRecursive(finalDir);
+            Files.createDirectories(finalDir);
         }
-        Files.createDirectories(dir);
     }
 
-    private void deletePath(Path path) {
+    private void deleteRecursive(Path path) {
         try {
+            if (Files.isDirectory(path)) try (var files = Files.newDirectoryStream(path)) {
+                for (Path child : files) deleteRecursive(child);
+            }
             Files.delete(path);
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to delete path: {}", path, e);
@@ -250,8 +247,8 @@ public class GeoDataStorage {
         }
     }
 
-    private <T> Map<ResourceLocation, Map<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
-        Map<ResourceLocation, Map<ResourceLocation, T>> allData = new HashMap<>();
+    private <T> Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectOpenHashMap<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectOpenHashMap<ResourceLocation, T>> allData = new Object2ObjectOpenHashMap<>();
         if (!Files.exists(rootDir)) return allData;
 
         try (Stream<Path> dimNamespaces = Files.list(rootDir)) {
@@ -263,7 +260,7 @@ public class GeoDataStorage {
                                 dimPathDir.getFileName().toString()
                         );
 
-                        Map<ResourceLocation, T> biomeData = new HashMap<>();
+                        Object2ObjectOpenHashMap<ResourceLocation, T> biomeData = new Object2ObjectOpenHashMap<>();
                         try (Stream<Path> biomeFiles = Files.list(dimPathDir)) {
                             biomeFiles.filter(f -> f.toString().endsWith(".json")).forEach(biomeFile -> {
                                 try (FileReader reader = new FileReader(biomeFile.toFile())) {
@@ -321,12 +318,12 @@ public class GeoDataStorage {
         }
     }
 
-    public Map<ResourceLocation, Set<Long>> loadAllReconChunkCoordinates() {
-        Map<ResourceLocation, Set<Long>> allCoordinates = new ConcurrentHashMap<>();
-        Map<ResourceLocation, Map<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
+    public ConcurrentHashMap<ResourceLocation, LongSet> loadAllReconChunkCoordinates() {
+        ConcurrentHashMap<ResourceLocation, LongSet> allCoordinates = new ConcurrentHashMap<>();
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectOpenHashMap<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
 
         allPaths.forEach((dim, biomeMap) -> biomeMap.forEach((biome, path) -> {
-            Set<Long> coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet());
+            LongSet coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
             try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
                 lines.forEach(line -> {
                     try {

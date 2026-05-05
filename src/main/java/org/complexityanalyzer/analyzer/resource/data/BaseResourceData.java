@@ -18,10 +18,10 @@
 
 package org.complexityanalyzer.analyzer.resource.data;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class BaseResourceData {
@@ -30,8 +30,8 @@ public class BaseResourceData {
     private final double baseFactor;
     private final String details;
     private final String sourceName;
-    private final Map<Item, Double> sourceItems;
-    private final Map<String, String> metadata;
+    private final Reference2DoubleMap<Item> sourceItems;
+    private final Object2ObjectMap<String, String> metadata;
     private final String sourceSpecifier;
 
     private BaseResourceData(Builder builder) {
@@ -40,8 +40,8 @@ public class BaseResourceData {
         this.baseFactor = builder.baseFactor;
         this.details = builder.details;
         this.sourceName = builder.sourceName;
-        this.sourceItems = Map.copyOf(builder.sourceItems);
-        this.metadata = Map.copyOf(builder.metadata);
+        this.sourceItems = Reference2DoubleMaps.unmodifiable(new Reference2DoubleOpenHashMap<>(builder.sourceItems));
+        this.metadata = Object2ObjectMaps.unmodifiable(new Object2ObjectOpenHashMap<>(builder.metadata));
         this.sourceSpecifier = builder.sourceSpecifier;
     }
 
@@ -65,11 +65,11 @@ public class BaseResourceData {
         return sourceName;
     }
 
-    public Map<Item, Double> getSourceItems() {
+    public Reference2DoubleMap<Item> getSourceItems() {
         return sourceItems;
     }
 
-    public Map<String, String> getMetadata() {
+    public Object2ObjectMap<String, String> getMetadata() {
         return metadata;
     }
 
@@ -143,8 +143,8 @@ public class BaseResourceData {
         private double baseFactor = 1.0;
         private String details = "";
         private String sourceSpecifier = "";
-        private final Map<Item, Double> sourceItems = new HashMap<>();
-        private final Map<String, String> metadata = new HashMap<>();
+        private final Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
+        private final Object2ObjectMap<String, String> metadata = new Object2ObjectOpenHashMap<>();
 
         public Builder(Item item, IResourceSource source) {
             this.item = item;
@@ -181,9 +181,8 @@ public class BaseResourceData {
             return this;
         }
 
-        public Builder addMetadata(String key, String value) {
+        public void addMetadata(String key, String value) {
             this.metadata.put(key, value);
-            return this;
         }
 
         public Builder metadata(Map<String, String> meta) {

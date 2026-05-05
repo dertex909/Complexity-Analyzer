@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.config;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.Collections;
@@ -58,6 +60,7 @@ public class ComplexityConfig {
     public static final ModConfigSpec.IntValue MAX_THREADS;
 
     private static volatile int resolvedMaxThreads = -1;
+    private static volatile ObjectSet<String> blacklistCache = null;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -84,12 +87,7 @@ public class ComplexityConfig {
 
         JEI_PLUGIN_BLACKLIST = builder
                 .comment("List of mod IDs whose JEI plugins should be ignored")
-                .defineList(
-                        "jeiPluginBlacklist",
-                        Collections.emptyList(),
-                        () -> "",
-                        obj -> obj instanceof String
-                );
+                .defineList("jeiPluginBlacklist", Collections.emptyList(), () -> "", obj -> obj instanceof String);
         builder.pop();
 
         builder.push("limits");
@@ -176,6 +174,13 @@ public class ComplexityConfig {
         return MACHINE_BASE_COMPLEXITY.get();
     }
 
+    public static boolean isJeiPluginBlacklisted(String modId) {
+        if (blacklistCache == null) synchronized (ComplexityConfig.class) {
+            if (blacklistCache == null) blacklistCache = new ObjectOpenHashSet<>(JEI_PLUGIN_BLACKLIST.get());
+        }
+        return blacklistCache.contains(modId);
+    }
+
     public static int getMaxThreads() {
         if (resolvedMaxThreads >= 0) return resolvedMaxThreads;
 
@@ -199,5 +204,6 @@ public class ComplexityConfig {
 
     public static void resetThreadCache() {
         resolvedMaxThreads = -1;
+        blacklistCache = null;
     }
 }

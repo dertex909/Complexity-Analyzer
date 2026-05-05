@@ -18,24 +18,26 @@
 
 package org.complexityanalyzer.analyzer.solver;
 
+import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.graph.RecipeNode;
-
-import java.util.Map;
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public record SolverResult(
-        Map<Item, Double> optimalComplexities,
-        Map<Item, RecipeNode> optimalRecipes,
+        Reference2DoubleMap<Item> optimalComplexities,
+        Reference2ObjectMap<Item, RecipeNode> optimalRecipes,
         int iterations,
         long executionTimeMs,
         boolean converged
 ) {
-    public Optional<Double> getComplexity(Item item) {
-        return Optional.ofNullable(optimalComplexities.get(item));
+    @Nullable
+    public Double getComplexity(Item item) {
+        return optimalComplexities.containsKey(item) ? optimalComplexities.getDouble(item) : null;
     }
 
-    public Optional<RecipeNode> getOptimalRecipe(Item item) {
-        return Optional.ofNullable(optimalRecipes.get(item));
+    @Nullable
+    public RecipeNode getOptimalRecipe(Item item) {
+        return optimalRecipes.get(item);
     }
 }

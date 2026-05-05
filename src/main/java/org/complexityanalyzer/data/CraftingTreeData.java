@@ -18,10 +18,9 @@
 
 package org.complexityanalyzer.data;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.graph.RecipeNode;
-
-import java.util.*;
 
 public class CraftingTreeData {
 
@@ -40,21 +39,20 @@ public class CraftingTreeData {
 
     private final Item rootItem;
     private final TreeNode root;
-    private final Map<Item, Double> baseResources;
+    private final Reference2DoubleMap<Item> baseResources;
     private final TreeStatistics statistics;
     private final DisplayMode displayMode;
     private final int maxDepth;
 
-    public CraftingTreeData(Item rootItem, TreeNode root, Map<Item, Double> baseResources,
+    public CraftingTreeData(Item rootItem, TreeNode root, Reference2DoubleMap<Item> baseResources,
                             TreeStatistics statistics, DisplayMode displayMode, int maxDepth) {
         this.rootItem = rootItem;
         this.root = root;
-        this.baseResources = baseResources;
+        this.baseResources = Reference2DoubleMaps.unmodifiable(new Reference2DoubleOpenHashMap<>(baseResources));
         this.statistics = statistics;
         this.displayMode = displayMode;
         this.maxDepth = maxDepth;
     }
-
 
     public Item getRootItem() {
         return rootItem;
@@ -64,7 +62,7 @@ public class CraftingTreeData {
         return root;
     }
 
-    public Map<Item, Double> getBaseResources() {
+    public Reference2DoubleMap<Item> getBaseResources() {
         return baseResources;
     }
 
@@ -88,9 +86,9 @@ public class CraftingTreeData {
         private final double complexity;
         private final RecipeNode recipe;
         private final String machineType;
-        private final List<TreeNode> itemChildren;
-        private final List<FluidNode> fluidChildren;
-        private final Map<String, Object> metadata;
+        private final ObjectList<TreeNode> itemChildren;
+        private final ObjectList<FluidNode> fluidChildren;
+        private final Object2ObjectMap<String, Object> metadata;
 
         private TreeNode(Builder builder) {
             this.type = builder.type;
@@ -100,9 +98,9 @@ public class CraftingTreeData {
             this.complexity = builder.complexity;
             this.recipe = builder.recipe;
             this.machineType = builder.machineType;
-            this.itemChildren = new ArrayList<>(builder.itemChildren);
-            this.fluidChildren = new ArrayList<>(builder.fluidChildren);
-            this.metadata = new HashMap<>(builder.metadata);
+            this.itemChildren = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.itemChildren));
+            this.fluidChildren = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidChildren));
+            this.metadata = Object2ObjectMaps.unmodifiable(new Object2ObjectOpenHashMap<>(builder.metadata));
         }
 
         public NodeType getType() {
@@ -133,16 +131,16 @@ public class CraftingTreeData {
             return machineType;
         }
 
-        public List<TreeNode> getItemChildren() {
-            return Collections.unmodifiableList(itemChildren);
+        public ObjectList<TreeNode> getItemChildren() {
+            return itemChildren;
         }
 
-        public List<FluidNode> getFluidChildren() {
-            return Collections.unmodifiableList(fluidChildren);
+        public ObjectList<FluidNode> getFluidChildren() {
+            return fluidChildren;
         }
 
-        public Map<String, Object> getMetadata() {
-            return Collections.unmodifiableMap(metadata);
+        public Object2ObjectMap<String, Object> getMetadata() {
+            return metadata;
         }
 
         public static Builder builder() {
@@ -157,9 +155,9 @@ public class CraftingTreeData {
             private double complexity;
             private RecipeNode recipe;
             private String machineType;
-            private final List<TreeNode> itemChildren = new ArrayList<>();
-            private final List<FluidNode> fluidChildren = new ArrayList<>();
-            private final Map<String, Object> metadata = new HashMap<>();
+            private final ObjectList<TreeNode> itemChildren = new ObjectArrayList<>();
+            private final ObjectList<FluidNode> fluidChildren = new ObjectArrayList<>();
+            private final Object2ObjectMap<String, Object> metadata = new Object2ObjectOpenHashMap<>();
 
             public Builder type(NodeType type) {
                 this.type = type;
@@ -216,7 +214,6 @@ public class CraftingTreeData {
         }
     }
 
-
     public static class FluidNode {
         private final String fluidName;
         private final double amount;
@@ -244,7 +241,6 @@ public class CraftingTreeData {
             return fluidType;
         }
     }
-
 
     public static class TreeStatistics {
         private int totalNodes = 0;

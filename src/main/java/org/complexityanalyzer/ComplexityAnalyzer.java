@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer;
 
-import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
@@ -34,7 +33,7 @@ public class ComplexityAnalyzer {
     public static final String MOD_NAME = "Complexity Analyzer";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
-    public ComplexityAnalyzer(IEventBus ignoredModEventBus, ModContainer modContainer) {
+    public ComplexityAnalyzer(ModContainer modContainer) {
         LOGGER.info("=== {} v{} ===", MOD_NAME, modContainer.getModInfo().getVersion());
         modContainer.registerConfig(ModConfig.Type.COMMON, ComplexityConfig.SPEC);
         NeoForge.EVENT_BUS.register(AnalysisBootstrap.class);

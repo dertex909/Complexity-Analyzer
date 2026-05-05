@@ -18,18 +18,15 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.core.Holder;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
@@ -45,16 +42,16 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
-import java.util.*;
 
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
 
     private static final int SAMPLE_COUNT = 100;
     private static final double BASE_MINING_COST = 2.0;
 
-    private final Map<Item, List<BaseResourceData>> allPaths = new HashMap<>();
+    private final Reference2ObjectMap<Item, ObjectList<BaseResourceData>> allPaths = new Reference2ObjectOpenHashMap<>();
     private static Field randomField = null;
 
     @Override
@@ -71,8 +68,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         int pathsFound = 0;
         int blocksSkipped = 0;
 
-        MinecraftServer server = serverLevel.getServer();
-        List<ItemStack> toolsToTest = createTestTools(serverLevel);
+        var server = serverLevel.getServer();
+        var toolsToTest = createTestTools(serverLevel);
 
         for (Block blockToMine : BuiltInRegistries.BLOCK) {
             if (blockToMine == Blocks.AIR || blockToMine == Blocks.CAVE_AIR || blockToMine == Blocks.VOID_AIR) {
@@ -95,15 +92,15 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 try {
                     LootTable lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                     if (lootTable == LootTable.EMPTY) continue;
-                    Map<Item, Double> averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, blockToMine);
+                    var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, blockToMine);
                     if (averageDrop.isEmpty()) continue;
 
-                    for (Map.Entry<Item, Double> entry : averageDrop.entrySet()) {
-                        Item droppedItem = entry.getKey();
-                        double itemsPerAction = entry.getValue();
+                    for (var entry : averageDrop.reference2DoubleEntrySet()) {
+                        var droppedItem = entry.getKey();
+                        var itemsPerAction = entry.getDoubleValue();
                         if (itemsPerAction <= 0) continue;
                         if (blockAsItem != Items.AIR && droppedItem == blockAsItem) continue;
-                        Map<Item, Double> sourceItems = new HashMap<>();
+                        Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
                         if (blockAsItem != Items.AIR) sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
 
                         Item toolItem = toolStack.getItem();
@@ -127,7 +124,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                 .sourceItems(sourceItems)
                                 .build();
 
-                        allPaths.computeIfAbsent(droppedItem, k -> new ArrayList<>()).add(data);
+                        allPaths.computeIfAbsent(droppedItem, k -> new ObjectArrayList<>()).add(data);
                         pathsFound++;
                     }
                 } catch (Exception ignored) {
@@ -135,7 +132,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             }
         }
 
-        for (List<BaseResourceData> paths : allPaths.values()) {
+        for (var paths : allPaths.values()) {
             paths.sort((a, b) -> {
                 int typeCompare = Double.compare(a.getSourceType().getBaseMultiplier(), b.getSourceType().getBaseMultiplier());
                 if (typeCompare != 0) return typeCompare;
@@ -146,8 +143,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 int sizeCompare = Integer.compare(a.getSourceItems().size(), b.getSourceItems().size());
                 if (sizeCompare != 0) return sizeCompare;
 
-                double sumA = a.getSourceItems().values().stream().mapToDouble(Double::doubleValue).sum();
-                double sumB = b.getSourceItems().values().stream().mapToDouble(Double::doubleValue).sum();
+                var sumA = a.getSourceItems().values().doubleStream().sum();
+                var sumB = b.getSourceItems().values().doubleStream().sum();
                 int sumCompare = Double.compare(sumA, sumB);
                 if (sumCompare != 0) return sumCompare;
 
@@ -159,8 +156,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
     }
 
-    private List<ItemStack> createTestTools(ServerLevel serverLevel) {
-        List<ItemStack> tools = new ArrayList<>();
+    private ObjectList<ItemStack> createTestTools(ServerLevel serverLevel) {
+        var tools = new ObjectArrayList<ItemStack>();
         tools.add(ItemStack.EMPTY);
         tools.add(new ItemStack(Items.WOODEN_PICKAXE));
         tools.add(new ItemStack(Items.WOODEN_AXE));
@@ -182,8 +179,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         tools.add(new ItemStack(Items.NETHERITE_SHOVEL));
         tools.add(new ItemStack(Items.SHEARS));
 
-        ItemStack silkTouchPickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
-        Optional<Holder.Reference<Enchantment>> silkTouchHolder = serverLevel.registryAccess()
+        var silkTouchPickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
+        var silkTouchHolder = serverLevel.registryAccess()
                 .registryOrThrow(Registries.ENCHANTMENT)
                 .getHolder(Enchantments.SILK_TOUCH);
         silkTouchHolder.ifPresent(holder -> silkTouchPickaxe.enchant(holder, 1));
@@ -192,11 +189,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         return tools;
     }
 
-    private Map<Item, Double> getStableDrop(LootTable lootTable, ServerLevel level,
-                                            BlockState blockState, ItemStack tool, Block block) {
-        long baseSeed = generateStableSeed(block, tool);
+    private Reference2DoubleMap<Item> getStableDrop(LootTable lootTable, ServerLevel level,
+                                                    BlockState blockState, ItemStack tool, Block block) {
+        var baseSeed = generateStableSeed(block, tool);
 
-        Map<Item, Long> totalCounts = new HashMap<>();
+        Reference2LongMap<Item> totalCounts = new Reference2LongOpenHashMap<>();
         boolean injectionWorked = false;
 
         for (int i = 0; i < SAMPLE_COUNT; i++) {
@@ -204,11 +201,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
 
-            LootParams params = new LootParams.Builder(level).withParameter(LootContextParams.BLOCK_STATE, blockState)
+            var params = new LootParams.Builder(level).withParameter(LootContextParams.BLOCK_STATE, blockState)
                     .withParameter(LootContextParams.TOOL, tool).withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
                     .create(LootContextParamSets.BLOCK);
 
-            LootContext context = new LootContext.Builder(params).create(Optional.empty());
+            var context = new LootContext.Builder(params).create(java.util.Optional.empty());
 
             if (i == 0) {
                 injectionWorked = injectRandomIntoContext(context, deterministicRandom);
@@ -218,14 +215,15 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             lootTable.getRandomItems(context, drops::add);
 
-            for (ItemStack stack : drops) {
-                if (!stack.isEmpty()) totalCounts.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
+            for (var stack : drops) {
+                if (!stack.isEmpty())
+                    totalCounts.put(stack.getItem(), totalCounts.getLong(stack.getItem()) + stack.getCount());
             }
         }
 
-        Map<Item, Double> averages = new HashMap<>();
-        for (Map.Entry<Item, Long> entry : totalCounts.entrySet()) {
-            averages.put(entry.getKey(), (double) entry.getValue() / SAMPLE_COUNT);
+        Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
+        for (var entry : totalCounts.reference2LongEntrySet()) {
+            averages.put(entry.getKey(), (double) entry.getLongValue() / SAMPLE_COUNT);
         }
 
         return averages;
@@ -315,15 +313,16 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        List<BaseResourceData> paths = allPaths.get(item);
-        if (paths == null || paths.isEmpty()) return Optional.empty();
-        return Optional.of(paths.getFirst());
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        var paths = allPaths.get(item);
+        if (paths == null || paths.isEmpty()) return null;
+        return paths.getFirst();
     }
 
     @Override
-    public List<BaseResourceData> findAllSources(Item item) {
-        return allPaths.getOrDefault(item, Collections.emptyList());
+    public ObjectList<BaseResourceData> findAllSources(Item item) {
+        return allPaths.getOrDefault(item, ObjectLists.emptyList());
     }
 
     @Override

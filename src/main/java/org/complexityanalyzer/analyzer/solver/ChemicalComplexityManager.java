@@ -18,24 +18,22 @@
 
 package org.complexityanalyzer.analyzer.solver;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class ChemicalComplexityManager {
 
-    private final Map<ResourceLocation, Double> complexities = new ConcurrentHashMap<>();
-    private final Map<ResourceLocation, List<ChemicalRecipe>> producingRecipes = new ConcurrentHashMap<>();
+    private final Object2DoubleMap<ResourceLocation> complexities = Object2DoubleMaps.synchronize(new Object2DoubleOpenHashMap<>());
+    private final Object2ObjectMap<ResourceLocation, ObjectList<ChemicalRecipe>> producingRecipes = Object2ObjectMaps.synchronize(new Object2ObjectOpenHashMap<>());
 
     public void registerChemical(ResourceLocation chemicalId, double initialComplexity) {
         complexities.putIfAbsent(chemicalId, initialComplexity);
     }
 
     public void addProducingRecipe(ResourceLocation outputChemical, ChemicalRecipe recipe) {
-        producingRecipes.computeIfAbsent(outputChemical, k -> new ArrayList<>()).add(recipe);
+        producingRecipes.computeIfAbsent(outputChemical, k -> new ObjectArrayList<>()).add(recipe);
     }
 
     public double getComplexity(ResourceLocation chemicalId) {
@@ -43,29 +41,27 @@ public class ChemicalComplexityManager {
     }
 
     public void setComplexity(ResourceLocation chemicalId, double complexity) {
-        complexities.getOrDefault(chemicalId, Double.POSITIVE_INFINITY);
         complexities.put(chemicalId, complexity);
     }
 
-    public Set<ResourceLocation> getAllChemicals() {
-        return new HashSet<>(complexities.keySet());
+    public ObjectSet<ResourceLocation> getAllChemicals() {
+        return new ObjectOpenHashSet<>(complexities.keySet());
     }
 
-    public List<ChemicalRecipe> getProducingRecipes(ResourceLocation chemicalId) {
-        return producingRecipes.getOrDefault(chemicalId, Collections.emptyList());
+    public ObjectList<ChemicalRecipe> getProducingRecipes(ResourceLocation chemicalId) {
+        return producingRecipes.getOrDefault(chemicalId, ObjectLists.emptyList());
     }
 
-    public double calculateComplexity(ResourceLocation chemicalId,
-                                      Map<Item, Double> itemComplexities,
-                                      Map<Fluid, Double> fluidComplexities) {
-        List<ChemicalRecipe> recipes = getProducingRecipes(chemicalId);
+    public double calculateComplexity(ResourceLocation chemicalId, Reference2DoubleMap<Item> itemComplexities,
+                                      Reference2DoubleMap<Fluid> fluidComplexities) {
+        var recipes = getProducingRecipes(chemicalId);
 
         if (recipes.isEmpty()) return Double.POSITIVE_INFINITY;
 
-        double minCost = Double.POSITIVE_INFINITY;
+        var minCost = Double.POSITIVE_INFINITY;
 
-        for (ChemicalRecipe recipe : recipes) {
-            double cost = recipe.calculateCost(itemComplexities, fluidComplexities, this);
+        for (var recipe : recipes) {
+            var cost = recipe.calculateCost(itemComplexities, fluidComplexities, this);
             if (!Double.isInfinite(cost)) minCost = Math.min(minCost, cost);
         }
 
@@ -82,34 +78,34 @@ public class ChemicalComplexityManager {
     }
 
     public record ChemicalRecipe(
-            Map<Item, Double> itemInputs,
-            Map<Fluid, Double> fluidInputs,
-            Map<ResourceLocation, Double> chemicalInputs,
+            Reference2DoubleMap<Item> itemInputs,
+            Reference2DoubleMap<Fluid> fluidInputs,
+            Object2DoubleMap<ResourceLocation> chemicalInputs,
             double outputAmount,
             double machineComplexity,
             double multiplier
     ) {
-        public double calculateCost(Map<Item, Double> itemComplexities,
-                                    Map<Fluid, Double> fluidComplexities,
+        public double calculateCost(Reference2DoubleMap<Item> itemComplexities,
+                                    Reference2DoubleMap<Fluid> fluidComplexities,
                                     ChemicalComplexityManager chemicalManager) {
-            double totalCost = 0.0;
+            var totalCost = 0.0;
 
-            for (Map.Entry<Item, Double> entry : itemInputs.entrySet()) {
-                double itemCost = itemComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
+            for (var entry : itemInputs.reference2DoubleEntrySet()) {
+                var itemCost = itemComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(itemCost)) return Double.POSITIVE_INFINITY;
-                totalCost += itemCost * entry.getValue();
+                totalCost += itemCost * entry.getDoubleValue();
             }
 
-            for (Map.Entry<Fluid, Double> entry : fluidInputs.entrySet()) {
-                double fluidCost = fluidComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
+            for (var entry : fluidInputs.reference2DoubleEntrySet()) {
+                var fluidCost = fluidComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
                 if (Double.isInfinite(fluidCost)) return Double.POSITIVE_INFINITY;
-                totalCost += fluidCost * entry.getValue();
+                totalCost += fluidCost * entry.getDoubleValue();
             }
 
-            for (Map.Entry<ResourceLocation, Double> entry : chemicalInputs.entrySet()) {
-                double chemCost = chemicalManager.getComplexity(entry.getKey());
+            for (var entry : chemicalInputs.object2DoubleEntrySet()) {
+                var chemCost = chemicalManager.getComplexity(entry.getKey());
                 if (Double.isInfinite(chemCost)) return Double.POSITIVE_INFINITY;
-                totalCost += chemCost * entry.getValue();
+                totalCost += chemCost * entry.getDoubleValue();
             }
 
             totalCost += machineComplexity;

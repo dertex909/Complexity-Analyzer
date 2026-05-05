@@ -18,6 +18,10 @@
 
 package org.complexityanalyzer.compat.jei;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.recipe.RecipeType;
@@ -32,17 +36,14 @@ import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @ParametersAreNonnullByDefault
 public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistration {
-    private final Map<ResourceLocation, List<ItemStack>> catalysts = new HashMap<>();
+    private final Object2ObjectMap<ResourceLocation, ObjectList<ItemStack>> catalysts = new Object2ObjectOpenHashMap<>();
     private static final IJeiHelpers EMPTY_JEI_HELPERS = new JeiMocks.EmptyJeiHelpers();
 
-    public Map<ResourceLocation, List<ItemStack>> getCatalysts() {
+    public Object2ObjectMap<ResourceLocation, ObjectList<ItemStack>> getCatalysts() {
         return catalysts;
     }
 
@@ -51,8 +52,7 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
         if (ingredient instanceof ItemStack stack && !stack.isEmpty()) {
             for (RecipeType<?> recipeType : recipeTypes) {
                 ResourceLocation uid = recipeType.getUid();
-                catalysts.computeIfAbsent(uid, k -> new ArrayList<>()).add(stack.copy());
-
+                catalysts.computeIfAbsent(uid, k -> new ObjectArrayList<>()).add(stack.copy());
                 ComplexityAnalyzer.LOGGER.debug("JEI Catalyst Intercept: {} -> {}",
                         uid, BuiltInRegistries.ITEM.getKey(stack.getItem()));
             }

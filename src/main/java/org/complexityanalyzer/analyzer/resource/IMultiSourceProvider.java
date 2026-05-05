@@ -18,11 +18,10 @@
 
 package org.complexityanalyzer.analyzer.resource;
 
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 
-import java.util.List;
-
 public interface IMultiSourceProvider {
-    List<BaseResourceData> findAllSources(Item item);
+    ObjectList<BaseResourceData> findAllSources(Item item);
 }

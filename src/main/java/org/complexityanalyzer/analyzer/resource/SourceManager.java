@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.analyzer.resource;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -26,20 +27,17 @@ import org.complexityanalyzer.analyzer.resource.sources.EmpiricalBlockSource;
 import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
-import org.complexityanalyzer.graph.RecipeGraph;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 public class SourceManager {
     private final CopyOnWriteArrayList<IResourceSource> sources;
-    private final Map<Item, Optional<BaseResourceData>> cache = new ConcurrentHashMap<>();
+    private final Reference2ObjectMap<Item, BaseResourceData> cache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
-    public SourceManager(List<IResourceSource> initialSources) {
+    public SourceManager(ObjectList<IResourceSource> initialSources) {
         this.sources = new CopyOnWriteArrayList<>(initialSources);
         sortSources();
     }
@@ -53,8 +51,8 @@ public class SourceManager {
     }
 
     private void sortSources() {
-        List<IResourceSource> sorted = new ArrayList<>(sources);
-        sorted.sort(Comparator.comparingInt(IResourceSource::getPriority).reversed());
+        var sorted = new ObjectArrayList<>(sources);
+        sorted.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
         sources.clear();
         sources.addAll(sorted);
     }
@@ -70,85 +68,94 @@ public class SourceManager {
     public void initialize(Level level) {
         ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources in parallel...", sources.size());
 
-        AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger failCount = new AtomicInteger(0);
+        var successCount = new AtomicInteger(0);
+        var failCount = new AtomicInteger(0);
 
-        List<IResourceSource> sourceSnapshot = new ArrayList<>(sources);
+        var sourceSnapshot = new ObjectArrayList<>(sources);
+        var futures = new CompletableFuture[sourceSnapshot.size()];
 
-        List<CompletableFuture<Void>> futures = sourceSnapshot.stream()
-                .map(source -> CompletableFuture.runAsync(() -> {
-                    try {
-                        source.initialize(level);
-                        successCount.incrementAndGet();
-                        ComplexityAnalyzer.LOGGER.debug("Initialized resource source: {}", source.getName());
-                    } catch (Exception e) {
-                        failCount.incrementAndGet();
-                        ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
-                    }
-                }, ThreadPoolManager.getInstance().getComputePool()))
-                .toList();
+        for (int i = 0; i < sourceSnapshot.size(); i++) {
+            var source = sourceSnapshot.get(i);
+            futures[i] = CompletableFuture.runAsync(() -> {
+                try {
+                    source.initialize(level);
+                    successCount.incrementAndGet();
+                    ComplexityAnalyzer.LOGGER.debug("Initialized resource source: {}", source.getName());
+                } catch (Exception e) {
+                    failCount.incrementAndGet();
+                    ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
+                }
+            }, ThreadPoolManager.getInstance().getComputePool());
+        }
 
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        CompletableFuture.allOf(futures).join();
 
         ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed",
                 successCount.get(), failCount.get());
     }
 
     public double getBaseFactor(Item item) {
-        return analyze(item)
-                .map(BaseResourceData::getBaseFactor)
-                .orElse(-1.0);
+        var data = analyze(item);
+        return data != null ? data.getBaseFactor() : -1.0;
     }
 
-    public Optional<BaseResourceData> analyze(Item item) {
-        return cache.computeIfAbsent(item, this::performAnalysis);
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        if (cache.containsKey(item)) return cache.get(item);
+        var result = performAnalysis(item);
+        cache.put(item, result);
+        return result;
     }
 
-    private Optional<BaseResourceData> performAnalysis(Item item) {
-        RecipeGraph graph = AnalysisEngine.getInstance().getGraph();
+    @Nullable
+    private BaseResourceData performAnalysis(Item item) {
+        var engine = AnalysisEngine.getInstance();
+        var graph = engine != null ? engine.getGraph() : null;
 
-        boolean empiricalReady = getSourceByType(EmpiricalBlockSource.class)
-                .map(EmpiricalBlockSource::isReady)
-                .orElse(false);
+        var empiricalSource = getSourceByType(EmpiricalBlockSource.class);
+        var empiricalReady = empiricalSource != null && empiricalSource.isReady();
 
-        Stream<IResourceSource> sourceStream = sources.stream();
+        var bestFactor = Double.MAX_VALUE;
+        var bestData = (BaseResourceData) null;
 
-        if (empiricalReady) {
-            sourceStream = sourceStream.filter(source -> !(source instanceof TheoreticalBlockSource));
+        for (var source : sources) {
+            if (empiricalReady && source instanceof TheoreticalBlockSource) continue;
+            if (!source.canProvide(item)) continue;
+
+            var data = source.analyze(item);
+            if (data != null && data.getBaseFactor() < bestFactor) {
+                bestFactor = data.getBaseFactor();
+                bestData = data;
+            }
         }
 
-        Optional<BaseResourceData> candidate = sourceStream
-                .filter(source -> source.canProvide(item))
-                .map(source -> source.analyze(item))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .min(Comparator.comparingDouble(BaseResourceData::getBaseFactor));
+        var candidate = bestData;
 
-        if (candidate.isPresent() && graph != null && graph.hasRecipe(item)) {
-            BaseResourceData data = candidate.get();
+        if (candidate != null && graph != null && graph.hasRecipe(item)) {
+            var unusable = Double.isInfinite(candidate.getBaseFactor()) ||
+                    candidate.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
 
-            boolean hasNonBaseRecipe = graph.getRecipes(item).stream().anyMatch(r -> !r.isBaseRecipe());
-            if (hasNonBaseRecipe) {
-                boolean unusable = Double.isInfinite(data.getBaseFactor()) ||
-                        data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
-                if (unusable) return Optional.empty();
-            }
+            if (unusable) for (var r : graph.getRecipes(item)) if (!r.isBaseRecipe()) return null;
         }
 
         return candidate;
     }
 
-    public List<BaseResourceData> findAllSources(Item item) {
-        return sources.parallelStream()
-                .filter(source -> source.canProvide(item))
-                .flatMap(source -> {
-                    if (source instanceof IMultiSourceProvider multiSource) {
-                        return multiSource.findAllSources(item).stream();
-                    } else {
-                        return source.analyze(item).stream();
-                    }
-                })
-                .collect(java.util.stream.Collectors.toList());
+    public ObjectList<BaseResourceData> findAllSources(Item item) {
+        var results = new ObjectArrayList<BaseResourceData>();
+
+        for (var source : sources) {
+            if (!source.canProvide(item)) continue;
+
+            if (source instanceof IMultiSourceProvider multiSource) {
+                results.addAll(multiSource.findAllSources(item));
+            } else {
+                var data = source.analyze(item);
+                if (data != null) results.add(data);
+            }
+        }
+
+        return results;
     }
 
     public void clearCache() {
@@ -156,14 +163,13 @@ public class SourceManager {
         ComplexityAnalyzer.LOGGER.debug("SourceManager cache cleared.");
     }
 
-    public List<IResourceSource> getSources() {
-        return Collections.unmodifiableList(sources);
+    public ObjectList<IResourceSource> getSources() {
+        return new ObjectArrayList<>(sources);
     }
 
-    public <T extends IResourceSource> Optional<T> getSourceByType(Class<T> type) {
-        return sources.stream()
-                .filter(type::isInstance)
-                .map(type::cast)
-                .findFirst();
+    @Nullable
+    public <T extends IResourceSource> T getSourceByType(Class<T> type) {
+        for (var source : sources) if (type.isInstance(source)) return type.cast(source);
+        return null;
     }
 }

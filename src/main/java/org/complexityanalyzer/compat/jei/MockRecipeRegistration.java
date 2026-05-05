@@ -18,6 +18,10 @@
 
 package org.complexityanalyzer.compat.jei;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.recipe.RecipeType;
@@ -35,12 +39,12 @@ import javax.annotation.meta.TypeQualifierDefault;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.*;
+import java.util.List;
 
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
 public class MockRecipeRegistration implements IRecipeRegistration {
-    private final Map<RecipeType<?>, List<?>> collectedRecipes = new HashMap<>();
+    private final Reference2ObjectMap<RecipeType<?>, ObjectList<?>> collectedRecipes = new Reference2ObjectOpenHashMap<>();
     private final Level level;
     private final RecipeManager recipeManager;
 
@@ -58,12 +62,12 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     @Override
     public <T> void addRecipes(RecipeType<T> recipeType, List<T> recipes) {
         if (recipes.isEmpty()) return;
-        collectedRecipes.put(recipeType, new ArrayList<>(recipes));
+        collectedRecipes.put(recipeType, new ObjectArrayList<>(recipes));
     }
 
     @NotNull
-    public Map<RecipeType<?>, List<?>> getCollectedRecipes() {
-        return Collections.unmodifiableMap(collectedRecipes);
+    public Reference2ObjectMap<RecipeType<?>, ObjectList<?>> getCollectedRecipes() {
+        return collectedRecipes;
     }
 
     @Override

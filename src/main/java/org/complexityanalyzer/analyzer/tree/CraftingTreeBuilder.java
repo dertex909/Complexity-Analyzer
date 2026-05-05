@@ -18,43 +18,40 @@
 
 package org.complexityanalyzer.analyzer.tree;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
-import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.*;
-
-import java.util.*;
+import org.jetbrains.annotations.Nullable;
 
 public class CraftingTreeBuilder {
 
     private final AnalysisEngine engine;
     private final DepthAnalyzer depthAnalyzer;
+    @Nullable
     private final SourceManager sourceManager;
 
     public CraftingTreeBuilder(AnalysisEngine engine) {
         this.engine = engine;
-        this.depthAnalyzer = engine.getDepthAnalyzer().orElseThrow(
-                () -> new IllegalStateException("DepthAnalyzer not initialized"));
-        this.sourceManager = engine.getSourceManager().orElse(null);
+        this.depthAnalyzer = engine.getDepthAnalyzer();
+        if (this.depthAnalyzer == null) throw new IllegalStateException("DepthAnalyzer not initialized");
+        this.sourceManager = engine.getSourceManager();
     }
 
     public CraftingTreeData build(Item item, DisplayMode mode, int maxDepth) {
-        Map<Item, Double> baseResources = new LinkedHashMap<>();
-        Set<Item> uniqueItems = new HashSet<>();
-        TreeStatistics stats = new TreeStatistics();
+        var baseResources = new Reference2DoubleLinkedOpenHashMap<Item>();
+        var uniqueItems = new ReferenceOpenHashSet<Item>();
+        var stats = new TreeStatistics();
 
-        double initialAmount = (mode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(1.0) : 1.0;
-
-        TreeNode root = buildNode(
+        var root = buildNode(
                 item,
-                initialAmount,
+                1.0,
                 0,
-                new HashSet<>(),
+                new ReferenceOpenHashSet<>(),
                 baseResources,
                 mode,
                 maxDepth,
@@ -71,32 +68,28 @@ public class CraftingTreeBuilder {
             Item item,
             double neededAmount,
             int depth,
-            Set<Item> visitedOnPath,
-            Map<Item, Double> baseResources,
+            ReferenceSet<Item> visitedOnPath,
+            Reference2DoubleMap<Item> baseResources,
             DisplayMode displayMode,
             int maxDepth,
-            Set<Item> uniqueItems,
+            ReferenceSet<Item> uniqueItems,
             TreeStatistics stats
     ) {
         uniqueItems.add(item);
         stats.incrementTotalNodes();
 
-        Optional<ItemComplexity> complexityOpt = engine.getComplexityResult(item);
-        if (complexityOpt.isEmpty()) {
-            return TreeNode.builder()
-                    .type(NodeType.NO_DATA)
-                    .item(item)
-                    .neededAmount(neededAmount)
-                    .complexity(0)
-                    .build();
-        }
+        var complexityResult = engine.getComplexityResult(item);
+        if (complexityResult == null) return TreeNode.builder()
+                .type(NodeType.NO_DATA)
+                .item(item)
+                .neededAmount(neededAmount)
+                .complexity(0)
+                .build();
 
-        ItemComplexity complexityData = complexityOpt.get();
-        double complexity = complexityData.getComplexity();
+        double complexity = complexityResult.getComplexity();
 
         if (depth >= maxDepth) {
-            calculateBaseResourcesFor(item, neededAmount, new HashSet<>(visitedOnPath),
-                    baseResources, displayMode);
+            calculateBaseResourcesFor(item, neededAmount, visitedOnPath, baseResources, displayMode);
             return TreeNode.builder()
                     .type(NodeType.MAX_DEPTH_REACHED)
                     .item(item)
@@ -105,8 +98,7 @@ public class CraftingTreeBuilder {
                     .build();
         }
 
-        double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
-                Math.ceil(neededAmount) : neededAmount;
+        double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(neededAmount) : neededAmount;
 
         if (!visitedOnPath.add(item)) {
             stats.incrementCycles();
@@ -121,40 +113,44 @@ public class CraftingTreeBuilder {
                     .build();
         }
 
-        Optional<RecipeNode> recipeOpt = engine.getSolverResult()
-                .flatMap(result -> result.getOptimalRecipe(item))
-                .or(() -> depthAnalyzer.getRecipeToFollow(item));
+        RecipeNode recipe = null;
+        var solverResult = engine.getSolverResult();
+        if (solverResult != null) recipe = solverResult.getOptimalRecipe(item);
 
-        if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
-            RecipeGraph graph = engine.getGraph();
+        if (recipe == null) recipe = depthAnalyzer.getRecipeToFollow(item);
+
+        if (recipe == null || recipe.isBaseRecipe()) {
+            var graph = engine.getGraph();
             if (graph != null && graph.hasRecipe(item)) {
-                List<RecipeNode> recipes = graph.getRecipes(item);
-                Optional<RecipeNode> craftRecipe = recipes.stream()
-                        .filter(r -> !r.isBaseRecipe())
-                        .filter(r -> r.getCategory() == RecipeCategory.PRIMARY
-                                || r.getCategory() == RecipeCategory.PROCESSING)
-                        .min(Comparator.comparingInt(RecipeNode::getPriority));
-
-                if (craftRecipe.isPresent()) recipeOpt = craftRecipe;
+                var recipes = graph.getRecipes(item);
+                RecipeNode bestCraft = null;
+                for (var r : recipes) {
+                    if (r.isBaseRecipe()) continue;
+                    var cat = r.getCategory();
+                    if (cat == RecipeCategory.PRIMARY || cat == RecipeCategory.PROCESSING) {
+                        if (bestCraft == null || r.getPriority() < bestCraft.getPriority()) bestCraft = r;
+                    }
+                }
+                if (bestCraft != null) recipe = bestCraft;
             }
         }
 
         boolean wouldCreateCycle = false;
-        if (recipeOpt.isPresent() && !recipeOpt.get().isBaseRecipe()) {
-            RecipeNode recipe = recipeOpt.get();
-            for (IngredientSlot slot : recipe.getIngredients()) {
-                if (slot.getVariants().stream().anyMatch(visitedOnPath::contains)) {
+        if (recipe != null && !recipe.isBaseRecipe()) for (var slot : recipe.getIngredients()) {
+            for (var variant : slot.getVariants()) {
+                if (visitedOnPath.contains(variant)) {
                     wouldCreateCycle = true;
                     break;
                 }
             }
+            if (wouldCreateCycle) break;
         }
 
-        if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe() || wouldCreateCycle) {
+        if (recipe == null || recipe.isBaseRecipe() || wouldCreateCycle) {
             stats.incrementBaseResources();
             baseResources.merge(item, amountToAdd, Double::sum);
 
-            TreeNode.Builder builder = TreeNode.builder()
+            var builder = TreeNode.builder()
                     .type(NodeType.BASE_RESOURCE)
                     .item(item)
                     .neededAmount(neededAmount)
@@ -162,11 +158,11 @@ public class CraftingTreeBuilder {
                     .addMetadata("wouldCreateCycle", wouldCreateCycle);
 
             if (sourceManager != null && !wouldCreateCycle) {
-                Optional<BaseResourceData> sourceData = sourceManager.analyze(item);
-                sourceData.ifPresent(data -> {
-                    builder.addMetadata("sourceTypeName", data.getSourceType().getDisplayName());
-                    builder.addMetadata("sourceSpecifier", data.getSourceSpecifier());
-                });
+                var sourceData = sourceManager.analyze(item);
+                if (sourceData != null) {
+                    builder.addMetadata("sourceTypeName", sourceData.getSourceType().getDisplayName());
+                    builder.addMetadata("sourceSpecifier", sourceData.getSourceSpecifier());
+                }
             }
 
             visitedOnPath.remove(item);
@@ -175,17 +171,15 @@ public class CraftingTreeBuilder {
 
         stats.incrementCraftingSteps();
 
-        RecipeNode recipe = recipeOpt.get();
-        String machineName = engine.getMachineRegistry()
-                .flatMap(registry -> registry.getMachineForRecipe(recipe.getRecipeType()))
-                .map(m -> m.getDescription().getString())
-                .orElse("Crafting Table");
+        var registry = engine.getMachineRegistry();
+        var machine = (registry != null) ? registry.getMachineForRecipe(recipe.getRecipeType()) : null;
+        var machineName = (machine != null) ? machine.getDescription().getString() : "Crafting Table";
 
         double craftOperations = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
                 Math.ceil(neededAmount / recipe.getResultCount()) :
                 neededAmount / recipe.getResultCount();
 
-        TreeNode.Builder nodeBuilder = TreeNode.builder()
+        var nodeBuilder = TreeNode.builder()
                 .type(NodeType.CRAFTING)
                 .item(item)
                 .neededAmount(neededAmount)
@@ -193,27 +187,34 @@ public class CraftingTreeBuilder {
                 .recipe(recipe)
                 .machineType(machineName);
 
-        Map<Item, Integer> ingredientsForOneCraft = new LinkedHashMap<>();
-        for (IngredientSlot slot : recipe.getIngredients()) {
-            slot.getVariants().stream().min(Comparator.comparingDouble(engine::getComplexity))
-                    .ifPresent(bestVariant ->
-                            ingredientsForOneCraft.merge(bestVariant, slot.getCount(), Integer::sum));
+        var ingredientsForOneCraft = new Reference2IntOpenHashMap<Item>();
+        for (var slot : recipe.getIngredients()) {
+            Item bestVariant = null;
+            double minComplexity = Double.POSITIVE_INFINITY;
+            for (var v : slot.getVariants()) {
+                double c = engine.getComplexity(v);
+                if (c < minComplexity) {
+                    minComplexity = c;
+                    bestVariant = v;
+                }
+            }
+            if (bestVariant != null) ingredientsForOneCraft.addTo(bestVariant, slot.getCount());
         }
 
-        for (Map.Entry<Item, Integer> entry : ingredientsForOneCraft.entrySet()) {
-            Item ingredientItem = entry.getKey();
-            int countForOneCraft = entry.getValue();
+        for (var entry : Reference2IntMaps.fastIterable(ingredientsForOneCraft)) {
+            var ingredientItem = entry.getKey();
+            int countForOneCraft = entry.getIntValue();
             double totalIngredientNeeded = craftOperations * countForOneCraft;
 
-            TreeNode childNode = buildNode(ingredientItem, totalIngredientNeeded, depth + 1,
+            var childNode = buildNode(ingredientItem, totalIngredientNeeded, depth + 1,
                     visitedOnPath, baseResources, displayMode, maxDepth, uniqueItems, stats);
             nodeBuilder.addItemChild(childNode);
         }
 
-        for (FluidIngredientSlot slot : recipe.getFluidIngredients()) {
+        for (var slot : recipe.getFluidIngredients()) {
             var primaryFluid = slot.getPrimaryFluid();
             if (primaryFluid != null) {
-                String fluidName = primaryFluid.getFluidType().getDescription().getString();
+                var fluidName = primaryFluid.getFluidType().getDescription().getString();
                 double amount = slot.getAmount() * craftOperations;
                 nodeBuilder.addFluidChild(new FluidNode(fluidName, amount));
             }
@@ -226,23 +227,21 @@ public class CraftingTreeBuilder {
     private void calculateBaseResourcesFor(
             Item item,
             double neededAmount,
-            Set<Item> visited,
-            Map<Item, Double> baseResources,
+            ReferenceSet<Item> visited,
+            Reference2DoubleMap<Item> baseResources,
             DisplayMode displayMode
     ) {
         if (!visited.add(item)) return;
 
-        Optional<RecipeNode> recipeOpt = depthAnalyzer.getRecipeToFollow(item);
+        var recipe = depthAnalyzer.getRecipeToFollow(item);
 
-        if (recipeOpt.isEmpty() || recipeOpt.get().isBaseRecipe()) {
-            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
-                    Math.ceil(neededAmount) : neededAmount;
+        if (recipe == null || recipe.isBaseRecipe()) {
+            double amountToAdd = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ? Math.ceil(neededAmount) : neededAmount;
             baseResources.merge(item, amountToAdd, Double::sum);
             visited.remove(item);
             return;
         }
 
-        RecipeNode recipe = recipeOpt.get();
         double craftOperations;
         if (displayMode == DisplayMode.PLAYER_INSTRUCTION) {
             int neededPlayerAmount = (int) Math.ceil(neededAmount);
@@ -251,9 +250,16 @@ public class CraftingTreeBuilder {
             craftOperations = neededAmount / recipe.getResultCount();
         }
 
-        for (IngredientSlot slot : recipe.getIngredients()) {
-            Item bestVariant = slot.getVariants().stream()
-                    .min(Comparator.comparingDouble(engine::getComplexity)).orElse(null);
+        for (var slot : recipe.getIngredients()) {
+            Item bestVariant = null;
+            double minComp = Double.POSITIVE_INFINITY;
+            for (var v : slot.getVariants()) {
+                double c = engine.getComplexity(v);
+                if (c < minComp) {
+                    minComp = c;
+                    bestVariant = v;
+                }
+            }
 
             if (bestVariant != null) {
                 double totalIngredientNeeded = craftOperations * slot.getCount();

@@ -18,9 +18,8 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
@@ -32,21 +31,26 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-
-import java.util.*;
+import org.jetbrains.annotations.Nullable;
 
 public class VillagerTradeSource implements IResourceSource {
 
-    private static final Map<Integer, Double> LEVEL_COST_MAP = Map.of(
-            1, 1.2, 2, 1.5, 3, 2.0, 4, 3.0, 5, 5.0
-    );
+    private static final Int2DoubleMap LEVEL_COST_MAP = new Int2DoubleOpenHashMap();
 
-    private static final Set<String> SKIP_TRADE_TYPES = Set.of(
+    static {
+        LEVEL_COST_MAP.put(1, 1.2);
+        LEVEL_COST_MAP.put(2, 1.5);
+        LEVEL_COST_MAP.put(3, 2.0);
+        LEVEL_COST_MAP.put(4, 3.0);
+        LEVEL_COST_MAP.put(5, 5.0);
+    }
+
+    private static final ObjectSet<String> SKIP_TRADE_TYPES = new ObjectOpenHashSet<>(new String[]{
             "TreasureMapForEmeralds",
             "EnchantedItemForEmeralds"
-    );
+    });
 
-    private final Map<Item, List<TradeInfo>> tradesByResult = new Object2ObjectOpenHashMap<>();
+    private final Reference2ObjectMap<Item, ObjectList<TradeInfo>> tradesByResult = new Reference2ObjectOpenHashMap<>();
 
     private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {
     }
@@ -66,8 +70,8 @@ public class VillagerTradeSource implements IResourceSource {
         int skippedSlow = 0;
         int failedTrades = 0;
 
-        List<PendingTrade> pendingTrades = new ObjectArrayList<>();
-        Map<String, Integer> skippedByType = new Object2ObjectOpenHashMap<>();
+        var pendingTrades = new ObjectArrayList<PendingTrade>();
+        var skippedByType = new Object2IntOpenHashMap<String>();
 
         for (Int2ObjectMap<VillagerTrades.ItemListing[]> professionTrades : VillagerTrades.TRADES.values()) {
             for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : professionTrades.int2ObjectEntrySet()) {
@@ -79,13 +83,13 @@ public class VillagerTradeSource implements IResourceSource {
 
                     if (SKIP_TRADE_TYPES.contains(tradeType)) {
                         skippedSlow++;
-                        skippedByType.merge(tradeType, 1, Integer::sum);
+                        skippedByType.addTo(tradeType, 1);
                         continue;
                     }
 
                     try {
-                        RandomSource randomSource = RandomSource.create();
-                        MerchantOffer offer = listing.getOffer(null, randomSource);
+                        var randomSource = RandomSource.create();
+                        var offer = listing.getOffer(null, randomSource);
 
                         if (offer != null && !offer.getResult().isEmpty()) {
                             fastParsed++;
@@ -109,12 +113,9 @@ public class VillagerTradeSource implements IResourceSource {
 
         if (!pendingTrades.isEmpty()) {
             long phase2Start = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...",
-                    pendingTrades.size());
+            ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...", pendingTrades.size());
 
-            Villager villager = new Villager(
-                    EntityType.VILLAGER, level
-            ) {
+            Villager villager = new Villager(EntityType.VILLAGER, level) {
                 @Override
                 protected void registerGoals() {
                 }
@@ -134,8 +135,8 @@ public class VillagerTradeSource implements IResourceSource {
                 }
 
                 try {
-                    RandomSource randomSource = RandomSource.create();
-                    MerchantOffer offer = pending.listing.getOffer(villager, randomSource);
+                    var randomSource = RandomSource.create();
+                    var offer = pending.listing.getOffer(villager, randomSource);
 
                     if (offer != null && !offer.getResult().isEmpty()) {
                         entityParsed++;
@@ -174,12 +175,10 @@ public class VillagerTradeSource implements IResourceSource {
     }
 
     private void addTrade(MerchantOffer offer, int level) {
-        Item resultItem = offer.getResult().getItem();
+        var resultItem = offer.getResult().getItem();
 
         tradesByResult.computeIfAbsent(resultItem, k -> new ObjectArrayList<>(2))
-                .add(new TradeInfo(
-                        offer.getResult().copy(), offer.getBaseCostA().copy(), offer.getCostB().copy(), level
-                ));
+                .add(new TradeInfo(offer.getResult().copy(), offer.getBaseCostA().copy(), offer.getCostB().copy(), level));
     }
 
     @Override
@@ -188,16 +187,17 @@ public class VillagerTradeSource implements IResourceSource {
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        List<TradeInfo> trades = tradesByResult.get(item);
-        if (trades == null || trades.isEmpty()) return Optional.empty();
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        var trades = tradesByResult.get(item);
+        if (trades == null || trades.isEmpty()) return null;
 
-        TradeInfo bestTrade = trades.getFirst();
+        var bestTrade = trades.getFirst();
         for (int i = 1; i < trades.size(); i++) {
             if (trades.get(i).level() < bestTrade.level()) bestTrade = trades.get(i);
         }
 
-        Map<Item, Double> sourceItems = new Object2ObjectOpenHashMap<>(2);
+        var sourceItems = new Reference2DoubleOpenHashMap<Item>(2);
 
         if (!bestTrade.costA().isEmpty()) sourceItems.put(bestTrade.costA().getItem(),
                 (double) bestTrade.costA().getCount() / bestTrade.result().getCount());
@@ -205,13 +205,13 @@ public class VillagerTradeSource implements IResourceSource {
         if (!bestTrade.costB().isEmpty()) sourceItems.put(bestTrade.costB().getItem(),
                 (double) bestTrade.costB().getCount() / bestTrade.result().getCount());
 
-        return Optional.of(new BaseResourceData.Builder(item, this)
+        return new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())
                 .baseFactor(LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0))
                 .sourceItems(sourceItems)
                 .sourceSpecifier("Lvl " + bestTrade.level())
                 .details(String.format("Trade with Lvl %d Villager", bestTrade.level()))
-                .build());
+                .build();
     }
 
     @Override

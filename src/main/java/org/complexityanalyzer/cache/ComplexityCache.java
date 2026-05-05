@@ -18,19 +18,21 @@
 
 package org.complexityanalyzer.cache;
 
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ComplexityCache {
 
-    private final Map<Item, ItemComplexity> cache = new ConcurrentHashMap<>();
-    private final Map<Item, ComplexityCategory> categoryCache = new ConcurrentHashMap<>();
+    private final Reference2ObjectMap<Item, ItemComplexity> cache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private final Reference2ObjectMap<Item, ComplexityCategory> categoryCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
     private final AtomicLong hits = new AtomicLong(0);
     private final AtomicLong misses = new AtomicLong(0);
@@ -38,15 +40,16 @@ public class ComplexityCache {
     public ComplexityCache() {
     }
 
-    public Optional<ItemComplexity> get(Item item) {
-        ItemComplexity result = cache.get(item);
+    @Nullable
+    public ItemComplexity get(Item item) {
+        var result = cache.get(item);
 
         if (result != null) {
             hits.incrementAndGet();
-            return Optional.of(result);
+            return result;
         } else {
             misses.incrementAndGet();
-            return Optional.empty();
+            return null;
         }
     }
 
@@ -57,8 +60,9 @@ public class ComplexityCache {
         categoryCache.put(item, complexity.getCategory());
     }
 
-    public Optional<ComplexityCategory> getCategory(Item item) {
-        return Optional.ofNullable(categoryCache.get(item));
+    @Nullable
+    public ComplexityCategory getCategory(Item item) {
+        return categoryCache.get(item);
     }
 
     public boolean contains(Item item) {

@@ -18,20 +18,19 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public class PassiveProductionSource implements IResourceSource {
 
-    private final Map<Item, ProductionInfo> productionMap = new HashMap<>();
+    private final Reference2ObjectMap<Item, ProductionInfo> productionMap = new Reference2ObjectOpenHashMap<>();
 
     private record ProductionInfo(EntityType<?> sourceType, double ticksPerItem, String method) {
     }
@@ -64,21 +63,20 @@ public class PassiveProductionSource implements IResourceSource {
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        if (!canProvide(item)) return Optional.empty();
-        ProductionInfo info = productionMap.get(item);
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        if (!canProvide(item)) return null;
+        var info = productionMap.get(item);
+        var complexity = (info.ticksPerItem() * ComplexityConfig.TIME_COST_MULTIPLIER.get()) + ComplexityConfig.BASE_ACTION_COST.get();
+        var sourceName = (info.sourceType() != null) ? info.sourceType().getDescription().getString() : "the environment";
+        var details = String.format("From %s (Avg. ~%d ticks, Method: %s)", sourceName, (int) info.ticksPerItem(), info.method());
 
-        double complexity = (info.ticksPerItem() * ComplexityConfig.TIME_COST_MULTIPLIER.get()) + ComplexityConfig.BASE_ACTION_COST.get();
-
-        String sourceName = (info.sourceType() != null) ? info.sourceType().getDescription().getString() : "the environment";
-        String details = String.format("From %s (Avg. ~%d ticks, Method: %s)", sourceName, (int) info.ticksPerItem(), info.method());
-
-        return Optional.of(new BaseResourceData.Builder(item, this)
+        return new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.FARMING)
                 .baseFactor(complexity)
                 .sourceSpecifier(sourceName)
                 .details(details)
-                .build());
+                .build();
     }
 
     @Override

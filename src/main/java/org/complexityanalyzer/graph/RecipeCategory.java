@@ -36,6 +36,11 @@ public enum RecipeCategory {
         this.displayName = displayName;
     }
 
-    public int getPriority() { return priority; }
-    public String getDisplayName() { return displayName; }
+    public int getPriority() {
+        return priority;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 }

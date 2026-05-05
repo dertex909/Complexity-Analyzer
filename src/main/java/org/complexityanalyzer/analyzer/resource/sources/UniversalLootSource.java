@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -33,26 +34,24 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.IResourceSource;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
+import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.resource.IResourceSource;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class UniversalLootSource implements IResourceSource {
 
     private static final int SIMULATION_COUNT = 500;
     private static final int SIMULATION_TIMEOUT_MS = 1000;
 
-    private final Map<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> allLootData = new ConcurrentHashMap<>();
+    private final Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
     private static class LootFunctionFilter extends AbstractFilter {
         @Override
@@ -64,13 +63,8 @@ public class UniversalLootSource implements IResourceSource {
             String loggerName = event.getLoggerName();
             if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
                 String message = event.getMessage().getFormattedMessage();
-                if (message != null && (
-                        message.contains("Couldn't set damage") ||
-                                message.contains("Couldn't smelt") ||
-                                message.contains("Couldn't find a compatible enchantment")
-                )) {
-                    return Result.DENY;
-                }
+                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
+                        || message.contains("Couldn't find a compatible enchantment"))) return Result.DENY;
             }
 
             return Result.NEUTRAL;
@@ -84,26 +78,23 @@ public class UniversalLootSource implements IResourceSource {
             return;
         }
 
-        CompletableFuture<Set<ResourceKey<LootTable>>> lootKeysFuture = getCompletableFuture(serverLevel);
+        var lootKeysFuture = getCompletableFuture(serverLevel);
 
         try {
-            Set<ResourceKey<LootTable>> allLootTableKeys = lootKeysFuture.join();
-
+            var allLootTableKeys = lootKeysFuture.join();
             processLootTables(serverLevel, allLootTableKeys);
-
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys from server thread. Aborting analysis.", e);
         }
     }
 
-    private @NotNull CompletableFuture<Set<ResourceKey<LootTable>>> getCompletableFuture(ServerLevel serverLevel) {
-        MinecraftServer server = serverLevel.getServer();
-
-        CompletableFuture<Set<ResourceKey<LootTable>>> lootKeysFuture = new CompletableFuture<>();
+    private @NotNull CompletableFuture<ObjectSet<ResourceKey<LootTable>>> getCompletableFuture(ServerLevel serverLevel) {
+        var server = serverLevel.getServer();
+        var lootKeysFuture = new CompletableFuture<ObjectSet<ResourceKey<LootTable>>>();
 
         server.execute(() -> {
             try {
-                Set<ResourceKey<LootTable>> keys = getAllLootTableKeys(server);
+                var keys = getAllLootTableKeys(server);
                 lootKeysFuture.complete(keys);
             } catch (Exception e) {
                 lootKeysFuture.completeExceptionally(e);
@@ -112,7 +103,7 @@ public class UniversalLootSource implements IResourceSource {
         return lootKeysFuture;
     }
 
-    private void processLootTables(ServerLevel serverLevel, Set<ResourceKey<LootTable>> allLootTableKeys) {
+    private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys) {
         MinecraftServer server = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
@@ -129,20 +120,17 @@ public class UniversalLootSource implements IResourceSource {
             var reloadableRegistries = server.reloadableRegistries();
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
 
-            for (ResourceKey<LootTable> lootTableKey : allLootTableKeys) {
-                ResourceLocation lootTableId = lootTableKey.location();
-                Optional<LootContextDefinition> contextDefOpt = inferContextFromId(lootTableId);
-                if (contextDefOpt.isEmpty()) {
+            for (var lootTableKey : allLootTableKeys) {
+                var lootTableId = lootTableKey.location();
+                var contextDef = inferContextFromId(lootTableId);
+                if (contextDef == null) {
                     tablesSkipped++;
                     continue;
                 }
 
-                LootContextDefinition contextDef = contextDefOpt.get();
-
                 try {
                     LootTable lootTable = CompletableFuture.supplyAsync(() ->
-                            reloadableRegistries.getLootTable(lootTableKey), server
-                    ).join();
+                            reloadableRegistries.getLootTable(lootTableKey), server).join();
 
                     if (lootTable == LootTable.EMPTY) {
                         tablesSkipped++;
@@ -150,14 +138,14 @@ public class UniversalLootSource implements IResourceSource {
                     }
                     tablesProcessed++;
 
-                    LootParams lootParams = contextDef.createLootParams(serverLevel);
+                    var lootParams = contextDef.createLootParams(serverLevel);
                     if (lootParams == null) {
                         ComplexityAnalyzer.LOGGER.debug("[ULS] Failed to create loot params for '{}', skipping.", lootTableId);
                         continue;
                     }
 
-                    Map<Item, Integer> catchCounts = CompletableFuture.supplyAsync(() -> {
-                        Map<Item, Integer> counts = new HashMap<>();
+                    var catchCounts = CompletableFuture.supplyAsync(() -> {
+                        var counts = new Reference2IntOpenHashMap<Item>();
                         long simulationStart = System.currentTimeMillis();
 
                         boolean hasLoggedError = false;
@@ -169,13 +157,11 @@ public class UniversalLootSource implements IResourceSource {
                             }
 
                             try {
-                                List<ItemStack> items = lootTable.getRandomItems(lootParams);
+                                var items = lootTable.getRandomItems(lootParams);
                                 if (items.isEmpty()) continue;
 
-                                for (ItemStack stack : items) {
-                                    if (!stack.isEmpty()) {
-                                        counts.merge(stack.getItem(), stack.getCount(), Integer::sum);
-                                    }
+                                for (var stack : items) {
+                                    if (!stack.isEmpty()) counts.addTo(stack.getItem(), stack.getCount());
                                 }
                             } catch (Exception e) {
                                 if (!hasLoggedError) {
@@ -187,19 +173,17 @@ public class UniversalLootSource implements IResourceSource {
                         return counts;
                     }, server).join();
 
-                    if (catchCounts.isEmpty()) {
-                        continue;
-                    }
+                    if (catchCounts.isEmpty()) continue;
 
-                    for (Map.Entry<Item, Integer> itemEntry : catchCounts.entrySet()) {
-                        Item item = itemEntry.getKey();
-                        double itemsPerAttempt = (double) itemEntry.getValue() / SIMULATION_COUNT;
+                    for (var itemEntry : catchCounts.reference2IntEntrySet()) {
+                        var item = itemEntry.getKey();
+                        var itemsPerAttempt = (double) itemEntry.getIntValue() / SIMULATION_COUNT;
                         if (itemsPerAttempt <= 0) continue;
 
-                        double baseFactor = (contextDef.baseActionCost / itemsPerAttempt) * contextDef.sourceType.getBaseMultiplier();
-                        String details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, itemsPerAttempt * 100);
+                        var baseFactor = (contextDef.baseActionCost / itemsPerAttempt) * contextDef.sourceType.getBaseMultiplier();
+                        var details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, itemsPerAttempt * 100);
 
-                        BaseResourceData.Builder builder = new BaseResourceData.Builder(item, this)
+                        var builder = new BaseResourceData.Builder(item, this)
                                 .sourceType(contextDef.sourceType)
                                 .baseFactor(baseFactor)
                                 .sourceSpecifier(lootTableId.toString())
@@ -207,12 +191,14 @@ public class UniversalLootSource implements IResourceSource {
 
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
                             builder.baseFactor(contextDef.baseActionCost);
-                            builder.sourceItems(Map.of(Items.GOLD_INGOT, 1.0 / itemsPerAttempt));
+                            var piglinIng = new Reference2DoubleOpenHashMap<Item>();
+                            piglinIng.put(Items.GOLD_INGOT, 1.0 / itemsPerAttempt);
+                            builder.sourceItems(piglinIng);
                         }
 
-                        BaseResourceData data = builder.build();
+                        var data = builder.build();
 
-                        allLootData.computeIfAbsent(contextDef.sourceType, k -> new HashMap<>()).put(item, data);
+                        allLootData.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>()).put(item, data);
                     }
 
                 } catch (Exception e) {
@@ -231,22 +217,23 @@ public class UniversalLootSource implements IResourceSource {
         }
 
         long duration = System.currentTimeMillis() - startTime;
-        int totalItemsFound = allLootData.values().stream().mapToInt(Map::size).sum();
+        var totalItemsFound = 0;
+        for (var map : allLootData.values()) totalItemsFound += map.size();
 
         ComplexityAnalyzer.LOGGER.info("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
                 duration, tablesProcessed, tablesSkipped, totalItemsFound);
 
-        for (var entry : allLootData.entrySet()) {
+        for (var entry : allLootData.reference2ObjectEntrySet()) {
             ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
         }
     }
 
-    private Set<ResourceKey<LootTable>> getAllLootTableKeys(MinecraftServer server) {
+    private ObjectSet<ResourceKey<LootTable>> getAllLootTableKeys(MinecraftServer server) {
         try {
             var registries = server.reloadableRegistries().get();
             var lootRegistry = registries.registry(Registries.LOOT_TABLE).orElseThrow();
 
-            Set<ResourceKey<LootTable>> keys = new HashSet<>(lootRegistry.registryKeySet());
+            var keys = new ObjectOpenHashSet<>(lootRegistry.registryKeySet());
 
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} loot tables via reloadableRegistries.", keys.size());
             return keys;
@@ -256,8 +243,8 @@ public class UniversalLootSource implements IResourceSource {
         }
     }
 
-    private Set<ResourceKey<LootTable>> getFallbackLootTables() {
-        Set<ResourceKey<LootTable>> keys = new HashSet<>();
+    private ObjectSet<ResourceKey<LootTable>> getFallbackLootTables() {
+        var keys = new ObjectOpenHashSet<ResourceKey<LootTable>>();
 
         String[] knownTables = {
                 "gameplay/fishing", "gameplay/fishing/fish", "gameplay/fishing/treasure", "gameplay/fishing/junk",
@@ -275,8 +262,8 @@ public class UniversalLootSource implements IResourceSource {
                 "shearing/beehive", "shearing/bee_nest"
         };
 
-        for (String path : knownTables) {
-            ResourceLocation id = ResourceLocation.withDefaultNamespace(path);
+        for (var path : knownTables) {
+            var id = ResourceLocation.withDefaultNamespace(path);
             keys.add(ResourceKey.create(Registries.LOOT_TABLE, id));
         }
 
@@ -286,23 +273,23 @@ public class UniversalLootSource implements IResourceSource {
 
     @Override
     public boolean canProvide(Item item) {
-        return allLootData.values().stream().anyMatch(map -> map.containsKey(item));
+        for (var map : allLootData.values()) if (map.containsKey(item)) return true;
+        return false;
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        for (BaseResourceData.ResourceSourceType type : BaseResourceData.ResourceSourceType.values()) {
-            Map<Item, BaseResourceData> map = allLootData.get(type);
-            if (map != null && map.containsKey(item)) {
-                return Optional.of(map.get(item));
-            }
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        for (var map : allLootData.values()) {
+            var data = map.get(item);
+            if (data != null) return data;
         }
-        return Optional.empty();
+        return null;
     }
 
     private record LootContextDefinition(BaseResourceData.ResourceSourceType sourceType, double baseActionCost) {
         public LootParams createLootParams(ServerLevel level) {
-            LootParams.Builder builder = new LootParams.Builder(level)
+            var builder = new LootParams.Builder(level)
                     .withParameter(LootContextParams.ORIGIN, new Vec3(0, 0, 0));
 
             if (sourceType == BaseResourceData.ResourceSourceType.FISHING) {
@@ -332,34 +319,35 @@ public class UniversalLootSource implements IResourceSource {
         }
     }
 
-    private Optional<LootContextDefinition> inferContextFromId(ResourceLocation id) {
-        String path = id.getPath();
+    @Nullable
+    private LootContextDefinition inferContextFromId(ResourceLocation id) {
+        var path = id.getPath();
 
         if (path.startsWith("shearing/") || path.contains("shearing")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.SHEARING, 5.0));
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.SHEARING, 5.0);
         }
 
         if (path.contains("fishing")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.FISHING, 25.0));
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.FISHING, 25.0);
         }
 
         if (path.contains("piglin_bartering") || path.contains("bartering")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.1));
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.1);
         }
 
         if (path.startsWith("chests/") || path.contains("chest")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.CHEST_LOOT, 100.0));
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.CHEST_LOOT, 100.0);
         }
 
         if (path.startsWith("archaeology/") || path.contains("archaeology")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.ARCHAEOLOGY, 15.0));
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.ARCHAEOLOGY, 15.0);
         }
 
         if (path.startsWith("gameplay/")) {
-            return Optional.of(new LootContextDefinition(BaseResourceData.ResourceSourceType.GENERIC_LOOT, 50.0));
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.GENERIC_LOOT, 50.0);
         }
 
-        return Optional.empty();
+        return null;
     }
 
     @Override
@@ -377,7 +365,7 @@ public class UniversalLootSource implements IResourceSource {
         return BaseResourceData.ResourceSourceType.GENERIC_LOOT;
     }
 
-    public Map<BaseResourceData.ResourceSourceType, Map<Item, BaseResourceData>> getAllLootData() {
+    public Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> getAllLootData() {
         return allLootData;
     }
 }

@@ -29,7 +29,7 @@ import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.TheoreticalDistributionProvider;
 import org.complexityanalyzer.analyzer.resource.data.OreDistributionData;
 
-import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 public class TheoreticalBlockSource implements IResourceSource {
 
@@ -48,42 +48,44 @@ public class TheoreticalBlockSource implements IResourceSource {
 
     @Override
     public boolean canProvide(Item item) {
-        return propertyProvider.getProperties(item).isPresent();
+        return propertyProvider.getProperties(item) != null;
     }
 
     @Override
-    public Optional<BaseResourceData> analyze(Item item) {
-        return propertyProvider.getProperties(item).map(properties -> {
-            Block block = ((BlockItem) item).getBlock();
-            Optional<OreDistributionData> distributionOpt = distributionProvider.getDistribution(block);
+    @Nullable
+    public BaseResourceData analyze(Item item) {
+        BlockPropertyProvider.BlockProperties properties = propertyProvider.getProperties(item);
+        if (properties == null) return null;
 
-            BaseResourceData.ResourceSourceType sourceType;
-            double baseFactor;
-            String details;
-            String specifier = "Unknown Dimension";
+        Block block = ((BlockItem) item).getBlock();
+        OreDistributionData dist = distributionProvider.getDistribution(block);
 
-            if (distributionOpt.isPresent()) {
-                OreDistributionData dist = distributionOpt.get();
-                sourceType = determineSourceType(block, true);
-                baseFactor = calculateBaseFactor(properties, dist, sourceType);
-                specifier = dist.getDimensions().stream()
-                        .findFirst()
-                        .map(key -> key.location().getPath())
-                        .orElse("Unknown Dimension");
-                details = buildDetails(properties, dist);
-            } else {
-                sourceType = determineSourceType(block, false);
-                baseFactor = calculateBaseFactor(properties, sourceType);
-                details = buildDetails(properties);
+        BaseResourceData.ResourceSourceType sourceType;
+        double baseFactor;
+        String details;
+        String specifier = "Unknown Dimension";
+
+        if (dist != null) {
+            sourceType = determineSourceType(block, true);
+            baseFactor = calculateBaseFactor(properties, dist, sourceType);
+
+            if (!dist.getDimensions().isEmpty()) {
+                specifier = dist.getDimensions().iterator().next().location().getPath();
             }
 
-            return new BaseResourceData.Builder(item, this)
-                    .sourceType(sourceType)
-                    .baseFactor(baseFactor)
-                    .sourceSpecifier(specifier)
-                    .details(details)
-                    .build();
-        });
+            details = buildDetails(properties, dist);
+        } else {
+            sourceType = determineSourceType(block, false);
+            baseFactor = calculateBaseFactor(properties, sourceType);
+            details = buildDetails(properties);
+        }
+
+        return new BaseResourceData.Builder(item, this)
+                .sourceType(sourceType)
+                .baseFactor(baseFactor)
+                .sourceSpecifier(specifier)
+                .details(details)
+                .build();
     }
 
     private BaseResourceData.ResourceSourceType determineSourceType(Block block, boolean isOre) {

@@ -18,13 +18,13 @@
 
 package org.complexityanalyzer.geoscan.data;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class BiomeDataMapper {
@@ -37,9 +37,9 @@ public class BiomeDataMapper {
         });
 
         if (data.getInternalScannedChunksSet() != null) {
-            data.scannedChunks = new LongArrayList(data.getInternalScannedChunksSet());
+            data.scannedChunks = new ArrayList<>(data.getInternalScannedChunksSet());
         } else {
-            data.scannedChunks = new LongArrayList();
+            data.scannedChunks = new ArrayList<>();
         }
     }
 
@@ -51,9 +51,9 @@ public class BiomeDataMapper {
         });
 
         if (data.scannedChunks != null) {
-            data.setInternalScannedChunksSet(new LongOpenHashSet(data.scannedChunks));
+            data.setInternalScannedChunksSet(new HashSet<>(data.scannedChunks));
         } else {
-            data.setInternalScannedChunksSet(new LongOpenHashSet());
+            data.setInternalScannedChunksSet(new HashSet<>());
         }
     }
 }

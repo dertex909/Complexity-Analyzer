@@ -18,26 +18,23 @@
 
 package org.complexityanalyzer.geoscan.data;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.world.level.block.Block;
 import org.complexityanalyzer.geoscan.util.ChunkCoordinateUtil;
 
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class BiomeScanData {
-    private final transient ConcurrentHashMap<Block, AtomicLong> blockCounts = new ConcurrentHashMap<>();
-    private transient LongSet scannedChunksSet;
+    private final transient Map<Block, AtomicLong> blockCounts = new ConcurrentHashMap<>();
+    private transient Set<Long> scannedChunksSet;
 
-    ConcurrentHashMap<String, Long> serializableBlockCounts = new ConcurrentHashMap<>();
-    LongList scannedChunks;
+    Map<String, Long> serializableBlockCounts = new ConcurrentHashMap<>();
+    List<Long> scannedChunks;
 
     public BiomeScanData() {
-        this.scannedChunks = new LongArrayList();
-        this.scannedChunksSet = new LongOpenHashSet();
+        this.scannedChunks = new ArrayList<>();
+        this.scannedChunksSet = new HashSet<>();
     }
 
     public void addBlock(Block block, long count) {
@@ -46,7 +43,7 @@ public class BiomeScanData {
 
     public void addScannedChunk(int chunkX, int chunkZ) {
         long coord = ChunkCoordinateUtil.pack(chunkX, chunkZ);
-        if (this.scannedChunksSet == null) this.scannedChunksSet = new LongOpenHashSet();
+        if (this.scannedChunksSet == null) this.scannedChunksSet = new HashSet<>();
         this.scannedChunksSet.add(coord);
     }
 
@@ -55,9 +52,7 @@ public class BiomeScanData {
     }
 
     public long getTotalBlocks() {
-        long total = 0;
-        for (AtomicLong v : blockCounts.values()) total += v.get();
-        return total;
+        return blockCounts.values().stream().mapToLong(AtomicLong::get).sum();
     }
 
     public long getBlockCount(Block block) {
@@ -65,15 +60,15 @@ public class BiomeScanData {
         return (count != null) ? count.get() : 0;
     }
 
-    public ConcurrentHashMap<Block, AtomicLong> getInternalBlockCounts() {
+    public Map<Block, AtomicLong> getInternalBlockCounts() {
         return this.blockCounts;
     }
 
-    LongSet getInternalScannedChunksSet() {
+    Set<Long> getInternalScannedChunksSet() {
         return this.scannedChunksSet;
     }
 
-    void setInternalScannedChunksSet(LongSet newSet) {
+    void setInternalScannedChunksSet(Set<Long> newSet) {
         this.scannedChunksSet = newSet;
     }
 }

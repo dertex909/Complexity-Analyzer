@@ -18,8 +18,6 @@
 
 package org.complexityanalyzer.geoscan.analysis;
 
-import it.unimi.dsi.fastutil.longs.*;
-import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
@@ -30,8 +28,12 @@ import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class HeuristicAnalyzer {
@@ -40,12 +42,7 @@ public class HeuristicAnalyzer {
     private static final int REFINE_UNNATURAL_THRESHOLD = 64;
     private static final double NATURAL_BLOCK_RARITY_THRESHOLD = 0.00005;
 
-    private final Map<ResourceLocation, ReferenceSet<Block>> dimensionalHeuristics = new ConcurrentHashMap<>();
-    private final Map<String, Block> blockCache = new ConcurrentHashMap<>();
-
-    private Block getBlock(String id) {
-        return blockCache.computeIfAbsent(id, k -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse(k)));
-    }
+    private final Map<ResourceLocation, Set<Block>> dimensionalHeuristics = new ConcurrentHashMap<>();
 
     public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) {
         int uniqueBlockTypes = snapshot.blockCounts().size();
@@ -57,44 +54,38 @@ public class HeuristicAnalyzer {
         return true;
     }
 
-    public void buildHeuristics(Object2ObjectMap<ResourceLocation,
-            Object2ObjectOpenHashMap<ResourceLocation, Path>> reconFilePaths, GeoDataStorage storage) {
+    public void buildHeuristics(Map<ResourceLocation, Map<ResourceLocation, Path>> reconFilePaths, GeoDataStorage storage) {
         dimensionalHeuristics.clear();
 
-        Reference2ObjectMap<ResourceLocation, ObjectList<Path>> pathsByDimension = new Reference2ObjectOpenHashMap<>();
-        reconFilePaths.object2ObjectEntrySet().forEach(entry -> {
-            ResourceLocation dimId = entry.getKey();
-            Object2ObjectOpenHashMap<ResourceLocation, Path> biomeMap = entry.getValue();
-            pathsByDimension.computeIfAbsent(dimId, k -> new ObjectArrayList<>()).addAll(biomeMap.values());
-        });
+        Map<ResourceLocation, List<Path>> pathsByDimension = new ConcurrentHashMap<>();
+        reconFilePaths.forEach((dimId, biomeMap) ->
+                pathsByDimension.computeIfAbsent(dimId, k -> new ArrayList<>()).addAll(biomeMap.values()));
 
         pathsByDimension.forEach((dimId, paths) -> {
             ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);
 
-            Reference2LongOpenHashMap<Block> totalCounts = new Reference2LongOpenHashMap<>();
-            totalCounts.defaultReturnValue(0L);
-
             try (Stream<ChunkSnapshot> allSnapshotsInDim = paths.parallelStream().flatMap(storage::streamReconFile)) {
-                allSnapshotsInDim.forEach(snapshot -> snapshot.blockCounts().forEach((blockId, count) -> {
-                    Block block = getBlock(blockId);
-                    if (block != Blocks.AIR) totalCounts.addTo(block, count);
-                }));
 
-                long totalBlocksInDim = 0;
-                for (long count : totalCounts.values()) totalBlocksInDim += count;
+                Map<Block, Long> totalCounts = allSnapshotsInDim
+                        .flatMap(snapshot -> snapshot.blockCounts().entrySet().stream())
+                        .collect(Collectors.groupingBy(
+                                entry -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey())),
+                                Collectors.summingLong(Map.Entry::getValue)
+                        ));
 
-                ReferenceSet<Block> dimensionHeuristic = new ReferenceOpenHashSet<>();
-                if (totalBlocksInDim > 0) for (var entry : Reference2LongMaps.fastIterable(totalCounts)) {
-                    if ((double) entry.getLongValue() / totalBlocksInDim > NATURAL_BLOCK_RARITY_THRESHOLD) {
-                        dimensionHeuristic.add(entry.getKey());
-                    }
+                long totalBlocksInDim = totalCounts.values().stream().mapToLong(Long::longValue).sum();
+
+                Set<Block> dimensionHeuristic = ConcurrentHashMap.newKeySet();
+                if (totalBlocksInDim > 0) {
+                    totalCounts.forEach((block, count) -> {
+                        if (block != null && block != Blocks.AIR && (double) count / totalBlocksInDim >
+                                NATURAL_BLOCK_RARITY_THRESHOLD) dimensionHeuristic.add(block);
+                    });
                 }
 
-                dimensionalHeuristics.put(dimId, ReferenceSets.synchronize(dimensionHeuristic));
+                dimensionalHeuristics.put(dimId, dimensionHeuristic);
                 ComplexityAnalyzer.LOGGER.info("Heuristic for {} built. Found {} common 'natural' blocks.",
                         dimId, dimensionHeuristic.size());
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Failed to build heuristics for dimension {}", dimId, e);
             }
         });
     }
@@ -106,9 +97,9 @@ public class HeuristicAnalyzer {
                 .forEach(snapshot -> {
                     finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
                     snapshot.blockCounts().forEach((blockId, count) -> {
-                        Block block = getBlock(blockId);
+                        Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
                         if (block != Blocks.AIR && block != Blocks.BEDROCK)
-                            finalCleanData.addBlock(block, count);
+                            finalCleanData.addBlock(block, count.longValue());
                     });
                 });
         return finalCleanData;
@@ -119,13 +110,13 @@ public class HeuristicAnalyzer {
     }
 
     public boolean hasHeuristics() {
-        return !dimensionalHeuristics.isEmpty();
+        return dimensionalHeuristics.isEmpty();
     }
 
     private boolean isChunkCleanByHeuristic(ChunkSnapshot snapshot, ResourceLocation dimensionId) {
-        if (!hasHeuristics()) return true;
+        if (hasHeuristics()) return true;
 
-        ReferenceSet<Block> heuristic = dimensionalHeuristics.get(dimensionId);
+        Set<Block> heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {
             ComplexityAnalyzer.LOGGER.warn("No heuristic found for dimension {}. Accepting chunk at [{}, {}] " +
                     "without filtering.", dimensionId, snapshot.chunkX(), snapshot.chunkZ());
@@ -133,8 +124,8 @@ public class HeuristicAnalyzer {
         }
 
         int unnaturalBlockCount = 0;
-        for (var entry : snapshot.blockCounts().entrySet()) {
-            Block block = getBlock(entry.getKey());
+        for (Map.Entry<String, Integer> entry : snapshot.blockCounts().entrySet()) {
+            Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey()));
             if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getValue();
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }

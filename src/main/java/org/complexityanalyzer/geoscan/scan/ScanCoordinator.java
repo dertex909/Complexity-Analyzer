@@ -18,9 +18,6 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
-import it.unimi.dsi.fastutil.longs.LongSet;
-import it.unimi.dsi.fastutil.objects.*;
-import it.unimi.dsi.fastutil.objects.ObjectArrays;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -36,7 +33,7 @@ import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ScanCoordinator {
@@ -90,11 +87,11 @@ public class ScanCoordinator {
         return currentSession;
     }
 
-    public ObjectList<ScanTask> prepareTasks(ScanSession session) {
-        if (!session.isValid()) return ObjectLists.emptyList();
+    public List<ScanTask> prepareTasks(ScanSession session) {
+        if (!session.isValid()) return Collections.emptyList();
 
         database.loadAll();
-        ObjectArrayList<ScanTask> tasks = new ObjectArrayList<>();
+        List<ScanTask> tasks = new ArrayList<>();
         int chunksPerBiome = session.getChunksPerBiome();
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Building scan tasks for {} chunks/biome", chunksPerBiome);
@@ -105,7 +102,7 @@ public class ScanCoordinator {
             ResourceKey<Level> dimension = level.dimension();
             ComplexityAnalyzer.LOGGER.info("Scanning dimension: {}", dimension.location());
 
-            ObjectOpenHashSet<ResourceKey<Biome>> biomes = getBiomesForDimension(level);
+            Set<ResourceKey<Biome>> biomes = getBiomesForDimension(level);
             ComplexityAnalyzer.LOGGER.debug("Found {} biomes in {}", biomes.size(), dimension.location());
 
             for (ResourceKey<Biome> biomeKey : biomes) {
@@ -119,12 +116,12 @@ public class ScanCoordinator {
         }
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Created {} scan tasks", tasks.size());
-        tasks.sort(null);
+        tasks.sort(Comparator.naturalOrder());
         return tasks;
     }
 
-    private ObjectOpenHashSet<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
-        ObjectOpenHashSet<ResourceKey<Biome>> biomes = new ObjectOpenHashSet<>();
+    private Set<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
+        Set<ResourceKey<Biome>> biomes = new HashSet<>();
         var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
         ComplexityAnalyzer.LOGGER.info("[Prepare] Dimension {} biomeSource: {}",
@@ -141,13 +138,14 @@ public class ScanCoordinator {
     }
 
     private int getExistingChunkCount(ResourceLocation dimension, ResourceLocation biome) {
-        BiomeScanData data = database.getBiomeDataRaw(dimension, biome);
-        int finalChunks = (data != null) ? data.getChunksScanned() : 0;
+        int finalChunks = database.getBiomeData(dimension, biome)
+                .map(BiomeScanData::getChunksScanned)
+                .orElse(0);
         int reconChunks = database.countReconChunks(dimension, biome);
         return Math.max(finalChunks, reconChunks);
     }
 
-    public boolean initializeSession(ScanSession session, ObjectList<ScanTask> tasks) {
+    public boolean initializeSession(ScanSession session, List<ScanTask> tasks) {
         if (!session.isValid() || tasks.isEmpty()) return false;
 
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
@@ -161,7 +159,7 @@ public class ScanCoordinator {
 
         session.setTotalChunksNeeded(totalChunks);
 
-        ConcurrentHashMap<ResourceLocation, LongSet> existing = database.loadAllReconChunkCoordinates();
+        Map<ResourceLocation, Set<Long>> existing = database.loadAllReconChunkCoordinates();
         session.loadAttemptedChunks(existing);
 
         notifier.logInfo(String.format("Starting scan: %d biomes, %d chunks needed", tasks.size(), totalChunks));

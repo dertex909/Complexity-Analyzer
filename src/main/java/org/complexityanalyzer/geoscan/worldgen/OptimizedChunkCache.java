@@ -18,16 +18,14 @@
 
 package org.complexityanalyzer.geoscan.worldgen;
 
-import it.unimi.dsi.fastutil.longs.LongArrays;
-import it.unimi.dsi.fastutil.longs.LongHeapPriorityQueue;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 
 public class OptimizedChunkCache {
 
@@ -88,7 +86,7 @@ public class OptimizedChunkCache {
     }
 
     public ChunkAccess computeIfAbsent(ChunkPos pos, ChunkStatus minStatus,
-                                       Supplier<ChunkAccess> generator) {
+                                       java.util.function.Supplier<ChunkAccess> generator) {
         long key = pos.toLong();
         CacheEntry existing = cache.get(key);
         if (existing != null && existing.status.isOrAfter(minStatus)) {
@@ -110,6 +108,7 @@ public class OptimizedChunkCache {
             generationInProgress.remove(key, newFuture);
         }
 
+
         try {
             ChunkAccess result = future.get(GENERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             CacheEntry entry = cache.get(key);
@@ -124,7 +123,7 @@ public class OptimizedChunkCache {
     }
 
     private ChunkAccess generateChunk(long key, ChunkPos pos, ChunkStatus minStatus,
-                                      Supplier<ChunkAccess> generator) {
+                                      java.util.function.Supplier<ChunkAccess> generator) {
         try {
             CacheEntry cached = cache.get(key);
             if (cached != null && cached.status.isOrAfter(minStatus)) return cached.chunk;
@@ -165,19 +164,18 @@ public class OptimizedChunkCache {
     }
 
     private long findExactThreshold(int toRemove) {
-        LongHeapPriorityQueue oldest = new LongHeapPriorityQueue(toRemove);
+        PriorityQueue<Long> oldest = new PriorityQueue<>(toRemove, Comparator.reverseOrder());
 
         for (CacheEntry entry : cache.values()) {
-            long val = -entry.lastAccess;
             if (oldest.size() < toRemove) {
-                oldest.enqueue(val);
-            } else if (val > oldest.firstLong()) {
-                oldest.dequeueLong();
-                oldest.enqueue(val);
+                oldest.offer(entry.lastAccess);
+            } else if (entry.lastAccess < oldest.peek()) {
+                oldest.poll();
+                oldest.offer(entry.lastAccess);
             }
         }
 
-        return oldest.isEmpty() ? Long.MAX_VALUE : -oldest.firstLong();
+        return oldest.isEmpty() ? Long.MAX_VALUE : oldest.peek();
     }
 
     private long findSampledThreshold(int toRemove, int cacheSize) {
@@ -195,7 +193,7 @@ public class OptimizedChunkCache {
         }
 
         int actualSize = Math.min(index, SAMPLE_SIZE);
-        LongArrays.quickSort(reservoir, 0, actualSize);
+        Arrays.sort(reservoir, 0, actualSize);
 
         int thresholdIndex = (toRemove * actualSize) / cacheSize;
         return reservoir[Math.min(thresholdIndex, actualSize - 1)];

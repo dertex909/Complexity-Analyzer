@@ -23,8 +23,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -41,6 +39,8 @@ import org.complexityanalyzer.geoscan.scan.ScanSession;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+
+import java.util.Map;
 
 public class GeoScanCommands {
 
@@ -431,24 +431,25 @@ public class GeoScanCommands {
         tooltip.append(Component.literal("═══ BIOME PROGRESS ═══\n")
                 .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-        Reference2ObjectMap<ResourceLocation, Reference2ObjectMap<ResourceLocation, int[]>> progress = session.getBiomeProgress();
+        Map<ResourceLocation, Map<ResourceLocation, int[]>> progress = session.getBiomeProgress();
 
         int biomesShown = 0;
         int maxBiomes = 25;
 
-        for (var dimEntry : Reference2ObjectMaps.fastIterable(progress)) {
+        for (var dimEntry : progress.entrySet()) {
             ResourceLocation dimId = dimEntry.getKey();
 
             tooltip.append(Component.literal("\n").append(Component.literal("▸ "
                     + formatDimensionName(dimId) + "\n").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
-            for (var biomeEntry : Reference2ObjectMaps.fastIterable(dimEntry.getValue())) {
+            for (var biomeEntry : dimEntry.getValue().entrySet()) {
                 if (biomesShown >= maxBiomes) {
-                    int remaining = 0;
-                    for (var de : progress.values()) remaining += de.size();
-                    remaining -= maxBiomes;
-                    if (remaining > 0) tooltip.append(Component.literal("\n... and " + remaining + " more biomes")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    int remaining = progress.values().stream().mapToInt(Map::size).sum() - maxBiomes;
+
+                    if (remaining > 0) {
+                        tooltip.append(Component.literal("\n... and " + remaining + " more biomes")
+                                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    }
                     return tooltip;
                 }
 

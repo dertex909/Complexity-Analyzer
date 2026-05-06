@@ -37,7 +37,6 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.task.ChunkAnalyzer;
 import org.complexityanalyzer.geoscan.worldgen.UltraFastChunkGenerator;
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 import java.util.ArrayList;
@@ -278,10 +277,10 @@ public final class ScanThisCommand {
                 .orElse(null);
 
         output.sendInfo(source, Component.literal(
-                "  Note: terrain/surface/carvers are intermediate snapshots, so large deltas there are expected against the final live chunk.")
+                        "  Note: terrain/surface/carvers are intermediate snapshots, so large deltas there are expected against the final live chunk.")
                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
         output.sendInfo(source, Component.literal(
-                "  Use phase check by watching whether the diffs collapse by features/fresh; that line is the meaningful final-fidelity signal.")
+                        "  Use phase check by watching whether the diffs collapse by features/fresh; that line is the meaningful final-fidelity signal.")
                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
 
         if (featuresReport != null && carversReport != null) {
@@ -290,11 +289,11 @@ public final class ScanThisCommand {
 
             if (featuresAbs <= 128 && featuresAbs * 10 < Math.max(1, carversAbs)) {
                 output.sendInfo(source, Component.literal(
-                        "  Interpretation: early-phase drift is normal here; the fast generator converges well by the final features stage.")
+                                "  Interpretation: early-phase drift is normal here; the fast generator converges well by the final features stage.")
                         .withStyle(ChatFormatting.GREEN, ChatFormatting.ITALIC));
             } else if (featuresAbs >= carversAbs / 2) {
                 output.sendInfo(source, Component.literal(
-                        "  Interpretation: because features/fresh stays relatively high, the remaining bug is likely in the final replay stages, not in phase presentation.")
+                                "  Interpretation: because features/fresh stays relatively high, the remaining bug is likely in the final replay stages, not in phase presentation.")
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.ITALIC));
             }
         }
@@ -590,7 +589,7 @@ public final class ScanThisCommand {
         CACHED_FEATURES() {
             @Override
             Map<String, Integer> generate(UltraFastChunkGenerator generator, ChunkPos chunkPos, ChunkAnalyzer analyzer) {
-                ObjectList<ChunkAccess> generatedChunks = generator.generateBatch(ObjectLists.singleton(chunkPos));
+                List<ChunkAccess> generatedChunks = generator.generateBatch(ObjectLists.singleton(chunkPos));
                 if (generatedChunks.isEmpty()) return Collections.emptyMap();
                 return extractCounts(analyzer.createSnapshot(generatedChunks.getFirst()));
             }

@@ -73,15 +73,20 @@ public class MsptMonitor {
         long sum = 0;
         int count = Math.min(20, tickTimes.length);
 
-        for (int i = 0; i < count; i++) sum += tickTimes[i];
+        for (int i = 0; i < count; i++) {
+            sum += tickTimes[i];
+        }
 
         return (float) sum / count / 1_000_000.0f;
     }
 
     public float getAverageMspt() {
         if (!samplesInitialized) return getCurrentMspt();
+
         float sum = 0;
-        for (float sample : msptSamples) sum += sample;
+        for (float sample : msptSamples) {
+            sum += sample;
+        }
         return sum / msptSamples.length;
     }
 
@@ -106,10 +111,12 @@ public class MsptMonitor {
 
         if (throttled) {
             ComplexityAnalyzer.LOGGER.info("[MsptMonitor] Scan PAUSED — MSPT {} > limit {}",
-                    String.format("%.1f", avgMspt), String.format("%.1f", msptLimit));
+                    String.format("%.1f", avgMspt),
+                    String.format("%.1f", msptLimit));
         } else {
             ComplexityAnalyzer.LOGGER.info("[MsptMonitor] Scan RESUMED — MSPT {} < threshold {}",
-                    String.format("%.1f", avgMspt), String.format("%.1f", resumeThreshold));
+                    String.format("%.1f", avgMspt),
+                    String.format("%.1f", resumeThreshold));
         }
     }
 }

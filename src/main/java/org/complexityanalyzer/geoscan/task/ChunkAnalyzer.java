@@ -18,8 +18,6 @@
 
 package org.complexityanalyzer.geoscan.task;
 
-import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
@@ -29,16 +27,15 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkAnalyzer {
     private final ConcurrentHashMap<Block, String> blockIdCache = new ConcurrentHashMap<>();
-    private final ThreadLocal<Reference2IntOpenHashMap<Block>> blockCountsBuffer = ThreadLocal.withInitial(Reference2IntOpenHashMap::new);
 
     public @Nullable ChunkSnapshot createSnapshot(ChunkAccess chunk) {
-        Reference2IntOpenHashMap<Block> blockCounts = blockCountsBuffer.get();
-        blockCounts.clear();
-
+        Reference2IntOpenHashMap<Block> blockCounts = new Reference2IntOpenHashMap<>();
         LevelChunkSection[] sections = chunk.getSections();
 
         for (LevelChunkSection section : sections) {
@@ -54,13 +51,13 @@ public class ChunkAnalyzer {
 
         if (blockCounts.isEmpty()) return null;
 
-        Object2IntOpenHashMap<String> finalCounts = new Object2IntOpenHashMap<>(blockCounts.size());
-        Reference2IntMaps.fastForEach(blockCounts, entry -> {
+        Map<String, Integer> finalCounts = new HashMap<>(blockCounts.size());
+        for (var entry : blockCounts.reference2IntEntrySet()) {
             String blockId = blockIdCache.computeIfAbsent(
                     entry.getKey(), block -> BuiltInRegistries.BLOCK.getKey(block).toString()
             );
             finalCounts.put(blockId, entry.getIntValue());
-        });
+        }
 
         return new ChunkSnapshot(chunk.getPos().x, chunk.getPos().z, finalCounts);
     }

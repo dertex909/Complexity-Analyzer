@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.geoscan.task;
 
-import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -34,6 +33,7 @@ import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.geoscan.worldgen.UltraFastChunkGenerator;
 
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkBatchProcessor {
@@ -101,18 +101,18 @@ public class ChunkBatchProcessor {
         }
     }
 
-    public ObjectList<ScanResult> processBatch(
+    public List<ScanResult> processBatch(
             ResourceKey<Level> dimension,
-            ObjectList<ChunkPos> positions,
+            List<ChunkPos> positions,
             ScanSession session
     ) {
-        if (positions.isEmpty()) return ObjectLists.emptyList();
+        if (positions.isEmpty()) return Collections.emptyList();
         ServerLevel level = server.getLevel(dimension);
-        if (level == null) return ObjectLists.emptyList();
+        if (level == null) return Collections.emptyList();
         ResourceLocation dimId = dimension.location();
         BiomeContext ctx = getBiomeContext(dimension);
-        ObjectArrayList<ChunkPos> toGenerate = new ObjectArrayList<>(positions.size());
-        Reference2ObjectOpenHashMap<ChunkPos, ResourceLocation> biomeMap = new Reference2ObjectOpenHashMap<>(positions.size() * 2);
+        List<ChunkPos> toGenerate = new ArrayList<>(positions.size());
+        Map<ChunkPos, ResourceLocation> biomeMap = new HashMap<>(positions.size() * 2);
 
         for (ChunkPos pos : positions) {
             if (!session.isValid()) break;
@@ -123,12 +123,12 @@ public class ChunkBatchProcessor {
             biomeMap.put(pos, biome);
         }
 
-        if (toGenerate.isEmpty()) return ObjectLists.emptyList();
+        if (toGenerate.isEmpty()) return Collections.emptyList();
 
         UltraFastChunkGenerator generator = getGenerator(dimension);
-        ObjectList<ChunkAccess> chunks = generator.generateBatch(toGenerate);
+        List<ChunkAccess> chunks = generator.generateBatch(toGenerate);
 
-        ObjectArrayList<ScanResult> results = new ObjectArrayList<>(chunks.size());
+        List<ScanResult> results = new ArrayList<>(chunks.size());
 
         for (int i = 0; i < chunks.size(); i++) {
             ChunkAccess chunk = chunks.get(i);

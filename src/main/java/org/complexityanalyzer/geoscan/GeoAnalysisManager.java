@@ -32,7 +32,7 @@ import org.complexityanalyzer.geoscan.refinement.DataRefiner;
 import org.complexityanalyzer.geoscan.scan.*;
 import org.complexityanalyzer.geoscan.task.*;
 
-import it.unimi.dsi.fastutil.objects.ObjectList;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -275,7 +275,7 @@ public class GeoAnalysisManager {
         try {
             executor.execute(() -> {
                 if (!session.isValid() || isShutdown.get()) return;
-                ObjectList<ScanTask> tasks = coordinator.prepareTasks(session);
+                List<ScanTask> tasks = coordinator.prepareTasks(session);
                 if (!session.isValid() || isShutdown.get()) return;
                 if (tasks.isEmpty()) {
                     try {

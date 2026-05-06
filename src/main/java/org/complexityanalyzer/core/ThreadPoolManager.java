@@ -114,7 +114,7 @@ public class ThreadPoolManager {
                         r -> {
                             Thread t = new Thread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
                             t.setDaemon(true);
-                            t.setPriority(Thread.NORM_PRIORITY - 1);
+                            t.setPriority(Thread.MIN_PRIORITY);
                             return t;
                         },
                         new ThreadPoolExecutor.AbortPolicy()
@@ -138,7 +138,7 @@ public class ThreadPoolManager {
 
                 shutdownWatchdog = new Thread(() -> {
                     while (!isShutdown.get()) {
-                        LockSupport.parkNanos(500_000_000L); // 500ms is enough
+                        LockSupport.parkNanos(500_000_000L);
                         if (Thread.currentThread().isInterrupted()) return;
 
                         if (JVM_SHUTTING_DOWN.get()) {

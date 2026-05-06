@@ -59,7 +59,7 @@ import java.util.function.Function;
 
 @SuppressWarnings("ForLoopReplaceableByForEach")
 public class UltraFastChunkGenerator {
-    private static final int PHASE_TIMEOUT_SECONDS = 12;
+    private static final int PHASE_TIMEOUT_SECONDS = 30;
     private static final int[] EMPTY_FEATURE_INDICES = new int[0];
 
     private static final ConcurrentHashMap<String, OptimizedChunkCache> DIMENSION_CACHES = new ConcurrentHashMap<>();
@@ -419,13 +419,13 @@ public class UltraFastChunkGenerator {
         if (!needTerrain.isEmpty()) runParallelPhase(needTerrain, pos -> generateTerrain(area.get(pos.toLong())));
 
         ObjectArrayList<ChunkPos> needSurface = filterByMissingStatus(toCreate, area);
-        if (!needSurface.isEmpty()) runParallelPhase(needSurface, pos -> {
+        if (!needSurface.isEmpty())        runParallelPhase(needSurface, pos -> {
             ChunkAccess chunk = area.get(pos.toLong());
             if (chunk == null || hasStatus(chunk, ChunkStatus.SURFACE)) return;
 
             generateSurface(chunk, area);
-            if (cacheableSurfaceKeys.contains(pos.toLong())) cache.put(pos,
-                    cloneChunkForWork(chunk, ChunkStatus.SURFACE), ChunkStatus.SURFACE);
+            // Cache EVERYTHING that reaches surface status to avoid regeneration in overlapping batches
+            cache.put(pos, cloneChunkForWork(chunk, ChunkStatus.SURFACE), ChunkStatus.SURFACE);
         });
 
         return area;
@@ -765,7 +765,7 @@ public class UltraFastChunkGenerator {
     private void generateCarvers(ChunkAccess chunk, Long2ObjectMap<ChunkAccess> area) {
         if (chunk == null) return;
         try {
-            ObjectArrayList<ChunkAccess> neighbors = new ObjectArrayList<>(area.values());
+            ObjectList<ChunkAccess> neighbors = collectNeighbors(chunk.getPos(), area, 8, true);
             IsolatedWorldGenRegion region = new IsolatedWorldGenRegion(
                     level, chunk, neighbors, 8, ChunkStatus.CARVERS
             );
@@ -1001,11 +1001,7 @@ public class UltraFastChunkGenerator {
 
     private Object2IntMap<String> snapshotCounts(ChunkSnapshot snapshot) {
         if (snapshot == null) return Object2IntMaps.emptyMap();
-        Object2IntMap<String> counts = new Object2IntOpenHashMap<>(snapshot.blockCounts().size());
-        for (Object2IntMap.Entry<String> entry : snapshot.blockCounts().object2IntEntrySet()) {
-            counts.put(entry.getKey(), entry.getIntValue());
-        }
-        return counts;
+        return new Object2IntOpenHashMap<>(snapshot.blockCounts());
     }
 
     private int totalBlockCount(Object2IntMap<String> counts) {
@@ -1045,25 +1041,35 @@ public class UltraFastChunkGenerator {
     }
 
     private ObjectList<ChunkAccess> collectNeighbors(ChunkPos center, Long2ObjectMap<ChunkAccess> area, boolean allowCacheReads) {
-        ObjectArrayList<ChunkAccess> neighbors = new ObjectArrayList<>(9);
-        for (int[] offset : NEIGHBOR_OFFSETS) {
-            int nx = center.x + offset[0];
-            int nz = center.z + offset[1];
-            long key = ChunkPos.asLong(nx, nz);
-            ChunkAccess neighbor = area.get(key);
+        return collectNeighbors(center, area, 1, allowCacheReads);
+    }
 
-            if (neighbor == null || hasNotStatus(neighbor, ChunkStatus.SURFACE)) {
-                ChunkPos neighborPos = new ChunkPos(nx, nz);
-                OptimizedChunkCache.CacheEntry cached = allowCacheReads ? cache.getEntry(neighborPos, ChunkStatus.SURFACE) : null;
-                if (cached != null) {
-                    neighbor = cloneChunkForWork(cached.chunk, cached.status);
-                    area.put(key, neighbor);
-                } else if (neighbor == null) {
-                    neighbor = createProtoChunk(neighborPos);
-                    area.put(key, neighbor);
+    private ObjectList<ChunkAccess> collectNeighbors(ChunkPos center, Long2ObjectMap<ChunkAccess> area, int radius, boolean allowCacheReads) {
+        int side = 2 * radius + 1;
+        ObjectArrayList<ChunkAccess> neighbors = new ObjectArrayList<>(side * side);
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                if (dx == 0 && dz == 0) continue;
+                int nx = center.x + dx;
+                int nz = center.z + dz;
+                long key = ChunkPos.asLong(nx, nz);
+                ChunkAccess neighbor = area.get(key);
+
+                if (neighbor == null) {
+                    ChunkPos neighborPos = new ChunkPos(nx, nz);
+                    OptimizedChunkCache.CacheEntry cached = allowCacheReads ? cache.getEntry(neighborPos, ChunkStatus.SURFACE) : null;
+                    if (cached != null) {
+                        // Use cached chunk directly for reading in SURFACE/CARVERS phases
+                        // This avoids expensive cloning of sections
+                        neighbor = cached.chunk;
+                        area.put(key, neighbor);
+                    } else {
+                        neighbor = createProtoChunk(neighborPos);
+                        area.put(key, neighbor);
+                    }
                 }
+                neighbors.add(neighbor);
             }
-            neighbors.add(neighbor);
         }
         return neighbors;
     }

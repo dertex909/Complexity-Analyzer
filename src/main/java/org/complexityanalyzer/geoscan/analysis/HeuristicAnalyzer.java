@@ -30,7 +30,8 @@ import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.nio.file.Path;
-
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class HeuristicAnalyzer {
@@ -39,8 +40,12 @@ public class HeuristicAnalyzer {
     private static final int REFINE_UNNATURAL_THRESHOLD = 64;
     private static final double NATURAL_BLOCK_RARITY_THRESHOLD = 0.00005;
 
-    private final Reference2ObjectMap<ResourceLocation, ReferenceSet<Block>> dimensionalHeuristics =
-            Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private final Map<ResourceLocation, ReferenceSet<Block>> dimensionalHeuristics = new ConcurrentHashMap<>();
+    private final Map<String, Block> blockCache = new ConcurrentHashMap<>();
+
+    private Block getBlock(String id) {
+        return blockCache.computeIfAbsent(id, k -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse(k)));
+    }
 
     public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) {
         int uniqueBlockTypes = snapshot.blockCounts().size();
@@ -70,9 +75,9 @@ public class HeuristicAnalyzer {
             totalCounts.defaultReturnValue(0L);
 
             try (Stream<ChunkSnapshot> allSnapshotsInDim = paths.parallelStream().flatMap(storage::streamReconFile)) {
-                allSnapshotsInDim.forEach(snapshot -> Object2IntMaps.fastForEach(snapshot.blockCounts(), entry -> {
-                    Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey()));
-                    if (block != Blocks.AIR) totalCounts.addTo(block, entry.getIntValue());
+                allSnapshotsInDim.forEach(snapshot -> snapshot.blockCounts().forEach((blockId, count) -> {
+                    Block block = getBlock(blockId);
+                    if (block != Blocks.AIR) totalCounts.addTo(block, count);
                 }));
 
                 long totalBlocksInDim = 0;
@@ -100,10 +105,10 @@ public class HeuristicAnalyzer {
                 .filter(snapshot -> isChunkCleanByHeuristic(snapshot, dimensionId))
                 .forEach(snapshot -> {
                     finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
-                    Object2IntMaps.fastForEach(snapshot.blockCounts(), entry -> {
-                        Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey()));
+                    snapshot.blockCounts().forEach((blockId, count) -> {
+                        Block block = getBlock(blockId);
                         if (block != Blocks.AIR && block != Blocks.BEDROCK)
-                            finalCleanData.addBlock(block, entry.getIntValue());
+                            finalCleanData.addBlock(block, count);
                     });
                 });
         return finalCleanData;
@@ -128,11 +133,9 @@ public class HeuristicAnalyzer {
         }
 
         int unnaturalBlockCount = 0;
-        ObjectIterator<Object2IntMap.Entry<String>> it = Object2IntMaps.fastIterator(snapshot.blockCounts());
-        while (it.hasNext()) {
-            Object2IntMap.Entry<String> entry = it.next();
-            Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey()));
-            if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getIntValue();
+        for (var entry : snapshot.blockCounts().entrySet()) {
+            Block block = getBlock(entry.getKey());
+            if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getValue();
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }
         return true;

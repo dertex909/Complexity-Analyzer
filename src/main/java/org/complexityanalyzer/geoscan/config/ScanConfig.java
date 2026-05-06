@@ -24,10 +24,10 @@ public final class ScanConfig {
     }
 
     public enum ScanProfile {
-        NORMAL("normal", "Normal", 30.0f, 4, 16, 4, 2, 3, 128, 128, 128),
-        FAST("fast", "Fast", 40.0f, 6, 24, 8, 4, 6, 256, 512, 512),
-        ULTRA_FAST("ultra_fast", "Ultra Fast", 50.0f, 10, 48, 12, 6, 9, 512, 1024, 1024),
-        MAXIMUM("maximum", "Maximum", -1.0f, 16, 96, 24, 10, 16, 1024, 2048, 2048);
+        NORMAL("normal", "Normal", 30.0f, 4, 16, 4, 2, 3, 128, 128, 128, 2),
+        FAST("fast", "Fast", 40.0f, 6, 24, 8, 4, 6, 256, 512, 512, 2),
+        ULTRA_FAST("ultra_fast", "Ultra Fast", 50.0f, 10, 48, 12, 6, 9, 512, 1024, 1024, 3),
+        MAXIMUM("maximum", "Maximum", -1.0f, 16, 96, 24, 10, 16, 1024, 2048, 2048, 4);
 
         public final String commandName;
         public final String displayName;
@@ -40,10 +40,11 @@ public final class ScanConfig {
         private final int budgetMin;
         private final int budgetMax;
         private final int budgetFixed;
+        private final int maxPendingAnalysisBatches;
 
         ScanProfile(String commandName, String displayName, float msptLimit, int emptyBatchTolerance,
                     int stagnantBase, int batchNoLimit, int batch70, int batch50,
-                    int budgetMin, int budgetMax, int budgetFixed) {
+                    int budgetMin, int budgetMax, int budgetFixed, int maxPendingAnalysisBatches) {
             this.commandName = commandName;
             this.displayName = displayName;
             this.msptLimit = msptLimit;
@@ -55,6 +56,7 @@ public final class ScanConfig {
             this.budgetMin = budgetMin;
             this.budgetMax = budgetMax;
             this.budgetFixed = budgetFixed;
+            this.maxPendingAnalysisBatches = maxPendingAnalysisBatches;
         }
 
         public boolean hasMsptLimit() {
@@ -65,7 +67,8 @@ public final class ScanConfig {
                 int batchSize,
                 int emptyBatchTolerance,
                 int stagnantBatchTolerance,
-                int maxScannedBudget
+                int maxScannedBudget,
+                int maxPendingAnalysisBatches
         ) {
         }
 
@@ -75,7 +78,13 @@ public final class ScanConfig {
             int batchSize = getBatchSize(currentMspt, msptLimitEnabled);
             int maxScannedBudget = getMaxScannedBudget(chunksPerBiome);
 
-            return new ScanPolicy(batchSize, emptyBatchTolerance, stagnantBatchTolerance, maxScannedBudget);
+            return new ScanPolicy(
+                    batchSize,
+                    emptyBatchTolerance,
+                    stagnantBatchTolerance,
+                    maxScannedBudget,
+                    maxPendingAnalysisBatches
+            );
         }
 
         private int getBatchSize(float currentMspt, boolean msptLimitEnabled) {

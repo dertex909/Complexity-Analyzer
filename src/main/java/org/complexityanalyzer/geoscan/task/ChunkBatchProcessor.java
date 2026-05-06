@@ -32,6 +32,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.geoscan.worldgen.VanillaChunkGeneratorService;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,6 +51,9 @@ public class ChunkBatchProcessor {
     }
 
     public record ScanResult(ChunkSnapshot snapshot, ResourceLocation biome) {
+    }
+
+    public record LoadedChunk(ChunkAccess chunk, ChunkPos pos, ResourceLocation biome) {
     }
 
     public ChunkBatchProcessor(MinecraftServer server) {
@@ -101,10 +105,29 @@ public class ChunkBatchProcessor {
         }
     }
 
-    public List<ScanResult> processBatch(
+    private ResourceLocation resolveBiome(
+            BiomeContext ctx,
+            ResourceKey<Level> dimension,
+            ChunkPos pos,
+            @Nullable Map<Long, ResourceLocation> transientBiomeCache
+    ) {
+        long key = chunkKey(dimension, pos);
+
+        if (transientBiomeCache != null) {
+            ResourceLocation cached = transientBiomeCache.get(key);
+            if (cached != null) return cached;
+        }
+
+        ResourceLocation biome = checkBiomeCached(ctx, dimension, pos);
+        if (biome != null && transientBiomeCache != null) transientBiomeCache.put(key, biome);
+        return biome;
+    }
+
+    public List<LoadedChunk> loadBatch(
             ResourceKey<Level> dimension,
             List<ChunkPos> positions,
-            ScanSession session
+            ScanSession session,
+            @Nullable Map<Long, ResourceLocation> transientBiomeCache
     ) {
         if (positions.isEmpty()) return Collections.emptyList();
         ServerLevel level = server.getLevel(dimension);
@@ -116,7 +139,7 @@ public class ChunkBatchProcessor {
 
         for (ChunkPos pos : positions) {
             if (!session.isValid()) break;
-            ResourceLocation biome = checkBiomeCached(ctx, dimension, pos);
+            ResourceLocation biome = resolveBiome(ctx, dimension, pos, transientBiomeCache);
             if (biome == null) continue;
             if (session.doesNotNeedBiome(dimId, biome)) continue;
             toGenerate.add(pos);
@@ -129,9 +152,8 @@ public class ChunkBatchProcessor {
         session.recordChunksRequested(toGenerate.size());
         List<ChunkAccess> chunks = generator.generateBatch(toGenerate);
 
-        List<ScanResult> results = new ArrayList<>(chunks.size());
+        List<LoadedChunk> loadedChunks = new ArrayList<>(chunks.size());
         int loaded = 0;
-        int snapshotted = 0;
 
         for (int i = 0; i < chunks.size(); i++) {
             ChunkAccess chunk = chunks.get(i);
@@ -140,16 +162,29 @@ public class ChunkBatchProcessor {
             ChunkPos pos = toGenerate.get(i);
             ResourceLocation biome = biomeMap.get(pos);
             if (session.doesNotNeedBiome(dimId, biome)) continue;
-            ChunkSnapshot snapshot = analyzer.createSnapshot(chunk);
-            if (snapshot != null) {
-                snapshotted++;
-                results.add(new ScanResult(snapshot, biome));
-            }
+            loadedChunks.add(new LoadedChunk(chunk, pos, biome));
         }
 
         session.recordChunksLoaded(loaded);
-        session.recordSnapshotsBuilt(snapshotted);
 
+        return loadedChunks;
+    }
+
+    public List<ScanResult> analyzeLoadedBatch(List<LoadedChunk> loadedChunks, ScanSession session) {
+        if (loadedChunks.isEmpty() || !session.isValid()) return Collections.emptyList();
+
+        List<ScanResult> results = new ArrayList<>(loadedChunks.size());
+        int snapshotted = 0;
+
+        for (LoadedChunk loadedChunk : loadedChunks) {
+            if (!session.isValid()) break;
+            ChunkSnapshot snapshot = analyzer.createSnapshot(loadedChunk.chunk());
+            if (snapshot == null) continue;
+            snapshotted++;
+            results.add(new ScanResult(snapshot, loadedChunk.biome()));
+        }
+
+        session.recordSnapshotsBuilt(snapshotted);
         return results;
     }
 

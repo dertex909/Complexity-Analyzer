@@ -154,14 +154,7 @@ public class WorldScanner {
 
         ThreadLocalRandom random = ThreadLocalRandom.current();
         int range = fullWorldMode ? 50000 : 20000;
-        BlockPos origin;
-
-        // The End has a very small THE_END center biome around (0, 0); random sampling can miss it even with huge radius.
-        if (level.dimension().location().getPath().equals("the_end") && biomeKey.location().getPath().equals("the_end")) {
-            origin = new BlockPos(0, 64, 0);
-        } else {
-            origin = new BlockPos(random.nextInt(-range, range), 64, random.nextInt(-range, range));
-        }
+        BlockPos origin = new BlockPos(random.nextInt(-range, range), 64, random.nextInt(-range, range));
         int radius = fullWorldMode ? ScanConfig.RADIUS_FULL_WORLD : ScanConfig.RADIUS_MAX;
 
         ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Searching for {} from [{}, {}], radius={}",

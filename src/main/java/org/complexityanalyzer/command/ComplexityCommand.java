@@ -39,7 +39,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
-import org.complexityanalyzer.command.temp.ScanThisCommand;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
@@ -108,7 +107,6 @@ public class ComplexityCommand {
                 .executes(ctx -> ExportCommand.executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count"))))).then(Commands.literal("single").then(Commands.argument("mob_id", ResourceLocationArgument.id()).suggests(ENTITY_SUGGESTIONS)
                 .executes(ctx -> ExportCommand.executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString())))).then(Commands.literal("csv")
                 .executes(ctx -> ExportCommand.executeAllMobs(ctx, "csv"))))).then(GeoScanCommands.register()));
-        dispatcher.register(ScanThisCommand.register());
 
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command with role-based permissions");
     }

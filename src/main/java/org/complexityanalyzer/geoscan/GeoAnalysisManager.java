@@ -56,7 +56,7 @@ public class GeoAnalysisManager {
 
     private volatile int scheduledChunksPerBiome = 0;
     private volatile String scheduledInitiator = "";
-    private volatile ScanProfile scheduledProfile = ScanProfile.QUARTER;
+    private volatile ScanProfile scheduledProfile = ScanProfile.NORMAL;
 
     public GeoAnalysisManager(MinecraftServer server, GeoDatabase database, AnalysisEngine engine) {
         this.server = server;
@@ -77,14 +77,6 @@ public class GeoAnalysisManager {
 
     public ScanSession getCurrentSession() {
         return coordinator.getCurrentSession();
-    }
-
-    public int getActiveWorkerCount() {
-        return scanExecutor.getActiveWorkerCount();
-    }
-
-    public int getTargetWorkerCount() {
-        return scanExecutor.getTargetWorkerCount();
     }
 
     public boolean isThrottled() {
@@ -127,7 +119,7 @@ public class GeoAnalysisManager {
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 }
 
-                startScanImmediately(32, "Server", ScanProfile.QUARTER);
+                startScanImmediately(32, "Server", ScanProfile.NORMAL);
             });
         } catch (RejectedExecutionException e) {
             ComplexityAnalyzer.LOGGER.warn("Cannot start initial scan — executor already shut down.");
@@ -174,8 +166,8 @@ public class GeoAnalysisManager {
 
                 try {
                     if (!initiatorName.equals("Server")) {
-                        if (profile == ScanProfile.FULL || profile == ScanProfile.MOST) {
-                            notifier.broadcastSevere("!!! FORCED WORLD SCAN IN " + profile.name() +
+                        if (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST) {
+                            notifier.broadcastSevere("!!! FORCED WORLD SCAN IN " + profile.displayName.toUpperCase() +
                                     " MODE STARTED! SERVER MAY LAG SEVERELY! !!!");
                         } else {
                             notifier.broadcastSevere("Forced world scan started! Some lag may occur.");
@@ -216,7 +208,7 @@ public class GeoAnalysisManager {
             countdownTicks.set(-1);
             scheduledChunksPerBiome = 0;
             scheduledInitiator = "";
-            scheduledProfile = ScanProfile.QUARTER;
+            scheduledProfile = ScanProfile.NORMAL;
             notifier.broadcastInfo("Scheduled world scan has been cancelled.");
         }
     }
@@ -225,7 +217,7 @@ public class GeoAnalysisManager {
         if (scanStarting.get()) return "Starting scan...";
 
         if (isCountdownActive()) return String.format("Scan scheduled in %s mode, starting in %d seconds...",
-                scheduledProfile.name().toLowerCase(), countdownTicks.get() / 20);
+                scheduledProfile.displayName.toLowerCase(), countdownTicks.get() / 20);
 
         ScanMetadata.ScanPhase phase = database.getScanPhase();
 
@@ -264,7 +256,7 @@ public class GeoAnalysisManager {
         if (isShutdown.get()) return;
         countdownTicks.set(-1);
         ScanSession session = coordinator.createSession(chunksPerBiome, profile);
-        notifier.notifyScanStarting(chunksPerBiome, initiatorName + " (" + profile.name().toLowerCase() + " mode)");
+        notifier.notifyScanStarting(chunksPerBiome, initiatorName + " (" + profile.displayName.toLowerCase() + " mode)");
         Executor executor = analysisEngine.getBackgroundExecutor();
 
         if (executor == null) {

@@ -40,6 +40,9 @@ public class ScanSession {
     private final int chunksPerBiome;
 
     private final AtomicLong totalChunksScanned = new AtomicLong(0);
+    private final AtomicLong totalChunksRequested = new AtomicLong(0);
+    private final AtomicLong totalChunksLoaded = new AtomicLong(0);
+    private final AtomicLong totalSnapshotsBuilt = new AtomicLong(0);
     private final long startTimeMs = System.currentTimeMillis();
 
     private final AtomicBoolean active = new AtomicBoolean(true);
@@ -55,14 +58,56 @@ public class ScanSession {
         totalChunksScanned.incrementAndGet();
     }
 
+    public void recordChunksRequested(int count) {
+        if (count > 0) totalChunksRequested.addAndGet(count);
+    }
+
+    public void recordChunksLoaded(int count) {
+        if (count > 0) totalChunksLoaded.addAndGet(count);
+    }
+
+    public void recordSnapshotsBuilt(int count) {
+        if (count > 0) totalSnapshotsBuilt.addAndGet(count);
+    }
+
     public float getScanSpeed() {
         long elapsedMs = System.currentTimeMillis() - startTimeMs;
         if (elapsedMs < 1000) return 0;
         return totalChunksScanned.get() / (elapsedMs / 1000f);
     }
 
+    public float getRequestSpeed() {
+        long elapsedMs = System.currentTimeMillis() - startTimeMs;
+        if (elapsedMs < 1000) return 0;
+        return totalChunksRequested.get() / (elapsedMs / 1000f);
+    }
+
+    public float getLoadedSpeed() {
+        long elapsedMs = System.currentTimeMillis() - startTimeMs;
+        if (elapsedMs < 1000) return 0;
+        return totalChunksLoaded.get() / (elapsedMs / 1000f);
+    }
+
+    public float getSnapshotSpeed() {
+        long elapsedMs = System.currentTimeMillis() - startTimeMs;
+        if (elapsedMs < 1000) return 0;
+        return totalSnapshotsBuilt.get() / (elapsedMs / 1000f);
+    }
+
     public long getTotalChunksScanned() {
         return totalChunksScanned.get();
+    }
+
+    public long getTotalChunksRequested() {
+        return totalChunksRequested.get();
+    }
+
+    public long getTotalChunksLoaded() {
+        return totalChunksLoaded.get();
+    }
+
+    public long getTotalSnapshotsBuilt() {
+        return totalSnapshotsBuilt.get();
     }
 
     public long getElapsedSeconds() {
@@ -71,9 +116,7 @@ public class ScanSession {
 
     public int getTotalChunksNeeded() {
         int remaining = 0;
-        for (AtomicInteger need : remainingNeeds.values()) {
-            remaining += need.get();
-        }
+        for (AtomicInteger need : remainingNeeds.values()) remaining += need.get();
         return remaining + (int) totalChunksScanned.get();
     }
 
@@ -136,6 +179,12 @@ public class ScanSession {
         remainingNeeds.put(new BiomeKey(dim, biome), new AtomicInteger(needed));
     }
 
+    public void abandonBiome(ResourceLocation dim, ResourceLocation biome) {
+        AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
+        if (remaining == null) return;
+        remaining.set(0);
+    }
+
     public boolean doesNotNeedBiome(ResourceLocation dim, ResourceLocation biome) {
         AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
         return remaining == null || remaining.get() <= 0;
@@ -183,9 +232,7 @@ public class ScanSession {
 
     public int countCompletedBiomes() {
         int completed = 0;
-        for (AtomicInteger remaining : remainingNeeds.values()) {
-            if (remaining.get() <= 0) completed++;
-        }
+        for (AtomicInteger remaining : remainingNeeds.values()) if (remaining.get() <= 0) completed++;
         return completed;
     }
 
@@ -195,22 +242,19 @@ public class ScanSession {
 
     public boolean tryMarkChunk(ResourceLocation dim, ChunkPos pos) {
         return attemptedChunksByDimension
-                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet())
-                .add(pos.toLong());
+                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet()).add(pos.toLong());
     }
 
     public void loadAttemptedChunks(Map<ResourceLocation, Set<Long>> chunksByDimension) {
         chunksByDimension.forEach((dim, chunks) -> attemptedChunksByDimension
-                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet())
-                .addAll(chunks));
+                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet()).addAll(chunks));
     }
 
     public String getStatusString() {
         return switch (phase) {
             case IDLE -> "Idle";
-            case RECONNAISSANCE -> String.format("%s scan - %d/%d biomes (%d/%d chunks)",
-                    profile.name(), countCompletedBiomes(), countTotalBiomes(),
-                    totalChunksFound.get(), totalChunksNeeded.get());
+            case RECONNAISSANCE -> String.format("%s scan - %d/%d biomes (%d/%d chunks)", profile.name(),
+                    countCompletedBiomes(), countTotalBiomes(), totalChunksFound.get(), totalChunksNeeded.get());
             case REFINING -> "Refining data...";
             case COMPLETE -> "Complete";
         };

@@ -24,27 +24,89 @@ public final class ScanConfig {
     }
 
     public enum ScanProfile {
-        QUARTER(0.25f, 4, 30.0f),
-        HALF(0.50f, 8, 40.0f),
-        MOST(0.75f, 16, 50.0f),
-        FULL(1.00f, 32, -1.0f);
+        NORMAL("normal", "Normal", 30.0f, 4, 16, 4, 2, 3, 128, 128, 128),
+        FAST("fast", "Fast", 40.0f, 6, 24, 8, 4, 6, 256, 512, 512),
+        ULTRA_FAST("ultra_fast", "Ultra Fast", 50.0f, 10, 48, 12, 6, 9, 512, 1024, 1024),
+        MAXIMUM("maximum", "Maximum", -1.0f, 16, 96, 24, 10, 16, 1024, 2048, 2048);
 
-        public final float threadFraction;
-        public final int maxParallelChunks;
+        public final String commandName;
+        public final String displayName;
         public final float msptLimit;
+        private final int emptyBatchTolerance;
+        private final int stagnantBase;
+        private final int batchNoLimit;
+        private final int batch70;
+        private final int batch50;
+        private final int budgetMin;
+        private final int budgetMax;
+        private final int budgetFixed;
 
-        ScanProfile(float threadFraction, int maxParallelChunks, float msptLimit) {
-            this.threadFraction = threadFraction;
-            this.maxParallelChunks = maxParallelChunks;
+        ScanProfile(String commandName, String displayName, float msptLimit, int emptyBatchTolerance,
+                    int stagnantBase, int batchNoLimit, int batch70, int batch50,
+                    int budgetMin, int budgetMax, int budgetFixed) {
+            this.commandName = commandName;
+            this.displayName = displayName;
             this.msptLimit = msptLimit;
-        }
-
-        public int getWorkerCount(int totalThreads) {
-            return Math.max(1, Math.round(totalThreads * threadFraction));
+            this.emptyBatchTolerance = emptyBatchTolerance;
+            this.stagnantBase = stagnantBase;
+            this.batchNoLimit = batchNoLimit;
+            this.batch70 = batch70;
+            this.batch50 = batch50;
+            this.budgetMin = budgetMin;
+            this.budgetMax = budgetMax;
+            this.budgetFixed = budgetFixed;
         }
 
         public boolean hasMsptLimit() {
             return msptLimit > 0;
+        }
+
+        public record ScanPolicy(
+                int batchSize,
+                int emptyBatchTolerance,
+                int stagnantBatchTolerance,
+                int maxScannedBudget
+        ) {
+        }
+
+        public ScanPolicy policy(int chunksPerBiome, float currentMspt, boolean msptLimitEnabled) {
+            int stagnantExtra = Math.clamp(chunksPerBiome / 32, 0, 256);
+            int stagnantBatchTolerance = stagnantBase + stagnantExtra;
+            int batchSize = getBatchSize(currentMspt, msptLimitEnabled);
+            int maxScannedBudget = getMaxScannedBudget(chunksPerBiome);
+
+            return new ScanPolicy(batchSize, emptyBatchTolerance, stagnantBatchTolerance, maxScannedBudget);
+        }
+
+        private int getBatchSize(float currentMspt, boolean msptLimitEnabled) {
+            if (!msptLimitEnabled || msptLimit <= 0) return batchNoLimit;
+            float limit = msptLimit;
+            if (currentMspt > limit * 0.9f) return 2;
+            if (currentMspt > limit * 0.7f) return batch70;
+            if (currentMspt > limit * 0.5f) return batch50;
+            return batchNoLimit;
+        }
+
+        private int getMaxScannedBudget(int chunksPerBiome) {
+            int chunks = Math.max(1, chunksPerBiome);
+            if (this == NORMAL) return budgetFixed;
+            long scaled = (long) chunks * 2L;
+            return Math.clamp(scaled, budgetMin, budgetMax);
+        }
+
+        public static ScanProfile fromInput(String input) {
+            String normalized = input.toLowerCase()
+                    .replace("-", "")
+                    .replace("_", "")
+                    .replace(" ", "");
+
+            return switch (normalized) {
+                case "normal", "quarter" -> NORMAL;
+                case "fast", "half" -> FAST;
+                case "ultrafast", "most" -> ULTRA_FAST;
+                case "maximum", "full", "max" -> MAXIMUM;
+                default -> throw new IllegalArgumentException("Unknown profile: " + input);
+            };
         }
     }
 

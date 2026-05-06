@@ -31,7 +31,7 @@ import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
-import org.complexityanalyzer.geoscan.worldgen.UltraFastChunkGenerator;
+import org.complexityanalyzer.geoscan.worldgen.VanillaChunkGeneratorService;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +41,7 @@ public class ChunkBatchProcessor {
     private final ChunkAnalyzer analyzer;
 
     private final ConcurrentHashMap<ResourceKey<Level>, BiomeContext> biomeContexts = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<ResourceKey<Level>, UltraFastChunkGenerator> generators = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResourceKey<Level>, VanillaChunkGeneratorService> generators = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<Long, ResourceLocation> biomeCache = new ConcurrentHashMap<>();
     private static final int BIOME_CACHE_MAX_SIZE = 100_000;
@@ -69,11 +69,11 @@ public class ChunkBatchProcessor {
         });
     }
 
-    private UltraFastChunkGenerator getGenerator(ResourceKey<Level> dimension) {
+    private VanillaChunkGeneratorService getGenerator(ResourceKey<Level> dimension) {
         return generators.computeIfAbsent(dimension, dim -> {
             ServerLevel level = server.getLevel(dim);
             if (level == null) throw new IllegalStateException("Level not found: " + dim);
-            return new UltraFastChunkGenerator(level);
+            return new VanillaChunkGeneratorService(level);
         });
     }
 
@@ -125,20 +125,30 @@ public class ChunkBatchProcessor {
 
         if (toGenerate.isEmpty()) return Collections.emptyList();
 
-        UltraFastChunkGenerator generator = getGenerator(dimension);
+        VanillaChunkGeneratorService generator = getGenerator(dimension);
+        session.recordChunksRequested(toGenerate.size());
         List<ChunkAccess> chunks = generator.generateBatch(toGenerate);
 
         List<ScanResult> results = new ArrayList<>(chunks.size());
+        int loaded = 0;
+        int snapshotted = 0;
 
         for (int i = 0; i < chunks.size(); i++) {
             ChunkAccess chunk = chunks.get(i);
             if (chunk == null || !session.isValid()) continue;
+            loaded++;
             ChunkPos pos = toGenerate.get(i);
             ResourceLocation biome = biomeMap.get(pos);
             if (session.doesNotNeedBiome(dimId, biome)) continue;
             ChunkSnapshot snapshot = analyzer.createSnapshot(chunk);
-            if (snapshot != null) results.add(new ScanResult(snapshot, biome));
+            if (snapshot != null) {
+                snapshotted++;
+                results.add(new ScanResult(snapshot, biome));
+            }
         }
+
+        session.recordChunksLoaded(loaded);
+        session.recordSnapshotsBuilt(snapshotted);
 
         return results;
     }
@@ -147,11 +157,9 @@ public class ChunkBatchProcessor {
         biomeContexts.clear();
         generators.clear();
         biomeCache.clear();
-        UltraFastChunkGenerator.clearAllCaches();
     }
 
     public void resetForNewSession() {
         generators.clear();
-        UltraFastChunkGenerator.clearAllCaches();
     }
 }

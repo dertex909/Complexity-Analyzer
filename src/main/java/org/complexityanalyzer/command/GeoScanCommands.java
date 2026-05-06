@@ -31,7 +31,6 @@ import net.minecraft.network.chat.*;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
@@ -50,7 +49,7 @@ public class GeoScanCommands {
                         .then(Commands.argument("profile", StringArgumentType.word())
                                 .suggests((c, b) ->
                                         SharedSuggestionProvider.suggest(
-                                                new String[]{"quarter", "half", "most", "full"}, b
+                                                new String[]{"normal", "fast", "ultra_fast", "maximum"}, b
                                         ))
                                 .executes(ctx ->
                                         executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"),
@@ -75,7 +74,6 @@ public class GeoScanCommands {
     private static int showProfileHelp(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
-        int totalThreads = ThreadPoolManager.getInstance().getParallelism();
 
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════════════")
@@ -86,57 +84,42 @@ public class GeoScanCommands {
                 .withStyle(ChatFormatting.GOLD));
         output.sendInfo(source, Component.literal(""));
 
-        output.sendInfo(source, Component.literal("  💻 Your system: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(totalThreads + " threads available")
-                        .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
-        output.sendInfo(source, Component.literal(""));
-
         for (ScanProfile profile : ScanProfile.values()) {
-            int workers = profile.getWorkerCount(totalThreads);
-            int percent = Math.round(profile.threadFraction * 100);
             String icon = getProfileIcon(profile);
             ChatFormatting color = getProfileColor(profile);
 
             MutableComponent profileLine = Component.literal("  " + icon + " ")
-                    .append(Component.literal(profile.name().toLowerCase()).withStyle(color, ChatFormatting.BOLD))
+                    .append(Component.literal(profile.displayName).withStyle(color, ChatFormatting.BOLD))
                     .append(Component.literal(" — ").withStyle(ChatFormatting.DARK_GRAY));
 
-            profileLine.append(Component.literal(workers + " workers").withStyle(ChatFormatting.WHITE));
-            profileLine.append(Component.literal(" (" + percent + "% CPU)").withStyle(ChatFormatting.GRAY));
-
             if (profile.hasMsptLimit()) {
-                profileLine.append(Component.literal(" | MSPT < " + (int) profile.msptLimit)
+                profileLine.append(Component.literal("лимит " + (int) profile.msptLimit + " MSPT")
                         .withStyle(ChatFormatting.AQUA));
             } else {
-                profileLine.append(Component.literal(" | NO LIMIT").withStyle(ChatFormatting.RED));
+                profileLine.append(Component.literal("без лимита MSPT").withStyle(ChatFormatting.RED));
             }
 
             ObjectList<Component> tooltipLines = new ObjectArrayList<>();
-            tooltipLines.add(Component.literal("═══ " + profile.name() + " PROFILE ═══")
+            tooltipLines.add(Component.literal("═══ " + profile.displayName + " ═══")
                     .withStyle(color, ChatFormatting.BOLD));
             tooltipLines.add(Component.literal(""));
-            tooltipLines.add(Component.literal("Workers: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(workers + "/" + totalThreads).withStyle(ChatFormatting.WHITE)));
-            tooltipLines.add(Component.literal("CPU Usage: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(percent + "%").withStyle(ChatFormatting.WHITE)));
-            tooltipLines.add(Component.literal("Max Parallel Chunks: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(String.valueOf(profile.maxParallelChunks)).withStyle(ChatFormatting.WHITE)));
 
             if (profile.hasMsptLimit()) {
-                tooltipLines.add(Component.literal(""));
-                tooltipLines.add(Component.literal("⚡ Auto-throttle enabled").withStyle(ChatFormatting.AQUA));
-                tooltipLines.add(Component.literal("Pauses when MSPT > "
-                        + (int) profile.msptLimit + "ms").withStyle(ChatFormatting.GRAY));
-                tooltipLines.add(Component.literal("Resumes when MSPT < " + (int)
-                                (profile.msptLimit - ScanConfig.MSPT_RECOVERY_THRESHOLD_MS) + "ms")
-                        .withStyle(ChatFormatting.GRAY));
+                tooltipLines.add(Component.literal("MSPT limit: ").withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal(String.valueOf((int) profile.msptLimit)).withStyle(ChatFormatting.WHITE)));
+                tooltipLines.add(Component.literal("Pauses when the server is overloaded").withStyle(ChatFormatting.AQUA));
+                tooltipLines.add(Component.literal("Resumes below " + (int)
+                        (profile.msptLimit - ScanConfig.MSPT_RECOVERY_THRESHOLD_MS) + " MSPT").withStyle(ChatFormatting.GRAY));
             } else {
-                tooltipLines.add(Component.literal(""));
-                tooltipLines.add(Component.literal("⚠ No throttle protection!").withStyle(ChatFormatting.RED));
-                tooltipLines.add(Component.literal("May cause severe lag").withStyle(ChatFormatting.DARK_RED));
+                tooltipLines.add(Component.literal("MSPT limit: ").withStyle(ChatFormatting.GRAY)
+                        .append(Component.literal("∞").withStyle(ChatFormatting.WHITE)));
+                tooltipLines.add(Component.literal("No auto-throttling").withStyle(ChatFormatting.RED));
+                tooltipLines.add(Component.literal("May cause heavy lag").withStyle(ChatFormatting.DARK_RED));
             }
 
             tooltipLines.add(Component.literal(""));
+            tooltipLines.add(Component.literal("Minecraft generates chunks, analysis runs in background")
+                    .withStyle(ChatFormatting.GRAY));
             tooltipLines.add(Component.literal("Click to select this profile")
                     .withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC));
 
@@ -149,7 +132,7 @@ public class GeoScanCommands {
             profileLine.setStyle(profileLine.getStyle()
                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))
                     .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
-                            "/complexity geoscan start " + profile.name().toLowerCase())));
+                            "/complexity geoscan start " + profile.commandName)));
 
             output.sendInfo(source, profileLine);
         }
@@ -163,7 +146,7 @@ public class GeoScanCommands {
                         .withStyle(ChatFormatting.YELLOW)));
 
         output.sendInfo(source, Component.literal("  📝 Example: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal("/complexity geoscan start quarter 32")
+                .append(Component.literal("/complexity geoscan start normal 32")
                         .withStyle(ChatFormatting.WHITE)));
 
         output.sendInfo(source, Component.literal(""));
@@ -175,11 +158,10 @@ public class GeoScanCommands {
                                    int chunks, String profileName, boolean force) {
         CommandSourceStack source = context.getSource();
         OutputManager output = new OutputManager(source.getServer());
-        int totalThreads = ThreadPoolManager.getInstance().getParallelism();
 
         final ScanProfile profile;
         try {
-            profile = ScanProfile.valueOf(profileName.toUpperCase());
+            profile = ScanProfile.fromInput(profileName);
         } catch (IllegalArgumentException e) {
             output.sendFailure(source, Component.literal("❌ Unknown profile: ")
                     .append(Component.literal(profileName).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
@@ -202,7 +184,6 @@ public class GeoScanCommands {
             }
 
             String initiatorName = source.getTextName();
-            int workers = profile.getWorkerCount(totalThreads);
             String icon = getProfileIcon(profile);
             ChatFormatting color = getProfileColor(profile);
 
@@ -223,12 +204,8 @@ public class GeoScanCommands {
             output.sendInfo(source, Component.literal(""));
 
             output.sendInfo(source, Component.literal("  Profile: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(icon + " " + profile.name())
+                    .append(Component.literal(icon + " " + profile.displayName)
                             .withStyle(color, ChatFormatting.BOLD)));
-
-            output.sendInfo(source, Component.literal("  Workers: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(workers + "/" + totalThreads + " threads")
-                            .withStyle(ChatFormatting.WHITE)));
 
             output.sendInfo(source, Component.literal("  Chunks/biome: ").withStyle(ChatFormatting.GRAY)
                     .append(Component.literal(String.valueOf(chunks))
@@ -236,13 +213,17 @@ public class GeoScanCommands {
 
             if (profile.hasMsptLimit()) {
                 output.sendInfo(source, Component.literal("  Protection: ").withStyle(ChatFormatting.GRAY)
-                        .append(Component.literal("✓ Auto-throttle at MSPT > " + (int) profile.msptLimit)
+                        .append(Component.literal("✓ Auto-pause at MSPT > " + (int) profile.msptLimit)
                                 .withStyle(ChatFormatting.GREEN)));
             } else {
                 output.sendInfo(source, Component.literal("  Protection: ").withStyle(ChatFormatting.GRAY)
-                        .append(Component.literal("✗ None (may cause lag)")
+                        .append(Component.literal("✗ No limit (may lag)")
                                 .withStyle(ChatFormatting.RED)));
             }
+
+            output.sendInfo(source, Component.literal("  Generation: ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal("Vanilla chunk generation")
+                            .withStyle(ChatFormatting.WHITE)));
 
             output.sendInfo(source, Component.literal("  Initiator: ").withStyle(ChatFormatting.GRAY)
                     .append(Component.literal(initiatorName).withStyle(ChatFormatting.WHITE)));
@@ -253,28 +234,28 @@ public class GeoScanCommands {
             output.sendInfo(source, Component.literal(""));
 
             if (force) {
-                if (profile == ScanProfile.FULL || profile == ScanProfile.MOST) {
+                if (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST) {
                     output.broadcastSever(Component.literal("⚠⚠⚠ GEO-SCAN FORCE STARTED ⚠⚠⚠"));
-                    output.broadcastSever(Component.literal("Profile: " + profile.name() +
-                            " | " + workers + " workers | EXPECT LAG!"));
+                    output.broadcastSever(Component.literal("Profile: " + profile.displayName +
+                            " | lag expected!"));
                 } else {
                     output.broadcastWarning(Component.literal("⚡ Geo-scan started (" +
-                            profile.name().toLowerCase() + " mode)"));
+                            profile.displayName.toLowerCase() + ")"));
                 }
                 manager.startScanImmediately(chunks, initiatorName, profile);
             } else {
-                if (profile == ScanProfile.FULL || profile == ScanProfile.MOST) {
+                if (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST) {
                     output.broadcastWarning(Component.literal(
-                            "⚠ Geo-scan scheduled! " + profile.name() + " mode — lag expected soon..."));
+                            "⚠ Geo-scan scheduled! " + profile.displayName + " — lag may happen soon..."));
                 } else {
                     output.broadcast(Component.literal("📊 Geo-scan starting soon (" +
-                            profile.name().toLowerCase() + " mode)"));
+                            profile.displayName.toLowerCase() + ")"));
                 }
                 manager.scheduleScan(chunks, initiatorName, profile);
             }
 
             output.sendToAdmins(Component.literal("[GeoScan] " + (force ? "Force started" : "Scheduled")
-                    + " by " + initiatorName + " | Profile: " + profile.name() + " | Chunks: " + chunks));
+                    + " by " + initiatorName + " | Profile: " + profile.displayName + " | Chunks: " + chunks));
         } else {
             output.sendFailure(source, Component.literal("❌ GeoAnalysisManager is not initialized!")
                     .withStyle(ChatFormatting.RED));
@@ -355,17 +336,14 @@ public class GeoScanCommands {
         ScanProfile profile = session.getProfile();
         String icon = getProfileIcon(profile);
         ChatFormatting color = getProfileColor(profile);
-        int totalThreads = ThreadPoolManager.getInstance().getParallelism();
 
-        output.sendInfo(source, Component.literal("  Mode: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(icon + " " + profile.name()).withStyle(color, ChatFormatting.BOLD)));
+        output.sendInfo(source, Component.literal("  Profile: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(icon + " " + profile.displayName).withStyle(color, ChatFormatting.BOLD)));
 
-        int activeWorkers = manager.getActiveWorkerCount();
-        int targetWorkers = manager.getTargetWorkerCount();
-        output.sendInfo(source, Component.literal("  Workers: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(activeWorkers + "/" + targetWorkers).withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(" (of " + totalThreads + " available)")
-                        .withStyle(ChatFormatting.DARK_GRAY)));
+        output.sendInfo(source, Component.literal("  Generation: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("Vanilla").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" | ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal("analysis in background").withStyle(ChatFormatting.AQUA)));
 
         long scanned = session.getTotalChunksScanned();
         int total = session.getTotalChunksNeeded();
@@ -379,9 +357,10 @@ public class GeoScanCommands {
         output.sendInfo(source, Component.literal("  Chunks: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(scanned + "/" + total).withStyle(ChatFormatting.WHITE)));
 
-        float speed = session.getScanSpeed();
+        float claimedSpeed = session.getScanSpeed();
+
         output.sendInfo(source, Component.literal("  Speed: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(String.format("%.1f", speed) + " chunks/sec")
+                .append(Component.literal(String.format("%.1f", claimedSpeed) + " claimed/sec")
                         .withStyle(ChatFormatting.AQUA)));
 
         long elapsed = session.getElapsedSeconds();
@@ -521,19 +500,19 @@ public class GeoScanCommands {
 
     private static String getProfileIcon(ScanProfile profile) {
         return switch (profile) {
-            case QUARTER -> "🟢";
-            case HALF -> "🟡";
-            case MOST -> "🟠";
-            case FULL -> "🔴";
+            case NORMAL -> "🟢";
+            case FAST -> "🟡";
+            case ULTRA_FAST -> "🟠";
+            case MAXIMUM -> "🔴";
         };
     }
 
     private static ChatFormatting getProfileColor(ScanProfile profile) {
         return switch (profile) {
-            case QUARTER -> ChatFormatting.GREEN;
-            case HALF -> ChatFormatting.YELLOW;
-            case MOST -> ChatFormatting.GOLD;
-            case FULL -> ChatFormatting.RED;
+            case NORMAL -> ChatFormatting.GREEN;
+            case FAST -> ChatFormatting.YELLOW;
+            case ULTRA_FAST -> ChatFormatting.GOLD;
+            case MAXIMUM -> ChatFormatting.RED;
         };
     }
 

@@ -4,15 +4,7 @@
   "package": "org.complexityanalyzer.mixin",
   "compatibilityLevel": "JAVA_21",
   "refmap": "complexity_analyzer.refmap.json",
-  "mixins": [
-    "ThreadingDetectorMixin",
-    "PalettedContainerMixin",
-    "UtilMixin",
-    "ChunkGeneratorFeatureOrderMixin",
-    "ChunkGeneratorAccessor",
-    "NoiseBasedChunkGeneratorAccessor",
-    "StructureManagerAccessor"
-  ],
+  "mixins": [],
   "client": [],
   "server": [],
   "injectors": {

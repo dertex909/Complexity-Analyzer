@@ -60,7 +60,6 @@ public class ScanExecutor {
     private final AtomicBoolean completing = new AtomicBoolean(false);
 
     private final Set<Thread> workerThreads = ConcurrentHashMap.newKeySet();
-    private final int maxWorkers;
 
     private final ConcurrentHashMap<ScanSession.BiomeKey, BufferedSnapshots> resultBuffers = new ConcurrentHashMap<>();
 
@@ -98,17 +97,6 @@ public class ScanExecutor {
         this.worldScanner = worldScanner;
         this.batchProcessor = batchProcessor;
         this.notifier = notifier;
-        this.maxWorkers = ThreadPoolManager.getInstance().getParallelism();
-    }
-
-    public int getActiveWorkerCount() {
-        return activeWorkerCount.get();
-    }
-
-    public int getTargetWorkerCount() {
-        ScanSession session = currentSession;
-        if (session == null) return 0;
-        return session.getProfile().getWorkerCount(maxWorkers);
     }
 
     public void execute(ScanSession newSession, Runnable onComplete) {
@@ -130,7 +118,7 @@ public class ScanExecutor {
         }
 
         if (activeWorkerCount.get() > 0) {
-            ComplexityAnalyzer.LOGGER.warn("[SCAN] {} old workers still running after 2s wait", activeWorkerCount.get());
+            ComplexityAnalyzer.LOGGER.warn("[SCAN] {} old scan tasks still running after 2s wait", activeWorkerCount.get());
         }
 
         batchProcessor.resetForNewSession();
@@ -155,17 +143,14 @@ public class ScanExecutor {
             flushAllBuffers();
             resultBuffers.clear();
 
-            int targetWorkers = newSession.getProfile().getWorkerCount(maxWorkers);
 
             String msptInfo = msptMonitor.hasLimit()
                     ? String.format(", MSPT limit: %.0f", msptMonitor.getMsptLimit()) : ", no MSPT limit";
 
-            notifier.logInfo("[SCAN] 🚀 " + newSession.getProfile().name() +
-                    " MODE — " + targetWorkers + " workers" + msptInfo);
+            notifier.logInfo("[SCAN] 🚀 " + newSession.getProfile().displayName.toUpperCase() +
+                    " — vanilla generation" + msptInfo);
 
-            for (int i = 0; i < targetWorkers; i++) {
-                startWorker();
-            }
+            startWorker();
         }
     }
 
@@ -212,7 +197,7 @@ public class ScanExecutor {
 
     private void workerLoop(int workerId) {
         workerThreads.add(Thread.currentThread());
-        String workerName = "Worker-" + workerId;
+        String workerName = "Scanner-" + workerId;
         ComplexityAnalyzer.LOGGER.info("[SCAN] {} started", workerName);
 
         final ScanSession mySession = currentSession;
@@ -309,7 +294,11 @@ public class ScanExecutor {
 
         Optional<ChunkPos> startPos = worldScanner.findBiomeLocation(dimension, biomeKey, false);
 
-        if (startPos.isEmpty() || shouldStop(mySession)) return;
+        if (startPos.isEmpty() || shouldStop(mySession)) {
+            // If we can't find a usable starting point for this biome, don't waste time retrying it endlessly.
+            mySession.abandonBiome(dimId, biomeId);
+            return;
+        }
 
         ScanContext ctx = new ScanContext(workerName, mySession, dimension, biomeKey, dimId, biomeId);
         ctx.searcher.startAt(startPos.get().x, startPos.get().z);
@@ -355,9 +344,15 @@ public class ScanExecutor {
             this.biomeKey = biomeKey;
             this.dimId = dimId;
             this.biomeId = biomeId;
-            this.maxScannedBudget = calculateMaxScannedBudget(mySession);
-            this.emptyBatchTolerance = calculateEmptyBatchTolerance(mySession);
-            this.stagnantBatchTolerance = calculateStagnantBatchTolerance(mySession);
+
+            MsptMonitor monitor = msptMonitor;
+            boolean limited = monitor != null && monitor.hasLimit();
+            float mspt = monitor != null ? monitor.getCurrentMspt() : 0f;
+
+            var policy = mySession.getProfile().policy(mySession.getChunksPerBiome(), mspt, limited);
+            this.maxScannedBudget = policy.maxScannedBudget();
+            this.emptyBatchTolerance = policy.emptyBatchTolerance();
+            this.stagnantBatchTolerance = policy.stagnantBatchTolerance();
         }
 
         boolean canContinue() {
@@ -391,7 +386,7 @@ public class ScanExecutor {
     }
 
     private List<ChunkPos> collectBatch(ScanContext ctx) {
-        int batchSize = calculateBatchSize(ctx.mySession);
+        int batchSize = calculateBatchSize();
         List<ChunkPos> batch = new ArrayList<>(batchSize);
         for (int i = 0; i < batchSize && ctx.scanned < ctx.maxScannedBudget; i++) {
             ChunkPos pos = ctx.searcher.next();
@@ -423,7 +418,10 @@ public class ScanExecutor {
                 true,
                 allowCachedLocation
         );
-        if (newPos.isEmpty() || shouldStop(ctx.mySession)) return true;
+        if (newPos.isEmpty() || shouldStop(ctx.mySession)) {
+            ctx.mySession.abandonBiome(ctx.dimId, ctx.biomeId);
+            return true;
+        }
 
         ctx.searcher.startAt(newPos.get().x, newPos.get().z);
         ctx.emptyBatches = 0;
@@ -469,54 +467,13 @@ public class ScanExecutor {
                 ctx.workerName, ctx.biomeId.getPath(), ctx.found, biomeStats);
     }
 
-    private int calculateMaxScannedBudget(ScanSession session) {
-        int chunksPerBiome = Math.max(1, session.getChunksPerBiome());
-        return switch (session.getProfile()) {
-            case FULL -> Math.max(2048, Math.min(chunksPerBiome * 2, 4096));
-            case MOST -> Math.max(1024, Math.min(chunksPerBiome * 2, 2048));
-            case HALF -> Math.max(512, Math.min(chunksPerBiome * 2, 1024));
-            case QUARTER -> 256;
-        };
-    }
-
-    private int calculateEmptyBatchTolerance(ScanSession session) {
-        return switch (session.getProfile()) {
-            case FULL -> 4;
-            case MOST -> 3;
-            case HALF, QUARTER -> 2;
-        };
-    }
-
-    private int calculateStagnantBatchTolerance(ScanSession session) {
-        return switch (session.getProfile()) {
-            case FULL -> 4;
-            case MOST -> 3;
-            case HALF, QUARTER -> 2;
-        };
-    }
-
-    private int calculateBatchSize(ScanSession session) {
+    private int calculateBatchSize() {
+        ScanSession session = currentSession;
+        if (session == null) return 1;
         MsptMonitor monitor = msptMonitor;
-        if (monitor == null || !monitor.hasLimit()) {
-            return switch (session.getProfile()) {
-                case FULL -> 256;
-                case MOST -> 192;
-                case HALF -> 128;
-                case QUARTER -> 64;
-            };
-        }
-        float currentMspt = monitor.getCurrentMspt();
-        float limit = monitor.getMsptLimit();
-
-        if (currentMspt > limit * 0.9f) {
-            return 16;
-        } else if (currentMspt > limit * 0.7f) {
-            return 32;
-        } else if (currentMspt > limit * 0.5f) {
-            return 64;
-        } else {
-            return 128;
-        }
+        boolean limited = monitor != null && monitor.hasLimit();
+        float mspt = monitor != null ? monitor.getCurrentMspt() : 0f;
+        return session.getProfile().policy(session.getChunksPerBiome(), mspt, limited).batchSize();
     }
 
     private void tryComplete(ScanSession session) {

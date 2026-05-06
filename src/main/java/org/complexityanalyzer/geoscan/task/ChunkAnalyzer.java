@@ -49,8 +49,6 @@ public class ChunkAnalyzer {
             });
         }
 
-        if (blockCounts.isEmpty()) return null;
-
         Map<String, Integer> finalCounts = new HashMap<>(blockCounts.size());
         for (var entry : blockCounts.reference2IntEntrySet()) {
             String blockId = blockIdCache.computeIfAbsent(

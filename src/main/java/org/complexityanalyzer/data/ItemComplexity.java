@@ -189,7 +189,7 @@ public class ItemComplexity {
     public static ItemComplexity infinite(Item item) {
         return new Builder(item)
                 .complexity(Double.POSITIVE_INFINITY)
-                .category(ComplexityCategory.ETERNAL)
+                .category(ComplexityCategory.UNOBTAINABLE)
                 .build();
     }
 

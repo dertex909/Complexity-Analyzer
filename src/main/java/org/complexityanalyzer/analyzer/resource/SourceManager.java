@@ -115,7 +115,7 @@ public class SourceManager {
         var empiricalSource = getSourceByType(EmpiricalBlockSource.class);
         var empiricalReady = empiricalSource != null && empiricalSource.isReady();
 
-        var bestFactor = Double.MAX_VALUE;
+        var bestFactor = Double.POSITIVE_INFINITY;
         var bestData = (BaseResourceData) null;
 
         for (var source : sources) {
@@ -123,7 +123,7 @@ public class SourceManager {
             if (!source.canProvide(item)) continue;
 
             var data = source.analyze(item);
-            if (data != null && data.getBaseFactor() < bestFactor) {
+            if (data != null) if (bestData == null || data.getBaseFactor() < bestFactor) {
                 bestFactor = data.getBaseFactor();
                 bestData = data;
             }

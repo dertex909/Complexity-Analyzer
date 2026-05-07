@@ -31,7 +31,7 @@ public enum ComplexityCategory {
     MASTER(10_000_000, "Master", ChatFormatting.AQUA),
     MYTHICAL(100_000_000, "Mythical", ChatFormatting.LIGHT_PURPLE),
     TRANSCENDENT(1_000_000_000, "Transcendent", ChatFormatting.DARK_AQUA),
-    ETERNAL(Double.POSITIVE_INFINITY, "Eternal", ChatFormatting.DARK_RED),
+    UNOBTAINABLE(Double.POSITIVE_INFINITY, "Unobtainable", ChatFormatting.DARK_RED),
     UNCALCULABLE(-1, "Uncalculable", ChatFormatting.DARK_GRAY);
 
     private static final ComplexityCategory[] CALCULABLE_CATEGORIES;
@@ -69,7 +69,7 @@ public enum ComplexityCategory {
         if (complexity < 0) return UNCALCULABLE;
         if (complexity == 0) return ABSOLUTE;
         int categoryIndex = getCategoryIndex(complexity);
-        if (categoryIndex >= CALCULABLE_CATEGORIES.length) return ETERNAL;
+        if (categoryIndex >= CALCULABLE_CATEGORIES.length) return UNOBTAINABLE;
         return CALCULABLE_CATEGORIES[categoryIndex];
     }
 

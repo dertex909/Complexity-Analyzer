@@ -126,8 +126,9 @@ public class AnalyzeCommand {
         output.sendInfo(source, categoryComponent);
 
         ChatFormatting valueColor = getComplexityColor(complexity);
+        String valueString = Double.isInfinite(complexity) ? "∞" : String.format("%.2f", complexity);
         MutableComponent valueComponent = Component.literal("  Value: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(String.format("%.2f", complexity)).withStyle(valueColor, ChatFormatting.BOLD));
+                .append(Component.literal(valueString).withStyle(valueColor, ChatFormatting.BOLD));
 
         output.sendInfo(source, valueComponent);
 
@@ -272,7 +273,7 @@ public class AnalyzeCommand {
             case "MASTER" -> "⭐";
             case "MYTHICAL" -> "💎";
             case "TRANSCENDENT" -> "👑";
-            case "ETERNAL" -> "🔥";
+            case "UNOBTAINABLE" -> "🚫";
             default -> "❓";
         };
     }

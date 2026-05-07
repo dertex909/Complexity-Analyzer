@@ -114,6 +114,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                         String toolName = toolStack.isEmpty() ? "Hand" : toolStack.getDisplayName().getString();
                         String avgFormatted = formatAverage(itemsPerAction);
+                        if (blockAsItem == Items.AIR) continue;
 
                         BaseResourceData data = new BaseResourceData.Builder(droppedItem, this)
                                 .sourceType(getSourceType())

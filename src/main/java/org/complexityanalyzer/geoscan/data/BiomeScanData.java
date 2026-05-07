@@ -19,7 +19,6 @@
 package org.complexityanalyzer.geoscan.data;
 
 import net.minecraft.world.level.block.Block;
-import org.complexityanalyzer.geoscan.util.ChunkCoordinateUtil;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +41,7 @@ public class BiomeScanData {
     }
 
     public void addScannedChunk(int chunkX, int chunkZ) {
-        long coord = ChunkCoordinateUtil.pack(chunkX, chunkZ);
+        long coord = (long) chunkX << 32 | (chunkZ & 0xFFFFFFFFL);
         if (this.scannedChunksSet == null) this.scannedChunksSet = new HashSet<>();
         this.scannedChunksSet.add(coord);
     }

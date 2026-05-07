@@ -167,9 +167,7 @@ public class GeoDataStorage {
     }
 
     public Stream<ChunkSnapshot> streamReconFile(Path path) {
-        if (!Files.exists(path)) {
-            return Stream.empty();
-        }
+        if (!Files.exists(path)) return Stream.empty();
         try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
             List<ChunkSnapshot> snapshots = lines.map(line -> {
                         try {

@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class EnhancedIterativeSolver {
+public class IterativeSolver {
 
     private static final double EPSILON = 1e-12;
     private static final double CONVERGENCE_THRESHOLD = ComplexityConfig.CONVERGENCE_THRESHOLD.get();
@@ -63,7 +63,7 @@ public class EnhancedIterativeSolver {
     private final AtomicInteger recipeCostCalculations = new AtomicInteger(0);
     private final AtomicInteger cacheHits = new AtomicInteger(0);
 
-    public EnhancedIterativeSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
+    public IterativeSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
         this.graph = graph;
         this.sourceManager = sourceManager;
         this.machineRegistry = machineRegistry;

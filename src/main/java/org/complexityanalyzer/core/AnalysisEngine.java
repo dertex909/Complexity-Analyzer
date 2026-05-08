@@ -35,7 +35,7 @@ import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.providers.*;
 import org.complexityanalyzer.analyzer.resource.sources.*;
-import org.complexityanalyzer.analyzer.solver.EnhancedIterativeSolver;
+import org.complexityanalyzer.analyzer.solver.IterativeSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -313,7 +313,7 @@ public class AnalysisEngine {
 
         if (isInterrupted()) return;
 
-        EnhancedIterativeSolver solver = new EnhancedIterativeSolver(currentGraph, currentSourceManager, this.machineRegistry);
+        IterativeSolver solver = new IterativeSolver(currentGraph, currentSourceManager, this.machineRegistry);
         SolverResult solverResult = solver.solve();
 
         if (isInterrupted()) {

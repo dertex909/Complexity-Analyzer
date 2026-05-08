@@ -34,15 +34,8 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-import javax.annotation.meta.TypeQualifierDefault;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class MockRecipeRegistration implements IRecipeRegistration {
     private final Reference2ObjectMap<RecipeType<?>, ObjectList<?>> collectedRecipes = new Reference2ObjectOpenHashMap<>();
     private final Level level;
@@ -60,7 +53,7 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     }
 
     @Override
-    public <T> void addRecipes(RecipeType<T> recipeType, List<T> recipes) {
+    public <T> void addRecipes(@NotNull RecipeType<T> recipeType, List<T> recipes) {
         if (recipes.isEmpty()) return;
         collectedRecipes.put(recipeType, new ObjectArrayList<>(recipes));
     }
@@ -90,15 +83,10 @@ public class MockRecipeRegistration implements IRecipeRegistration {
     }
 
     @Override
-    public <T> void addIngredientInfo(T ingredient, IIngredientType<T> ingredientType, Component... descriptionComponents) {
+    public <T> void addIngredientInfo(@NotNull T ingredient, @NotNull IIngredientType<T> ingredientType, Component @NotNull ... descriptionComponents) {
     }
 
     @Override
-    public <T> void addIngredientInfo(List<T> ingredients, IIngredientType<T> ingredientType, Component... descriptionComponents) {
+    public <T> void addIngredientInfo(@NotNull List<T> ingredients, @NotNull IIngredientType<T> ingredientType, Component @NotNull ... descriptionComponents) {
     }
-}
-
-@Retention(RetentionPolicy.RUNTIME)
-@TypeQualifierDefault(ElementType.METHOD)
-@interface MethodsReturnNonnullByDefault {
 }

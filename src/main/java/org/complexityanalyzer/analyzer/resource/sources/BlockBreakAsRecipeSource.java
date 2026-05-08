@@ -42,9 +42,8 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
-
-import java.lang.reflect.Field;
 
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
 
@@ -52,7 +51,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     private static final double BASE_MINING_COST = 2.0;
 
     private final Reference2ObjectMap<Item, ObjectList<BaseResourceData>> allPaths = new Reference2ObjectOpenHashMap<>();
-    private static Field randomField = null;
 
     @Override
     public void initialize(Level level) {
@@ -83,6 +81,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             BlockState defaultState = blockToMine.defaultBlockState();
             Item blockAsItem = blockToMine.asItem();
+            if (blockAsItem == Items.AIR) continue;
 
             for (ItemStack toolStack : toolsToTest) {
                 if (defaultState.requiresCorrectToolForDrops() && !toolStack.isCorrectToolForDrops(defaultState)) {
@@ -99,9 +98,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                         var droppedItem = entry.getKey();
                         var itemsPerAction = entry.getDoubleValue();
                         if (itemsPerAction <= 0) continue;
-                        if (blockAsItem != Items.AIR && droppedItem == blockAsItem) continue;
+                        if (droppedItem == blockAsItem) continue;
                         Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
-                        if (blockAsItem != Items.AIR) sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
+                        sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
 
                         Item toolItem = toolStack.getItem();
                         if (toolItem != Items.AIR) {
@@ -114,7 +113,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                         String toolName = toolStack.isEmpty() ? "Hand" : toolStack.getDisplayName().getString();
                         String avgFormatted = formatAverage(itemsPerAction);
-                        if (blockAsItem == Items.AIR) continue;
 
                         BaseResourceData data = new BaseResourceData.Builder(droppedItem, this)
                                 .sourceType(getSourceType())
@@ -181,8 +179,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         tools.add(new ItemStack(Items.SHEARS));
 
         var silkTouchPickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
-        var silkTouchHolder = serverLevel.registryAccess()
-                .registryOrThrow(Registries.ENCHANTMENT)
+        var silkTouchHolder = serverLevel.registryAccess().registryOrThrow(Registries.ENCHANTMENT)
                 .getHolder(Enchantments.SILK_TOUCH);
         silkTouchHolder.ifPresent(holder -> silkTouchPickaxe.enchant(holder, 1));
         tools.add(silkTouchPickaxe);
@@ -208,18 +205,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             var context = new LootContext.Builder(params).create(java.util.Optional.empty());
 
-            if (i == 0) {
-                injectionWorked = injectRandomIntoContext(context, deterministicRandom);
-            } else if (injectionWorked) {
-                injectRandomSilently(context, deterministicRandom);
-            }
+            if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
 
             lootTable.getRandomItems(context, drops::add);
 
-            for (var stack : drops) {
+            for (var stack : drops)
                 if (!stack.isEmpty())
                     totalCounts.put(stack.getItem(), totalCounts.getLong(stack.getItem()) + stack.getCount());
-            }
         }
 
         Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
@@ -231,60 +223,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     }
 
     private boolean injectRandomIntoContext(LootContext context, RandomSource random) {
-        if (randomField == null) {
-            randomField = findRandomFieldAggressively(context);
-
-            if (randomField != null) {
-                ComplexityAnalyzer.LOGGER.info("[{}] Successfully found RandomSource field: {}",
-                        getName(), randomField.getName());
-            } else {
-                ComplexityAnalyzer.LOGGER.warn("[{}] Could not find RandomSource field", getName());
-            }
-        }
-
-        return injectRandomSilently(context, random);
-    }
-
-    private boolean injectRandomSilently(LootContext context, RandomSource random) {
-        if (randomField == null) return false;
-
         try {
-            randomField.set(context, random);
+            ((LootContextAccessor) context).setRandom(random);
             return true;
         } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[{}] Failed to inject random into LootContext: {}", getName(), e.getMessage());
             return false;
         }
-    }
-
-    private Field findRandomFieldAggressively(LootContext context) {
-        Class<?> clazz = context.getClass();
-
-        while (clazz != null) {
-            for (Field field : clazz.getDeclaredFields()) {
-                if (RandomSource.class.isAssignableFrom(field.getType())) {
-                    field.setAccessible(true);
-                    return field;
-                }
-            }
-            clazz = clazz.getSuperclass();
-        }
-
-        clazz = context.getClass();
-        String[] possibleNames = {"random", "rand", "randomSource", "rng", "f_79024_"};
-
-        while (clazz != null) {
-            for (String name : possibleNames) {
-                try {
-                    Field field = clazz.getDeclaredField(name);
-                    field.setAccessible(true);
-                    return field;
-                } catch (NoSuchFieldException ignored) {
-                }
-            }
-            clazz = clazz.getSuperclass();
-        }
-
-        return null;
     }
 
     private long generateStableSeed(Block block, ItemStack tool) {
@@ -292,7 +237,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         if (!tool.isEmpty()) {
             seed = seed * 31L + BuiltInRegistries.ITEM.getKey(tool.getItem()).toString().hashCode();
-
             ItemEnchantments enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
             if (!enchantments.isEmpty()) seed = seed * 31L + enchantments.hashCode();
         } else {

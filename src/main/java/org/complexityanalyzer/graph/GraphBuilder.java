@@ -32,8 +32,8 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.JeiCompatibilityModule;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,23 +43,6 @@ public class GraphBuilder {
     private static final TagKey<Item> NUGGETS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:nuggets"));
     private static final TagKey<Item> GEMS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:gems"));
     private static final TagKey<Item> RAW_MATERIALS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
-
-    private static Field smithingTemplate;
-    private static Field smithingBase;
-    private static Field smithingAddition;
-
-    static {
-        try {
-            smithingTemplate = SmithingTransformRecipe.class.getDeclaredField("template");
-            smithingBase = SmithingTransformRecipe.class.getDeclaredField("base");
-            smithingAddition = SmithingTransformRecipe.class.getDeclaredField("addition");
-            smithingTemplate.setAccessible(true);
-            smithingBase.setAccessible(true);
-            smithingAddition.setAccessible(true);
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to initialize SmithingTransformRecipe reflection fields", e);
-        }
-    }
 
     public static RecipeGraph buildFromWorld(Level level) {
         ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification ({} threads)...",
@@ -103,37 +86,32 @@ public class GraphBuilder {
     }
 
     private static RecipeNode buildSmithingNode(SmithingTransformRecipe recipe, Item resultItem) {
-        if (smithingTemplate == null) return null;
+        var accessor = (SmithingTransformRecipeAccessor) recipe;
+        var template = accessor.getTemplate();
+        var base = accessor.getBase();
+        var addition = accessor.getAddition();
+
+        if (template == null || base == null || addition == null) return null;
 
         var builder = new RecipeNode.Builder(resultItem)
                 .recipeType(RecipeType.SMITHING)
                 .category(RecipeCategory.PRIMARY)
                 .resultCount(1)
                 .rawRecipe(recipe);
-        try {
-            var template = (Ingredient) smithingTemplate.get(recipe);
-            var base = (Ingredient) smithingBase.get(recipe);
-            var addition = (Ingredient) smithingAddition.get(recipe);
 
-            if (!template.isEmpty()) {
-                var variants = extractVariants(template);
-                if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-            }
+        if (!template.isEmpty()) {
+            var variants = extractVariants(template);
+            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
+        }
 
-            if (!base.isEmpty()) {
-                var variants = extractVariants(base);
-                if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-            }
+        if (!base.isEmpty()) {
+            var variants = extractVariants(base);
+            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
+        }
 
-            if (!addition.isEmpty()) {
-                var variants = extractVariants(addition);
-                if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-            }
-
-        } catch (IllegalAccessException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to access SmithingTransformRecipe fields for {}: {}",
-                    BuiltInRegistries.ITEM.getKey(resultItem), e.getMessage());
-            return null;
+        if (!addition.isEmpty()) {
+            var variants = extractVariants(addition);
+            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
         }
 
         return builder.build();

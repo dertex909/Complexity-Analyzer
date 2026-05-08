@@ -35,10 +35,9 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
-@ParametersAreNonnullByDefault
+
 public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistration {
     private final Object2ObjectMap<ResourceLocation, ObjectList<ItemStack>> catalysts = new Object2ObjectOpenHashMap<>();
     private static final IJeiHelpers EMPTY_JEI_HELPERS = new JeiMocks.EmptyJeiHelpers();
@@ -48,7 +47,7 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
     }
 
     @Override
-    public <T> void addRecipeCatalyst(IIngredientType<T> ingredientType, T ingredient, RecipeType<?>... recipeTypes) {
+    public <T> void addRecipeCatalyst(@NotNull IIngredientType<T> ingredientType, @NotNull T ingredient, RecipeType<?> @NotNull ... recipeTypes) {
         if (ingredient instanceof ItemStack stack && !stack.isEmpty()) {
             for (RecipeType<?> recipeType : recipeTypes) {
                 ResourceLocation uid = recipeType.getUid();
@@ -60,11 +59,11 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
     }
 
     @Override
-    public void addRecipeCatalysts(RecipeType<?> recipeType, ItemLike... ingredients) {
+    public void addRecipeCatalysts(@NotNull RecipeType<?> recipeType, ItemLike @NotNull ... ingredients) {
     }
 
     @Override
-    public <T> void addRecipeCatalysts(RecipeType<?> recipeType, IIngredientType<T> ingredientType, List<T> ingredients) {
+    public <T> void addRecipeCatalysts(@NotNull RecipeType<?> recipeType, @NotNull IIngredientType<T> ingredientType, @NotNull List<T> ingredients) {
     }
 
     @Override

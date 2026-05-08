@@ -10,15 +10,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
@@ -51,44 +45,30 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         long startTime = System.currentTimeMillis();
         int found = 0;
 
-        int plantCount = 0;
-        int processed = 0;
-        for (Block block : BuiltInRegistries.BLOCK) {
-            if (simulator.isNotPlant(block)) continue;
-            plantCount++;
-        }
+        ObjectList<Block> candidates = new ObjectArrayList<>();
+        for (Block block : BuiltInRegistries.BLOCK) if (!simulator.isNotPlant(block)) candidates.add(block);
+
+        int plantCount = candidates.size();
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Found {} plant candidates to analyze", plantCount);
 
-        for (Block block : BuiltInRegistries.BLOCK) {
-            if (simulator.isNotPlant(block)) continue;
+        Object2ObjectMap<Block, PlantSimulator.SimulationResult> results = simulator.simulateAll(candidates, serverLevel);
+        if (results == null) return;
+
+        for (var entry : results.object2ObjectEntrySet()) {
+            Block block = entry.getKey();
+            PlantSimulator.SimulationResult simResult = entry.getValue();
 
             Item plantItem = findPlantItem(block);
             if (plantItem == null) continue;
 
-            processed++;
-            long plantStart = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.info("[FarmingSource] [{}/{}] Processing: {}",
-                    processed, plantCount, BuiltInRegistries.BLOCK.getKey(block));
-            PlantSimulator.SimulationResult simResult = simulator.simulate(block, serverLevel);
-            long plantElapsed = System.currentTimeMillis() - plantStart;
-            if (plantElapsed > 500) {
-                ComplexityAnalyzer.LOGGER.warn("[FarmingSource] SLOW: {} took {}ms",
-                        BuiltInRegistries.BLOCK.getKey(block), plantElapsed);
-            }
-            ObjectSet<Item> drops = new ObjectOpenHashSet<>(simResult.drops());
-
-            ObjectSet<Item> lootDrops = simulateMatureLoot(block, serverLevel);
-            drops.addAll(lootDrops);
-            if (drops.isEmpty()) continue;
-
-            int stages = Math.max(simResult.growthStages(), 1);
+            int stages = simResult.growthStages();
             double growthTicks = stages * BASE_TICKS_PER_STAGE;
             String details = String.format("Grown from %s (%d stages)", BuiltInRegistries.BLOCK.getKey(block).getPath(), stages);
 
             FarmingData data = new FarmingData(plantItem, block, growthTicks, details);
 
-            for (Item drop : drops) {
-                if (!isReproductive(drop, block)) {
+            for (Item drop : simResult.drops()) {
+                if (drop != plantItem) {
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;
                 }
@@ -110,44 +90,15 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         }
     }
 
-    private ObjectSet<Item> simulateMatureLoot(Block block, ServerLevel level) {
-        ObjectSet<Item> drops = new ObjectOpenHashSet<>();
-        try {
-            BlockState matureState = block.defaultBlockState();
-            for (var prop : matureState.getProperties()) {
-                if (prop instanceof net.minecraft.world.level.block.state.properties.IntegerProperty intProp) {
-                    int max = intProp.getPossibleValues().stream().max(Integer::compare).orElse(0);
-                    matureState = matureState.setValue(intProp, max);
-                }
-            }
-
-            var builder = new LootParams.Builder(level).withParameter(LootContextParams.BLOCK_STATE, matureState)
-                    .withParameter(LootContextParams.TOOL, ItemStack.EMPTY).withParameter(LootContextParams.ORIGIN, Vec3.ZERO);
-
-            var params = builder.create(LootContextParamSets.BLOCK);
-            LootTable table = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
-            if (table == LootTable.EMPTY) return drops;
-
-            for (int i = 0; i < 30; i++) {
-                var items = table.getRandomItems(params);
-                for (ItemStack stack : items) if (!stack.isEmpty()) drops.add(stack.getItem());
-            }
-        } catch (Exception ignored) {
-        }
-        return drops;
-    }
-
     @Nullable
     private Item findPlantItem(Block targetBlock) {
+        Item direct = targetBlock.asItem();
+        if (direct != Items.AIR) return direct;
+
         for (Item candidate : BuiltInRegistries.ITEM) {
             if (candidate instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock) return candidate;
         }
         return null;
-    }
-
-    private boolean isReproductive(Item item, Block targetBlock) {
-        if (item instanceof BlockItem blockItem) return blockItem.getBlock() == targetBlock;
-        return false;
     }
 
     private double calculateCost(double growthTicks) {

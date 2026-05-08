@@ -10,8 +10,19 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BonemealableBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,147 +30,217 @@ public class PlantSimulator {
 
     private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
     private final ObjectLinkedOpenHashSet<Block> knownGrounds = new ObjectLinkedOpenHashSet<>();
+    private static boolean platformReady = false;
 
-    private static final int AREA_RADIUS = 6;
-    private static final int AREA_HEIGHT = 16;
-    private static final int MAX_TICKS = 300;
-    private static final int MAX_BONEMEAL = 20;
-    private static final int STAGNATION_LIMIT = 30;
-    private static final int MAX_FRONTIER_SIZE = 500;
+    private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
+
+    private static final int AREA_RADIUS = 10;
+    private static final int AREA_HEIGHT = 20;
+    private static final int MAX_TICKS = 100;
+    private static final int MAX_BONEMEAL = 8;
     private static final long MAX_SIMULATION_MS = 2000;
     private static final int FLAG_NO_UPDATE = 2 | 16;
+
+    private static final ObjectList<Block> PRIORITY_GROUNDS = ObjectArrayList.wrap(new Block[]{
+            Blocks.GRASS_BLOCK, Blocks.DIRT, Blocks.FARMLAND, Blocks.SAND,
+            Blocks.RED_SAND, Blocks.GRAVEL, Blocks.NETHERRACK, Blocks.SOUL_SAND,
+            Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
+    });
 
     public record SimulationResult(ObjectSet<Item> drops, int growthStages) {
     }
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
-        var cached = cache.get(plantBlock);
-        if (cached != null) return cached;
-
+        if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
         var result = runSimulation(plantBlock, level);
         cache.put(plantBlock, result);
         return result;
     }
 
-    public boolean isNotPlant(Block block) {
-        BlockState state = block.defaultBlockState();
-        boolean candidate = (block instanceof BonemealableBlock) || state.isRandomlyTicking() || findAgeProperty(block) != null;
-        if (!candidate) return true;
-        return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+    public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
+        if (blocks == null || blocks.isEmpty()) return null;
+        Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
+        int total = blocks.size();
+        int current = 0;
+
+        for (Block block : blocks) {
+            current++;
+            ComplexityAnalyzer.LOGGER.info("[PlantSim] [{}/{}] Simulating: {}", current, total, BuiltInRegistries.BLOCK.getKey(block));
+            SimulationResult result = simulate(block, level);
+            if (result != null) results.put(block, result);
+        }
+        if (results.isEmpty()) return null;
+        return results;
     }
 
-    private SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
+    public boolean isNotPlant(Block block) {
+        BlockState state = block.defaultBlockState();
+        String id = BuiltInRegistries.BLOCK.getKey(block).toString();
+
+        if (state.isAir()) {
+            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: is air", id);
+            return true;
+        }
+
+        if (block == Blocks.AIR || block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) {
+            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: blacklisted technical block", id);
+            return true;
+        }
+
+        if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) {
+            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} accepted: plant tag found", id);
+            return false;
+        }
+
+        float hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        if (hardness > 0.5f || hardness < 0.0f) {
+            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: too hard (hardness={})", id, hardness);
+            return true;
+        }
+
+        boolean isBonemealable = (block instanceof BonemealableBlock);
+        boolean isRandomTicking = state.isRandomlyTicking();
+        IntegerProperty ageProp = findAgeProperty(block);
+
+        if (!isBonemealable && !isRandomTicking && ageProp == null) {
+            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: no growth properties (age, ticking, bonemeal)", id);
+            return true;
+        }
+
+        if (state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) {
+            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: full block collision", id);
+            return true;
+        }
+
+        ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} accepted: hardness={}, ticking={}, bonemeal={}, ageProp={}",
+                id, hardness, isRandomTicking, isBonemealable, (ageProp != null ? ageProp.getName() : "none"));
+        return false;
+    }
+
+    private synchronized SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
+        ensurePlatform(level);
         ObjectSet<Block> foundBlocks = new ObjectOpenHashSet<>();
-        Object2ObjectMap<BlockPos, BlockState> changed = new Object2ObjectOpenHashMap<>();
         int stages = 1;
 
-        BlockPos origin = new BlockPos(0, -60, 0);
+        BlockPos origin = SIM_ORIGIN;
         RandomSource random = RandomSource.create(12345);
-        String blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(plantBlock).toString();
+        String blockId = BuiltInRegistries.BLOCK.getKey(plantBlock).toString();
         long totalStart = System.currentTimeMillis();
 
+        Object2ObjectMap<BlockPos, BlockState> initialSnapshot = new Object2ObjectOpenHashMap<>();
+
         try {
-            long t0 = System.currentTimeMillis();
-            long t1 = System.currentTimeMillis();
+            Block ground = findSuitableGround(plantBlock, level, origin);
+            if (ground == null) return new SimulationResult(ObjectSets.emptySet(), 1);
 
-            Block ground = findSuitableGround(plantBlock, level, origin, changed);
-            long t2 = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: clear={}ms findGround={}ms ground={}",
-                    blockId, t1 - t0, t2 - t1, ground != null ? net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(ground) : "null");
-            if (ground == null) {
-                restoreChanged(level, changed);
-                return new SimulationResult(ObjectSets.emptySet(), 1);
-            }
+            takeAreaSnapshot(level, origin, initialSnapshot);
 
-            prepareGround(level, origin, ground, changed);
+            level.setBlock(origin, ground.defaultBlockState(), FLAG_NO_UPDATE);
+            level.setBlock(origin.below(), ground.defaultBlockState(), FLAG_NO_UPDATE);
 
             BlockPos plantPos = origin.above();
-            BlockState plantState = plantBlock.defaultBlockState();
-            setTracked(level, plantPos, plantState, changed);
+            level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
 
-            long t3 = System.currentTimeMillis();
-            stages = growPlant(plantBlock, level, plantPos, random, changed);
-            long t4 = System.currentTimeMillis();
-            collectChangedBlocks(level, changed, plantBlock, ground, foundBlocks);
-            long t5 = System.currentTimeMillis();
-            restoreChanged(level, changed);
-            long t6 = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: grow={}ms scan={}ms clear2={}ms stages={} foundBlocks={} TOTAL={}ms",
-                    blockId, t4 - t3, t5 - t4, t6 - t5, stages, foundBlocks.size(), t6 - totalStart);
+            stages = growPlant(plantBlock, level, plantPos, random);
+            collectChanges(level, origin, initialSnapshot, foundBlocks);
+
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.warn("[PlantSim] Failed for {}: {}", blockId, e.getMessage());
-            restoreChanged(level, changed);
+        } finally {
+            restoreArea(level, initialSnapshot);
         }
 
         ObjectSet<Item> drops = new ObjectOpenHashSet<>();
-        for (Block b : foundBlocks) if (b != null && b != plantBlock) drops.add(b.asItem());
+        for (Block b : foundBlocks) {
+            if (b != null && b != Blocks.AIR) {
+                Item it = b.asItem();
+                if (it != Items.AIR) drops.add(it);
+            }
+        }
+
+        drops.addAll(simulateMatureLoot(plantBlock, level));
+
+        if (stages <= 1 || drops.isEmpty()) return null;
+        ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: stages={} drops={} TOTAL={}ms",
+                blockId, stages, drops.size(), System.currentTimeMillis() - totalStart);
 
         return new SimulationResult(drops, stages);
     }
 
+    private ObjectSet<Item> simulateMatureLoot(Block block, ServerLevel level) {
+        ObjectSet<Item> drops = new ObjectOpenHashSet<>();
+        try {
+            BlockState matureState = block.defaultBlockState();
+            for (var prop : matureState.getProperties()) {
+                if (prop instanceof IntegerProperty intProp) {
+                    if (prop.getName().equals("age") || prop.getName().equals("growth")) {
+                        int max = intProp.getPossibleValues().stream().max(Integer::compare).orElse(0);
+                        matureState = matureState.setValue(intProp, max);
+                    }
+                }
+            }
+
+            var builder = new LootParams.Builder(level)
+                    .withParameter(LootContextParams.BLOCK_STATE, matureState)
+                    .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.ZERO);
+
+            var params = builder.create(LootContextParamSets.BLOCK);
+            var table = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
+            if (table != LootTable.EMPTY) for (int i = 0; i < 50; i++) {
+                for (var stack : table.getRandomItems(params)) if (!stack.isEmpty()) drops.add(stack.getItem());
+            }
+        } catch (Exception ignored) {
+        }
+        return drops;
+    }
+
     @Nullable
-    private Block findSuitableGround(Block plantBlock, ServerLevel level, BlockPos groundPos, Object2ObjectMap<BlockPos, BlockState> changed) {
+    private Block findSuitableGround(Block plantBlock, ServerLevel level, BlockPos groundPos) {
         BlockPos plantPos = groundPos.above();
         BlockState plantState = plantBlock.defaultBlockState();
 
-        for (Block candidate : knownGrounds) {
-            if (tryGround(candidate, plantState, level, groundPos, plantPos, changed)) return candidate;
+        for (Block candidate : PRIORITY_GROUNDS) {
+            if (tryGroundQuickly(candidate, plantState, level, groundPos, plantPos)) return candidate;
         }
 
-        int tried = 0;
-        for (Block candidate : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
-            if (knownGrounds.contains(candidate)) continue;
-            tried++;
-            if (tryGround(candidate, plantState, level, groundPos, plantPos, changed)) {
+        for (Block candidate : knownGrounds) {
+            if (tryGroundQuickly(candidate, plantState, level, groundPos, plantPos)) return candidate;
+        }
+
+        for (Block candidate : BuiltInRegistries.BLOCK) {
+            if (tryGroundQuickly(candidate, plantState, level, groundPos, plantPos)) {
                 knownGrounds.add(candidate);
-                ComplexityAnalyzer.LOGGER.debug("[PlantSim] New ground found after {} tries: {}", tried,
-                        net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(candidate));
                 return candidate;
             }
         }
         return null;
     }
 
-    private boolean tryGround(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos, Object2ObjectMap<BlockPos, BlockState> changed) {
+    private boolean tryGroundQuickly(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
         try {
             BlockState candidateState = candidate.defaultBlockState();
-            if (!candidateState.isSolid() && candidate != Blocks.WATER) return false;
+            if (candidateState.isAir() && candidate != Blocks.WATER) return false;
 
             BlockState oldGround = level.getBlockState(groundPos);
-            BlockState oldPlant = level.getBlockState(plantPos);
             level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
-            level.setBlock(plantPos, Blocks.AIR.defaultBlockState(), FLAG_NO_UPDATE);
-
             boolean survives = plantState.canSurvive(level, plantPos);
-
             level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
-            level.setBlock(plantPos, oldPlant, FLAG_NO_UPDATE);
-
             return survives;
         } catch (Exception ignored) {
             return false;
         }
     }
 
-    private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random, Object2ObjectMap<BlockPos, BlockState> changed) {
+    private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random) {
         int bonemealUses = 0;
         int stages = 1;
-        int stagnationCounter = 0;
         Block lastObserved = plantBlock;
         long simStart = System.currentTimeMillis();
 
-        ObjectOpenHashSet<BlockPos> frontier = new ObjectOpenHashSet<>();
-        frontier.add(plantPos.immutable());
-
         for (int tick = 0; tick < MAX_TICKS; tick++) {
-            if (System.currentTimeMillis() - simStart > MAX_SIMULATION_MS) {
-                ComplexityAnalyzer.LOGGER.warn("[PlantSim] Timeout after {} ticks, frontier={}", tick, frontier.size());
-                break;
-            }
-            if (frontier.size() > MAX_FRONTIER_SIZE) {
-                ComplexityAnalyzer.LOGGER.warn("[PlantSim] Frontier limit reached ({}), stopping", frontier.size());
-                break;
-            }
+            if (System.currentTimeMillis() - simStart > MAX_SIMULATION_MS) break;
+
             BlockState current = level.getBlockState(plantPos);
             Block currentBlock = current.getBlock();
 
@@ -171,145 +252,97 @@ public class PlantSimulator {
             if (currentBlock == plantBlock && plantBlock instanceof BonemealableBlock bm && bonemealUses < MAX_BONEMEAL) {
                 try {
                     if (bm.isValidBonemealTarget(level, plantPos, current)) {
-                        Object2ObjectMap<BlockPos, BlockState> before = snapshotChangedArea(level, plantPos);
                         bm.performBonemeal(level, random, plantPos, current);
-                        recordChanged(level, before, changed);
                         bonemealUses++;
-                        stagnationCounter = 0;
-                        expandFrontier(frontier, level, plantPos);
                         continue;
                     }
                 } catch (Exception ignored) {
                 }
             }
 
-            int snapshotSize = frontier.size();
-            try {
-                tickFrontier(level, frontier, random, changed);
+            if (current.isRandomlyTicking()) try {
+                current.randomTick(level, plantPos, random);
             } catch (Exception ignored) {
             }
 
-            if (frontier.size() == snapshotSize) {
-                stagnationCounter++;
-                if (stagnationCounter >= STAGNATION_LIMIT) break;
-            } else {
-                stagnationCounter = 0;
-            }
+            BlockState after = level.getBlockState(plantPos);
+            if (after.isAir()) break;
 
-            BlockState afterTick = level.getBlockState(plantPos);
-            if (afterTick.getBlock() != plantBlock && !isStillSameFamily(plantBlock, afterTick.getBlock())) break;
+            IntegerProperty age = findAgeProperty(after.getBlock());
+            if (age != null) {
+                int val = after.getValue(age);
+                int max = age.getPossibleValues().stream().max(Integer::compare).orElse(0);
+                if (val >= max) break;
+            }
         }
 
         return Math.max(stages, 1);
     }
 
-    private boolean isStillSameFamily(Block original, Block current) {
-        if (current == Blocks.AIR) return false;
-        return current == original;
-    }
-
-    private void expandFrontier(ObjectOpenHashSet<BlockPos> frontier, ServerLevel level, BlockPos center) {
+    private void takeAreaSnapshot(ServerLevel level, BlockPos origin, Object2ObjectMap<BlockPos, BlockState> snapshot) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int y = -1; y <= AREA_HEIGHT; y++) {
             for (int x = -AREA_RADIUS; x <= AREA_RADIUS; x++) {
                 for (int z = -AREA_RADIUS; z <= AREA_RADIUS; z++) {
-                    pos.set(center.getX() + x, center.getY() + y, center.getZ() + z);
-                    if (!level.getBlockState(pos).isAir()) {
-                        frontier.add(pos.immutable());
+                    pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
+                    snapshot.put(pos.immutable(), level.getBlockState(pos));
+                }
+            }
+        }
+    }
+
+    private void restoreArea(ServerLevel level, Object2ObjectMap<BlockPos, BlockState> snap) {
+        for (var entry : snap.object2ObjectEntrySet()) level.setBlock(entry.getKey(), entry.getValue(), FLAG_NO_UPDATE);
+    }
+
+    private void ensurePlatform(ServerLevel level) {
+        if (platformReady) return;
+
+        BlockPos origin = SIM_ORIGIN;
+        ChunkPos chunkPos = new ChunkPos(origin);
+        level.getChunkSource().addRegionTicket(TicketType.FORCED, chunkPos, 2, chunkPos);
+
+        BlockState barrier = Blocks.BARRIER.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        BlockState light = Blocks.LIGHT.defaultBlockState();
+
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+
+        int r = AREA_RADIUS + 2;
+        int h = AREA_HEIGHT + 2;
+
+        for (int x = -r; x <= r; x++) {
+            for (int y = -1; y <= h; y++) {
+                for (int z = -r; z <= r; z++) {
+                    pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
+
+                    boolean wall = Math.abs(x) == r || Math.abs(z) == r || y == -1 || y == h;
+                    if (wall) {
+                        level.setBlock(pos, barrier, 3);
+                    } else if (y == h - 1) {
+                        level.setBlock(pos, light, 3);
+                    } else {
+                        level.setBlock(pos, air, 3);
                     }
                 }
             }
         }
+
+        platformReady = true;
+        ComplexityAnalyzer.LOGGER.info("[PlantSim] Simulation platform secured at {}", origin);
     }
 
-    private void tickFrontier(ServerLevel level, ObjectOpenHashSet<BlockPos> frontier, RandomSource random, Object2ObjectMap<BlockPos, BlockState> changed) {
-        ObjectArrayList<BlockPos> snapshot = new ObjectArrayList<>(frontier);
-        ObjectOpenHashSet<BlockPos> newlyOccupied = new ObjectOpenHashSet<>();
-
-        for (BlockPos p : snapshot) {
-            BlockState state = level.getBlockState(p);
-            if (state.isRandomlyTicking()) {
-                try {
-                    state.randomTick(level, p, random);
-                    if (level.getBlockState(p) != state) changed.putIfAbsent(p.immutable(), state);
-                } catch (Exception ignored) {
-                }
-            }
-
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
-                        BlockPos np = p.offset(dx, dy, dz);
-                        if (frontier.contains(np) || newlyOccupied.contains(np)) continue;
-                        if (!level.getBlockState(np).isAir()) newlyOccupied.add(np);
-                    }
-                }
-            }
-        }
-        frontier.addAll(newlyOccupied);
-    }
-
-    private void prepareGround(ServerLevel level, BlockPos origin, Block ground, Object2ObjectMap<BlockPos, BlockState> changed) {
-        BlockState groundState = ground.defaultBlockState();
-        setTracked(level, origin, groundState, changed);
-        setTracked(level, origin.below(), groundState, changed);
-    }
-
-    private void collectChangedBlocks(ServerLevel level, Object2ObjectMap<BlockPos, BlockState> changed, Block plantedBlock, Block ground, ObjectSet<Block> found) {
-        for (BlockPos pos : changed.keySet()) {
-            BlockState state = level.getBlockState(pos);
-            BlockState original = changed.get(pos);
-            if (state == original) continue;
-
-            Block b = state.getBlock();
-            if (b == Blocks.AIR || b == ground) continue;
-            if (b == plantedBlock) {
-                IntegerProperty age = findAgeProperty(b);
-                if (age != null) {
-                    int max = state.getValue(age);
-                    int maxPossible = age.getPossibleValues().stream().max(Integer::compare).orElse(0);
-                    if (max == maxPossible) found.add(b);
-                }
-                continue;
-            }
-            found.add(b);
-        }
-    }
-
-    private void setTracked(ServerLevel level, BlockPos pos, BlockState state, Object2ObjectMap<BlockPos, BlockState> changed) {
-        BlockPos immutable = pos.immutable();
-        changed.putIfAbsent(immutable, level.getBlockState(immutable));
-        level.setBlock(immutable, state, FLAG_NO_UPDATE);
-    }
-
-    private void restoreChanged(ServerLevel level, Object2ObjectMap<BlockPos, BlockState> changed) {
-        for (var entry : changed.object2ObjectEntrySet()) {
-            level.setBlock(entry.getKey(), entry.getValue(), FLAG_NO_UPDATE);
-        }
-        changed.clear();
-    }
-
-    private Object2ObjectMap<BlockPos, BlockState> snapshotChangedArea(ServerLevel level, BlockPos center) {
-        Object2ObjectMap<BlockPos, BlockState> snapshot = new Object2ObjectOpenHashMap<>();
+    private void collectChanges(ServerLevel level, BlockPos origin, Object2ObjectMap<BlockPos, BlockState> snapshot, ObjectSet<Block> found) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int y = -1; y <= AREA_HEIGHT; y++) {
             for (int x = -AREA_RADIUS; x <= AREA_RADIUS; x++) {
                 for (int z = -AREA_RADIUS; z <= AREA_RADIUS; z++) {
-                    pos.set(center.getX() + x, center.getY() + y, center.getZ() + z);
-                    BlockState state = level.getBlockState(pos);
-                    if (!state.isAir()) snapshot.put(pos.immutable(), state);
+                    pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
+                    if (pos.getY() <= origin.getY()) continue;
+                    BlockState current = level.getBlockState(pos);
+                    BlockState original = snapshot.get(pos);
+                    if (current != original && !current.isAir()) found.add(current.getBlock());
                 }
-            }
-        }
-        return snapshot;
-    }
-
-    private void recordChanged(ServerLevel level, Object2ObjectMap<BlockPos, BlockState> before, Object2ObjectMap<BlockPos, BlockState> changed) {
-        for (var entry : before.object2ObjectEntrySet()) {
-            BlockPos pos = entry.getKey();
-            if (level.getBlockState(pos) != entry.getValue()) {
-                changed.putIfAbsent(pos, entry.getValue());
             }
         }
     }
@@ -317,7 +350,9 @@ public class PlantSimulator {
     private IntegerProperty findAgeProperty(Block block) {
         BlockState state = block.defaultBlockState();
         for (Property<?> prop : state.getProperties()) {
-            if (prop instanceof IntegerProperty intProp && intProp.getPossibleValues().size() > 1) return intProp;
+            if (prop instanceof IntegerProperty intProp && (prop.getName().equals("age") || prop.getName().equals("moisture"))) {
+                return intProp;
+            }
         }
         return null;
     }

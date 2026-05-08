@@ -1,10 +1,13 @@
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -15,13 +18,13 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.Nullable;
@@ -34,8 +37,7 @@ public class PlantSimulator {
 
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
 
-    private static final int AREA_RADIUS = 10;
-    private static final int AREA_HEIGHT = 20;
+    private static final int AREA_RADIUS = 16;
     private static final int MAX_TICKS = 100;
     private static final int MAX_BONEMEAL = 8;
     private static final long MAX_SIMULATION_MS = 2000;
@@ -59,6 +61,8 @@ public class PlantSimulator {
 
     public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
         if (blocks == null || blocks.isEmpty()) return null;
+
+        ensurePlatform(level);
         Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
         int total = blocks.size();
         int current = 0;
@@ -69,8 +73,25 @@ public class PlantSimulator {
             SimulationResult result = simulate(block, level);
             if (result != null) results.put(block, result);
         }
-        if (results.isEmpty()) return null;
-        return results;
+
+        hardClearArea(level, SIM_ORIGIN);
+        killEntities(level, SIM_ORIGIN);
+
+        return results.isEmpty() ? null : results;
+    }
+
+    private void hardClearArea(ServerLevel level, BlockPos origin) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int maxHeight = level.getMaxBuildHeight() - 1;
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int y = origin.getY(); y < maxHeight; y++) {
+            for (int x = -AREA_RADIUS; x < AREA_RADIUS; x++) {
+                for (int z = -AREA_RADIUS; z < AREA_RADIUS; z++) {
+                    pos.set(origin.getX() + x, y, origin.getZ() + z);
+                    if (!level.getBlockState(pos).isAir()) level.setBlock(pos, air, FLAG_NO_UPDATE);
+                }
+            }
+        }
     }
 
     public boolean isNotPlant(Block block) {
@@ -118,7 +139,6 @@ public class PlantSimulator {
     }
 
     private synchronized SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
-        ensurePlatform(level);
         ObjectSet<Block> foundBlocks = new ObjectOpenHashSet<>();
         int stages = 1;
 
@@ -127,27 +147,46 @@ public class PlantSimulator {
         String blockId = BuiltInRegistries.BLOCK.getKey(plantBlock).toString();
         long totalStart = System.currentTimeMillis();
 
-        Object2ObjectMap<BlockPos, BlockState> initialSnapshot = new Object2ObjectOpenHashMap<>();
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                long startPhase = System.currentTimeMillis();
+                killEntities(level, origin);
+                long killTime = System.currentTimeMillis() - startPhase;
 
-        try {
-            Block ground = findSuitableGround(plantBlock, level, origin);
-            if (ground == null) return new SimulationResult(ObjectSets.emptySet(), 1);
+                startPhase = System.currentTimeMillis();
+                Block ground = findSuitableGround(plantBlock, level, origin);
+                if (ground == null) return null;
 
-            takeAreaSnapshot(level, origin, initialSnapshot);
+                BlockPos groundPos = origin.above(3);
+                BlockPos plantPos = groundPos.above();
 
-            level.setBlock(origin, ground.defaultBlockState(), FLAG_NO_UPDATE);
-            level.setBlock(origin.below(), ground.defaultBlockState(), FLAG_NO_UPDATE);
+                level.setBlock(groundPos, ground.defaultBlockState(), FLAG_NO_UPDATE);
+                level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
+                long setupTime = System.currentTimeMillis() - startPhase;
 
-            BlockPos plantPos = origin.above();
-            level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
+                startPhase = System.currentTimeMillis();
+                stages = growPlant(plantBlock, level, plantPos, random);
+                long growTime = System.currentTimeMillis() - startPhase;
 
-            stages = growPlant(plantBlock, level, plantPos, random);
-            collectChanges(level, origin, initialSnapshot, foundBlocks);
+                startPhase = System.currentTimeMillis();
+                collectAndClear(level, origin, foundBlocks);
+                killEntities(level, origin);
+                long cleanupTime = System.currentTimeMillis() - startPhase;
 
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[PlantSim] Failed for {}: {}", blockId, e.getMessage());
-        } finally {
-            restoreArea(level, initialSnapshot);
+                ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} metrics: kill={}ms, setup={}ms, grow={}ms, cleanup={}ms (attempt {})",
+                        blockId, killTime, setupTime, growTime, cleanupTime, attempt + 1);
+
+                break;
+            } catch (Throwable t) {
+                if (attempt == 2) {
+                    ComplexityAnalyzer.LOGGER.debug("[PlantSim] Skipping {} after 3 failed attempts: {}", blockId, t.getMessage());
+                } else {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+            }
         }
 
         ObjectSet<Item> drops = new ObjectOpenHashSet<>();
@@ -196,7 +235,8 @@ public class PlantSimulator {
     }
 
     @Nullable
-    private Block findSuitableGround(Block plantBlock, ServerLevel level, BlockPos groundPos) {
+    private Block findSuitableGround(Block plantBlock, ServerLevel level, BlockPos origin) {
+        BlockPos groundPos = origin.above(3);
         BlockPos plantPos = groundPos.above();
         BlockState plantState = plantBlock.defaultBlockState();
 
@@ -221,7 +261,6 @@ public class PlantSimulator {
         try {
             BlockState candidateState = candidate.defaultBlockState();
             if (candidateState.isAir() && candidate != Blocks.WATER) return false;
-
             BlockState oldGround = level.getBlockState(groundPos);
             level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
             boolean survives = plantState.canSurvive(level, plantPos);
@@ -279,72 +318,112 @@ public class PlantSimulator {
         return Math.max(stages, 1);
     }
 
-    private void takeAreaSnapshot(ServerLevel level, BlockPos origin, Object2ObjectMap<BlockPos, BlockState> snapshot) {
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int y = -1; y <= AREA_HEIGHT; y++) {
-            for (int x = -AREA_RADIUS; x <= AREA_RADIUS; x++) {
-                for (int z = -AREA_RADIUS; z <= AREA_RADIUS; z++) {
-                    pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
-                    snapshot.put(pos.immutable(), level.getBlockState(pos));
-                }
-            }
-        }
-    }
-
-    private void restoreArea(ServerLevel level, Object2ObjectMap<BlockPos, BlockState> snap) {
-        for (var entry : snap.object2ObjectEntrySet()) level.setBlock(entry.getKey(), entry.getValue(), FLAG_NO_UPDATE);
-    }
-
     private void ensurePlatform(ServerLevel level) {
         if (platformReady) return;
 
         BlockPos origin = SIM_ORIGIN;
-        ChunkPos chunkPos = new ChunkPos(origin);
-        level.getChunkSource().addRegionTicket(TicketType.FORCED, chunkPos, 2, chunkPos);
+        int minY = origin.getY();
+        int maxY = level.getMaxBuildHeight();
+
+        for (int dx = 0; dx <= 1; dx++) {
+            for (int dz = 0; dz <= 1; dz++) {
+                ChunkPos cp = new ChunkPos((origin.getX() >> 4) + dx, (origin.getZ() >> 4) + dz);
+                level.getChunkSource().addRegionTicket(TicketType.FORCED, cp, 2, cp);
+            }
+        }
 
         BlockState barrier = Blocks.BARRIER.defaultBlockState();
         BlockState air = Blocks.AIR.defaultBlockState();
         BlockState light = Blocks.LIGHT.defaultBlockState();
-
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 
-        int r = AREA_RADIUS + 2;
-        int h = AREA_HEIGHT + 2;
+        for (int y = minY - 1; y < maxY; y++) {
+            for (int x = -AREA_RADIUS - 1; x <= AREA_RADIUS; x++) {
+                for (int z = -AREA_RADIUS - 1; z <= AREA_RADIUS; z++) {
+                    pos.set(origin.getX() + x, y, origin.getZ() + z);
 
-        for (int x = -r; x <= r; x++) {
-            for (int y = -1; y <= h; y++) {
-                for (int z = -r; z <= r; z++) {
-                    pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
+                    boolean isFloor = y == minY - 1;
+                    boolean isCeiling = y == maxY - 1;
+                    boolean isWall = x == -AREA_RADIUS - 1 || x == AREA_RADIUS || z == -AREA_RADIUS - 1 || z == AREA_RADIUS;
 
-                    boolean wall = Math.abs(x) == r || Math.abs(z) == r || y == -1 || y == h;
-                    if (wall) {
+                    if (isFloor || isWall) {
                         level.setBlock(pos, barrier, 3);
-                    } else if (y == h - 1) {
+                    } else if (isCeiling) {
                         level.setBlock(pos, light, 3);
                     } else {
-                        level.setBlock(pos, air, 3);
+                        if (level.getBlockState(pos) != air) level.setBlock(pos, air, 3);
                     }
                 }
             }
         }
 
+        hardClearArea(level, origin);
+        killEntities(level, origin);
+
         platformReady = true;
-        ComplexityAnalyzer.LOGGER.info("[PlantSim] Simulation platform secured at {}", origin);
+        ComplexityAnalyzer.LOGGER.info("[PlantSim] 2x2 Chunk Simulation Tower secured at {} (Y: {} to {})", origin, minY, maxY);
     }
 
-    private void collectChanges(ServerLevel level, BlockPos origin, Object2ObjectMap<BlockPos, BlockState> snapshot, ObjectSet<Block> found) {
+    private void killEntities(ServerLevel level, BlockPos origin) {
+        int r = AREA_RADIUS + 1;
+        AABB box = new AABB(origin.getX() - r, origin.getY(), origin.getZ() - r,
+                origin.getX() + r, level.getMaxBuildHeight(), origin.getZ() + r);
+        for (Entity entity : level.getEntities(null, box)) entity.discard();
+    }
+
+    private void collectAndClear(ServerLevel level, BlockPos origin, ObjectSet<Block> found) {
+        BlockPos groundPos = origin.above(3);
+        int minY = origin.getY();
+        int maxY = level.getMaxBuildHeight() - 1;
+        BlockState air = Blocks.AIR.defaultBlockState();
+
+        LongArrayList toClear = new LongArrayList();
+        int emptyLayers = 0;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int y = -1; y <= AREA_HEIGHT; y++) {
-            for (int x = -AREA_RADIUS; x <= AREA_RADIUS; x++) {
-                for (int z = -AREA_RADIUS; z <= AREA_RADIUS; z++) {
-                    pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
-                    if (pos.getY() <= origin.getY()) continue;
-                    BlockState current = level.getBlockState(pos);
-                    BlockState original = snapshot.get(pos);
-                    if (current != original && !current.isAir()) found.add(current.getBlock());
+
+        for (int y = minY; y < maxY; y++) {
+            boolean layerFound = false;
+            boolean nearEdge = false;
+
+            int innerR = 8;
+            for (int x = -innerR; x < innerR; x++) {
+                for (int z = -innerR; z < innerR; z++) {
+                    pos.set(origin.getX() + x, y, origin.getZ() + z);
+                    BlockState state = level.getBlockState(pos);
+
+                    if (!state.isAir()) {
+                        layerFound = true;
+                        if (Math.abs(x) >= innerR - 1 || Math.abs(z) >= innerR - 1) nearEdge = true;
+                        if (found != null && !pos.equals(groundPos)) found.add(state.getBlock());
+                        toClear.add(pos.asLong());
+                    }
                 }
             }
+
+            if (nearEdge) for (int x = -AREA_RADIUS; x < AREA_RADIUS; x++) {
+                for (int z = -AREA_RADIUS; z < AREA_RADIUS; z++) {
+                    if (Math.abs(x) < innerR && Math.abs(z) < innerR) continue;
+
+                    pos.set(origin.getX() + x, y, origin.getZ() + z);
+                    BlockState state = level.getBlockState(pos);
+
+                    if (!state.isAir()) {
+                        layerFound = true;
+                        if (found != null && !pos.equals(groundPos)) found.add(state.getBlock());
+                        toClear.add(pos.asLong());
+                    }
+                }
+            }
+
+            if (layerFound) {
+                emptyLayers = 0;
+            } else if (y > groundPos.getY()) {
+                emptyLayers++;
+                if (emptyLayers > 10) break;
+            }
         }
+
+        for (int i = 0; i < toClear.size(); i++) level.setBlock(BlockPos.of(toClear.getLong(i)), air, FLAG_NO_UPDATE);
     }
 
     private IntegerProperty findAgeProperty(Block block) {

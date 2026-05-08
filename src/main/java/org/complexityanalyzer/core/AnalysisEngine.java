@@ -282,6 +282,7 @@ public class AnalysisEngine {
         initialSources.add(new UniversalLootSource());
         initialSources.add(new MobDropSource(this.mobPropProvider, serverLevel));
         initialSources.add(new BlockBreakAsRecipeSource());
+        initialSources.add(new FarmingSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
         initialSources.add(new HardcodedSourcesProvider());

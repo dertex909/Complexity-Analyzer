@@ -22,6 +22,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
@@ -119,6 +120,27 @@ public class CraftingTreeBuilder {
 
         if (recipe == null) recipe = depthAnalyzer.getRecipeToFollow(item);
 
+        BaseResourceData sourceData = null;
+        if (sourceManager != null) sourceData = sourceManager.analyze(item);
+
+        boolean hasBaseSource = (sourceData != null && !isUnobtainable(sourceData));
+
+        if (recipe == null && hasBaseSource) {
+            stats.incrementBaseResources();
+            baseResources.merge(item, amountToAdd, Double::sum);
+
+            var builder = TreeNode.builder()
+                    .type(NodeType.BASE_RESOURCE)
+                    .item(item)
+                    .neededAmount(neededAmount)
+                    .complexity(complexity)
+                    .addMetadata("sourceTypeName", sourceData.getSourceType().getDisplayName())
+                    .addMetadata("sourceSpecifier", sourceData.getSourceSpecifier());
+
+            visitedOnPath.remove(item);
+            return builder.build();
+        }
+
         if (recipe == null || recipe.isBaseRecipe()) {
             var graph = engine.getGraph();
             if (graph != null && graph.hasRecipe(item)) {
@@ -157,12 +179,9 @@ public class CraftingTreeBuilder {
                     .complexity(complexity)
                     .addMetadata("wouldCreateCycle", wouldCreateCycle);
 
-            if (sourceManager != null && !wouldCreateCycle) {
-                var sourceData = sourceManager.analyze(item);
-                if (sourceData != null) {
-                    builder.addMetadata("sourceTypeName", sourceData.getSourceType().getDisplayName());
-                    builder.addMetadata("sourceSpecifier", sourceData.getSourceSpecifier());
-                }
+            if (sourceManager != null && !wouldCreateCycle && sourceData != null) {
+                builder.addMetadata("sourceTypeName", sourceData.getSourceType().getDisplayName());
+                builder.addMetadata("sourceSpecifier", sourceData.getSourceSpecifier());
             }
 
             visitedOnPath.remove(item);
@@ -222,6 +241,12 @@ public class CraftingTreeBuilder {
 
         visitedOnPath.remove(item);
         return nodeBuilder.build();
+    }
+
+    private boolean isUnobtainable(BaseResourceData data) {
+        if (data == null) return true;
+        if (Double.isInfinite(data.getBaseFactor())) return true;
+        return data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
     }
 
     private void calculateBaseResourcesFor(

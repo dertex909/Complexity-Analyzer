@@ -42,6 +42,7 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue BOSS_RARITY_MULTIPLIER;
 
     public static final ModConfigSpec.DoubleValue TIME_COST_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue FARMING_TIME_COST_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue BASE_ACTION_COST;
 
     public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
@@ -111,6 +112,7 @@ public class ComplexityConfig {
 
         builder.push("passive_generation");
         TIME_COST_MULTIPLIER = builder.defineInRange("timeCostMultiplier", 0.01, 0.0, 1.0);
+        FARMING_TIME_COST_MULTIPLIER = builder.defineInRange("farmingTimeCostMultiplier", 0.005, 0.0, 1.0);
         BASE_ACTION_COST = builder.defineInRange("baseActionCost", 10.0, 0.0, 1000.0);
         builder.pop();
 

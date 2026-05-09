@@ -1,12 +1,18 @@
 package org.complexityanalyzer.analyzer.resource.providers;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import com.mojang.authlib.GameProfile;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
+
+import java.util.UUID;
+
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
@@ -17,194 +23,116 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.Nullable;
 
 public class PlantSimulator {
 
     private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
-    private final LongArrayList toClearBuffer = new LongArrayList(4096);
     private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-    private final ObjectSet<Block> foundBuffer = new ObjectOpenHashSet<>(256);
-    private final LevelChunk[][] chunkCache = new LevelChunk[2][2];
     private final ObjectLinkedOpenHashSet<Block> knownGrounds = new ObjectLinkedOpenHashSet<>();
     private boolean platformReady = false;
 
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
-
     private static final int AREA_RADIUS = 16;
+    private static final int CLEAR_RADIUS = 64;
+    private static final int MAX_CLEAR_HEIGHT = 160;
     private static final int MAX_TICKS = 100;
-    private static final int MAX_BONEMEAL = 8;
+    private static final int MAX_BONEMEAL = 16;
     private static final long MAX_SIMULATION_MS = 2000;
     private static final int FLAG_NO_UPDATE = 2 | 16;
 
-    private static final ObjectList<Block> PRIORITY_GROUNDS = ObjectArrayList.wrap(new Block[]{
-            Blocks.GRASS_BLOCK, Blocks.DIRT, Blocks.FARMLAND, Blocks.SAND,
-            Blocks.RED_SAND, Blocks.GRAVEL, Blocks.NETHERRACK, Blocks.SOUL_SAND,
-            Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
-    });
+    private static final ObjectList<Block> PRIORITY_GROUNDS = new ObjectArrayList<>();
+
+    static {
+        PRIORITY_GROUNDS.add(Blocks.GRASS_BLOCK);
+        PRIORITY_GROUNDS.add(Blocks.DIRT);
+        PRIORITY_GROUNDS.add(Blocks.FARMLAND);
+        PRIORITY_GROUNDS.add(Blocks.SAND);
+        PRIORITY_GROUNDS.add(Blocks.RED_SAND);
+        PRIORITY_GROUNDS.add(Blocks.GRAVEL);
+        PRIORITY_GROUNDS.add(Blocks.NETHERRACK);
+        PRIORITY_GROUNDS.add(Blocks.SOUL_SAND);
+        PRIORITY_GROUNDS.add(Blocks.SOUL_SOIL);
+        PRIORITY_GROUNDS.add(Blocks.END_STONE);
+        PRIORITY_GROUNDS.add(Blocks.WATER);
+    }
 
     public record SimulationResult(ObjectSet<Item> drops, int growthStages) {
     }
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
         if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
-        var result = runSimulation(plantBlock, level);
+        SimulationResult result = runSimulation(plantBlock, level);
         cache.put(plantBlock, result);
         return result;
     }
 
     public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
         if (blocks == null || blocks.isEmpty()) return null;
-
         ensurePlatform(level);
         Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
-        int total = blocks.size();
         int current = 0;
-
         for (Block block : blocks) {
             current++;
-            ComplexityAnalyzer.LOGGER.info("[PlantSim] [{}/{}] Simulating: {}", current, total, BuiltInRegistries.BLOCK.getKey(block));
+            ComplexityAnalyzer.LOGGER.info("[PlantSim] [{}/{}] Simulating: {}", current, blocks.size(), BuiltInRegistries.BLOCK.getKey(block));
             SimulationResult result = simulate(block, level);
             if (result != null) results.put(block, result);
         }
-
-        hardClearArea(level, SIM_ORIGIN);
-        killEntities(level, SIM_ORIGIN);
-
+        hardClearArea(level);
+        killEntities(level);
         return results.isEmpty() ? null : results;
     }
 
-    private void hardClearArea(ServerLevel level, BlockPos origin) {
-        int maxHeight = level.getMaxBuildHeight() - 1;
-        BlockState air = Blocks.AIR.defaultBlockState();
-        LevelChunkSection[] layerSecs = new LevelChunkSection[4];
-
-        for (int y = origin.getY(); y < maxHeight; y++) {
-            int secY = level.getSectionIndex(y);
-            int relY = y & 15;
-
-            for (int j = 0; j < 4; j++) layerSecs[j] = chunkCache[j & 1][j >> 1].getSections()[secY];
-
-            if (layerSecs[0].hasOnlyAir() && layerSecs[1].hasOnlyAir() &&
-                    layerSecs[2].hasOnlyAir() && layerSecs[3].hasOnlyAir()) continue;
-
-            for (int i = 0; i < 1024; i++) {
-                int x = (i & 31) - 16, z = (i >> 5) - 16;
-                int cIdx = ((x >> 4) + 1) | (((z >> 4) + 1) << 1);
-                LevelChunkSection section = layerSecs[cIdx];
-
-                if (section != null && !section.hasOnlyAir() && !section.getBlockState(x & 15, relY, z & 15).isAir()) {
-                    mutablePos.set(origin.getX() + x, y, origin.getZ() + z);
-                    try {
-                        level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
-                    } catch (Throwable ignored) {
-                    }
-                }
-            }
-        }
+    private void hardClearArea(ServerLevel level) {
+        collectAndClear(level, null);
     }
 
     public boolean isNotPlant(Block block) {
         BlockState state = block.defaultBlockState();
-        String id = BuiltInRegistries.BLOCK.getKey(block).toString();
-
-        if (state.isAir()) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: is air", id);
-            return true;
-        }
-
-        if (block == Blocks.AIR || block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: blacklisted technical block", id);
-            return true;
-        }
-
-        if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} accepted: plant tag found", id);
-            return false;
-        }
-
+        if (state.isAir() || block == Blocks.AIR || block == Blocks.FIRE || block == Blocks.SNOW
+                || block == Blocks.TURTLE_EGG) return true;
+        if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return false;
         float hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-        if (hardness > 0.5f || hardness < 0.0f) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: too hard (hardness={})", id, hardness);
+        if (hardness > 0.5f || hardness < 0.0f || (!(block instanceof BonemealableBlock) && !state.isRandomlyTicking()
+                && findAgeProperty(block) == null))
             return true;
-        }
-
-        boolean isBonemealable = (block instanceof BonemealableBlock);
-        boolean isRandomTicking = state.isRandomlyTicking();
-        IntegerProperty ageProp = findAgeProperty(block);
-
-        if (!isBonemealable && !isRandomTicking && ageProp == null) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: no growth properties (age, ticking, bonemeal)", id);
-            return true;
-        }
-
-        if (state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} skipped: full block collision", id);
-            return true;
-        }
-
-        ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} accepted: hardness={}, ticking={}, bonemeal={}, ageProp={}",
-                id, hardness, isRandomTicking, isBonemealable, (ageProp != null ? ageProp.getName() : "none"));
-        return false;
+        return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 
     private synchronized SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
-        foundBuffer.clear();
+        ObjectSet<Item> drops = new ObjectOpenHashSet<>();
         int stages = 1;
-
-        BlockPos origin = SIM_ORIGIN;
         RandomSource random = RandomSource.create(12345);
-        String blockId = BuiltInRegistries.BLOCK.getKey(plantBlock).toString();
         long totalStart = System.currentTimeMillis();
 
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                long startPhase = System.currentTimeMillis();
-                killEntities(level, origin);
-                long killTime = System.currentTimeMillis() - startPhase;
-
-                startPhase = System.currentTimeMillis();
-                Block ground = findSuitableGround(plantBlock, level, origin);
+                killEntities(level);
+                collectAndClear(level, null);
+                Block ground = findSuitableGround(plantBlock, level);
                 if (ground == null) return null;
+                killEntities(level);
+                collectAndClear(level, null);
 
-                BlockPos groundPos = origin.above(3);
+                BlockPos groundPos = SIM_ORIGIN.above(3);
                 BlockPos plantPos = groundPos.above();
 
-                try {
-                    level.setBlock(groundPos, ground.defaultBlockState(), FLAG_NO_UPDATE);
-                    level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
-                } catch (Throwable ignored) {
-                }
-                long setupTime = System.currentTimeMillis() - startPhase;
+                level.setBlock(groundPos, ground.defaultBlockState(), FLAG_NO_UPDATE);
+                level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
 
-                startPhase = System.currentTimeMillis();
                 stages = growPlant(plantBlock, level, plantPos, random);
-                long growTime = System.currentTimeMillis() - startPhase;
-
-                startPhase = System.currentTimeMillis();
-                collectAndClear(level, origin, foundBuffer);
-                killEntities(level, origin);
-                long cleanupTime = System.currentTimeMillis() - startPhase;
-
-                ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} metrics: kill={}ms, setup={}ms, grow={}ms, cleanup={}ms (attempt {})",
-                        blockId, killTime, setupTime, growTime, cleanupTime, attempt + 1);
-
-                break; // Успех
+                ObjectSet<Item> currentDrops = new ObjectOpenHashSet<>();
+                collectAndClear(level, currentDrops);
+                collectAndKillEntities(level, currentDrops);
+                drops.addAll(currentDrops);
+                break;
             } catch (Throwable t) {
                 if (attempt == 2) {
-                    ComplexityAnalyzer.LOGGER.debug("[PlantSim] Skipping {} after 3 failed attempts: {}", blockId, t.getMessage());
+                    ComplexityAnalyzer.LOGGER.debug("[PlantSim] Skipping {} after 3 attempts", BuiltInRegistries.BLOCK.getKey(plantBlock));
                 } else {
                     try {
                         Thread.sleep(10);
@@ -214,53 +142,47 @@ public class PlantSimulator {
             }
         }
 
-        ObjectSet<Item> drops = new ObjectOpenHashSet<>();
-        for (Block b : foundBuffer) {
-            if (b != null && b != Blocks.AIR) {
-                Item it = b.asItem();
-                if (it != Items.AIR) drops.add(it);
-            }
-        }
-
         drops.addAll(simulateMatureLoot(plantBlock, level));
+        if (drops.isEmpty()) return null;
+        if (stages <= 1) stages = 2;
 
-        if (stages <= 1 || drops.isEmpty()) return null;
         ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: stages={} drops={} TOTAL={}ms",
-                blockId, stages, drops.size(), System.currentTimeMillis() - totalStart);
+                BuiltInRegistries.BLOCK.getKey(plantBlock), stages, drops.size(), System.currentTimeMillis() - totalStart);
 
         return new SimulationResult(drops, stages);
     }
 
     private ObjectSet<Item> simulateMatureLoot(Block block, ServerLevel level) {
         ObjectSet<Item> drops = new ObjectOpenHashSet<>();
+        BlockPos lootPos = SIM_ORIGIN.above(4);
+        BlockState oldState = level.getBlockState(lootPos);
         try {
             BlockState state = block.defaultBlockState();
-            for (Property<?> prop : state.getProperties()) {
-                if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth"))) {
-                    int max = 0;
-                    for (int v : ip.getPossibleValues()) if (v > max) max = v;
-                    state = state.setValue(ip, max);
+            IntegerProperty ageProp = findAgeProperty(block);
+            if (ageProp != null) {
+                int max = 0;
+                for (int v : ageProp.getPossibleValues()) if (v > max) max = v;
+                state = state.setValue(ageProp, max);
+            }
+
+            level.setBlock(lootPos, state, FLAG_NO_UPDATE);
+            Player fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
+            for (int i = 0; i < 50; i++) {
+                for (ItemStack stack : Block.getDrops(state, level, lootPos, level.getBlockEntity(lootPos), fakePlayer, ItemStack.EMPTY)) {
+                    if (!stack.isEmpty()) drops.add(stack.getItem());
                 }
             }
-
-            LootParams params = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.BLOCK_STATE, state)
-                    .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
-                    .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
-                    .create(LootContextParamSets.BLOCK);
-
-            LootTable table = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
-            if (table != LootTable.EMPTY) for (int i = 0; i < 50; i++) {
-                for (ItemStack stack : table.getRandomItems(params)) if (!stack.isEmpty()) drops.add(stack.getItem());
-            }
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
+            ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", block, e.getMessage());
+        } finally {
+            level.setBlock(lootPos, oldState, FLAG_NO_UPDATE);
         }
         return drops;
     }
 
     @Nullable
-    private Block findSuitableGround(Block plantBlock, ServerLevel level, BlockPos origin) {
-        BlockPos groundPos = origin.above(3);
+    private Block findSuitableGround(Block plantBlock, ServerLevel level) {
+        BlockPos groundPos = SIM_ORIGIN.above(3);
         BlockPos plantPos = groundPos.above();
         BlockState plantState = plantBlock.defaultBlockState();
 
@@ -280,15 +202,9 @@ public class PlantSimulator {
             BlockState candidateState = candidate.defaultBlockState();
             if (candidateState.isAir() && candidate != Blocks.WATER) return false;
             BlockState oldGround = level.getBlockState(groundPos);
-            try {
-                level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
-            } catch (Throwable ignored) {
-            }
+            level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
             boolean survives = plantState.canSurvive(level, plantPos);
-            try {
-                level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
-            } catch (Throwable ignored) {
-            }
+            level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
             return survives;
         } catch (Exception ignored) {
             return false;
@@ -298,6 +214,7 @@ public class PlantSimulator {
     private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random) {
         int bonemealUses = 0;
         BlockState startState = level.getBlockState(plantPos);
+        int stageCount = estimateGrowthStages(plantBlock);
         long simStart = System.currentTimeMillis();
         BonemealableBlock bm = (plantBlock instanceof BonemealableBlock b) ? b : null;
 
@@ -305,20 +222,22 @@ public class PlantSimulator {
             if ((tick & 7) == 0 && System.currentTimeMillis() - simStart > MAX_SIMULATION_MS) break;
 
             BlockState current = level.getBlockState(plantPos);
-            Block currentBlock = current.getBlock();
-
-            if (bm != null && currentBlock == plantBlock && bonemealUses < MAX_BONEMEAL) {
-                if (bm.isValidBonemealTarget(level, plantPos, current)) try {
-                    bm.performBonemeal(level, random, plantPos, current);
-                    bonemealUses++;
-                    continue;
-                } catch (Throwable ignored) {
+            if (bm != null && current.getBlock() == plantBlock && bonemealUses < MAX_BONEMEAL) {
+                if (bm.isValidBonemealTarget(level, plantPos, current)) {
+                    try {
+                        bm.performBonemeal(level, random, plantPos, current);
+                        bonemealUses++;
+                        continue;
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
 
-            if (current.isRandomlyTicking()) try {
-                current.randomTick(level, plantPos, random);
-            } catch (Throwable ignored) {
+            if (current.isRandomlyTicking()) {
+                try {
+                    current.randomTick(level, plantPos, random);
+                } catch (Throwable ignored) {
+                }
             }
 
             BlockState after = level.getBlockState(plantPos);
@@ -332,118 +251,106 @@ public class PlantSimulator {
                 if (val >= max) break;
             }
         }
+        return level.getBlockState(plantPos).equals(startState) ? 1 : stageCount;
+    }
 
-        return level.getBlockState(plantPos).equals(startState) ? 1 : 2;
+    private int estimateGrowthStages(Block block) {
+        IntegerProperty ageProp = findAgeProperty(block);
+        if (ageProp == null) return 2;
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (int v : ageProp.getPossibleValues()) {
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+        return Math.max(2, max - min + 1);
     }
 
     private void ensurePlatform(ServerLevel level) {
         if (platformReady) return;
-        BlockPos origin = SIM_ORIGIN;
-        int minY = origin.getY(), maxY = level.getMaxBuildHeight();
-
-        for (int i = 0; i < 4; i++) {
-            ChunkPos cp = new ChunkPos((origin.getX() >> 4) + (i & 1), (origin.getZ() >> 4) + (i >> 1));
-            level.getChunkSource().addRegionTicket(TicketType.FORCED, cp, 2, cp);
+        int chunkRadius = (CLEAR_RADIUS >> 4) + 1;
+        int originChunkX = SIM_ORIGIN.getX() >> 4;
+        int originChunkZ = SIM_ORIGIN.getZ() >> 4;
+        for (int cx = -chunkRadius; cx <= chunkRadius; cx++) {
+            for (int cz = -chunkRadius; cz <= chunkRadius; cz++) {
+                ChunkPos cp = new ChunkPos(originChunkX + cx, originChunkZ + cz);
+                level.getChunkSource().addRegionTicket(TicketType.FORCED, cp, 2, cp);
+            }
         }
-
-        BlockState barrier = Blocks.BARRIER.defaultBlockState(), air = Blocks.AIR.defaultBlockState(), light = Blocks.LIGHT.defaultBlockState();
         int range = AREA_RADIUS + 1;
-        for (int y = minY - 1; y < maxY; y++) {
-            boolean isFloor = (y == minY - 1);
-            boolean isCeiling = (y == maxY - 1);
+        for (int y = SIM_ORIGIN.getY() - 1; y < level.getMaxBuildHeight(); y++) {
             for (int x = -range; x <= AREA_RADIUS; x++) {
                 for (int z = -range; z <= AREA_RADIUS; z++) {
-                    mutablePos.set(origin.getX() + x, y, origin.getZ() + z);
-                    boolean isWall = (x == -range || x == AREA_RADIUS || z == -range || z == AREA_RADIUS);
+                    mutablePos.set(SIM_ORIGIN.getX() + x, y, SIM_ORIGIN.getZ() + z);
                     try {
-                        if (isFloor || isWall) {
-                            level.setBlock(mutablePos, barrier, 3);
-                        } else if (isCeiling) {
-                            level.setBlock(mutablePos, light, 3);
+                        if (y == SIM_ORIGIN.getY() - 1 || x == -range || x == AREA_RADIUS || z == -range || z == AREA_RADIUS) {
+                            level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
+                        } else if (y == level.getMaxBuildHeight() - 1) {
+                            level.setBlock(mutablePos, Blocks.LIGHT.defaultBlockState(), 3);
                         } else if (!level.getBlockState(mutablePos).isAir()) {
-                            level.setBlock(mutablePos, air, 3);
+                            level.setBlock(mutablePos, Blocks.AIR.defaultBlockState(), 3);
                         }
                     } catch (Throwable ignored) {
                     }
                 }
             }
         }
-
-        for (int i = 0; i < 4; i++) {
-            chunkCache[i & 1][i >> 1] = level.getChunk((origin.getX() >> 4) + (i & 1) - 1, (origin.getZ() >> 4) + (i >> 1) - 1);
-        }
-
-        hardClearArea(level, origin);
-        killEntities(level, origin);
-
+        killEntities(level);
         platformReady = true;
-        ComplexityAnalyzer.LOGGER.info("[PlantSim] 2x2 Chunk Simulation Tower secured at {} (Y: {} to {})", origin, minY, maxY);
     }
 
-    private void killEntities(ServerLevel level, BlockPos origin) {
-        int r = AREA_RADIUS + 1;
-        AABB box = new AABB(origin.getX() - r, origin.getY(), origin.getZ() - r,
-                origin.getX() + r, level.getMaxBuildHeight(), origin.getZ() + r);
-        for (Entity entity : level.getEntities(null, box)) entity.discard();
+    private void killEntities(ServerLevel level) {
+        collectAndKillEntities(level, null);
     }
 
-    private void collectAndClear(ServerLevel level, BlockPos origin, ObjectSet<Block> found) {
-        long groundPosLong = origin.above(3).asLong();
-        int minY = origin.getY(), maxY = level.getMaxBuildHeight() - 1;
-        BlockState air = Blocks.AIR.defaultBlockState();
-        toClearBuffer.clear();
-        int emptyLayers = 0;
-        LevelChunkSection[] layerSecs = new LevelChunkSection[4];
+    private void collectAndKillEntities(ServerLevel level, @Nullable ObjectSet<Item> drops) {
+        int r = CLEAR_RADIUS + 2;
+        AABB box = new AABB(SIM_ORIGIN.getX() - r, SIM_ORIGIN.getY() - 1, SIM_ORIGIN.getZ() - r,
+                SIM_ORIGIN.getX() + r, level.getMaxBuildHeight(), SIM_ORIGIN.getZ() + r);
+        for (Entity entity : level.getEntities(null, box)) {
+            if (entity instanceof ItemEntity itemEntity) {
+                ItemStack stack = itemEntity.getItem();
+                if (!stack.isEmpty() && drops != null) drops.add(stack.getItem());
+            }
+            entity.discard();
+        }
+    }
 
-        for (int y = minY; y < maxY; y++) {
-            int secY = level.getSectionIndex(y);
-            int relY = y & 15;
+    private void collectAndClear(ServerLevel level, @Nullable ObjectSet<Item> drops) {
+        long groundPosLong = SIM_ORIGIN.above(3).asLong();
+        int minY = SIM_ORIGIN.getY() - 1;
+        int maxY = Math.min(level.getMaxBuildHeight() - 1, SIM_ORIGIN.getY() + MAX_CLEAR_HEIGHT);
+        Player fakePlayer = drops == null ? null : FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
 
-            for (int j = 0; j < 4; j++) layerSecs[j] = chunkCache[j & 1][j >> 1].getSections()[secY];
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = -CLEAR_RADIUS; x <= CLEAR_RADIUS; x++) {
+                for (int z = -CLEAR_RADIUS; z <= CLEAR_RADIUS; z++) {
+                    mutablePos.set(SIM_ORIGIN.getX() + x, y, SIM_ORIGIN.getZ() + z);
+                    BlockState state = level.getBlockState(mutablePos);
+                    if (state.isAir()) continue;
+                    if (isManagedPlatformBlock(state)) continue;
 
-            boolean layerFound = false;
-            boolean allEmpty = layerSecs[0].hasOnlyAir() && layerSecs[1].hasOnlyAir() &&
-                    layerSecs[2].hasOnlyAir() && layerSecs[3].hasOnlyAir();
-
-            if (!allEmpty) {
-                for (int i = 0; i < 1024; i++) {
-                    int x = (i & 31) - 16, z = (i >> 5) - 16;
-                    int cIdx = ((x >> 4) + 1) | (((z >> 4) + 1) << 1);
-                    LevelChunkSection section = layerSecs[cIdx];
-                    if (section == null || section.hasOnlyAir()) continue;
-
-                    BlockState state = section.getBlockState(x & 15, relY, z & 15);
-                    if (!state.isAir()) {
-                        layerFound = true;
-                        int worldX = origin.getX() + x, worldZ = origin.getZ() + z;
-                        long currentLong = BlockPos.asLong(worldX, y, worldZ);
-                        if (found != null && currentLong != groundPosLong) found.add(state.getBlock());
-                        toClearBuffer.add(currentLong);
+                    BlockPos pos = mutablePos.immutable();
+                    if (pos.asLong() != groundPosLong) if (drops != null) try {
+                        for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
+                            if (!stack.isEmpty()) drops.add(stack.getItem());
+                        }
+                    } catch (Throwable ignored) {
                     }
+                    level.removeBlock(pos, false);
                 }
             }
-
-            if (layerFound) {
-                emptyLayers = 0;
-            } else if (y > origin.getY() + 3) {
-                if (++emptyLayers > 10) break;
-            }
         }
+    }
 
-        for (int i = 0; i < toClearBuffer.size(); i++) {
-            try {
-                level.setBlock(BlockPos.of(toClearBuffer.getLong(i)), air, FLAG_NO_UPDATE);
-            } catch (Throwable ignored) {
-            }
-        }
+    private boolean isManagedPlatformBlock(BlockState state) {
+        return state.is(Blocks.BARRIER) || state.is(Blocks.LIGHT);
     }
 
     private IntegerProperty findAgeProperty(Block block) {
-        BlockState state = block.defaultBlockState();
-        for (Property<?> prop : state.getProperties()) {
-            if (prop instanceof IntegerProperty intProp && (prop.getName().equals("age") || prop.getName().equals("moisture"))) {
-                return intProp;
-            }
+        for (Property<?> prop : block.defaultBlockState().getProperties()) {
+            if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth")))
+                return ip;
         }
         return null;
     }

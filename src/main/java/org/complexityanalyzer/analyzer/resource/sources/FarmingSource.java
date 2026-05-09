@@ -24,7 +24,6 @@ import org.jetbrains.annotations.Nullable;
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     private static final double RENEWABLE_DISCOUNT = 0.3;
-    private static final double TIME_MULTIPLIER = 0.01;
     private static final double BASE_TICKS_PER_STAGE = 1200;
 
     private final Reference2ObjectMap<Item, ObjectList<FarmingData>> productionMap = new Reference2ObjectOpenHashMap<>();
@@ -51,14 +50,23 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         int plantCount = candidates.size();
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Found {} plant candidates to analyze", plantCount);
 
-        Object2ObjectMap<Block, PlantSimulator.SimulationResult> results = simulator.simulateAll(candidates, serverLevel);
+        Object2ObjectMap<Block, PlantSimulator.SimulationResult> results = serverLevel.getServer().submit(() ->
+                simulator.simulateAll(candidates, serverLevel)).join();
         if (results == null) return;
 
         for (var entry : results.object2ObjectEntrySet()) {
             Block block = entry.getKey();
             PlantSimulator.SimulationResult simResult = entry.getValue();
 
-            Item plantItem = findPlantItem(block);
+            Item plantItem = null;
+            for (Item drop : simResult.drops()) {
+                if (itemPlacesBlock(drop, block)) {
+                    plantItem = drop;
+                    break;
+                }
+            }
+
+            if (plantItem == null) plantItem = findPlantItem(block);
             if (plantItem == null) continue;
 
             int stages = simResult.growthStages();
@@ -83,11 +91,16 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
             for (FarmingData source : sources) {
                 double cost = calculateCost(source.avgGrowthTicks());
                 int stages = (int) (source.avgGrowthTicks() / BASE_TICKS_PER_STAGE);
-                ComplexityAnalyzer.LOGGER.error("[FARMING] {} -> from {} | stages={} cost={} | type=RENEWABLE",
+                ComplexityAnalyzer.LOGGER.debug("[FARMING] {} -> from {} | stages={} cost={} | type=FARMING",
                         BuiltInRegistries.ITEM.getKey(product),
                         BuiltInRegistries.BLOCK.getKey(source.plantBlock()), stages, cost);
             }
         }
+    }
+
+    private boolean itemPlacesBlock(Item item, Block targetBlock) {
+        if (item instanceof BlockItem blockItem) return blockItem.getBlock() == targetBlock;
+        return false;
     }
 
     @Nullable
@@ -102,7 +115,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     }
 
     private double calculateCost(double growthTicks) {
-        double timeCost = growthTicks * TIME_MULTIPLIER * ComplexityConfig.TIME_COST_MULTIPLIER.get();
+        double timeCost = growthTicks * ComplexityConfig.FARMING_TIME_COST_MULTIPLIER.get();
         return (timeCost + ComplexityConfig.BASE_ACTION_COST.get()) * RENEWABLE_DISCOUNT;
     }
 
@@ -165,6 +178,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {
-        return BaseResourceData.ResourceSourceType.RENEWABLE;
+        return BaseResourceData.ResourceSourceType.FARMING;
     }
 }

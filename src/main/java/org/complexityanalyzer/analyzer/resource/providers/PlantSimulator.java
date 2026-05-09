@@ -61,7 +61,7 @@ public class PlantSimulator {
         PRIORITY_GROUNDS.add(Blocks.WATER);
     }
 
-    public record SimulationResult(ObjectSet<Item> drops, int growthStages) {
+    public record SimulationResult(Reference2DoubleMap<Item> drops, int growthStages) {
     }
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
@@ -104,7 +104,7 @@ public class PlantSimulator {
     }
 
     private synchronized SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
-        ObjectSet<Item> drops = new ObjectOpenHashSet<>();
+        Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
         int stages = 1;
         RandomSource random = RandomSource.create(12345);
         long totalStart = System.currentTimeMillis();
@@ -125,10 +125,10 @@ public class PlantSimulator {
                 level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
 
                 stages = growPlant(plantBlock, level, plantPos, random);
-                ObjectSet<Item> currentDrops = new ObjectOpenHashSet<>();
+                Reference2DoubleMap<Item> currentDrops = new Reference2DoubleOpenHashMap<>();
                 collectAndClear(level, currentDrops);
                 collectAndKillEntities(level, currentDrops);
-                drops.addAll(currentDrops);
+                addDrops(drops, currentDrops);
                 break;
             } catch (Throwable t) {
                 if (attempt == 2) {
@@ -142,18 +142,18 @@ public class PlantSimulator {
             }
         }
 
-        drops.addAll(simulateMatureLoot(plantBlock, level));
+        mergeDropEstimates(drops, simulateMatureLoot(plantBlock, level));
         if (drops.isEmpty()) return null;
         if (stages <= 1) stages = 2;
 
         ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: stages={} drops={} TOTAL={}ms",
-                BuiltInRegistries.BLOCK.getKey(plantBlock), stages, drops.size(), System.currentTimeMillis() - totalStart);
+                BuiltInRegistries.BLOCK.getKey(plantBlock), stages, formatDrops(drops), System.currentTimeMillis() - totalStart);
 
         return new SimulationResult(drops, stages);
     }
 
-    private ObjectSet<Item> simulateMatureLoot(Block block, ServerLevel level) {
-        ObjectSet<Item> drops = new ObjectOpenHashSet<>();
+    private Reference2DoubleMap<Item> simulateMatureLoot(Block block, ServerLevel level) {
+        Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
         BlockPos lootPos = SIM_ORIGIN.above(4);
         BlockState oldState = level.getBlockState(lootPos);
         try {
@@ -167,9 +167,10 @@ public class PlantSimulator {
 
             level.setBlock(lootPos, state, FLAG_NO_UPDATE);
             Player fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
-            for (int i = 0; i < 50; i++) {
+            int samples = 50;
+            for (int i = 0; i < samples; i++) {
                 for (ItemStack stack : Block.getDrops(state, level, lootPos, level.getBlockEntity(lootPos), fakePlayer, ItemStack.EMPTY)) {
-                    if (!stack.isEmpty()) drops.add(stack.getItem());
+                    addDrop(drops, stack, 1.0 / samples);
                 }
             }
         } catch (Throwable e) {
@@ -303,20 +304,20 @@ public class PlantSimulator {
         collectAndKillEntities(level, null);
     }
 
-    private void collectAndKillEntities(ServerLevel level, @Nullable ObjectSet<Item> drops) {
+    private void collectAndKillEntities(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops) {
         int r = CLEAR_RADIUS + 2;
         AABB box = new AABB(SIM_ORIGIN.getX() - r, SIM_ORIGIN.getY() - 1, SIM_ORIGIN.getZ() - r,
                 SIM_ORIGIN.getX() + r, level.getMaxBuildHeight(), SIM_ORIGIN.getZ() + r);
         for (Entity entity : level.getEntities(null, box)) {
             if (entity instanceof ItemEntity itemEntity) {
                 ItemStack stack = itemEntity.getItem();
-                if (!stack.isEmpty() && drops != null) drops.add(stack.getItem());
+                if (drops != null) addDrop(drops, stack, 1.0);
             }
             entity.discard();
         }
     }
 
-    private void collectAndClear(ServerLevel level, @Nullable ObjectSet<Item> drops) {
+    private void collectAndClear(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops) {
         long groundPosLong = SIM_ORIGIN.above(3).asLong();
         int minY = SIM_ORIGIN.getY() - 1;
         int maxY = Math.min(level.getMaxBuildHeight() - 1, SIM_ORIGIN.getY() + MAX_CLEAR_HEIGHT);
@@ -333,7 +334,7 @@ public class PlantSimulator {
                     BlockPos pos = mutablePos.immutable();
                     if (pos.asLong() != groundPosLong) if (drops != null) try {
                         for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
-                            if (!stack.isEmpty()) drops.add(stack.getItem());
+                            addDrop(drops, stack, 1.0);
                         }
                     } catch (Throwable ignored) {
                     }
@@ -341,6 +342,36 @@ public class PlantSimulator {
                 }
             }
         }
+    }
+
+    private void addDrop(Reference2DoubleMap<Item> drops, ItemStack stack, double multiplier) {
+        if (!stack.isEmpty()) addDrop(drops, stack.getItem(), stack.getCount() * multiplier);
+    }
+
+    private void addDrop(Reference2DoubleMap<Item> drops, Item item, double amount) {
+        if (amount > 0.0) drops.put(item, drops.getDouble(item) + amount);
+    }
+
+    private void addDrops(Reference2DoubleMap<Item> target, Reference2DoubleMap<Item> source) {
+        for (var entry : source.reference2DoubleEntrySet()) addDrop(target, entry.getKey(), entry.getDoubleValue());
+    }
+
+    private void mergeDropEstimates(Reference2DoubleMap<Item> target, Reference2DoubleMap<Item> source) {
+        for (var entry : source.reference2DoubleEntrySet())
+            if (entry.getDoubleValue() > target.getDouble(entry.getKey()))
+                target.put(entry.getKey(), entry.getDoubleValue());
+    }
+
+    private String formatDrops(Reference2DoubleMap<Item> drops) {
+        if (drops.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+        for (var entry : drops.reference2DoubleEntrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append(BuiltInRegistries.ITEM.getKey(entry.getKey())).append(" x").append(entry.getDoubleValue());
+        }
+        return sb.append(']').toString();
     }
 
     private boolean isManagedPlatformBlock(BlockState state) {

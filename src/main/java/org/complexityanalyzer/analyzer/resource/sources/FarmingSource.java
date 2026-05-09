@@ -1,8 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2026 dertex909
- */
-
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
@@ -29,7 +24,8 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     private final Reference2ObjectMap<Item, ObjectList<FarmingData>> productionMap = new Reference2ObjectOpenHashMap<>();
     private final PlantSimulator simulator = new PlantSimulator();
 
-    private record FarmingData(Item plantItem, Block plantBlock, double avgGrowthTicks, String details) {
+    private record FarmingData(Item plantItem, Block plantBlock, double avgGrowthTicks, double outputAmount,
+                               String dropsSummary, String details) {
     }
 
     @Override
@@ -59,7 +55,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
             PlantSimulator.SimulationResult simResult = entry.getValue();
 
             Item plantItem = null;
-            for (Item drop : simResult.drops()) {
+            for (Item drop : simResult.drops().keySet()) {
                 if (itemPlacesBlock(drop, block)) {
                     plantItem = drop;
                     break;
@@ -71,12 +67,15 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
             int stages = simResult.growthStages();
             double growthTicks = stages * BASE_TICKS_PER_STAGE;
-            String details = String.format("Grown from %s (%d stages)", BuiltInRegistries.BLOCK.getKey(block).getPath(), stages);
+            String dropsSummary = formatDrops(simResult.drops());
 
-            FarmingData data = new FarmingData(plantItem, block, growthTicks, details);
-
-            for (Item drop : simResult.drops()) {
-                if (drop != plantItem) {
+            for (var dropEntry : simResult.drops().reference2DoubleEntrySet()) {
+                Item drop = dropEntry.getKey();
+                double outputAmount = dropEntry.getDoubleValue();
+                if (drop != plantItem && outputAmount > 0.0) {
+                    String details = String.format("Grown from %s (%d stages, yield: %s, drops: %s)",
+                            BuiltInRegistries.BLOCK.getKey(block).getPath(), stages, outputAmount, dropsSummary);
+                    FarmingData data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;
                 }
@@ -89,11 +88,12 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
             Item product = entry.getKey();
             ObjectList<FarmingData> sources = entry.getValue();
             for (FarmingData source : sources) {
-                double cost = calculateCost(source.avgGrowthTicks());
+                double cost = calculateCost(source.avgGrowthTicks(), source.outputAmount());
                 int stages = (int) (source.avgGrowthTicks() / BASE_TICKS_PER_STAGE);
-                ComplexityAnalyzer.LOGGER.debug("[FARMING] {} -> from {} | stages={} cost={} | type=FARMING",
+                ComplexityAnalyzer.LOGGER.debug("[FARMING] {} -> from {} | stages={} yield={} cost={} drops={} | type=FARMING",
                         BuiltInRegistries.ITEM.getKey(product),
-                        BuiltInRegistries.BLOCK.getKey(source.plantBlock()), stages, cost);
+                        BuiltInRegistries.BLOCK.getKey(source.plantBlock()), stages, source.outputAmount(), cost,
+                        source.dropsSummary());
             }
         }
     }
@@ -119,6 +119,22 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         return (timeCost + ComplexityConfig.BASE_ACTION_COST.get()) * RENEWABLE_DISCOUNT;
     }
 
+    private double calculateCost(double growthTicks, double outputAmount) {
+        return calculateCost(growthTicks) / outputAmount;
+    }
+
+    private String formatDrops(Reference2DoubleMap<Item> drops) {
+        if (drops.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+        for (var entry : drops.reference2DoubleEntrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append(BuiltInRegistries.ITEM.getKey(entry.getKey())).append(" x").append(entry.getDoubleValue());
+        }
+        return sb.append(']').toString();
+    }
+
     @Override
     public boolean canProvide(Item item) {
         return productionMap.containsKey(item);
@@ -131,14 +147,17 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         if (lst == null || lst.isEmpty()) return null;
 
         var best = lst.getFirst();
-        for (int i = 1; i < lst.size(); i++) if (lst.get(i).avgGrowthTicks() < best.avgGrowthTicks()) best = lst.get(i);
+        for (int i = 1; i < lst.size(); i++)
+            if (calculateCost(lst.get(i).avgGrowthTicks(), lst.get(i).outputAmount())
+                    < calculateCost(best.avgGrowthTicks(), best.outputAmount()))
+                best = lst.get(i);
 
         var sourceItems = new Reference2DoubleOpenHashMap<Item>();
-        sourceItems.put(best.plantItem(), 1.0);
+        sourceItems.put(best.plantItem(), 1.0 / best.outputAmount());
 
         return new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())
-                .baseFactor(calculateCost(best.avgGrowthTicks()))
+                .baseFactor(calculateCost(best.avgGrowthTicks(), best.outputAmount()))
                 .sourceItems(sourceItems)
                 .sourceSpecifier(BuiltInRegistries.BLOCK.getKey(best.plantBlock()).getPath())
                 .details(best.details())
@@ -153,11 +172,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         var results = new ObjectArrayList<BaseResourceData>();
         for (var data : list) {
             var sourceItems = new Reference2DoubleOpenHashMap<Item>();
-            sourceItems.put(data.plantItem(), 1.0);
+            sourceItems.put(data.plantItem(), 1.0 / data.outputAmount());
 
             results.add(new BaseResourceData.Builder(item, this)
                     .sourceType(getSourceType())
-                    .baseFactor(calculateCost(data.avgGrowthTicks()))
+                    .baseFactor(calculateCost(data.avgGrowthTicks(), data.outputAmount()))
                     .sourceItems(sourceItems)
                     .sourceSpecifier(BuiltInRegistries.BLOCK.getKey(data.plantBlock()).getPath())
                     .details(data.details())

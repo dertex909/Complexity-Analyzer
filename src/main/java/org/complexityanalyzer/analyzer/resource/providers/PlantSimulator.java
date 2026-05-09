@@ -41,6 +41,7 @@ public class PlantSimulator {
     private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
     private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
     private final ObjectLinkedOpenHashSet<Block> knownGrounds = new ObjectLinkedOpenHashSet<>();
+    private final Object2ObjectMap<Block, Block> groundCache = new Object2ObjectOpenHashMap<>();
     private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
     private boolean platformReady = false;
 
@@ -231,15 +232,24 @@ public class PlantSimulator {
 
     @Nullable
     private Block findSuitableGround(Block plantBlock, ServerLevel level) {
+        if (groundCache.containsKey(plantBlock)) return groundCache.get(plantBlock);
+
         BlockPos groundPos = new BlockPos(simOriginX, simOriginY + 3, simOriginZ);
         BlockPos plantPos = new BlockPos(simOriginX, simOriginY + 4, simOriginZ);
         BlockState plantState = plantBlock.defaultBlockState();
 
-        for (Block b : PRIORITY_GROUNDS) if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) return b;
-        for (Block b : knownGrounds) if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) return b;
+        for (Block b : PRIORITY_GROUNDS) if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) {
+            groundCache.put(plantBlock, b);
+            return b;
+        }
+        for (Block b : knownGrounds) if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) {
+            groundCache.put(plantBlock, b);
+            return b;
+        }
         for (Block b : GameRegistryManager.getAllBlocks()) {
             if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) {
                 knownGrounds.add(b);
+                groundCache.put(plantBlock, b);
                 return b;
             }
         }

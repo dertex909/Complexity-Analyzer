@@ -43,6 +43,7 @@ public class PlantSimulator {
     private final ObjectLinkedOpenHashSet<Block> knownGrounds = new ObjectLinkedOpenHashSet<>();
     private final Object2ObjectMap<Block, Block> groundCache = new Object2ObjectOpenHashMap<>();
     private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
+    private Player fakePlayer;
     private boolean platformReady = false;
 
     private final int simOriginX = SIM_ORIGIN.getX();
@@ -89,6 +90,7 @@ public class PlantSimulator {
     public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
         if (blocks == null || blocks.isEmpty()) return null;
         ensurePlatform(level);
+        fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
         Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
         int current = 0;
         for (Block block : blocks) {
@@ -99,6 +101,7 @@ public class PlantSimulator {
         }
         hardClearArea(level);
         killEntities(level);
+        fakePlayer = null;
         return results.isEmpty() ? null : results;
     }
 
@@ -184,8 +187,7 @@ public class PlantSimulator {
             }
 
             level.setBlock(lootPos, state, FLAG_NO_UPDATE);
-            Player fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
-            
+
             LootTable lootTable = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
             if (lootTable == LootTable.EMPTY) return drops;
             
@@ -199,7 +201,7 @@ public class PlantSimulator {
                 LootParams params = new LootParams.Builder(level)
                         .withParameter(LootContextParams.BLOCK_STATE, state)
                         .withParameter(LootContextParams.ORIGIN, Vec3.atLowerCornerOf(lootPos))
-                        .withParameter(LootContextParams.THIS_ENTITY, fakePlayer)
+                        .withParameter(LootContextParams.THIS_ENTITY, PlantSimulator.this.fakePlayer)
                         .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
                         .create(LootContextParamSets.BLOCK);
                 
@@ -402,7 +404,6 @@ public class PlantSimulator {
         long groundPosLong = BlockPos.asLong(simOriginX, simOriginY + 3, simOriginZ);
         int minY = simOriginY - 1;
         int maxY = Math.min(level.getMaxBuildHeight() - 1, simOriginY + MAX_CLEAR_HEIGHT);
-        Player fakePlayer = drops == null ? null : FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
 
         boolean shouldCollectDrops = drops != null;
 
@@ -419,7 +420,7 @@ public class PlantSimulator {
                     if (pos.asLong() != groundPosLong) {
                         if (shouldCollectDrops) try {
                             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
-                            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
+                            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY)) {
                                 addDrop(drops, stack, 1.0);
                             }
                         } catch (Throwable ignored) {

@@ -105,9 +105,12 @@ public class PlantSimulator {
                 int cIdx = ((x >> 4) + 1) | (((z >> 4) + 1) << 1);
                 LevelChunkSection section = layerSecs[cIdx];
 
-                if (!section.hasOnlyAir() && !section.getBlockState(x & 15, relY, z & 15).isAir()) {
+                if (section != null && !section.hasOnlyAir() && !section.getBlockState(x & 15, relY, z & 15).isAir()) {
                     mutablePos.set(origin.getX() + x, y, origin.getZ() + z);
-                    level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
+                    try {
+                        level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
         }
@@ -179,8 +182,11 @@ public class PlantSimulator {
                 BlockPos groundPos = origin.above(3);
                 BlockPos plantPos = groundPos.above();
 
-                level.setBlock(groundPos, ground.defaultBlockState(), FLAG_NO_UPDATE);
-                level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
+                try {
+                    level.setBlock(groundPos, ground.defaultBlockState(), FLAG_NO_UPDATE);
+                    level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
+                } catch (Throwable ignored) {
+                }
                 long setupTime = System.currentTimeMillis() - startPhase;
 
                 startPhase = System.currentTimeMillis();
@@ -274,9 +280,15 @@ public class PlantSimulator {
             BlockState candidateState = candidate.defaultBlockState();
             if (candidateState.isAir() && candidate != Blocks.WATER) return false;
             BlockState oldGround = level.getBlockState(groundPos);
-            level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
+            try {
+                level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
+            } catch (Throwable ignored) {
+            }
             boolean survives = plantState.canSurvive(level, plantPos);
-            level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
+            try {
+                level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
+            } catch (Throwable ignored) {
+            }
             return survives;
         } catch (Exception ignored) {
             return false;
@@ -343,9 +355,16 @@ public class PlantSimulator {
                 for (int z = -range; z <= AREA_RADIUS; z++) {
                     mutablePos.set(origin.getX() + x, y, origin.getZ() + z);
                     boolean isWall = (x == -range || x == AREA_RADIUS || z == -range || z == AREA_RADIUS);
-                    if (isFloor || isWall) level.setBlock(mutablePos, barrier, 3);
-                    else if (isCeiling) level.setBlock(mutablePos, light, 3);
-                    else if (!level.getBlockState(mutablePos).isAir()) level.setBlock(mutablePos, air, 3);
+                    try {
+                        if (isFloor || isWall) {
+                            level.setBlock(mutablePos, barrier, 3);
+                        } else if (isCeiling) {
+                            level.setBlock(mutablePos, light, 3);
+                        } else if (!level.getBlockState(mutablePos).isAir()) {
+                            level.setBlock(mutablePos, air, 3);
+                        }
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
         }
@@ -391,7 +410,7 @@ public class PlantSimulator {
                     int x = (i & 31) - 16, z = (i >> 5) - 16;
                     int cIdx = ((x >> 4) + 1) | (((z >> 4) + 1) << 1);
                     LevelChunkSection section = layerSecs[cIdx];
-                    if (section.hasOnlyAir()) continue;
+                    if (section == null || section.hasOnlyAir()) continue;
 
                     BlockState state = section.getBlockState(x & 15, relY, z & 15);
                     if (!state.isAir()) {
@@ -412,7 +431,10 @@ public class PlantSimulator {
         }
 
         for (int i = 0; i < toClearBuffer.size(); i++) {
-            level.setBlock(BlockPos.of(toClearBuffer.getLong(i)), air, FLAG_NO_UPDATE);
+            try {
+                level.setBlock(BlockPos.of(toClearBuffer.getLong(i)), air, FLAG_NO_UPDATE);
+            } catch (Throwable ignored) {
+            }
         }
     }
 

@@ -3,16 +3,13 @@ package org.complexityanalyzer.analyzer.resource.providers;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import com.mojang.authlib.GameProfile;
+import net.minecraft.util.RandomSource;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
-
-import java.util.UUID;
-
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
@@ -25,9 +22,19 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
+import java.util.UUID;
 
 public class PlantSimulator {
 
@@ -47,8 +54,8 @@ public class PlantSimulator {
     private static final int AREA_RADIUS = 16;
     private static final int CLEAR_RADIUS = 64;
     private static final int MAX_CLEAR_HEIGHT = 160;
-    private static final int MAX_TICKS = 100;
-    private static final int MAX_BONEMEAL = 16;
+    private static final int MAX_TICKS = 50;
+    private static final int MAX_BONEMEAL = 8;
     private static final long MAX_SIMULATION_MS = 2000;
     private static final int FLAG_NO_UPDATE = 2 | 16;
 
@@ -177,19 +184,49 @@ public class PlantSimulator {
 
             level.setBlock(lootPos, state, FLAG_NO_UPDATE);
             Player fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
-            int samples = 50;
+            
+            LootTable lootTable = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
+            if (lootTable == LootTable.EMPTY) return drops;
+            
+            int samples = 20;
             double sampleMultiplier = 1.0 / samples;
+            boolean injectionWorked = false;
+            
             for (int i = 0; i < samples; i++) {
-                for (ItemStack stack : Block.getDrops(state, level, lootPos, level.getBlockEntity(lootPos), fakePlayer, ItemStack.EMPTY)) {
-                    addDrop(drops, stack, sampleMultiplier);
-                }
+                RandomSource deterministicRandom = RandomSource.create(12345 + i);
+                
+                LootParams params = new LootParams.Builder(level)
+                        .withParameter(LootContextParams.BLOCK_STATE, state)
+                        .withParameter(LootContextParams.ORIGIN, Vec3.atLowerCornerOf(lootPos))
+                        .withParameter(LootContextParams.THIS_ENTITY, fakePlayer)
+                        .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
+                        .create(LootContextParamSets.BLOCK);
+                
+                LootContext context = new LootContext.Builder(params).create(Optional.empty());
+                
+                if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
+                
+                ObjectArrayList<ItemStack> lootDrops = new ObjectArrayList<>();
+                lootTable.getRandomItems(context, lootDrops::add);
+                
+                for (ItemStack stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
             }
         } catch (Throwable e) {
-            ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", block, e.getMessage());
+            ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
         } finally {
             level.setBlock(lootPos, oldState, FLAG_NO_UPDATE);
         }
         return drops;
+    }
+
+    private boolean injectRandomIntoContext(LootContext context, RandomSource random) {
+        try {
+            ((LootContextAccessor) context).setRandom(random);
+            return true;
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[PlantSim] Failed to inject random into LootContext: {}", e.getMessage());
+            return false;
+        }
     }
 
     @Nullable

@@ -26,6 +26,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class AnalysisBootstrap {
@@ -33,6 +34,7 @@ public class AnalysisBootstrap {
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
+        GameRegistryManager.initialize();
         AnalysisEngine engine = AnalysisEngine.getInstance();
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () ->

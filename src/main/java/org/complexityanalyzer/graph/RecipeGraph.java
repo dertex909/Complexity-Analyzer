@@ -19,7 +19,6 @@
 package org.complexityanalyzer.graph;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -27,6 +26,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
 
 public class RecipeGraph {
@@ -174,7 +174,7 @@ public class RecipeGraph {
 
     private boolean isRawStorageBlock(ItemStack stack, TagKey<Item> storageBlocksTag) {
         if (!stack.is(storageBlocksTag)) return false;
-        var itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        var itemId = GameRegistryManager.getItemId(stack.getItem()).toString();
         return itemId.contains("raw_") || itemId.contains("crude_");
     }
 
@@ -209,13 +209,14 @@ public class RecipeGraph {
     }
 
     private static Fluid normalizeFluid(Fluid fluid) {
-        var id = BuiltInRegistries.FLUID.getKey(fluid);
+        var id = GameRegistryManager.getFluidId(fluid);
         var fluidName = id.toString();
 
         if (fluidName.contains("flowing_")) {
             var staticName = fluidName.replace("flowing_", "");
             var staticId = ResourceLocation.parse(staticName);
-            if (BuiltInRegistries.FLUID.containsKey(staticId)) return BuiltInRegistries.FLUID.get(staticId);
+            var staticFluid = GameRegistryManager.getFluid(staticId);
+            if (staticFluid != null) return staticFluid;
         }
 
         return fluid;
@@ -244,7 +245,7 @@ public class RecipeGraph {
 
     public ObjectList<RecipeNode> getRecipesProducingFluid(Fluid fluid) {
         var normalizedFluid = normalizeFluid(fluid);
-        var fluidId = BuiltInRegistries.FLUID.getKey(normalizedFluid);
+        var fluidId = GameRegistryManager.getFluidId(normalizedFluid);
 
         var combined = new ObjectArrayList<RecipeNode>();
         var placeholderRecipes = recipesByFluid.get(fluidId);

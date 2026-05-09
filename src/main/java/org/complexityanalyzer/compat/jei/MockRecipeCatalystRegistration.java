@@ -27,16 +27,15 @@ import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.runtime.IIngredientManager;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-
 
 public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistration {
     private final Object2ObjectMap<ResourceLocation, ObjectList<ItemStack>> catalysts = new Object2ObjectOpenHashMap<>();
@@ -48,13 +47,11 @@ public class MockRecipeCatalystRegistration implements IRecipeCatalystRegistrati
 
     @Override
     public <T> void addRecipeCatalyst(@NotNull IIngredientType<T> ingredientType, @NotNull T ingredient, RecipeType<?> @NotNull ... recipeTypes) {
-        if (ingredient instanceof ItemStack stack && !stack.isEmpty()) {
-            for (RecipeType<?> recipeType : recipeTypes) {
-                ResourceLocation uid = recipeType.getUid();
-                catalysts.computeIfAbsent(uid, k -> new ObjectArrayList<>()).add(stack.copy());
-                ComplexityAnalyzer.LOGGER.debug("JEI Catalyst Intercept: {} -> {}",
-                        uid, BuiltInRegistries.ITEM.getKey(stack.getItem()));
-            }
+        if (ingredient instanceof ItemStack stack && !stack.isEmpty()) for (RecipeType<?> recipeType : recipeTypes) {
+            ResourceLocation uid = recipeType.getUid();
+            catalysts.computeIfAbsent(uid, k -> new ObjectArrayList<>()).add(stack.copy());
+            ComplexityAnalyzer.LOGGER.debug("JEI Catalyst Intercept: {} -> {}",
+                    uid, GameRegistryManager.getItemId(stack.getItem()));
         }
     }
 

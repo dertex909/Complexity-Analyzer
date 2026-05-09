@@ -18,10 +18,10 @@
 
 package org.complexityanalyzer.geoscan.data;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,9 +31,10 @@ public class BiomeDataMapper {
     public void prepareForSave(BiomeScanData data) {
         data.serializableBlockCounts.clear();
         data.getInternalBlockCounts().forEach((block, count) -> {
-            ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
-            if (!key.equals(BuiltInRegistries.BLOCK.getDefaultKey()))
+            if (block != Blocks.AIR) {
+                ResourceLocation key = GameRegistryManager.getBlockId(block);
                 data.serializableBlockCounts.put(key.toString(), count.get());
+            }
         });
 
         if (data.getInternalScannedChunksSet() != null) {
@@ -46,7 +47,7 @@ public class BiomeDataMapper {
     public void afterLoad(BiomeScanData data) {
         data.getInternalBlockCounts().clear();
         if (data.serializableBlockCounts != null) data.serializableBlockCounts.forEach((key, count) -> {
-            Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(key));
+            Block block = GameRegistryManager.getBlock(ResourceLocation.parse(key));
             if (block != Blocks.AIR) data.getInternalBlockCounts().put(block, new AtomicLong(count));
         });
 

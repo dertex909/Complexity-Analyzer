@@ -19,7 +19,6 @@
 package org.complexityanalyzer.compat.jei;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -34,6 +33,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -344,7 +344,7 @@ public final class AdaptiveRecipeConverter {
         } else {
             resultItem = Items.BARRIER;
             builder = new RecipeNode.Builder(resultItem).isPlaceholder(true);
-            builder.placeholderId(BuiltInRegistries.FLUID.getKey(fluidOutputs.getFirst().getFluid()).toString());
+            builder.placeholderId(GameRegistryManager.getFluidId(fluidOutputs.getFirst().getFluid()).toString());
         }
 
         builder.itemOutputs(itemOutputs).fluidOutputs(fluidOutputs);

@@ -20,7 +20,6 @@ package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -43,6 +42,7 @@ import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.mixin.LootContextAccessor;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
@@ -69,7 +69,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         var server = serverLevel.getServer();
         var toolsToTest = createTestTools(serverLevel);
 
-        for (Block blockToMine : BuiltInRegistries.BLOCK) {
+        for (Block blockToMine : GameRegistryManager.getAllBlocks()) {
             if (blockToMine == Blocks.AIR || blockToMine == Blocks.CAVE_AIR || blockToMine == Blocks.VOID_AIR) {
                 continue;
             }
@@ -233,10 +233,10 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     }
 
     private long generateStableSeed(Block block, ItemStack tool) {
-        long seed = BuiltInRegistries.BLOCK.getKey(block).toString().hashCode();
+        long seed = GameRegistryManager.getBlockId(block).toString().hashCode();
 
         if (!tool.isEmpty()) {
-            seed = seed * 31L + BuiltInRegistries.ITEM.getKey(tool.getItem()).toString().hashCode();
+            seed = seed * 31L + GameRegistryManager.getItemId(tool.getItem()).toString().hashCode();
             ItemEnchantments enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
             if (!enchantments.isEmpty()) seed = seed * 31L + enchantments.hashCode();
         } else {

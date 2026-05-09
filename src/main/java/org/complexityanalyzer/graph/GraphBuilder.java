@@ -20,7 +20,6 @@ package org.complexityanalyzer.graph;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -33,6 +32,7 @@ import org.complexityanalyzer.compat.jei.JeiCompatibilityModule;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -210,7 +210,7 @@ public class GraphBuilder {
             var stacks = ing.getItems();
             for (var stack : stacks) {
                 if (stack.isEmpty()) return false;
-                var rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                var rl = GameRegistryManager.getItemId(stack.getItem());
                 var path = rl.getPath();
                 if (!(stack.is(rawStorage) || path.contains("raw_") || path.contains("crude_"))) return false;
             }

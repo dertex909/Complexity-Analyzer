@@ -20,7 +20,6 @@ package org.complexityanalyzer.analyzer.resource.providers;
 
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -29,6 +28,7 @@ import net.minecraft.world.item.Tiers;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -42,13 +42,13 @@ public class BlockPropertyProvider {
         ComplexityAnalyzer.LOGGER.info("Initializing BlockPropertyProvider...");
 
         int analyzed = 0;
-        for (Block block : BuiltInRegistries.BLOCK) {
+        for (Block block : GameRegistryManager.getAllBlocks()) {
             try {
                 BlockProperties props = analyzeBlock(block);
                 propertiesCache.put(block, props);
                 analyzed++;
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("Failed to analyze block {}: {}", BuiltInRegistries.BLOCK.getKey(block), e.getMessage());
+                ComplexityAnalyzer.LOGGER.warn("Failed to analyze block {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
             }
         }
 

@@ -19,12 +19,12 @@
 package org.complexityanalyzer.geoscan.task;
 
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -52,7 +52,7 @@ public class ChunkAnalyzer {
         Map<String, Integer> finalCounts = new HashMap<>(blockCounts.size());
         for (var entry : blockCounts.reference2IntEntrySet()) {
             String blockId = blockIdCache.computeIfAbsent(
-                    entry.getKey(), block -> BuiltInRegistries.BLOCK.getKey(block).toString()
+                    entry.getKey(), block -> GameRegistryManager.getBlockId(block).toString()
             );
             finalCounts.put(blockId, entry.getIntValue());
         }

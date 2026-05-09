@@ -20,13 +20,13 @@ package org.complexityanalyzer.analyzer.resource.providers;
 
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class MobPropertyProvider {
@@ -50,7 +50,7 @@ public class MobPropertyProvider {
 
         int failedCount = 0;
 
-        for (var type : BuiltInRegistries.ENTITY_TYPE) {
+        for (var type : GameRegistryManager.getAllEntityTypes()) {
             if (MANUAL_OVERRIDES.containsKey(type)) continue;
             if (type.getCategory() == MobCategory.MISC) continue;
 
@@ -84,7 +84,7 @@ public class MobPropertyProvider {
             } catch (ClassCastException e) {
                 failedCount++;
             } catch (Exception e) {
-                var id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+                var id = GameRegistryManager.getEntityTypeId(type);
                 ComplexityAnalyzer.LOGGER.warn("Could not analyze entity type: {}", id);
                 failedCount++;
             }
@@ -103,7 +103,7 @@ public class MobPropertyProvider {
         var cached = propertiesCache.get(type);
         if (cached != null) return cached;
 
-        var id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        var id = GameRegistryManager.getEntityTypeId(type);
 
         try {
             @SuppressWarnings("unchecked")

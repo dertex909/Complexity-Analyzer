@@ -21,7 +21,6 @@ package org.complexityanalyzer.graph;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +28,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -182,7 +182,7 @@ public class RecipeNode {
 
     @Override
     public String toString() {
-        return "RecipeNode{" + "result=" + BuiltInRegistries.ITEM.getKey(resultItem) + ", type=" + recipeType + '}';
+        return "RecipeNode{" + "result=" + GameRegistryManager.getItemId(resultItem) + ", type=" + recipeType + '}';
     }
 
     public int getTotalFluidAmount() {

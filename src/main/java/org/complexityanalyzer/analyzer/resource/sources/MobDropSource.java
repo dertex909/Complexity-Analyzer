@@ -20,7 +20,6 @@ package org.complexityanalyzer.analyzer.resource.sources;
 
 import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
@@ -55,6 +54,7 @@ import org.complexityanalyzer.analyzer.resource.providers.DimensionRarityAnalyze
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -108,7 +108,7 @@ public class MobDropSource implements IResourceSource {
         try {
             entityTypes = CompletableFuture.supplyAsync(() -> {
                 var types = new ObjectArrayList<EntityType<?>>();
-                BuiltInRegistries.ENTITY_TYPE.forEach(types::add);
+                GameRegistryManager.getAllEntityTypes().forEach(types::add);
                 return types;
             }, server).join();
         } catch (Exception e) {
@@ -154,13 +154,13 @@ public class MobDropSource implements IResourceSource {
                     entityInstance = entityType.create(serverLevel);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
-                            BuiltInRegistries.ENTITY_TYPE.getKey(entityType), e.getMessage());
+                            GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
                     continue;
                 }
 
                 if (entityInstance == null) {
                     ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
-                            BuiltInRegistries.ENTITY_TYPE.getKey(entityType));
+                            GameRegistryManager.getEntityTypeId(entityType));
                     continue;
                 }
 

@@ -1,8 +1,8 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -41,7 +41,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         int found = 0;
 
         ObjectList<Block> candidates = new ObjectArrayList<>();
-        for (Block block : BuiltInRegistries.BLOCK) if (!simulator.isNotPlant(block)) candidates.add(block);
+        for (Block block : GameRegistryManager.getAllBlocks()) if (!simulator.isNotPlant(block)) candidates.add(block);
 
         int plantCount = candidates.size();
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Found {} plant candidates to analyze", plantCount);
@@ -114,7 +114,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         Item direct = targetBlock.asItem();
         if (direct != Items.AIR) return direct;
 
-        for (Item candidate : BuiltInRegistries.ITEM) {
+        for (Item candidate : GameRegistryManager.getAllItems()) {
             if (candidate instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock) return candidate;
         }
         return null;
@@ -130,11 +130,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     }
 
     private String itemId(Item item) {
-        return BuiltInRegistries.ITEM.getKey(item).toString();
+        return GameRegistryManager.getItemId(item).toString();
     }
 
     private String blockId(Block block) {
-        return BuiltInRegistries.BLOCK.getKey(block).toString();
+        return GameRegistryManager.getBlockId(block).toString();
     }
 
     private String formatDrops(Reference2DoubleMap<Item> drops) {
@@ -144,7 +144,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         for (var entry : drops.reference2DoubleEntrySet()) {
             if (!first) sb.append(", ");
             first = false;
-            sb.append(BuiltInRegistries.ITEM.getKey(entry.getKey())).append(" x").append(entry.getDoubleValue());
+            sb.append(GameRegistryManager.getItemId(entry.getKey())).append(" x").append(entry.getDoubleValue());
         }
         return sb.append(']').toString();
     }
@@ -173,7 +173,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                 .sourceType(getSourceType())
                 .baseFactor(calculateCost(best.avgGrowthTicks(), best.outputAmount()))
                 .sourceItems(sourceItems)
-                .sourceSpecifier(BuiltInRegistries.ITEM.getKey(best.plantItem()).getPath())
+                .sourceSpecifier(GameRegistryManager.getItemId(best.plantItem()).getPath())
                 .details(best.details())
                 .build();
     }
@@ -192,7 +192,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                     .sourceType(getSourceType())
                     .baseFactor(calculateCost(data.avgGrowthTicks(), data.outputAmount()))
                     .sourceItems(sourceItems)
-                    .sourceSpecifier(BuiltInRegistries.ITEM.getKey(data.plantItem()).getPath())
+                    .sourceSpecifier(GameRegistryManager.getItemId(data.plantItem()).getPath())
                     .details(data.details())
                     .build());
         }

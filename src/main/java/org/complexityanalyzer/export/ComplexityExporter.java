@@ -25,8 +25,8 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -118,9 +118,9 @@ public class ComplexityExporter {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         Path exportFile = exportDir.resolve("items_all_" + timestamp + ".json");
         ObjectList<ExportData.ItemData> allItems = new ObjectArrayList<>();
-        for (Item item : BuiltInRegistries.ITEM) {
+        for (Item item : GameRegistryManager.getAllItems()) {
             ItemComplexity c = engine.getComplexityResult(item);
-            if (c != null) allItems.add(buildItemData(item, BuiltInRegistries.ITEM.getKey(item), c, engine));
+            if (c != null) allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
         }
         allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
         String json = GSON.toJson(new ExportData(timestamp, allItems.size(), allItems));
@@ -134,10 +134,10 @@ public class ComplexityExporter {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         Path exportFile = exportDir.resolve("items_category_" + categoryName.toLowerCase() + "_" + timestamp + ".json");
         ObjectList<ExportData.ItemData> filteredItems = new ObjectArrayList<>();
-        for (Item item : BuiltInRegistries.ITEM) {
+        for (Item item : GameRegistryManager.getAllItems()) {
             ItemComplexity c = engine.getComplexityResult(item);
             if (c != null) if (c.getCategory().getDisplayName().equalsIgnoreCase(categoryName)) {
-                filteredItems.add(buildItemData(item, BuiltInRegistries.ITEM.getKey(item), c, engine));
+                filteredItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
             }
         }
         filteredItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
@@ -151,9 +151,9 @@ public class ComplexityExporter {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         Path exportFile = exportDir.resolve("items_top" + count + "_" + timestamp + ".json");
         ObjectList<ExportData.ItemData> allItems = new ObjectArrayList<>();
-        for (Item item : BuiltInRegistries.ITEM) {
+        for (Item item : GameRegistryManager.getAllItems()) {
             ItemComplexity c = engine.getComplexityResult(item);
-            if (c != null) allItems.add(buildItemData(item, BuiltInRegistries.ITEM.getKey(item), c, engine));
+            if (c != null) allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
         }
         allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
         ObjectList<ExportData.ItemData> topItems = new ObjectArrayList<>(allItems.subList(0, Math.min(count, allItems.size())));
@@ -168,10 +168,10 @@ public class ComplexityExporter {
         Path exportFile = exportDir.resolve("items_all_" + timestamp + ".csv");
 
         ObjectList<CsvRow> rows = new ObjectArrayList<>();
-        for (Item item : BuiltInRegistries.ITEM) {
+        for (Item item : GameRegistryManager.getAllItems()) {
             ItemComplexity c = engine.getComplexityResult(item);
             if (c != null) rows.add(new CsvRow(
-                    BuiltInRegistries.ITEM.getKey(item).toString(),
+                    GameRegistryManager.getItemId(item).toString(),
                     item.getDescription().getString(),
                     c.getComplexity(),
                     c.getCategory().getDisplayName(),
@@ -212,8 +212,8 @@ public class ComplexityExporter {
         Path exportDir = getExportDirectory(server).resolve("items");
         Files.createDirectories(exportDir);
         ResourceLocation itemId = ResourceLocation.parse(itemIdString);
-        Item item = BuiltInRegistries.ITEM.get(itemId);
-        if (item == Items.AIR && !itemId.toString().equals("minecraft:air")) {
+        Item item = GameRegistryManager.getItem(itemId);
+        if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
             throw new IllegalArgumentException("Item not found: " + itemIdString);
         }
         ItemComplexity complexity = engine.getComplexityResult(item);
@@ -242,7 +242,7 @@ public class ComplexityExporter {
         Path exportDir = getExportDirectory(server).resolve("mobs");
         Files.createDirectories(exportDir);
         ResourceLocation mobId = ResourceLocation.parse(mobIdString);
-        var mobType = BuiltInRegistries.ENTITY_TYPE.get(mobId);
+        var mobType = GameRegistryManager.getEntityType(mobId);
         MobData mobData = buildMobData(mobType, engine);
         if (mobData == null) throw new IllegalStateException("Failed to analyze mob: " + mobIdString);
         Path exportFile = exportDir.resolve(mobId.getNamespace() + "_" + mobId.getPath() + ".json");
@@ -303,7 +303,7 @@ public class ComplexityExporter {
             for (var entry : Reference2DoubleMaps.fastIterable(data.getSourceItems())) {
                 Item sourceItem = entry.getKey();
                 double amount = entry.getDoubleValue();
-                ingredients.put(BuiltInRegistries.ITEM.getKey(sourceItem).toString(), amount);
+                ingredients.put(GameRegistryManager.getItemId(sourceItem).toString(), amount);
                 ItemComplexity sourceComplexity = engine.getComplexityResult(sourceItem);
                 if (sourceComplexity != null && sourceComplexity.isValid()) {
                     fullCost += sourceComplexity.getComplexity() * amount;
@@ -320,7 +320,7 @@ public class ComplexityExporter {
     private static Path exportMobsAs(MinecraftServer server, AnalysisEngine engine, String format,
                                      String categoryFilter, int topN, String fileSuffix) throws IOException {
         ObjectList<MobData> mobDataList = new ObjectArrayList<>();
-        for (var type : BuiltInRegistries.ENTITY_TYPE) {
+        for (var type : GameRegistryManager.getAllEntityTypes()) {
             if (type.getCategory() == MobCategory.MISC) continue;
             if (categoryFilter != null && !type.getCategory().getName().equalsIgnoreCase(categoryFilter)) continue;
             MobData data = buildMobData(type, engine);
@@ -368,13 +368,13 @@ public class ComplexityExporter {
         var source = engine.getMobDropSource();
         if (source != null) for (var d : source.getDropsForEntity(type)) {
             drops.add(new ExportData.MobDropData(
-                    BuiltInRegistries.ITEM.getKey(d.item()).toString(),
+                    GameRegistryManager.getItemId(d.item()).toString(),
                     d.item().getDescription().getString(),
                     d.averageYield()
             ));
         }
 
-        return new MobData(type.getDescription().getString(), BuiltInRegistries.ENTITY_TYPE.getKey(type).toString(),
+        return new MobData(type.getDescription().getString(), GameRegistryManager.getEntityTypeId(type).toString(),
                 type.getCategory().getName(), props.maxHealth(), props.attackDamage(), props.armor(),
                 props.calculateSurvivability(), props.calculateThreat(), props.calculateCombatPower(),
                 mobProvider.getRarity(type), mobProvider.isBoss(type), mobProvider.isMiniBoss(type), drops);

@@ -19,7 +19,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BonemealableBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.ItemStack;
@@ -27,6 +26,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.AABB;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class PlantSimulator {
@@ -85,7 +85,7 @@ public class PlantSimulator {
         int current = 0;
         for (Block block : blocks) {
             current++;
-            ComplexityAnalyzer.LOGGER.info("[PlantSim] [{}/{}] Simulating: {}", current, blocks.size(), BuiltInRegistries.BLOCK.getKey(block));
+            ComplexityAnalyzer.LOGGER.info("[PlantSim] [{}/{}] Simulating: {}", current, blocks.size(), GameRegistryManager.getBlockId(block));
             SimulationResult result = simulate(block, level);
             if (result != null) results.put(block, result);
         }
@@ -139,7 +139,7 @@ public class PlantSimulator {
                 break;
             } catch (Throwable t) {
                 if (attempt == 2) {
-                    ComplexityAnalyzer.LOGGER.debug("[PlantSim] Skipping {} after 3 attempts", BuiltInRegistries.BLOCK.getKey(plantBlock));
+                    ComplexityAnalyzer.LOGGER.debug("[PlantSim] Skipping {} after 3 attempts", GameRegistryManager.getBlockId(plantBlock));
                 } else {
                     try {
                         Thread.sleep(10);
@@ -154,7 +154,7 @@ public class PlantSimulator {
         if (stages <= 1) stages = 2;
 
         ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: stages={} drops={} TOTAL={}ms",
-                BuiltInRegistries.BLOCK.getKey(plantBlock), stages, formatDrops(drops), System.currentTimeMillis() - totalStart);
+                GameRegistryManager.getBlockId(plantBlock), stages, formatDrops(drops), System.currentTimeMillis() - totalStart);
 
         return new SimulationResult(drops, stages);
     }
@@ -200,7 +200,7 @@ public class PlantSimulator {
 
         for (Block b : PRIORITY_GROUNDS) if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) return b;
         for (Block b : knownGrounds) if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) return b;
-        for (Block b : BuiltInRegistries.BLOCK) {
+        for (Block b : GameRegistryManager.getAllBlocks()) {
             if (tryGroundQuickly(b, plantState, level, groundPos, plantPos)) {
                 knownGrounds.add(b);
                 return b;
@@ -409,7 +409,7 @@ public class PlantSimulator {
         for (var entry : drops.reference2DoubleEntrySet()) {
             if (!first) sb.append(", ");
             first = false;
-            sb.append(BuiltInRegistries.ITEM.getKey(entry.getKey())).append(" x").append(entry.getDoubleValue());
+            sb.append(GameRegistryManager.getItemId(entry.getKey())).append(" x").append(entry.getDoubleValue());
         }
         return sb.append(']').toString();
     }

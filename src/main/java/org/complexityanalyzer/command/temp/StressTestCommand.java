@@ -24,7 +24,6 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -36,6 +35,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -346,11 +346,12 @@ public class StressTestCommand {
 
     private static ObjectList<Item> getRandomItems(int count) {
         ObjectList<Item> result = new ObjectArrayList<>(count);
-        int registrySize = BuiltInRegistries.ITEM.size();
+        var allItems = GameRegistryManager.getAllItems();
+        int registrySize = allItems.size();
         if (registrySize == 0) return result;
 
         for (int i = 0; i < count; i++) {
-            result.add(BuiltInRegistries.ITEM.byId(RANDOM.nextInt(registrySize)));
+            result.add(allItems.get(RANDOM.nextInt(registrySize)));
         }
 
         return result;
@@ -358,7 +359,7 @@ public class StressTestCommand {
 
     private static ObjectList<EntityType<?>> getRandomEntities(int count) {
         ObjectList<EntityType<?>> livingEntities = new ObjectArrayList<>();
-        BuiltInRegistries.ENTITY_TYPE.forEach(type -> {
+        GameRegistryManager.getAllEntityTypes().forEach(type -> {
             if (type.getCategory() != MobCategory.MISC) livingEntities.add(type);
         });
 

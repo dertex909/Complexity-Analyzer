@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.analyzer;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
@@ -27,6 +26,7 @@ import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class ComplexityCalculator {
@@ -89,7 +89,7 @@ public class ComplexityCalculator {
             builder.optimalRecipe(optimalRecipe);
 
             if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                var itemName = BuiltInRegistries.ITEM.getKey(item).toString();
+                var itemName = GameRegistryManager.getItemId(item).toString();
                 var recipeType = optimalRecipe.getRecipeType().toString();
 
                 var debugMsg = new StringBuilder(
@@ -110,7 +110,7 @@ public class ComplexityCalculator {
                 builder.baseData(baseData);
 
                 if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                    var itemName = BuiltInRegistries.ITEM.getKey(item).toString();
+                    var itemName = GameRegistryManager.getItemId(item).toString();
                     ComplexityAnalyzer.LOGGER.debug("Item {} is base resource: {} (source: {})",
                             itemName, baseData.getSourceType(), baseData.getSourceSpecifier());
                 }

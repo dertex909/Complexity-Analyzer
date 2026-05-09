@@ -21,7 +21,6 @@ package org.complexityanalyzer.command;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -34,6 +33,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -55,8 +55,8 @@ public class AnalyzeCommand {
             return 0;
         }
 
-        Item item = BuiltInRegistries.ITEM.get(itemId);
-        if (item == net.minecraft.world.item.Items.AIR && !itemId.toString().equals("minecraft:air")) {
+        Item item = GameRegistryManager.getItem(itemId);
+        if (item == net.minecraft.world.item.Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
             output.sendFailure(source, Component.literal("❌ Item not found: ")
                     .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW)));
             return 0;

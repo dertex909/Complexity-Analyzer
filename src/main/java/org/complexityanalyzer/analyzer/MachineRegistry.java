@@ -19,12 +19,12 @@
 package org.complexityanalyzer.analyzer;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -83,7 +83,7 @@ public class MachineRegistry {
     @Nullable
     public Item getMachineForRecipe(RecipeType<?> type) {
         if (!initialized) return null;
-        var typeId = BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        var typeId = GameRegistryManager.getRecipeTypeId(type);
         return (typeId != null) ? mapping.get(typeId) : null;
     }
 
@@ -102,7 +102,7 @@ public class MachineRegistry {
         var typeRL = ResourceLocation.parse(recipeTypeId);
         var itemRL = ResourceLocation.parse(itemId);
 
-        var item = BuiltInRegistries.ITEM.get(itemRL);
+        var item = GameRegistryManager.getItem(itemRL);
 
         if (item == Items.AIR) {
             ComplexityAnalyzer.LOGGER.warn("Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
@@ -118,7 +118,7 @@ public class MachineRegistry {
         keys.sort(Comparator.comparing(ResourceLocation::toString));
         for (var key : keys) {
             var item = mapping.get(key);
-            ComplexityAnalyzer.LOGGER.debug("  {} -> {}", key, BuiltInRegistries.ITEM.getKey(item));
+            ComplexityAnalyzer.LOGGER.debug("  {} -> {}", key, GameRegistryManager.getItemId(item));
         }
     }
 }

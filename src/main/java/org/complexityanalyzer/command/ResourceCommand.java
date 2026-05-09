@@ -21,19 +21,20 @@ package org.complexityanalyzer.command;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.event.AnalysisBootstrap;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
@@ -51,8 +52,8 @@ public class ResourceCommand {
             return 0;
         }
 
-        Item item = BuiltInRegistries.ITEM.get(itemId);
-        if (item == BuiltInRegistries.ITEM.get(BuiltInRegistries.ITEM.getDefaultKey())) {
+        Item item = GameRegistryManager.getItem(itemId);
+        if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
             output.sendFailure(source, Component.literal("❌ Item not found: ")
                     .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW)));
             return 0;

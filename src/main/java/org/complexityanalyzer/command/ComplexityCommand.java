@@ -28,7 +28,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
@@ -43,20 +42,23 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.event.AnalysisBootstrap;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class ComplexityCommand {
     private static final SuggestionProvider<CommandSourceStack> ITEM_SUGGESTIONS = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(BuiltInRegistries.ITEM.keySet(), builder);
+            SharedSuggestionProvider.suggestResource(GameRegistryManager.getAllItems().stream()
+                    .map(GameRegistryManager::getItemId).collect(Collectors.toList()), builder);
 
     private static final SuggestionProvider<CommandSourceStack> ENTITY_SUGGESTIONS = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(BuiltInRegistries.ENTITY_TYPE.keySet().stream().filter(id -> {
-                EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(id);
-                return type.getCategory() != MobCategory.MISC;
-            }), builder);
+            SharedSuggestionProvider.suggestResource(GameRegistryManager.getAllEntityTypes().stream()
+                    .map(GameRegistryManager::getEntityTypeId)
+                    .filter(id -> GameRegistryManager.getEntityType(id).getCategory() != MobCategory.MISC)
+                    .collect(Collectors.toList()), builder);
 
     private static final SuggestionProvider<CommandSourceStack> LOOT_TABLE_SUGGESTIONS = (context, builder) -> {
         AnalysisEngine engine = AnalysisEngine.getInstance();

@@ -19,7 +19,6 @@
 package org.complexityanalyzer.analyzer.resource.providers;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -30,6 +29,7 @@ import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.api.IBossRegistry;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -76,7 +76,7 @@ public class MobRarityCalculator implements IBossRegistry {
         registeredBosses.put(entityType, level);
         bossCache.put(entityType, level);
         ComplexityAnalyzer.LOGGER.info("[BossRegistry] Registered {} as {}",
-                BuiltInRegistries.ENTITY_TYPE.getKey(entityType), type);
+                GameRegistryManager.getEntityTypeId(entityType), type);
     }
 
     @Override
@@ -87,7 +87,7 @@ public class MobRarityCalculator implements IBossRegistry {
             return;
         }
 
-        var entityType = BuiltInRegistries.ENTITY_TYPE.get(id);
+        var entityType = GameRegistryManager.getEntityType(id);
 
         registerBoss(entityType, type);
     }
@@ -257,7 +257,7 @@ public class MobRarityCalculator implements IBossRegistry {
 
     private BossLevel detectByName(EntityType<?> entityType) {
         var name = getEntityName(entityType).toLowerCase();
-        var id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        var id = GameRegistryManager.getEntityTypeId(entityType);
         var idString = id.getPath().toLowerCase();
 
         for (var keyword : BOSS_KEYWORDS) {
@@ -284,7 +284,7 @@ public class MobRarityCalculator implements IBossRegistry {
 
 
     private boolean isModdedEntity(EntityType<?> entityType) {
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        ResourceLocation id = GameRegistryManager.getEntityTypeId(entityType);
         return !id.getNamespace().equals("minecraft");
     }
 
@@ -336,7 +336,7 @@ public class MobRarityCalculator implements IBossRegistry {
 
     private double analyzeEntityName(EntityType<?> entityType) {
         var name = getEntityName(entityType).toLowerCase();
-        var id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        var id = GameRegistryManager.getEntityTypeId(entityType);
         var idString = id.getPath().toLowerCase();
 
         double bonus = 0.0;

@@ -19,7 +19,6 @@
 package org.complexityanalyzer.analyzer.solver;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -32,6 +31,7 @@ import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.*;
+import org.complexityanalyzer.registry.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -109,7 +109,7 @@ public class IterativeSolver {
         logPhaseResults("CHEMICALS", chemIterations, chemicalManager.size());
 
         for (var chemId : chemicalManager.getAllChemicals()) {
-            var fluid = BuiltInRegistries.FLUID.get(chemId);
+            var fluid = GameRegistryManager.getFluid(chemId);
             if (fluid != Fluids.EMPTY) {
                 var chemComplexity = chemicalManager.getComplexity(chemId);
                 var fluidComplexity = fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY);
@@ -176,7 +176,7 @@ public class IterativeSolver {
         }
 
         for (var fluid : graph.getAllUsedFluids()) {
-            var id = BuiltInRegistries.FLUID.getKey(fluid);
+            var id = GameRegistryManager.getFluidId(fluid);
             var fluidName = id.toString();
             if (fluidName.equals("minecraft:water") || fluidName.equals("minecraft:lava")) {
                 fluidComplexities.put(fluid, 1.0);
@@ -375,7 +375,7 @@ public class IterativeSolver {
     });
 
     private boolean isProtectedFluid(Fluid fluid) {
-        return PROTECTED_FLUIDS.contains(BuiltInRegistries.FLUID.getKey(fluid).toString());
+        return PROTECTED_FLUIDS.contains(GameRegistryManager.getFluidId(fluid).toString());
     }
 
     private boolean updateFluidComplexity(Fluid fluid) {
@@ -432,7 +432,7 @@ public class IterativeSolver {
                 minCost = Math.min(minCost, costPerUnit);
             }
 
-            var fluidId = BuiltInRegistries.FLUID.getKey(fluid);
+            var fluidId = GameRegistryManager.getFluidId(fluid);
             if (chemicalManager.getAllChemicals().contains(fluidId)) {
                 var chemComplexity = chemicalManager.getComplexity(fluidId);
                 if (!Double.isInfinite(chemComplexity) && chemComplexity < minCost) minCost = chemComplexity;
@@ -548,7 +548,7 @@ public class IterativeSolver {
             if (Double.isInfinite(slotCost)) if (allowInfiniteMachines) {
                 var bestFluid = getBestVariant(variants, fluidComplexities);
                 if (bestFluid != null) {
-                    var fluidId = BuiltInRegistries.FLUID.getKey(bestFluid);
+                    var fluidId = GameRegistryManager.getFluidId(bestFluid);
                     var chemComplexity = chemicalManager.getComplexity(fluidId);
                     if (!Double.isInfinite(chemComplexity)) {
                         slotCost = chemComplexity;
@@ -601,9 +601,9 @@ public class IterativeSolver {
 
     private boolean isZeroCostMachine(RecipeType<?> recipeType) {
         if (recipeType == null) return false;
-        var typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType);
+        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
         if (typeId == null) return false;
-        return typeId.equals(BuiltInRegistries.RECIPE_TYPE.getKey(RecipeType.CRAFTING));
+        return typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
     }
 
     private <T> double getMinComplexity(ObjectList<T> variants, Reference2DoubleMap<T> complexities) {

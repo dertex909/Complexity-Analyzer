@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
@@ -28,6 +27,7 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.TheoreticalDistributionProvider;
 import org.complexityanalyzer.analyzer.resource.data.OreDistributionData;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -90,7 +90,7 @@ public class TheoreticalBlockSource implements IResourceSource {
 
     private BaseResourceData.ResourceSourceType determineSourceType(Block block, boolean isOre) {
         if (isOre) return BaseResourceData.ResourceSourceType.ORE;
-        String blockId = BuiltInRegistries.BLOCK.getKey(block).toString();
+        String blockId = GameRegistryManager.getBlockId(block).toString();
         if (blockId.contains("log") || blockId.contains("leaves") || blockId.contains("sapling")) {
             return BaseResourceData.ResourceSourceType.RENEWABLE;
         }

@@ -20,7 +20,6 @@ package org.complexityanalyzer.compat.jei;
 
 import it.unimi.dsi.fastutil.objects.*;
 import mezz.jei.api.recipe.RecipeType;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -33,6 +32,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 public class JeiRecipeConverter {
     public static ObjectList<RecipeNode> convertAllFromJei(Reference2ObjectMap<RecipeType<?>, ObjectList<?>> recipesByType, Level level) {
@@ -95,7 +95,7 @@ public class JeiRecipeConverter {
             Recipe<?> recipe = holder.value();
             net.minecraft.world.item.crafting.RecipeType<?> mcType = recipe.getType();
 
-            ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(mcType);
+            ResourceLocation typeId = GameRegistryManager.getRecipeTypeId(mcType);
             if (typeId == null || typeId.getNamespace().equals("minecraft")) {
                 skipped++;
                 continue;
@@ -146,7 +146,7 @@ public class JeiRecipeConverter {
             if (!chemicalOutputs.isEmpty()) {
                 builder.placeholderId(chemicalOutputs.getFirst().id().toString());
             } else if (!fluidOutputs.isEmpty()) {
-                builder.placeholderId(BuiltInRegistries.FLUID.getKey(fluidOutputs.getFirst().getFluid()).toString());
+                builder.placeholderId(GameRegistryManager.getFluidId(fluidOutputs.getFirst().getFluid()).toString());
             }
         }
 
@@ -160,7 +160,7 @@ public class JeiRecipeConverter {
         net.minecraft.world.item.crafting.RecipeType<?> recipeType = AdaptiveRecipeConverter.extractRecipeType(recipe);
 
         if (recipeType == null && jeiTypeId != null) {
-            recipeType = BuiltInRegistries.RECIPE_TYPE.get(jeiTypeId);
+            recipeType = GameRegistryManager.getRecipeType(jeiTypeId);
 
             if (recipeType == null) {
                 final String typeIdStr = jeiTypeId.toString();

@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.geoscan.analysis;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -26,6 +25,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ public class HeuristicAnalyzer {
                 Map<Block, Long> totalCounts = allSnapshotsInDim
                         .flatMap(snapshot -> snapshot.blockCounts().entrySet().stream())
                         .collect(Collectors.groupingBy(
-                                entry -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey())),
+                                entry -> GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey())),
                                 Collectors.summingLong(Map.Entry::getValue)
                         ));
 
@@ -97,7 +97,7 @@ public class HeuristicAnalyzer {
                 .forEach(snapshot -> {
                     finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
                     snapshot.blockCounts().forEach((blockId, count) -> {
-                        Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
+                        Block block = GameRegistryManager.getBlock(ResourceLocation.parse(blockId));
                         if (block != Blocks.AIR && block != Blocks.BEDROCK)
                             finalCleanData.addBlock(block, count.longValue());
                     });
@@ -125,7 +125,7 @@ public class HeuristicAnalyzer {
 
         int unnaturalBlockCount = 0;
         for (Map.Entry<String, Integer> entry : snapshot.blockCounts().entrySet()) {
-            Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(entry.getKey()));
+            Block block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
             if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getValue();
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }

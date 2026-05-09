@@ -21,7 +21,6 @@ package org.complexityanalyzer.command;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -31,6 +30,7 @@ import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.registry.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -51,8 +51,8 @@ public class EntityAnalyzeCommand {
             return 0;
         }
 
-        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(entityId);
-        if (entityType == EntityType.PIG && !entityId.toString().equals("minecraft:pig")) {
+        EntityType<?> entityType = GameRegistryManager.getEntityType(entityId);
+        if (entityType == EntityType.PIG && !entityId.equals(ResourceLocation.parse("minecraft:pig"))) {
             output.sendFailure(source, Component.literal("❌ Entity type not found: ")
                     .append(Component.literal(entityId.toString()).withStyle(ChatFormatting.YELLOW)));
             return 0;

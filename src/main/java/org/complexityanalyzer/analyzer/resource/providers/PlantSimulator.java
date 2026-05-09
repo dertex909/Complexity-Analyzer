@@ -333,6 +333,7 @@ public class PlantSimulator {
 
                     BlockPos pos = mutablePos.immutable();
                     if (pos.asLong() != groundPosLong) if (drops != null) try {
+                        if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
                         for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
                             addDrop(drops, stack, 1.0);
                         }

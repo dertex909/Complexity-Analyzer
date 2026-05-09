@@ -73,8 +73,8 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                 Item drop = dropEntry.getKey();
                 double outputAmount = dropEntry.getDoubleValue();
                 if (drop != plantItem && outputAmount > 0.0) {
-                    String details = String.format("Grown from %s as %s (%d stages, yield: %s, drops: %s)",
-                            itemId(plantItem), blockId(block), stages, outputAmount, dropsSummary);
+                    String details = String.format("Plant %s (becomes %s) → harvest for %s",
+                            itemId(plantItem), blockId(block), itemId(drop));
                     FarmingData data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;

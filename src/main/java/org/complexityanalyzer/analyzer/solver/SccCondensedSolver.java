@@ -47,7 +47,7 @@ import org.complexityanalyzer.registry.GameRegistryManager;
 
 import java.util.Arrays;
 
-public final class IterativeSolver {
+public final class SccCondensedSolver {
 
     private static final double EPSILON = 1e-12;
     private static final double CONVERGENCE_THRESHOLD = ComplexityConfig.CONVERGENCE_THRESHOLD.get();
@@ -66,7 +66,7 @@ public final class IterativeSolver {
     private final SourceManager sourceManager;
     private final MachineRegistry machineRegistry;
 
-    public IterativeSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
+    public SccCondensedSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
         this.graph = graph;
         this.sourceManager = sourceManager;
         this.machineRegistry = machineRegistry;

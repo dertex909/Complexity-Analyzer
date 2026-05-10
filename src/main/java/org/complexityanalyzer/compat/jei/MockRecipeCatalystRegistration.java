@@ -32,7 +32,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.mocks.JeiMocks;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;

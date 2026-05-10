@@ -26,7 +26,7 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class MobPropertyProvider {

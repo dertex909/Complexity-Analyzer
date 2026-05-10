@@ -34,7 +34,7 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.event.AnalysisBootstrap;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;

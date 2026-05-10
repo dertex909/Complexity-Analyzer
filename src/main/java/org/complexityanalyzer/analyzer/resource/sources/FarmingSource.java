@@ -20,7 +20,7 @@ package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.server.level.ServerLevel;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;

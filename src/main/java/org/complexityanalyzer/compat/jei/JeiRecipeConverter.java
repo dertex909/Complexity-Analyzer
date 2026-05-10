@@ -32,7 +32,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 public class JeiRecipeConverter {
     public static ObjectList<RecipeNode> convertAllFromJei(Reference2ObjectMap<RecipeType<?>, ObjectList<?>> recipesByType, Level level) {

@@ -28,7 +28,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;

@@ -27,7 +27,7 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.TheoreticalDistributionProvider;
 import org.complexityanalyzer.analyzer.resource.data.OreDistributionData;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 

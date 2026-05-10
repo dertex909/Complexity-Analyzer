@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.registry;
+package org.complexityanalyzer.core;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.BlockPos;

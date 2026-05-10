@@ -30,7 +30,7 @@ import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;

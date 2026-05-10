@@ -47,14 +47,14 @@ This group of commands is the core of the mod, allowing you to perform a deep-di
 
 This is one of the most powerful visualization tools in the mod.
 
-- **Command:** `/complexity tree <item_id> [mode] [depth]`
+- **Command:** `/complexity tree <item_id> [depth <value>] [mode <player|economic>]`
 - **Description:** Renders a full, recursive crafting tree for an item right in your chat.
 - **Arguments:**
     - `item_id`: The target item to build the tree for.
-    - `mode` (Optional, default: `player`):
+    - `depth <value>` (Optional, default: 100): The maximum depth of the tree to display.
+    - `mode <type>` (Optional, default: `player`):
         - `player`: **"Shopping List" view.** Shows rounded-up quantities needed for gameplay.
         - `economic`: **"Engineer's View."** Shows precise, fractional amounts for deep analysis.
-    - `depth` (Optional, default: 100): The maximum depth of the tree to display.
 - **Output:** A beautifully formatted, multi-part report:
     1.  **Crafting Tree:** A visual tree with icons (🔨 for crafting, ⛏ for base resources, 🔄 for cycles).
     2.  **Tree Statistics:** A summary of total nodes, unique items, crafting steps, and detected cycles.
@@ -91,6 +91,7 @@ This suite of commands is for power users who want to work with the data outside
 
 ### Exporting Mobs
 - **`/complexity export mobs all [format]`**: Exports all analyzed mobs in `json` (default) or `csv`.
+- **`/complexity export mobs csv`**: Shortcut for exporting all mobs in CSV format.
 - **`/complexity export mobs top <count>`**: Exports the top N most powerful mobs.
 - **`/complexity export mobs category <name>`**: Exports all mobs of a specific category (e.g., `monster`).
 - **`/complexity export mobs single <mob_id>`**: Exports a detailed JSON for one specific mob.
@@ -101,9 +102,9 @@ This suite of commands is for power users who want to work with the data outside
 
 This is the control panel for the `GeoAnalysisManager`, the powerful world-scanning engine. Requires operator permissions.
 
-- **`/complexity geoscan start [chunks] [profile] [force]`**: Schedules or force-starts a world scan.
+- **`/complexity geoscan start <profile> [chunks] [force]`**: Schedules or force-starts a world scan.
+    - `profile`: Scan speed vs. server impact. Options: `normal`, `fast`, `ultra_fast`, `maximum`.
     - `chunks` (Optional, default: 32): How many pristine chunks to find per biome.
-    - `profile` (Optional, default: `lite`): Scan speed vs. server impact. Options: `lite`, `fast`, `extreme`, `atomic`.
     - `force` (Optional, default: `false`): Set to `true` to skip the countdown and start immediately.
 - **`/complexity geoscan stop`**: Requests a graceful shutdown of the current scan.
 - **`/complexity geoscan status`**: Shows the current status of the geo-scanner (e.g., IDLE, SCANNING, progress %).
@@ -119,3 +120,4 @@ General-purpose commands for server management. Require operator permissions.
 - **`/complexity stats`**: Displays detailed statistics about the loaded data (number of items, recipes, etc.).
 - **`/complexity tps`**: An advanced server performance overview (TPS, MSPT, Memory).
 - **`/complexity reload`**: Forces a full reload of the analysis engine. **Warning: This will cause significant server lag.**
+- **`/complexity threads`**: Displays detailed statistics about the internal thread pools (active threads, task queue, etc.).

@@ -26,7 +26,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class AnalysisBootstrap {

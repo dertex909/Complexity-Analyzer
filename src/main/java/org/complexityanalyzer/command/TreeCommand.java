@@ -32,7 +32,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;

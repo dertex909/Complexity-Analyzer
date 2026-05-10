@@ -29,7 +29,7 @@ import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.api.IBossRegistry;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 

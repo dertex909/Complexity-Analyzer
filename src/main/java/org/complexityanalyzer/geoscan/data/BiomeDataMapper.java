@@ -21,7 +21,7 @@ package org.complexityanalyzer.geoscan.data;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;

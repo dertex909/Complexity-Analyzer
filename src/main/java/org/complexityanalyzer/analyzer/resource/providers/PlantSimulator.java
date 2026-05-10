@@ -50,7 +50,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.mixin.LootContextAccessor;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;

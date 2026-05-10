@@ -25,7 +25,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

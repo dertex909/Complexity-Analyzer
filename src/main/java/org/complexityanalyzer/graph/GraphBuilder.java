@@ -32,7 +32,7 @@ import org.complexityanalyzer.compat.jei.JeiCompatibilityModule;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;

@@ -43,7 +43,7 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.util.Arrays;
 

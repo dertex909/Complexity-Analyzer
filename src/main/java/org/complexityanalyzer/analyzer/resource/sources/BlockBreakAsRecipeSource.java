@@ -42,7 +42,7 @@ import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.mixin.LootContextAccessor;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {

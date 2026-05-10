@@ -28,7 +28,7 @@ import net.minecraft.world.item.Tiers;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 

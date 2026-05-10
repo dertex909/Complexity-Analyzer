@@ -54,7 +54,7 @@ import org.complexityanalyzer.analyzer.resource.providers.DimensionRarityAnalyze
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;

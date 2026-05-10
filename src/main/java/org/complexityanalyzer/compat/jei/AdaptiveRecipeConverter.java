@@ -33,7 +33,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

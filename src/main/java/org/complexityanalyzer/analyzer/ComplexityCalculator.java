@@ -26,7 +26,7 @@ import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class ComplexityCalculator {

@@ -33,7 +33,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.registry.GameRegistryManager;
+import org.complexityanalyzer.core.GameRegistryManager;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;

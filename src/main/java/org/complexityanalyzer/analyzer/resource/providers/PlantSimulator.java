@@ -63,21 +63,11 @@ public class PlantSimulator {
     private static final long MAX_SIMULATION_MS = 2000;
     private static final int FLAG_NO_UPDATE = 2 | 16;
 
-    private static final ObjectList<Block> PRIORITY_GROUNDS = new ObjectArrayList<>();
-
-    static {
-        PRIORITY_GROUNDS.add(Blocks.GRASS_BLOCK);
-        PRIORITY_GROUNDS.add(Blocks.DIRT);
-        PRIORITY_GROUNDS.add(Blocks.FARMLAND);
-        PRIORITY_GROUNDS.add(Blocks.SAND);
-        PRIORITY_GROUNDS.add(Blocks.RED_SAND);
-        PRIORITY_GROUNDS.add(Blocks.GRAVEL);
-        PRIORITY_GROUNDS.add(Blocks.NETHERRACK);
-        PRIORITY_GROUNDS.add(Blocks.SOUL_SAND);
-        PRIORITY_GROUNDS.add(Blocks.SOUL_SOIL);
-        PRIORITY_GROUNDS.add(Blocks.END_STONE);
-        PRIORITY_GROUNDS.add(Blocks.WATER);
-    }
+    private static final ObjectList<Block> PRIORITY_GROUNDS = ObjectArrayList.of(
+            Blocks.GRASS_BLOCK, Blocks.DIRT, Blocks.FARMLAND, Blocks.SAND,
+            Blocks.RED_SAND, Blocks.GRAVEL, Blocks.NETHERRACK, Blocks.SOUL_SAND,
+            Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
+    );
 
     public record SimulationResult(Reference2DoubleMap<Item> drops, int growthStages) {
     }
@@ -86,14 +76,9 @@ public class PlantSimulator {
     }
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
-        if (cache.containsKey(plantBlock)) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] {} already cached", GameRegistryManager.getBlockId(plantBlock));
-            return cache.get(plantBlock);
-        }
-        ComplexityAnalyzer.LOGGER.debug("[PlantSim] Calling runSimulation for {}", GameRegistryManager.getBlockId(plantBlock));
+        if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
         SimulationResult result = runSimulation(plantBlock, level);
         cache.put(plantBlock, result);
-        ComplexityAnalyzer.LOGGER.debug("[PlantSim] runSimulation returned {} for {}", result, GameRegistryManager.getBlockId(plantBlock));
         return result;
     }
 
@@ -102,24 +87,15 @@ public class PlantSimulator {
         ensurePlatform(level);
         fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
         Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
-        int current = 0;
         for (Block block : blocks) {
-            current++;
-            ComplexityAnalyzer.LOGGER.info("[PlantSim] [{}/{}] Simulating: {}", current, blocks.size(), GameRegistryManager.getBlockId(block));
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] About to call simulate for {}", GameRegistryManager.getBlockId(block));
             SimulationResult result = simulate(block, level);
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] simulate returned {} for {}", result, GameRegistryManager.getBlockId(block));
             if (result != null) results.put(block, result);
         }
-        hardClearArea(level);
-        killEntities(level);
+        collectAndClear(level, null, null);
+        clearEntitiesInsideBox(level);
         releasePlatform(level);
         fakePlayer = null;
         return results.isEmpty() ? null : results;
-    }
-
-    private void hardClearArea(ServerLevel level) {
-        collectAndClear(level, null, null);
     }
 
     public boolean isNotPlant(Block block) {
@@ -128,25 +104,30 @@ public class PlantSimulator {
                 || block == Blocks.TURTLE_EGG) return true;
         if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return false;
         float hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-        if (hardness > 0.5f || hardness < 0.0f || (!(block instanceof BonemealableBlock) && !state.isRandomlyTicking()
-                && findAgeProperty(block) == null))
-            return true;
+        if (hardness > 0.5f || hardness < 0.0f || (!(block instanceof BonemealableBlock)
+                && !state.isRandomlyTicking() && findAgeProperty(block) == null)) return true;
         return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+    }
+
+    private void clearEntitiesInsideBox(ServerLevel level) {
+        AABB interiorBox = new AABB(simOriginX - BARRIER_RADIUS, simOriginY - DEPTH_BELOW,
+                simOriginZ - BARRIER_RADIUS, simOriginX + BARRIER_RADIUS,
+                simOriginY + HEIGHT_ABOVE, simOriginZ + BARRIER_RADIUS);
+
+        for (Entity entity : level.getEntities(null, interiorBox)) {
+            if (entity instanceof ItemEntity) entity.discard();
+        }
     }
 
     private SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
         Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
         RandomSource random = RandomSource.create(12345);
-        long totalStart = System.currentTimeMillis();
 
-        killEntities(level);
+        collectAndKillEntities(level, null);
         collectAndClear(level, null, null);
         GroundResult ground = findSuitableGround(plantBlock, level);
-        if (ground == null) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] No suitable ground found for {}", GameRegistryManager.getBlockId(plantBlock));
-            return null;
-        }
-        killEntities(level);
+        if (ground == null) return null;
+        collectAndKillEntities(level, null);
 
         BlockPos plantPos = SIM_ORIGIN;
         BlockPos groundPos = plantPos.relative(ground.side());
@@ -156,21 +137,13 @@ public class PlantSimulator {
 
         int stages = growPlant(plantBlock, level, plantPos, random);
         Reference2DoubleMap<Item> currentDrops = new Reference2DoubleOpenHashMap<>();
-        ComplexityAnalyzer.LOGGER.debug("[PlantSim] Calling collectAndClear for {}", GameRegistryManager.getBlockId(plantBlock));
         collectAndClear(level, currentDrops, groundPos);
         collectAndKillEntities(level, currentDrops);
         addDrops(drops, currentDrops);
 
         mergeDropEstimates(drops, simulateMatureLoot(plantBlock, level, ground));
-        if (drops.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.debug("[PlantSim] Drops empty after simulateMatureLoot for {}", GameRegistryManager.getBlockId(plantBlock));
-            return null;
-        }
+        if (drops.isEmpty()) return null;
         if (stages <= 1) stages = 2;
-
-        ComplexityAnalyzer.LOGGER.debug("[PlantSim] {}: stages={} drops={} TOTAL={}ms",
-                GameRegistryManager.getBlockId(plantBlock), stages, formatDrops(drops), System.currentTimeMillis() - totalStart);
-
         return new SimulationResult(drops, stages);
     }
 
@@ -220,13 +193,10 @@ public class PlantSimulator {
                 PlantSimulator.this.fakePlayer.setPos(lootPos.getX() + 0.5, lootPos.getY() + 0.5, lootPos.getZ() + 0.5);
 
                 ObjectArrayList<ItemStack> lootDrops = new ObjectArrayList<>();
-                if (lootTable != LootTable.EMPTY) {
-                    lootTable.getRandomItems(context, lootDrops::add);
-                }
+                if (lootTable != LootTable.EMPTY) lootTable.getRandomItems(context, lootDrops::add);
 
-                if (lootDrops.isEmpty()) {
-                    lootDrops.addAll(Block.getDrops(state, level, lootPos, level.getBlockEntity(lootPos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY));
-                }
+                if (lootDrops.isEmpty()) lootDrops.addAll(Block.getDrops(state, level, lootPos,
+                        level.getBlockEntity(lootPos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY));
 
                 for (ItemStack stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
             }
@@ -255,33 +225,27 @@ public class PlantSimulator {
 
         BlockPos plantPos = SIM_ORIGIN;
         BlockState plantState = plantBlock.defaultBlockState();
-
-        for (Direction dir : Direction.values()) {
-            mutablePos.setWithOffset(plantPos, dir);
-            for (Block b : PRIORITY_GROUNDS) {
-                if (tryGroundQuickly(b, plantState, level, mutablePos, plantPos)) {
-                    GroundResult res = new GroundResult(b, dir);
-                    groundCache.put(plantBlock, res);
-                    return res;
-                }
-            }
+        GroundResult result = tryFindGround(plantPos, plantState, level, PRIORITY_GROUNDS);
+        if (result != null) {
+            groundCache.put(plantBlock, result);
+            return result;
         }
 
-        for (Direction dir : Direction.values()) {
-            mutablePos.setWithOffset(plantPos, dir);
-            for (Block b : GameRegistryManager.getAllBlocks()) {
-                if (tryGroundQuickly(b, plantState, level, mutablePos, plantPos)) {
-                    GroundResult res = new GroundResult(b, dir);
-                    groundCache.put(plantBlock, res);
-                    return res;
-                }
-            }
-        }
-
-        groundCache.put(plantBlock, null);
-        return null;
+        result = tryFindGround(plantPos, plantState, level, GameRegistryManager.getAllBlocks());
+        groundCache.put(plantBlock, result);
+        return result;
     }
 
+    @Nullable
+    private GroundResult tryFindGround(BlockPos plantPos, BlockState plantState, ServerLevel level, Iterable<Block> blocks) {
+        for (Direction dir : Direction.values()) {
+            mutablePos.setWithOffset(plantPos, dir);
+            for (Block b : blocks) {
+                if (tryGroundQuickly(b, plantState, level, mutablePos, plantPos)) return new GroundResult(b, dir);
+            }
+        }
+        return null;
+    }
 
     private boolean tryGroundQuickly(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
         try {
@@ -308,13 +272,13 @@ public class PlantSimulator {
             if ((tick & 7) == 0 && System.currentTimeMillis() - simStart > MAX_SIMULATION_MS) break;
 
             BlockState current = level.getBlockState(plantPos);
-            if (bm != null && current.getBlock() == plantBlock && bonemealUses < MAX_BONEMEAL) {
-                if (bm.isValidBonemealTarget(level, plantPos, current)) try {
-                    bm.performBonemeal(level, random, plantPos, current);
-                    bonemealUses++;
-                    continue;
-                } catch (Throwable ignored) {
-                }
+
+            boolean canUseBonemeal = bm != null && current.getBlock() == plantBlock && bonemealUses < MAX_BONEMEAL;
+            if (canUseBonemeal && bm.isValidBonemealTarget(level, plantPos, current)) try {
+                bm.performBonemeal(level, random, plantPos, current);
+                bonemealUses++;
+                continue;
+            } catch (Throwable ignored) {
             }
 
             if (current.isRandomlyTicking()) try {
@@ -337,25 +301,18 @@ public class PlantSimulator {
             }
         }
         BlockState endState = level.getBlockState(plantPos);
-        int result = endState.equals(startState) ? 1 : stageCount;
-        ComplexityAnalyzer.LOGGER.debug("[PlantSim] growPlant result: stages={} startState={} endState={}", result, startState.getBlock(), endState.getBlock());
-        return result;
+        return endState.equals(startState) ? 1 : stageCount;
     }
 
     private int estimateGrowthStages(Block block) {
         IntegerProperty ageProp = findAgeProperty(block);
         if (ageProp == null) return 2;
+        if (ageMaxCache.containsKey(block)) return Math.max(2, ageMaxCache.getInt(block) + 1);
 
-        if (ageMaxCache.containsKey(block)) {
-            int max = ageMaxCache.getInt(block);
-            return Math.max(2, max + 1);
-        }
-
-        int min = Integer.MAX_VALUE;
-        int max = Integer.MIN_VALUE;
+        int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
         for (int v : ageProp.getPossibleValues()) {
-            if (v < min) min = v;
-            if (v > max) max = v;
+            min = Math.min(min, v);
+            max = Math.max(max, v);
         }
         ageMaxCache.put(block, max);
         return Math.max(2, max - min + 1);
@@ -377,37 +334,34 @@ public class PlantSimulator {
         int baseY = simOriginY - DEPTH_BELOW;
 
         for (int y = baseY; y <= maxY; y++) {
-            boolean isBaseLayer = (y == baseY);
-            boolean isLightLayer = (y == maxY);
+            boolean isBaseLayer = y == baseY, isLightLayer = y == maxY;
 
             for (int x = -range; x <= BARRIER_RADIUS; x++) {
-                boolean isXBoundary = (x == -range) | (x == BARRIER_RADIUS);
+                boolean isXBoundary = x == -range | x == BARRIER_RADIUS;
                 int worldX = simOriginX + x;
 
                 for (int z = -range; z <= BARRIER_RADIUS; z++) {
-                    boolean isZBoundary = (z == -range) | (z == BARRIER_RADIUS);
+                    boolean isZBoundary = z == -range | z == BARRIER_RADIUS;
                     mutablePos.set(worldX, y, simOriginZ + z);
 
                     try {
-                        if (isBaseLayer | isXBoundary | isZBoundary) {
+                        if (isBaseLayer | isXBoundary | isZBoundary)
                             level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
-                        } else if (isLightLayer) {
+                        else if (isLightLayer)
                             level.setBlock(mutablePos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
-                        } else if (!level.getBlockState(mutablePos).isAir()) {
+                        else if (!level.getBlockState(mutablePos).isAir())
                             level.setBlock(mutablePos, Blocks.AIR.defaultBlockState(), 3);
-                        }
                     } catch (Throwable ignored) {
                     }
                 }
             }
         }
-        killEntities(level);
+        collectAndKillEntities(level, null);
         platformReady = true;
     }
 
     private void releasePlatform(ServerLevel level) {
         if (!platformReady) return;
-
         int chunkRadius = (SEARCH_RADIUS >> 4) + 1;
         for (int cx = -chunkRadius; cx <= chunkRadius; cx++) {
             for (int cz = -chunkRadius; cz <= chunkRadius; cz++) {
@@ -418,20 +372,13 @@ public class PlantSimulator {
         platformReady = false;
     }
 
-    private void killEntities(ServerLevel level) {
-        collectAndKillEntities(level, null);
-    }
-
     private void collectAndKillEntities(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops) {
         int r = SEARCH_RADIUS + 2;
         AABB box = new AABB(simOriginX - r, simOriginY - DEPTH_BELOW - 1, simOriginZ - r,
                 simOriginX + r, simOriginY + HEIGHT_ABOVE + 1, simOriginZ + r);
-        boolean shouldCollectDrops = drops != null;
+        boolean drop = drops != null;
         for (Entity entity : level.getEntities(null, box)) {
-            if (entity instanceof ItemEntity itemEntity) if (shouldCollectDrops) {
-                ItemStack stack = itemEntity.getItem();
-                addDrop(drops, stack, 1.0);
-            }
+            if (entity instanceof ItemEntity itemEntity && drop) addDrop(drops, itemEntity.getItem(), 1.0);
             entity.discard();
         }
     }
@@ -443,15 +390,10 @@ public class PlantSimulator {
         boolean shouldCollectDrops = drops != null;
 
         if (shouldCollectDrops) {
-            // Check center point first (radius 0)
-            int totalBlocksFound = 0;
             for (int y = minY; y <= maxY; y++) {
                 mutablePos.set(simOriginX, y, simOriginZ);
                 BlockState state = level.getBlockState(mutablePos);
-                if (state.isAir() || isManagedPlatformBlock(state)) continue;
-                if (mutablePos.asLong() == groundPosLong) continue;
-
-                totalBlocksFound++;
+                if (state.isAir() || isManagedPlatformBlock(state) || mutablePos.asLong() == groundPosLong) continue;
                 collectDropsAt(level, mutablePos, state, drops);
                 level.removeBlock(mutablePos, false);
             }
@@ -459,35 +401,27 @@ public class PlantSimulator {
             int radius = 1;
             while (radius <= SEARCH_RADIUS) {
                 boolean foundBlocks = false;
-                int blocksOnThisRadius = 0;
                 int prevRadius = radius - 2;
                 for (int y = minY; y <= maxY; y++) {
                     for (int x = -radius; x <= radius; x++) {
                         int worldX = simOriginX + x;
                         for (int z = -radius; z <= radius; z++) {
-                            boolean isOnBoundary = (Math.abs(x) == radius || Math.abs(z) == radius || Math.abs(y - simOriginY) == radius);
+                            boolean isOnBoundary = Math.abs(x) == radius || Math.abs(z) == radius || Math.abs(y - simOriginY) == radius;
                             if (prevRadius > 0 && !isOnBoundary) continue;
                             mutablePos.set(worldX, y, simOriginZ + z);
                             BlockState state = level.getBlockState(mutablePos);
-                            if (state.isAir()) continue;
-                            if (isManagedPlatformBlock(state)) continue;
+                            if (state.isAir() || isManagedPlatformBlock(state)) continue;
 
                             BlockPos pos = mutablePos.immutable();
                             if (pos.asLong() != groundPosLong) {
                                 foundBlocks = true;
-                                blocksOnThisRadius++;
                                 collectDropsAt(level, pos, state, drops);
                             }
                             level.removeBlock(pos, false);
                         }
                     }
                 }
-                totalBlocksFound += blocksOnThisRadius;
-                ComplexityAnalyzer.LOGGER.debug("[PlantSim] Adaptive clear: radius={} blocks={} total={}", radius, blocksOnThisRadius, totalBlocksFound);
-                if (!foundBlocks && radius > 1) {
-                    ComplexityAnalyzer.LOGGER.debug("[PlantSim] Adaptive clear stopped at radius={} (no new blocks)", radius);
-                    break;
-                }
+                if (!foundBlocks && radius > 1) break;
                 radius += 2;
             }
         } else {
@@ -498,11 +432,8 @@ public class PlantSimulator {
                     for (int z = -range; z <= range; z++) {
                         mutablePos.set(worldX, y, simOriginZ + z);
                         BlockState state = level.getBlockState(mutablePos);
-                        if (state.isAir()) continue;
-                        if (isManagedPlatformBlock(state)) continue;
-
-                        BlockPos pos = mutablePos.immutable();
-                        level.removeBlock(pos, false);
+                        if (state.isAir() || isManagedPlatformBlock(state)) continue;
+                        level.removeBlock(mutablePos.immutable(), false);
                     }
                 }
             }
@@ -512,20 +443,19 @@ public class PlantSimulator {
     private void collectDropsAt(ServerLevel level, BlockPos pos, BlockState state, Reference2DoubleMap<Item> drops) {
         try {
             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
-            PlantSimulator.this.fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY)) {
+            fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY))
                 addDrop(drops, stack, 1.0);
-            }
         } catch (Throwable ignored) {
         }
     }
 
-    private void addDrop(Reference2DoubleMap<Item> drops, ItemStack stack, double multiplier) {
-        if (!stack.isEmpty()) addDrop(drops, stack.getItem(), stack.getCount() * multiplier);
-    }
-
     private void addDrop(Reference2DoubleMap<Item> drops, Item item, double amount) {
         if (amount > 0.0) drops.put(item, drops.getDouble(item) + amount);
+    }
+
+    private void addDrop(Reference2DoubleMap<Item> drops, ItemStack stack, double multiplier) {
+        if (!stack.isEmpty()) addDrop(drops, stack.getItem(), stack.getCount() * multiplier);
     }
 
     private void addDrops(Reference2DoubleMap<Item> target, Reference2DoubleMap<Item> source) {
@@ -537,27 +467,14 @@ public class PlantSimulator {
             if (entry.getDoubleValue() > tar.getDouble(entry.getKey())) tar.put(entry.getKey(), entry.getDoubleValue());
     }
 
-    private String formatDrops(Reference2DoubleMap<Item> drops) {
-        if (drops.isEmpty()) return "[]";
-        StringBuilder sb = new StringBuilder("[");
-        boolean first = true;
-        for (var entry : drops.reference2DoubleEntrySet()) {
-            if (!first) sb.append(", ");
-            first = false;
-            sb.append(GameRegistryManager.getItemId(entry.getKey())).append(" x").append(entry.getDoubleValue());
-        }
-        return sb.append(']').toString();
-    }
-
     private boolean isManagedPlatformBlock(BlockState state) {
         return state.is(Blocks.BARRIER) || state.is(Blocks.LIGHT);
     }
 
     private IntegerProperty findAgeProperty(Block b) {
-        for (Property<?> prop : b.defaultBlockState().getProperties()) {
+        for (Property<?> prop : b.defaultBlockState().getProperties())
             if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth")))
                 return ip;
-        }
         return null;
     }
 }

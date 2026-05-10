@@ -378,6 +378,7 @@ public class PlantSimulator {
                 simOriginX + r, simOriginY + HEIGHT_ABOVE + 1, simOriginZ + r);
         boolean drop = drops != null;
         for (Entity entity : level.getEntities(null, box)) {
+            if (entity instanceof Player) continue;
             if (entity instanceof ItemEntity itemEntity && drop) addDrop(drops, itemEntity.getItem(), 1.0);
             entity.discard();
         }

@@ -224,7 +224,6 @@ public class PlantSimulator {
                     lootTable.getRandomItems(context, lootDrops::add);
                 }
 
-                // Fallback for modded blocks that might not use standard loot tables properly
                 if (lootDrops.isEmpty()) {
                     lootDrops.addAll(Block.getDrops(state, level, lootPos, level.getBlockEntity(lootPos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY));
                 }
@@ -257,7 +256,6 @@ public class PlantSimulator {
         BlockPos plantPos = SIM_ORIGIN;
         BlockState plantState = plantBlock.defaultBlockState();
 
-        // Pass 1: Priority grounds
         for (Direction dir : Direction.values()) {
             mutablePos.setWithOffset(plantPos, dir);
             for (Block b : PRIORITY_GROUNDS) {
@@ -269,7 +267,6 @@ public class PlantSimulator {
             }
         }
 
-        // Pass 2: Extensive search
         for (Direction dir : Direction.values()) {
             mutablePos.setWithOffset(plantPos, dir);
             for (Block b : GameRegistryManager.getAllBlocks()) {

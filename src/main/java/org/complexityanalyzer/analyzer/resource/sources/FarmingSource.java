@@ -94,12 +94,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                     String plantItemId = itemId(plantItem);
                     String blockIdStr = blockId(block);
                     String details;
-                    if (plantItemId.equals(blockIdStr)) {
-                        details = String.format("Plant %s → harvest for %s", plantItemId, itemId(drop));
-                    } else {
-                        details = String.format("Plant %s (becomes %s) → harvest for %s",
-                                plantItemId, blockIdStr, itemId(drop));
-                    }
+                    if (plantItemId.equals(blockIdStr)) details = String.format("Plant %s → harvest for %s",
+                            plantItemId, itemId(drop));
+                    else details = String.format("Plant %s (becomes %s) → harvest for %s", plantItemId,
+                            blockIdStr, itemId(drop));
+
                     FarmingData data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;
@@ -108,18 +107,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         }
 
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
-
-        for (var entry : productionMap.entrySet()) {
-            Item product = entry.getKey();
-            ObjectList<FarmingData> sources = entry.getValue();
-            for (FarmingData source : sources) {
-                double cost = calculateCost(source.avgGrowthTicks(), source.outputAmount());
-                int stages = (int) (source.avgGrowthTicks() / BASE_TICKS_PER_STAGE);
-                ComplexityAnalyzer.LOGGER.debug("[FARMING] {} -> from {} as {} | stages={} yield={} cost={} drops={} | type=FARMING",
-                        itemId(product), itemId(source.plantItem()), blockId(source.plantBlock()), stages, source.outputAmount(), cost,
-                        source.dropsSummary());
-            }
-        }
     }
 
     private boolean itemPlacesBlock(Item item, Block targetBlock) {
@@ -181,8 +168,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         var best = lst.getFirst();
         for (int i = 1; i < lst.size(); i++)
             if (calculateCost(lst.get(i).avgGrowthTicks(), lst.get(i).outputAmount())
-                    < calculateCost(best.avgGrowthTicks(), best.outputAmount()))
-                best = lst.get(i);
+                    < calculateCost(best.avgGrowthTicks(), best.outputAmount())) best = lst.get(i);
 
         var sourceItems = new Reference2DoubleOpenHashMap<Item>();
         sourceItems.put(best.plantItem(), 1.0 / best.outputAmount());

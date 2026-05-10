@@ -153,7 +153,9 @@ public class ComplexityExporter {
         ObjectList<ExportData.ItemData> allItems = new ObjectArrayList<>();
         for (Item item : GameRegistryManager.getAllItems()) {
             ItemComplexity c = engine.getComplexityResult(item);
-            if (c != null) allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
+            if (c != null && !Double.isInfinite(c.getComplexity())) {
+                allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
+            }
         }
         allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
         ObjectList<ExportData.ItemData> topItems = new ObjectArrayList<>(allItems.subList(0, Math.min(count, allItems.size())));
@@ -324,7 +326,7 @@ public class ComplexityExporter {
             if (type.getCategory() == MobCategory.MISC) continue;
             if (categoryFilter != null && !type.getCategory().getName().equalsIgnoreCase(categoryFilter)) continue;
             MobData data = buildMobData(type, engine);
-            if (data != null) mobDataList.add(data);
+            if (data != null && !Double.isInfinite(data.combatPower())) mobDataList.add(data);
         }
         mobDataList.sort((a, b) -> Double.compare(b.combatPower(), a.combatPower()));
         if (topN > 0 && mobDataList.size() > topN) mobDataList = new ObjectArrayList<>(mobDataList.subList(0, topN));

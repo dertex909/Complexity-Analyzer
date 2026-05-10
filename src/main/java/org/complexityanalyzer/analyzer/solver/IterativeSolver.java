@@ -18,7 +18,17 @@
 
 package org.complexityanalyzer.analyzer.solver;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -27,770 +37,1126 @@ import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.core.ThreadPoolManager;
-import org.complexityanalyzer.graph.*;
+import org.complexityanalyzer.graph.IngredientSlot;
+import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.registry.GameRegistryManager;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
 
-public class IterativeSolver {
+public final class IterativeSolver {
 
     private static final double EPSILON = 1e-12;
     private static final double CONVERGENCE_THRESHOLD = ComplexityConfig.CONVERGENCE_THRESHOLD.get();
-    private static final int MAX_ITERATIONS = ComplexityConfig.MAX_ITERATIONS.get();
+    private static final int MAX_FIXPOINT_ITERATIONS = ComplexityConfig.MAX_ITERATIONS.get();
+    private static final byte F_SOURCE = 0;
+    private static final byte F_ITEM_RECIPE = 1;
+    private static final byte F_FLUID_RECIPE = 2;
+    private static final byte F_CHEM_RECIPE = 3;
+    private static final byte F_PROTECTED_FLUID = 4;
+    private static final byte F_CHEM_BRIDGE = 5;
+    private static final byte K_ITEM = 0;
+    private static final byte K_FLUID = 1;
+    private static final byte K_CHEMICAL = 2;
 
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
     private final MachineRegistry machineRegistry;
-    private final DependencyGraph dependencies;
-    private final SolverCache cache;
-    private final Reference2DoubleMap<Item> itemComplexities;
-    private final Reference2DoubleMap<Fluid> fluidComplexities;
-    private final Reference2ObjectMap<Item, RecipeNode> optimalRecipes;
-    private final ChemicalComplexityManager chemicalManager;
-    private final int parallelism;
-
-    private final ThreadLocal<ReferenceSet<Fluid>> fluidCalculationStack = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
-
-    private final AtomicInteger totalIterations = new AtomicInteger(0);
-    private final AtomicInteger recipeCostCalculations = new AtomicInteger(0);
-    private final AtomicInteger cacheHits = new AtomicInteger(0);
 
     public IterativeSolver(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
         this.graph = graph;
         this.sourceManager = sourceManager;
         this.machineRegistry = machineRegistry;
-        this.dependencies = new DependencyGraph();
-        this.cache = new SolverCache();
-        this.itemComplexities = Reference2DoubleMaps.synchronize(new Reference2DoubleOpenHashMap<>());
-        this.fluidComplexities = Reference2DoubleMaps.synchronize(new Reference2DoubleOpenHashMap<>());
-        this.optimalRecipes = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        this.chemicalManager = new ChemicalComplexityManager();
-        this.parallelism = ThreadPoolManager.getInstance().getParallelism();
     }
 
     public SolverResult solve() {
-        ComplexityAnalyzer.LOGGER.info("🚀 Starting Enhanced Iterative Solver with {} threads...", parallelism);
         long startTime = System.currentTimeMillis();
+        ComplexityAnalyzer.LOGGER.info("🚀 Starting SCC/DAG solver...");
 
-        var recipeTypes = new Object2IntOpenHashMap<String>();
-        for (var recipe : graph.getAllRecipes()) recipeTypes.addTo(recipe.getRecipeType().toString(), 1);
+        var compiled = new CompileBuilder(graph, sourceManager, machineRegistry).build();
+        ComplexityAnalyzer.LOGGER.info("📐 IR compiled: {} nodes ({} items, {} fluids, {} chemicals), {} formulas, {} edges",
+                compiled.nodeCount, compiled.itemCount, compiled.fluidCount, compiled.chemicalCount,
+                compiled.formulaCount, compiled.adjNode.length);
 
-        ComplexityAnalyzer.LOGGER.debug("🔍 Recipe types in graph ({} total):", graph.getAllRecipes().size());
-        var sortedTypes = new ObjectArrayList<>(recipeTypes.object2IntEntrySet());
-        sortedTypes.sort((a, b) -> Integer.compare(b.getIntValue(), a.getIntValue()));
+        var solution = solveCompiled(compiled);
+        ComplexityAnalyzer.LOGGER.info("🌀 Solved {} components ({} cyclic) in {} fixpoint iterations",
+                solution.componentCount, solution.cyclicComponents, solution.fixpointIterations);
 
-        for (int i = 0; i < Math.min(30, sortedTypes.size()); i++) {
-            var e = sortedTypes.get(i);
-            ComplexityAnalyzer.LOGGER.debug("   {} → {} recipes", e.getKey(), e.getIntValue());
-        }
+        var materialized = materialize(compiled, solution);
 
-        initialize();
-
-        ComplexityAnalyzer.LOGGER.info("📦 Phase 1: Calculating item complexities (parallel)...");
-        int itemIterations = solveItemsParallel();
-        logPhaseResults("ITEMS", itemIterations, itemComplexities.size());
-        cache.clear();
-
-        ComplexityAnalyzer.LOGGER.info("💧 Phase 2: Calculating fluid complexities (parallel)...");
-        int fluidIterations = solveFluidsParallel();
-        logPhaseResults("FLUIDS", fluidIterations, fluidComplexities.size());
-        cache.clear();
-
-        ComplexityAnalyzer.LOGGER.info("🧪 Phase 3: Calculating chemical complexities (parallel)...");
-        int chemIterations = solveChemicalsParallel();
-        logPhaseResults("CHEMICALS", chemIterations, chemicalManager.size());
-
-        for (var chemId : chemicalManager.getAllChemicals()) {
-            var fluid = GameRegistryManager.getFluid(chemId);
-            if (fluid != Fluids.EMPTY) {
-                var chemComplexity = chemicalManager.getComplexity(chemId);
-                var fluidComplexity = fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY);
-
-                if (!Double.isInfinite(chemComplexity)) {
-                    if (chemComplexity < fluidComplexity || fluidComplexity < EPSILON) {
-                        fluidComplexities.put(fluid, chemComplexity);
-                    }
-                }
-            }
-        }
-
-        cache.clear();
-
-        ComplexityAnalyzer.LOGGER.info("🔄 Refinement: Final convergence pass (parallel)...");
-        int refinementIterations = refinementPassParallel();
-        logPhaseResults("REFINEMENT", refinementIterations,
-                itemComplexities.size() + fluidComplexities.size() + chemicalManager.size());
-
-        int reclassified = graph.reclassifyRecipesBasedOnComplexity(itemComplexities);
-        if (reclassified > 0) {
-            ComplexityAnalyzer.LOGGER.info("🔄 Reclassified {} recipes, running final pass...", reclassified);
-            cache.clear();
-            totalIterations.addAndGet(refinementPassParallel());
-        }
-
-        cleanupThreadLocals();
+        int reclassified = graph.reclassifyRecipesBasedOnComplexity(materialized.optimalComplexities());
+        if (reclassified > 0)
+            ComplexityAnalyzer.LOGGER.info("🔄 Reclassified {} recipes (costs are category-independent; no re-solve)", reclassified);
 
         long totalTime = System.currentTimeMillis() - startTime;
-        logFinalStatistics(totalTime);
+        logFinalStatistics(compiled, solution, totalTime);
 
-        return new SolverResult(new Reference2DoubleOpenHashMap<>(itemComplexities),
-                new Reference2ObjectOpenHashMap<>(optimalRecipes), totalIterations.get(), totalTime, true);
+        return new SolverResult(
+                materialized.optimalComplexities(),
+                materialized.optimalRecipes(),
+                solution.fixpointIterations,
+                totalTime,
+                true
+        );
     }
 
-    private void cleanupThreadLocals() {
-        try {
-            var pool = ThreadPoolManager.getInstance().getComputePool();
-            var cleanups = new ObjectArrayList<CompletableFuture<Void>>();
-            for (int i = 0; i < parallelism; i++) {
-                cleanups.add(CompletableFuture.runAsync(() -> {
-                    var set = fluidCalculationStack.get();
-                    set.clear();
-                    fluidCalculationStack.remove();
-                }, pool));
+    private void logFinalStatistics(CompiledModel m, Solution sol, long totalTime) {
+        long finiteItems = 0;
+        long finiteFluids = 0;
+        long finiteChems = 0;
+        for (int n = 0; n < m.nodeCount; n++) {
+            if (Double.isInfinite(sol.costs[n])) continue;
+            switch (m.nodeKind[n]) {
+                case K_ITEM -> finiteItems++;
+                case K_FLUID -> finiteFluids++;
+                case K_CHEMICAL -> finiteChems++;
+                default -> {
+                }
             }
-            try {
-                CompletableFuture.allOf(cleanups.toArray(new CompletableFuture[0])).get(5, TimeUnit.SECONDS);
-            } catch (Exception ignored) {
-            }
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("ThreadLocal cleanup warning: {}", e.getMessage());
         }
+
+        ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
+        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS (single-pass DAG solver)");
+        ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
+        ComplexityAnalyzer.LOGGER.info("⏱️  Time: {}ms", totalTime);
+        ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, m.itemCount);
+        ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} finite", finiteFluids, m.fluidCount);
+        ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChems, m.chemicalCount);
+        ComplexityAnalyzer.LOGGER.info("🌀 Components: {} ({} cyclic)", sol.componentCount, sol.cyclicComponents);
+        ComplexityAnalyzer.LOGGER.info("🔁 Fixpoint iterations: {}", sol.fixpointIterations);
     }
 
-    private void initialize() {
-        ComplexityAnalyzer.LOGGER.info("🔧 Initializing solver...");
-        dependencies.build(graph, sourceManager);
+    private Solution solveCompiled(CompiledModel m) {
+        TarjanResult tarjan = tarjanScc(m.nodeCount, m.adjStart, m.adjNode);
+        int[] componentOf = tarjan.componentOf;
+        int componentCount = tarjan.componentCount;
 
-        for (var item : graph.getCorpus()) {
-            var data = sourceManager.analyze(item);
-            var complexity = data != null && data.getSourceItems().isEmpty() ? data.getBaseFactor() : Double.POSITIVE_INFINITY;
-            itemComplexities.put(item, complexity);
-        }
+        int[] componentSize = new int[componentCount];
+        for (int n = 0; n < m.nodeCount; n++) componentSize[componentOf[n]]++;
 
-        for (var fluid : graph.getAllUsedFluids()) {
-            var id = GameRegistryManager.getFluidId(fluid);
-            var fluidName = id.toString();
-            if (fluidName.equals("minecraft:water") || fluidName.equals("minecraft:lava")) {
-                fluidComplexities.put(fluid, 1.0);
-            } else {
-                fluidComplexities.put(fluid, Double.POSITIVE_INFINITY);
+        int[] componentFormulaCount = new int[componentCount];
+        for (int f = 0; f < m.formulaCount; f++) componentFormulaCount[componentOf[m.formulaTarget[f]]]++;
+
+        int[] componentFormulasStart = new int[componentCount + 1];
+        for (int c = 0; c < componentCount; c++)
+            componentFormulasStart[c + 1] = componentFormulasStart[c] + componentFormulaCount[c];
+        int[] componentFormulas = new int[m.formulaCount];
+        {
+            int[] cursor = componentFormulasStart.clone();
+            for (int f = 0; f < m.formulaCount; f++) {
+                int c = componentOf[m.formulaTarget[f]];
+                componentFormulas[cursor[c]++] = f;
             }
         }
 
-        var chemicalsRegistered = new AtomicInteger(0);
-        var chemicalRecipesCreated = new AtomicInteger(0);
+        Solution sol = new Solution(m.nodeCount, m.itemCount);
 
-        for (var recipe : graph.getAllRecipes()) {
-            var itemInputs = new Reference2DoubleOpenHashMap<Item>();
-            var fluidInputs = new Reference2DoubleOpenHashMap<Fluid>();
+        int totalFixpointIterations = 0;
+        int cyclicComponents = 0;
 
-            var chemOutputs = recipe.getChemicalOutputs();
-            if (chemOutputs.isEmpty()) {
-                var rawRecipe = recipe.getRawRecipeRef();
-                if (rawRecipe != null) {
-                    chemOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(rawRecipe, null);
-                }
-            }
+        for (int c = componentCount - 1; c >= 0; c--) {
+            int fStart = componentFormulasStart[c];
+            int fEnd = componentFormulasStart[c + 1];
+            if (fStart == fEnd) continue;
 
-            if (chemOutputs.isEmpty()) continue;
+            boolean cyclic = componentSize[c] > 1;
+            if (cyclic) cyclicComponents++;
 
-            for (var output : chemOutputs) {
-                if (!chemicalManager.getAllChemicals().contains(output.id())) {
-                    chemicalManager.registerChemical(output.id(), Double.POSITIVE_INFINITY);
-                    chemicalsRegistered.incrementAndGet();
-                }
+            int iterations = 0;
+            boolean changed = true;
+            while (changed && iterations < MAX_FIXPOINT_ITERATIONS) {
+                iterations++;
+                changed = false;
+                for (int fi = fStart; fi < fEnd; fi++) {
+                    int formulaIdx = componentFormulas[fi];
+                    double newCost = evalFormula(formulaIdx, m, sol.costs);
+                    if (Double.isInfinite(newCost)) continue;
 
-                var chemInputs = new Object2DoubleOpenHashMap<ResourceLocation>();
+                    int target = m.formulaTarget[formulaIdx];
+                    byte fType = m.formulaType[formulaIdx];
 
-                for (var slot : recipe.getIngredients()) {
-                    var variants = slot.getVariants();
-                    if (!variants.isEmpty()) itemInputs.put(variants.getFirst(), slot.getCount());
-                }
+                    double oldCost = sol.costs[target];
+                    if (significantlyLower(oldCost, newCost)) {
+                        sol.costs[target] = newCost;
+                        changed = true;
+                    }
 
-                for (var slot : recipe.getFluidIngredients()) {
-                    var variants = slot.getFluidVariants();
-                    if (!variants.isEmpty()) fluidInputs.put(variants.getFirst(), slot.getAmount() / 1000.0);
-                }
-
-                var rawRecipeForInputs = recipe.getRawRecipeRef();
-                if (rawRecipeForInputs != null) {
-                    var chemInputsList = AdaptiveRecipeConverter.extractChemicalInputs(rawRecipeForInputs);
-                    for (var chemInput : chemInputsList) chemInputs.put(chemInput.id(), chemInput.amount() / 1000.0);
-                }
-
-                var machineComplexity = 0.0;
-                if (machineRegistry != null) {
-                    var machineItem = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
-                    if (machineItem != null) {
-                        machineComplexity = itemComplexities.getOrDefault(machineItem, 0.0);
-                        if (Double.isInfinite(machineComplexity)) {
-                            machineComplexity = ComplexityConfig.getMachineBaseComplexity();
+                    int itemIdx = m.itemIdxByNode[target];
+                    if (itemIdx >= 0) if (fType == F_ITEM_RECIPE) {
+                        if (newCost < sol.itemBestRecipeCost[itemIdx]) {
+                            sol.itemBestRecipeCost[itemIdx] = newCost;
+                            sol.itemBestRecipeFormulaIdx[itemIdx] = formulaIdx;
                         }
-                        machineComplexity *= ComplexityConfig.getMachineTaxMultiplier();
+                    } else if (fType == F_SOURCE) {
+                        if (newCost < sol.itemBestSourceCost[itemIdx]) sol.itemBestSourceCost[itemIdx] = newCost;
                     }
                 }
-
-                var chemRecipe = new ChemicalComplexityManager.ChemicalRecipe(
-                        itemInputs,
-                        fluidInputs,
-                        chemInputs,
-                        output.amount() / 1000.0,
-                        machineComplexity,
-                        recipe.getRecipeMultiplier()
-                );
-
-                chemicalManager.addProducingRecipe(output.id(), chemRecipe);
-                chemicalRecipesCreated.incrementAndGet();
-            }
-        }
-
-        ComplexityAnalyzer.LOGGER.info("✅ Initialization complete: {} items, {} fluids, {} chemicals ({} recipes)",
-                itemComplexities.size(), fluidComplexities.size(), chemicalsRegistered.get(), chemicalRecipesCreated.get());
-    }
-
-    private int solveChemicalsParallel() {
-        var toUpdate = new ObjectArrayList<ResourceLocation>();
-        for (var chemId : chemicalManager.getAllChemicals()) {
-            if (Double.isInfinite(chemicalManager.getComplexity(chemId))) toUpdate.add(chemId);
-        }
-
-        if (toUpdate.isEmpty()) return 0;
-
-        int iterations = 0;
-        var changed = new AtomicBoolean(true);
-
-        while (iterations < MAX_ITERATIONS / 2 && changed.get()) {
-            iterations++;
-            changed.set(false);
-
-            toUpdate.parallelStream().forEach(chemId -> {
-                if (updateChemicalComplexity(chemId)) changed.set(true);
-            });
-        }
-
-        return iterations;
-    }
-
-    private boolean updateChemicalComplexity(ResourceLocation chemId) {
-        var oldComplexity = chemicalManager.getComplexity(chemId);
-        var newComplexity = chemicalManager.calculateComplexity(chemId, itemComplexities, fluidComplexities);
-
-        if (hasSignificantChange(oldComplexity, newComplexity)) {
-            chemicalManager.setComplexity(chemId, newComplexity);
-            return true;
-        }
-        return false;
-    }
-
-    private int solveItemsParallel() {
-        var allItems = new ObjectArrayList<>(graph.getCorpus());
-        var updateQueue = new ConcurrentLinkedQueue<>(allItems);
-        var needsUpdate = ReferenceSets.synchronize(new ReferenceOpenHashSet<>(allItems));
-
-        int iterations = 0;
-        var changed = new AtomicBoolean(true);
-
-        while (!updateQueue.isEmpty() && iterations < MAX_ITERATIONS && changed.get()) {
-            iterations++;
-            changed.set(false);
-
-            var batch = new ObjectArrayList<Item>();
-            Item item;
-            int batchSize = Math.min(500, updateQueue.size());
-            for (int i = 0; i < batchSize && (item = updateQueue.poll()) != null; i++) {
-                needsUpdate.remove(item);
-                batch.add(item);
             }
 
-            var dependentsToAdd = ReferenceSets.synchronize(new ReferenceOpenHashSet<Item>());
-
-            batch.parallelStream().forEach(batchItem -> {
-                if (updateItemComplexity(batchItem)) {
-                    changed.set(true);
-                    var deps = dependencies.getItemDependents(batchItem);
-                    for (var dependent : deps) if (needsUpdate.add(dependent)) dependentsToAdd.add(dependent);
-                }
-            });
-
-            updateQueue.addAll(dependentsToAdd);
+            totalFixpointIterations += iterations;
         }
 
-        return iterations;
+        sol.componentCount = componentCount;
+        sol.cyclicComponents = cyclicComponents;
+        sol.fixpointIterations = totalFixpointIterations;
+        return sol;
     }
 
-    private boolean updateItemComplexity(Item item) {
-        var oldComplexity = itemComplexities.getOrDefault(item, Double.POSITIVE_INFINITY);
-        var sourceCost = calculateSourceCost(item);
-        var craftResult = calculateCraftingCost(item);
-        var newComplexity = Math.min(sourceCost, craftResult.complexity());
+    private static boolean significantlyLower(double oldCost, double newCost) {
+        if (Double.isInfinite(oldCost)) return !Double.isInfinite(newCost);
+        if (Double.isInfinite(newCost)) return false;
+        if (newCost >= oldCost) return false;
+        double delta = oldCost - newCost;
+        if (delta <= CONVERGENCE_THRESHOLD) return false;
+        if (oldCost <= EPSILON) return delta > CONVERGENCE_THRESHOLD;
+        return delta / oldCost > CONVERGENCE_THRESHOLD;
+    }
 
-        if (hasSignificantChange(oldComplexity, newComplexity)) {
-            itemComplexities.put(item, newComplexity);
-            if (craftResult.recipe() != null && !Double.isInfinite(craftResult.complexity())
-                    && craftResult.complexity() + EPSILON < sourceCost) {
-                optimalRecipes.put(item, craftResult.recipe());
-            } else {
-                optimalRecipes.remove(item);
+    private static double evalFormula(int f, CompiledModel m, double[] costs) {
+        double sum = 0.0;
+
+        int isStart = m.formulaItemSlotStart[f];
+        int isEnd = isStart + m.formulaItemSlotCount[f];
+        for (int s = isStart; s < isEnd; s++) {
+            int vStart = m.itemSlotVariantStart[s];
+            int vEnd = vStart + m.itemSlotVariantCount[s];
+            double minCost = Double.POSITIVE_INFINITY;
+            for (int v = vStart; v < vEnd; v++) {
+                double c = costs[m.itemVariantNode[v]];
+                if (c < minCost) minCost = c;
             }
-            cache.invalidateItem(item);
-            return true;
-        }
-        return false;
-    }
-
-    private int solveFluidsParallel() {
-        var toUpdate = new ObjectArrayList<Fluid>();
-        for (var entry : fluidComplexities.reference2DoubleEntrySet()) {
-            if (Double.isInfinite(entry.getDoubleValue())) toUpdate.add(entry.getKey());
+            if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
+            sum += minCost * m.itemSlotAmount[s];
         }
 
-        if (toUpdate.isEmpty()) return 0;
-
-        int iterations = 0;
-        var changed = new AtomicBoolean(true);
-
-        while (iterations < MAX_ITERATIONS / 2 && changed.get()) {
-            iterations++;
-            changed.set(false);
-
-            toUpdate.parallelStream().forEach(fluid -> {
-                if (updateFluidComplexity(fluid)) changed.set(true);
-            });
-        }
-
-        return iterations;
-    }
-
-    private static final ObjectSet<String> PROTECTED_FLUIDS = new ObjectOpenHashSet<>(new String[]{
-            "minecraft:water",
-            "minecraft:lava"
-    });
-
-    private boolean isProtectedFluid(Fluid fluid) {
-        return PROTECTED_FLUIDS.contains(GameRegistryManager.getFluidId(fluid).toString());
-    }
-
-    private boolean updateFluidComplexity(Fluid fluid) {
-        if (isProtectedFluid(fluid)) return false;
-
-        var oldComplexity = fluidComplexities.getOrDefault(fluid, Double.POSITIVE_INFINITY);
-        var newComplexity = calculateFluidComplexity(fluid);
-
-        if (hasSignificantChange(oldComplexity, newComplexity)) {
-            fluidComplexities.put(fluid, newComplexity);
-            cache.invalidateFluid(fluid);
-            for (var item : graph.getItemsUsingFluid(fluid)) updateItemComplexity(item);
-            return true;
-        }
-        return false;
-    }
-
-    private double calculateFluidComplexity(Fluid fluid) {
-        if (isProtectedFluid(fluid)) return 1.0;
-
-        var stack = fluidCalculationStack.get();
-        if (stack.contains(fluid)) return Double.POSITIVE_INFINITY;
-
-        stack.add(fluid);
-        try {
-            var producers = graph.getRecipesProducingFluid(fluid);
-            if (producers.isEmpty()) return Double.POSITIVE_INFINITY;
-
-            var minCost = Double.POSITIVE_INFINITY;
-
-            for (var recipe : producers) {
-                var recipeCost = calculateRecipeCost(recipe, true);
-
-                if (Double.isInfinite(recipeCost)) {
-                    var rawRecipe = recipe.getRawRecipeRef();
-                    if (rawRecipe != null) {
-                        var chemInputs = AdaptiveRecipeConverter.extractChemicalInputs(rawRecipe);
-                        for (var chemInput : chemInputs) {
-                            var chemComplexity = chemicalManager.getComplexity(chemInput.id());
-                            if (!Double.isInfinite(chemComplexity)) {
-                                recipeCost = chemComplexity;
-                                break;
-                            }
-                        }
-                    }
-                    if (Double.isInfinite(recipeCost)) continue;
-                }
-
-                var outputAmount = 0;
-                for (var s : recipe.getFluidOutputs()) if (s.getFluid().equals(fluid)) outputAmount += s.getAmount();
-
-                if (outputAmount <= 0) outputAmount = 1000;
-                var costPerUnit = (recipeCost * recipe.getRecipeMultiplier()) / (outputAmount / 1000.0);
-                minCost = Math.min(minCost, costPerUnit);
+        int fsStart = m.formulaFluidSlotStart[f];
+        int fsEnd = fsStart + m.formulaFluidSlotCount[f];
+        for (int s = fsStart; s < fsEnd; s++) {
+            int vStart = m.fluidSlotVariantStart[s];
+            int vEnd = vStart + m.fluidSlotVariantCount[s];
+            double minCost = Double.POSITIVE_INFINITY;
+            for (int v = vStart; v < vEnd; v++) {
+                double c = costs[m.fluidVariantNode[v]];
+                if (c < minCost) minCost = c;
             }
-
-            var fluidId = GameRegistryManager.getFluidId(fluid);
-            if (chemicalManager.getAllChemicals().contains(fluidId)) {
-                var chemComplexity = chemicalManager.getComplexity(fluidId);
-                if (!Double.isInfinite(chemComplexity) && chemComplexity < minCost) minCost = chemComplexity;
-            }
-
-            return minCost;
-        } finally {
-            stack.remove(fluid);
+            if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
+            sum += minCost * m.fluidSlotAmount[s];
         }
+
+        int cStart = m.formulaChemInputStart[f];
+        int cEnd = cStart + m.formulaChemInputCount[f];
+        for (int ci = cStart; ci < cEnd; ci++) {
+            double c = costs[m.chemInputNode[ci]];
+            if (Double.isInfinite(c)) return Double.POSITIVE_INFINITY;
+            sum += c * m.chemInputAmount[ci];
+        }
+
+        int mNode = m.formulaMachineNode[f];
+        if (mNode >= 0) {
+            double mCost = costs[mNode];
+            if (Double.isInfinite(mCost)) {
+                double fb = m.formulaMachineFallback[f];
+                if (fb < 0) return Double.POSITIVE_INFINITY;
+                mCost = fb;
+            }
+            sum += mCost * m.formulaMachineMul[f];
+        }
+
+        double divisor = m.formulaOutputDivisor[f];
+        return m.formulaBaseCost[f] + (sum * m.formulaMultiplier[f]) / divisor;
     }
 
-    private int refinementPassParallel() {
-        int iterations = 0;
-        var changed = new AtomicBoolean(true);
-
-        var items = new ObjectArrayList<>(graph.getCorpus());
-        var fluids = new ObjectArrayList<>(graph.getAllUsedFluids());
-        var chemicals = new ObjectArrayList<>(chemicalManager.getAllChemicals());
-
-        while (changed.get() && iterations < 100) {
-            iterations++;
-            changed.set(false);
-
-            items.parallelStream().forEach(item -> {
-                if (updateItemComplexity(item)) changed.set(true);
-            });
-
-            fluids.parallelStream().forEach(fluid -> {
-                if (updateFluidComplexity(fluid)) changed.set(true);
-            });
-
-            chemicals.parallelStream().forEach(chemId -> {
-                if (updateChemicalComplexity(chemId)) changed.set(true);
-            });
-        }
-
-        return iterations;
+    private record TarjanResult(int[] componentOf, int componentCount) {
     }
 
-    private double calculateSourceCost(Item item) {
-        var allSources = sourceManager.findAllSources(item);
-        if (allSources.isEmpty()) return Double.POSITIVE_INFINITY;
+    private static TarjanResult tarjanScc(int n, int[] adjStart, int[] adjNode) {
+        int[] index = new int[n];
+        int[] lowlink = new int[n];
+        boolean[] onStack = new boolean[n];
+        int[] sccStack = new int[n];
+        int sccTop = 0;
+        int[] componentOf = new int[n];
+        int[] callStack = new int[n];
+        int[] callIter = new int[n];
 
-        var bestCost = Double.POSITIVE_INFINITY;
-        for (var data : allSources) {
-            var cost = data.getBaseFactor();
-            var sourceItems = data.getSourceItems();
+        Arrays.fill(index, -1);
+        Arrays.fill(componentOf, -1);
 
-            if (sourceItems.isEmpty()) {
-                bestCost = Math.min(bestCost, cost);
-            } else {
-                var hasInfiniteDep = false;
-                for (var entry : sourceItems.reference2DoubleEntrySet()) {
-                    var depComplexity = itemComplexities.getOrDefault(entry.getKey(), Double.POSITIVE_INFINITY);
-                    if (Double.isInfinite(depComplexity)) {
-                        hasInfiniteDep = true;
-                        break;
-                    }
-                    cost += depComplexity * entry.getDoubleValue();
-                }
-                if (!hasInfiniteDep) bestCost = Math.min(bestCost, cost);
-            }
-        }
-        return bestCost;
-    }
+        int idxCounter = 0;
+        int compCounter = 0;
 
-    private ComplexityResult calculateCraftingCost(Item item) {
-        var recipes = graph.getRecipes(item);
-        if (recipes.isEmpty()) return new ComplexityResult(Double.POSITIVE_INFINITY, null);
+        for (int start = 0; start < n; start++) {
+            if (index[start] != -1) continue;
 
-        var minCost = Double.POSITIVE_INFINITY;
-        var bestRecipe = (RecipeNode) null;
+            int callTop = 0;
+            callStack[0] = start;
+            callIter[start] = adjStart[start];
+            index[start] = idxCounter;
+            lowlink[start] = idxCounter;
+            idxCounter++;
+            sccStack[sccTop++] = start;
+            onStack[start] = true;
 
-        for (var recipe : recipes) {
-            var cost = calculateRecipeCost(recipe, false);
-            if (cost < minCost) {
-                minCost = cost;
-                bestRecipe = recipe;
-            }
-        }
-        return new ComplexityResult(minCost, bestRecipe);
-    }
+            while (callTop >= 0) {
+                int v = callStack[callTop];
+                int it = callIter[v];
+                int end = adjStart[v + 1];
 
-    private double calculateRecipeCost(RecipeNode recipe, boolean allowInfiniteMachines) {
-        recipeCostCalculations.incrementAndGet();
-
-        if (!allowInfiniteMachines) {
-            var cached = cache.getRecipeCost(recipe);
-            if (cached != null && cached.isValid(itemComplexities, fluidComplexities)) {
-                cacheHits.incrementAndGet();
-                return cached.cost;
-            }
-        }
-
-        var totalCost = 0.0;
-        var usedItems = new Reference2DoubleOpenHashMap<Item>();
-        var usedFluids = new Reference2DoubleOpenHashMap<Fluid>();
-
-        for (var slot : recipe.getIngredients()) {
-            var variants = slot.getVariants();
-            var slotCost = getMinComplexity(variants, itemComplexities);
-            if (Double.isInfinite(slotCost)) return Double.POSITIVE_INFINITY;
-            totalCost += slotCost * slot.getCount();
-
-            var bestVariant = getBestVariant(variants, itemComplexities);
-            if (bestVariant != null) usedItems.put(bestVariant, slotCost);
-        }
-
-        for (var slot : recipe.getFluidIngredients()) {
-            var variants = slot.getFluidVariants();
-            var slotCost = getMinComplexity(variants, fluidComplexities);
-
-            if (Double.isInfinite(slotCost)) if (allowInfiniteMachines) {
-                var bestFluid = getBestVariant(variants, fluidComplexities);
-                if (bestFluid != null) {
-                    var fluidId = GameRegistryManager.getFluidId(bestFluid);
-                    var chemComplexity = chemicalManager.getComplexity(fluidId);
-                    if (!Double.isInfinite(chemComplexity)) {
-                        slotCost = chemComplexity;
-                    } else {
-                        return Double.POSITIVE_INFINITY;
+                if (it < end) {
+                    int w = adjNode[it];
+                    callIter[v] = it + 1;
+                    if (index[w] == -1) {
+                        callTop++;
+                        callStack[callTop] = w;
+                        callIter[w] = adjStart[w];
+                        index[w] = idxCounter;
+                        lowlink[w] = idxCounter;
+                        idxCounter++;
+                        sccStack[sccTop++] = w;
+                        onStack[w] = true;
+                    } else if (onStack[w]) {
+                        if (index[w] < lowlink[v]) lowlink[v] = index[w];
                     }
                 } else {
-                    return Double.POSITIVE_INFINITY;
+                    if (lowlink[v] == index[v]) {
+                        int popped;
+                        do {
+                            popped = sccStack[--sccTop];
+                            onStack[popped] = false;
+                            componentOf[popped] = compCounter;
+                        } while (popped != v);
+                        compCounter++;
+                    }
+                    callTop--;
+                    if (callTop >= 0) {
+                        int parent = callStack[callTop];
+                        if (lowlink[v] < lowlink[parent]) lowlink[parent] = lowlink[v];
+                    }
                 }
-            } else {
-                return Double.POSITIVE_INFINITY;
             }
-
-            totalCost += slotCost * (slot.getAmount() / 1000.0) * ComplexityConfig.getFluidNormalizationFactor();
-            var bestFluid = getBestVariant(variants, fluidComplexities);
-            if (bestFluid != null) usedFluids.put(bestFluid, slotCost);
         }
 
-        if (machineRegistry != null) {
-            var machineItem = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
-            if (machineItem != null) {
-                var machineComplexity = itemComplexities.getOrDefault(machineItem, 0.0);
+        return new TarjanResult(componentOf, compCounter);
+    }
 
-                if (isZeroCostMachine(recipe.getRecipeType())) {
-                    machineComplexity = 0.0;
-                } else if (Double.isInfinite(machineComplexity)) {
-                    if (allowInfiniteMachines) {
-                        machineComplexity = ComplexityConfig.getMachineBaseComplexity();
-                    } else {
-                        return Double.POSITIVE_INFINITY;
+    private record MaterializedResult(
+            Reference2DoubleMap<Item> optimalComplexities,
+            Reference2ObjectMap<Item, RecipeNode> optimalRecipes
+    ) {
+    }
+
+    private MaterializedResult materialize(CompiledModel m, Solution sol) {
+        var itemComplexities = new Reference2DoubleOpenHashMap<Item>(m.itemCount);
+        itemComplexities.defaultReturnValue(Double.POSITIVE_INFINITY);
+        var optimalRecipes = new Reference2ObjectOpenHashMap<Item, RecipeNode>();
+
+        for (int n = 0; n < m.nodeCount; n++) {
+            if (m.nodeKind[n] != K_ITEM) continue;
+            if (!m.itemInCorpus[n]) continue;
+            Item item = m.itemByNode[n];
+            if (item == null) continue;
+
+            double cost = sol.costs[n];
+            itemComplexities.put(item, cost);
+
+            int itemIdx = m.itemIdxByNode[n];
+            if (itemIdx < 0) continue;
+
+            double recipeBest = sol.itemBestRecipeCost[itemIdx];
+            double sourceBest = sol.itemBestSourceCost[itemIdx];
+            if (Double.isInfinite(recipeBest)) continue;
+            if (recipeBest + EPSILON >= sourceBest) continue;
+
+            int formulaIdx = sol.itemBestRecipeFormulaIdx[itemIdx];
+            if (formulaIdx < 0) continue;
+
+            RecipeNode recipe = m.formulaRecipe[formulaIdx];
+            if (recipe != null) optimalRecipes.put(item, recipe);
+        }
+
+        return new MaterializedResult(itemComplexities, optimalRecipes);
+    }
+
+    private static final class CompileBuilder {
+        private final RecipeGraph graph;
+        private final SourceManager sourceManager;
+        private final MachineRegistry machineRegistry;
+        private final ObjectArrayList<Item> itemByNode = new ObjectArrayList<>();
+        private final ObjectArrayList<Fluid> fluidByNode = new ObjectArrayList<>();
+        private final ObjectArrayList<ResourceLocation> chemicalByNode = new ObjectArrayList<>();
+        private final ByteList nodeKind = new ByteList();
+        private final BoolList itemInCorpus = new BoolList();
+        private final IntArrayList itemIdxByNode = new IntArrayList();
+        private final Reference2IntOpenHashMap<Item> itemToNode = new Reference2IntOpenHashMap<>();
+        private final Reference2IntOpenHashMap<Fluid> fluidToNode = new Reference2IntOpenHashMap<>();
+        private final Object2IntOpenHashMap<ResourceLocation> chemicalToNode = new Object2IntOpenHashMap<>();
+
+        private int itemCount = 0;
+        private int fluidCount = 0;
+        private int chemicalCount = 0;
+
+        private final ByteList formulaType = new ByteList();
+        private final IntArrayList formulaTarget = new IntArrayList();
+        private final DoubleArrayList formulaBaseCost = new DoubleArrayList();
+        private final DoubleArrayList formulaMultiplier = new DoubleArrayList();
+        private final DoubleArrayList formulaOutputDivisor = new DoubleArrayList();
+        private final IntArrayList formulaItemSlotStart = new IntArrayList();
+        private final IntArrayList formulaItemSlotCount = new IntArrayList();
+        private final IntArrayList formulaFluidSlotStart = new IntArrayList();
+        private final IntArrayList formulaFluidSlotCount = new IntArrayList();
+        private final IntArrayList formulaChemInputStart = new IntArrayList();
+        private final IntArrayList formulaChemInputCount = new IntArrayList();
+        private final IntArrayList formulaMachineNode = new IntArrayList();
+        private final DoubleArrayList formulaMachineMul = new DoubleArrayList();
+        private final DoubleArrayList formulaMachineFallback = new DoubleArrayList();
+        private final ObjectArrayList<RecipeNode> formulaRecipe = new ObjectArrayList<>();
+        private final IntArrayList itemSlotVariantStart = new IntArrayList();
+        private final IntArrayList itemSlotVariantCount = new IntArrayList();
+        private final DoubleArrayList itemSlotAmount = new DoubleArrayList();
+        private final IntArrayList itemVariantNode = new IntArrayList();
+        private final IntArrayList fluidSlotVariantStart = new IntArrayList();
+        private final IntArrayList fluidSlotVariantCount = new IntArrayList();
+        private final DoubleArrayList fluidSlotAmount = new DoubleArrayList();
+        private final IntArrayList fluidVariantNode = new IntArrayList();
+        private final IntArrayList chemInputNode = new IntArrayList();
+        private final DoubleArrayList chemInputAmount = new DoubleArrayList();
+        private final IntArrayList edgeFrom = new IntArrayList();
+        private final IntArrayList edgeTo = new IntArrayList();
+
+        CompileBuilder(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
+            this.itemToNode.defaultReturnValue(-1);
+            this.fluidToNode.defaultReturnValue(-1);
+            this.chemicalToNode.defaultReturnValue(-1);
+            this.graph = graph;
+            this.sourceManager = sourceManager;
+            this.machineRegistry = machineRegistry;
+        }
+
+        CompiledModel build() {
+            allocateNodes();
+            compileSourceFormulas();
+            compileRecipeFormulas();
+            compileProtectedFluidFormulas();
+            compileChemicalBridgeFormulas();
+            return materialize();
+        }
+
+        private int allocateItemNode(Item item) {
+            int existing = itemToNode.getInt(item);
+            if (existing != -1) return existing;
+            int node = nodeKind.size();
+            itemToNode.put(item, node);
+            itemByNode.add(item);
+            fluidByNode.add(null);
+            chemicalByNode.add(null);
+            nodeKind.add(K_ITEM);
+            itemInCorpus.addFalse();
+            itemIdxByNode.add(itemCount);
+            itemCount++;
+            return node;
+        }
+
+        private int allocateFluidNode(Fluid fluid) {
+            int existing = fluidToNode.getInt(fluid);
+            if (existing != -1) return existing;
+            int node = nodeKind.size();
+            fluidToNode.put(fluid, node);
+            itemByNode.add(null);
+            fluidByNode.add(fluid);
+            chemicalByNode.add(null);
+            nodeKind.add(K_FLUID);
+            itemInCorpus.addFalse();
+            itemIdxByNode.add(-1);
+            fluidCount++;
+            return node;
+        }
+
+        private int allocateChemicalNode(ResourceLocation chemId) {
+            int existing = chemicalToNode.getInt(chemId);
+            if (existing != -1) return existing;
+            int node = nodeKind.size();
+            chemicalToNode.put(chemId, node);
+            itemByNode.add(null);
+            fluidByNode.add(null);
+            chemicalByNode.add(chemId);
+            nodeKind.add(K_CHEMICAL);
+            itemInCorpus.addFalse();
+            itemIdxByNode.add(-1);
+            chemicalCount++;
+            return node;
+        }
+
+        private void allocateNodes() {
+            var corpus = graph.getCorpus();
+            for (Item item : corpus) {
+                int node = allocateItemNode(item);
+                itemInCorpus.setTrue(node);
+            }
+
+            for (Fluid fluid : graph.getAllUsedFluids()) allocateFluidNode(fluid);
+
+            allocateFluidNode(Fluids.WATER);
+            allocateFluidNode(Fluids.LAVA);
+
+            for (RecipeNode recipe : graph.getAllRecipes()) {
+                Item resultItem = recipe.getResultItem();
+                if (resultItem != null) allocateItemNode(resultItem);
+
+                for (IngredientSlot slot : recipe.getIngredients()) {
+                    for (Item variant : slot.getVariants()) if (variant != null) allocateItemNode(variant);
+                }
+                for (var slot : recipe.getFluidIngredients()) {
+                    for (Fluid variant : slot.getFluidVariants()) {
+                        Fluid normalized = normalizeFluid(variant);
+                        if (normalized != Fluids.EMPTY) allocateFluidNode(normalized);
+                    }
+                }
+                for (var stack : recipe.getFluidOutputs()) {
+                    Fluid normalized = normalizeFluid(stack.getFluid());
+                    if (normalized != Fluids.EMPTY) allocateFluidNode(normalized);
+                }
+
+                if (machineRegistry != null) {
+                    Item machineItem = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
+                    if (machineItem != null) allocateItemNode(machineItem);
+                }
+
+                ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
+                if (chemOutputs.isEmpty() && recipe.getRawRecipeRef() != null) {
+                    chemOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(recipe.getRawRecipeRef(), null);
+                }
+                for (var chem : chemOutputs) if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
+
+                if (recipe.getRawRecipeRef() != null) {
+                    var rawInputs = AdaptiveRecipeConverter.extractChemicalInputs(recipe.getRawRecipeRef());
+                    for (var chem : rawInputs) if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
+                }
+                for (var chem : recipe.getChemicalIngredients()) {
+                    if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
+                }
+            }
+
+            for (Item item : corpus) {
+                ObjectList<BaseResourceData> sources = sourceManager.findAllSources(item);
+                for (BaseResourceData data : sources) {
+                    if (data == null) continue;
+                    var sourceItems = data.getSourceItems();
+                    if (sourceItems.isEmpty()) continue;
+                    for (var entry : sourceItems.reference2DoubleEntrySet()) {
+                        Item dep = entry.getKey();
+                        if (dep != null) allocateItemNode(dep);
+                    }
+                }
+            }
+
+            for (var entry : chemicalToNode.object2IntEntrySet()) {
+                ResourceLocation id = entry.getKey();
+                Fluid fluid = GameRegistryManager.getFluid(id);
+                if (fluid != null && fluid != Fluids.EMPTY && !isProtectedFluid(fluid)) allocateFluidNode(fluid);
+            }
+        }
+
+        private void compileSourceFormulas() {
+            for (Item item : graph.getCorpus()) {
+                int targetNode = itemToNode.getInt(item);
+                if (targetNode == -1) continue;
+
+                ObjectList<BaseResourceData> sources = sourceManager.findAllSources(item);
+                if (sources.isEmpty()) continue;
+
+                for (BaseResourceData data : sources) {
+                    if (data == null) continue;
+                    double base = data.getBaseFactor();
+                    if (Double.isNaN(base) || Double.isInfinite(base)) continue;
+
+                    int itemSlotStart = itemSlotVariantStart.size();
+                    int itemSlotCnt = 0;
+                    boolean depsOk = true;
+
+                    Reference2DoubleMap<Item> sourceItems = data.getSourceItems();
+                    for (var entry : sourceItems.reference2DoubleEntrySet()) {
+                        Item dep = entry.getKey();
+                        double amount = entry.getDoubleValue();
+                        if (dep == null || amount == 0.0) continue;
+                        int depNode = itemToNode.getInt(dep);
+                        if (depNode == -1) depNode = allocateItemNode(dep);
+                        addItemSlotSingle(depNode, amount);
+                        itemSlotCnt++;
+                    }
+
+                    if (!depsOk) {
+                        truncateItemSlots(itemSlotStart);
+                        continue;
+                    }
+
+                    int formulaId = emitFormulaShell(F_SOURCE, targetNode, base, 1.0, 1.0,
+                            itemSlotStart, itemSlotCnt, fluidSlotVariantStart.size(), 0, chemInputNode.size(),
+                            0, -1, 0.0, -1.0, null);
+                    addEdgesForFormula(formulaId);
+                }
+            }
+        }
+
+        private void compileRecipeFormulas() {
+            double fluidNorm = ComplexityConfig.getFluidNormalizationFactor();
+            double machineTax = ComplexityConfig.getMachineTaxMultiplier();
+            double machineFallback = ComplexityConfig.getMachineBaseComplexity();
+
+            for (RecipeNode recipe : graph.getAllRecipes()) {
+                double multiplier = recipe.getRecipeMultiplier();
+                if (Double.isInfinite(multiplier) || Double.isNaN(multiplier)) continue;
+
+                int machineNode = -1;
+                double machineMul = 0.0;
+                Item machineItem = (machineRegistry != null)
+                        ? machineRegistry.getMachineForRecipe(recipe.getRecipeType()) : null;
+                boolean zeroCostMachine = isZeroCostRecipeType(recipe.getRecipeType());
+                if (machineItem != null && !zeroCostMachine) {
+                    int candidateNode = itemToNode.getInt(machineItem);
+                    if (candidateNode != -1 && itemInCorpus.getBoolean(candidateNode)) {
+                        machineNode = candidateNode;
+                        machineMul = machineTax;
                     }
                 }
 
-                if (machineComplexity > 0.0) {
-                    totalCost += machineComplexity * ComplexityConfig.getMachineTaxMultiplier();
+                Item resultItem = recipe.getResultItem();
+                int itemTarget = (resultItem != null) ? itemToNode.getInt(resultItem) : -1;
+                int resultCount = recipe.getResultCount();
+                boolean validItemRecipe = itemTarget != -1 && resultCount > 0;
+                int itemSlotsStart = itemSlotVariantStart.size();
+                int fluidSlotsStart = fluidSlotVariantStart.size();
+                int itemSlotsCount = 0;
+                int fluidSlotsCount = 0;
+                boolean inputsValid = true;
+
+                for (IngredientSlot slot : recipe.getIngredients()) {
+                    if (appendItemSlot(slot.getVariants(), slot.getCount())) {
+                        inputsValid = false;
+                        break;
+                    }
+                    itemSlotsCount++;
+                }
+                if (inputsValid) for (var slot : recipe.getFluidIngredients()) {
+                    double amount = (slot.getAmount() / 1000.0) * fluidNorm;
+                    if (appendFluidSlot(slot.getFluidVariants(), amount)) {
+                        inputsValid = false;
+                        break;
+                    }
+                    fluidSlotsCount++;
+                }
+
+                if (validItemRecipe && inputsValid) {
+                    int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget, 0.0, multiplier, resultCount,
+                            itemSlotsStart, itemSlotsCount, fluidSlotsStart, fluidSlotsCount, chemInputNode.size(), 0,
+                            machineNode, machineMul, -1.0, recipe);
+                    addEdgesForFormula(formulaId);
+                } else {
+                    truncateItemSlots(itemSlotsStart);
+                    truncateFluidSlots(fluidSlotsStart);
+                }
+
+                if (!recipe.getFluidOutputs().isEmpty()) {
+                    Reference2DoubleOpenHashMap<Fluid> grouped = new Reference2DoubleOpenHashMap<>();
+                    for (var stack : recipe.getFluidOutputs()) {
+                        Fluid normalized = normalizeFluid(stack.getFluid());
+                        if (normalized == Fluids.EMPTY || isProtectedFluid(normalized)) continue;
+                        grouped.addTo(normalized, stack.getAmount());
+                    }
+
+                    if (!grouped.isEmpty()) {
+                        int sharedItemSlotStart = itemSlotVariantStart.size();
+                        int sharedItemSlotCount = 0;
+                        int sharedFluidSlotStart = fluidSlotVariantStart.size();
+                        int sharedFluidSlotCount = 0;
+                        boolean sharedValid = true;
+
+                        for (IngredientSlot slot : recipe.getIngredients()) {
+                            if (appendItemSlot(slot.getVariants(), slot.getCount())) {
+                                sharedValid = false;
+                                break;
+                            }
+                            sharedItemSlotCount++;
+                        }
+                        if (sharedValid) for (var slot : recipe.getFluidIngredients()) {
+                            double amount = (slot.getAmount() / 1000.0) * fluidNorm;
+                            if (appendFluidSlot(slot.getFluidVariants(), amount)) {
+                                sharedValid = false;
+                                break;
+                            }
+                            sharedFluidSlotCount++;
+                        }
+
+                        if (sharedValid) {
+                            for (var entry : grouped.reference2DoubleEntrySet()) {
+                                Fluid fluid = entry.getKey();
+                                int fluidNode = fluidToNode.getInt(fluid);
+                                if (fluidNode == -1) fluidNode = allocateFluidNode(fluid);
+                                double outputAmount = entry.getDoubleValue();
+                                if (outputAmount <= 0) outputAmount = 1000.0;
+                                double outputBuckets = outputAmount / 1000.0;
+                                int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode, 0.0, multiplier, outputBuckets,
+                                        sharedItemSlotStart, sharedItemSlotCount,
+                                        sharedFluidSlotStart, sharedFluidSlotCount,
+                                        chemInputNode.size(), 0,
+                                        machineNode, machineMul, machineNode >= 0 ? machineFallback : -1.0,
+                                        null);
+                                addEdgesForFormula(formulaId);
+                            }
+                        } else {
+                            truncateItemSlots(sharedItemSlotStart);
+                            truncateFluidSlots(sharedFluidSlotStart);
+                        }
+                    }
+                }
+
+                ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
+                if (chemOutputs.isEmpty() && recipe.getRawRecipeRef() != null) {
+                    chemOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(recipe.getRawRecipeRef(), null);
+                }
+                if (!chemOutputs.isEmpty()) {
+                    ObjectList<AdaptiveRecipeConverter.ChemicalOutput> rawChemInputs = null;
+                    if (recipe.getRawRecipeRef() != null) {
+                        rawChemInputs = AdaptiveRecipeConverter.extractChemicalInputs(recipe.getRawRecipeRef());
+                    }
+                    boolean useRaw = rawChemInputs != null && !rawChemInputs.isEmpty();
+                    ObjectList<RecipeNode.ChemicalIngredient> structured = recipe.getChemicalIngredients();
+
+                    int sharedItemSlotStart = itemSlotVariantStart.size();
+                    int sharedItemSlotCount = 0;
+                    int sharedFluidSlotStart = fluidSlotVariantStart.size();
+                    int sharedFluidSlotCount = 0;
+                    int sharedChemStart = chemInputNode.size();
+                    int sharedChemCount = 0;
+                    boolean sharedValid = true;
+
+                    for (IngredientSlot slot : recipe.getIngredients()) {
+                        if (appendItemSlot(slot.getVariants(), slot.getCount())) {
+                            sharedValid = false;
+                            break;
+                        }
+                        sharedItemSlotCount++;
+                    }
+                    if (sharedValid) for (var slot : recipe.getFluidIngredients()) {
+                        double amount = slot.getAmount() / 1000.0;
+                        if (appendFluidSlot(slot.getFluidVariants(), amount)) {
+                            sharedValid = false;
+                            break;
+                        }
+                        sharedFluidSlotCount++;
+                    }
+                    if (sharedValid && useRaw) {
+                        for (var chem : rawChemInputs) {
+                            if (chem == null || chem.id() == null) continue;
+                            int chemNode = chemicalToNode.getInt(chem.id());
+                            if (chemNode == -1) chemNode = allocateChemicalNode(chem.id());
+                            chemInputNode.add(chemNode);
+                            chemInputAmount.add(chem.amount() / 1000.0);
+                            sharedChemCount++;
+                        }
+                    } else {
+                        for (var chem : structured) {
+                            if (chem == null || chem.id() == null) continue;
+                            int chemNode = chemicalToNode.getInt(chem.id());
+                            if (chemNode == -1) chemNode = allocateChemicalNode(chem.id());
+                            chemInputNode.add(chemNode);
+                            chemInputAmount.add(chem.amount() / 1000.0);
+                            sharedChemCount++;
+                        }
+                    }
+
+                    if (sharedValid) {
+                        for (var output : chemOutputs) {
+                            if (output == null || output.id() == null) continue;
+                            int chemNode = chemicalToNode.getInt(output.id());
+                            if (chemNode == -1) chemNode = allocateChemicalNode(output.id());
+                            double outputBuckets = output.amount() / 1000.0;
+                            if (outputBuckets <= 0) continue;
+                            int formulaId = emitFormulaShell(F_CHEM_RECIPE, chemNode, 0.0, multiplier, outputBuckets,
+                                    sharedItemSlotStart, sharedItemSlotCount,
+                                    sharedFluidSlotStart, sharedFluidSlotCount,
+                                    sharedChemStart, sharedChemCount,
+                                    machineNode, machineMul, machineNode >= 0 ? machineFallback : -1.0,
+                                    null);
+                            addEdgesForFormula(formulaId);
+                        }
+                    } else {
+                        truncateItemSlots(sharedItemSlotStart);
+                        truncateFluidSlots(sharedFluidSlotStart);
+                        truncateChemInputs(sharedChemStart);
+                    }
                 }
             }
         }
 
-        var multiplier = recipe.getRecipeMultiplier();
-        var resultCount = recipe.getResultCount();
-        if (resultCount <= 0 || Double.isInfinite(multiplier)) return Double.POSITIVE_INFINITY;
+        private void compileProtectedFluidFormulas() {
+            int waterNode = fluidToNode.getInt(Fluids.WATER);
+            int lavaNode = fluidToNode.getInt(Fluids.LAVA);
+            if (waterNode != -1) emitProtectedFluidFormula(waterNode);
+            if (lavaNode != -1) emitProtectedFluidFormula(lavaNode);
+        }
 
-        var finalCost = (totalCost * multiplier) / resultCount;
+        private void compileChemicalBridgeFormulas() {
+            for (var entry : chemicalToNode.object2IntEntrySet()) {
+                ResourceLocation id = entry.getKey();
+                int chemNode = entry.getIntValue();
+                Fluid fluid = GameRegistryManager.getFluid(id);
+                if (fluid == null || fluid == Fluids.EMPTY) continue;
+                if (isProtectedFluid(fluid)) continue;
+                int fluidNode = fluidToNode.getInt(fluid);
+                if (fluidNode == -1) continue;
 
-        if (!allowInfiniteMachines) cache.putRecipeCost(recipe, new RecipeCostCache(finalCost, usedItems, usedFluids));
+                int chemStart = chemInputNode.size();
+                chemInputNode.add(chemNode);
+                chemInputAmount.add(1.0);
 
-        return finalCost;
+                int formulaId = emitFormulaShell(F_CHEM_BRIDGE, fluidNode, 0.0, 1.0, 1.0,
+                        itemSlotVariantStart.size(), 0, fluidSlotVariantStart.size(), 0,
+                        chemStart, 1, -1, 0.0, -1.0, null);
+                addEdgesForFormula(formulaId);
+            }
+        }
+
+        private void emitProtectedFluidFormula(int target) {
+            emitFormulaShell(F_PROTECTED_FLUID, target, 1.0, 1.0, 1.0, itemSlotVariantStart.size(),
+                    0, fluidSlotVariantStart.size(), 0, chemInputNode.size(), 0,
+                    -1, 0.0, -1.0, null);
+        }
+
+        private int emitFormulaShell(byte type, int target, double base, double multiplier, double divisor,
+                                     int itemSlotStart, int itemSlotCount, int fluidSlotStart, int fluidSlotCount,
+                                     int chemStart, int chemCount, int machineNode, double machineMul,
+                                     double machineFallback, RecipeNode recipe) {
+            int formulaId = formulaType.size();
+            formulaType.add(type);
+            formulaTarget.add(target);
+            formulaBaseCost.add(base);
+            formulaMultiplier.add(multiplier);
+            formulaOutputDivisor.add(divisor);
+            formulaItemSlotStart.add(itemSlotStart);
+            formulaItemSlotCount.add(itemSlotCount);
+            formulaFluidSlotStart.add(fluidSlotStart);
+            formulaFluidSlotCount.add(fluidSlotCount);
+            formulaChemInputStart.add(chemStart);
+            formulaChemInputCount.add(chemCount);
+            formulaMachineNode.add(machineNode);
+            formulaMachineMul.add(machineMul);
+            formulaMachineFallback.add(machineFallback);
+            formulaRecipe.add(recipe);
+            return formulaId;
+        }
+
+        private boolean appendItemSlot(ObjectList<Item> variants, double amount) {
+            if (variants.isEmpty()) return true;
+            int variantStart = itemVariantNode.size();
+            int added = 0;
+            ReferenceOpenHashSet<Item> seen = null;
+            for (Item v : variants) {
+                if (v == null) continue;
+                if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
+                if (!seen.add(v)) continue;
+                int node = itemToNode.getInt(v);
+                if (node == -1) node = allocateItemNode(v);
+                itemVariantNode.add(node);
+                added++;
+            }
+            if (added == 0) return true;
+            itemSlotVariantStart.add(variantStart);
+            itemSlotVariantCount.add(added);
+            itemSlotAmount.add(amount);
+            return false;
+        }
+
+        private void addItemSlotSingle(int depNode, double amount) {
+            int variantStart = itemVariantNode.size();
+            itemVariantNode.add(depNode);
+            itemSlotVariantStart.add(variantStart);
+            itemSlotVariantCount.add(1);
+            itemSlotAmount.add(amount);
+        }
+
+        private boolean appendFluidSlot(ObjectList<Fluid> variants, double amount) {
+            if (variants.isEmpty()) return true;
+            int variantStart = fluidVariantNode.size();
+            int added = 0;
+            ReferenceOpenHashSet<Fluid> seen = null;
+            for (Fluid v : variants) {
+                if (v == null) continue;
+                Fluid normalized = normalizeFluid(v);
+                if (normalized == Fluids.EMPTY) continue;
+                if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
+                if (!seen.add(normalized)) continue;
+                int node = fluidToNode.getInt(normalized);
+                if (node == -1) node = allocateFluidNode(normalized);
+                fluidVariantNode.add(node);
+                added++;
+            }
+            if (added == 0) return true;
+            fluidSlotVariantStart.add(variantStart);
+            fluidSlotVariantCount.add(added);
+            fluidSlotAmount.add(amount);
+            return false;
+        }
+
+        private void truncateItemSlots(int slotStartInclusive) {
+            int variantTrim = (slotStartInclusive < itemSlotVariantStart.size())
+                    ? itemSlotVariantStart.getInt(slotStartInclusive) : itemVariantNode.size();
+            while (itemSlotVariantStart.size() > slotStartInclusive) {
+                int last = itemSlotVariantStart.size() - 1;
+                itemSlotVariantStart.removeInt(last);
+                itemSlotVariantCount.removeInt(last);
+                itemSlotAmount.removeDouble(last);
+            }
+            while (itemVariantNode.size() > variantTrim) {
+                itemVariantNode.removeInt(itemVariantNode.size() - 1);
+            }
+        }
+
+        private void truncateFluidSlots(int slotStartInclusive) {
+            int variantTrim = (slotStartInclusive < fluidSlotVariantStart.size())
+                    ? fluidSlotVariantStart.getInt(slotStartInclusive) : fluidVariantNode.size();
+            while (fluidSlotVariantStart.size() > slotStartInclusive) {
+                int last = fluidSlotVariantStart.size() - 1;
+                fluidSlotVariantStart.removeInt(last);
+                fluidSlotVariantCount.removeInt(last);
+                fluidSlotAmount.removeDouble(last);
+            }
+            while (fluidVariantNode.size() > variantTrim) fluidVariantNode.removeInt(fluidVariantNode.size() - 1);
+        }
+
+        private void truncateChemInputs(int chemStartInclusive) {
+            while (chemInputNode.size() > chemStartInclusive) {
+                int last = chemInputNode.size() - 1;
+                chemInputNode.removeInt(last);
+                chemInputAmount.removeDouble(last);
+            }
+        }
+
+        private void addEdgesForFormula(int formulaId) {
+            int target = formulaTarget.getInt(formulaId);
+
+            int isStart = formulaItemSlotStart.getInt(formulaId);
+            int isEnd = isStart + formulaItemSlotCount.getInt(formulaId);
+            for (int s = isStart; s < isEnd; s++) {
+                int vStart = itemSlotVariantStart.getInt(s);
+                int vEnd = vStart + itemSlotVariantCount.getInt(s);
+                for (int v = vStart; v < vEnd; v++) {
+                    edgeFrom.add(itemVariantNode.getInt(v));
+                    edgeTo.add(target);
+                }
+            }
+
+            int fsStart = formulaFluidSlotStart.getInt(formulaId);
+            int fsEnd = fsStart + formulaFluidSlotCount.getInt(formulaId);
+            for (int s = fsStart; s < fsEnd; s++) {
+                int vStart = fluidSlotVariantStart.getInt(s);
+                int vEnd = vStart + fluidSlotVariantCount.getInt(s);
+                for (int v = vStart; v < vEnd; v++) {
+                    edgeFrom.add(fluidVariantNode.getInt(v));
+                    edgeTo.add(target);
+                }
+            }
+
+            int chemStart = formulaChemInputStart.getInt(formulaId);
+            int chemEnd = chemStart + formulaChemInputCount.getInt(formulaId);
+            for (int c = chemStart; c < chemEnd; c++) {
+                edgeFrom.add(chemInputNode.getInt(c));
+                edgeTo.add(target);
+            }
+
+            int machineNode = formulaMachineNode.getInt(formulaId);
+            if (machineNode >= 0) {
+                edgeFrom.add(machineNode);
+                edgeTo.add(target);
+            }
+        }
+
+        private CompiledModel materialize() {
+            int n = nodeKind.size();
+
+            int[] adjStart = new int[n + 1];
+            int edgeCount = edgeFrom.size();
+            for (int e = 0; e < edgeCount; e++) adjStart[edgeFrom.getInt(e) + 1]++;
+            for (int i = 0; i < n; i++) adjStart[i + 1] += adjStart[i];
+            int[] adjNode = new int[edgeCount];
+            int[] cursor = Arrays.copyOf(adjStart, n);
+            for (int e = 0; e < edgeCount; e++) {
+                int src = edgeFrom.getInt(e);
+                adjNode[cursor[src]++] = edgeTo.getInt(e);
+            }
+
+            CompiledModel m = new CompiledModel();
+            m.nodeCount = n;
+            m.itemCount = itemCount;
+            m.fluidCount = fluidCount;
+            m.chemicalCount = chemicalCount;
+            m.nodeKind = nodeKind.toArray();
+            m.itemByNode = itemByNode.toArray(new Item[0]);
+            m.fluidByNode = fluidByNode.toArray(new Fluid[0]);
+            m.chemicalByNode = chemicalByNode.toArray(new ResourceLocation[0]);
+            m.itemInCorpus = itemInCorpus.toArray();
+            m.itemIdxByNode = itemIdxByNode.toIntArray();
+
+            m.formulaCount = formulaType.size();
+            m.formulaType = formulaType.toArray();
+            m.formulaTarget = formulaTarget.toIntArray();
+            m.formulaBaseCost = formulaBaseCost.toDoubleArray();
+            m.formulaMultiplier = formulaMultiplier.toDoubleArray();
+            m.formulaOutputDivisor = formulaOutputDivisor.toDoubleArray();
+            m.formulaItemSlotStart = formulaItemSlotStart.toIntArray();
+            m.formulaItemSlotCount = formulaItemSlotCount.toIntArray();
+            m.formulaFluidSlotStart = formulaFluidSlotStart.toIntArray();
+            m.formulaFluidSlotCount = formulaFluidSlotCount.toIntArray();
+            m.formulaChemInputStart = formulaChemInputStart.toIntArray();
+            m.formulaChemInputCount = formulaChemInputCount.toIntArray();
+            m.formulaMachineNode = formulaMachineNode.toIntArray();
+            m.formulaMachineMul = formulaMachineMul.toDoubleArray();
+            m.formulaMachineFallback = formulaMachineFallback.toDoubleArray();
+            m.formulaRecipe = formulaRecipe.toArray(new RecipeNode[0]);
+
+            m.itemSlotVariantStart = itemSlotVariantStart.toIntArray();
+            m.itemSlotVariantCount = itemSlotVariantCount.toIntArray();
+            m.itemSlotAmount = itemSlotAmount.toDoubleArray();
+            m.itemVariantNode = itemVariantNode.toIntArray();
+
+            m.fluidSlotVariantStart = fluidSlotVariantStart.toIntArray();
+            m.fluidSlotVariantCount = fluidSlotVariantCount.toIntArray();
+            m.fluidSlotAmount = fluidSlotAmount.toDoubleArray();
+            m.fluidVariantNode = fluidVariantNode.toIntArray();
+
+            m.chemInputNode = chemInputNode.toIntArray();
+            m.chemInputAmount = chemInputAmount.toDoubleArray();
+
+            m.adjStart = adjStart;
+            m.adjNode = adjNode;
+            return m;
+        }
     }
 
-    private boolean isZeroCostMachine(RecipeType<?> recipeType) {
+    private static Fluid normalizeFluid(Fluid fluid) {
+        if (fluid == null) return Fluids.EMPTY;
+        ResourceLocation id = GameRegistryManager.getFluidId(fluid);
+        if (id == null) return fluid;
+        String fluidName = id.toString();
+        if (!fluidName.contains("flowing_")) return fluid;
+        ResourceLocation staticId = ResourceLocation.parse(fluidName.replace("flowing_", ""));
+        Fluid staticFluid = GameRegistryManager.getFluid(staticId);
+        if (staticFluid == null || staticFluid == Fluids.EMPTY) return fluid;
+        return staticFluid;
+    }
+
+    private static boolean isProtectedFluid(Fluid fluid) {
+        return fluid == Fluids.WATER || fluid == Fluids.LAVA;
+    }
+
+    private static boolean isZeroCostRecipeType(RecipeType<?> recipeType) {
         if (recipeType == null) return false;
-        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+        ResourceLocation typeId = GameRegistryManager.getRecipeTypeId(recipeType);
         if (typeId == null) return false;
         return typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
     }
 
-    private <T> double getMinComplexity(ObjectList<T> variants, Reference2DoubleMap<T> complexities) {
-        if (variants.isEmpty()) return Double.POSITIVE_INFINITY;
-        var min = Double.POSITIVE_INFINITY;
-        for (var v : variants) {
-            var c = complexities.getOrDefault(v, Double.POSITIVE_INFINITY);
-            if (c < min) min = c;
-        }
-        return min;
+    private static final class CompiledModel {
+        int nodeCount;
+        int itemCount;
+        int fluidCount;
+        int chemicalCount;
+        byte[] nodeKind;
+        Item[] itemByNode;
+        Fluid[] fluidByNode;
+        ResourceLocation[] chemicalByNode;
+        boolean[] itemInCorpus;
+        int[] itemIdxByNode;
+        int formulaCount;
+        byte[] formulaType;
+        int[] formulaTarget;
+        double[] formulaBaseCost;
+        double[] formulaMultiplier;
+        double[] formulaOutputDivisor;
+        int[] formulaItemSlotStart;
+        int[] formulaItemSlotCount;
+        int[] formulaFluidSlotStart;
+        int[] formulaFluidSlotCount;
+        int[] formulaChemInputStart;
+        int[] formulaChemInputCount;
+        int[] formulaMachineNode;
+        double[] formulaMachineMul;
+        double[] formulaMachineFallback;
+        RecipeNode[] formulaRecipe;
+        int[] itemSlotVariantStart;
+        int[] itemSlotVariantCount;
+        double[] itemSlotAmount;
+        int[] itemVariantNode;
+        int[] fluidSlotVariantStart;
+        int[] fluidSlotVariantCount;
+        double[] fluidSlotAmount;
+        int[] fluidVariantNode;
+        int[] chemInputNode;
+        double[] chemInputAmount;
+        int[] adjStart;
+        int[] adjNode;
     }
 
-    private <T> @Nullable T getBestVariant(ObjectList<T> variants, Reference2DoubleMap<T> complexities) {
-        if (variants.isEmpty()) return null;
-        var min = Double.POSITIVE_INFINITY;
-        var best = (T) null;
-        for (var v : variants) {
-            var c = complexities.getOrDefault(v, Double.POSITIVE_INFINITY);
-            if (c < min) {
-                min = c;
-                best = v;
-            }
-        }
-        return best;
-    }
+    private static final class Solution {
+        final double[] costs;
+        final double[] itemBestRecipeCost;
+        final double[] itemBestSourceCost;
+        final int[] itemBestRecipeFormulaIdx;
+        int componentCount;
+        int cyclicComponents;
+        int fixpointIterations;
 
-    private boolean hasSignificantChange(double oldValue, double newValue) {
-        if (Double.isInfinite(oldValue) && Double.isInfinite(newValue)) return false;
-        if (Double.isInfinite(oldValue) || Double.isInfinite(newValue)) return true;
-        var delta = Math.abs(oldValue - newValue);
-        return delta > CONVERGENCE_THRESHOLD && (oldValue <= EPSILON ? delta : delta / oldValue) > CONVERGENCE_THRESHOLD;
-    }
-
-    private void logPhaseResults(String phase, int iterations, int elementsProcessed) {
-        ComplexityAnalyzer.LOGGER.info("  ✅ {} complete: {} iterations, {} elements", phase, iterations, elementsProcessed);
-        totalIterations.addAndGet(iterations);
-    }
-
-    private void logFinalStatistics(long totalTime) {
-        var finiteItems = 0L;
-        for (var v : itemComplexities.values()) if (!Double.isInfinite(v)) finiteItems++;
-
-        var infiniteFluids = 0L;
-        for (var v : fluidComplexities.values()) if (Double.isInfinite(v)) infiniteFluids++;
-
-        var finiteChemicals = 0L;
-        for (var id : chemicalManager.getAllChemicals()) {
-            if (!Double.isInfinite(chemicalManager.getComplexity(id))) finiteChemicals++;
-        }
-
-        var totalIter = totalIterations.get();
-        var recipeCosts = recipeCostCalculations.get();
-        var hits = cacheHits.get();
-
-        ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS (parallelism: {})", parallelism);
-        ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("⏱️  Time: {}ms", totalTime);
-        ComplexityAnalyzer.LOGGER.info("🔄 Total iterations: {}", totalIter);
-        ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, itemComplexities.size());
-        ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} infinite", infiniteFluids, fluidComplexities.size());
-        ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChemicals, chemicalManager.size());
-
-        if (recipeCosts > 0) ComplexityAnalyzer.LOGGER.info("💾 Cache: {} calculations, {} hits ({}%), {} invalidations",
-                recipeCosts, hits,
-                String.format("%.1f", 100.0 * hits / recipeCosts),
-                cache.getInvalidationCount());
-    }
-
-    private static class DependencyGraph {
-        private final Reference2ObjectMap<Item, ReferenceSet<Item>> itemDependents = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-
-        void build(RecipeGraph graph, SourceManager sourceManager) {
-            for (var recipe : graph.getAllRecipes()) {
-                var result = recipe.getResultItem();
-                for (var slot : recipe.getIngredients()) {
-                    for (var ingredient : slot.getVariants()) {
-                        itemDependents.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
-                    }
-                }
-            }
-
-            for (var item : graph.getCorpus()) {
-                for (var source : sourceManager.findAllSources(item)) {
-                    for (var sourceItem : source.getSourceItems().keySet()) {
-                        itemDependents.computeIfAbsent(sourceItem, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(item);
-                    }
-                }
-            }
-        }
-
-        ReferenceSet<Item> getItemDependents(Item item) {
-            return itemDependents.getOrDefault(item, ReferenceSets.emptySet());
+        Solution(int nodeCount, int itemCount) {
+            this.costs = new double[nodeCount];
+            Arrays.fill(this.costs, Double.POSITIVE_INFINITY);
+            this.itemBestRecipeCost = new double[itemCount];
+            Arrays.fill(this.itemBestRecipeCost, Double.POSITIVE_INFINITY);
+            this.itemBestSourceCost = new double[itemCount];
+            Arrays.fill(this.itemBestSourceCost, Double.POSITIVE_INFINITY);
+            this.itemBestRecipeFormulaIdx = new int[itemCount];
+            Arrays.fill(this.itemBestRecipeFormulaIdx, -1);
         }
     }
 
-    private static class SolverCache {
-        private final Reference2ObjectMap<RecipeNode, RecipeCostCache> recipeCosts = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        private final AtomicInteger invalidationCount = new AtomicInteger(0);
+    private static final class ByteList {
+        private byte[] data = new byte[64];
+        private int size = 0;
 
-        @Nullable
-        RecipeCostCache getRecipeCost(RecipeNode recipe) {
-            return recipeCosts.get(recipe);
+        int size() {
+            return size;
         }
 
-        void putRecipeCost(RecipeNode recipe, RecipeCostCache cache) {
-            recipeCosts.put(recipe, cache);
+        void add(byte v) {
+            if (size == data.length) data = Arrays.copyOf(data, data.length * 2);
+            data[size++] = v;
         }
 
-        void invalidateItem(Item item) {
-            var removedCount = new AtomicInteger(0);
-            recipeCosts.entrySet().removeIf(e -> {
-                if (e.getValue().dependsOnItem(item)) {
-                    removedCount.incrementAndGet();
-                    return true;
-                }
-                for (var slot : e.getKey().getIngredients()) {
-                    if (slot.getVariants().contains(item)) {
-                        removedCount.incrementAndGet();
-                        return true;
-                    }
-                }
-                return false;
-            });
-            invalidationCount.addAndGet(removedCount.get());
-        }
-
-        void invalidateFluid(Fluid fluid) {
-            var removedCount = new AtomicInteger(0);
-            recipeCosts.entrySet().removeIf(e -> {
-                if (e.getValue().dependsOnFluid(fluid)) {
-                    removedCount.incrementAndGet();
-                    return true;
-                }
-                for (var slot : e.getKey().getFluidIngredients()) {
-                    if (slot.fluidVariants().contains(fluid)) {
-                        removedCount.incrementAndGet();
-                        return true;
-                    }
-                }
-                return false;
-            });
-            invalidationCount.addAndGet(removedCount.get());
-        }
-
-        void clear() {
-            recipeCosts.clear();
-        }
-
-        int getInvalidationCount() {
-            return invalidationCount.get();
+        byte[] toArray() {
+            return Arrays.copyOf(data, size);
         }
     }
 
-    private static class RecipeCostCache {
-        final double cost;
-        final Reference2DoubleMap<Item> usedItems;
-        final Reference2DoubleMap<Fluid> usedFluids;
+    private static final class BoolList {
+        private boolean[] data = new boolean[64];
+        private int size = 0;
 
-        RecipeCostCache(double cost, Reference2DoubleMap<Item> usedItems, Reference2DoubleMap<Fluid> usedFluids) {
-            this.cost = cost;
-            this.usedItems = new Reference2DoubleOpenHashMap<>(usedItems);
-            this.usedFluids = new Reference2DoubleOpenHashMap<>(usedFluids);
+        void addFalse() {
+            if (size == data.length) data = Arrays.copyOf(data, data.length * 2);
+            data[size++] = false;
         }
 
-        boolean isValid(Reference2DoubleMap<Item> currentItems, Reference2DoubleMap<Fluid> currentFluids) {
-            return isValidMap(usedItems, currentItems) && isValidMap(usedFluids, currentFluids);
+        boolean getBoolean(int idx) {
+            return data[idx];
         }
 
-        private <T> boolean isValidMap(Reference2DoubleMap<T> cached, Reference2DoubleMap<T> current) {
-            for (var entry : cached.reference2DoubleEntrySet()) {
-                var k = entry.getKey();
-                if (Math.abs(entry.getDoubleValue() - current.getOrDefault(k, Double.POSITIVE_INFINITY)) > EPSILON)
-                    return false;
-            }
-            return true;
+        void setTrue(int idx) {
+            data[idx] = true;
         }
 
-        boolean dependsOnItem(Item item) {
-            return usedItems.containsKey(item);
+        boolean[] toArray() {
+            return Arrays.copyOf(data, size);
         }
-
-        boolean dependsOnFluid(Fluid fluid) {
-            return usedFluids.containsKey(fluid);
-        }
-    }
-
-    private record ComplexityResult(double complexity, @Nullable RecipeNode recipe) {
     }
 }

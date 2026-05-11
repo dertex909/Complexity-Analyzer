@@ -27,6 +27,7 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
@@ -56,7 +57,7 @@ public class AnalyzeCommand {
         }
 
         Item item = GameRegistryManager.getItem(itemId);
-        if (item == net.minecraft.world.item.Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
+        if (item == null || (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air")))) {
             output.sendFailure(source, Component.literal("❌ Item not found: ")
                     .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW)));
             return 0;
@@ -87,7 +88,7 @@ public class AnalyzeCommand {
             OutputManager output,
             ResourceLocation itemId
     ) {
-        String itemName = item.getDescription().getString();
+        String itemName = (item != null) ? item.getDescription().getString() : itemId.toString();
 
         output.sendInfo(source, Component.literal("").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal("═══════════════════════════════")

@@ -295,11 +295,11 @@ public class GeoScanCommands {
         var manager = AnalysisEngine.getInstance().getGeoManager();
         if (manager != null) {
             output.sendInfo(source, Component.literal(""));
-            output.sendInfo(source, Component.literal("═══════════════════════════════════════")
+            output.sendInfo(source, Component.literal("════════════════════════════════")
                     .withStyle(ChatFormatting.GOLD));
             output.sendInfo(source, Component.literal("📊 GEO-SCAN STATUS")
                     .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
-            output.sendInfo(source, Component.literal("═══════════════════════════════════════")
+            output.sendInfo(source, Component.literal("════════════════════════════════")
                     .withStyle(ChatFormatting.GOLD));
             output.sendInfo(source, Component.literal(""));
 
@@ -322,7 +322,7 @@ public class GeoScanCommands {
             }
 
             output.sendInfo(source, Component.literal(""));
-            output.sendInfo(source, Component.literal("═══════════════════════════════════════")
+            output.sendInfo(source, Component.literal("════════════════════════════════")
                     .withStyle(ChatFormatting.DARK_GRAY));
             output.sendInfo(source, Component.literal(""));
         } else {

@@ -19,15 +19,12 @@
 package org.complexityanalyzer.core;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
@@ -62,10 +59,6 @@ public class GameRegistryManager {
         long startTime = System.currentTimeMillis();
 
         for (Block block : BuiltInRegistries.BLOCK) {
-            BlockState state = block.defaultBlockState();
-            if (state.isAir()) continue;
-            if (state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) < 0) continue;
-
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
             BLOCK_MAP.put(id, block);
             BLOCK_ID_MAP.put(block, id);

@@ -66,28 +66,24 @@ public class ComplexityConfig {
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
-        builder.push("general");
-
         builder.push("threading");
-        MAX_THREADS = builder
-                .comment(
-                        "Maximum number of threads for analysis and geo-scanning.",
-                        "0 = unlimited (uses all available CPU cores minus 2)",
-                        "1-1024 = fixed thread limit for hosting environments",
-                        "",
-                        "WARNING: If set higher than available CPU cores, server will crash on startup!",
-                        "Use 0 for local servers, set explicit limit (e.g. 4) for shared hosting."
-                )
-                .defineInRange("maxThreads", 0, 0, 1024);
+        MAX_THREADS = builder.comment(
+                " Maximum number of threads for analysis and geo-scanning.",
+                " 0 = unlimited (uses all available CPU cores minus 2)",
+                " 1-1024 = fixed thread limit for hosting environments",
+                " ",
+                " WARNING: If set higher than available CPU cores, server will crash on startup!",
+                " Use 0 for local servers, set explicit limit (e.g. 4) for shared hosting."
+        ).defineInRange("maxThreads", 0, 0, 1024);
         builder.pop();
 
         builder.push("jei_integration");
         ENABLE_JEI_INTEGRATION = builder
-                .comment("Enable automatic recipe extraction from JEI plugins of other mods")
+                .comment(" Enable automatic recipe extraction from JEI plugins of other mods")
                 .define("enableJeiIntegration", true);
 
         JEI_PLUGIN_BLACKLIST = builder
-                .comment("List of mod IDs whose JEI plugins should be ignored")
+                .comment(" List of mod IDs whose JEI plugins should be ignored")
                 .defineList("jeiPluginBlacklist", Collections.emptyList(), () -> "", obj -> obj instanceof String);
         builder.pop();
 
@@ -123,41 +119,33 @@ public class ComplexityConfig {
 
         builder.push("fluids");
         FLUID_BASE_COMPLEXITY = builder
-                .comment("Base complexity for generic fluids (not water/lava)")
+                .comment(" Base complexity for generic fluids (not water/lava)")
                 .defineInRange("baseComplexity", 5.0, 0.1, 1000.0);
 
         FLUID_NORMALIZATION_FACTOR = builder
-                .comment("Multiplier for fluid costs in recipes")
+                .comment(" Multiplier for fluid costs in recipes")
                 .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);
         builder.pop();
 
-
         builder.push("machine_tax");
         builder.comment(
-                "Machine Tax - adds a percentage of machine/equipment complexity",
-                "to the final complexity of crafted items.",
-                "",
-                "Example: If Furnace has complexity 10.0 and tax is 7.5%,",
-                "then smelted items get +0.75 complexity added to their recipe cost."
+                " Machine Tax - adds a percentage of machine/equipment complexity",
+                " to the final complexity of crafted items.",
+                " ",
+                " Example: If Furnace has complexity 10.0 and tax is 7.5%,",
+                " then smelted items get +0.75 complexity added to their recipe cost."
         );
 
-        MACHINE_TAX_ENABLED = builder
-                .comment("Enable machine tax calculation")
-                .define("enabled", true);
+        MACHINE_TAX_ENABLED = builder.comment(" Enable machine tax calculation").define("enabled", true);
 
-        MACHINE_TAX_PERCENTAGE = builder
-                .comment(
-                        "Tax percentage in user-friendly format (0.0 to 100.0)",
-                        "Default: 7.5 means 7.5% of machine complexity is added as tax"
-                )
-                .defineInRange("percentage", 7.5, 0.0, 100.0);
+        MACHINE_TAX_PERCENTAGE = builder.comment(
+                " Tax percentage in user-friendly format (0.0 to 100.0)",
+                " Default: 7.5 means 7.5% of machine complexity is added as tax"
+        ).defineInRange("percentage", 7.5, 0.0, 100.0);
 
         MACHINE_BASE_COMPLEXITY = builder
-                .comment("Base complexity for machines when they are not yet calculated (used as fallback)")
+                .comment(" Base complexity for machines when they are not yet calculated (used as fallback)")
                 .defineInRange("baseComplexity", 100.0, 0.0, 10000.0);
-
-        builder.pop();
-
         builder.pop();
 
         SPEC = builder.build();

@@ -426,7 +426,6 @@ public class AnalysisEngine {
 
             if (currentSourceManager != null && blockProp != null && theoreticalDist != null) {
                 currentSourceManager.removeSourcesByType(EmpiricalBlockSource.class);
-
                 TheoreticalBlockSource theoreticalSource = new TheoreticalBlockSource(blockProp, theoreticalDist);
                 currentSourceManager.addSourceAndRefresh(theoreticalSource);
 

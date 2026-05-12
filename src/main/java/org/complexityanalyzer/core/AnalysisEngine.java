@@ -25,6 +25,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
+import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
@@ -44,6 +45,7 @@ import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.export.cabin.CabinBackgroundService;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
@@ -559,7 +561,14 @@ public class AnalysisEngine {
         isReloading.set(false);
 
         ComplexityAnalyzer.LOGGER.info("Starting fresh analysis...");
-        initializeAsync(serverLevel, () -> ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational."));
+        initializeAsync(serverLevel, () -> {
+            ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational.");
+            String modVersion = ModList.get()
+                    .getModContainerById(ComplexityAnalyzer.MODID)
+                    .map(c -> c.getModInfo().getVersion().toString())
+                    .orElse("unknown");
+            CabinBackgroundService.getInstance().regenerateAsync(serverLevel.getServer(), this, modVersion);
+        });
     }
 
     public void shutdown() {

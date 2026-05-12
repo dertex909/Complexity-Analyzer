@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Complexity Analyzer — Cabin Viewer</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">⚙</span>
+        <span class="title">Complexity Analyzer</span>
+        <span class="subtitle" id="meta-subtitle">Cabin Viewer v1.1</span>
+    </div>
+    <nav class="tabs" role="tablist">
+        <button class="tab" data-tab="overview" role="tab">Overview</button>
+        <button class="tab active" data-tab="items" role="tab">Items</button>
+        <button class="tab" data-tab="mobs" role="tab">Mobs</button>
+        <button class="tab" data-tab="categories" role="tab">Categories</button>
+        <button class="tab" data-tab="recipes" role="tab">Recipes</button>
+        <button class="tab" data-tab="search" role="tab">Search</button>
+        <button class="tab" data-tab="about" role="tab">About</button>
+    </nav>
+    <div class="status">
+        <span id="status-dot" class="dot idle"></span>
+        <span id="status-text">initializing…</span>
+    </div>
+</header>
+
+<main>
+    <section class="panel" id="tab-overview" hidden>
+        <h2>Overview</h2>
+        <div class="stat-grid" id="overview-stats"></div>
+        <div class="card">
+            <h3>Integrity</h3>
+            <div class="stat-row">
+                <span>File hash:</span>
+                <code id="overview-hash">—</code>
+            </div>
+            <div class="stat-row">
+                <span>Generated at:</span>
+                <span id="overview-generated">—</span>
+            </div>
+            <div class="stat-row">
+                <span>Viewer version:</span>
+                <span id="overview-viewer">—</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel active" id="tab-items">
+        <div class="controls">
+            <input type="search" id="items-query" placeholder="Filter by name, id, category…" autocomplete="off"
+                   aria-label="Filter items">
+            <select id="items-sort" aria-label="Sort items">
+                <option value="complexity-desc">Complexity ▼</option>
+                <option value="complexity-asc">Complexity ▲</option>
+                <option value="name-asc">Name A-Z</option>
+                <option value="id-asc">ID A-Z</option>
+                <option value="depth-desc">Depth ▼</option>
+                <option value="usage-desc">Usage ▼</option>
+            </select>
+            <select id="items-category" aria-label="Filter by category">
+                <option value="">All categories</option>
+            </select>
+            <label class="checkbox"><input type="checkbox" id="items-finite-only"> finite only</label>
+            <label class="checkbox"><input type="checkbox" id="items-with-recipe"> has recipe</label>
+            <span class="flex-grow"></span>
+            <span id="items-count" class="chip">0 items</span>
+            <button id="items-export" class="btn">Export view</button>
+        </div>
+        <div class="table-head items-grid">
+            <span>#</span>
+            <span>ID</span>
+            <span>Name</span>
+            <span class="num">Complexity</span>
+            <span class="num">Depth</span>
+            <span class="num">Usage</span>
+            <span>Category</span>
+            <span>Flags</span>
+        </div>
+        <div class="virtual-viewport" id="items-viewport">
+            <div class="virtual-spacer" id="items-spacer"></div>
+            <div class="virtual-rows" id="items-rows"></div>
+        </div>
+    </section>
+
+    <section class="panel" id="tab-mobs" hidden>
+        <div class="controls">
+            <input type="search" id="mobs-query" placeholder="Filter by mob name or id…" autocomplete="off"
+                   aria-label="Filter mobs">
+            <select id="mobs-sort" aria-label="Sort mobs">
+                <option value="combat-desc">Combat Power ▼</option>
+                <option value="threat-desc">Threat ▼</option>
+                <option value="rarity-desc">Rarity ▼</option>
+                <option value="hp-desc">Health ▼</option>
+                <option value="name-asc">Name A-Z</option>
+            </select>
+            <label class="checkbox"><input type="checkbox" id="mobs-boss-only"> bosses only</label>
+            <span class="flex-grow"></span>
+            <span id="mobs-count" class="chip">0 mobs</span>
+        </div>
+        <div class="table-head mobs-grid">
+            <span>#</span>
+            <span>Name</span>
+            <span>ID</span>
+            <span class="num">HP</span>
+            <span class="num">Damage</span>
+            <span class="num">Armor</span>
+            <span class="num">Combat</span>
+            <span class="num">Rarity</span>
+            <span>Flags</span>
+        </div>
+        <div class="virtual-viewport" id="mobs-viewport">
+            <div class="virtual-spacer" id="mobs-spacer"></div>
+            <div class="virtual-rows" id="mobs-rows"></div>
+        </div>
+    </section>
+
+    <section class="panel" id="tab-categories" hidden>
+        <h2>Categories</h2>
+        <div id="categories-list" class="category-list"></div>
+    </section>
+
+    <section class="panel" id="tab-recipes" hidden>
+        <h2>Recipe explorer</h2>
+        <p class="hint">Click any item in the Items tab to see its recipes and dependencies.</p>
+        <div id="recipes-placeholder" class="card">Select an item to view its recipes.</div>
+    </section>
+
+    <section class="panel" id="tab-search" hidden>
+        <div class="controls">
+            <input type="search" id="search-input" placeholder="Global search — items, mobs, loot, source types…"
+                   autocomplete="off" aria-label="Global search">
+            <span class="flex-grow"></span>
+            <span id="search-count" class="chip">0 results</span>
+        </div>
+        <div id="search-results" class="search-results"></div>
+    </section>
+
+    <section class="panel" id="tab-about" hidden>
+        <h2>About</h2>
+        <p>This viewer reads a binary <code>.cabin</code> snapshot produced by the Complexity Analyzer mod.</p>
+        <ul>
+            <li>Format version: <code>1.1</code></li>
+            <li>Compression: <code>deflate-raw</code> per-section, decompressed via the browser's native
+                <code>DecompressionStream</code>.
+            </li>
+            <li>Indices are kept uncompressed for O(log n) binary search and instant random access.</li>
+            <li>No external dependencies — no CDN, no fonts, no trackers.</li>
+        </ul>
+        <p>Press <kbd>Ctrl</kbd>+<kbd>K</kbd> to focus global search. Sorting is stable; filters persist in the URL.</p>
+    </section>
+</main>
+
+<dialog id="item-dialog" class="dialog">
+    <form method="dialog">
+        <header class="dialog-head">
+            <h3 id="item-dialog-title">Item</h3>
+            <button class="close" value="close" aria-label="close">×</button>
+        </header>
+        <div id="item-dialog-body" class="dialog-body">Loading…</div>
+    </form>
+</dialog>
+
+<dialog id="mob-dialog" class="dialog">
+    <form method="dialog">
+        <header class="dialog-head">
+            <h3 id="mob-dialog-title">Mob</h3>
+            <button class="close" value="close" aria-label="close">×</button>
+        </header>
+        <div id="mob-dialog-body" class="dialog-body">Loading…</div>
+    </form>
+</dialog>
+
+<footer class="footer">
+    <span id="footer-left">—</span>
+    <span id="footer-right">decompression: native</span>
+</footer>
+
+<script src="js/cabin.js" type="module"></script>
+<script src="js/app.js" type="module"></script>
+</body>
+</html>

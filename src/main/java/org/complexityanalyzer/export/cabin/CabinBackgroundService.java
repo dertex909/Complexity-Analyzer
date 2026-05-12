@@ -1,0 +1,179 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package org.complexityanalyzer.export.cabin;
+
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
+import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.core.ThreadPoolManager;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
+
+public final class CabinBackgroundService {
+
+    public record Snapshot(byte[] bytes, long fileHash, long generatedAtMs, int itemCount, int mobCount,
+                           int recipeCount) {
+    }
+
+    public enum Status {IDLE, BUILDING, READY, FAILED}
+
+    private static final CabinBackgroundService INSTANCE = new CabinBackgroundService();
+
+    public static CabinBackgroundService getInstance() {
+        return INSTANCE;
+    }
+
+    private final AtomicReference<Snapshot> current = new AtomicReference<>(null);
+    private final AtomicReference<Status> status = new AtomicReference<>(Status.IDLE);
+    private final AtomicReference<CompletableFuture<Snapshot>> inflight = new AtomicReference<>(null);
+    private final AtomicReference<Throwable> lastError = new AtomicReference<>(null);
+    private volatile boolean rebuildPending = false;
+
+    private CabinBackgroundService() {
+    }
+
+    @Nullable
+    public Snapshot getSnapshot() {
+        return current.get();
+    }
+
+    public Status getStatus() {
+        return status.get();
+    }
+
+    @Nullable
+    public Throwable getLastError() {
+        return lastError.get();
+    }
+
+    public CompletableFuture<Snapshot> regenerateAsync(MinecraftServer server, AnalysisEngine engine, String modVersion) {
+        CompletableFuture<Snapshot> existing = inflight.get();
+        if (existing != null && !existing.isDone()) {
+            rebuildPending = true;
+            return existing;
+        }
+
+        ExecutorService pool;
+        try {
+            pool = ThreadPoolManager.getInstance().getComputePool();
+        } catch (Throwable t) {
+            CompletableFuture<Snapshot> failed = new CompletableFuture<>();
+            failed.completeExceptionally(t);
+            return failed;
+        }
+
+        CompletableFuture<Snapshot> future = new CompletableFuture<>();
+        if (!inflight.compareAndSet(null, future)) return inflight.get();
+        status.set(Status.BUILDING);
+        rebuildPending = false;
+
+        pool.execute(() -> {
+            try {
+                Snapshot snap = doBuild(server, engine, modVersion);
+                current.set(snap);
+                status.set(Status.READY);
+                lastError.set(null);
+                future.complete(snap);
+            } catch (Throwable t) {
+                status.set(Status.FAILED);
+                lastError.set(t);
+                ComplexityAnalyzer.LOGGER.error("[Cabin] Background build failed", t);
+                future.completeExceptionally(t);
+            } finally {
+                inflight.set(null);
+                if (rebuildPending) {
+                    rebuildPending = false;
+                    regenerateAsync(server, engine, modVersion);
+                }
+            }
+        });
+        return future;
+    }
+
+    private Snapshot doBuild(MinecraftServer server, AnalysisEngine engine, String modVersion) throws IOException {
+        long t0 = System.currentTimeMillis();
+        String serverName = server.getServerModName();
+        String motd = server.getMotd();
+        String name = !motd.isEmpty() ? motd : serverName;
+
+        CabinBuilder builder = new CabinBuilder(engine, name, modVersion);
+        var sections = builder.build();
+        byte[] bytes = CabinWriter.writeToBytes(sections);
+        long hash = CabinBuilder.computeFileHash(bytes);
+
+        persistToFile(server, bytes);
+
+        long elapsed = System.currentTimeMillis() - t0;
+        Snapshot snap = parseHeader(bytes, hash);
+        ComplexityAnalyzer.LOGGER.info("[Cabin] Wrote {} bytes (hash={}) in {} ms",
+                bytes.length, Long.toHexString(hash), elapsed);
+        return snap;
+    }
+
+    private void persistToFile(MinecraftServer server, byte[] bytes) throws IOException {
+        Path dir = getCabinDirectory(server);
+        Files.createDirectories(dir);
+        Path tmp = dir.resolve("latest.cabin.tmp");
+        Path target = dir.resolve("latest.cabin");
+        Files.write(tmp, bytes);
+        try {
+            Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Throwable t) {
+            Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private static Snapshot parseHeader(byte[] bytes, long hash) {
+        int itemCount = 0;
+        int mobCount = 0;
+        int recipeCount = 0;
+        try {
+            CabinReader reader = new CabinReader(bytes);
+            byte[] meta = reader.readSection(CabinFormat.SEC_META);
+            int offset = 24;
+            itemCount = CabinReader.readI32(meta, offset);
+            mobCount = CabinReader.readI32(meta, offset + 4);
+            recipeCount = CabinReader.readI32(meta, offset + 12);
+        } catch (Throwable ignored) {
+        }
+        return new Snapshot(bytes, hash, System.currentTimeMillis(), itemCount, mobCount, recipeCount);
+    }
+
+    public static Path getCabinDirectory(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer")
+                .resolve("cabin").toAbsolutePath().normalize();
+    }
+
+    public void clear() {
+        current.set(null);
+        status.set(Status.IDLE);
+        lastError.set(null);
+        rebuildPending = false;
+        CompletableFuture<Snapshot> f = inflight.getAndSet(null);
+        if (f != null && !f.isDone()) f.cancel(false);
+    }
+}

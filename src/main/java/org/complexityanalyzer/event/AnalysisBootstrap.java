@@ -20,6 +20,7 @@ package org.complexityanalyzer.event;
 
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -27,6 +28,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.export.cabin.CabinBackgroundService;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class AnalysisBootstrap {
@@ -37,14 +39,25 @@ public class AnalysisBootstrap {
         GameRegistryManager.initialize();
         AnalysisEngine engine = AnalysisEngine.getInstance();
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
-        engine.initializeAsync(server.overworld(), () ->
-                ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete.")
-        );
+        engine.initializeAsync(server.overworld(), () -> {
+            ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete.");
+            try {
+                String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
+                        .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
+                CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion);
+            } catch (Throwable t) {
+                ComplexityAnalyzer.LOGGER.error("[Cabin] Failed to schedule auto-regenerate", t);
+            }
+        });
     }
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         ComplexityAnalyzer.LOGGER.info("Server stopping, shutting down Complexity Analyzer...");
+        try {
+            CabinBackgroundService.getInstance().clear();
+        } catch (Throwable ignored) {
+        }
         AnalysisEngine.getInstance().shutdownCompletely();
         ComplexityAnalyzer.LOGGER.debug("Cleaning up AdaptiveRecipeConverter resources...");
         AdaptiveRecipeConverter.clearCaches();

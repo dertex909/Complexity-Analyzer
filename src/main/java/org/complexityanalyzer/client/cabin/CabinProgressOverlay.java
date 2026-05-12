@@ -24,85 +24,56 @@ import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.network.cabin.CabinPayloads;
 
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Lightweight progress indicator shown in the action-bar (above hotbar) while a
- * cabin transfer is active. Updates throttled to ~10 Hz to avoid spamming the
- * chat manager during high-speed local transfers.
- * <p>
- * Action-bar is preferred over BossEvent because BossEvent requires a server-side
- * packet that we'd have to forge locally; the action-bar message API
- * ({@code Player.displayClientMessage(text, true)}) is a single client call.
- */
 public final class CabinProgressOverlay {
-
-    private static final long MIN_UPDATE_INTERVAL_MS = 100L;
-    private static final AtomicReference<Long> lastUpdateMs = new AtomicReference<>(0L);
+    private static final AtomicLong lastUpdate = new AtomicLong(0);
 
     private CabinProgressOverlay() {
     }
 
-    public static void beginReceive(CabinPayloads.ManifestS2C manifest) {
-        lastUpdateMs.set(0L);
-        showActionBar(Component.literal("⏬ Receiving cabin (0%) — ")
-                .withStyle(ChatFormatting.AQUA)
-                .append(Component.literal(humanBytes(manifest.totalSize()))
-                        .withStyle(ChatFormatting.GRAY)));
+    public static void beginReceive(CabinPayloads.ManifestS2C m) {
+        lastUpdate.set(0);
+        show("⏬ Receiving cabin (0%) — " + human(m.totalSize()), ChatFormatting.AQUA);
     }
 
-    public static void update(long receivedBytes, long totalBytes) {
+    public static void update(long received, long total) {
         long now = System.currentTimeMillis();
-        Long last = lastUpdateMs.get();
-        if (now - last < MIN_UPDATE_INTERVAL_MS && receivedBytes < totalBytes) return;
-        if (!lastUpdateMs.compareAndSet(last, now)) return;
-
-        double pct = totalBytes > 0 ? (100.0 * receivedBytes / totalBytes) : 0.0;
-        int filled = (int) Math.round(pct / 5.0);
-        StringBuilder bar = new StringBuilder("[");
-        for (int i = 0; i < 20; i++) bar.append(i < filled ? '#' : '-');
-        bar.append("]");
-        showActionBar(Component.literal("⏬ " + bar + " ")
-                .withStyle(ChatFormatting.AQUA)
-                .append(Component.literal(String.format(Locale.ROOT, "%.1f%%", pct))
-                        .withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(" — " + humanBytes(receivedBytes) + " / "
-                                + humanBytes(totalBytes))
-                        .withStyle(ChatFormatting.GRAY)));
+        if (now - lastUpdate.get() < 100 && received < total) return;
+        lastUpdate.set(now);
+        double pct = total > 0 ? (100.0 * received / total) : 0;
+        int filled = (int) (pct / 5);
+        String bar = "█".repeat(filled) + "░".repeat(20 - filled);
+        show(String.format(Locale.ROOT, "⏬ [%s] %.1f%% — %s / %s", bar, pct, human(received), human(total)), ChatFormatting.AQUA);
     }
 
-    public static void complete(CabinReceiver.CachedSnapshot snapshot) {
-        showActionBar(Component.literal("✅ Cabin ready — "
-                        + snapshot.itemCount() + " items, " + snapshot.mobCount() + " mobs")
-                .withStyle(ChatFormatting.GREEN));
+    public static void complete(CabinReceiver.CachedSnapshot snap) {
+        show("✅ Cabin ready — " + snap.itemCount() + " items, " + snap.mobCount() + " mobs", ChatFormatting.GREEN);
     }
 
     public static void upToDate() {
-        showActionBar(Component.literal("✅ Cabin is up-to-date").withStyle(ChatFormatting.GREEN));
+        show("✅ Cabin is up-to-date", ChatFormatting.GREEN);
     }
 
     public static void fail(String reason) {
-        showActionBar(Component.literal("❌ Cabin failed: " + reason).withStyle(ChatFormatting.RED));
+        show("❌ Cabin failed: " + reason, ChatFormatting.RED);
     }
 
-    public static void dismiss() {
-        showActionBar(Component.literal(""));
+    private static void show(String text, ChatFormatting style) {
+        show(Component.literal(text).withStyle(style));
     }
 
-    private static void showActionBar(Component component) {
+    private static void show(Component comp) {
         try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.player != null) mc.player.displayClientMessage(component, true);
+            var mc = Minecraft.getInstance();
+            if (mc.player != null) mc.player.displayClientMessage(comp, true);
         } catch (Throwable ignored) {
         }
     }
 
-    private static String humanBytes(long n) {
+    public static String human(long n) {
         if (n < 1024) return n + " B";
-        double k = n / 1024.0;
-        if (k < 1024) return String.format(Locale.ROOT, "%.1f KB", k);
-        double m = k / 1024.0;
-        if (m < 1024) return String.format(Locale.ROOT, "%.1f MB", m);
-        return String.format(Locale.ROOT, "%.2f GB", m / 1024.0);
+        int exp = (int) (Math.log(n) / Math.log(1024));
+        return String.format(Locale.ROOT, "%.1f %sB", n / Math.pow(1024, exp), "KMGTPE".charAt(exp - 1));
     }
 }

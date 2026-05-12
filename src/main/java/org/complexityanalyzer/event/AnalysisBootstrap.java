@@ -28,7 +28,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.export.cabin.CabinBackgroundService;
+import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class AnalysisBootstrap {

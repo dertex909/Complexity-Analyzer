@@ -16,9 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.export.cabin;
+package org.complexityanalyzer.export.cabin.io;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import org.complexityanalyzer.export.cabin.api.CabinFormat;
+import org.complexityanalyzer.export.cabin.api.CabinSection;
+import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.export.cabin.api.XxHash64;
 
 import java.util.zip.Deflater;
 
@@ -31,7 +35,7 @@ public final class CabinWriter {
 
     public static byte[] writeToBytes(ObjectList<CabinSection> sections) {
         long estimated = CabinFormat.HEADER_SIZE + 2L + (long) sections.size() * TOC_ENTRY_SIZE;
-        for (CabinSection s : sections) estimated += s.payload().length;
+        for (CabinSection s : sections) estimated += s.uncompressedSize();
         if (estimated > Integer.MAX_VALUE - 1024)
             throw new IllegalStateException("Cabin payload too large: " + estimated);
         LeBuf out = new LeBuf((int) estimated);
@@ -72,7 +76,7 @@ public final class CabinWriter {
             }
             offsets[i] = out.position();
             sizes[i] = toWrite.length;
-            uncompressed[i] = data.length;
+            uncompressed[i] = s.uncompressedSize();
             codecs[i] = codec;
             out.bytes(toWrite);
         }

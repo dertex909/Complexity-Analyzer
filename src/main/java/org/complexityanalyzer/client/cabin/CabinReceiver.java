@@ -20,29 +20,19 @@ package org.complexityanalyzer.client.cabin;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.*;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.export.cabin.CabinBuilder;
+import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
 import org.complexityanalyzer.network.cabin.CabinPayloads;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Client-side reassembly buffer for an inbound .cabin transfer.
- * <p>
- * Single inflight transfer at a time (a new manifest replaces any prior partial state).
- * Chunks are written into a pre-allocated buffer by sequence id so out-of-order delivery
- * is tolerated, though the server's sliding-window sender currently always sends in order.
- * <p>
- * On {@link #onFinish(long)} the file hash is verified, persisted to
- * {@link ClientCabinStorage} and the cached snapshot reference is updated atomically.
- */
 public final class CabinReceiver {
-
-    public record CachedSnapshot(byte[] bytes, long fileHash, long receivedAtMs,
-                                 int itemCount, int mobCount, int recipeCount,
-                                 long generatedAtMs, String serverName) {
+    public record CachedSnapshot(byte[] bytes, long fileHash, long receivedAtMs, int itemCount, int mobCount,
+                                 int recipeCount, long generatedAtMs, String serverName) {
     }
 
     public enum State {IDLE, RECEIVING, READY, FAILED}
@@ -54,11 +44,12 @@ public final class CabinReceiver {
     }
 
     private final AtomicReference<State> state = new AtomicReference<>(State.IDLE);
-    private final AtomicReference<CachedSnapshot> latest = new AtomicReference<>(null);
+    private final AtomicReference<CachedSnapshot> latest = new AtomicReference<>();
+    private final AtomicBoolean autoOpenViewer = new AtomicBoolean(false);
+    private final AtomicInteger receivedChunks = new AtomicInteger(0);
+    private final AtomicInteger receivedBytes = new AtomicInteger(0);
     private volatile CabinPayloads.ManifestS2C manifest;
     private volatile byte[] buffer;
-    private volatile int receivedChunks;
-    private volatile int receivedBytes;
     private static final int ACK_INTERVAL = 4;
 
     private CabinReceiver() {
@@ -72,201 +63,147 @@ public final class CabinReceiver {
         return latest.get();
     }
 
-    public CabinPayloads.ManifestS2C getManifest() {
-        return manifest;
-    }
-
-    public int getReceivedChunks() {
-        return receivedChunks;
-    }
-
-    public int getReceivedBytes() {
-        return receivedBytes;
-    }
-
-    public int getTotalChunks() {
-        CabinPayloads.ManifestS2C m = manifest;
-        return m != null ? m.chunkCount() : 0;
-    }
-
-    public long getTotalSize() {
-        CabinPayloads.ManifestS2C m = manifest;
-        return m != null ? m.totalSize() : 0L;
-    }
-
     public void onManifest(CabinPayloads.ManifestS2C m) {
-        this.manifest = m;
         long total = m.totalSize();
         if (total <= 0 || total > Integer.MAX_VALUE - 64) {
-            failTransfer("invalid manifest size: " + total);
+            fail("invalid manifest size: " + total);
             return;
         }
+        this.manifest = m;
         this.buffer = new byte[(int) total];
-        this.receivedChunks = 0;
-        this.receivedBytes = 0;
+        this.receivedChunks.set(0);
+        this.receivedBytes.set(0);
         this.state.set(State.RECEIVING);
         CabinProgressOverlay.beginReceive(m);
     }
 
     public void onChunk(CabinPayloads.ChunkS2C c) {
-        if (state.get() != State.RECEIVING) return;
-        CabinPayloads.ManifestS2C m = manifest;
-        if (m == null || buffer == null) return;
-        long offset = (long) c.sequenceId() * m.chunkSize();
+        if (state.get() != State.RECEIVING || manifest == null || buffer == null) return;
+        long offset = (long) c.sequenceId() * manifest.chunkSize();
         if (offset + c.data().length > buffer.length) {
-            failTransfer("chunk overrun seq=" + c.sequenceId());
+            fail("chunk overrun seq=" + c.sequenceId());
             return;
         }
         System.arraycopy(c.data(), 0, buffer, (int) offset, c.data().length);
-        int currentChunks = receivedChunks + 1;
-        int currentBytes = receivedBytes + c.data().length;
-        receivedChunks = currentChunks;
-        receivedBytes = currentBytes;
-        CabinProgressOverlay.update(currentBytes, m.totalSize());
+        int chunks = receivedChunks.incrementAndGet();
+        int bytes = receivedBytes.addAndGet(c.data().length);
 
-        if (currentChunks % ACK_INTERVAL == 0 || currentChunks == m.chunkCount()) {
-            ackUpTo(c.sequenceId());
-        }
+        CabinProgressOverlay.update(bytes, manifest.totalSize());
+        if (chunks % ACK_INTERVAL == 0 || chunks == manifest.chunkCount()) ack(c.sequenceId());
     }
 
     public void onFinish(long expectedHash) {
-        if (state.get() != State.RECEIVING) return;
+        if (state.get() != State.RECEIVING || buffer == null || manifest == null) return;
         byte[] data = buffer;
-        CabinPayloads.ManifestS2C m = manifest;
-        if (data == null || m == null) {
-            failTransfer("finish without buffer");
-            return;
-        }
+        var m = manifest;
+
         long actual = CabinBuilder.computeFileHash(data);
         if (actual != expectedHash) {
-            failTransfer("hash mismatch: expected " + Long.toHexString(expectedHash)
-                    + " got " + Long.toHexString(actual));
+            fail("hash mismatch: expected " + Long.toHexString(expectedHash) + " got " + Long.toHexString(actual));
             return;
         }
-        if (!ClientCabinStorage.validate(data)) {
-            failTransfer("downloaded cabin failed validation");
+        if (!ClientCabinStorage.validate(data) || !ClientCabinStorage.writeCabin(data, actual)) {
+            fail("storage validation or write failed");
             return;
         }
-        boolean persisted = ClientCabinStorage.writeCabin(data, actual);
-        if (!persisted) {
-            failTransfer("failed to persist cabin to disk");
-            return;
-        }
-        CachedSnapshot snap = new CachedSnapshot(
-                data, actual, System.currentTimeMillis(),
-                m.itemCount(), m.mobCount(), m.recipeCount(),
-                m.generatedAtMs(), m.serverName()
-        );
+
+        CachedSnapshot snap = new CachedSnapshot(data, actual, System.currentTimeMillis(),
+                m.itemCount(), m.mobCount(), m.recipeCount(), m.generatedAtMs(), m.serverName());
+
         latest.set(snap);
         state.set(State.READY);
         manifest = null;
         buffer = null;
+
         CabinProgressOverlay.complete(snap);
-        sendChat(Component.literal("✅ Cabin received (")
-                .withStyle(ChatFormatting.GREEN)
-                .append(Component.literal(humanBytes(data.length)).withStyle(ChatFormatting.AQUA))
-                .append(Component.literal(", " + snap.itemCount + " items, "
-                                + snap.mobCount + " mobs, " + snap.recipeCount + " recipes)")
+        chat(Component.literal("✅ Cabin received (").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal(CabinProgressOverlay.human(data.length)).withStyle(ChatFormatting.AQUA))
+                .append(Component.literal(String.format(", %d items, %d mobs, %d recipes)", snap.itemCount, snap.mobCount, snap.recipeCount))
                         .withStyle(ChatFormatting.GREEN)));
+
+        if (autoOpenViewer.getAndSet(false)) openViewer();
     }
 
-    public void onUpToDate(long fileHash, long generatedAtMs) {
+    public void onUpToDate(long hash, long time) {
         byte[] disk = ClientCabinStorage.readCabin();
-        if (disk != null && ClientCabinStorage.validate(disk)) {
-            long h = CabinBuilder.computeFileHash(disk);
-            if (h == fileHash) {
-                CachedSnapshot snap = new CachedSnapshot(
-                        disk, fileHash, System.currentTimeMillis(), 0, 0, 0, generatedAtMs, "");
-                latest.set(snap);
-                state.set(State.READY);
-                CabinProgressOverlay.upToDate();
-                sendChat(Component.literal("✅ Cabin is up-to-date (hash " + Long.toHexString(fileHash) + ")")
-                        .withStyle(ChatFormatting.GREEN));
-                return;
-            }
+        if (disk != null && ClientCabinStorage.validate(disk) && CabinBuilder.computeFileHash(disk) == hash) {
+            CachedSnapshot snap = new CachedSnapshot(disk, hash, System.currentTimeMillis(), 0, 0, 0, time, "");
+            latest.set(snap);
+            state.set(State.READY);
+            CabinProgressOverlay.upToDate();
+            chat("✅ Cabin is up-to-date (" + Long.toHexString(hash) + ")", ChatFormatting.GREEN);
+            if (autoOpenViewer.getAndSet(false)) openViewer();
+        } else {
+            chat("⚠ Local cabin missing or stale; requesting fresh copy...", ChatFormatting.YELLOW);
+            request(CabinPayloads.UNKNOWN_HASH);
         }
-        sendChat(Component.literal("⚠ Local cabin is missing or stale; requesting fresh copy...")
-                .withStyle(ChatFormatting.YELLOW));
-        request(CabinPayloads.UNKNOWN_HASH);
     }
 
     public void onError(String reason) {
-        failTransfer(reason);
+        fail(reason);
     }
 
-    public void onPending(String message) {
-        sendChat(Component.literal("⏳ " + message).withStyle(ChatFormatting.YELLOW));
+    public void onPending(String msg) {
+        chat("⏳ " + msg, ChatFormatting.YELLOW);
     }
 
     public void onPollHash() {
+        autoOpenViewer.set(true);
         byte[] disk = ClientCabinStorage.readCabin();
-        long h = CabinPayloads.UNKNOWN_HASH;
-        if (disk != null && ClientCabinStorage.validate(disk)) h = CabinBuilder.computeFileHash(disk);
+        long h = (disk != null && ClientCabinStorage.validate(disk)) ? CabinBuilder.computeFileHash(disk) : 0;
         request(h);
     }
 
-    public void request(long knownHash) {
+    public void request(long hash) {
         try {
-            PacketDistributor.sendToServer(new CabinPayloads.RequestC2S(knownHash));
+            PacketDistributor.sendToServer(new CabinPayloads.RequestC2S(hash));
         } catch (Throwable t) {
-            failTransfer("failed to request: " + t.getMessage());
+            fail("request failed: " + t.getMessage());
         }
     }
 
-    public void cancel() {
-        try {
-            PacketDistributor.sendToServer(new CabinPayloads.CancelC2S());
-        } catch (Throwable ignored) {
+    private void openViewer() {
+        String url = CabinHttpServer.getInstance().start();
+        if (url == null) {
+            chat("❌ Failed to start viewer", ChatFormatting.RED);
+            return;
         }
-        manifest = null;
-        buffer = null;
-        receivedBytes = 0;
-        receivedChunks = 0;
-        state.set(State.IDLE);
-        CabinProgressOverlay.dismiss();
+        if (!CabinHttpServer.getInstance().openInBrowser()) {
+            MutableComponent link = Component.literal("[Open viewer]")
+                    .withStyle(Style.EMPTY.withColor(ChatFormatting.AQUA).withUnderlined(true)
+                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url))
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(url))));
+            chat(Component.literal("⚠ Could not auto-open browser — ").withStyle(ChatFormatting.YELLOW).append(link));
+        }
     }
 
-    public void reset() {
-        manifest = null;
-        buffer = null;
-        receivedBytes = 0;
-        receivedChunks = 0;
-        state.set(State.IDLE);
-    }
-
-    private void ackUpTo(int seq) {
+    private void ack(int seq) {
         try {
             PacketDistributor.sendToServer(new CabinPayloads.AckC2S(seq));
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Cabin] Failed to send ACK: {}", t.getMessage());
+            ComplexityAnalyzer.LOGGER.warn("[Cabin] ACK failed: {}", t.getMessage());
         }
     }
 
-    private void failTransfer(String reason) {
+    private void fail(String reason) {
+        autoOpenViewer.set(false);
         ComplexityAnalyzer.LOGGER.warn("[Cabin] Receive failed: {}", reason);
         manifest = null;
         buffer = null;
-        receivedBytes = 0;
-        receivedChunks = 0;
         state.set(State.FAILED);
         CabinProgressOverlay.fail(reason);
-        sendChat(Component.literal("❌ Cabin transfer failed: " + reason).withStyle(ChatFormatting.RED));
+        chat("❌ Cabin transfer failed: " + reason, ChatFormatting.RED);
     }
 
-    private void sendChat(Component component) {
+    private void chat(String text, ChatFormatting style) {
+        chat(Component.literal(text).withStyle(style));
+    }
+
+    private void chat(Component comp) {
         try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.player != null) mc.player.displayClientMessage(component, false);
+            var mc = Minecraft.getInstance();
+            if (mc.player != null) mc.player.displayClientMessage(comp, false);
         } catch (Throwable ignored) {
         }
-    }
-
-    private static String humanBytes(long n) {
-        if (n < 1024) return n + " B";
-        double k = n / 1024.0;
-        if (k < 1024) return String.format(java.util.Locale.ROOT, "%.1f KB", k);
-        double m = k / 1024.0;
-        if (m < 1024) return String.format(java.util.Locale.ROOT, "%.1f MB", m);
-        return String.format(java.util.Locale.ROOT, "%.2f GB", m / 1024.0);
     }
 }

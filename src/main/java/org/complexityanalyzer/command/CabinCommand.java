@@ -31,7 +31,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.export.cabin.CabinBackgroundService;
+import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.cabin.CabinPayloads;
 
 public final class CabinCommand {

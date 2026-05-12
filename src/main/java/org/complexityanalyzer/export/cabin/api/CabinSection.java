@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.export.cabin;
+package org.complexityanalyzer.export.cabin.api;
 
 public record CabinSection(byte id, byte[] payload, boolean compress) {
 

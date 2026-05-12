@@ -59,20 +59,10 @@ public final class CabinSendSession {
         return fileHash;
     }
 
-    public int getChunkCount() {
-        return chunkCount;
-    }
-
-    public long getTotalSize() {
-        return payload.length;
-    }
-
     public void start(int itemCount, int mobCount, int recipeCount, long generatedAtMs, String serverName) {
         if (state != State.SENDING) return;
-        var manifest = new CabinPayloads.ManifestS2C(
-                fileHash, payload.length, chunkCount, chunkSize,
-                itemCount, mobCount, recipeCount, generatedAtMs, serverName
-        );
+        var manifest = new CabinPayloads.ManifestS2C(fileHash, payload.length, chunkCount, chunkSize,
+                itemCount, mobCount, recipeCount, generatedAtMs, serverName);
         PacketDistributor.sendToPlayer(player, manifest);
         pump();
     }
@@ -131,11 +121,8 @@ public final class CabinSendSession {
     private void sendChunk(int seq) {
         int start = seq * chunkSize;
         int end = Math.min(start + chunkSize, payload.length);
-        int len = end - start;
-        byte[] data = new byte[len];
-        System.arraycopy(payload, start, data, 0, len);
         try {
-            PacketDistributor.sendToPlayer(player, new CabinPayloads.ChunkS2C(seq, data));
+            PacketDistributor.sendToPlayer(player, new CabinPayloads.ChunkS2C(seq, payload, start, end - start));
         } catch (Throwable t) {
             abort("send failed: " + t.getMessage());
         }

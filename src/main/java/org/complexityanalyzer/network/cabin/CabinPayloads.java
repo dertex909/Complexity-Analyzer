@@ -72,9 +72,8 @@ public final class CabinPayloads {
         }
     }
 
-    public record ManifestS2C(long fileHash, long totalSize, int chunkCount, int chunkSize,
-                              int itemCount, int mobCount, int recipeCount,
-                              long generatedAtMs, String serverName) implements CustomPacketPayload {
+    public record ManifestS2C(long fileHash, long totalSize, int chunkCount, int chunkSize, int itemCount, int mobCount,
+                              int recipeCount, long generatedAtMs, String serverName) implements CustomPacketPayload {
         public static final Type<ManifestS2C> TYPE = new Type<>(id("cabin_manifest"));
         public static final StreamCodec<RegistryFriendlyByteBuf, ManifestS2C> STREAM_CODEC = StreamCodec.of(
                 (buf, m) -> {
@@ -97,21 +96,28 @@ public final class CabinPayloads {
         }
     }
 
-    public record ChunkS2C(int sequenceId, byte[] data) implements CustomPacketPayload {
+    public record ChunkS2C(int sequenceId, byte[] data, int offset, int length) implements CustomPacketPayload {
         public static final Type<ChunkS2C> TYPE = new Type<>(id("cabin_chunk"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, ChunkS2C> STREAM_CODEC =
-                StreamCodec.of((buf, c) -> {
-                    buf.writeVarInt(c.sequenceId);
-                    buf.writeVarInt(c.data.length);
-                    buf.writeBytes(c.data);
-                }, buf -> {
-                    int seq = buf.readVarInt();
-                    int len = buf.readVarInt();
+
+        public ChunkS2C(int sequenceId, byte[] data) {
+            this(sequenceId, data, 0, data.length);
+        }
+
+        public static final StreamCodec<ByteBuf, ChunkS2C> STREAM_CODEC = StreamCodec.of(
+                (buf, c) -> {
+                    ByteBufCodecs.VAR_INT.encode(buf, c.sequenceId);
+                    ByteBufCodecs.VAR_INT.encode(buf, c.length);
+                    buf.writeBytes(c.data, c.offset, c.length);
+                },
+                buf -> {
+                    int seq = ByteBufCodecs.VAR_INT.decode(buf);
+                    int len = ByteBufCodecs.VAR_INT.decode(buf);
                     if (len < 0 || len > CHUNK_SIZE * 2) throw new IllegalStateException("Bad chunk length: " + len);
                     byte[] data = new byte[len];
                     buf.readBytes(data);
                     return new ChunkS2C(seq, data);
-                });
+                }
+        );
 
         @Override
         public @NotNull Type<ChunkS2C> type() {
@@ -132,8 +138,9 @@ public final class CabinPayloads {
 
     public record UpToDateS2C(long fileHash, long generatedAtMs) implements CustomPacketPayload {
         public static final Type<UpToDateS2C> TYPE = new Type<>(id("cabin_up_to_date"));
-        public static final StreamCodec<ByteBuf, UpToDateS2C> STREAM_CODEC =
-                StreamCodec.composite(ByteBufCodecs.VAR_LONG, UpToDateS2C::fileHash, ByteBufCodecs.VAR_LONG, UpToDateS2C::generatedAtMs, UpToDateS2C::new);
+        public static final StreamCodec<ByteBuf, UpToDateS2C> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_LONG, UpToDateS2C::fileHash, ByteBufCodecs.VAR_LONG, UpToDateS2C::generatedAtMs, UpToDateS2C::new
+        );
 
         @Override
         public @NotNull Type<UpToDateS2C> type() {
@@ -143,9 +150,9 @@ public final class CabinPayloads {
 
     public record ErrorS2C(String reason) implements CustomPacketPayload {
         public static final Type<ErrorS2C> TYPE = new Type<>(id("cabin_error"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, ErrorS2C> STREAM_CODEC =
-                StreamCodec.of((buf, e) ->
-                        buf.writeUtf(e.reason, 1024), buf -> new ErrorS2C(buf.readUtf(1024)));
+        public static final StreamCodec<ByteBuf, ErrorS2C> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.stringUtf8(1024), ErrorS2C::reason, ErrorS2C::new
+        );
 
         @Override
         public @NotNull Type<ErrorS2C> type() {
@@ -155,9 +162,9 @@ public final class CabinPayloads {
 
     public record PendingS2C(String message) implements CustomPacketPayload {
         public static final Type<PendingS2C> TYPE = new Type<>(id("cabin_pending"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, PendingS2C> STREAM_CODEC =
-                StreamCodec.of((buf, p) -> buf.writeUtf(p.message, 256),
-                        buf -> new PendingS2C(buf.readUtf(256)));
+        public static final StreamCodec<ByteBuf, PendingS2C> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.stringUtf8(256), PendingS2C::message, PendingS2C::new
+        );
 
         @Override
         public @NotNull Type<PendingS2C> type() {

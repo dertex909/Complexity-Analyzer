@@ -21,42 +21,39 @@ package org.complexityanalyzer.client.cabin;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.complexityanalyzer.network.cabin.CabinPayloads;
 
-/**
- * Client-only thunks that dispatch inbound payloads to the singleton receiver.
- * <p>
- * Loaded lazily by {@code CabinNetwork} via {@code FMLEnvironment.dist.isClient()}
- * checks so dedicated servers never see this class.
- */
 public final class ClientCabinNetwork {
-
     private ClientCabinNetwork() {
     }
 
-    public static void handleManifest(CabinPayloads.ManifestS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onManifest(payload));
+    private static CabinReceiver r() {
+        return CabinReceiver.getInstance();
     }
 
-    public static void handleChunk(CabinPayloads.ChunkS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onChunk(payload));
+    public static void handleManifest(CabinPayloads.ManifestS2C p, IPayloadContext c) {
+        c.enqueueWork(() -> r().onManifest(p));
     }
 
-    public static void handleFinish(CabinPayloads.FinishS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onFinish(payload.fileHash()));
+    public static void handleChunk(CabinPayloads.ChunkS2C p, IPayloadContext c) {
+        c.enqueueWork(() -> r().onChunk(p));
     }
 
-    public static void handleUpToDate(CabinPayloads.UpToDateS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onUpToDate(payload.fileHash(), payload.generatedAtMs()));
+    public static void handleFinish(CabinPayloads.FinishS2C p, IPayloadContext c) {
+        c.enqueueWork(() -> r().onFinish(p.fileHash()));
     }
 
-    public static void handleError(CabinPayloads.ErrorS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onError(payload.reason()));
+    public static void handleUpToDate(CabinPayloads.UpToDateS2C p, IPayloadContext c) {
+        c.enqueueWork(() -> r().onUpToDate(p.fileHash(), p.generatedAtMs()));
     }
 
-    public static void handlePending(CabinPayloads.PendingS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onPending(payload.message()));
+    public static void handleError(CabinPayloads.ErrorS2C p, IPayloadContext c) {
+        c.enqueueWork(() -> r().onError(p.reason()));
     }
 
-    public static void handlePollHash(CabinPayloads.PollHashS2C payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> CabinReceiver.getInstance().onPollHash());
+    public static void handlePending(CabinPayloads.PendingS2C p, IPayloadContext c) {
+        c.enqueueWork(() -> r().onPending(p.message()));
+    }
+
+    public static void handlePollHash(IPayloadContext c) {
+        c.enqueueWork(r()::onPollHash);
     }
 }

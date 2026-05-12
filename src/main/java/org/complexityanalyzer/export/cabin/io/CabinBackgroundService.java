@@ -16,13 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.export.cabin;
+package org.complexityanalyzer.export.cabin.io;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.export.cabin.api.CabinFormat;
+import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -155,9 +158,9 @@ public final class CabinBackgroundService {
             CabinReader reader = new CabinReader(bytes);
             byte[] meta = reader.readSection(CabinFormat.SEC_META);
             int offset = 24;
-            itemCount = CabinReader.readI32(meta, offset);
-            mobCount = CabinReader.readI32(meta, offset + 4);
-            recipeCount = CabinReader.readI32(meta, offset + 12);
+            itemCount = LeBuf.readI32(meta, offset);
+            mobCount = LeBuf.readI32(meta, offset + 4);
+            recipeCount = LeBuf.readI32(meta, offset + 12);
         } catch (Throwable ignored) {
         }
         return new Snapshot(bytes, hash, System.currentTimeMillis(), itemCount, mobCount, recipeCount);

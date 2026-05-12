@@ -27,7 +27,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.export.cabin.CabinBackgroundService;
+import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
 import java.util.Map;
 import java.util.UUID;
@@ -77,21 +77,18 @@ public final class CabinSessionManager {
         CabinBackgroundService.Snapshot snap = svc.getSnapshot();
 
         if (snap == null) {
-            CabinBackgroundService.Status status = svc.getStatus();
-            String message;
-            switch (status) {
-                case BUILDING -> message = "Cabin is being prepared. Please wait a moment...";
-                case FAILED -> message = "Cabin generation failed. Use /complexity cabin regenerate";
+            String message = switch (svc.getStatus()) {
+                case BUILDING -> "Cabin is being prepared. Please wait a moment...";
+                case FAILED -> "Cabin generation failed. Use /complexity cabin regenerate";
                 default -> {
                     AnalysisEngine engine = AnalysisEngine.getInstance();
                     if (engine.isReady()) {
-                        message = "Cabin not yet generated, building now...";
                         scheduleBuildAndDeliver(player);
-                    } else {
-                        message = "Analysis engine not ready: " + engine.getCurrentState();
+                        yield "Cabin not yet generated, building now...";
                     }
+                    yield "Analysis engine not ready: " + engine.getCurrentState();
                 }
-            }
+            };
             PacketDistributor.sendToPlayer(player, new CabinPayloads.PendingS2C(message));
             return;
         }
@@ -108,33 +105,33 @@ public final class CabinSessionManager {
         MinecraftServer server = player.getServer();
         AnalysisEngine engine = AnalysisEngine.getInstance();
         if (server == null || !engine.isReady()) return;
+
         AUTO_DELIVER_QUEUE.addIfAbsent(player.getUUID());
-        String modVersion = ModList.get()
-                .getModContainerById(ComplexityAnalyzer.MODID)
-                .map(c -> c.getModInfo().getVersion().toString())
-                .orElse("unknown");
-        CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion)
-                .whenComplete((snap, err) -> server.execute(() -> {
-                    if (!AUTO_DELIVER_QUEUE.remove(player.getUUID())) return;
-                    if (err != null || snap == null) {
-                        PacketDistributor.sendToPlayer(player, new CabinPayloads.ErrorS2C("build failed: " + (err != null ? err.getMessage() : "no snapshot")));
-                        return;
-                    }
-                    startSend(player, snap);
-                }));
+        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
+                .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
+
+        CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion).whenComplete((snap, err) -> server.execute(() -> {
+            if (!AUTO_DELIVER_QUEUE.remove(player.getUUID())) return;
+            if (err != null || snap == null) {
+                PacketDistributor.sendToPlayer(player, new CabinPayloads.ErrorS2C("build failed: " + (err != null ? err.getMessage() : "no snapshot")));
+            } else {
+                startSend(player, snap);
+            }
+        }));
     }
 
     private static void startSend(ServerPlayer player, CabinBackgroundService.Snapshot snap) {
         CabinSendSession existing = SESSIONS.remove(player.getUUID());
         if (existing != null) existing.abort("superseded by new request");
+
         if (snap.bytes().length > CabinPayloads.MAX_BYTES_TOTAL) {
             PacketDistributor.sendToPlayer(player, new CabinPayloads.ErrorS2C("snapshot too large: " + snap.bytes().length + " bytes"));
             return;
         }
+
         CabinSendSession session = new CabinSendSession(player, snap.bytes(), snap.fileHash());
         SESSIONS.put(player.getUUID(), session);
-        MinecraftServer server = player.getServer();
-        String name = server != null ? server.getMotd() : "Server";
+        String name = player.getServer() != null ? player.getServer().getMotd() : "Server";
         session.start(snap.itemCount(), snap.mobCount(), snap.recipeCount(), snap.generatedAtMs(), name);
     }
 

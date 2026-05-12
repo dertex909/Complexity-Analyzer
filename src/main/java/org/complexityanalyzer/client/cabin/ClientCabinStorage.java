@@ -21,8 +21,8 @@ package org.complexityanalyzer.client.cabin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.export.cabin.CabinReader;
-import org.complexityanalyzer.export.cabin.XxHash64;
+import org.complexityanalyzer.export.cabin.api.XxHash64;
+import org.complexityanalyzer.export.cabin.io.CabinReader;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -31,108 +31,63 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 
-/**
- * Resolves on-disk paths for cached .cabin snapshots and exposes the latest known
- * file hash so the client can short-circuit redundant downloads.
- * <p>
- * Layout:
- * <pre>
- *   &lt;minecraft&gt;/complexityanalyzer/cabin/&lt;server-id&gt;/latest.cabin
- *   &lt;minecraft&gt;/complexityanalyzer/cabin/&lt;server-id&gt;/latest.cabin.hash
- * </pre>
- * {@code server-id} is a stable hex hash of the server address (or "singleplayer-NAME"
- * when not connected), so different servers do not overwrite each other's caches.
- */
 public final class ClientCabinStorage {
-
-    private static final String ROOT_DIR = "complexityanalyzer";
-    private static final String CABIN_SUBDIR = "cabin";
-    private static final String CABIN_FILE = "latest.cabin";
-    private static final String HASH_FILE = "latest.cabin.hash";
+    private static final String DIR = "complexityanalyzer/cabin";
+    private static final String FILE = "latest.cabin";
+    private static final String HASH = "latest.cabin.hash";
 
     private ClientCabinStorage() {
     }
 
-    public static Path getRootDir() {
-        return Minecraft.getInstance().gameDirectory.toPath()
-                .resolve(ROOT_DIR)
-                .resolve(CABIN_SUBDIR)
-                .toAbsolutePath()
-                .normalize();
+    public static Path getDir() {
+        return Minecraft.getInstance().gameDirectory.toPath().resolve(DIR).resolve(id());
     }
 
-    public static Path getServerDir() {
-        return getRootDir().resolve(currentServerId());
-    }
-
-    public static Path getCabinPath() {
-        return getServerDir().resolve(CABIN_FILE);
-    }
-
-    public static Path getHashPath() {
-        return getServerDir().resolve(HASH_FILE);
-    }
-
-    private static final long SEED_MP = 0xCAB17C7_E50F47A1L;
-    private static final long SEED_SP = 0x5550CABE_5EEDC0DEL;
-
-    public static String currentServerId() {
-        Minecraft mc = Minecraft.getInstance();
-        ServerData server = mc.getCurrentServer();
-        if (server != null && !server.ip.isEmpty()) {
-            long hash = XxHash64.hashString(server.ip.toLowerCase(Locale.ROOT), SEED_MP);
-            return "mp-" + Long.toHexString(hash);
-        }
-        if (mc.hasSingleplayerServer() && mc.getSingleplayerServer() != null) {
-            String name = mc.getSingleplayerServer().getWorldData().getLevelName();
-            long hash = XxHash64.hashString(name.toLowerCase(Locale.ROOT), SEED_SP);
-            return "sp-" + Long.toHexString(hash);
-        }
+    private static String id() {
+        var mc = Minecraft.getInstance();
+        ServerData s = mc.getCurrentServer();
+        if (s != null && !s.ip.isEmpty()) return "mp-" +
+                Long.toHexString(XxHash64.hashString(s.ip.toLowerCase(Locale.ROOT), 0xCAB17C7E50F47A1L));
+        var ss = mc.getSingleplayerServer();
+        if (ss != null) return "sp-" +
+                Long.toHexString(XxHash64.hashString(ss.getWorldData().getLevelName().toLowerCase(Locale.ROOT), 0x5550CABE5EEDC0DEL));
         return "unknown";
     }
 
     public static long readKnownHash() {
-        Path hashPath = getHashPath();
-        if (!Files.isRegularFile(hashPath)) return 0L;
-        try {
-            String s = Files.readString(hashPath, StandardCharsets.US_ASCII).trim();
-            if (s.startsWith("0x") || s.startsWith("0X")) s = s.substring(2);
-            return Long.parseUnsignedLong(s, 16);
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Cabin] Failed to read hash file {}: {}", hashPath, t.getMessage());
-            return 0L;
+        Path p = getDir().resolve(HASH);
+        if (Files.isRegularFile(p)) try {
+            String s = Files.readString(p, StandardCharsets.US_ASCII).trim();
+            return Long.parseUnsignedLong(s.startsWith("0x") ? s.substring(2) : s, 16);
+        } catch (Exception ignored) {
         }
+        return 0;
     }
 
     public static byte[] readCabin() {
-        Path p = getCabinPath();
-        if (!Files.isRegularFile(p)) return null;
-        try {
+        Path p = getDir().resolve(FILE);
+        if (Files.isRegularFile(p)) try {
             return Files.readAllBytes(p);
-        } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.warn("[Cabin] Failed to read {}: {}", p, e.getMessage());
-            return null;
+        } catch (IOException ignored) {
         }
+        return null;
     }
 
-    public static boolean writeCabin(byte[] data, long fileHash) {
+    public static boolean writeCabin(byte[] data, long hash) {
         try {
-            Path dir = getServerDir();
-            Files.createDirectories(dir);
-            Path tmp = dir.resolve(CABIN_FILE + ".tmp");
+            Path d = getDir();
+            Files.createDirectories(d);
+            Path tmp = d.resolve(FILE + ".tmp");
             Files.write(tmp, data);
             try {
-                Files.move(tmp, dir.resolve(CABIN_FILE),
-                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (Throwable atomic) {
-                Files.move(tmp, dir.resolve(CABIN_FILE), StandardCopyOption.REPLACE_EXISTING);
+                Files.move(tmp, d.resolve(FILE), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                Files.move(tmp, d.resolve(FILE), StandardCopyOption.REPLACE_EXISTING);
             }
-            Files.writeString(dir.resolve(HASH_FILE),
-                    Long.toHexString(fileHash) + System.lineSeparator(),
-                    StandardCharsets.US_ASCII);
+            Files.writeString(d.resolve(HASH), Long.toHexString(hash), StandardCharsets.US_ASCII);
             return true;
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("[Cabin] Failed to persist cabin", t);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[Cabin] Failed to save", e);
             return false;
         }
     }
@@ -141,7 +96,7 @@ public final class ClientCabinStorage {
         try {
             new CabinReader(data);
             return true;
-        } catch (Throwable t) {
+        } catch (Exception e) {
             return false;
         }
     }

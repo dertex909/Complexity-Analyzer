@@ -16,10 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.export.cabin;
+package org.complexityanalyzer.export.cabin.io;
 
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
+import org.complexityanalyzer.export.cabin.api.CabinFormat;
+import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.export.cabin.api.XxHash64;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -39,12 +42,12 @@ public final class CabinReader {
     public CabinReader(byte[] data) throws IOException {
         this.data = data;
         if (data.length < CabinFormat.HEADER_SIZE) throw new IOException("Cabin too small: " + data.length);
-        int magic = readI32(data, 0);
+        int magic = LeBuf.readI32(data, 0);
         if (magic != CabinFormat.MAGIC) throw new IOException("Bad magic: 0x" + Integer.toHexString(magic));
-        int version = readU16(data, 4);
+        int version = LeBuf.readU16(data, 4);
         if (version != (CabinFormat.VERSION & 0xFFFF)) throw new IOException("Unsupported version: 0x" + Integer.toHexString(version));
-        this.tocOffset = readI64(data, 8);
-        this.fileHash = readI64(data, 24);
+        this.tocOffset = LeBuf.readI64(data, 8);
+        this.fileHash = LeBuf.readI64(data, 24);
 
         long zeroedExpected = computeHashWithZeroedHashSlot(data);
         this.sectionsById = parseTocAndValidateHash(data, zeroedExpected);
@@ -57,21 +60,16 @@ public final class CabinReader {
         if (tocOffset < CabinFormat.HEADER_SIZE || tocOffset > data.length - 2)
             throw new IOException("TOC offset out of range: " + tocOffset);
         int p = (int) tocOffset;
-        int sectionCount = readU16(data, p);
+        int sectionCount = LeBuf.readU16(data, p);
         p += 2;
         if (p + sectionCount * 26L > data.length) throw new IOException("Truncated TOC");
         Byte2ObjectMap<Section> map = new Byte2ObjectOpenHashMap<>(sectionCount);
         for (int i = 0; i < sectionCount; i++) {
-            byte id = data[p];
-            p++;
-            byte codec = data[p];
-            p++;
-            long off = readI64(data, p);
-            p += 8;
-            long len = readI64(data, p);
-            p += 8;
-            long unc = readI64(data, p);
-            p += 8;
+            byte id = data[p++];
+            byte codec = data[p++];
+            long off = LeBuf.readI64(data, p); p += 8;
+            long len = LeBuf.readI64(data, p); p += 8;
+            long unc = LeBuf.readI64(data, p); p += 8;
             map.put(id, new Section(id, codec, off, len, unc));
         }
         return map;
@@ -80,7 +78,7 @@ public final class CabinReader {
     private static long computeHashWithZeroedHashSlot(byte[] data) {
         byte[] copy = data.clone();
         for (int i = 24; i < 32; i++) copy[i] = 0;
-        return XxHash64.hash(copy, 0, copy.length, CabinFormat.XXH64_SEED);
+        return XxHash64.hash(copy, CabinFormat.XXH64_SEED);
     }
 
     public long getFileHash() {
@@ -141,32 +139,13 @@ public final class CabinReader {
     }
 
     public static String readPoolString(byte[] strings, int ref) {
-        int n = readI32(strings, 0);
+        int n = LeBuf.readI32(strings, 0);
         if (ref < 0 || ref >= n) throw new IllegalArgumentException("Bad string ref: " + ref);
         int p = 4;
         for (int i = 0; i < ref; i++) {
-            int len = readU16(strings, p);
-            p += 2 + len;
+            p += 2 + LeBuf.readU16(strings, p);
         }
-        int len = readU16(strings, p);
+        int len = LeBuf.readU16(strings, p);
         return new String(strings, p + 2, len, StandardCharsets.UTF_8);
-    }
-
-    public static int readI32(byte[] b, int o) {
-        return (b[o] & 0xFF) | ((b[o + 1] & 0xFF) << 8) | ((b[o + 2] & 0xFF) << 16) | ((b[o + 3] & 0xFF) << 24);
-    }
-
-    public static int readU16(byte[] b, int o) {
-        return (b[o] & 0xFF) | ((b[o + 1] & 0xFF) << 8);
-    }
-
-    public static long readI64(byte[] b, int o) {
-        return ((long) (b[o] & 0xFF)) | ((long) (b[o + 1] & 0xFF) << 8)
-                | ((long) (b[o + 2] & 0xFF) << 16) | ((long) (b[o + 3] & 0xFF) << 24) | ((long) (b[o + 4] & 0xFF) << 32)
-                | ((long) (b[o + 5] & 0xFF) << 40) | ((long) (b[o + 6] & 0xFF) << 48) | ((long) (b[o + 7] & 0xFF) << 56);
-    }
-
-    public static double readF64(byte[] b, int o) {
-        return Double.longBitsToDouble(readI64(b, o));
     }
 }

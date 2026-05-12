@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.export.cabin;
+package org.complexityanalyzer.export.cabin.api;
 
 import java.nio.charset.StandardCharsets;
 
@@ -47,27 +47,18 @@ public final class XxHash64 {
 
         if (len >= 32) {
             int limit = end - 32;
-            long v1 = seed + P1 + P2;
-            long v2 = seed + P2;
-            long v3 = seed;
-            long v4 = seed - P1;
+            long[] v = {seed + P1 + P2, seed + P2, seed, seed - P1};
             do {
-                v1 = round(v1, readLong(input, p));
-                p += 8;
-                v2 = round(v2, readLong(input, p));
-                p += 8;
-                v3 = round(v3, readLong(input, p));
-                p += 8;
-                v4 = round(v4, readLong(input, p));
-                p += 8;
+                for (int i = 0; i < 4; i++) {
+                    v[i] = round(v[i], LeBuf.readI64(input, p));
+                    p += 8;
+                }
             } while (p <= limit);
 
-            h64 = Long.rotateLeft(v1, 1) + Long.rotateLeft(v2, 7) + Long.rotateLeft(v3, 12)
-                    + Long.rotateLeft(v4, 18);
-            h64 = mergeRound(h64, v1);
-            h64 = mergeRound(h64, v2);
-            h64 = mergeRound(h64, v3);
-            h64 = mergeRound(h64, v4);
+            int[] shifts = {1, 7, 12, 18};
+            h64 = 0;
+            for (int i = 0; i < 4; i++) h64 += Long.rotateLeft(v[i], shifts[i]);
+            for (long val : v) h64 = mergeRound(h64, val);
         } else {
             h64 = seed + P5;
         }
@@ -75,13 +66,12 @@ public final class XxHash64 {
         h64 += len;
 
         while (p + 8 <= end) {
-            long k1 = round(0, readLong(input, p));
-            h64 ^= k1;
+            h64 ^= round(0, LeBuf.readI64(input, p));
             h64 = Long.rotateLeft(h64, 27) * P1 + P4;
             p += 8;
         }
         if (p + 4 <= end) {
-            h64 ^= (readInt(input, p) & 0xFFFFFFFFL) * P1;
+            h64 ^= (LeBuf.readI32(input, p) & 0xFFFFFFFFL) * P1;
             h64 = Long.rotateLeft(h64, 23) * P2 + P3;
             p += 4;
         }
@@ -110,15 +100,5 @@ public final class XxHash64 {
         val = round(0, val);
         acc ^= val;
         return acc * P1 + P4;
-    }
-
-    private static long readLong(byte[] b, int o) {
-        return ((long) (b[o] & 0xFF)) | ((long) (b[o + 1] & 0xFF) << 8)
-                | ((long) (b[o + 2] & 0xFF) << 16) | ((long) (b[o + 3] & 0xFF) << 24) | ((long) (b[o + 4] & 0xFF) << 32)
-                | ((long) (b[o + 5] & 0xFF) << 40) | ((long) (b[o + 6] & 0xFF) << 48) | ((long) (b[o + 7] & 0xFF) << 56);
-    }
-
-    private static int readInt(byte[] b, int o) {
-        return (b[o] & 0xFF) | ((b[o + 1] & 0xFF) << 8) | ((b[o + 2] & 0xFF) << 16) | ((b[o + 3] & 0xFF) << 24);
     }
 }

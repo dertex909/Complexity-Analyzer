@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.export.cabin;
+package org.complexityanalyzer.export.cabin.api;
 
 public final class LeBuf {
 
@@ -64,31 +64,17 @@ public final class LeBuf {
 
     public void u16(int v) {
         ensure(2);
-        buf[pos] = (byte) v;
-        buf[pos + 1] = (byte) (v >>> 8);
-        pos += 2;
+        for (int i = 0; i < 16; i += 8) buf[pos++] = (byte) (v >>> i);
     }
 
     public void i32(int v) {
         ensure(4);
-        buf[pos] = (byte) v;
-        buf[pos + 1] = (byte) (v >>> 8);
-        buf[pos + 2] = (byte) (v >>> 16);
-        buf[pos + 3] = (byte) (v >>> 24);
-        pos += 4;
+        for (int i = 0; i < 32; i += 8) buf[pos++] = (byte) (v >>> i);
     }
 
     public void i64(long v) {
         ensure(8);
-        buf[pos] = (byte) v;
-        buf[pos + 1] = (byte) (v >>> 8);
-        buf[pos + 2] = (byte) (v >>> 16);
-        buf[pos + 3] = (byte) (v >>> 24);
-        buf[pos + 4] = (byte) (v >>> 32);
-        buf[pos + 5] = (byte) (v >>> 40);
-        buf[pos + 6] = (byte) (v >>> 48);
-        buf[pos + 7] = (byte) (v >>> 56);
-        pos += 8;
+        for (int i = 0; i < 64; i += 8) buf[pos++] = (byte) (v >>> i);
     }
 
     public void f64(double v) {
@@ -109,21 +95,33 @@ public final class LeBuf {
 
     public void putI32At(int offset, int v) {
         if (offset < 0 || offset + 4 > buf.length) throw new IndexOutOfBoundsException();
-        buf[offset] = (byte) v;
-        buf[offset + 1] = (byte) (v >>> 8);
-        buf[offset + 2] = (byte) (v >>> 16);
-        buf[offset + 3] = (byte) (v >>> 24);
+        for (int i = 0; i < 32; i += 8) buf[offset++] = (byte) (v >>> i);
     }
 
     public void putI64At(int offset, long v) {
         if (offset < 0 || offset + 8 > buf.length) throw new IndexOutOfBoundsException();
-        buf[offset] = (byte) v;
-        buf[offset + 1] = (byte) (v >>> 8);
-        buf[offset + 2] = (byte) (v >>> 16);
-        buf[offset + 3] = (byte) (v >>> 24);
-        buf[offset + 4] = (byte) (v >>> 32);
-        buf[offset + 5] = (byte) (v >>> 40);
-        buf[offset + 6] = (byte) (v >>> 48);
-        buf[offset + 7] = (byte) (v >>> 56);
+        for (int i = 0; i < 64; i += 8) buf[offset++] = (byte) (v >>> i);
+    }
+
+    public static int readU16(byte[] b, int o) {
+        int res = 0;
+        for (int i = 0; i < 16; i += 8) res |= (b[o++] & 0xFF) << i;
+        return res;
+    }
+
+    public static int readI32(byte[] b, int o) {
+        int res = 0;
+        for (int i = 0; i < 32; i += 8) res |= (b[o++] & 0xFF) << i;
+        return res;
+    }
+
+    public static long readI64(byte[] b, int o) {
+        long res = 0;
+        for (int i = 0; i < 64; i += 8) res |= ((long) (b[o++] & 0xFF)) << i;
+        return res;
+    }
+
+    public static double readF64(byte[] b, int o) {
+        return Double.longBitsToDouble(readI64(b, o));
     }
 }

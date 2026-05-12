@@ -95,6 +95,6 @@ public final class CabinNetwork {
     }
 
     private static void clientHandlePollHash(CabinPayloads.PollHashS2C payload, IPayloadContext ctx) {
-        if (FMLEnvironment.dist.isClient()) ClientCabinNetwork.handlePollHash(payload, ctx);
+        if (FMLEnvironment.dist.isClient()) ClientCabinNetwork.handlePollHash(ctx);
     }
 }

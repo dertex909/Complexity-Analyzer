@@ -33,7 +33,7 @@ public class BiomeDataMapper {
         data.getInternalBlockCounts().forEach((block, count) -> {
             if (block != Blocks.AIR) {
                 ResourceLocation key = GameRegistryManager.getBlockId(block);
-                data.serializableBlockCounts.put(key.toString(), count.get());
+                if (key != null) data.serializableBlockCounts.put(key.toString(), count.get());
             }
         });
 
@@ -48,7 +48,7 @@ public class BiomeDataMapper {
         data.getInternalBlockCounts().clear();
         if (data.serializableBlockCounts != null) data.serializableBlockCounts.forEach((key, count) -> {
             Block block = GameRegistryManager.getBlock(ResourceLocation.parse(key));
-            if (block != Blocks.AIR) data.getInternalBlockCounts().put(block, new AtomicLong(count));
+            if (block != null && block != Blocks.AIR) data.getInternalBlockCounts().put(block, new AtomicLong(count));
         });
 
         if (data.scannedChunks != null) {

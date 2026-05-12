@@ -26,6 +26,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.EmergencyManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
@@ -50,7 +51,6 @@ public class ScanExecutor {
 
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final AtomicInteger activeWorkerCount = new AtomicInteger(0);
-    private final AtomicInteger workerIdCounter = new AtomicInteger(0);
 
     private volatile ScanSession currentSession = null;
     private volatile Runnable currentOnComplete = null;
@@ -135,8 +135,6 @@ public class ScanExecutor {
                 return;
             }
 
-            workerIdCounter.set(0);
-
             currentSession = newSession;
             currentOnComplete = onComplete;
             completing.set(false);
@@ -192,19 +190,17 @@ public class ScanExecutor {
     private void startWorker() {
         if (isShutdown.get()) return;
         activeWorkerCount.incrementAndGet();
-        int workerId = workerIdCounter.getAndIncrement();
 
         try {
-            CompletableFuture.runAsync(() -> workerLoop(workerId), ThreadPoolManager.getInstance().getComputePool());
+            CompletableFuture.runAsync(this::workerLoop, ThreadPoolManager.getInstance().getComputePool());
         } catch (RejectedExecutionException e) {
             activeWorkerCount.decrementAndGet();
         }
     }
 
-    private void workerLoop(int workerId) {
+    private void workerLoop() {
         workerThreads.add(Thread.currentThread());
-        String workerName = "Scanner-" + workerId;
-        ComplexityAnalyzer.LOGGER.info("[SCAN] {} started", workerName);
+        ComplexityAnalyzer.LOGGER.info("[SCAN] Worker started");
 
         final ScanSession mySession = currentSession;
 
@@ -213,13 +209,13 @@ public class ScanExecutor {
                 ScanSession session = currentSession;
 
                 if (session != mySession || session == null || !session.isValid()) {
-                    ComplexityAnalyzer.LOGGER.debug("[SCAN] {} stopping — session changed or invalidated", workerName);
+                    ComplexityAnalyzer.LOGGER.debug("[SCAN] Stopping — session changed or invalidated");
                     break;
                 }
 
-                if (waitIfThrottled(workerName, mySession)) {
+                if (checkMemoryAndThrottling(mySession)) {
                     if (currentSession != mySession || !mySession.isValid()) {
-                        ComplexityAnalyzer.LOGGER.debug("[SCAN] {} stopping — session invalidated during pause", workerName);
+                        ComplexityAnalyzer.LOGGER.debug("[SCAN] Stopping — session invalidated during pause");
                         break;
                     }
                     continue;
@@ -244,51 +240,55 @@ public class ScanExecutor {
 
                 ResourceKey<Biome> biomeKey = ResourceKey.create(Registries.BIOME, biomeId);
 
-                scanArea(workerName, mySession, dimension, biomeKey);
+                scanArea(mySession, dimension, biomeKey);
             }
         } catch (Exception e) {
-            if (!isShutdown.get()) {
-                ComplexityAnalyzer.LOGGER.error("[SCAN] {} crashed", workerName, e);
-            }
+            if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error("[SCAN] Worker crashed", e);
         } finally {
             workerThreads.remove(Thread.currentThread());
             activeWorkerCount.decrementAndGet();
-            ComplexityAnalyzer.LOGGER.info("[SCAN] {} stopped", workerName);
+            ComplexityAnalyzer.LOGGER.info("[SCAN] Worker stopped");
         }
     }
 
-    private boolean waitIfThrottled(String workerName, ScanSession mySession) {
-        MsptMonitor monitor = msptMonitor;
-        if (monitor == null || !monitor.isThrottled()) return false;
-
-        long pauseStart = System.currentTimeMillis();
-        int pauseCount = throttlePauseCount.incrementAndGet();
-
-        if (pauseCount <= activeWorkerCount.get()) {
-            ComplexityAnalyzer.LOGGER.debug("[SCAN] {} paused — MSPT {} > {}", workerName,
-                    String.format("%.1f", monitor.getCurrentMspt()),
-                    String.format("%.1f", monitor.getMsptLimit()));
+    private boolean checkMemoryAndThrottling(ScanSession mySession) {
+        if (MemoryMonitor.isMemoryCritical()) {
+            EmergencyManager.panic("Heap usage critical (" + String.format("%.1f%%", MemoryMonitor.getUsedMemoryRatio() * 100) + ")");
+            return true;
         }
 
-        while (monitor.isThrottled() && !isShutdown.get()) {
-            ScanSession current = currentSession;
-            if (current != mySession || current == null || !current.isValid()) {
-                ComplexityAnalyzer.LOGGER.debug("[SCAN] {} woke up — session changed", workerName);
-                break;
+        boolean throttled = false;
+        if (MemoryMonitor.isMemoryPressureHigh()) {
+            throttled = true;
+            if (throttlePauseCount.get() % 10 == 0) MemoryMonitor.logMemoryStatus();
+        } else if (isThrottled()) {
+            throttled = true;
+        }
+
+        if (!throttled) return false;
+
+        long pauseStart = System.currentTimeMillis();
+        throttlePauseCount.incrementAndGet();
+
+        while ((MemoryMonitor.isMemoryPressureHigh() || isThrottled()) && !isShutdown.get()) {
+            if (MemoryMonitor.isMemoryCritical()) {
+                EmergencyManager.panic("Heap usage critical during pause");
+                return true;
             }
 
-            LockSupport.parkNanos(100_000_000L);
+            ScanSession current = currentSession;
+            if (current != mySession || current == null || !current.isValid()) break;
+
+            LockSupport.parkNanos(200_000_000L);
             if (Thread.currentThread().isInterrupted()) break;
         }
 
         long pauseDuration = System.currentTimeMillis() - pauseStart;
         totalThrottleTimeMs.addAndGet(pauseDuration);
-        ComplexityAnalyzer.LOGGER.debug("[SCAN] {} resumed after {}ms pause", workerName, pauseDuration);
-
         return true;
     }
 
-    private void scanArea(String workerName, ScanSession mySession,
+    private void scanArea(ScanSession mySession,
                           ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey) {
 
         ResourceLocation dimId = dimension.location();
@@ -296,17 +296,16 @@ public class ScanExecutor {
 
         if (shouldStop(mySession)) return;
         if (mySession.doesNotNeedBiome(dimId, biomeId)) return;
-        if (waitAndCheckStop(workerName, mySession)) return;
+        if (checkMemoryAndThrottling(mySession)) return;
 
         Optional<ChunkPos> startPos = worldScanner.findBiomeLocation(dimension, biomeKey, false);
 
         if (startPos.isEmpty() || shouldStop(mySession)) {
-            // If we can't find a usable starting point for this biome, don't waste time retrying it endlessly.
             mySession.abandonBiome(dimId, biomeId);
             return;
         }
 
-        ScanContext ctx = new ScanContext(workerName, mySession, dimension, biomeKey, dimId, biomeId);
+        ScanContext ctx = new ScanContext(mySession, dimension, biomeKey, dimId, biomeId);
         ctx.searcher.startAt(startPos.get().x, startPos.get().z);
 
         performScan(ctx);
@@ -317,8 +316,8 @@ public class ScanExecutor {
         return !mySession.isValid() || isShutdown.get() || currentSession != mySession;
     }
 
-    private boolean waitAndCheckStop(String workerName, ScanSession mySession) {
-        if (waitIfThrottled(workerName, mySession)) return shouldStop(mySession);
+    private boolean waitAndCheckStop(ScanSession mySession) {
+        if (checkMemoryAndThrottling(mySession)) return shouldStop(mySession);
         return false;
     }
 
@@ -326,7 +325,6 @@ public class ScanExecutor {
         record AnalysisBatchResult(List<ChunkBatchProcessor.ScanResult> results, int claimed) {
         }
 
-        final String workerName;
         final ScanSession mySession;
         final ResourceKey<Level> dimension;
         final ResourceKey<Biome> biomeKey;
@@ -347,10 +345,8 @@ public class ScanExecutor {
         int stagnantBatches = 0;
         int relocations = 0;
 
-        ScanContext(String workerName, ScanSession mySession,
-                    ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
+        ScanContext(ScanSession mySession, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
                     ResourceLocation dimId, ResourceLocation biomeId) {
-            this.workerName = workerName;
             this.mySession = mySession;
             this.dimension = dimension;
             this.biomeKey = biomeKey;
@@ -377,14 +373,14 @@ public class ScanExecutor {
     private void performScan(ScanContext ctx) {
         while (ctx.canContinue()) {
             drainCompletedAnalysis(ctx, false);
-            if (waitAndCheckStop(ctx.workerName, ctx.mySession)) break;
+            if (waitAndCheckStop(ctx.mySession)) break;
             List<ChunkPos> batch = collectBatch(ctx);
             if (batch.isEmpty()) {
                 if (handleEmptyBatch(ctx)) break;
                 continue;
             }
             ctx.emptyBatches = 0;
-            if (waitAndCheckStop(ctx.workerName, ctx.mySession)) break;
+            if (waitAndCheckStop(ctx.mySession)) break;
             int useful = enqueueBatchAnalysis(ctx, batch);
             if (useful > 0) {
                 ctx.stagnantBatches = 0;
@@ -409,7 +405,7 @@ public class ScanExecutor {
                 return;
             } catch (ExecutionException e) {
                 Throwable cause = e.getCause() != null ? e.getCause() : e;
-                ComplexityAnalyzer.LOGGER.warn("[SCAN] {} analysis batch failed: {}", ctx.workerName, cause.getMessage());
+                ComplexityAnalyzer.LOGGER.warn("[SCAN] Analysis batch failed: {}", cause.getMessage());
                 continue;
             }
 
@@ -445,7 +441,7 @@ public class ScanExecutor {
     }
 
     private boolean relocateSearch(ScanContext ctx, boolean forceFreshSearch) {
-        if (waitAndCheckStop(ctx.workerName, ctx.mySession)) return true;
+        if (waitAndCheckStop(ctx.mySession)) return true;
         if (shouldStop(ctx.mySession)) return true;
         drainCompletedAnalysis(ctx, true);
         boolean allowCachedLocation = !forceFreshSearch && (ctx.relocations % 3 != 2);
@@ -515,8 +511,7 @@ public class ScanExecutor {
                 .map(e -> e.getKey().getPath() + ":" + e.getValue())
                 .collect(Collectors.joining(", "));
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] {} scanned around {}: {} chunks ({})",
-                ctx.workerName, ctx.biomeId.getPath(), ctx.found, biomeStats);
+        ComplexityAnalyzer.LOGGER.info("[SCAN] Scanned around {}: {} chunks ({})", ctx.biomeId.getPath(), ctx.found, biomeStats);
     }
 
     private int calculateBatchSize() {

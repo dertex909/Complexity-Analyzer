@@ -123,7 +123,7 @@ public final class ScanConfig {
     public static final int FULL_WORLD_THRESHOLD = 60;
     public static final int RADIUS_MAX = 64000;
     public static final int RADIUS_FULL_WORLD = 1_000_000;
-    public static final int BATCH_SAVE_THRESHOLD = 32;
+    public static final int BATCH_SAVE_THRESHOLD = 16;
     public static final int MSPT_RECOVERY_THRESHOLD_MS = 5;
     public static final int MSPT_SAMPLE_COUNT = 5;
 }

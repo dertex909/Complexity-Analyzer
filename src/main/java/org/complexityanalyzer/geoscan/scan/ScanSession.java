@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
@@ -40,16 +41,13 @@ public class ScanSession {
     private final int chunksPerBiome;
 
     private final AtomicLong totalChunksScanned = new AtomicLong(0);
-    private final AtomicLong totalChunksRequested = new AtomicLong(0);
-    private final AtomicLong totalChunksLoaded = new AtomicLong(0);
-    private final AtomicLong totalSnapshotsBuilt = new AtomicLong(0);
     private final long startTimeMs = System.currentTimeMillis();
 
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
 
-    private final ConcurrentHashMap<ResourceLocation, Set<Long>> attemptedChunksByDimension = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResourceLocation, LongOpenHashSet> attemptedChunksByDimension = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
 
     private volatile ScanMetadata.ScanPhase phase = ScanMetadata.ScanPhase.RECONNAISSANCE;
@@ -58,56 +56,14 @@ public class ScanSession {
         totalChunksScanned.incrementAndGet();
     }
 
-    public void recordChunksRequested(int count) {
-        if (count > 0) totalChunksRequested.addAndGet(count);
-    }
-
-    public void recordChunksLoaded(int count) {
-        if (count > 0) totalChunksLoaded.addAndGet(count);
-    }
-
-    public void recordSnapshotsBuilt(int count) {
-        if (count > 0) totalSnapshotsBuilt.addAndGet(count);
-    }
-
     public float getScanSpeed() {
         long elapsedMs = System.currentTimeMillis() - startTimeMs;
         if (elapsedMs < 1000) return 0;
         return totalChunksScanned.get() / (elapsedMs / 1000f);
     }
 
-    public float getRequestSpeed() {
-        long elapsedMs = System.currentTimeMillis() - startTimeMs;
-        if (elapsedMs < 1000) return 0;
-        return totalChunksRequested.get() / (elapsedMs / 1000f);
-    }
-
-    public float getLoadedSpeed() {
-        long elapsedMs = System.currentTimeMillis() - startTimeMs;
-        if (elapsedMs < 1000) return 0;
-        return totalChunksLoaded.get() / (elapsedMs / 1000f);
-    }
-
-    public float getSnapshotSpeed() {
-        long elapsedMs = System.currentTimeMillis() - startTimeMs;
-        if (elapsedMs < 1000) return 0;
-        return totalSnapshotsBuilt.get() / (elapsedMs / 1000f);
-    }
-
     public long getTotalChunksScanned() {
         return totalChunksScanned.get();
-    }
-
-    public long getTotalChunksRequested() {
-        return totalChunksRequested.get();
-    }
-
-    public long getTotalChunksLoaded() {
-        return totalChunksLoaded.get();
-    }
-
-    public long getTotalSnapshotsBuilt() {
-        return totalSnapshotsBuilt.get();
     }
 
     public long getElapsedSeconds() {
@@ -134,8 +90,7 @@ public class ScanSession {
             int remaining = entry.getValue().get();
             int scanned = Math.max(0, chunksPerBiome - remaining);
 
-            result.computeIfAbsent(key.dim(), k -> new HashMap<>())
-                    .put(key.biome(), new int[]{scanned, chunksPerBiome});
+            result.computeIfAbsent(key.dim(), k -> new HashMap<>()).put(key.biome(), new int[]{scanned, chunksPerBiome});
         }
 
         return result;
@@ -241,13 +196,19 @@ public class ScanSession {
     }
 
     public boolean tryMarkChunk(ResourceLocation dim, ChunkPos pos) {
-        return attemptedChunksByDimension
-                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet()).add(pos.toLong());
+        LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
+        synchronized (set) {
+            return set.add(pos.toLong());
+        }
     }
 
     public void loadAttemptedChunks(Map<ResourceLocation, Set<Long>> chunksByDimension) {
-        chunksByDimension.forEach((dim, chunks) -> attemptedChunksByDimension
-                .computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet()).addAll(chunks));
+        chunksByDimension.forEach((dim, chunks) -> {
+            LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
+            synchronized (set) {
+                set.addAll(chunks);
+            }
+        });
     }
 
     public String getStatusString() {

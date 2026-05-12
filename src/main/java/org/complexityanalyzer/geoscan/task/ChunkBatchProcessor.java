@@ -105,12 +105,8 @@ public class ChunkBatchProcessor {
         }
     }
 
-    private ResourceLocation resolveBiome(
-            BiomeContext ctx,
-            ResourceKey<Level> dimension,
-            ChunkPos pos,
-            @Nullable Map<Long, ResourceLocation> transientBiomeCache
-    ) {
+    private ResourceLocation resolveBiome(BiomeContext ctx, ResourceKey<Level> dimension, ChunkPos pos,
+                                          @Nullable Map<Long, ResourceLocation> transientBiomeCache) {
         long key = chunkKey(dimension, pos);
 
         if (transientBiomeCache != null) {
@@ -149,23 +145,18 @@ public class ChunkBatchProcessor {
         if (toGenerate.isEmpty()) return Collections.emptyList();
 
         VanillaChunkGeneratorService generator = getGenerator(dimension);
-        session.recordChunksRequested(toGenerate.size());
         List<ChunkAccess> chunks = generator.generateBatch(toGenerate);
 
         List<LoadedChunk> loadedChunks = new ArrayList<>(chunks.size());
-        int loaded = 0;
 
         for (int i = 0; i < chunks.size(); i++) {
             ChunkAccess chunk = chunks.get(i);
             if (chunk == null || !session.isValid()) continue;
-            loaded++;
             ChunkPos pos = toGenerate.get(i);
             ResourceLocation biome = biomeMap.get(pos);
             if (session.doesNotNeedBiome(dimId, biome)) continue;
             loadedChunks.add(new LoadedChunk(chunk, pos, biome));
         }
-
-        session.recordChunksLoaded(loaded);
 
         return loadedChunks;
     }
@@ -174,17 +165,14 @@ public class ChunkBatchProcessor {
         if (loadedChunks.isEmpty() || !session.isValid()) return Collections.emptyList();
 
         List<ScanResult> results = new ArrayList<>(loadedChunks.size());
-        int snapshotted = 0;
 
         for (LoadedChunk loadedChunk : loadedChunks) {
             if (!session.isValid()) break;
             ChunkSnapshot snapshot = analyzer.createSnapshot(loadedChunk.chunk());
             if (snapshot == null) continue;
-            snapshotted++;
             results.add(new ScanResult(snapshot, loadedChunk.biome()));
         }
 
-        session.recordSnapshotsBuilt(snapshotted);
         return results;
     }
 

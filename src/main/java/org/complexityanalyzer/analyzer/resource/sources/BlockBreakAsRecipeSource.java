@@ -43,14 +43,20 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.jetbrains.annotations.Nullable;
 
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
 
-    private static final int SAMPLE_COUNT = 100;
-    private static final double BASE_MINING_COST = 2.0;
+    private static final int SAMPLE_COUNT = 50;
+    private static final double TIME_COST_MULTIPLIER = 1.0;
 
     private final Reference2ObjectMap<Item, ObjectList<BaseResourceData>> allPaths = new Reference2ObjectOpenHashMap<>();
+    private final GeoDatabase geoDatabase;
+
+    public BlockBreakAsRecipeSource(GeoDatabase geoDatabase) {
+        this.geoDatabase = geoDatabase;
+    }
 
     @Override
     public void initialize(Level level) {
@@ -74,53 +80,76 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 continue;
             }
 
-            if (blockToMine.defaultDestroyTime() < 0) {
+            float hardness = blockToMine.defaultDestroyTime();
+            if (hardness < 0) {
                 blocksSkipped++;
                 continue;
             }
 
             BlockState defaultState = blockToMine.defaultBlockState();
-            Item blockAsItem = blockToMine.asItem();
-            if (blockAsItem == Items.AIR) continue;
+            ObjectList<ItemStack> candidates = new ObjectArrayList<>();
+            boolean requiresTool = defaultState.requiresCorrectToolForDrops();
 
-            for (ItemStack toolStack : toolsToTest) {
-                if (defaultState.requiresCorrectToolForDrops() && !toolStack.isCorrectToolForDrops(defaultState)) {
-                    continue;
-                }
+            if (!requiresTool) candidates.add(ItemStack.EMPTY);
 
+            for (ItemStack tool : toolsToTest) {
+                if (tool.isEmpty()) continue;
+                boolean isCorrect = tool.isCorrectToolForDrops(defaultState);
+                if (requiresTool && !isCorrect) continue;
+                float speed = tool.getDestroySpeed(defaultState);
+                if (!requiresTool && speed <= 1.0f) continue;
+
+                candidates.add(tool);
+            }
+
+            for (ItemStack toolStack : candidates) {
                 try {
                     LootTable lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                     if (lootTable == LootTable.EMPTY) continue;
-                    var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, blockToMine);
+
+                    long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
+                    var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, stableSeed);
                     if (averageDrop.isEmpty()) continue;
+
+                    float speed = toolStack.getDestroySpeed(defaultState);
+                    boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
+
+                    double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
+                    double rarityFactor = calculateRarityFactor(blockToMine);
+
+                    double enchantCost = 0;
+                    var enchants = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+                    if (!enchants.isEmpty()) enchantCost = enchants.size() * 500.0;
+
+                    double miningBaseFactor = rarityFactor + (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
+                    if (miningBaseFactor >= Double.POSITIVE_INFINITY) continue;
 
                     for (var entry : averageDrop.reference2DoubleEntrySet()) {
                         var droppedItem = entry.getKey();
                         var itemsPerAction = entry.getDoubleValue();
                         if (itemsPerAction <= 0) continue;
-                        if (droppedItem == blockAsItem) continue;
-                        Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
-                        sourceItems.put(blockAsItem, 1.0 / itemsPerAction);
 
-                        Item toolItem = toolStack.getItem();
-                        if (toolItem != Items.AIR) {
-                            double durability = toolStack.getMaxDamage();
-                            if (durability > 0) {
-                                double toolWearPerDrop = (1.0 / durability) / itemsPerAction;
-                                sourceItems.put(toolItem, toolWearPerDrop);
-                            }
+                        Reference2DoubleMap<Item> sourceItems = calculateSourceItems(toolStack, itemsPerAction);
+
+                        StringBuilder details = new StringBuilder();
+                        details.append("Mined from ").append(blockToMine.getName().getString());
+                        if (toolStack.isEmpty()) {
+                            details.append(" with Hand");
+                        } else {
+                            details.append(" with ").append(toolStack.getHoverName().getString());
+                            var enchs = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+                            if (!enchs.isEmpty()) details.append(" (Enchanted)");
                         }
+                        details.append(String.format(" (avg: %s)", formatAverage(itemsPerAction)));
 
-                        String toolName = toolStack.isEmpty() ? "Hand" : toolStack.getDisplayName().getString();
-                        String avgFormatted = formatAverage(itemsPerAction);
+                        boolean isSelfDrop = droppedItem == blockToMine.asItem();
 
                         BaseResourceData data = new BaseResourceData.Builder(droppedItem, this)
                                 .sourceType(getSourceType())
                                 .sourceSpecifier(blockToMine.getName().getString())
-                                .details(String.format("Mined from %s with %s (avg: %s)",
-                                        blockToMine.getName().getString(), toolName, avgFormatted))
-                                .baseFactor(BASE_MINING_COST)
-                                .sourceItems(sourceItems)
+                                .details(details.toString())
+                                .baseFactor(miningBaseFactor)
+                                .sourceItems(isSelfDrop ? new Reference2DoubleOpenHashMap<>() : sourceItems)
                                 .build();
 
                         allPaths.computeIfAbsent(droppedItem, k -> new ObjectArrayList<>()).add(data);
@@ -167,51 +196,81 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         tools.add(new ItemStack(Items.IRON_PICKAXE));
         tools.add(new ItemStack(Items.IRON_AXE));
         tools.add(new ItemStack(Items.IRON_SHOVEL));
-        tools.add(new ItemStack(Items.GOLDEN_PICKAXE));
-        tools.add(new ItemStack(Items.GOLDEN_AXE));
-        tools.add(new ItemStack(Items.GOLDEN_SHOVEL));
         tools.add(new ItemStack(Items.DIAMOND_PICKAXE));
         tools.add(new ItemStack(Items.DIAMOND_AXE));
         tools.add(new ItemStack(Items.DIAMOND_SHOVEL));
         tools.add(new ItemStack(Items.NETHERITE_PICKAXE));
         tools.add(new ItemStack(Items.NETHERITE_AXE));
         tools.add(new ItemStack(Items.NETHERITE_SHOVEL));
+        tools.add(new ItemStack(Items.NETHERITE_HOE));
         tools.add(new ItemStack(Items.SHEARS));
 
-        var silkTouchPickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
-        var silkTouchHolder = serverLevel.registryAccess().registryOrThrow(Registries.ENCHANTMENT)
-                .getHolder(Enchantments.SILK_TOUCH);
-        silkTouchHolder.ifPresent(holder -> silkTouchPickaxe.enchant(holder, 1));
-        tools.add(silkTouchPickaxe);
+        var registry = serverLevel.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        var silkTouch = registry.getHolder(Enchantments.SILK_TOUCH);
+        var fortune = registry.getHolder(Enchantments.FORTUNE);
+
+        Item[] bases = {
+                Items.NETHERITE_PICKAXE,
+                Items.NETHERITE_SHOVEL,
+                Items.NETHERITE_AXE,
+                Items.NETHERITE_HOE
+        };
+
+        for (Item base : bases) {
+            var stTool = new ItemStack(base);
+            silkTouch.ifPresent(h -> stTool.enchant(h, 1));
+            tools.add(stTool);
+
+            var fortuneTool = new ItemStack(base);
+            fortune.ifPresent(h -> fortuneTool.enchant(h, 3));
+            tools.add(fortuneTool);
+        }
+
+        var silkShears = new ItemStack(Items.SHEARS);
+        silkTouch.ifPresent(h -> silkShears.enchant(h, 1));
+        tools.add(silkShears);
 
         return tools;
     }
 
     private Reference2DoubleMap<Item> getStableDrop(LootTable lootTable, ServerLevel level,
-                                                    BlockState blockState, ItemStack tool, Block block) {
-        var baseSeed = generateStableSeed(block, tool);
-
+                                                    BlockState blockState, ItemStack tool, long baseSeed) {
         Reference2LongMap<Item> totalCounts = new Reference2LongOpenHashMap<>();
         boolean injectionWorked = false;
 
+        Reference2LongMap<Item> firstSample = null;
+
         for (int i = 0; i < SAMPLE_COUNT; i++) {
             RandomSource deterministicRandom = RandomSource.create(baseSeed + i);
-
             ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
 
-            var params = new LootParams.Builder(level).withParameter(LootContextParams.BLOCK_STATE, blockState)
-                    .withParameter(LootContextParams.TOOL, tool).withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+            var params = new LootParams.Builder(level)
+                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
+                    .withParameter(LootContextParams.TOOL, tool)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
                     .create(LootContextParamSets.BLOCK);
 
             var context = new LootContext.Builder(params).create(java.util.Optional.empty());
-
             if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
 
             lootTable.getRandomItems(context, drops::add);
 
-            for (var stack : drops)
-                if (!stack.isEmpty())
-                    totalCounts.put(stack.getItem(), totalCounts.getLong(stack.getItem()) + stack.getCount());
+            Reference2LongMap<Item> currentSample = new Reference2LongOpenHashMap<>();
+            for (var stack : drops) {
+                if (!stack.isEmpty()) {
+                    currentSample.put(stack.getItem(), currentSample.getLong(stack.getItem()) + stack.getCount());
+                }
+            }
+
+            if (i == 0) {
+                firstSample = currentSample;
+            } else if (i == 10) {
+                if (isSampleConsistent(firstSample, currentSample)) return scaleAverages(firstSample);
+            }
+
+            for (var entry : currentSample.reference2LongEntrySet()) {
+                totalCounts.put(entry.getKey(), totalCounts.getLong(entry.getKey()) + entry.getLongValue());
+            }
         }
 
         Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
@@ -219,6 +278,20 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             averages.put(entry.getKey(), (double) entry.getLongValue() / SAMPLE_COUNT);
         }
 
+        return averages;
+    }
+
+    private boolean isSampleConsistent(Reference2LongMap<Item> a, Reference2LongMap<Item> b) {
+        if (a.size() != b.size()) return false;
+        for (var entry : a.reference2LongEntrySet()) {
+            if (b.getLong(entry.getKey()) != entry.getLongValue()) return false;
+        }
+        return true;
+    }
+
+    private Reference2DoubleMap<Item> scaleAverages(Reference2LongMap<Item> sample) {
+        Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
+        for (var entry : sample.reference2LongEntrySet()) averages.put(entry.getKey(), (double) entry.getLongValue());
         return averages;
     }
 
@@ -232,8 +305,50 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         }
     }
 
-    private long generateStableSeed(Block block, ItemStack tool) {
-        long seed = GameRegistryManager.getBlockId(block).toString().hashCode();
+    private Reference2DoubleMap<Item> calculateSourceItems(ItemStack toolStack, double itemsPerAction) {
+        Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
+        if (itemsPerAction <= 0) return sourceItems;
+
+        double invYield = 1.0 / itemsPerAction;
+        Item toolItem = toolStack.getItem();
+
+        if (toolItem != Items.AIR) {
+            double durability = toolStack.getMaxDamage();
+            if (durability > 0) {
+                double invDurability = 1.0 / durability;
+                double toolUsagePerDrop = invDurability * invYield;
+                sourceItems.put(toolItem, toolUsagePerDrop);
+            }
+        }
+
+        return sourceItems;
+    }
+
+    private double calculateRarityFactor(Block block) {
+        boolean isGeoLoaded = this.geoDatabase != null && this.geoDatabase.isLoaded();
+
+        if (isGeoLoaded) {
+            double bestRarity = Double.POSITIVE_INFINITY;
+            for (var dimData : this.geoDatabase.getAllDimensionData().values()) {
+                long total = 0, count = 0;
+                for (var biome : dimData.values()) {
+                    total += biome.getTotalBlocks();
+                    count += biome.getBlockCount(block);
+                }
+                if (total > 0 && count > 0) {
+                    double factor = 0.5 + (Math.sqrt((double) total / count) * 0.1);
+                    if (factor < bestRarity) bestRarity = factor;
+                }
+            }
+            if (bestRarity != Double.POSITIVE_INFINITY) return bestRarity;
+        }
+
+        return Double.POSITIVE_INFINITY;
+    }
+
+    private long generateStableSeed(long worldSeed, Block block, ItemStack tool) {
+        long seed = worldSeed;
+        seed = seed * 31L + GameRegistryManager.getBlockId(block).toString().hashCode();
 
         if (!tool.isEmpty()) {
             seed = seed * 31L + GameRegistryManager.getItemId(tool.getItem()).toString().hashCode();

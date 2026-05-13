@@ -34,7 +34,10 @@ import org.complexityanalyzer.analyzer.SourcePathAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.analyzer.resource.providers.*;
+import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
+import org.complexityanalyzer.analyzer.resource.providers.DimensionRarityAnalyzer;
+import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
+import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.analyzer.resource.sources.*;
 import org.complexityanalyzer.analyzer.solver.SccCondensedSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
@@ -76,7 +79,6 @@ public class AnalysisEngine {
     private volatile BlockPropertyProvider blockPropProvider;
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
-    private volatile TheoreticalDistributionProvider theoreticalDistProvider;
     private volatile MobRarityCalculator mobRarityCalculator;
     private volatile MachineRegistry machineRegistry;
     private volatile MinecraftServer server;
@@ -262,28 +264,14 @@ public class AnalysisEngine {
 
         this.geoDatabase = new GeoDatabase(serverLevel.getServer());
         this.geoDatabase.loadAll();
-
-        this.theoreticalDistProvider = new TheoreticalDistributionProvider();
-        this.theoreticalDistProvider.initialize(serverLevel);
     }
 
     private void initializeResourceSources(ServerLevel serverLevel) {
         ObjectList<IResourceSource> initialSources = new ObjectArrayList<>();
 
-        GeoDatabase geoDB = this.geoDatabase;
-        BlockPropertyProvider blockProp = this.blockPropProvider;
-
-        if (geoDB != null && geoDB.isLoaded()) {
-            initialSources.add(new EmpiricalBlockSource(blockProp, geoDB));
-            ComplexityAnalyzer.LOGGER.info("GeoDatabase loaded, using empirical block sources.");
-        } else {
-            initialSources.add(new TheoreticalBlockSource(blockProp, this.theoreticalDistProvider));
-            ComplexityAnalyzer.LOGGER.info("GeoDatabase not available, using theoretical block sources.");
-        }
-
         initialSources.add(new UniversalLootSource());
         initialSources.add(new MobDropSource(this.mobPropProvider, serverLevel));
-        initialSources.add(new BlockBreakAsRecipeSource());
+        initialSources.add(new BlockBreakAsRecipeSource(this.geoDatabase));
         initialSources.add(new FarmingSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
@@ -346,24 +334,7 @@ public class AnalysisEngine {
         stateLock.lock();
         try {
             if (!isReady() || isShuttingDown.get()) return;
-
-            SourceManager currentSourceManager = this.sourceManager;
-            RecipeGraph currentGraph = this.graph;
-            GeoDatabase geoDB = this.geoDatabase;
-            BlockPropertyProvider blockProp = this.blockPropProvider;
-
-            if (currentSourceManager == null || currentGraph == null) return;
-
-            ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Updating resource sources...");
-
-            if (geoDB != null && blockProp != null) {
-                currentSourceManager.removeSourcesByType(TheoreticalBlockSource.class);
-                currentSourceManager.removeSourcesByType(EmpiricalBlockSource.class);
-                currentSourceManager.addSourceAndRefresh(new EmpiricalBlockSource(blockProp, geoDB));
-            } else {
-                ComplexityAnalyzer.LOGGER.warn("Failed to apply GeoScan data: DB is null");
-            }
-
+            ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Recalculating complexity...");
             recalculateComplexity();
         } finally {
             stateLock.unlock();
@@ -419,22 +390,8 @@ public class AnalysisEngine {
             GeoDatabase geoDB = this.geoDatabase;
             if (geoDB != null) {
                 geoDB.clear();
-                ComplexityAnalyzer.LOGGER.info("GeoDatabase cleared. Reverting to theoretical sources...");
-            }
-
-            SourceManager currentSourceManager = this.sourceManager;
-            BlockPropertyProvider blockProp = this.blockPropProvider;
-            TheoreticalDistributionProvider theoreticalDist = this.theoreticalDistProvider;
-
-            if (currentSourceManager != null && blockProp != null && theoreticalDist != null) {
-                currentSourceManager.removeSourcesByType(EmpiricalBlockSource.class);
-                TheoreticalBlockSource theoreticalSource = new TheoreticalBlockSource(blockProp, theoreticalDist);
-                currentSourceManager.addSourceAndRefresh(theoreticalSource);
-
-                ComplexityAnalyzer.LOGGER.info("Theoretical block sources restored.");
+                ComplexityAnalyzer.LOGGER.info("GeoDatabase cleared. Recalculating complexity...");
                 recalculateComplexity();
-            } else {
-                ComplexityAnalyzer.LOGGER.warn("Cannot revert to theoretical sources - providers not initialized.");
             }
         } finally {
             stateLock.unlock();

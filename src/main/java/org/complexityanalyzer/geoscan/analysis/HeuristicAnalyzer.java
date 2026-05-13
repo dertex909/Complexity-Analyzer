@@ -109,12 +109,8 @@ public class HeuristicAnalyzer {
         dimensionalHeuristics.clear();
     }
 
-    public boolean hasHeuristics() {
-        return dimensionalHeuristics.isEmpty();
-    }
-
     private boolean isChunkCleanByHeuristic(ChunkSnapshot snapshot, ResourceLocation dimensionId) {
-        if (hasHeuristics()) return true;
+        if (dimensionalHeuristics.isEmpty()) return true;
 
         Set<Block> heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {

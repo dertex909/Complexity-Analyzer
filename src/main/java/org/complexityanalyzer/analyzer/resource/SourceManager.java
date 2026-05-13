@@ -23,8 +23,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.analyzer.resource.sources.EmpiricalBlockSource;
-import org.complexityanalyzer.analyzer.resource.sources.TheoreticalBlockSource;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.jetbrains.annotations.Nullable;
@@ -42,27 +40,11 @@ public class SourceManager {
         sortSources();
     }
 
-    public void removeSourcesByType(Class<? extends IResourceSource> type) {
-        boolean removed = sources.removeIf(type::isInstance);
-        if (removed) {
-            clearCache();
-            ComplexityAnalyzer.LOGGER.info("Removed all sources of type {}", type.getSimpleName());
-        }
-    }
-
     private void sortSources() {
         var sorted = new ObjectArrayList<>(sources);
         sorted.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
         sources.clear();
         sources.addAll(sorted);
-    }
-
-    public void addSourceAndRefresh(IResourceSource newSource) {
-        ComplexityAnalyzer.LOGGER.debug("Adding new resource source: {} with priority {}", newSource.getName(), newSource.getPriority());
-        sources.removeIf(s -> s.getClass().equals(newSource.getClass()));
-        sources.add(newSource);
-        sortSources();
-        clearCache();
     }
 
     public void initialize(Level level) {
@@ -112,14 +94,10 @@ public class SourceManager {
         var engine = AnalysisEngine.getInstance();
         var graph = engine != null ? engine.getGraph() : null;
 
-        var empiricalSource = getSourceByType(EmpiricalBlockSource.class);
-        var empiricalReady = empiricalSource != null && empiricalSource.isReady();
-
         var bestFactor = Double.POSITIVE_INFINITY;
         var bestData = (BaseResourceData) null;
 
         for (var source : sources) {
-            if (empiricalReady && source instanceof TheoreticalBlockSource) continue;
             if (!source.canProvide(item)) continue;
 
             var data = source.analyze(item);
@@ -156,11 +134,6 @@ public class SourceManager {
         }
 
         return results;
-    }
-
-    public void clearCache() {
-        cache.clear();
-        ComplexityAnalyzer.LOGGER.debug("SourceManager cache cleared.");
     }
 
     public ObjectList<IResourceSource> getSources() {

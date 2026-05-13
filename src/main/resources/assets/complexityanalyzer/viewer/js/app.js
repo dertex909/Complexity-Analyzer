@@ -18,7 +18,7 @@ const state = {
     },
     mobFilters: {
         query: "",
-        sort: "combat-desc",
+        sort: "combatPower-desc",
         bossOnly: false,
     },
 };
@@ -31,15 +31,6 @@ function setStatus(cls, text) {
     const dot = $("status-dot");
     dot.className = "dot " + cls;
     $("status-text").textContent = text;
-}
-
-function humanBytes(n) {
-    if (n < 1024) return n + " B";
-    let k = n / 1024;
-    if (k < 1024) return k.toFixed(1) + " KB";
-    let m = k / 1024;
-    if (m < 1024) return m.toFixed(1) + " MB";
-    return (m / 1024).toFixed(2) + " GB";
 }
 
 function formatComplexity(c) {
@@ -252,10 +243,10 @@ function applyMobFilters() {
     const [field, dir] = state.mobFilters.sort.split("-");
     const sign = dir === "asc" ? 1 : -1;
     const getVal = {
-        combat: m => m.combatPower,
+        combatPower: m => m.combatPower,
         threat: m => m.threat,
         rarity: m => m.rarity,
-        hp: m => m.health,
+        health: m => m.health,
         name: m => m.name,
     }[field] || (m => m.combatPower);
     list.sort((a, b) => {
@@ -711,7 +702,11 @@ async function main() {
                 try {
                     const metaUrl = `/${token}/api/meta?token=${encodeURIComponent(token || "")}`;
                     const resp = await fetch(metaUrl);
-                    if (!resp.ok) throw new Error("HTTP Error");
+                    if (!resp.ok) {
+                        failCount++;
+                        if (failCount >= 2) setStatus("error", "Offline");
+                        return;
+                    }
 
                     const meta = await resp.json();
                     failCount = 0;

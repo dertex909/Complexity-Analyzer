@@ -26,7 +26,6 @@ import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class ComplexityCalculator {
@@ -87,34 +86,9 @@ public class ComplexityCalculator {
 
         if (optimalRecipe != null) {
             builder.optimalRecipe(optimalRecipe);
-
-            if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                var itemName = GameRegistryManager.getItemId(item).toString();
-                var recipeType = optimalRecipe.getRecipeType().toString();
-
-                var debugMsg = new StringBuilder(
-                        String.format("Item %s uses recipe type: %s (complexity: %.2f)",
-                                itemName, recipeType, complexity)
-                );
-
-                if (optimalRecipe.hasFluidIngredients()) {
-                    debugMsg.append(String.format(", fluids: %d (total: %d mB)",
-                            optimalRecipe.getFluidIngredientSlotCount(), optimalRecipe.getTotalFluidAmount()));
-                }
-
-                ComplexityAnalyzer.LOGGER.debug(debugMsg.toString());
-            }
         } else {
             var baseData = sourceManager.analyze(item);
-            if (baseData != null) {
-                builder.baseData(baseData);
-
-                if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                    var itemName = GameRegistryManager.getItemId(item).toString();
-                    ComplexityAnalyzer.LOGGER.debug("Item {} is base resource: {} (source: {})",
-                            itemName, baseData.getSourceType(), baseData.getSourceSpecifier());
-                }
-            }
+            if (baseData != null) builder.baseData(baseData);
         }
 
         return builder.build();

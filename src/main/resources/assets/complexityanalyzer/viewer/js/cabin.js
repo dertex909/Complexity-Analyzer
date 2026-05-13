@@ -101,17 +101,24 @@ export class CabinFile {
             if (magic !== MAGIC) throw new Error("Bad magic");
             b.seek(8);
             const toc = Number(b.i64());
+            let currentHead = head;
             if (toc + 2 > head.length) {
-                const extra = await this._range(toc, toc + 8192);
-                this._parseHeader(new Buf(this._concat(head, extra, toc)));
+                currentHead = this._concat(head, await this._range(toc, toc + 8191), toc);
+            }
+            const b2 = new Buf(currentHead, toc);
+            const sectionCount = b2.u16();
+            const totalTocSize = 2 + sectionCount * 26;
+            if (toc + totalTocSize > currentHead.length) {
+                const fullToc = await this._range(toc, toc + totalTocSize - 1);
+                this._parseHeader(new Buf(this._concat(currentHead, fullToc, toc)));
             } else {
-                this._parseHeader(new Buf(head));
+                this._parseHeader(new Buf(currentHead));
             }
         }
     }
 
     _concat(a, b, bOffset) {
-        const total = new Uint8Array(bOffset + b.length);
+        const total = new Uint8Array(Math.max(a.length, bOffset + b.length));
         total.set(a, 0);
         total.set(b, bOffset);
         return total;
@@ -158,7 +165,7 @@ export class StringPool {
         this.cache = new Array(this.count);
         for (let i = 0; i < this.count; i++) {
             this.offsets[i] = b.p;
-            b.skip(2 + b.u16());
+            b.skip(b.u16());
         }
         this.decoder = new TextDecoder("utf-8");
     }
@@ -166,7 +173,8 @@ export class StringPool {
     get(ref) {
         if (ref < 0 || ref >= this.count || this.cache[ref] !== undefined) return this.cache[ref] ?? "";
         const b = new Buf(this.b, this.offsets[ref]);
-        return this.cache[ref] = this.decoder.decode(this.b.subarray(b.p + 2, b.p + 2 + b.u16()));
+        const len = b.u16();
+        return this.cache[ref] = this.decoder.decode(this.b.subarray(b.p, b.p + len));
     }
 }
 
@@ -184,7 +192,7 @@ export class ItemTable {
             index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()),
             complexity: b.f64(), depth: b.i32(), totalIngredients: b.i32(), usageCount: b.i32(),
             categoryName: this.s.get(b.i32()), baseDataOffset: b.u32(), sourcesOffset: b.u32(),
-            sourceCount: b.u16(), categoryIndex: b.skip(2).u8(), flags: b.u8(),
+            sourceCount: b.u16(), categoryIndex: b.u8(), flags: b.u8(),
             errorMessage: this.s.get(b.i32())
         };
     }
@@ -204,7 +212,7 @@ export class MobTable {
             index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()), categoryName: this.s.get(b.i32()),
             health: b.seek(b.p + 4).f64(), damage: b.f64(), armor: b.f64(), survivability: b.f64(),
             threat: b.f64(), combatPower: b.f64(), rarity: b.f64(),
-            dropsOffset: b.u32(), dropCount: b.u16(), flags: b.skip(2).u8(), categoryEnum: b.u8()
+            dropsOffset: b.u32(), dropCount: b.u16(), flags: b.u8(), categoryEnum: b.u8()
         };
     }
 }
@@ -301,7 +309,7 @@ export class UsageTable {
 
 export function readDropsForMob(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
-    const b = new Buf(bytes, 4 + offset);
+    const b = new Buf(bytes, offset);
     return Array.from({length: count}, () => ({
         itemIndex: b.i32(), itemName: strings.get(b.i32()), yieldPerKill: b.f64(),
         killMethod: strings.get(b.i32()), itemId: strings.get(b.i32())

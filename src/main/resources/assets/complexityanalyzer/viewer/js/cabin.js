@@ -1,59 +1,81 @@
-// Complexity Analyzer — Cabin binary reader (v1.1)
-// Zero dependencies. Uses native DecompressionStream('deflate-raw') for decompression.
-// LICENSE: LGPL-3.0 (see mod source).
-
-// ===== Format constants (mirror CabinFormat.java) =====
 export const SEC = {
-    META: 0x01,
-    STRINGS: 0x02,
-    ITEMS: 0x03,
-    BASE_DATA: 0x04,
-    SOURCES: 0x05,
-    RECIPES: 0x06,
-    USAGE: 0x07,
-    MOBS: 0x08,
-    DROPS: 0x09,
-    SCC: 0x0A,
-    CATEGORIES: 0x0B,
-    IDX_ITEM_HASH: 0x20,
-    IDX_RECIPES: 0x21,
-    IDX_MOB_HASH: 0x22,
+    META: 0x01, STRINGS: 0x02, ITEMS: 0x03, BASE_DATA: 0x04, SOURCES: 0x05,
+    RECIPES: 0x06, USAGE: 0x07, MOBS: 0x08, DROPS: 0x09, SCC: 0x0A,
+    CATEGORIES: 0x0B, IDX_ITEM_HASH: 0x20, IDX_RECIPES: 0x21, IDX_MOB_HASH: 0x22,
 };
 
 const MAGIC = 0x4E424143;
 const HEADER_SIZE = 32;
 const CODEC_RAW = 0;
-const CODEC_DEFLATE = 1;
 
 export const ITEM_RECORD = 48;
 export const MOB_RECORD = 80;
 
 export const ITEM_FLAG = {
-    HAS_RECIPE: 0x01,
-    HAS_CYCLE: 0x02,
-    IS_HARDCODED: 0x04,
-    IS_VALID: 0x08,
-    IS_INFINITE: 0x10,
-    NO_RECIPE: 0x20,
+    HAS_RECIPE: 0x01, HAS_CYCLE: 0x02, IS_HARDCODED: 0x04,
+    IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20,
 };
 
-export const MOB_FLAG = {
-    BOSS: 0x01,
-    MINIBOSS: 0x02,
-};
+export const MOB_FLAG = {BOSS: 0x01, MINIBOSS: 0x02};
 
-// ===== Low-level helpers =====
-
-function decompressDeflateRaw(bytes) {
-    if (typeof DecompressionStream === "undefined") {
-        throw new Error("This browser has no DecompressionStream support (needs Chrome 80+, Firefox 113+, Safari 16.4+).");
+class Buf {
+    constructor(bytes, offset = 0) {
+        this.b = bytes;
+        this.v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        this.p = offset;
     }
+
+    u8() {
+        return this.b[this.p++];
+    }
+
+    u16() {
+        const r = this.v.getUint16(this.p, true);
+        this.p += 2;
+        return r;
+    }
+
+    i32() {
+        const r = this.v.getInt32(this.p, true);
+        this.p += 4;
+        return r;
+    }
+
+    u32() {
+        const r = this.v.getUint32(this.p, true);
+        this.p += 4;
+        return r;
+    }
+
+    i64() {
+        const r = this.v.getBigInt64(this.p, true);
+        this.p += 8;
+        return r;
+    }
+
+    f64() {
+        const r = this.v.getFloat64(this.p, true);
+        this.p += 8;
+        return r;
+    }
+
+    skip(n) {
+        this.p += n;
+        return this;
+    }
+
+    seek(n) {
+        this.p = n;
+        return this;
+    }
+}
+
+async function decompress(bytes) {
+    if (typeof DecompressionStream === "undefined") throw new Error("No DecompressionStream support");
     const ds = new DecompressionStream("deflate-raw");
     const stream = new Blob([bytes]).stream().pipeThrough(ds);
     return new Response(stream).arrayBuffer().then(buf => new Uint8Array(buf));
 }
-
-// ===== CabinFile: header + TOC + lazy section loader =====
 
 export class CabinFile {
     constructor(url) {
@@ -68,24 +90,22 @@ export class CabinFile {
     async open({preferFullDownload = false} = {}) {
         if (preferFullDownload) {
             const resp = await fetch(this.url, {cache: "no-store"});
-            if (!resp.ok) throw new Error("Failed to fetch cabin: " + resp.status);
-            const buf = await resp.arrayBuffer();
-            this.fullBytes = new Uint8Array(buf);
-            this._parseHeaderAndToc(this.fullBytes, 0);
+            if (!resp.ok) throw new Error("Failed to fetch: " + resp.status);
+            this.fullBytes = new Uint8Array(await resp.arrayBuffer());
+            this._parseHeader(new Buf(this.fullBytes));
         } else {
             const head = await this._range(0, 4095);
-            const initialLen = head.length;
-            if (initialLen < HEADER_SIZE) throw new Error("File too small");
-            const dv = new DataView(head.buffer, head.byteOffset, head.byteLength);
-            const magic = dv.getUint32(0, true);
-            if (magic !== MAGIC) throw new Error("Bad magic: 0x" + magic.toString(16));
-            const tocOffsetBig = dv.getBigUint64(8, true);
-            const tocOffset = Number(tocOffsetBig);
-            if (tocOffset + 2 > initialLen) {
-                const extra = await this._range(tocOffset, tocOffset + 8192);
-                this._parseHeaderAndToc(this._concat(head, extra, tocOffset), 0);
+            if (head.length < HEADER_SIZE) throw new Error("File too small");
+            const b = new Buf(head);
+            const magic = b.u32();
+            if (magic !== MAGIC) throw new Error("Bad magic");
+            b.seek(8);
+            const toc = Number(b.i64());
+            if (toc + 2 > head.length) {
+                const extra = await this._range(toc, toc + 8192);
+                this._parseHeader(new Buf(this._concat(head, extra, toc)));
             } else {
-                this._parseHeaderAndToc(head, 0);
+                this._parseHeader(new Buf(head));
             }
         }
     }
@@ -97,28 +117,17 @@ export class CabinFile {
         return total;
     }
 
-    _parseHeaderAndToc(bytes, baseOffset) {
-        const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-        const magic = dv.getUint32(baseOffset + 0, true);
-        if (magic !== MAGIC) throw new Error("Bad magic: 0x" + magic.toString(16));
-        this.version = dv.getUint16(baseOffset + 4, true);
-        this.tocOffset = dv.getBigUint64(baseOffset + 8, true);
-        this.fileHash = dv.getBigUint64(baseOffset + 24, true);
+    _parseHeader(b) {
+        if (b.u32() !== MAGIC) throw new Error("Bad magic");
+        this.version = b.u16();
+        this.tocOffset = b.seek(8).i64();
+        this.fileHash = b.seek(24).i64();
 
-        const tocStart = Number(this.tocOffset);
-        const sectionCount = dv.getUint16(tocStart, true);
-        let p = tocStart + 2;
-        for (let i = 0; i < sectionCount; i++) {
-            const id = dv.getUint8(p);
-            p += 1;
-            const codec = dv.getUint8(p);
-            p += 1;
-            const offset = Number(dv.getBigUint64(p, true));
-            p += 8;
-            const length = Number(dv.getBigUint64(p, true));
-            p += 8;
-            const uncompressed = Number(dv.getBigUint64(p, true));
-            p += 8;
+        b.seek(Number(this.tocOffset));
+        const count = b.u16();
+        for (let i = 0; i < count; i++) {
+            const id = b.u8(), codec = b.u8();
+            const offset = Number(b.i64()), length = Number(b.i64()), uncompressed = Number(b.i64());
             this.sections.set(id, {id, codec, offset, length, uncompressed});
         }
     }
@@ -126,610 +135,251 @@ export class CabinFile {
     async readSection(id) {
         if (this.cache.has(id)) return this.cache.get(id);
         const sec = this.sections.get(id);
-        if (!sec) throw new Error("Section not found: 0x" + Number(id).toString(16));
-        let raw;
-        if (this.fullBytes) {
-            raw = this.fullBytes.subarray(sec.offset, sec.offset + sec.length);
-        } else {
-            raw = await this._range(sec.offset, sec.offset + sec.length - 1);
-        }
-        let data;
-        if (sec.codec === CODEC_RAW) {
-            data = raw.slice();
-        } else if (sec.codec === CODEC_DEFLATE) {
-            data = await decompressDeflateRaw(raw);
-            if (data.length !== sec.uncompressed) {
-                console.warn(`Section 0x${Number(id).toString(16)}: decompressed ${data.length} != declared ${sec.uncompressed}`);
-            }
-        } else {
-            throw new Error("Unknown codec: " + sec.codec);
-        }
+        if (!sec) throw new Error("Section 0x" + Number(id).toString(16) + " not found");
+        const raw = this.fullBytes ? this.fullBytes.subarray(sec.offset, sec.offset + sec.length) : await this._range(sec.offset, sec.offset + sec.length - 1);
+        const data = sec.codec === CODEC_RAW ? raw.slice() : await decompress(raw);
         this.cache.set(id, data);
         return data;
     }
 
-    async _range(start, endInclusive) {
-        const resp = await fetch(this.url, {
-            headers: {Range: `bytes=${start}-${endInclusive}`},
-            cache: "no-store",
-        });
-        if (!resp.ok && resp.status !== 206) throw new Error("HTTP " + resp.status);
-        return new Uint8Array(await resp.arrayBuffer());
+    async _range(s, e) {
+        const r = await fetch(this.url, {headers: {Range: `bytes=${s}-${e}`}, cache: "no-store"});
+        if (!r.ok && r.status !== 206) throw new Error("HTTP " + r.status);
+        return new Uint8Array(await r.arrayBuffer());
     }
 }
-
-// ===== Reader helpers =====
-
-export function readU8(bytes, o) {
-    return bytes[o];
-}
-
-export function readU16(bytes, o) {
-    return bytes[o] | (bytes[o + 1] << 8);
-}
-
-export function readI32(bytes, o) {
-    return (bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) | 0;
-}
-
-export function readU32(bytes, o) {
-    return ((bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) >>> 0);
-}
-
-export function readI64(bytes, o) {
-    const dv = new DataView(bytes.buffer, bytes.byteOffset + o, 8);
-    return dv.getBigInt64(0, true);
-}
-
-export function readF64(bytes, o) {
-    const dv = new DataView(bytes.buffer, bytes.byteOffset + o, 8);
-    return dv.getFloat64(0, true);
-}
-
-// ===== String pool =====
 
 export class StringPool {
     constructor(bytes) {
-        this.bytes = bytes;
-        const n = readI32(bytes, 0);
-        this.count = n;
-        const offsets = new Uint32Array(n);
-        let p = 4;
-        for (let i = 0; i < n; i++) {
-            offsets[i] = p;
-            const len = readU16(bytes, p);
-            p += 2 + len;
+        this.b = bytes;
+        const b = new Buf(bytes);
+        this.count = b.i32();
+        this.offsets = new Uint32Array(this.count);
+        this.cache = new Array(this.count);
+        for (let i = 0; i < this.count; i++) {
+            this.offsets[i] = b.p;
+            b.skip(2 + b.u16());
         }
-        this.offsets = offsets;
         this.decoder = new TextDecoder("utf-8");
-        this.cache = new Array(n);
     }
 
     get(ref) {
-        if (ref < 0 || ref >= this.count) return "";
-        const cached = this.cache[ref];
-        if (cached !== undefined) return cached;
-        const p = this.offsets[ref];
-        const len = readU16(this.bytes, p);
-        const str = this.decoder.decode(this.bytes.subarray(p + 2, p + 2 + len));
-        this.cache[ref] = str;
-        return str;
+        if (ref < 0 || ref >= this.count || this.cache[ref] !== undefined) return this.cache[ref] ?? "";
+        const b = new Buf(this.b, this.offsets[ref]);
+        return this.cache[ref] = this.decoder.decode(this.b.subarray(b.p + 2, b.p + 2 + b.u16()));
     }
 }
 
 export class ItemTable {
     constructor(bytes, strings) {
-        this.bytes = bytes;
-        this.strings = strings;
-        this.count = readI32(bytes, 0);
-        this.baseOffset = 4;
+        this.b = bytes;
+        this.s = strings;
+        this.count = new Buf(bytes).i32();
     }
 
     get(i) {
         if (i < 0 || i >= this.count) return null;
-        const b = this.bytes;
-        const off = this.baseOffset + i * ITEM_RECORD;
-        const categoryIndex = readU8(b, off + 42);
+        const b = new Buf(this.b, 4 + i * ITEM_RECORD);
         return {
-            index: i,
-            id: this.strings.get(readI32(b, off)),
-            name: this.strings.get(readI32(b, off + 4)),
-            complexity: readF64(b, off + 8),
-            depth: readI32(b, off + 16),
-            totalIngredients: readI32(b, off + 20),
-            usageCount: readI32(b, off + 24),
-            categoryName: this.strings.get(readI32(b, off + 28)),
-            baseDataOffset: readU32(b, off + 32),
-            sourcesOffset: readU32(b, off + 36),
-            sourceCount: readU16(b, off + 40),
-            categoryIndex,
-            flags: readU8(b, off + 43),
-            errorMessage: this.strings.get(readI32(b, off + 44)),
+            index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()),
+            complexity: b.f64(), depth: b.i32(), totalIngredients: b.i32(), usageCount: b.i32(),
+            categoryName: this.s.get(b.i32()), baseDataOffset: b.u32(), sourcesOffset: b.u32(),
+            sourceCount: b.u16(), categoryIndex: b.skip(2).u8(), flags: b.u8(),
+            errorMessage: this.s.get(b.i32())
         };
     }
 }
-
-// ===== Mobs table =====
 
 export class MobTable {
     constructor(bytes, strings) {
-        this.bytes = bytes;
-        this.strings = strings;
-        this.count = readI32(bytes, 0);
-        this.baseOffset = 4;
+        this.b = bytes;
+        this.s = strings;
+        this.count = new Buf(bytes).i32();
     }
 
     get(i) {
         if (i < 0 || i >= this.count) return null;
-        const b = this.bytes;
-        const off = this.baseOffset + i * MOB_RECORD;
+        const b = new Buf(this.b, 4 + i * MOB_RECORD);
         return {
-            index: i,
-            id: this.strings.get(readI32(b, off)),
-            name: this.strings.get(readI32(b, off + 4)),
-            categoryName: this.strings.get(readI32(b, off + 8)),
-            health: readF64(b, off + 16),
-            damage: readF64(b, off + 24),
-            armor: readF64(b, off + 32),
-            survivability: readF64(b, off + 40),
-            threat: readF64(b, off + 48),
-            combatPower: readF64(b, off + 56),
-            rarity: readF64(b, off + 64),
-            dropsOffset: readU32(b, off + 72),
-            dropCount: readU16(b, off + 76),
-            flags: readU8(b, off + 78),
-            categoryEnum: readU8(b, off + 79),
+            index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()), categoryName: this.s.get(b.i32()),
+            health: b.seek(b.p + 4).f64(), damage: b.f64(), armor: b.f64(), survivability: b.f64(),
+            threat: b.f64(), combatPower: b.f64(), rarity: b.f64(),
+            dropsOffset: b.u32(), dropCount: b.u16(), flags: b.skip(2).u8(), categoryEnum: b.u8()
         };
     }
 }
 
-// ===== Sources (alt sources per item) =====
-
-export function readSourcesForItem(sourcesBytes, strings, offset, count) {
+export function readSourcesForItem(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
-    const b = sourcesBytes;
-    const out = new Array(count);
-    let p = offset;
+    const b = new Buf(bytes, offset), out = [];
     for (let i = 0; i < count; i++) {
-        const typeRef = readI32(b, p);
-        p += 4;
-        const typeEnum = readU8(b, p);
-        p += 1;
-        const detailsRef = readI32(b, p);
-        p += 4;
-        const baseFactor = readF64(b, p);
-        p += 8;
-        const estimated = readF64(b, p);
-        p += 8;
-        const ingCount = readU16(b, p);
-        p += 2;
-        const ingredients = new Array(ingCount);
-        for (let j = 0; j < ingCount; j++) {
-            const idx = readI32(b, p);
-            p += 4;
-            const amount = readF64(b, p);
-            p += 8;
-            ingredients[j] = {itemIndex: idx, amount};
-        }
-        out[i] = {
-            sourceType: strings.get(typeRef),
+        const type = strings.get(b.i32()), typeEnum = b.u8(), details = strings.get(b.i32());
+        const baseFactor = b.f64(), estimated = b.f64(), ingCount = b.u16();
+        const ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
+        out.push({
+            sourceType: type,
             sourceTypeEnum: typeEnum,
-            details: strings.get(detailsRef),
+            details,
             baseFactor,
             estimatedCost: estimated,
-            ingredients,
-        };
+            ingredients
+        });
     }
     return out;
 }
 
-export function readBaseDataForItem(baseBytes, strings, offset) {
+export function readBaseDataForItem(bytes, strings, offset) {
     if (offset === 0xFFFFFFFF) return null;
-    const b = baseBytes;
-    let p = offset;
-    const typeRef = readI32(b, p);
-    p += 4;
-    const typeEnum = readU8(b, p);
-    p += 1;
-    const detailsRef = readI32(b, p);
-    p += 4;
-    const nameRef = readI32(b, p);
-    p += 4;
-    const specifierRef = readI32(b, p);
-    p += 4;
-    const baseFactor = readF64(b, p);
-    p += 8;
-    const isOverride = readU8(b, p);
-    p += 1;
-    const overrideModRef = readI32(b, p);
-    p += 4;
-    const ingCount = readU16(b, p);
-    p += 2;
-    const ingredients = [];
-    for (let j = 0; j < ingCount; j++) {
-        const idx = readI32(b, p);
-        p += 4;
-        const amount = readF64(b, p);
-        p += 8;
-        ingredients.push({itemIndex: idx, amount});
-    }
-    const metaCount = readU8(b, p);
-    p += 1;
-    const metadata = {};
-    for (let j = 0; j < metaCount; j++) {
-        const k = readI32(b, p);
-        p += 4;
-        const v = readI32(b, p);
-        p += 4;
-        metadata[strings.get(k)] = strings.get(v);
-    }
-    return {
-        sourceType: strings.get(typeRef),
-        sourceTypeEnum: typeEnum,
-        details: strings.get(detailsRef),
-        sourceName: strings.get(nameRef),
-        sourceSpecifier: strings.get(specifierRef),
-        baseFactor,
-        isOverride: isOverride !== 0,
-        overrideModId: strings.get(overrideModRef),
-        ingredients,
-        metadata,
+    const b = new Buf(bytes, offset);
+    const res = {
+        sourceType: strings.get(b.i32()), sourceTypeEnum: b.u8(), details: strings.get(b.i32()),
+        sourceName: strings.get(b.i32()), sourceSpecifier: strings.get(b.i32()), baseFactor: b.f64(),
+        isOverride: b.u8() !== 0, overrideModId: strings.get(b.i32())
     };
+    const ingCount = b.u16();
+    res.ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
+    const metaCount = b.u8(), meta = {};
+    for (let j = 0; j < metaCount; j++) meta[strings.get(b.i32())] = strings.get(b.i32());
+    res.metadata = meta;
+    return res;
 }
-
-// ===== Recipes =====
 
 export class RecipeIndex {
-    constructor(indexBytes) {
-        this.bytes = indexBytes;
-        this.itemCount = readI32(indexBytes, 0);
+    constructor(bytes) {
+        this.b = bytes;
+        this.count = new Buf(bytes).i32();
     }
 
-    get(itemIndex) {
-        if (itemIndex < 0 || itemIndex >= this.itemCount) return {offset: 0xFFFFFFFF, count: 0};
-        const p = 4 + itemIndex * 6;
-        return {
-            offset: readU32(this.bytes, p),
-            count: readU16(this.bytes, p + 4),
-        };
+    get(i) {
+        if (i < 0 || i >= this.count) return {offset: 0xFFFFFFFF, count: 0};
+        const b = new Buf(this.b, 4 + i * 6);
+        return {offset: b.u32(), count: b.u16()};
     }
 }
 
-export function readRecipesAt(recipeBytes, strings, offset, count) {
+export function readRecipesAt(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
-    const b = recipeBytes;
-    let p = offset;
-    const out = new Array(count);
-    for (let i = 0; i < count; i++) {
-        out[i] = readOneRecipe(b, strings, {p});
-    }
-    return out;
+    const b = new Buf(bytes, offset);
+    return Array.from({length: count}, () => readOneRecipe(b, strings));
 }
 
-function readOneRecipe(b, strings, cur) {
-    let p = cur.p;
-    const outItem = readI32(b, p);
-    p += 4;
-    const typeRef = readI32(b, p);
-    p += 4;
-    const catEnum = readU8(b, p);
-    p += 1;
-    const priority = readI32(b, p);
-    p += 4;
-    const resultCount = readI32(b, p);
-    p += 4;
-    const multiplier = readF64(b, p);
-    p += 8;
-    const flags = readU8(b, p);
-    p += 1;
-    const placeholderRef = readI32(b, p);
-    p += 4;
-
-    const ingSlotCount = readU8(b, p);
-    p += 1;
-    const ingredients = [];
-    for (let s = 0; s < ingSlotCount; s++) {
-        const vc = readU8(b, p);
-        p += 1;
-        const cnt = readI32(b, p);
-        p += 4;
-        const variants = [];
-        for (let v = 0; v < vc; v++) {
-            variants.push(readI32(b, p));
-            p += 4;
-        }
-        ingredients.push({count: cnt, variants});
-    }
-
-    const fSlotCount = readU8(b, p);
-    p += 1;
-    const fluidIngredients = [];
-    for (let s = 0; s < fSlotCount; s++) {
-        const vc = readU8(b, p);
-        p += 1;
-        const amount = readI32(b, p);
-        p += 4;
-        const variants = [];
-        for (let v = 0; v < vc; v++) {
-            variants.push(readI32(b, p));
-            p += 4;
-        }
-        fluidIngredients.push({amount, variants});
-    }
-
-    const cSlotCount = readU8(b, p);
-    p += 1;
-    const chemicalIngredients = [];
-    for (let s = 0; s < cSlotCount; s++) {
-        const idRef = readI32(b, p);
-        p += 4;
-        const amount = readI32(b, p);
-        p += 4;
-        chemicalIngredients.push({id: strings.get(idRef), amount});
-    }
-
-    const iOutCount = readU8(b, p);
-    p += 1;
-    const itemOutputs = [];
-    for (let o = 0; o < iOutCount; o++) {
-        const idx = readI32(b, p);
-        p += 4;
-        const cnt = readI32(b, p);
-        p += 4;
-        itemOutputs.push({itemIndex: idx, count: cnt});
-    }
-
-    const fOutCount = readU8(b, p);
-    p += 1;
-    const fluidOutputs = [];
-    for (let o = 0; o < fOutCount; o++) {
-        const idx = readI32(b, p);
-        p += 4;
-        const amount = readI32(b, p);
-        p += 4;
-        fluidOutputs.push({fluidIndex: idx, amount});
-    }
-
-    const coutCount = readU8(b, p);
-    p += 1;
-    const chemicalOutputs = [];
-    for (let o = 0; o < coutCount; o++) {
-        const idRef = readI32(b, p);
-        p += 4;
-        const amount = readI64(b, p);
-        p += 8;
-        chemicalOutputs.push({id: strings.get(idRef), amount: Number(amount)});
-    }
-
-    cur.p = p;
-    return {
-        outputItemIndex: outItem,
-        recipeType: strings.get(typeRef),
-        category: catEnum,
-        priority,
-        resultCount,
-        recipeMultiplier: multiplier,
-        flags,
-        placeholderId: strings.get(placeholderRef),
-        ingredients,
-        fluidIngredients,
-        chemicalIngredients,
-        itemOutputs,
-        fluidOutputs,
-        chemicalOutputs,
+function readOneRecipe(b, strings) {
+    const res = {
+        outputItemIndex: b.i32(), recipeType: strings.get(b.i32()), category: b.u8(),
+        priority: b.i32(), resultCount: b.i32(), recipeMultiplier: b.f64(),
+        flags: b.u8(), placeholderId: strings.get(b.i32())
     };
+    res.ingredients = Array.from({length: b.u8()}, () => {
+        const vc = b.u8(), count = b.i32();
+        return {count, variants: Array.from({length: vc}, () => b.i32())};
+    });
+    res.fluidIngredients = Array.from({length: b.u8()}, () => {
+        const vc = b.u8(), amount = b.i32();
+        return {amount, variants: Array.from({length: vc}, () => b.i32())};
+    });
+    res.chemicalIngredients = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: b.i32()}));
+    res.itemOutputs = Array.from({length: b.u8()}, () => ({itemIndex: b.i32(), count: b.i32()}));
+    res.fluidOutputs = Array.from({length: b.u8()}, () => ({fluidIndex: b.i32(), amount: b.i32()}));
+    res.chemicalOutputs = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: Number(b.i64())}));
+    return res;
 }
-
-// ===== Usage section =====
 
 export class UsageTable {
     constructor(bytes) {
-        this.bytes = bytes;
-        this.itemCount = readI32(bytes, 0);
-        this.indexStart = 8;
-        this.flatStart = 8 + this.itemCount * 8;
+        this.b = bytes;
+        this.count = new Buf(bytes).i32();
+        this.flat = 8 + this.count * 8;
     }
 
-    get(itemIndex) {
-        if (itemIndex < 0 || itemIndex >= this.itemCount) return [];
-        const p = this.indexStart + itemIndex * 8;
-        const first = readI32(this.bytes, p);
-        const count = readI32(this.bytes, p + 4);
-        if (first === -1 || count === 0) return [];
-        const out = new Array(count);
-        const base = this.flatStart + first;
-        for (let i = 0; i < count; i++) out[i] = readI32(this.bytes, base + i * 4);
-        return out;
+    get(i) {
+        if (i < 0 || i >= this.count) return [];
+        const b = new Buf(this.b, 8 + i * 8), start = b.i32(), n = b.i32();
+        if (start === -1 || n === 0) return [];
+        return Array.from({length: n}, (_, j) => new Buf(this.b, this.flat + start + j * 4).i32());
     }
 }
 
-// ===== Drops =====
-
-export function readDropsForMob(dropsBytes, strings, offset, count) {
+export function readDropsForMob(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
-    let p = 4 + offset;
-    const out = [];
-    for (let i = 0; i < count; i++) {
-        out.push({
-            itemIndex: readI32(dropsBytes, p), // p+0
-            itemName: strings.get(readI32(dropsBytes, p + 4)),
-            yieldPerKill: readF64(dropsBytes, p + 8),
-            killMethod: strings.get(readI32(dropsBytes, p + 16)),
-            itemId: strings.get(readI32(dropsBytes, p + 20)),
-        });
-        p += 24;
-    }
-    return out;
+    const b = new Buf(bytes, 4 + offset);
+    return Array.from({length: count}, () => ({
+        itemIndex: b.i32(), itemName: strings.get(b.i32()), yieldPerKill: b.f64(),
+        killMethod: strings.get(b.i32()), itemId: strings.get(b.i32())
+    }));
 }
 
-// ===== Meta =====
-
-export function readMeta(metaBytes, strings) {
-    const b = metaBytes;
-    let p = 0;
-    const modIdRef = readI32(b, p);
-    p += 4;
-    const modVerRef = readI32(b, p);
-    p += 4;
-    const serverNameRef = readI32(b, p);
-    p += 4;
-    const timestampStrRef = readI32(b, p);
-    p += 4;
-    const timestampMs = readI64(b, p);
-    p += 8;
-    const itemCount = readI32(b, p);
-    p += 4;
-    const mobCount = readI32(b, p);
-    p += 4;
-    const fluidCount = readI32(b, p);
-    p += 4;
-    const recipeCount = readI32(b, p);
-    p += 4;
-    const validItems = readI32(b, p);
-    p += 4;
-    const infiniteItems = readI32(b, p);
-    p += 4;
-    const catCount = readU8(b, p);
-    p += 1;
-    const categories = [];
-    for (let i = 0; i < catCount; i++) {
-        const nameRef = readI32(b, p);
-        p += 4;
-        const max = readF64(b, p);
-        p += 8;
-        categories.push({name: strings.get(nameRef), maxComplexity: max});
-    }
-    return {
-        modId: strings.get(modIdRef),
-        modVersion: strings.get(modVerRef),
-        serverName: strings.get(serverNameRef),
-        timestampStr: strings.get(timestampStrRef),
-        timestampMs: Number(timestampMs),
-        itemCount, mobCount, fluidCount, recipeCount, validItems, infiniteItems,
-        categories,
+export function readMeta(bytes, strings) {
+    const b = new Buf(bytes);
+    const res = {
+        modId: strings.get(b.i32()),
+        modVersion: strings.get(b.i32()),
+        serverName: strings.get(b.i32()),
+        timestampStr: strings.get(b.i32()),
+        timestampMs: Number(b.i64())
     };
+    Object.assign(res, {
+        itemCount: b.i32(),
+        mobCount: b.i32(),
+        fluidCount: b.i32(),
+        recipeCount: b.i32(),
+        validItems: b.i32(),
+        infiniteItems: b.i32()
+    });
+    res.categories = Array.from({length: b.u8()}, () => ({name: strings.get(b.i32()), maxComplexity: b.f64()}));
+    return res;
 }
-
-// ===== Categories section =====
 
 export function readCategories(bytes, strings) {
-    const b = bytes;
-    let p = 0;
-    const catCount = readU8(b, p);
-    p += 1;
-    const out = [];
-    for (let c = 0; c < catCount; c++) {
-        const nameRef = readI32(b, p);
-        p += 4;
-        const count = readI32(b, p);
-        p += 4;
-        const items = new Int32Array(count);
-        for (let i = 0; i < count; i++) {
-            items[i] = readI32(b, p);
-            p += 4;
-        }
-        out.push({name: strings.get(nameRef), items});
-    }
-    return out;
+    const b = new Buf(bytes);
+    return Array.from({length: b.u8()}, () => {
+        const name = strings.get(b.i32()), n = b.i32();
+        return {name, items: Array.from({length: n}, () => b.i32())};
+    });
 }
-
-// ===== High-level database facade =====
 
 export class CabinDatabase {
     constructor(url) {
         this.file = new CabinFile(url);
-        this.strings = null;
-        this.items = null;
-        this.mobs = null;
-        this.meta = null;
-        this.categories = null;
-        this.recipeIndex = null;
-        this._baseDataBytes = null;
-        this._sourcesBytes = null;
-        this._recipesBytes = null;
-        this._dropsBytes = null;
-        this._usage = null;
     }
 
-    async open(options = {}) {
-        await this.file.open(options);
-        const [stringsBytes, itemsBytes, mobsBytes, metaBytes, catBytes, recipeIdxBytes]
-            = await Promise.all([
-            this.file.readSection(SEC.STRINGS),
-            this.file.readSection(SEC.ITEMS),
-            this.file.readSection(SEC.MOBS),
-            this.file.readSection(SEC.META),
-            this.file.readSection(SEC.CATEGORIES),
-            this.file.readSection(SEC.IDX_RECIPES),
-        ]);
-        this.strings = new StringPool(stringsBytes);
-        this.items = new ItemTable(itemsBytes, this.strings);
-        this.mobs = new MobTable(mobsBytes, this.strings);
-        this.meta = readMeta(metaBytes, this.strings);
-        this.categories = readCategories(catBytes, this.strings);
-        this.recipeIndex = new RecipeIndex(recipeIdxBytes);
+    async open(opt = {}) {
+        await this.file.open(opt);
+        const [sB, iB, mB, meB, cB, rIB] = await Promise.all([SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES].map(id => this.file.readSection(id)));
+        this.strings = new StringPool(sB);
+        this.items = new ItemTable(iB, this.strings);
+        this.mobs = new MobTable(mB, this.strings);
+        this.meta = readMeta(meB, this.strings);
+        this.categories = readCategories(cB, this.strings);
+        this.recipeIndex = new RecipeIndex(rIB);
     }
 
-    async ensureBaseData() {
-        if (this._baseDataBytes) return this._baseDataBytes;
-        this._baseDataBytes = await this.file.readSection(SEC.BASE_DATA);
-        return this._baseDataBytes;
+    async _ensure(key, id) {
+        if (!this[key]) this[key] = await this.file.readSection(id);
+        return this[key];
     }
 
-    async ensureSources() {
-        if (this._sourcesBytes) return this._sourcesBytes;
-        this._sourcesBytes = await this.file.readSection(SEC.SOURCES);
-        return this._sourcesBytes;
+    async getItemSources(i) {
+        const it = this.items.get(i);
+        return it ? readSourcesForItem(await this._ensure('_sB', SEC.SOURCES), this.strings, it.sourcesOffset, it.sourceCount) : [];
     }
 
-    async ensureRecipes() {
-        if (this._recipesBytes) return this._recipesBytes;
-        this._recipesBytes = await this.file.readSection(SEC.RECIPES);
-        return this._recipesBytes;
+    async getItemBaseData(i) {
+        const it = this.items.get(i);
+        return it ? readBaseDataForItem(await this._ensure('_bB', SEC.BASE_DATA), this.strings, it.baseDataOffset) : null;
     }
 
-    async ensureDrops() {
-        if (this._dropsBytes) return this._dropsBytes;
-        this._dropsBytes = await this.file.readSection(SEC.DROPS);
-        return this._dropsBytes;
+    async getItemRecipes(i) {
+        const ref = this.recipeIndex.get(i);
+        return readRecipesAt(await this._ensure('_rB', SEC.RECIPES), this.strings, ref.offset, ref.count);
     }
 
-    async ensureUsage() {
-        if (this._usage) return this._usage;
-        const bytes = await this.file.readSection(SEC.USAGE);
-        this._usage = new UsageTable(bytes);
-        return this._usage;
+    async getItemUsage(i) {
+        if (!this._u) this._u = new UsageTable(await this.file.readSection(SEC.USAGE));
+        return this._u.get(i);
     }
 
-    async getItemSources(itemIndex) {
-        await this.ensureSources();
-        const item = this.items.get(itemIndex);
-        if (!item) return [];
-        return readSourcesForItem(this._sourcesBytes, this.strings, item.sourcesOffset, item.sourceCount);
-    }
-
-    async getItemBaseData(itemIndex) {
-        await this.ensureBaseData();
-        const item = this.items.get(itemIndex);
-        if (!item) return null;
-        return readBaseDataForItem(this._baseDataBytes, this.strings, item.baseDataOffset);
-    }
-
-    async getItemRecipes(itemIndex) {
-        await this.ensureRecipes();
-        const ref = this.recipeIndex.get(itemIndex);
-        return readRecipesAt(this._recipesBytes, this.strings, ref.offset, ref.count);
-    }
-
-    async getItemUsage(itemIndex) {
-        await this.ensureUsage();
-        return this._usage.get(itemIndex);
-    }
-
-    async getMobDrops(mobIndex) {
-        await this.ensureDrops();
-        const mob = this.mobs.get(mobIndex);
-        if (!mob) return [];
-        return readDropsForMob(this._dropsBytes, this.strings, mob.dropsOffset, mob.dropCount);
+    async getMobDrops(i) {
+        const m = this.mobs.get(i);
+        return m ? readDropsForMob(await this._ensure('_dB', SEC.DROPS), this.strings, m.dropsOffset, m.dropCount) : [];
     }
 }

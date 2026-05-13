@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 export const SEC = {
     META: 0x01, STRINGS: 0x02, ITEMS: 0x03, BASE_DATA: 0x04, SOURCES: 0x05,
     RECIPES: 0x06, USAGE: 0x07, MOBS: 0x08, DROPS: 0x09, SCC: 0x0A,
@@ -102,9 +120,7 @@ export class CabinFile {
             b.seek(8);
             const toc = Number(b.i64());
             let currentHead = head;
-            if (toc + 2 > head.length) {
-                currentHead = this._concat(head, await this._range(toc, toc + 8191), toc);
-            }
+            if (toc + 2 > head.length) currentHead = this._concat(head, await this._range(toc, toc + 8191), toc);
             const b2 = new Buf(currentHead, toc);
             const sectionCount = b2.u16();
             const totalTocSize = 2 + sectionCount * 26;

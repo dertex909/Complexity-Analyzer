@@ -1,5 +1,20 @@
-// Complexity Analyzer — Viewer UI
-// Virtual scrolling + lazy section loading + URL state.
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 import {
     CabinDatabase, ITEM_FLAG, MOB_FLAG
@@ -58,8 +73,6 @@ function mobFlagChips(mob) {
     return out.join("");
 }
 
-// ===== Tabs =====
-
 function showTab(name) {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
     document.querySelectorAll(".panel").forEach(p => p.hidden = p.id !== "tab-" + name);
@@ -75,8 +88,6 @@ function showTab(name) {
 document.querySelectorAll(".tab").forEach(t => {
     t.addEventListener("click", () => showTab(t.dataset.tab));
 });
-
-// ===== URL state =====
 
 function updateUrlFromState() {
     const activeTab = document.querySelector(".tab.active")?.dataset.tab || "items";
@@ -104,8 +115,6 @@ function loadStateFromUrl() {
     return params.get("tab") || "items";
 }
 
-// ===== Overview =====
-
 function renderOverview() {
     if (!state.db) return;
     const m = state.db.meta;
@@ -129,13 +138,11 @@ function renderOverview() {
     $("overview-generated").textContent = m.timestampMs
         ? new Date(m.timestampMs).toLocaleString()
         : m.timestampStr;
-    $("overview-viewer").textContent = "1.1 (format 0x" + state.db.file.version.toString(16) + ")";
+    $("overview-viewer").textContent = "1.1 (format 0x" + Number(state.db.file.version).toString(16) + ")";
     $("meta-subtitle").textContent = m.serverName
         ? `${m.serverName} · ${m.modId} ${m.modVersion}`
         : `${m.modId} ${m.modVersion}`;
 }
-
-// ===== Items =====
 
 function applyItemFilters() {
     const items = state.db.items;
@@ -179,13 +186,11 @@ function renderItems() {
     $("items-count").textContent = `${fmtInt.format(state.itemsView.length)} / ${fmtInt.format(state.db.items.count)} items`;
 
     const cs = $("items-category");
-    if (cs.options.length <= 1) {
-        for (const cat of state.db.categories) {
-            const o = document.createElement("option");
-            o.value = cat.name;
-            o.textContent = `${cat.name} (${cat.items.length})`;
-            cs.appendChild(o);
-        }
+    if (cs.options.length <= 1) for (const cat of state.db.categories) {
+        const o = document.createElement("option");
+        o.value = cat.name;
+        o.textContent = `${cat.name} (${cat.items.length})`;
+        cs.appendChild(o);
     }
     cs.value = state.filters.category;
     $("items-query").value = state.filters.query;
@@ -219,8 +224,6 @@ function renderItems() {
     });
     updateUrlFromState();
 }
-
-// ===== Mobs =====
 
 function applyMobFilters() {
     const mobs = state.db.mobs;
@@ -287,8 +290,6 @@ function renderMobs() {
     });
 }
 
-// ===== Virtual scroll engine =====
-
 function virtualize({viewport, rows, spacer, itemCount, itemHeight, renderRow}) {
     spacer.style.height = (itemCount * itemHeight) + "px";
     const render = () => {
@@ -311,8 +312,6 @@ function virtualize({viewport, rows, spacer, itemCount, itemHeight, renderRow}) 
     viewport.addEventListener("scroll", render, {passive: true});
     render();
 }
-
-// ===== Item dialog =====
 
 async function openItemDialog(itemIndex) {
     const item = state.db.items.get(itemIndex);
@@ -457,8 +456,6 @@ function renderIngredientRef(itemIndex, amount) {
     return `<span class="ingredient" data-idx="${itemIndex}" title="${escapeHtml(it.id)} — complexity ${formatComplexity(it.complexity)}">${escapeHtml(it.name)}${amount ? ` × ${fmt.format(amount)}` : ""}</span>`;
 }
 
-// ===== Mob dialog =====
-
 async function openMobDialog(mobIndex) {
     const mob = state.db.mobs.get(mobIndex);
     if (!mob) return;
@@ -499,8 +496,6 @@ async function openMobDialog(mobIndex) {
     }
 }
 
-// ===== Categories =====
-
 function renderCategories() {
     if (!state.db) return;
     const list = $("categories-list");
@@ -522,12 +517,8 @@ function renderCategories() {
     }
 }
 
-// ===== Recipes tab placeholder =====
-
 function renderRecipes() {
 }
-
-// ===== Search =====
 
 function renderSearchResults() {
     const q = $("search-input").value.trim().toLowerCase();
@@ -576,8 +567,6 @@ function renderSearchResults() {
     out.appendChild(frag);
 }
 
-// ===== Export current view =====
-
 function exportCurrentItemsCsv() {
     const rows = [["#", "id", "name", "complexity", "depth", "usage", "category", "hasRecipe", "hasCycle", "isHardcoded"]];
     state.itemsView.forEach((it, i) => rows.push([
@@ -601,8 +590,6 @@ function exportCurrentItemsCsv() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
-// ===== Event wiring =====
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
@@ -666,8 +653,6 @@ function debounce(fn, ms) {
     };
 }
 
-// ===== Bootstrap =====
-
 async function main() {
     setStatus("loading", "opening cabin…");
     const url = new URL(location.href);
@@ -686,7 +671,6 @@ async function main() {
         const initialTab = loadStateFromUrl();
         showTab(initialTab);
 
-        // Живой мониторинг соединения и обновлений
         let countdown = 5;
         let failCount = 0;
 
@@ -707,7 +691,6 @@ async function main() {
                     const meta = await resp.json();
                     failCount = 0;
 
-                    // Нормализуем хэши для корректного сравнения (добавляем ведущие нули)
                     const serverHash = meta.hash.toLowerCase();
                     const localHash = state.db.file.fileHash.toString(16).toLowerCase().padStart(16, '0');
 
@@ -719,22 +702,17 @@ async function main() {
                         const activeTab = document.querySelector(".tab.active")?.dataset.tab || "items";
                         showTab(activeTab);
                         setStatus("ready", `Updated! ${fmtInt.format(state.db.meta.itemCount)} items`);
-                        countdown = 8; // Даем 8 секунд, чтобы человек успел прочитать "Updated!"
+                        countdown = 3;
                     } else {
                         setStatus("ready", `ready (${countdown}s)`);
                     }
                 } catch (e) {
                     failCount++;
-                    if (failCount >= 2) {
-                        setStatus("error", "offline");
-                    }
+                    if (failCount >= 2) setStatus("error", "offline");
                 }
             } else {
-                // Просто обновляем счетчик, если мы не в режиме ошибки и не только что обновились
                 const txt = $("status-text").textContent;
-                if (failCount < 2 && !txt.startsWith("Updated!")) {
-                    setStatus("ready", `ready (${countdown}s)`);
-                }
+                if (failCount < 2 && !txt.startsWith("Updated!")) setStatus("ready", `ready (${countdown}s)`);
             }
         }, 1000);
 

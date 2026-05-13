@@ -683,16 +683,70 @@ function debounce(fn, ms) {
 
 async function main() {
   setStatus("loading", "opening cabin…");
-  const token = new URL(location.href).searchParams.get("token");
-  const cabinUrl = `/api/cabin?token=${encodeURIComponent(token || "")}`;
+  const url = new URL(location.href);
+  let token = url.searchParams.get("token");
+  if (!token) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length > 0) token = parts[0];
+  }
+  const cabinUrl = `/${token}/api/cabin?token=${encodeURIComponent(token || "")}`;
   try {
     state.db = new CabinDatabase(cabinUrl);
-    await state.db.open();
+    await state.db.open({ preferFullDownload: true });
     setStatus("ready", `${fmtInt.format(state.db.meta.itemCount)} items, ${fmtInt.format(state.db.meta.mobCount)} mobs`);
     $("footer-left").textContent = `${state.db.meta.modId} ${state.db.meta.modVersion} · file 0x${state.db.file.fileHash.toString(16)}`;
     wireEvents();
     const initialTab = loadStateFromUrl();
     showTab(initialTab);
+
+    // Живой мониторинг соединения и обновлений
+    let countdown = 5;
+    let failCount = 0;
+    
+    setInterval(async () => {
+      countdown--;
+      
+      if (countdown <= 0) {
+        countdown = 5;
+        try {
+          const metaUrl = `/${token}/api/meta?token=${encodeURIComponent(token || "")}`;
+          const resp = await fetch(metaUrl);
+          if (!resp.ok) throw new Error("HTTP Error");
+          
+          const meta = await resp.json();
+          failCount = 0;
+          
+          // Нормализуем хэши для корректного сравнения (добавляем ведущие нули)
+          const serverHash = meta.hash.toLowerCase();
+          const localHash = state.db.file.fileHash.toString(16).toLowerCase().padStart(16, '0');
+          
+          console.debug(`[Poll] server: ${serverHash}, local: ${localHash}`);
+          
+          if (serverHash && state.db && serverHash !== localHash) {
+            console.log("Database update detected! Reloading...");
+            await state.db.open({ preferFullDownload: true });
+            const activeTab = document.querySelector(".tab.active")?.dataset.tab || "items";
+            showTab(activeTab);
+            setStatus("ready", `Updated! ${fmtInt.format(state.db.meta.itemCount)} items`);
+            countdown = 8; // Даем 8 секунд, чтобы человек успел прочитать "Updated!"
+          } else {
+            setStatus("ready", `ready (${countdown}s)`);
+          }
+        } catch (e) {
+          failCount++;
+          if (failCount >= 2) {
+            setStatus("error", "offline");
+          }
+        }
+      } else {
+        // Просто обновляем счетчик, если мы не в режиме ошибки и не только что обновились
+        const txt = $("status-text").textContent;
+        if (failCount < 2 && !txt.startsWith("Updated!")) {
+          setStatus("ready", `ready (${countdown}s)`);
+        }
+      }
+    }, 1000);
+
   } catch (e) {
     console.error(e);
     setStatus("error", "failed to load cabin");

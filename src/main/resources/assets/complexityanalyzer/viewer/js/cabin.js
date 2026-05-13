@@ -651,8 +651,8 @@ export class CabinDatabase {
         this._usage = null;
     }
 
-    async open() {
-        await this.file.open();
+    async open(options = {}) {
+        await this.file.open(options);
         const [stringsBytes, itemsBytes, mobsBytes, metaBytes, catBytes, recipeIdxBytes]
             = await Promise.all([
             this.file.readSection(SEC.STRINGS),

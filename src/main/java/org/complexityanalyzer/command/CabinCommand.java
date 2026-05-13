@@ -23,16 +23,17 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
-import org.complexityanalyzer.network.cabin.CabinPayloads;
+import org.complexityanalyzer.network.multiplex.CabinNettyHandler;
 
 public final class CabinCommand {
 
@@ -42,14 +43,17 @@ public final class CabinCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("cabin").executes(CabinCommand::executeGet).then(Commands.literal("get")
                 .executes(CabinCommand::executeGet)).then(Commands.literal("status")
-                .executes(CabinCommand::executeStatus)).then(Commands.literal("regenerate")
-                .requires(source -> source.hasPermission(2))
-                .executes(CabinCommand::executeRegenerate));
+                        .executes(CabinCommand::executeStatus))
+                .then(Commands.literal("regenerate")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(CabinCommand::executeRegenerate))
+                .then(Commands.literal("web")
+                        .executes(CabinCommand::executeWeb));
     }
 
     public static int executeGet(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
+        if (!(source.getEntity() instanceof ServerPlayer)) {
             source.sendFailure(Component.literal("This command must be run as a player"));
             return 0;
         }
@@ -60,9 +64,8 @@ public final class CabinCommand {
             executeRegenerate(ctx);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal("📦 Checking cabin status...")
+        source.sendSuccess(() -> Component.literal("📦 Cabin is ready. Use /complexity cabin web to view.")
                 .withStyle(ChatFormatting.AQUA), false);
-        PacketDistributor.sendToPlayer(player, new CabinPayloads.PollHashS2C());
         return 1;
     }
 
@@ -89,8 +92,9 @@ public final class CabinCommand {
                     .withStyle(ChatFormatting.GRAY));
         }
         Throwable err = svc.getLastError();
-        if (err != null) msg.append(Component.literal("\n  Last error: ").withStyle(ChatFormatting.RED))
-                .append(Component.literal(String.valueOf(err.getMessage())).withStyle(ChatFormatting.DARK_RED));
+        if (err != null)
+            msg.append(Component.literal("\n  Last error: ").withStyle(ChatFormatting.RED))
+                    .append(Component.literal(String.valueOf(err.getMessage())).withStyle(ChatFormatting.DARK_RED));
         source.sendSuccess(() -> msg, false);
         return 1;
     }
@@ -103,8 +107,8 @@ public final class CabinCommand {
             source.sendFailure(Component.literal("Engine not ready: " + engine.getCurrentState()));
             return 0;
         }
-        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID).map(c ->
-                c.getModInfo().getVersion().toString()).orElse("unknown");
+        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
+                .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
         source.sendSuccess(() -> Component.literal("🔄 Regenerating cabin in background...")
                 .withStyle(ChatFormatting.AQUA), true);
         CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion).whenComplete((snap, err) -> {
@@ -122,6 +126,37 @@ public final class CabinCommand {
         return 1;
     }
 
+    public static int executeWeb(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getEntity() instanceof ServerPlayer p ? p : null;
+
+        String url = CabinNettyHandler.getUrl(player);
+
+        if (url == null) {
+            MutableComponent msg = Component.literal("⚠ Web Dashboard is not active.").withStyle(ChatFormatting.YELLOW)
+                    .append(Component
+                            .literal("\nTo use it in singleplayer, you must click 'Open to LAN' in the Escape menu.")
+                            .withStyle(ChatFormatting.GRAY));
+            source.sendSuccess(() -> msg, false);
+            return 0;
+        }
+
+        MutableComponent msg = Component.literal("🌐 Web Dashboard: ").withStyle(ChatFormatting.GOLD);
+        msg.append(Component.literal("[Open in Browser]").withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE)
+                .withStyle(
+                        style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url)).withHoverEvent(
+                                new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                        Component.literal("Click to open: " + url)))));
+
+        if (url.contains("127.0.0.1"))
+            msg.append(Component.literal(
+                    "\n  (Note: If you are on a remote server, replace 127.0.0.1 with the server's public IP address)")
+                    .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+
+        source.sendSuccess(() -> msg, false);
+        return 1;
+    }
+
     private static ChatFormatting statusColor(CabinBackgroundService.Status s) {
         return switch (s) {
             case READY -> ChatFormatting.GREEN;
@@ -132,21 +167,27 @@ public final class CabinCommand {
     }
 
     private static String humanBytes(long n) {
-        if (n < 1024) return n + " B";
+        if (n < 1024)
+            return n + " B";
         double k = n / 1024.0;
-        if (k < 1024) return String.format(java.util.Locale.ROOT, "%.1f KB", k);
+        if (k < 1024)
+            return String.format(java.util.Locale.ROOT, "%.1f KB", k);
         double m = k / 1024.0;
-        if (m < 1024) return String.format(java.util.Locale.ROOT, "%.1f MB", m);
+        if (m < 1024)
+            return String.format(java.util.Locale.ROOT, "%.1f MB", m);
         return String.format(java.util.Locale.ROOT, "%.2f GB", m / 1024.0);
     }
 
     private static String humanDuration(long ms) {
         long sec = ms / 1000;
-        if (sec < 60) return sec + "s";
+        if (sec < 60)
+            return sec + "s";
         long min = sec / 60;
-        if (min < 60) return min + "m " + (sec % 60) + "s";
+        if (min < 60)
+            return min + "m " + (sec % 60) + "s";
         long hour = min / 60;
-        if (hour < 24) return hour + "h " + (min % 60) + "m";
+        if (hour < 24)
+            return hour + "h " + (min % 60) + "m";
         return (hour / 24) + "d " + (hour % 24) + "h";
     }
 }

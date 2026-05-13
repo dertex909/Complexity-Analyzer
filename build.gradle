@@ -56,8 +56,9 @@ neoForge {
         }
 
         configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty('forge.logging.markers', 'REGISTRIES')
             logLevel = org.slf4j.event.Level.DEBUG
+            additionalRuntimeClasspathConfiguration.extendsFrom(project.configurations.implementation)
         }
     }
 
@@ -70,9 +71,22 @@ neoForge {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+def http = "io.netty:netty-codec-http:4.1.97.Final"
+def jei = "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+
 dependencies {
-    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
-    runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+    implementation(http) {
+        transitive = true
+    }
+    runtimeOnly(http)
+    jarJar(http)
+
+    // Добавляем либу в 'игровой' classpath
+    // Если minecraftLibrary не сработает, попробуем другой вариант
+    // minecraftLibrary(http) 
+
+    compileOnly(jei)
+    runtimeOnly(jei)
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

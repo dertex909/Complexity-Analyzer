@@ -126,7 +126,7 @@ public final class CabinBackgroundService {
         CabinBuilder builder = new CabinBuilder(engine, name, modVersion);
         var sections = builder.build();
         byte[] bytes = CabinWriter.writeToBytes(sections);
-        long hash = CabinBuilder.computeFileHash(bytes);
+        long hash = LeBuf.readI64(bytes, 24);
 
         persistToFile(server, bytes);
 

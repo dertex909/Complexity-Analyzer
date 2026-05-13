@@ -6,7 +6,10 @@
   "refmap": "complexity_analyzer.refmap.json",
   "mixins": [
     "LootContextAccessor",
-    "SmithingTransformRecipeAccessor"
+    "SmithingTransformRecipeAccessor",
+    "network.ServerConnectionListenerMixin",
+    "network.ConnectionMixin",
+    "network.ServerHandshakePacketListenerImplMixin"
   ],
   "client": [],
   "server": [],

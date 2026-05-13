@@ -539,8 +539,13 @@ public final class SccCondensedSolver {
                 }
             }
 
-            for (Item item : corpus) {
+            for (Item item : GameRegistryManager.getAllItems()) {
                 ObjectList<BaseResourceData> sources = sourceManager.findAllSources(item);
+                if (sources.isEmpty()) continue;
+
+                int node = allocateItemNode(item);
+                itemInCorpus.setTrue(node);
+
                 for (BaseResourceData data : sources) {
                     if (data == null) continue;
                     var sourceItems = data.getSourceItems();
@@ -560,7 +565,7 @@ public final class SccCondensedSolver {
         }
 
         private void compileSourceFormulas() {
-            for (Item item : graph.getCorpus()) {
+            for (Item item : GameRegistryManager.getAllItems()) {
                 int targetNode = itemToNode.getInt(item);
                 if (targetNode == -1) continue;
 
@@ -581,6 +586,7 @@ public final class SccCondensedSolver {
                         Item dep = entry.getKey();
                         double amount = entry.getDoubleValue();
                         if (dep == null || amount == 0.0) continue;
+                        if (dep == item) continue;
                         int depNode = itemToNode.getInt(dep);
                         if (depNode == -1) depNode = allocateItemNode(dep);
                         addItemSlotSingle(depNode, amount);

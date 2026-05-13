@@ -74,21 +74,24 @@ public class ComplexityCalculator {
         var optimalRecipe = solverResult.optimalRecipes().get(item);
 
         boolean hasRecipe = graph.hasRecipe(item);
-        int depth = hasRecipe ? depthAnalyzer.getDepth(item) : 0;
+        int depth = depthAnalyzer.getDepth(item);
 
-        int ingredients = (optimalRecipe != null) ? optimalRecipe.getTotalIngredientCount() : 0;
+        int ingredients = 0;
+        var baseData = sourceManager.analyze(item);
+        if (optimalRecipe != null) {
+            ingredients = optimalRecipe.getTotalIngredientCount();
+        } else if (baseData != null) {
+            for (var entry : baseData.getSourceItems().reference2DoubleEntrySet()) {
+                if (entry.getKey() != item) ingredients += (int) entry.getDoubleValue();
+            }
+        }
 
-        var builder = new ItemComplexity.Builder(item)
-                .complexity(complexity)
-                .depth(depth)
-                .totalIngredients(ingredients)
-                .hasRecipe(hasRecipe);
+        var builder = new ItemComplexity.Builder(item).complexity(complexity).depth(depth).totalIngredients(ingredients).hasRecipe(hasRecipe);
 
         if (optimalRecipe != null) {
             builder.optimalRecipe(optimalRecipe);
-        } else {
-            var baseData = sourceManager.analyze(item);
-            if (baseData != null) builder.baseData(baseData);
+        } else if (baseData != null) {
+            builder.baseData(baseData);
         }
 
         return builder.build();

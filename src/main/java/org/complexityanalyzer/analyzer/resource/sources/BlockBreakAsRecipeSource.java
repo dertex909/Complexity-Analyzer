@@ -115,11 +115,12 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                     boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
 
                     double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
-                    double rarityFactor = calculateRarityFactor(blockToMine);
+                    RarityInfo rarityInfo = calculateRarityFactor(blockToMine);
+                    double rarityFactor = rarityInfo.factor();
 
                     double enchantCost = 0;
                     var enchants = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-                    if (!enchants.isEmpty()) enchantCost = enchants.size() * 500.0;
+                    if (!enchants.isEmpty()) enchantCost = enchants.size() * 20.0;
 
                     double miningBaseFactor = rarityFactor + (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
                     if (miningBaseFactor >= Double.POSITIVE_INFINITY) continue;
@@ -133,6 +134,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                         StringBuilder details = new StringBuilder();
                         details.append("Mined from ").append(blockToMine.getName().getString());
+                        if (!rarityInfo.location().isEmpty()) details.append(" ").append(rarityInfo.location());
                         if (toolStack.isEmpty()) {
                             details.append(" with Hand");
                         } else {
@@ -141,6 +143,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                             if (!enchs.isEmpty()) details.append(" (Enchanted)");
                         }
                         details.append(String.format(" (avg: %s)", formatAverage(itemsPerAction)));
+
+                        double actionCost = (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
+                        if (rarityFactor < Double.POSITIVE_INFINITY) {
+                            details.append(String.format(" | Cost: Rarity ≈ %s, Action ≈ %s", formatAverage(rarityFactor), formatAverage(actionCost)));
+                        }
 
                         boolean isSelfDrop = droppedItem == blockToMine.asItem();
 
@@ -324,26 +331,33 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         return sourceItems;
     }
 
-    private double calculateRarityFactor(Block block) {
-        boolean isGeoLoaded = this.geoDatabase != null && this.geoDatabase.isLoaded();
+    private record RarityInfo(double factor, String location) {
+    }
 
+    private RarityInfo calculateRarityFactor(Block block) {
+        boolean isGeoLoaded = this.geoDatabase != null && this.geoDatabase.isLoaded();
         if (isGeoLoaded) {
             double bestRarity = Double.POSITIVE_INFINITY;
-            for (var dimData : this.geoDatabase.getAllDimensionData().values()) {
-                long total = 0, count = 0;
-                for (var biome : dimData.values()) {
-                    total += biome.getTotalBlocks();
-                    count += biome.getBlockCount(block);
-                }
-                if (total > 0 && count > 0) {
-                    double factor = 0.5 + (Math.sqrt((double) total / count) * 0.1);
-                    if (factor < bestRarity) bestRarity = factor;
+            String bestLocation = "";
+            for (var dimEntry : this.geoDatabase.getAllDimensionData().entrySet()) {
+                for (var biomeEntry : dimEntry.getValue().entrySet()) {
+                    long total = biomeEntry.getValue().getTotalBlocks();
+                    long count = biomeEntry.getValue().getBlockCount(block);
+                    if (total > 0 && count > 0) {
+                        double factor = Math.pow((double) total / count, 0.85) * 0.15;
+                        if (factor < bestRarity) {
+                            bestRarity = factor;
+                            double chance = (double) count / total * 100.0;
+                            String chanceStr = chance < 0.01 ? String.format("%.4f%%", chance) : String.format("%.2f%%", chance);
+                            bestLocation = String.format("in %s (%s)", biomeEntry.getKey().getPath(), chanceStr);
+                        }
+                    }
                 }
             }
-            if (bestRarity != Double.POSITIVE_INFINITY) return bestRarity;
+            if (bestRarity != Double.POSITIVE_INFINITY) return new RarityInfo(bestRarity, bestLocation);
         }
 
-        return Double.POSITIVE_INFINITY;
+        return new RarityInfo(Double.POSITIVE_INFINITY, "");
     }
 
     private long generateStableSeed(long worldSeed, Block block, ItemStack tool) {

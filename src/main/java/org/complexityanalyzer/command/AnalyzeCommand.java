@@ -240,11 +240,9 @@ public class AnalyzeCommand {
                 .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)
                 .append(Component.literal("Cyclic dependency detected!").withStyle(ChatFormatting.RED)));
 
-
         if (optimal.getErrorMessage() != null) output.sendInfo(source, Component.literal("  ❌ Error: ")
                 .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
                 .append(Component.literal(optimal.getErrorMessage()).withStyle(ChatFormatting.RED)));
-
 
         if (optimal.hasRecipe()) {
             output.sendInfo(source, Component.literal(""));

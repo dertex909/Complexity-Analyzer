@@ -29,6 +29,69 @@
     --cat-EXTERNAL_FRAGMENT: #a0a0a0;
 }
 
+.cat-Absolute {
+    --cat-color: var(--cat-Absolute);
+}
+
+.cat-Trivial {
+    --cat-color: var(--cat-Trivial);
+}
+
+.cat-Simple {
+    --cat-color: var(--cat-Simple);
+}
+
+.cat-Moderate {
+    --cat-color: var(--cat-Moderate);
+}
+
+.cat-Complex {
+    --cat-color: var(--cat-Complex);
+}
+
+.cat-Difficult {
+    --cat-color: var(--cat-Difficult);
+}
+
+.cat-Expert {
+    --cat-color: var(--cat-Expert);
+}
+
+.cat-Master {
+    --cat-color: var(--cat-Master);
+}
+
+.cat-Mythical {
+    --cat-color: var(--cat-Mythical);
+}
+
+.cat-Transcendent {
+    --cat-color: var(--cat-Transcendent);
+}
+
+.cat-Unobtainable {
+    --cat-color: var(--cat-Unobtainable);
+}
+
+.cat-Uncalculable {
+    --cat-color: var(--cat-Uncalculable);
+}
+
+.cat-EXTERNAL_FRAGMENT {
+    --cat-color: var(--cat-EXTERNAL_FRAGMENT);
+}
+
+.category-pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cat-color);
+    background-color: color-mix(in srgb, var(--cat-color) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cat-color) 40%, transparent);
+}
+
 * {
     box-sizing: border-box;
 }
@@ -368,14 +431,6 @@ input[type="search"] {
 .flag.miniboss {
     background-color: #2a2139;
     color: #b198ff;
-}
-
-.category-pill {
-    display: inline-block;
-    padding: 1px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 500;
 }
 
 .card {

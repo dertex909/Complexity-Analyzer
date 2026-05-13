@@ -162,7 +162,6 @@ public class MobRarityCalculator implements IBossRegistry {
         return rarity;
     }
 
-
     private BossLevel detectBossLevel(EntityType<?> entityType) {
         var registered = registeredBosses.get(entityType);
         if (registered != null) return registered;
@@ -211,7 +210,6 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-
     private BossLevel detectByClass(EntityType<?> entityType) {
         try {
             Class<?> entityClass = entityType.getBaseClass();
@@ -247,13 +245,11 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-
     private BossLevel detectVanillaBoss(EntityType<?> entityType) {
         if (entityType == EntityType.ENDER_DRAGON || entityType == EntityType.WITHER) return BossLevel.BOSS;
         if (entityType == EntityType.ELDER_GUARDIAN || entityType == EntityType.WARDEN) return BossLevel.MINI_BOSS;
         return BossLevel.NONE;
     }
-
 
     private BossLevel detectByName(EntityType<?> entityType) {
         var name = getEntityName(entityType).toLowerCase();
@@ -271,7 +267,6 @@ public class MobRarityCalculator implements IBossRegistry {
         return BossLevel.NONE;
     }
 
-
     private boolean hasMiniBossIndicators(EntityType<?> entityType) {
         if (entityType.getCategory() == MobCategory.MISC) return true;
         if (isModdedEntity(entityType)) {
@@ -281,7 +276,6 @@ public class MobRarityCalculator implements IBossRegistry {
 
         return false;
     }
-
 
     private boolean isModdedEntity(EntityType<?> entityType) {
         ResourceLocation id = GameRegistryManager.getEntityTypeId(entityType);
@@ -304,8 +298,7 @@ public class MobRarityCalculator implements IBossRegistry {
             if (attributes.hasAttribute(Attributes.MAX_HEALTH)) return attributes.getValue(Attributes.MAX_HEALTH);
         } catch (ClassCastException ignored) {
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("Could not get attributes for {}: {}",
-                    getEntityName(entityType), e.getMessage());
+            ComplexityAnalyzer.LOGGER.debug("Could not get attributes for {}: {}", getEntityName(entityType), e.getMessage());
         }
 
         if (!isModdedEntity(entityType)) {

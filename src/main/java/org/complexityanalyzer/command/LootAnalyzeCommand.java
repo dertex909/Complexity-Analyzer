@@ -33,7 +33,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
 
-
 public class LootAnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation lootTableId) {

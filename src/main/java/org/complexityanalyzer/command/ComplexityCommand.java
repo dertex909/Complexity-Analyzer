@@ -311,7 +311,6 @@ public class ComplexityCommand {
                 .withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(String.format("%.0f ms", avgPing)).withStyle(pingColor)));
 
-
         output.sendInfo(source, Component.literal(""));
         output.sendInfo(source, Component.literal("═══════════════════════════════")
                 .withStyle(ChatFormatting.DARK_GRAY));

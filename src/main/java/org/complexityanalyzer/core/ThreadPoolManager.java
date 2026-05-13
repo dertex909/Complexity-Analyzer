@@ -157,7 +157,6 @@ public class ThreadPoolManager {
         }
     }
 
-
     private void forceShutdown() {
         if (!isShutdown.compareAndSet(false, true)) return;
 

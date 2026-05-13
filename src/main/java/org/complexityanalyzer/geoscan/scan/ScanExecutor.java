@@ -147,7 +147,6 @@ public class ScanExecutor {
             flushAllBuffers();
             resultBuffers.clear();
 
-
             String msptInfo = msptMonitor.hasLimit()
                     ? String.format(", MSPT limit: %.0f", msptMonitor.getMsptLimit()) : ", no MSPT limit";
 

@@ -41,10 +41,6 @@ function formatComplexity(c) {
     return fmt.format(c);
 }
 
-function categoryColor(cat) {
-    return `var(--cat-${cat || "Uncalculable"})`;
-}
-
 function itemFlagChips(item) {
     const out = [];
     const f = item.flags;
@@ -211,10 +207,10 @@ function renderItems() {
         <span class="idx">${absIndex + 1}</span>
         <span class="id" title="${it.id}">${it.id}</span>
         <span>${escapeHtml(it.name)}</span>
-        <span class="num" style="color:${categoryColor(it.categoryName)}">${formatComplexity(it.complexity)}</span>
+        <span class="num cat-${it.categoryName || "Uncalculable"}">${formatComplexity(it.complexity)}</span>
         <span class="num">${fmtInt.format(it.depth)}</span>
         <span class="num">${fmtInt.format(it.usageCount)}</span>
-        <span><span class="category-pill" style="background-color:${categoryColor(it.categoryName)}20;color:${categoryColor(it.categoryName)};border:1px solid ${categoryColor(it.categoryName)}40">${it.categoryName}</span></span>
+        <span><span class="category-pill cat-${it.categoryName || "Uncalculable"}">${it.categoryName}</span></span>
         <span class="flags">${itemFlagChips(it)}</span>
       `;
             el.addEventListener("click", () => openItemDialog(it.index));
@@ -359,8 +355,8 @@ async function openItemDialog(itemIndex) {
 function renderItemMain(item) {
     return `
     <dl class="detail-grid">
-      <dt>Complexity</dt><dd style="color:${categoryColor(item.categoryName)};font-weight:600">${formatComplexity(item.complexity)}</dd>
-      <dt>Category</dt><dd><span class="category-pill" style="background-color:${categoryColor(item.categoryName)}20;color:${categoryColor(item.categoryName)};border:1px solid ${categoryColor(item.categoryName)}40">${item.categoryName}</span></dd>
+      <dt>Complexity</dt><dd class="cat-${item.categoryName || "Uncalculable"}" style="font-weight:600">${formatComplexity(item.complexity)}</dd>
+      <dt>Category</dt><dd><span class="category-pill cat-${item.categoryName || "Uncalculable"}">${item.categoryName}</span></dd>
       <dt>Depth</dt><dd>${fmtInt.format(item.depth)}</dd>
       <dt>Total ingredients</dt><dd>${fmtInt.format(item.totalIngredients)}</dd>
       <dt>Used in</dt><dd>${fmtInt.format(item.usageCount)} recipes</dd>
@@ -515,7 +511,7 @@ function renderCategories() {
         el.className = "category-card";
         el.style.borderLeftColor = `var(--cat-${cat.name})`;
         el.innerHTML = `
-      <div class="count" style="color:var(--cat-${cat.name})">${fmtInt.format(cat.items.length)}</div>
+      <div class="count cat-${cat.name}">${fmtInt.format(cat.items.length)}</div>
       <div class="name">${escapeHtml(cat.name)}</div>
     `;
         el.addEventListener("click", () => {
@@ -563,7 +559,7 @@ function renderSearchResults() {
         <span class="kind">item</span>
         <span class="name">${escapeHtml(r.data.name)}</span>
         <span class="id">${escapeHtml(r.data.id)}</span>
-        <span style="color:${categoryColor(r.data.categoryName)}">${formatComplexity(r.data.complexity)}</span>
+        <span class="cat-${r.data.categoryName || "Uncalculable"}">${formatComplexity(r.data.complexity)}</span>
       `;
             el.addEventListener("click", () => openItemDialog(r.data.index));
         } else {

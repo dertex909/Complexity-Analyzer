@@ -49,7 +49,7 @@ public class AnalysisBootstrap {
             try (Scanner s = new Scanner(URI.create("https://checkip.amazonaws.com").toURL().openStream(), StandardCharsets.UTF_8).useDelimiter("\\A")) {
                 String ip = s.next().trim();
                 WebCommand.setPublicIp(ip);
-                ComplexityAnalyzer.LOGGER.info("[Network] Public IP detected: {}", ip);
+                ComplexityAnalyzer.LOGGER.info("[Network] Public IP detected.");
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.warn("[Network] Failed to detect public IP: {}", e.getMessage());
             }

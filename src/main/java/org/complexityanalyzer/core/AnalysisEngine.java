@@ -42,6 +42,7 @@ import org.complexityanalyzer.analyzer.resource.sources.*;
 import org.complexityanalyzer.analyzer.solver.SccCondensedSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
@@ -317,6 +318,7 @@ public class AnalysisEngine {
 
         this.calculator = new ComplexityCalculator(currentGraph, this.depthAnalyzer, solverResult, currentSourceManager);
 
+        SharedSuggestions.refresh();
         ComplexityAnalyzer.LOGGER.info("All systems refreshed with new data.");
     }
 

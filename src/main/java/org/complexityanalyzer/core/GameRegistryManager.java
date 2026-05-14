@@ -45,6 +45,8 @@ public class GameRegistryManager {
     private static final ObjectList<Fluid> ALL_FLUIDS = new ObjectArrayList<>();
     private static final ObjectList<RecipeType<?>> ALL_RECIPE_TYPES = new ObjectArrayList<>();
     private static final ObjectList<EntityType<?>> ALL_ENTITY_TYPES = new ObjectArrayList<>();
+    private static final ObjectList<ResourceLocation> ALL_ITEM_IDS = new ObjectArrayList<>();
+    private static final ObjectList<ResourceLocation> ALL_ENTITY_IDS = new ObjectArrayList<>();
     private static boolean initialized = false;
 
     private GameRegistryManager() {
@@ -70,6 +72,7 @@ public class GameRegistryManager {
             ITEM_MAP.put(id, item);
             ITEM_ID_MAP.put(item, id);
             ALL_ITEMS.add(item);
+            ALL_ITEM_IDS.add(id);
         }
 
         for (Fluid fluid : BuiltInRegistries.FLUID) {
@@ -91,6 +94,7 @@ public class GameRegistryManager {
             ENTITY_TYPE_MAP.put(id, entityType);
             ENTITY_TYPE_ID_MAP.put(entityType, id);
             ALL_ENTITY_TYPES.add(entityType);
+            ALL_ENTITY_IDS.add(id);
         }
 
         initialized = true;
@@ -137,6 +141,14 @@ public class GameRegistryManager {
 
     public static ResourceLocation getEntityTypeId(EntityType<?> entityType) {
         return ENTITY_TYPE_ID_MAP.get(entityType);
+    }
+
+    public static ObjectList<ResourceLocation> getItemIds() {
+        return ALL_ITEM_IDS;
+    }
+
+    public static ObjectList<ResourceLocation> getEntityIds() {
+        return ALL_ENTITY_IDS;
     }
 
     public static ObjectList<Block> getAllBlocks() {

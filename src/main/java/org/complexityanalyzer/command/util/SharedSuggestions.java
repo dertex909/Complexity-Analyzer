@@ -19,41 +19,64 @@
 package org.complexityanalyzer.command.util;
 
 import com.mojang.brigadier.suggestion.SuggestionProvider;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.MobCategory;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 public final class SharedSuggestions {
+    private static final ObjectList<ResourceLocation> CACHED_ENTITIES = new ObjectArrayList<>();
+    private static final ObjectList<String> CACHED_LOOT_TABLES = new ObjectArrayList<>();
+
     private SharedSuggestions() {
     }
 
     public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(GameRegistryManager.getAllItems().stream().map(GameRegistryManager::getItemId).collect(Collectors.toList()), builder);
+            SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
 
     public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(GameRegistryManager.getAllEntityTypes().stream().map(GameRegistryManager::getEntityTypeId)
-                    .filter(id -> GameRegistryManager.getEntityType(id).getCategory() != MobCategory.MISC).collect(Collectors.toList()), builder);
+            SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
 
     public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) -> {
-        AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) return builder.buildFuture();
-        var uls = engine.getSourceByType(UniversalLootSource.class);
-        if (uls != null) uls.getAllLootData().values().stream().flatMap(map -> map.values().stream()).map(data -> {
-            try {
-                String details = data.getDetails();
-                int start = details.indexOf("'") + 1;
-                int end = details.indexOf("'", start);
-                return details.substring(start, end);
-            } catch (Exception e) {
-                return null;
-            }
-        }).filter(Objects::nonNull).distinct().forEach(builder::suggest);
+        CACHED_LOOT_TABLES.forEach(builder::suggest);
         return builder.buildFuture();
     };
+
+    public static void refresh() {
+        refreshEntities();
+        refreshLootTables();
+    }
+
+    private static void refreshEntities() {
+        CACHED_ENTITIES.clear();
+        GameRegistryManager.getAllEntityTypes().forEach(type -> {
+            if (type.getCategory() != MobCategory.MISC) {
+                ResourceLocation id = GameRegistryManager.getEntityTypeId(type);
+                if (id != null) CACHED_ENTITIES.add(id);
+            }
+        });
+    }
+
+    private static void refreshLootTables() {
+        CACHED_LOOT_TABLES.clear();
+        AnalysisEngine engine = AnalysisEngine.getInstance();
+        if (!engine.isReady()) return;
+
+        var uls = engine.getSourceByType(UniversalLootSource.class);
+        if (uls == null) return;
+
+        uls.getAllLootData().values().stream()
+                .flatMap(map -> map.values().stream())
+                .map(BaseResourceData::getSourceSpecifier)
+                .filter(s -> s != null && !s.isEmpty())
+                .distinct()
+                .sorted()
+                .forEach(CACHED_LOOT_TABLES::add);
+    }
 }

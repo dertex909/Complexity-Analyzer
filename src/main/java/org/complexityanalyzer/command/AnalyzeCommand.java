@@ -21,10 +21,7 @@ package org.complexityanalyzer.command;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -36,13 +33,29 @@ import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.GameRegistryManager;
 
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 
 import java.util.Comparator;
 
-public class AnalyzeCommand {
+public final class AnalyzeCommand {
+    private AnalyzeCommand() {
+    }
+
+    public static LiteralArgumentBuilder<CommandSourceStack> register() {
+        return Commands.literal("analyze")
+                .then(Commands.literal("item").then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
+                        .executes(cmd -> AnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item")))))
+                .then(Commands.literal("entity").then(Commands.argument("entity", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY)
+                        .executes(cmd -> EntityAnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "entity")))))
+                .then(Commands.literal("loot").then(Commands.argument("loot_table", ResourceLocationArgument.id()).suggests(SharedSuggestions.LOOT_TABLE)
+                        .executes(ctx -> LootAnalyzeCommand.execute(ctx, ResourceLocationArgument.getId(ctx, "loot_table")))));
+    }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {
         CommandSourceStack source = context.getSource();
@@ -50,9 +63,8 @@ public class AnalyzeCommand {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!")
-                    .append(Component.literal("\nCurrent state: " + engine.getCurrentState())
-                            .withStyle(ChatFormatting.GRAY)));
+            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!"));
+            output.sendTip(source, "Current state: " + engine.getCurrentState());
             return 0;
         }
 
@@ -90,53 +102,35 @@ public class AnalyzeCommand {
     ) {
         String itemName = (item != null) ? item.getDescription().getString() : itemId.toString();
 
-        output.sendInfo(source, Component.literal("").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal("═══════════════════════════════")
-                        .withStyle(ChatFormatting.DARK_GRAY)));
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "📊", "Complexity Analysis", ChatFormatting.GOLD);
 
-        output.sendInfo(source, Component.literal("📊 ").withStyle(ChatFormatting.GOLD)
-                .append(Component.literal("Complexity Analysis")
-                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        output.sendEntry(source, "🏷", "Item", itemName, ChatFormatting.GRAY, ChatFormatting.WHITE);
 
-        MutableComponent itemComponent = Component.literal("Item: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(itemName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
-        output.sendInfo(source, itemComponent);
-
-        output.sendInfo(source, Component.literal(""));
+        output.sendEmptyLine(source);
 
         displayMainInfo(source, optimal, output);
         displaySourceInfo(source, item, optimal, engine, output);
         displayStatus(source, optimal, output, itemId);
 
-        output.sendInfo(source, Component.literal("═══════════════════════════════")
-                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendFooter(source);
     }
 
     private static void displayMainInfo(CommandSourceStack source, ItemComplexity optimal, OutputManager output) {
         ComplexityCategory category = optimal.getCategory();
         double complexity = optimal.getComplexity();
 
-        output.sendInfo(source, Component.literal("⚙ ").withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal("Complexity").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+        output.sendStatusLine(source, "⚙", "Complexity", ChatFormatting.YELLOW);
 
-        String icon = getCategoryIcon(category);
-
-        MutableComponent categoryComponent = Component.literal("  Category: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(icon + " " + category.getDisplayName()).withStyle(category.getColor()));
-
-        output.sendInfo(source, categoryComponent);
+        output.sendSubEntry(source, getCategoryIcon(category), "Category", category.getDisplayName(), ChatFormatting.GRAY, category.getColor());
 
         ChatFormatting valueColor = getComplexityColor(complexity);
         String valueString = Double.isInfinite(complexity) ? "∞" : String.format("%.2f", complexity);
-        MutableComponent valueComponent = Component.literal("  Value: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(valueString).withStyle(valueColor, ChatFormatting.BOLD));
+        output.sendSubEntry(source, "Value", valueString, ChatFormatting.GRAY, valueColor);
 
-        output.sendInfo(source, valueComponent);
+        output.sendValueBar(source, (int) Math.min(100, (complexity / 100.0) * 100), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
-        String progressBar = getComplexityBar(complexity);
-        output.sendInfo(source, Component.literal("  " + progressBar).withStyle(ChatFormatting.DARK_GRAY));
-
-        output.sendInfo(source, Component.literal(""));
+        output.sendEmptyLine(source);
     }
 
     private record SourceWithCost(BaseResourceData data, double fullCost) {
@@ -149,35 +143,25 @@ public class AnalyzeCommand {
             AnalysisEngine engine,
             OutputManager output
     ) {
-        output.sendInfo(source, Component.literal("📦 ").withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal("Source Information")
-                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+        output.sendStatusLine(source, "📦", "Source Information", ChatFormatting.YELLOW);
 
         if (optimal.hasRecipe()) {
-            output.sendInfo(source, Component.literal("  ✓ ").withStyle(ChatFormatting.GREEN)
-                    .append(Component.literal("Has Recipe: ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal("Yes").withStyle(ChatFormatting.WHITE)));
+            output.sendSubEntry(source, "Has Recipe", "Yes", ChatFormatting.GRAY, ChatFormatting.WHITE);
 
             int depth = optimal.getDepth();
             ChatFormatting depthColor = depth <= 2 ? ChatFormatting.GREEN :
                     depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
-            output.sendInfo(source, Component.literal("    Crafting Depth: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(String.valueOf(depth)).withStyle(depthColor)));
+            output.sendSubEntry(source, "  Depth", String.valueOf(depth), ChatFormatting.DARK_GRAY, depthColor);
 
             int usageCount = engine.getUsageCount(item);
-            output.sendInfo(source, Component.literal("    Used in Recipes: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal(String.valueOf(usageCount)).withStyle(ChatFormatting.AQUA)));
+            output.sendSubEntry(source, "  Used In", usageCount + " recipes", ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
         } else {
-            output.sendInfo(source, Component.literal("  ⛏ ").withStyle(ChatFormatting.GOLD)
-                    .append(Component.literal("Base Resource ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal("(No crafting recipe)")
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
+            output.sendSubEntry(source, "Type", "Base Resource (No recipes)", ChatFormatting.GRAY, ChatFormatting.GOLD);
         }
 
         ObjectList<BaseResourceData> allSources = engine.findAllSourcesForItem(item);
         if (!allSources.isEmpty()) {
-            output.sendInfo(source, Component.literal("  🔍 Alternative Sources:")
-                    .withStyle(ChatFormatting.YELLOW));
+            output.sendTip(source, "Alternative Sources:");
 
             ObjectList<SourceWithCost> sortedSources = new ObjectArrayList<>(allSources.size());
             for (BaseResourceData data : allSources) {
@@ -209,55 +193,30 @@ public class AnalyzeCommand {
                         : swc.fullCost() < 10 ? ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW
                                                                        : ChatFormatting.RED;
 
-                MutableComponent sourceComponent = Component.literal("    " + icon + " ")
-                        .withStyle(ChatFormatting.WHITE)
-                        .append(Component.literal(swc.data().getSourceType().getDisplayName())
-                                .withStyle(ChatFormatting.WHITE))
-                        .append(Component.literal(" (Cost: ").withStyle(ChatFormatting.DARK_GRAY))
-                        .append(Component.literal(costString).withStyle(costColor, ChatFormatting.BOLD))
-                        .append(Component.literal(")").withStyle(ChatFormatting.DARK_GRAY));
-
-                output.sendInfo(source, sourceComponent);
-
-                output.sendInfo(source, Component.literal("      → " + swc.data().getDetails())
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                output.sendSubEntry(source, icon, swc.data().getSourceType().getDisplayName(), "Cost: " + costString, ChatFormatting.WHITE, costColor);
+                output.sendTip(source, swc.data().getDetails());
             }
         }
 
-        output.sendInfo(source, Component.literal(""));
+        output.sendEmptyLine(source);
     }
 
     private static void displayStatus(CommandSourceStack source, ItemComplexity optimal, OutputManager output, ResourceLocation itemId) {
-        output.sendInfo(source, Component.literal("ℹ ").withStyle(ChatFormatting.AQUA)
-                .append(Component.literal("Status").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
+        output.sendStatusLine(source, "ℹ", "Status", ChatFormatting.AQUA);
 
         boolean isValid = optimal.isValid();
-        output.sendInfo(source, Component.literal("  Valid: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(isValid ? "✓ Yes" : "✗ No")
-                        .withStyle(isValid ? ChatFormatting.GREEN : ChatFormatting.RED)));
+        output.sendSubEntry(source, "Valid", isValid ? "Yes" : "No", ChatFormatting.GRAY, isValid ? ChatFormatting.GREEN : ChatFormatting.RED);
 
-        if (optimal.hasCycle()) output.sendInfo(source, Component.literal("  ⚠ Warning: ")
-                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)
-                .append(Component.literal("Cyclic dependency detected!").withStyle(ChatFormatting.RED)));
+        if (optimal.hasCycle())
+            output.sendSubEntry(source, "Warning", "Cyclic dependency detected!", ChatFormatting.YELLOW, ChatFormatting.RED);
 
-        if (optimal.getErrorMessage() != null) output.sendInfo(source, Component.literal("  ❌ Error: ")
-                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
-                .append(Component.literal(optimal.getErrorMessage()).withStyle(ChatFormatting.RED)));
+        if (optimal.getErrorMessage() != null)
+            output.sendSubEntry(source, "Error", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);
 
         if (optimal.hasRecipe()) {
-            output.sendInfo(source, Component.literal(""));
+            output.sendEmptyLine(source);
 
-            String treeCommand = "/complexity tree " + itemId;
-            MutableComponent tipComponent = Component.literal("💡 Tip: ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal("Click here")
-                            .withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE).withStyle(style -> style
-                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, treeCommand))
-                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                            Component.literal("Click to view crafting tree")
-                                                    .withStyle(ChatFormatting.GREEN)))))
-                    .append(Component.literal(" to see full crafting tree").withStyle(ChatFormatting.GRAY));
-
-            output.sendInfo(source, tipComponent);
+            output.sendClickableTip(source, "Tip: ", "Click here", " to see full crafting tree", "/complexity tree " + itemId, "Click to view crafting tree");
         }
     }
 
@@ -283,11 +242,6 @@ public class AnalyzeCommand {
         if (complexity < 50) return ChatFormatting.GOLD;
         if (complexity < 100) return ChatFormatting.RED;
         return ChatFormatting.DARK_RED;
-    }
-
-    private static String getComplexityBar(double complexity) {
-        int bars = Math.min(10, (int) (complexity / 10));
-        return "[" + "██████████".substring(0, bars) + "░░░░░░░░░░".substring(bars) + "]";
     }
 
     private static String getSourceIcon(BaseResourceData.ResourceSourceType sourceType) {

@@ -23,14 +23,13 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.multiplex.CabinNettyHandler;
@@ -54,88 +53,94 @@ public final class WebCommand {
         return Commands.literal("web")
                 .then(Commands.literal("url").executes(WebCommand::executeUrl))
                 .then(Commands.literal("status").executes(WebCommand::executeStatus))
-                .then(Commands.literal("reload")
-                        .requires(source -> source.hasPermission(2))
-                        .executes(WebCommand::executeReload));
+                .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(WebCommand::executeReload));
     }
 
     public static int executeUrl(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         ServerPlayer player = source.getEntity() instanceof ServerPlayer p ? p : null;
 
         String url = CabinNettyHandler.getUrl(player);
 
         if (url == null) {
-            MutableComponent msg = Component.literal("⚠ Web Dashboard is not active.").withStyle(ChatFormatting.YELLOW)
-                    .append(Component.literal("\nTo use it in singleplayer, you must click 'Open to LAN' in the Escape menu.").withStyle(ChatFormatting.GRAY));
-            source.sendSuccess(() -> msg, false);
+            output.sendEmptyLine(source);
+            output.sendFailure(source, Component.literal("Web Dashboard is not active."));
+            output.sendTip(source, "To use it in singleplayer, you must click 'Open to LAN' in the Escape menu.");
+            output.sendEmptyLine(source);
             return 0;
         }
 
+        String remoteUrl = null;
+
         if ((url.contains("127.0.0.1") || url.contains("localhost")) && ipDetected) {
-            url = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp);
+            remoteUrl = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp);
         }
 
-        String finalUrl = url;
-        MutableComponent msg = Component.literal("🌐 Web Dashboard: ").withStyle(ChatFormatting.GOLD);
-        msg.append(Component.literal("[Open in Browser]").withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE)
-                .withStyle(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, finalUrl))
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Click to open: " + finalUrl)))));
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "🌐", "Web Dashboard", ChatFormatting.GOLD);
+        output.sendEmptyLine(source);
 
-        if ((finalUrl.contains("127.0.0.1") || finalUrl.contains("localhost")) && ipDetected) msg.append(
-                Component.literal("\n  For friends: ").withStyle(ChatFormatting.GRAY)).append(
-                Component.literal("[Copy Public Link]").withStyle(ChatFormatting.YELLOW, ChatFormatting.UNDERLINE).withStyle(style ->
-                        style.withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, finalUrl)).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                Component.literal("Click to copy full link with your public IP")))));
+        output.sendLink(source, "URL", "[Open in Browser]", url, ChatFormatting.AQUA, "Click to open: " + url);
 
-        source.sendSuccess(() -> msg, false);
+        if (remoteUrl != null) {
+            output.sendEmptyLine(source);
+            output.sendCopyAction(source, "For Friends", "[Copy Public Link]", remoteUrl, ChatFormatting.YELLOW, "Click to copy link with your public IP for others to join");
+        }
+
+        output.sendEmptyLine(source);
+        output.sendFooter(source);
         return 1;
     }
 
     public static int executeStatus(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         CabinBackgroundService svc = CabinBackgroundService.getInstance();
         CabinBackgroundService.Snapshot snap = svc.getSnapshot();
         CabinBackgroundService.Status status = svc.getStatus();
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "📊", "Web System Status", ChatFormatting.GOLD);
+        output.sendEmptyLine(source);
 
-        MutableComponent msg = Component.literal("📊 Web System Status: ").withStyle(ChatFormatting.GOLD);
-        msg.append(Component.literal(status.name()).withStyle(statusColor(status)));
-
-        msg.append(Component.literal("\n  Visitors: ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(String.valueOf(CabinNettyHandler.getVisitorCount())).withStyle(ChatFormatting.AQUA));
+        output.sendEntry(source, "⚙", "Status", status.name(), ChatFormatting.GRAY, statusColor(status));
+        output.sendEntry(source, "👥", "Visitors", String.valueOf(CabinNettyHandler.getVisitorCount()), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         if (snap != null) {
             long ageMs = System.currentTimeMillis() - snap.generatedAtMs();
-            msg.append(Component.literal("\n  File Age: ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(humanDuration(ageMs) + " ago").withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal("\n  Data: ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(snap.itemCount() + " items, " + snap.mobCount() + " mobs, "
-                            + snap.recipeCount() + " recipes").withStyle(ChatFormatting.WHITE));
+            output.sendEntry(source, "🕒", "File Age", humanDuration(ageMs) + " ago", ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "📂", "Items", String.valueOf(snap.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "👾", "Mobs", String.valueOf(snap.mobCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "📜", "Recipes", String.valueOf(snap.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
         } else {
-            msg.append(Component.literal("\n  (no binary data yet — generation may be in progress)")
-                    .withStyle(ChatFormatting.GRAY));
+            output.sendTip(source, "no binary data yet — generation may be in progress");
         }
 
         Throwable err = svc.getLastError();
-        if (err != null) msg.append(Component.literal("\n  Last error: ").withStyle(ChatFormatting.RED))
-                .append(Component.literal(String.valueOf(err.getMessage())).withStyle(ChatFormatting.DARK_RED));
+        if (err != null) {
+            output.sendEmptyLine(source);
+            output.sendFailure(source, Component.literal("Last error: " + err.getMessage()));
+        }
 
-        source.sendSuccess(() -> msg, false);
+        output.sendEmptyLine(source);
+        output.sendFooter(source);
         return 1;
     }
 
     public static int executeReload(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
+        OutputManager output = new OutputManager(source.getServer());
         MinecraftServer server = source.getServer();
         AnalysisEngine engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) {
-            source.sendFailure(Component.literal("Engine not ready: " + engine.getCurrentState()));
+            output.sendFailure(source, Component.literal("Engine not ready: " + engine.getCurrentState()));
             return 0;
         }
         String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
                 .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
-        source.sendSuccess(() -> Component.literal("🔄 Reloading web data in background...")
-                .withStyle(ChatFormatting.AQUA), true);
+
+        output.sendSuccess(source, Component.literal("🔄 Reloading web data in background..."));
+
         CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion).whenComplete((snap, err) -> {
             MutableComponent done;
             if (err != null) {

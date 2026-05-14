@@ -18,13 +18,15 @@
 
 package org.complexityanalyzer.command;
 
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.network.chat.*;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -39,7 +41,14 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 
-public class ResourceCommand {
+public final class ResourceCommand {
+    private ResourceCommand() {
+    }
+
+    public static LiteralArgumentBuilder<CommandSourceStack> register() {
+        return Commands.literal("resource").then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
+                .executes(cmd -> ResourceCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item"))));
+    }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {
         CommandSourceStack source = context.getSource();
@@ -47,8 +56,7 @@ public class ResourceCommand {
         AnalysisEngine engine = AnalysisBootstrap.getEngine();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!")
-                    .withStyle(ChatFormatting.RED));
+            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!"));
             return 0;
         }
 
@@ -61,24 +69,16 @@ public class ResourceCommand {
 
         try {
             BaseResourceData data = engine.getBaseResourceData(item);
-
             if (data == null) {
-                output.sendFailure(source, Component.literal("⚠ No base resource data available")
-                        .withStyle(ChatFormatting.RED));
-
-                output.sendInfo(source, Component.literal("Item: ").withStyle(ChatFormatting.GRAY)
-                        .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW)));
-
-                output.sendInfo(source, Component.literal(""));
-                output.sendInfo(source, Component.literal("This item might only be obtainable through crafting.")
-                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-
+                output.sendFailure(source, Component.literal("⚠ No base resource data available"));
+                output.sendEntry(source, "🏷", "Item", itemId.toString(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
+                output.sendEmptyLine(source);
+                output.sendTip(source, "This item might only be obtainable through crafting.");
                 return 0;
             }
+
             displayResourceInfo(source, item, data, engine, itemId, output);
-
             return 1;
-
         } catch (Exception e) {
             output.sendFailure(source, Component.literal("❌ Error analyzing resource: " + e.getMessage()));
             ComplexityAnalyzer.LOGGER.error("Error analyzing resource {}", itemId, e);
@@ -86,172 +86,70 @@ public class ResourceCommand {
         }
     }
 
-    private static void displayResourceInfo(
-            CommandSourceStack source,
-            Item item,
-            BaseResourceData data,
-            AnalysisEngine engine,
-            ResourceLocation itemId,
-            OutputManager output
-    ) {
-        String itemName = item.getDescription().getString();
-
-        output.sendInfo(source, Component.literal(""));
-        output.sendInfo(source, Component.literal("═══════════════════════════════")
-                .withStyle(ChatFormatting.DARK_GRAY));
-
-        String resourceIcon = getSourceIcon(data.getSourceType());
-        output.sendInfo(source, Component.literal(resourceIcon + " ").withStyle(ChatFormatting.GREEN)
-                .append(Component.literal("Base Resource Analysis")
-                        .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)));
-
-        output.sendInfo(source, Component.literal("═══════════════════════════════")
-                .withStyle(ChatFormatting.DARK_GRAY));
-        output.sendInfo(source, Component.literal(""));
-
-        output.sendInfo(source, Component.literal("  Item: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(itemName).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)));
-
-        output.sendInfo(source, Component.literal(""));
-
+    private static void displayResourceInfo(CommandSourceStack source, Item item, BaseResourceData data,
+                                            AnalysisEngine engine, ResourceLocation itemId, OutputManager output) {
+        output.sendEmptyLine(source);
+        output.sendHeader(source, getSourceIcon(data.getSourceType()), "Base Resource Analysis", ChatFormatting.GREEN);
+        output.sendEmptyLine(source);
+        output.sendEntry(source, "🏷", "Item", item.getDescription().getString(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEmptyLine(source);
         displaySourceInfo(source, data, output);
-
         displayBaseFactor(source, data, output);
-
         displaySourceItems(source, data, engine, output);
-
         displayAdditionalInfo(source, item, engine, itemId, output);
-
-        output.sendInfo(source, Component.literal("═══════════════════════════════")
-                .withStyle(ChatFormatting.DARK_GRAY));
+        output.sendEmptyLine(source);
+        output.sendFooter(source);
     }
 
-    private static void displaySourceInfo(
-            CommandSourceStack source,
-            BaseResourceData data,
-            OutputManager output
-    ) {
-        output.sendInfo(source, Component.literal("  📍 Source Information")
-                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
-
+    private static void displaySourceInfo(CommandSourceStack source, BaseResourceData data, OutputManager output) {
+        output.sendStatusLine(source, "📍", "Source Information", ChatFormatting.YELLOW);
         String sourceIcon = getSourceIcon(data.getSourceType());
         ChatFormatting sourceColor = getSourceColor(data.getSourceType());
-
-        output.sendInfo(source, Component.literal("    Type: " + sourceIcon + " ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(data.getSourceType().getDisplayName())
-                        .withStyle(sourceColor, ChatFormatting.BOLD)));
-
-        if (!data.getDetails().isEmpty()) output.sendInfo(source, Component.literal("    Details: ")
-                .withStyle(ChatFormatting.GRAY).append(Component.literal(data.getDetails()).withStyle(ChatFormatting.WHITE)));
-
-        output.sendInfo(source, Component.literal(""));
+        output.sendSubEntry(source, sourceIcon, "Type", data.getSourceType().getDisplayName(), ChatFormatting.GRAY, sourceColor);
+        if (!data.getDetails().isEmpty())
+            output.sendSubEntry(source, "Details", data.getDetails(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEmptyLine(source);
     }
 
-    private static void displayBaseFactor(
-            CommandSourceStack source,
-            BaseResourceData data,
-            OutputManager output
-    ) {
+    private static void displayBaseFactor(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         double baseFactor = data.getBaseFactor();
         ChatFormatting factorColor = getFactorColor(baseFactor);
         String difficultyText = getFactorDifficulty(baseFactor);
-
-        output.sendInfo(source, Component.literal("  ⚖ Base Factor")
-                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
-
-        output.sendInfo(source, Component.literal("    Value: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(String.format("%.2f", baseFactor)).withStyle(factorColor, ChatFormatting.BOLD)));
-
-        String factorBar = getFactorBar(baseFactor);
-        output.sendInfo(source, Component.literal("    " + factorBar).withStyle(ChatFormatting.DARK_GRAY));
-
-        output.sendInfo(source, Component.literal("    Difficulty: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(difficultyText).withStyle(factorColor)));
-
-        output.sendInfo(source, Component.literal(""));
+        output.sendStatusLine(source, "⚖", "Base Factor", ChatFormatting.YELLOW);
+        output.sendSubEntry(source, "Value", String.format("%.2f", baseFactor), ChatFormatting.GRAY, factorColor);
+        output.sendValueBar(source, (int) Math.min(100, baseFactor * 4), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
+        output.sendSubEntry(source, "Difficulty", difficultyText, ChatFormatting.GRAY, factorColor);
+        output.sendEmptyLine(source);
     }
 
-    private static void displaySourceItems(
-            CommandSourceStack source,
-            BaseResourceData data,
-            AnalysisEngine engine,
-            OutputManager output
-    ) {
+    private static void displaySourceItems(CommandSourceStack source, BaseResourceData data, AnalysisEngine engine, OutputManager output) {
         Reference2DoubleMap<Item> sourceItems = data.getSourceItems();
-
-        output.sendInfo(source, Component.literal("  🔗 Required Source Items")
-                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
-
-        output.sendInfo(source, Component.literal("    (Items needed to obtain this resource)")
-                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-
+        output.sendStatusLine(source, "🔗", "Required Source Items", ChatFormatting.AQUA);
+        output.sendTip(source, "Items needed to obtain this resource");
         for (var entry : Reference2DoubleMaps.fastIterable(sourceItems)) {
             Item sourceItem = entry.getKey();
             double amount = entry.getDoubleValue();
             String sourceItemName = sourceItem.getDescription().getString();
-
-            MutableComponent itemLine = Component.literal("    • ").withStyle(ChatFormatting.DARK_GRAY)
-                    .append(Component.literal(sourceItemName).withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(" x" + String.format("%.1f", amount))
-                            .withStyle(ChatFormatting.YELLOW));
-
+            String value = "x" + String.format("%.1f", amount);
             ItemComplexity result = engine.getComplexityResult(sourceItem);
-
-            if (result != null) {
-                double complexity = result.getComplexity();
-                ChatFormatting complexityColor = getComplexityColor(complexity);
-
-                itemLine.append(Component.literal(" (").withStyle(ChatFormatting.DARK_GRAY))
-                        .append(Component.literal(String.format("%.2f", complexity)).withStyle(complexityColor))
-                        .append(Component.literal(")").withStyle(ChatFormatting.DARK_GRAY));
-            }
-
-            output.sendInfo(source, itemLine);
+            if (result != null) value += String.format(" (%.2f)", result.getComplexity());
+            output.sendSubEntry(source, "📦", sourceItemName, value, ChatFormatting.WHITE, ChatFormatting.YELLOW);
         }
-
-        output.sendInfo(source, Component.literal(""));
+        output.sendEmptyLine(source);
     }
 
-    private static void displayAdditionalInfo(
-            CommandSourceStack source,
-            Item item,
-            AnalysisEngine engine,
-            ResourceLocation itemId,
-            OutputManager output
-    ) {
+    private static void displayAdditionalInfo(CommandSourceStack source, Item item, AnalysisEngine engine, ResourceLocation itemId, OutputManager output) {
         boolean hasRecipe = engine.hasRecipe(item);
-
-        output.sendInfo(source, Component.literal("  ℹ Additional Information")
-                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
-
+        output.sendStatusLine(source, "ℹ", "Additional Information", ChatFormatting.AQUA);
         if (hasRecipe) {
-            output.sendInfo(source, Component.literal("    ⚠ This item also has crafting recipes")
-                    .withStyle(ChatFormatting.YELLOW));
-
-            output.sendInfo(source, Component.literal(""));
-
-            String analyzeCommand = "/complexity analyze item " + itemId;
-            MutableComponent clickableLink = Component.literal("    💡 ").withStyle(ChatFormatting.GRAY)
-                    .append(Component.literal("[Click here]")
-                            .withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE).withStyle(style -> style
-                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, analyzeCommand))
-                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                            Component.literal("View full complexity analysis")
-                                                    .withStyle(ChatFormatting.GREEN)))))
-                    .append(Component.literal(" for full analysis").withStyle(ChatFormatting.GRAY));
-
-            output.sendInfo(source, clickableLink);
-
+            output.sendSubEntry(source, "Note", "This item also has crafting recipes", ChatFormatting.YELLOW, ChatFormatting.YELLOW);
+            output.sendEmptyLine(source);
+            output.sendClickableTip(source, "Tip: ", "[Click here]", " for full analysis",
+                    "/complexity analyze item " + itemId, "View full complexity analysis");
         } else {
-            output.sendInfo(source, Component.literal("    ✓ Pure base resource")
-                    .withStyle(ChatFormatting.GREEN));
-
-            output.sendInfo(source, Component.literal("    No crafting recipes available")
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            output.sendSubEntry(source, "Type", "Pure base resource", ChatFormatting.GRAY, ChatFormatting.GREEN);
         }
-
-        output.sendInfo(source, Component.literal(""));
+        output.sendEmptyLine(source);
     }
 
     private static String getSourceIcon(BaseResourceData.ResourceSourceType sourceType) {
@@ -295,18 +193,5 @@ public class ResourceCommand {
         if (baseFactor >= 5.0) return "Moderate";
         if (baseFactor >= 2.0) return "Easy";
         return "Very Easy";
-    }
-
-    private static String getFactorBar(double baseFactor) {
-        int filled = (int) Math.min(10, Math.ceil(baseFactor / 2.5));
-        return "[" + "██████████".substring(0, filled) + "░░░░░░░░░░".substring(filled) + "]";
-    }
-
-    private static ChatFormatting getComplexityColor(double complexity) {
-        if (complexity >= 100) return ChatFormatting.DARK_RED;
-        if (complexity >= 50) return ChatFormatting.RED;
-        if (complexity >= 30) return ChatFormatting.GOLD;
-        if (complexity >= 10) return ChatFormatting.YELLOW;
-        return ChatFormatting.GREEN;
     }
 }

@@ -24,7 +24,6 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
-import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.util.List;
 
@@ -43,8 +42,6 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     }
 
     private void setupHttpPipeline(ChannelHandlerContext ctx) {
-        ComplexityAnalyzer.LOGGER.info("[Cabin] HTTP request detected on game port, switching pipeline");
-
         ctx.pipeline().addAfter(ctx.name(), "http_codec", new HttpServerCodec());
         ctx.pipeline().addAfter("http_codec", "http_aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
         ctx.pipeline().addAfter("http_aggregator", "http_chunked", new ChunkedWriteHandler());

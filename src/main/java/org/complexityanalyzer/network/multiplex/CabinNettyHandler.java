@@ -19,6 +19,11 @@
 package org.complexityanalyzer.network.multiplex;
 
 import io.netty.buffer.Unpooled;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -38,6 +43,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
     private static final String TOKEN = Base64.getUrlEncoder().withoutPadding().encodeToString(generateRandomBytes());
+    private static final Set<String> uniqueVisitors = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public static long getVisitorCount() {
+        return uniqueVisitors.size();
+    }
 
     public static String getUrl(ServerPlayer player) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -69,6 +79,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
+        String remoteAddress = ctx.channel().remoteAddress().toString();
+        if (remoteAddress.startsWith("/")) remoteAddress = remoteAddress.substring(1);
+        String ip = remoteAddress.split(":")[0];
+        uniqueVisitors.add(ip);
+
         if (!request.decoderResult().isSuccess()) {
             sendError(ctx, HttpResponseStatus.BAD_REQUEST);
             return;
@@ -126,8 +141,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             return;
         }
 
-        FullHttpResponse response = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(snap.bytes()));
+        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(snap.bytes()));
 
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
@@ -144,8 +158,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             }
 
             byte[] data = in.readAllBytes();
-            FullHttpResponse response = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
+            FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
 
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
             response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
@@ -167,8 +180,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void sendResponse(ChannelHandlerContext ctx, String content) {
-        FullHttpResponse response = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(content, CharsetUtil.UTF_8));
+        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(content, CharsetUtil.UTF_8));
 
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
@@ -178,8 +190,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status) {
-        FullHttpResponse response = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8));
+        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
 
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);

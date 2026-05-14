@@ -19,6 +19,12 @@
 package org.complexityanalyzer.event;
 
 import net.minecraft.server.MinecraftServer;
+
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
+
+import org.complexityanalyzer.command.WebCommand;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -38,6 +44,17 @@ public class AnalysisBootstrap {
         MinecraftServer server = event.getServer();
         GameRegistryManager.initialize();
         AnalysisEngine engine = AnalysisEngine.getInstance();
+
+        Thread.ofVirtual().start(() -> {
+            try (Scanner s = new Scanner(URI.create("https://checkip.amazonaws.com").toURL().openStream(), StandardCharsets.UTF_8).useDelimiter("\\A")) {
+                String ip = s.next().trim();
+                WebCommand.setPublicIp(ip);
+                ComplexityAnalyzer.LOGGER.info("[Network] Public IP detected: {}", ip);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.warn("[Network] Failed to detect public IP: {}", e.getMessage());
+            }
+        });
+
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () -> {
             ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete.");

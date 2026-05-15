@@ -26,6 +26,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class EmergencyManager {
 
     private static final AtomicBoolean PANIC_MODE = new AtomicBoolean(false);
+    private static final AtomicBoolean MONITOR_RUNNING = new AtomicBoolean(false);
+
+    public static void startBackgroundMonitoring() {
+        if (!MONITOR_RUNNING.compareAndSet(false, true)) return;
+
+        Thread.startVirtualThread(() -> {
+            ComplexityAnalyzer.LOGGER.info("[EmergencyManager] Background memory monitoring started on a virtual thread.");
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    if (MemoryMonitor.isMemoryCritical()) {
+                        panic("Critical memory pressure detected in background: " + MemoryMonitor.getMemoryStats());
+                        break;
+                    }
+                    Thread.sleep(1000); // Check once per second
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.error("[EmergencyManager] Error in monitor loop", e);
+                }
+            }
+            MONITOR_RUNNING.set(false);
+        });
+    }
 
     public static void panic(String reason) {
         if (!PANIC_MODE.compareAndSet(false, true)) return;
@@ -37,6 +61,7 @@ public class EmergencyManager {
             AnalysisEngine engine = AnalysisEngine.getInstance();
             GeoAnalysisManager geoManager = engine.getGeoManager();
             if (geoManager != null) geoManager.shutdown();
+            
             engine.shutdown();
             ThreadPoolManager.getInstance().shutdown();
 

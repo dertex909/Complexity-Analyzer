@@ -20,10 +20,6 @@ package org.complexityanalyzer.event;
 
 import net.minecraft.server.MinecraftServer;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
-
 import org.complexityanalyzer.command.WebCommand;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -35,25 +31,18 @@ import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
+import org.complexityanalyzer.util.ServerLanguage;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public class AnalysisBootstrap {
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
+        ServerLanguage.init();
         MinecraftServer server = event.getServer();
         GameRegistryManager.initialize();
         AnalysisEngine engine = AnalysisEngine.getInstance();
-
-        Thread.ofVirtual().start(() -> {
-            try (Scanner s = new Scanner(URI.create("https://checkip.amazonaws.com").toURL().openStream(), StandardCharsets.UTF_8).useDelimiter("\\A")) {
-                String ip = s.next().trim();
-                WebCommand.setPublicIp(ip);
-                ComplexityAnalyzer.LOGGER.info("[Network] Public IP detected.");
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("[Network] Failed to detect public IP: {}", e.getMessage());
-            }
-        });
+        WebCommand.detectPublicIpAsync();
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () -> {

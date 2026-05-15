@@ -140,6 +140,8 @@ public class AnalysisEngine {
         this.server = serverLevel.getServer();
         analysisCancelled.set(false);
 
+        EmergencyManager.startBackgroundMonitoring();
+
         ExecutorService executor = ThreadPoolManager.getInstance().getComputePool();
 
         ComplexityAnalyzer.LOGGER.info("Starting background analysis with {} threads...",

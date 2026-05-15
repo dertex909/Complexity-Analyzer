@@ -34,7 +34,10 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.multiplex.CabinNettyHandler;
 
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Scanner;
 
 public final class WebCommand {
 
@@ -47,6 +50,18 @@ public final class WebCommand {
     public static void setPublicIp(String ip) {
         publicIp = ip;
         ipDetected = true;
+    }
+
+    public static void detectPublicIpAsync() {
+        Thread.ofVirtual().start(() -> {
+            try (Scanner s = new Scanner(URI.create("https://checkip.amazonaws.com").toURL().openStream(), StandardCharsets.UTF_8).useDelimiter("\\A")) {
+                String ip = s.next().trim();
+                setPublicIp(ip);
+                ComplexityAnalyzer.LOGGER.info("[Network] Public IP detected: {}", ip);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.warn("[Network] Failed to detect public IP: {}", e.getMessage());
+            }
+        });
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {

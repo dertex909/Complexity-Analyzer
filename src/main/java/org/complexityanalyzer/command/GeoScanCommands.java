@@ -35,19 +35,30 @@ import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 
-import java.util.Map;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 
 public class GeoScanCommands {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return Commands.literal("geoscan").then(Commands.literal("start")
-                .executes(GeoScanCommands::showProfileHelp).then(Commands.argument("profile", StringArgumentType.word()).suggests((c, b) -> SharedSuggestionProvider.suggest(new String[]{"normal", "fast", "ultra_fast", "maximum"}, b))
-                        .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false)).then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
-                                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false)).then(Commands.argument("force", BoolArgumentType.bool())
-                                        .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force"))))))).then(Commands.literal("stop")
-                .executes(GeoScanCommands::executeStop)).then(Commands.literal("status")
-                .executes(GeoScanCommands::executeStatus)).then(Commands.literal("clear")
-                .executes(GeoScanCommands::executeClear));
+        return Commands.literal("geoscan")
+                .then(Commands.literal("start")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(GeoScanCommands::showProfileHelp)
+                        .then(Commands.argument("profile", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(new String[]{"normal", "fast", "ultra_fast", "maximum"}, b))
+                                .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
+                                .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
+                                        .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false))
+                                        .then(Commands.argument("force", BoolArgumentType.bool())
+                                                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force")))))))
+                .then(Commands.literal("stop")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(GeoScanCommands::executeStop))
+                .then(Commands.literal("status")
+                        .executes(GeoScanCommands::executeStatus))
+                .then(Commands.literal("clear")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(GeoScanCommands::executeClear));
     }
 
     private static int showProfileHelp(CommandContext<CommandSourceStack> context) {
@@ -257,7 +268,7 @@ public class GeoScanCommands {
 
         tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-        Map<ResourceLocation, Map<ResourceLocation, int[]>> progress = session.getBiomeProgress();
+        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> progress = session.getBiomeProgress();
 
         int biomesShown = 0;
         int maxBiomes = 25;
@@ -270,7 +281,7 @@ public class GeoScanCommands {
 
             for (var biomeEntry : dimEntry.getValue().entrySet()) {
                 if (biomesShown >= maxBiomes) {
-                    int remaining = progress.values().stream().mapToInt(Map::size).sum() - maxBiomes;
+                    int remaining = progress.values().stream().mapToInt(Object2ObjectMap::size).sum() - maxBiomes;
                     if (remaining > 0) tooltip.append(Component
                             .translatable("complexityanalyzer.command.geoscan.more_biomes", remaining)
                             .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));

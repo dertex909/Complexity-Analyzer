@@ -56,31 +56,30 @@ public final class ResourceCommand {
         AnalysisEngine engine = AnalysisBootstrap.getEngine();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.tree.not_ready"));
             return 0;
         }
 
         Item item = GameRegistryManager.getItem(itemId);
         if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
-            output.sendFailure(source, Component.literal("❌ Item not found: ")
-                    .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW)));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.resource.not_found", itemId.toString()));
             return 0;
         }
 
         try {
             BaseResourceData data = engine.getBaseResourceData(item);
             if (data == null) {
-                output.sendFailure(source, Component.literal("⚠ No base resource data available"));
-                output.sendEntry(source, "🏷", "Item", itemId.toString(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
+                output.sendFailure(source, Component.translatable("complexityanalyzer.command.resource.no_data"));
+                output.sendEntry(source, "🏷", "complexityanalyzer.command.resource.item_label", itemId.toString(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
                 output.sendEmptyLine(source);
-                output.sendTip(source, "This item might only be obtainable through crafting.");
+                output.sendTip(source, "complexityanalyzer.command.resource.no_data_tip");
                 return 0;
             }
 
             displayResourceInfo(source, item, data, engine, itemId, output);
             return 1;
         } catch (Exception e) {
-            output.sendFailure(source, Component.literal("❌ Error analyzing resource: " + e.getMessage()));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.resource.failed", itemId.toString(), e.getMessage()));
             ComplexityAnalyzer.LOGGER.error("Error analyzing resource {}", itemId, e);
             return 0;
         }
@@ -89,9 +88,9 @@ public final class ResourceCommand {
     private static void displayResourceInfo(CommandSourceStack source, Item item, BaseResourceData data,
                                             AnalysisEngine engine, ResourceLocation itemId, OutputManager output) {
         output.sendEmptyLine(source);
-        output.sendHeader(source, getSourceIcon(data.getSourceType()), "Base Resource Analysis", ChatFormatting.GREEN);
+        output.sendHeader(source, getSourceIcon(data.getSourceType()), "complexityanalyzer.command.resource.header", ChatFormatting.GREEN);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🏷", "Item", item.getDescription().getString(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "🏷", "complexityanalyzer.command.resource.item_label", item.getDescription(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
         displaySourceInfo(source, data, output);
         displayBaseFactor(source, data, output);
@@ -102,34 +101,34 @@ public final class ResourceCommand {
     }
 
     private static void displaySourceInfo(CommandSourceStack source, BaseResourceData data, OutputManager output) {
-        output.sendStatusLine(source, "📍", "Source Information", ChatFormatting.YELLOW);
+        output.sendStatusLine(source, "📍", "complexityanalyzer.command.resource.source_info", ChatFormatting.YELLOW);
         String sourceIcon = getSourceIcon(data.getSourceType());
         ChatFormatting sourceColor = getSourceColor(data.getSourceType());
-        output.sendSubEntry(source, sourceIcon, "Type", data.getSourceType().getDisplayName(), ChatFormatting.GRAY, sourceColor);
+        output.sendSubEntry(source, sourceIcon, "complexityanalyzer.command.resource.type_label", data.getSourceType().getDisplayName(), ChatFormatting.GRAY, sourceColor);
         if (!data.getDetails().isEmpty())
-            output.sendSubEntry(source, "Details", data.getDetails(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendSubEntry(source, "complexityanalyzer.command.resource.details_label", data.getDetails(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
     }
 
     private static void displayBaseFactor(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         double baseFactor = data.getBaseFactor();
         ChatFormatting factorColor = getFactorColor(baseFactor);
-        String difficultyText = getFactorDifficulty(baseFactor);
-        output.sendStatusLine(source, "⚖", "Base Factor", ChatFormatting.YELLOW);
-        output.sendSubEntry(source, "Value", String.format("%.2f", baseFactor), ChatFormatting.GRAY, factorColor);
+        String difficultyKey = getFactorDifficultyKey(baseFactor);
+        output.sendStatusLine(source, "⚖", "complexityanalyzer.command.resource.base_factor", ChatFormatting.YELLOW);
+        output.sendSubEntry(source, "complexityanalyzer.command.resource.value_label", String.format("%.2f", baseFactor), ChatFormatting.GRAY, factorColor);
         output.sendValueBar(source, (int) Math.min(100, baseFactor * 4), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-        output.sendSubEntry(source, "Difficulty", difficultyText, ChatFormatting.GRAY, factorColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.resource.difficulty_label", difficultyKey, ChatFormatting.GRAY, factorColor);
         output.sendEmptyLine(source);
     }
 
     private static void displaySourceItems(CommandSourceStack source, BaseResourceData data, AnalysisEngine engine, OutputManager output) {
         Reference2DoubleMap<Item> sourceItems = data.getSourceItems();
-        output.sendStatusLine(source, "🔗", "Required Source Items", ChatFormatting.AQUA);
-        output.sendTip(source, "Items needed to obtain this resource");
+        output.sendStatusLine(source, "🔗", "complexityanalyzer.command.resource.required_source_items", ChatFormatting.AQUA);
+        output.sendTip(source, "complexityanalyzer.command.resource.source_items_tip");
         for (var entry : Reference2DoubleMaps.fastIterable(sourceItems)) {
             Item sourceItem = entry.getKey();
             double amount = entry.getDoubleValue();
-            String sourceItemName = sourceItem.getDescription().getString();
+            Component sourceItemName = sourceItem.getDescription();
             String value = "x" + String.format("%.1f", amount);
             ItemComplexity result = engine.getComplexityResult(sourceItem);
             if (result != null) value += String.format(" (%.2f)", result.getComplexity());
@@ -140,14 +139,18 @@ public final class ResourceCommand {
 
     private static void displayAdditionalInfo(CommandSourceStack source, Item item, AnalysisEngine engine, ResourceLocation itemId, OutputManager output) {
         boolean hasRecipe = engine.hasRecipe(item);
-        output.sendStatusLine(source, "ℹ", "Additional Information", ChatFormatting.AQUA);
+        output.sendStatusLine(source, "ℹ", "complexityanalyzer.command.resource.additional_info", ChatFormatting.AQUA);
         if (hasRecipe) {
-            output.sendSubEntry(source, "Note", "This item also has crafting recipes", ChatFormatting.YELLOW, ChatFormatting.YELLOW);
+            output.sendSubEntry(source, "Note", "complexityanalyzer.command.resource.has_recipe_note", ChatFormatting.YELLOW, ChatFormatting.YELLOW);
             output.sendEmptyLine(source);
-            output.sendClickableTip(source, "Tip: ", "[Click here]", " for full analysis",
-                    "/complexity analyze item " + itemId, "View full complexity analysis");
+            output.sendClickableTip(source,
+                    Component.translatable("complexityanalyzer.command.resource.full_analysis_prefix"),
+                    Component.translatable("complexityanalyzer.command.resource.full_analysis_link"),
+                    Component.translatable("complexityanalyzer.command.resource.full_analysis_suffix"),
+                    "/complexity analyze item " + itemId,
+                    Component.translatable("complexityanalyzer.command.resource.full_analysis_hover"));
         } else {
-            output.sendSubEntry(source, "Type", "Pure base resource", ChatFormatting.GRAY, ChatFormatting.GREEN);
+            output.sendSubEntry(source, "complexityanalyzer.command.resource.type_label", "complexityanalyzer.command.resource.pure_base_resource", ChatFormatting.GRAY, ChatFormatting.GREEN);
         }
         output.sendEmptyLine(source);
     }
@@ -186,12 +189,12 @@ public final class ResourceCommand {
         return ChatFormatting.GREEN;
     }
 
-    private static String getFactorDifficulty(double baseFactor) {
-        if (baseFactor >= 20.0) return "Extremely Hard";
-        if (baseFactor >= 15.0) return "Very Hard";
-        if (baseFactor >= 10.0) return "Hard";
-        if (baseFactor >= 5.0) return "Moderate";
-        if (baseFactor >= 2.0) return "Easy";
-        return "Very Easy";
+    private static String getFactorDifficultyKey(double baseFactor) {
+        if (baseFactor >= 20.0) return "complexityanalyzer.command.resource.difficulty.extreme_hard";
+        if (baseFactor >= 15.0) return "complexityanalyzer.command.resource.difficulty.very_hard";
+        if (baseFactor >= 10.0) return "complexityanalyzer.command.resource.difficulty.hard";
+        if (baseFactor >= 5.0) return "complexityanalyzer.command.resource.difficulty.moderate";
+        if (baseFactor >= 2.0) return "complexityanalyzer.command.resource.difficulty.easy";
+        return "complexityanalyzer.command.resource.difficulty.very_easy";
     }
 }

@@ -110,8 +110,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     }
 
     private boolean itemPlacesBlock(Item item, Block targetBlock) {
-        if (item instanceof BlockItem blockItem) return blockItem.getBlock() == targetBlock;
-        return false;
+        return item instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock;
     }
 
     @Nullable
@@ -166,9 +165,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         if (lst == null || lst.isEmpty()) return null;
 
         var best = lst.getFirst();
-        for (int i = 1; i < lst.size(); i++)
-            if (calculateCost(lst.get(i).avgGrowthTicks(), lst.get(i).outputAmount())
-                    < calculateCost(best.avgGrowthTicks(), best.outputAmount())) best = lst.get(i);
+        for (int i = 1; i < lst.size(); i++) {
+            if (calculateCost(lst.get(i).avgGrowthTicks(), lst.get(i).outputAmount()) < calculateCost(best.avgGrowthTicks(), best.outputAmount())) {
+                best = lst.get(i);
+            }
+        }
 
         var sourceItems = new Reference2DoubleOpenHashMap<Item>();
         sourceItems.put(best.plantItem(), 1.0 / best.outputAmount());
@@ -177,7 +178,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                 .sourceType(getSourceType())
                 .baseFactor(calculateCost(best.avgGrowthTicks(), best.outputAmount()))
                 .sourceItems(sourceItems)
-                .sourceSpecifier(GameRegistryManager.getItemId(best.plantItem()).getPath())
+                .sourceSpecifier(best.plantItem().getDescriptionId())
                 .details(best.details())
                 .build();
     }
@@ -196,7 +197,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                     .sourceType(getSourceType())
                     .baseFactor(calculateCost(data.avgGrowthTicks(), data.outputAmount()))
                     .sourceItems(sourceItems)
-                    .sourceSpecifier(GameRegistryManager.getItemId(data.plantItem()).getPath())
+                    .sourceSpecifier(data.plantItem().getDescriptionId())
                     .details(data.details())
                     .build());
         }

@@ -32,7 +32,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 
 public final class SharedSuggestions {
     private static final ObjectList<ResourceLocation> CACHED_ENTITIES = new ObjectArrayList<>();
-    private static final ObjectList<String> CACHED_LOOT_TABLES = new ObjectArrayList<>();
+    private static final ObjectList<ResourceLocation> CACHED_LOOT_TABLES = new ObjectArrayList<>();
 
     private SharedSuggestions() {
     }
@@ -43,10 +43,8 @@ public final class SharedSuggestions {
     public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) ->
             SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
 
-    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) -> {
-        CACHED_LOOT_TABLES.forEach(builder::suggest);
-        return builder.buildFuture();
-    };
+    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) ->
+            SharedSuggestionProvider.suggestResource(CACHED_LOOT_TABLES, builder);
 
     public static void refresh() {
         refreshEntities();
@@ -66,7 +64,6 @@ public final class SharedSuggestions {
     private static void refreshLootTables() {
         CACHED_LOOT_TABLES.clear();
         AnalysisEngine engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) return;
 
         var uls = engine.getSourceByType(UniversalLootSource.class);
         if (uls == null) return;
@@ -75,6 +72,7 @@ public final class SharedSuggestions {
                 .flatMap(map -> map.values().stream())
                 .map(BaseResourceData::getSourceSpecifier)
                 .filter(s -> s != null && !s.isEmpty())
+                .map(ResourceLocation::parse)
                 .distinct()
                 .sorted()
                 .forEach(CACHED_LOOT_TABLES::add);

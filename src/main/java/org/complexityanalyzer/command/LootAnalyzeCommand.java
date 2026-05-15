@@ -40,14 +40,14 @@ public class LootAnalyzeCommand {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.loot.not_ready"));
             return 0;
         }
 
         UniversalLootSource uls = engine.getSourceByType(UniversalLootSource.class);
         if (uls == null) {
-            output.sendFailure(source, Component.literal("⚠ UniversalLootSource is not initialized!"));
-            output.sendTip(source, "This feature may be disabled in the config.");
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.loot.not_initialized"));
+            output.sendTip(source, "complexityanalyzer.command.loot.disabled_tip");
             return 0;
         }
 
@@ -59,10 +59,10 @@ public class LootAnalyzeCommand {
         }
 
         if (itemsFromTable.isEmpty()) {
-            output.sendFailure(source, Component.literal("❌ No items found for loot table"));
-            output.sendEntry(source, "📋", "Table", lootTableId.toString(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.loot.no_items"));
+            output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", lootTableId.toString(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
             output.sendEmptyLine(source);
-            output.sendTip(source, "Possible reasons: table is empty, doesn't exist, or not cached yet");
+            output.sendTip(source, "complexityanalyzer.command.loot.no_items_tip");
             return 0;
         }
 
@@ -76,14 +76,14 @@ public class LootAnalyzeCommand {
                                             ObjectList<BaseResourceData> items, OutputManager output) {
         String tableIcon = getLootTableIcon(lootTableId);
         output.sendEmptyLine(source);
-        output.sendHeader(source, tableIcon, "Loot Table Analysis", ChatFormatting.GOLD);
+        output.sendHeader(source, tableIcon, "complexityanalyzer.command.loot.header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
         String tableType = getLootTableType(lootTableId.toString());
 
-        output.sendEntry(source, "📋", "Table", lootTableId.getPath(), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🏷", "Type", tableType, ChatFormatting.GRAY, getTableTypeColor(tableType));
-        output.sendEntry(source, "📦", "Items Found", String.valueOf(items.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", lootTableId.getPath(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "🏷", "complexityanalyzer.command.loot.type_label", "complexityanalyzer.command.loot.type." + tableType, ChatFormatting.GRAY, getTableTypeColor(tableType));
+        output.sendEntry(source, "📦", "complexityanalyzer.command.loot.items_found", String.valueOf(items.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         output.sendEmptyLine(source);
         displayStatistics(source, items, output);
@@ -107,10 +107,10 @@ public class LootAnalyzeCommand {
 
         double avgChance = totalChance / items.size();
 
-        output.sendStatusLine(source, "📊", "Statistics", ChatFormatting.YELLOW);
-        output.sendSubEntry(source, "Average Chance", String.format("%.2f%%", avgChance), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
-        output.sendSubEntry(source, "Highest", String.format("%.2f%%", highestChance), ChatFormatting.DARK_GRAY, ChatFormatting.GREEN);
-        output.sendSubEntry(source, "Lowest", String.format("%.2f%%", lowestChance), ChatFormatting.DARK_GRAY, ChatFormatting.RED);
+        output.sendStatusLine(source, "📊", "complexityanalyzer.command.loot.stats_section", ChatFormatting.YELLOW);
+        output.sendSubEntry(source, "complexityanalyzer.command.loot.avg_chance", String.format("%.2f%%", avgChance), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
+        output.sendSubEntry(source, "complexityanalyzer.command.loot.highest", String.format("%.2f%%", highestChance), ChatFormatting.DARK_GRAY, ChatFormatting.GREEN);
+        output.sendSubEntry(source, "complexityanalyzer.command.loot.lowest", String.format("%.2f%%", lowestChance), ChatFormatting.DARK_GRAY, ChatFormatting.RED);
         output.sendEmptyLine(source);
     }
 
@@ -137,37 +137,37 @@ public class LootAnalyzeCommand {
             }
         }
 
-        output.sendStatusLine(source, "💎", "Drops by Rarity", ChatFormatting.YELLOW);
+        output.sendStatusLine(source, "💎", "complexityanalyzer.command.loot.rarity_section", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         if (!common.isEmpty()) {
-            displayRarityCategory(source, "Common", "🟢", ChatFormatting.GREEN, common, output);
+            displayRarityCategory(source, "common", "🟢", ChatFormatting.GREEN, common, output);
         }
         if (!uncommon.isEmpty()) {
-            displayRarityCategory(source, "Uncommon", "🟡", ChatFormatting.YELLOW, uncommon, output);
+            displayRarityCategory(source, "uncommon", "🟡", ChatFormatting.YELLOW, uncommon, output);
         }
         if (!rare.isEmpty()) {
-            displayRarityCategory(source, "Rare", "🟠", ChatFormatting.GOLD, rare, output);
+            displayRarityCategory(source, "rare", "🟠", ChatFormatting.GOLD, rare, output);
         }
         if (!veryRare.isEmpty()) {
-            displayRarityCategory(source, "Very Rare", "🔵", ChatFormatting.AQUA, veryRare, output);
+            displayRarityCategory(source, "very_rare", "🔵", ChatFormatting.AQUA, veryRare, output);
         }
         if (!legendary.isEmpty()) {
-            displayRarityCategory(source, "Legendary", "🟣", ChatFormatting.LIGHT_PURPLE, legendary, output);
+            displayRarityCategory(source, "legendary", "🟣", ChatFormatting.LIGHT_PURPLE, legendary, output);
         }
     }
 
-    private static void displayRarityCategory(CommandSourceStack source, String categoryName, String icon,
+    private static void displayRarityCategory(CommandSourceStack source, String rarityKey, String icon,
                                               ChatFormatting color, ObjectList<BaseResourceData> items, OutputManager output) {
-        output.sendStatusLine(source, icon, categoryName + " (" + items.size() + ")", color);
+        output.sendStatusLine(source, icon, Component.translatable("complexityanalyzer.command.loot.rarity." + rarityKey).append(" (" + items.size() + ")"), color);
         for (BaseResourceData data : items) displayItem(source, data, output);
         output.sendEmptyLine(source);
     }
 
     private static void displayItem(CommandSourceStack source, BaseResourceData data, OutputManager output) {
-        Component itemComponent = data.getItem().getDescription().copy();
+        Component itemComponent = data.getItem().getDescription();
         double chance = extractChance(data);
-        output.sendSubEntry(source, itemComponent.getString(), String.format("%.2f%%", chance), ChatFormatting.WHITE, getChanceColor(chance));
+        output.sendSubEntry(source, itemComponent, String.format("%.2f%%", chance), ChatFormatting.WHITE, getChanceColor(chance));
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
     }
 
@@ -186,22 +186,22 @@ public class LootAnalyzeCommand {
     private static String getLootTableType(String path) {
         path = path.toLowerCase();
 
-        if (path.contains("chests/")) return "Chest Loot";
-        if (path.contains("entities/")) return "Entity Drop";
-        if (path.contains("gameplay/fishing")) return "Fishing Loot";
-        if (path.contains("blocks/")) return "Block Drop";
-        if (path.contains("archaeology/")) return "Archaeology";
+        if (path.contains("chests/")) return "chest";
+        if (path.contains("entities/")) return "entity";
+        if (path.contains("gameplay/fishing")) return "fishing";
+        if (path.contains("blocks/")) return "block";
+        if (path.contains("archaeology/")) return "archaeology";
 
-        return "Generic Loot";
+        return "generic";
     }
 
     private static ChatFormatting getTableTypeColor(String type) {
         return switch (type) {
-            case "Chest Loot" -> ChatFormatting.GOLD;
-            case "Entity Drop" -> ChatFormatting.RED;
-            case "Fishing Loot" -> ChatFormatting.AQUA;
-            case "Block Drop" -> ChatFormatting.GRAY;
-            case "Archaeology" -> ChatFormatting.YELLOW;
+            case "chest" -> ChatFormatting.GOLD;
+            case "entity" -> ChatFormatting.RED;
+            case "fishing" -> ChatFormatting.AQUA;
+            case "block" -> ChatFormatting.GRAY;
+            case "archaeology" -> ChatFormatting.YELLOW;
             default -> ChatFormatting.WHITE;
         };
     }
@@ -215,10 +215,18 @@ public class LootAnalyzeCommand {
     }
 
     private static double extractChance(BaseResourceData data) {
+        String chanceMeta = data.getMetadata().get("chance");
+        if (chanceMeta != null) try {
+            return Double.parseDouble(chanceMeta);
+        } catch (NumberFormatException ignored) {
+        }
+
         try {
             String details = data.getDetails();
-            String chancePart = details.substring(details.indexOf("Chance: ") + 8);
-            return Double.parseDouble(chancePart.replace("%", "").trim());
+            int index = details.indexOf("Chance: ");
+            if (index == -1) return 0.0;
+            String chancePart = details.substring(index + 8);
+            return Double.parseDouble(chancePart.replace("%", "").replace(",", ".").trim());
         } catch (Exception e) {
             return 0.0;
         }

@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.geoscan.refinement;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.ThreadPoolManager;
@@ -50,29 +51,23 @@ public class DataRefiner {
 
     public void refine(Runnable onComplete) {
         database.setScanPhase(ScanMetadata.ScanPhase.REFINING);
-        notifier.sendSuccess(null, "Reconnaissance complete! Starting refinement...");
+        notifier.sendSuccess(null, Component.translatable("complexityanalyzer.log.refiner.starting"));
 
         ComplexityAnalyzer.LOGGER.info("[Refiner] Submitting refinement task...");
-
         ExecutorService executor = ThreadPoolManager.getInstance().getComputePool();
 
         try {
             executor.execute(() -> {
-                ComplexityAnalyzer.LOGGER.info("[Refiner] Task STARTED on thread: {}",
-                        Thread.currentThread().getName());
-
+                ComplexityAnalyzer.LOGGER.info("[Refiner] Task STARTED on thread: {}", Thread.currentThread().getName());
                 Thread currentThread = Thread.currentThread();
                 activeThreads.add(currentThread);
 
                 try {
-                    Map<ResourceLocation, Map<ResourceLocation, Path>> reconPaths =
-                            database.getAllReconFilePaths();
-
-                    ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine",
-                            reconPaths.size());
+                    Map<ResourceLocation, Map<ResourceLocation, Path>> reconPaths = database.getAllReconFilePaths();
+                    ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine", reconPaths.size());
 
                     if (reconPaths.isEmpty()) {
-                        notifier.logWarn("No reconnaissance data found.");
+                        notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data").getString());
                         finishRefinement(onComplete);
                         return;
                     }
@@ -82,7 +77,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    notifier.logInfo("Building heuristics from reconnaissance data...");
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.heuristics").getString());
                     database.buildHeuristicFromFiles(reconPaths);
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -90,7 +85,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    notifier.logInfo("Clearing old final data...");
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.clearing").getString());
                     database.clearFinalData();
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -98,14 +93,12 @@ public class DataRefiner {
                         return;
                     }
 
-                    int totalBiomes = reconPaths.values().stream()
-                            .mapToInt(Map::size).sum();
+                    int totalBiomes = reconPaths.values().stream().mapToInt(Map::size).sum();
                     int processedBiomes = 0;
 
-                    notifier.logInfo("Refining data for " + reconPaths.size() + " dimensions...");
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimensions_count", reconPaths.size()).getString());
 
-                    for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry :
-                            reconPaths.entrySet()) {
+                    for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry : reconPaths.entrySet()) {
 
                         if (Thread.currentThread().isInterrupted()) {
                             handleCancellation("during dimension loop");
@@ -113,11 +106,9 @@ public class DataRefiner {
                         }
 
                         ResourceLocation dimension = dimEntry.getKey();
-                        notifier.logInfo("Refining dimension: " + dimension +
-                                " (" + dimEntry.getValue().size() + " biomes)");
+                        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), dimEntry.getValue().size()).getString());
 
-                        for (Map.Entry<ResourceLocation, Path> biomeEntry :
-                                dimEntry.getValue().entrySet()) {
+                        for (Map.Entry<ResourceLocation, Path> biomeEntry : dimEntry.getValue().entrySet()) {
 
                             if (Thread.currentThread().isInterrupted()) {
                                 handleCancellation("during biome loop");
@@ -129,30 +120,22 @@ public class DataRefiner {
                             processedBiomes++;
 
                             try (Stream<ChunkSnapshot> stream = database.streamReconFile(path)) {
-                                BiomeScanData finalData =
-                                        database.refineRawDataFromStream(stream, dimension);
-
-                                if (finalData.getChunksScanned() > 0) {
+                                BiomeScanData finalData = database.refineRawDataFromStream(stream, dimension);
+                                if (finalData.getChunksScanned() > 0)
                                     database.saveBiomeData(dimension, biome, finalData);
-                                }
 
-                                ComplexityAnalyzer.LOGGER.debug(
-                                        "[Refiner] Refined {}/{}: {} in {} ({} chunks)",
-                                        processedBiomes, totalBiomes,
-                                        biome, dimension, finalData.getChunksScanned());
-
+                                ComplexityAnalyzer.LOGGER.debug("[Refiner] Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finalData.getChunksScanned());
                             } catch (Exception e) {
-                                ComplexityAnalyzer.LOGGER.error(
-                                        "Error refining {} in {}", biome, dimension, e);
+                                ComplexityAnalyzer.LOGGER.error("Error refining {} in {}", biome, dimension, e);
                             }
                         }
                     }
 
-                    notifier.logInfo("All " + totalBiomes + " biomes refined successfully.");
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.success", totalBiomes).getString());
                     finishRefinement(onComplete);
 
                 } catch (IOException e) {
-                    notifier.logError("Critical error during refinement!", e);
+                    notifier.logError(Component.translatable("complexityanalyzer.log.refiner.error").getString(), e);
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.error("[Refiner] Unexpected error!", e);
@@ -172,7 +155,7 @@ public class DataRefiner {
     }
 
     private void finishRefinement(Runnable onComplete) {
-        notifier.logInfo("Finalizing refinement...");
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.finalizing").getString());
         database.setScanPhase(ScanMetadata.ScanPhase.COMPLETE);
         database.loadAll();
         notifier.notifyRefinementFinished();
@@ -191,9 +174,7 @@ public class DataRefiner {
 
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("[Refiner] Shutting down, interrupting {} threads", activeThreads.size());
-        for (Thread thread : activeThreads) {
-            thread.interrupt();
-        }
+        for (Thread thread : activeThreads) thread.interrupt();
         activeThreads.clear();
     }
 }

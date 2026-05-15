@@ -19,6 +19,7 @@
 package org.complexityanalyzer.data;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -81,11 +82,11 @@ public class CraftingTreeData {
     public static class TreeNode {
         private final NodeType type;
         private final Item item;
-        private final String itemName;
+        private final Component itemName;
         private final double neededAmount;
         private final double complexity;
         private final RecipeNode recipe;
-        private final String machineType;
+        private final Component machineType;
         private final ObjectList<TreeNode> itemChildren;
         private final ObjectList<FluidNode> fluidChildren;
         private final Object2ObjectMap<String, Object> metadata;
@@ -111,7 +112,7 @@ public class CraftingTreeData {
             return item;
         }
 
-        public String getItemName() {
+        public Component getItemName() {
             return itemName;
         }
 
@@ -127,7 +128,7 @@ public class CraftingTreeData {
             return recipe;
         }
 
-        public String getMachineType() {
+        public Component getMachineType() {
             return machineType;
         }
 
@@ -150,11 +151,11 @@ public class CraftingTreeData {
         public static class Builder {
             private NodeType type;
             private Item item;
-            private String itemName = "";
+            private Component itemName = Component.empty();
             private double neededAmount;
             private double complexity;
             private RecipeNode recipe;
-            private String machineType;
+            private Component machineType = Component.empty();
             private final ObjectList<TreeNode> itemChildren = new ObjectArrayList<>();
             private final ObjectList<FluidNode> fluidChildren = new ObjectArrayList<>();
             private final Object2ObjectMap<String, Object> metadata = new Object2ObjectOpenHashMap<>();
@@ -166,12 +167,7 @@ public class CraftingTreeData {
 
             public Builder item(Item item) {
                 this.item = item;
-                if (item != null && itemName.isEmpty()) this.itemName = item.getDescription().getString();
-                return this;
-            }
-
-            public Builder itemName(String name) {
-                this.itemName = name;
+                if (item != null && itemName.getString().isEmpty()) this.itemName = item.getDescription();
                 return this;
             }
 
@@ -190,7 +186,7 @@ public class CraftingTreeData {
                 return this;
             }
 
-            public Builder machineType(String machine) {
+            public Builder machineType(Component machine) {
                 this.machineType = machine;
                 return this;
             }
@@ -215,30 +211,20 @@ public class CraftingTreeData {
     }
 
     public static class FluidNode {
-        private final String fluidName;
+        private final Component fluidName;
         private final double amount;
-        private final String fluidType;
 
-        public FluidNode(String fluidName, double amount, String fluidType) {
+        public FluidNode(Component fluidName, double amount) {
             this.fluidName = fluidName;
             this.amount = amount;
-            this.fluidType = fluidType;
         }
 
-        public FluidNode(String fluidName, double amount) {
-            this(fluidName, amount, "FLUID");
-        }
-
-        public String getFluidName() {
+        public Component getFluidName() {
             return fluidName;
         }
 
         public double getAmount() {
             return amount;
-        }
-
-        public String getFluidType() {
-            return fluidType;
         }
     }
 

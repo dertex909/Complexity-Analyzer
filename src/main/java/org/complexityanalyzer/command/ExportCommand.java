@@ -67,9 +67,9 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "💾", "FULL ITEM EXPORT", ChatFormatting.AQUA);
+        output.sendHeader(source, "💾", "complexityanalyzer.command.export.full_item_header", ChatFormatting.AQUA);
         output.sendEmptyLine(source);
-        output.sendStatusLine(source, "🔄", "Starting export process", ChatFormatting.YELLOW);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.starting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -89,10 +89,10 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📦", "ITEM CATEGORY EXPORT", ChatFormatting.GOLD);
+        output.sendHeader(source, "📦", "complexityanalyzer.command.export.item_category_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📋", "Category", categoryName, ChatFormatting.GRAY, ChatFormatting.YELLOW);
-        output.sendStatusLine(source, "🔄", "Exporting", ChatFormatting.AQUA);
+        output.sendEntry(source, "📋", "complexityanalyzer.command.export.category_label", categoryName, ChatFormatting.GRAY, ChatFormatting.YELLOW);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.AQUA);
         output.sendEmptyLine(source);
 
         try {
@@ -112,10 +112,10 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "🏆", "TOP ITEMS EXPORT", ChatFormatting.GOLD);
+        output.sendHeader(source, "🏆", "complexityanalyzer.command.export.top_items_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🔢", "Count", String.valueOf(count), ChatFormatting.GRAY, ChatFormatting.AQUA);
-        output.sendStatusLine(source, "🔄", "Calculating and exporting", ChatFormatting.YELLOW);
+        output.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", String.valueOf(count), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.calculating", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -135,9 +135,9 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "ITEMS CSV EXPORT", ChatFormatting.GREEN);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.export.items_csv_header", ChatFormatting.GREEN);
         output.sendEmptyLine(source);
-        output.sendStatusLine(source, "🔄", "Exporting", ChatFormatting.YELLOW);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -157,10 +157,10 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📄", "SINGLE ITEM EXPORT", ChatFormatting.AQUA);
+        output.sendHeader(source, "📄", "complexityanalyzer.command.export.single_item_header", ChatFormatting.AQUA);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🏷", "Item", itemId, ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendStatusLine(source, "🔄", "Exporting", ChatFormatting.YELLOW);
+        output.sendEntry(source, "🏷", "complexityanalyzer.command.export.item_label", itemId, ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -180,15 +180,15 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         if (!"csv".equalsIgnoreCase(format) && !"json".equalsIgnoreCase(format)) {
-            output.sendFailure(source, Component.literal("Invalid format: " + format + ". Use 'csv' or 'json'."));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.invalid_format", format));
             return 0;
         }
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "🧟", "ALL MOBS EXPORT", ChatFormatting.RED);
+        output.sendHeader(source, "🧟", "complexityanalyzer.command.export.all_mobs_header", ChatFormatting.RED);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📋", "Format", format.toUpperCase(), ChatFormatting.GRAY, ChatFormatting.AQUA);
-        output.sendStatusLine(source, "🔄", "Exporting", ChatFormatting.YELLOW);
+        output.sendEntry(source, "📋", "complexityanalyzer.command.export.format_label", format.toUpperCase(), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -208,10 +208,10 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📦", "MOB CATEGORY EXPORT", ChatFormatting.GOLD);
+        output.sendHeader(source, "📦", "complexityanalyzer.command.export.mob_category_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📋", "Category", categoryName, ChatFormatting.GRAY, ChatFormatting.YELLOW);
-        output.sendStatusLine(source, "🔄", "Exporting", ChatFormatting.AQUA);
+        output.sendEntry(source, "📋", "complexityanalyzer.command.export.category_label", categoryName, ChatFormatting.GRAY, ChatFormatting.YELLOW);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.AQUA);
         output.sendEmptyLine(source);
 
         try {
@@ -231,10 +231,10 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "🏆", "TOP MOBS EXPORT", ChatFormatting.GOLD);
+        output.sendHeader(source, "🏆", "complexityanalyzer.command.export.top_mobs_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🔢", "Count", String.valueOf(count), ChatFormatting.GRAY, ChatFormatting.AQUA);
-        output.sendStatusLine(source, "🔄", "Calculating and exporting", ChatFormatting.YELLOW);
+        output.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", String.valueOf(count), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.calculating", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -254,10 +254,10 @@ public final class ExportCommand {
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📄", "SINGLE MOB EXPORT", ChatFormatting.AQUA);
+        output.sendHeader(source, "📄", "complexityanalyzer.command.export.single_mob_header", ChatFormatting.AQUA);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🧟", "Mob", mobId, ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendStatusLine(source, "🔄", "Exporting", ChatFormatting.YELLOW);
+        output.sendEntry(source, "🧟", "complexityanalyzer.command.export.mob_label", mobId, ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
@@ -271,21 +271,21 @@ public final class ExportCommand {
     }
 
     private static int sendEngineNotReady(OutputManager output, CommandSourceStack source, AnalysisEngine engine) {
-        output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!"));
-        output.sendTip(source, "Current state: " + engine.getCurrentState());
+        output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.engine_not_ready"));
+        output.sendTip(source, "complexityanalyzer.command.export.current_state", engine.getCurrentState().toString());
         return 0;
     }
 
     private static void sendSuccess(OutputManager output, CommandSourceStack source, String exportType, Path exportPath) {
-        output.sendSuccess(source, Component.literal("✓ Export successful!"));
+        output.sendSuccess(source, Component.translatable("complexityanalyzer.command.export.success"));
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📁", "File", exportPath.getFileName().toString(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "📁", "complexityanalyzer.command.export.file_label", exportPath.getFileName().toString(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendFooter(source);
-        output.sendToAdmins(Component.literal("✓ " + exportType + " completed."));
+        output.sendToAdmins(Component.translatable("complexityanalyzer.command.export.completed_admin", exportType));
     }
 
     private static void sendFailure(OutputManager output, CommandSourceStack source, String exportType, Exception e) {
-        output.sendFailure(source, Component.literal("❌ " + exportType + " export failed: " + e.getMessage()));
+        output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.failed", exportType, e.getMessage()));
         output.sendFooter(source);
         ComplexityAnalyzer.LOGGER.error("Error exporting {}", exportType, e);
     }

@@ -32,38 +32,38 @@ public class ScanNotifier {
         this.server = server;
     }
 
-    public void broadcastInfo(String message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§e[CA] §f" + message), false);
+    public void broadcastInfo(Component message) {
+        server.getPlayerList().broadcastSystemMessage(Component.literal("§e[CA] §f").append(message), false);
     }
 
-    public void broadcastWarning(String message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§e[CA] §6WARNING! §f" + message), false);
+    public void broadcastWarning(Component message) {
+        server.getPlayerList().broadcastSystemMessage(Component.literal("§e[CA] §6")
+                .append(Component.translatable("complexityanalyzer.notifier.warning_tag"))
+                .append(" §f").append(message), false);
     }
 
-    public void broadcastSevere(String message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§c[CA] §l" + message), false);
+    public void broadcastSevere(Component message) {
+        server.getPlayerList().broadcastSystemMessage(Component.literal("§c[CA] §l").append(message), false);
     }
 
-    public void broadcastSuccess(String message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§a[CA] §f" + message), false);
+    public void broadcastSuccess(Component message) {
+        server.getPlayerList().broadcastSystemMessage(Component.literal("§a[CA] §f").append(message), false);
     }
 
-    public void sendSuccess(@Nullable CommandSourceStack source, String message) {
-        Component component = Component.literal("§a[CA] §f" + message);
+    public void sendSuccess(@Nullable CommandSourceStack source, Component message) {
+        Component component = Component.literal("§a[CA] §f").append(message);
         if (source != null) {
             source.sendSuccess(() -> component, false);
         } else {
-            logInfo(message);
+            logInfo(message.getString());
         }
     }
 
-    public void sendFailure(@Nullable CommandSourceStack source, String message) {
-        Component component = Component.literal("§c[CA] Error: " + message);
-        if (source != null) {
-            source.sendFailure(component);
-        } else {
-            logError(message);
-        }
+    public void sendFailure(@Nullable CommandSourceStack source, Component message) {
+        Component component = Component.literal("§c[CA] ").append(
+                Component.translatable("complexityanalyzer.notifier.error_tag")).append(": ").append(message);
+        if (source != null) source.sendFailure(component);
+        else logError(message.getString());
     }
 
     public void logInfo(String message) {
@@ -84,30 +84,30 @@ public class ScanNotifier {
 
     public void notifyScanCountdown(int secondsLeft) {
         if (secondsLeft > 0 && (secondsLeft <= 10 || secondsLeft % 15 == 0)) {
-            broadcastInfo(String.format("World analysis will start in %d seconds...", secondsLeft));
+            broadcastInfo(Component.translatable("complexityanalyzer.notifier.countdown", secondsLeft));
         } else if (secondsLeft == 0) {
-            broadcastSevere("Scan started! High server load may occur!");
+            broadcastSevere(Component.translatable("complexityanalyzer.notifier.started"));
         }
     }
 
     public void notifyScanStarting(int chunksPerBiome, String initiator) {
-        logInfo("Countdown finished. Starting scan requested by " + initiator + " for " + chunksPerBiome + " chunks per biome.");
+        logInfo(Component.translatable("complexityanalyzer.log.scan_starting", initiator, chunksPerBiome).getString());
     }
 
     public void notifyDatabaseIsUpToDate() {
-        broadcastSuccess("Database is already up to date.");
+        broadcastSuccess(Component.translatable("complexityanalyzer.notifier.up_to_date"));
     }
 
     public void notifyReconnaissanceFinished(boolean wasStopped) {
         if (wasStopped) {
-            broadcastInfo("Reconnaissance scan stopped. Progress saved.");
+            broadcastInfo(Component.translatable("complexityanalyzer.notifier.stopped"));
         } else {
-            broadcastSuccess("Reconnaissance complete! Starting final data refinement in background...");
+            broadcastSuccess(Component.translatable("complexityanalyzer.notifier.recon_complete"));
         }
     }
 
     public void notifyRefinementFinished() {
-        broadcastSuccess("Geo-scan complete! Database is fully optimized.");
-        logInfo("Global refinement complete. GeoDatabase is now fully operational.");
+        broadcastSuccess(Component.translatable("complexityanalyzer.notifier.complete"));
+        logInfo(Component.translatable("complexityanalyzer.log.refinement_complete").getString());
     }
 }

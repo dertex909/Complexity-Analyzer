@@ -19,6 +19,7 @@
 package org.complexityanalyzer.analyzer.tree;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
@@ -192,7 +193,7 @@ public class CraftingTreeBuilder {
 
         var registry = engine.getMachineRegistry();
         var machine = (registry != null) ? registry.getMachineForRecipe(recipe.getRecipeType()) : null;
-        var machineName = (machine != null) ? machine.getDescription().getString() : "Crafting Table";
+        var machineName = (machine != null) ? machine.getDescription() : Component.translatable("complexityanalyzer.command.tree.crafting_table");
 
         double craftOperations = (displayMode == DisplayMode.PLAYER_INSTRUCTION) ?
                 Math.ceil(neededAmount / recipe.getResultCount()) :
@@ -233,7 +234,7 @@ public class CraftingTreeBuilder {
         for (var slot : recipe.getFluidIngredients()) {
             var primaryFluid = slot.getPrimaryFluid();
             if (primaryFluid != null) {
-                var fluidName = primaryFluid.getFluidType().getDescription().getString();
+                var fluidName = primaryFluid.getFluidType().getDescription();
                 double amount = slot.getAmount() * craftOperations;
                 nodeBuilder.addFluidChild(new FluidNode(fluidName, amount));
             }

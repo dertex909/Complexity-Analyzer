@@ -19,6 +19,7 @@
 package org.complexityanalyzer.geoscan.scan;
 
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -148,10 +149,11 @@ public class ScanExecutor {
             resultBuffers.clear();
 
             String msptInfo = msptMonitor.hasLimit()
-                    ? String.format(", MSPT limit: %.0f", msptMonitor.getMsptLimit()) : ", no MSPT limit";
+                    ? Component.translatable("complexityanalyzer.log.scan.mspt_limit", msptMonitor.getMsptLimit()).getString()
+                    : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit").getString();
 
-            notifier.logInfo("[SCAN] 🚀 " + newSession.getProfile().displayName.toUpperCase() +
-                    " — vanilla generation" + msptInfo);
+            notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.profile_info",
+                    newSession.getProfile().displayName.toUpperCase(), msptInfo).getString());
 
             startWorker();
         }
@@ -541,7 +543,7 @@ public class ScanExecutor {
             logThrottleStats();
             msptMonitor = null;
 
-            notifier.logInfo("[SCAN] ✅ Complete!");
+            notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.complete").getString());
 
             if (callback != null && !isShutdown.get()) try {
                 server.execute(callback);
@@ -554,7 +556,7 @@ public class ScanExecutor {
     private void logThrottleStats() {
         int pauses = throttlePauseCount.get();
         if (pauses > 0) ComplexityAnalyzer.LOGGER.info(
-                "[SCAN] Throttle stats: {} pauses, total pause time: {}ms", pauses, totalThrottleTimeMs.get());
+                Component.translatable("complexityanalyzer.log.scan.throttle_stats", pauses, totalThrottleTimeMs.get()).getString());
     }
 
     private void saveToBuffer(ResourceLocation dim, ResourceLocation biome, ChunkSnapshot snapshot) {

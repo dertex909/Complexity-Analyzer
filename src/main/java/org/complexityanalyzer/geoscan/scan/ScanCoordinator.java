@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -162,7 +163,7 @@ public class ScanCoordinator {
         Map<ResourceLocation, Set<Long>> existing = database.loadAllReconChunkCoordinates();
         session.loadAttemptedChunks(existing);
 
-        notifier.logInfo(String.format("Starting scan: %d biomes, %d chunks needed", tasks.size(), totalChunks));
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks).getString());
 
         return true;
     }

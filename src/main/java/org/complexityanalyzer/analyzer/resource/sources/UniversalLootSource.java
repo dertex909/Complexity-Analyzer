@@ -44,6 +44,7 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 public class UniversalLootSource implements IResourceSource {
@@ -187,7 +188,8 @@ public class UniversalLootSource implements IResourceSource {
                                 .sourceType(contextDef.sourceType)
                                 .baseFactor(baseFactor)
                                 .sourceSpecifier(lootTableId.toString())
-                                .details(details);
+                                .details(details)
+                                .addMetadata("chance", String.format(Locale.ROOT, "%.6f", itemsPerAttempt * 100));
 
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
                             builder.baseFactor(contextDef.baseActionCost);

@@ -44,14 +44,13 @@ public class EntityAnalyzeCommand {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.not_ready"));
             return 0;
         }
 
         EntityType<?> entityType = GameRegistryManager.getEntityType(entityId);
         if (entityType == EntityType.PIG && !entityId.equals(ResourceLocation.parse("minecraft:pig"))) {
-            output.sendFailure(source, Component.literal("❌ Entity type not found: ")
-                    .append(Component.literal(entityId.toString()).withStyle(ChatFormatting.YELLOW)));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.not_found", entityId.toString()));
             return 0;
         }
 
@@ -65,8 +64,8 @@ public class EntityAnalyzeCommand {
 
         MobPropertyProvider.MobProperties props = mobProvider.getProperties(entityType);
         if (props == null) {
-            output.sendFailure(source, Component.literal("⚠ This entity cannot be analyzed"));
-            output.sendTip(source, "Entity might not be a living creature: " + entityId);
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.not_analyzable"));
+            output.sendTip(source, "complexityanalyzer.command.entity.not_living", entityId.toString());
             return 0;
         }
 
@@ -76,15 +75,10 @@ public class EntityAnalyzeCommand {
         return 1;
     }
 
-    private static void displayAnalysis(
-            CommandSourceStack source,
-            EntityType<?> type,
-            MobPropertyProvider.MobProperties props,
-            ObjectList<MobDropData> drops,
-            MobPropertyProvider mobProvider,
-            OutputManager output
-    ) {
-        String entityName = type.getDescription().getString();
+    private static void displayAnalysis(CommandSourceStack source, EntityType<?> type,
+                                        MobPropertyProvider.MobProperties props, ObjectList<MobDropData> drops,
+                                        MobPropertyProvider mobProvider, OutputManager output) {
+        Component entityName = type.getDescription();
 
         double survivability = props.calculateSurvivability();
         double threat = props.calculateThreat();
@@ -92,165 +86,127 @@ public class EntityAnalyzeCommand {
 
         String mobIcon = getMobIcon(type, props, mobProvider);
         output.sendEmptyLine(source);
-        output.sendHeader(source, mobIcon, "Mob Analysis", ChatFormatting.RED);
+        output.sendHeader(source, mobIcon, "complexityanalyzer.command.entity.header", ChatFormatting.RED);
         output.sendEmptyLine(source);
-
-        output.sendEntry(source, "👤", "Entity", entityName, ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🗂", "Category", props.classification().getName(), ChatFormatting.GRAY, getCategoryColor(props.classification().getName()));
-
+        output.sendEntry(source, "👤", "complexityanalyzer.command.entity.entity_label", entityName, ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "🗂", "complexityanalyzer.command.entity.category_label", props.classification().getName(), ChatFormatting.GRAY, getCategoryColor(props.classification().getName()));
         output.sendEmptyLine(source);
 
         displayBaseStats(source, props, output);
-
         displayCalculatedFactors(source, survivability, threat, combatPower, output);
-
         displayDifficultyRating(source, type, combatPower, mobProvider, output);
-
         displayDrops(source, drops, output);
 
         output.sendEmptyLine(source);
         output.sendFooter(source);
     }
 
-    private static void displayBaseStats(
-            CommandSourceStack source,
-            MobPropertyProvider.MobProperties props,
-            OutputManager output
-    ) {
-        output.sendStatusLine(source, "❤", "Base Stats", ChatFormatting.RED);
+    private static void displayBaseStats(CommandSourceStack source, MobPropertyProvider.MobProperties props, OutputManager output) {
+        output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", ChatFormatting.RED);
 
         double health = props.maxHealth();
         ChatFormatting healthColor = getHealthColor(health);
-        output.sendSubEntry(source, "❤", "Max Health", String.format("%.1f", health), ChatFormatting.GRAY, healthColor);
+        output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", String.format("%.1f", health), ChatFormatting.GRAY, healthColor);
         output.sendValueBar(source, (int) Math.min(100, health), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         double attack = props.attackDamage();
         ChatFormatting attackColor = getAttackColor(attack);
-        output.sendSubEntry(source, "⚔", "Attack Damage", String.format("%.1f", attack), ChatFormatting.GRAY, attackColor);
+        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", String.format("%.1f", attack), ChatFormatting.GRAY, attackColor);
         output.sendValueBar(source, (int) Math.min(100, attack * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         double armor = props.armor();
         ChatFormatting armorColor = getArmorColor(armor);
-        output.sendSubEntry(source, "🛡", "Armor", String.format("%.1f", armor), ChatFormatting.GRAY, armorColor);
-        if (armor > 0) {
-            output.sendValueBar(source, (int) Math.min(100, armor * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-        }
+        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", String.format("%.1f", armor), ChatFormatting.GRAY, armorColor);
+        if (armor > 0) output.sendValueBar(
+                source, (int) Math.min(100, armor * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         output.sendEmptyLine(source);
     }
 
-    private static void displayCalculatedFactors(
-            CommandSourceStack source,
-            double survivability,
-            double threat,
-            double combatPower,
-            OutputManager output
-    ) {
-        output.sendStatusLine(source, "⚡", "Combat Analysis", ChatFormatting.GOLD);
+    private static void displayCalculatedFactors(CommandSourceStack source, double survivability, double threat,
+                                                 double combatPower, OutputManager output) {
+        output.sendStatusLine(source, "⚡", "complexityanalyzer.command.entity.combat_section", ChatFormatting.GOLD);
 
         ChatFormatting survColor = getFactorColor(survivability, 50.0);
-        output.sendSubEntry(source, "🛡", "Survivability", String.format("%.2f", survivability), ChatFormatting.GRAY, survColor);
+        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", String.format("%.2f", survivability), ChatFormatting.GRAY, survColor);
 
         ChatFormatting threatColor = getFactorColor(threat, 5.0);
-        output.sendSubEntry(source, "⚠", "Threat Level", String.format("%.2f", threat), ChatFormatting.GRAY, threatColor);
+        output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", String.format("%.2f", threat), ChatFormatting.GRAY, threatColor);
 
         ChatFormatting powerColor = getCombatPowerColor(combatPower);
-        output.sendSubEntry(source, "⚔", "Combat Power", String.format("%.2f", combatPower), ChatFormatting.GRAY, powerColor);
+        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", String.format("%.2f", combatPower), ChatFormatting.GRAY, powerColor);
 
         output.sendValueBar(source, (int) Math.min(100, combatPower * 0.5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-
         output.sendEmptyLine(source);
     }
 
-    private static void displayDifficultyRating(
-            CommandSourceStack source,
-            EntityType<?> type,
-            double combatPower,
-            MobPropertyProvider mobProvider,
-            OutputManager output
-    ) {
+    private static void displayDifficultyRating(CommandSourceStack source, EntityType<?> type, double combatPower,
+                                                MobPropertyProvider mobProvider, OutputManager output) {
         String difficulty;
         String difficultyIcon;
         ChatFormatting difficultyColor;
 
         if (mobProvider.isBoss(type)) {
-            difficulty = "BOSS";
+            difficulty = "boss";
             difficultyIcon = "👑";
             difficultyColor = ChatFormatting.DARK_PURPLE;
         } else if (mobProvider.isMiniBoss(type)) {
-            difficulty = "MINI-BOSS";
+            difficulty = "mini_boss";
             difficultyIcon = "⭐";
             difficultyColor = ChatFormatting.LIGHT_PURPLE;
         } else if (combatPower > 500) {
-            difficulty = "EXTREME";
+            difficulty = "extreme";
             difficultyIcon = "💀";
             difficultyColor = ChatFormatting.DARK_RED;
         } else if (combatPower > 200) {
-            difficulty = "HARD";
+            difficulty = "hard";
             difficultyIcon = "🔥";
             difficultyColor = ChatFormatting.RED;
         } else if (combatPower > 100) {
-            difficulty = "MEDIUM";
+            difficulty = "medium";
             difficultyIcon = "⚠";
             difficultyColor = ChatFormatting.GOLD;
         } else if (combatPower > 50) {
-            difficulty = "EASY";
+            difficulty = "easy";
             difficultyIcon = "✓";
             difficultyColor = ChatFormatting.YELLOW;
         } else {
-            difficulty = "TRIVIAL";
+            difficulty = "trivial";
             difficultyIcon = "◆";
             difficultyColor = ChatFormatting.GREEN;
         }
 
-        output.sendEntry(source, "📊", "Difficulty Rating", difficultyIcon + " " + difficulty, ChatFormatting.AQUA, difficultyColor);
+        output.sendEntry(source, "📊", "complexityanalyzer.command.entity.rating_label", Component.literal(difficultyIcon + " ")
+                .append(Component.translatable("complexityanalyzer.command.entity.rating." + difficulty)), ChatFormatting.AQUA, difficultyColor);
 
-        String recommendation = switch (difficulty) {
-            case "BOSS" -> "Prepare thoroughly! Boss encounter.";
-            case "MINI-BOSS" -> "Elite enemy! Strong gear recommended.";
-            case "EXTREME" -> "Extreme danger! Full gear recommended.";
-            case "HARD" -> "Dangerous! Good equipment needed.";
-            case "MEDIUM" -> "Moderate threat. Stay cautious.";
-            case "EASY" -> "Manageable with basic gear.";
-            default -> "Low threat. Safe for beginners.";
-        };
-
-        output.sendTip(source, recommendation);
+        output.sendTip(source, "complexityanalyzer.command.entity.recommendation." + difficulty);
         output.sendEmptyLine(source);
     }
 
-    private static void displayDrops(
-            CommandSourceStack source,
-            ObjectList<MobDropData> drops,
-            OutputManager output
-    ) {
-        output.sendStatusLine(source, "💎", "Notable Drops", ChatFormatting.GREEN);
+    private static void displayDrops(CommandSourceStack source, ObjectList<MobDropData> drops, OutputManager output) {
+        output.sendStatusLine(source, "💎", "complexityanalyzer.command.entity.drops_section", ChatFormatting.GREEN);
 
         if (drops.isEmpty()) {
-            output.sendTip(source, "No significant drops recorded");
+            output.sendTip(source, "complexityanalyzer.command.entity.no_drops");
         } else {
             drops.sort(Comparator.comparingDouble(MobDropData::averageYield).reversed());
 
             for (MobDropData drop : drops) {
-                String itemName = drop.item().getDescription().getString();
+                Component itemName = drop.item().getDescription();
                 double yield = drop.averageYield();
-
                 String rarityIcon = getRarityIcon(yield);
                 ChatFormatting rarityColor = getRarityColor(yield);
-
-                output.sendSubEntry(source, rarityIcon, itemName, String.format("~%.2f per kill", yield), ChatFormatting.WHITE, rarityColor);
+                output.sendSubEntry(source, rarityIcon, itemName, Component.translatable("complexityanalyzer.command.entity.per_kill",
+                        String.format("%.2f", yield)), ChatFormatting.WHITE, rarityColor);
             }
 
             output.sendEmptyLine(source);
-            output.sendTip(source, "Higher yield = more common drop");
+            output.sendTip(source, "complexityanalyzer.command.entity.yield_tip");
         }
     }
 
-    private static String getMobIcon(
-            EntityType<?> type,
-            MobPropertyProvider.MobProperties props,
-            MobPropertyProvider mobProvider
-    ) {
+    private static String getMobIcon(EntityType<?> type, MobPropertyProvider.MobProperties props,
+                                     MobPropertyProvider mobProvider) {
         if (mobProvider.isBoss(type)) return "👑";
         if (mobProvider.isMiniBoss(type)) return "⭐";
 

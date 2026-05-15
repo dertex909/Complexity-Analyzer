@@ -91,6 +91,10 @@ public enum ComplexityCategory {
         return displayName;
     }
 
+    public String getTranslationKey() {
+        return "complexityanalyzer.category." + name().toLowerCase();
+    }
+
     public ChatFormatting getColor() {
         return color;
     }

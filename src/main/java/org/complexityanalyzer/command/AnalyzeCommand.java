@@ -63,22 +63,21 @@ public final class AnalyzeCommand {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Analysis engine is not ready yet!"));
-            output.sendTip(source, "Current state: " + engine.getCurrentState());
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.not_ready"));
+            output.sendTipLiteral(source, Component.translatable("complexityanalyzer.command.analyze.current_state", engine.getCurrentState()));
             return 0;
         }
 
         Item item = GameRegistryManager.getItem(itemId);
         if (item == null || (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air")))) {
-            output.sendFailure(source, Component.literal("❌ Item not found: ")
-                    .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW)));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.item_not_found", itemId.toString()));
             return 0;
         }
 
         try {
             ItemComplexity optimal = engine.getComplexityResult(item);
             if (optimal == null) {
-                output.sendFailure(source, Component.literal("❌ Failed to analyze item: " + itemId));
+                output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.failed", itemId.toString()));
                 return 0;
             }
 
@@ -86,7 +85,7 @@ public final class AnalyzeCommand {
             return 1;
 
         } catch (Exception e) {
-            output.sendFailure(source, Component.literal("⚠ Error analyzing item: " + e.getMessage()));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.error", e.getMessage()));
             ComplexityAnalyzer.LOGGER.error("Error analyzing item {}", itemId, e);
             return 0;
         }
@@ -100,12 +99,12 @@ public final class AnalyzeCommand {
             OutputManager output,
             ResourceLocation itemId
     ) {
-        String itemName = (item != null) ? item.getDescription().getString() : itemId.toString();
+        Component itemName = (item != null) ? item.getDescription() : Component.literal(itemId.toString());
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "Complexity Analysis", ChatFormatting.GOLD);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.analyze.header", ChatFormatting.GOLD);
 
-        output.sendEntry(source, "🏷", "Item", itemName, ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "🏷", "complexityanalyzer.command.analyze.item_label", itemName, ChatFormatting.GRAY, ChatFormatting.WHITE);
 
         output.sendEmptyLine(source);
 
@@ -119,59 +118,43 @@ public final class AnalyzeCommand {
     private static void displayMainInfo(CommandSourceStack source, ItemComplexity optimal, OutputManager output) {
         ComplexityCategory category = optimal.getCategory();
         double complexity = optimal.getComplexity();
-
-        output.sendStatusLine(source, "⚙", "Complexity", ChatFormatting.YELLOW);
-
-        output.sendSubEntry(source, getCategoryIcon(category), "Category", category.getDisplayName(), ChatFormatting.GRAY, category.getColor());
-
+        output.sendStatusLine(source, "⚙", "complexityanalyzer.command.analyze.complexity_section", ChatFormatting.YELLOW);
+        output.sendSubEntry(source, getCategoryIcon(category), "complexityanalyzer.command.analyze.category_label", category.getTranslationKey(), ChatFormatting.GRAY, category.getColor());
         ChatFormatting valueColor = getComplexityColor(complexity);
         String valueString = Double.isInfinite(complexity) ? "∞" : String.format("%.2f", complexity);
-        output.sendSubEntry(source, "Value", valueString, ChatFormatting.GRAY, valueColor);
-
+        output.sendSubEntry(source, "complexityanalyzer.command.analyze.value_label", valueString, ChatFormatting.GRAY, valueColor);
         output.sendValueBar(source, (int) Math.min(100, (complexity / 100.0) * 100), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-
         output.sendEmptyLine(source);
     }
 
     private record SourceWithCost(BaseResourceData data, double fullCost) {
     }
 
-    private static void displaySourceInfo(
-            CommandSourceStack source,
-            Item item,
-            ItemComplexity optimal,
-            AnalysisEngine engine,
-            OutputManager output
-    ) {
-        output.sendStatusLine(source, "📦", "Source Information", ChatFormatting.YELLOW);
+    private static void displaySourceInfo(CommandSourceStack source, Item item, ItemComplexity optimal,
+                                          AnalysisEngine engine, OutputManager output) {
+        output.sendStatusLine(source, "📦", "complexityanalyzer.command.analyze.source_section", ChatFormatting.YELLOW);
 
         if (optimal.hasRecipe()) {
-            output.sendSubEntry(source, "Has Recipe", "Yes", ChatFormatting.GRAY, ChatFormatting.WHITE);
-
+            output.sendSubEntry(source, "complexityanalyzer.command.analyze.has_recipe", "complexityanalyzer.command.analyze.yes", ChatFormatting.GRAY, ChatFormatting.WHITE);
             int depth = optimal.getDepth();
-            ChatFormatting depthColor = depth <= 2 ? ChatFormatting.GREEN :
-                    depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
-            output.sendSubEntry(source, "  Depth", String.valueOf(depth), ChatFormatting.DARK_GRAY, depthColor);
-
+            ChatFormatting depthColor = depth <= 2 ? ChatFormatting.GREEN : depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+            output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.depth")), String.valueOf(depth), ChatFormatting.DARK_GRAY, depthColor);
             int usageCount = engine.getUsageCount(item);
-            output.sendSubEntry(source, "  Used In", usageCount + " recipes", ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
+            output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.used_in")), Component.translatable("complexityanalyzer.command.analyze.used_in_count", usageCount), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
         } else {
-            output.sendSubEntry(source, "Type", "Base Resource (No recipes)", ChatFormatting.GRAY, ChatFormatting.GOLD);
+            output.sendSubEntry(source, "complexityanalyzer.command.analyze.type_label", "complexityanalyzer.command.analyze.base_resource", ChatFormatting.GRAY, ChatFormatting.GOLD);
         }
 
         ObjectList<BaseResourceData> allSources = engine.findAllSourcesForItem(item);
         if (!allSources.isEmpty()) {
-            output.sendTip(source, "Alternative Sources:");
-
+            output.sendTip(source, "complexityanalyzer.command.analyze.alt_sources");
             ObjectList<SourceWithCost> sortedSources = new ObjectArrayList<>(allSources.size());
             for (BaseResourceData data : allSources) {
                 double fullEstimatedCost = data.getBaseFactor();
                 var sourceItems = data.getSourceItems();
-
                 if (!sourceItems.isEmpty()) for (var entry : Reference2DoubleMaps.fastIterable(sourceItems)) {
                     Item sourceItem = entry.getKey();
                     double amount = entry.getDoubleValue();
-
                     ItemComplexity sourceComplexity = engine.getComplexityResult(sourceItem);
                     if (sourceComplexity != null && sourceComplexity.isValid()) {
                         fullEstimatedCost += sourceComplexity.getComplexity() * amount;
@@ -184,17 +167,15 @@ public final class AnalyzeCommand {
             }
 
             sortedSources.sort(Comparator.comparingDouble(SourceWithCost::fullCost));
-
             for (SourceWithCost swc : sortedSources) {
                 String icon = getSourceIcon(swc.data().getSourceType());
                 String costString = Double.isInfinite(swc.fullCost()) ? "∞" : String.format("%.2f", swc.fullCost());
 
                 ChatFormatting costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED
-                        : swc.fullCost() < 10 ? ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW
-                                                                       : ChatFormatting.RED;
+                        : swc.fullCost() < 10 ? ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
 
-                output.sendSubEntry(source, icon, swc.data().getSourceType().getDisplayName(), "Cost: " + costString, ChatFormatting.WHITE, costColor);
-                output.sendTip(source, swc.data().getDetails());
+                output.sendSubEntry(source, icon, swc.data().getSourceType().getDisplayName(), Component.translatable("complexityanalyzer.command.analyze.cost", costString), ChatFormatting.WHITE, costColor);
+                output.sendTipLiteral(source, swc.data().getDetails());
             }
         }
 
@@ -202,21 +183,25 @@ public final class AnalyzeCommand {
     }
 
     private static void displayStatus(CommandSourceStack source, ItemComplexity optimal, OutputManager output, ResourceLocation itemId) {
-        output.sendStatusLine(source, "ℹ", "Status", ChatFormatting.AQUA);
+        output.sendStatusLine(source, "ℹ", "complexityanalyzer.command.analyze.status_section", ChatFormatting.AQUA);
 
         boolean isValid = optimal.isValid();
-        output.sendSubEntry(source, "Valid", isValid ? "Yes" : "No", ChatFormatting.GRAY, isValid ? ChatFormatting.GREEN : ChatFormatting.RED);
+        output.sendSubEntry(source, "complexityanalyzer.command.analyze.valid_label", isValid ? "complexityanalyzer.command.analyze.yes" : "complexityanalyzer.command.analyze.no", ChatFormatting.GRAY, isValid ? ChatFormatting.GREEN : ChatFormatting.RED);
 
         if (optimal.hasCycle())
-            output.sendSubEntry(source, "Warning", "Cyclic dependency detected!", ChatFormatting.YELLOW, ChatFormatting.RED);
+            output.sendSubEntry(source, "complexityanalyzer.command.analyze.warning_label", "complexityanalyzer.command.analyze.cyclic_dependency", ChatFormatting.YELLOW, ChatFormatting.RED);
 
         if (optimal.getErrorMessage() != null)
-            output.sendSubEntry(source, "Error", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);
+            output.sendSubEntry(source, "complexityanalyzer.command.analyze.error_label", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);
 
         if (optimal.hasRecipe()) {
             output.sendEmptyLine(source);
-
-            output.sendClickableTip(source, "Tip: ", "Click here", " to see full crafting tree", "/complexity tree " + itemId, "Click to view crafting tree");
+            output.sendClickableTip(source,
+                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_prefix"),
+                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_link"),
+                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_suffix"),
+                    "/complexity tree " + itemId,
+                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_hover"));
         }
     }
 

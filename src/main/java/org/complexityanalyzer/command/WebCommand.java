@@ -73,8 +73,8 @@ public final class WebCommand {
 
         if (url == null) {
             output.sendEmptyLine(source);
-            output.sendFailure(source, Component.literal("Web Dashboard is not active."));
-            output.sendTip(source, "To use it in singleplayer, you must click 'Open to LAN' in the Escape menu.");
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.active"));
+            output.sendTip(source, "complexityanalyzer.command.web.lan_tip");
             output.sendEmptyLine(source);
             return 0;
         }
@@ -91,16 +91,16 @@ public final class WebCommand {
         }
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "🌐", "Web Dashboard", ChatFormatting.GOLD);
+        output.sendHeader(source, "🌐", "complexityanalyzer.command.web.header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
-        String urlLabel = rawLink ? localUrl : "[Open in Browser]";
-        output.sendLink(source, "URL", urlLabel, localUrl, ChatFormatting.AQUA, "Click to open: " + localUrl);
+        Object urlLabel = rawLink ? localUrl : "complexityanalyzer.command.web.open_browser";
+        output.sendLink(source, "complexityanalyzer.command.web.url_label", urlLabel, localUrl, ChatFormatting.AQUA, "complexityanalyzer.command.web.click_to_open", localUrl);
 
         if (remoteUrl != null) {
             output.sendEmptyLine(source);
-            String remoteLabel = rawLink ? remoteUrl : "[Copy Public Link]";
-            output.sendCopyAction(source, "For Friends", remoteLabel, remoteUrl, ChatFormatting.YELLOW, "Click to copy link");
+            Object remoteLabel = rawLink ? remoteUrl : "complexityanalyzer.command.web.copy_public";
+            output.sendCopyAction(source, "complexityanalyzer.command.web.for_friends", remoteLabel, remoteUrl, ChatFormatting.YELLOW, "complexityanalyzer.command.web.click_to_copy");
         }
 
         output.sendEmptyLine(source);
@@ -115,26 +115,26 @@ public final class WebCommand {
         CabinBackgroundService.Snapshot snap = svc.getSnapshot();
         CabinBackgroundService.Status status = svc.getStatus();
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "Web System Status", ChatFormatting.GOLD);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.web.status_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
-        output.sendEntry(source, "⚙", "Status", status.name(), ChatFormatting.GRAY, statusColor(status));
-        output.sendEntry(source, "👥", "Visitors", String.valueOf(CabinNettyHandler.getVisitorCount()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEntry(source, "⚙", "complexityanalyzer.command.web.status_label", status.name(), ChatFormatting.GRAY, statusColor(status));
+        output.sendEntry(source, "👥", "complexityanalyzer.command.web.visitors", String.valueOf(CabinNettyHandler.getVisitorCount()), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         if (snap != null) {
             long ageMs = System.currentTimeMillis() - snap.generatedAtMs();
-            output.sendEntry(source, "🕒", "File Age", humanDuration(ageMs) + " ago", ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "📂", "Items", String.valueOf(snap.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "👾", "Mobs", String.valueOf(snap.mobCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "📜", "Recipes", String.valueOf(snap.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", humanDuration(ageMs)), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", String.valueOf(snap.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", String.valueOf(snap.mobCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", String.valueOf(snap.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
         } else {
-            output.sendTip(source, "no binary data yet — generation may be in progress");
+            output.sendTip(source, "complexityanalyzer.command.web.no_data");
         }
 
         Throwable err = svc.getLastError();
         if (err != null) {
             output.sendEmptyLine(source);
-            output.sendFailure(source, Component.literal("Last error: " + err.getMessage()));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.last_error", err.getMessage()));
         }
 
         output.sendEmptyLine(source);
@@ -148,22 +148,22 @@ public final class WebCommand {
         MinecraftServer server = source.getServer();
         AnalysisEngine engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("Engine not ready: " + engine.getCurrentState()));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
             return 0;
         }
         String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
                 .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
 
-        output.sendSuccess(source, Component.literal("🔄 Reloading web data in background..."));
+        output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));
 
         CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion).whenComplete((snap, err) -> {
             MutableComponent done;
             if (err != null) {
-                done = Component.literal("❌ Web reload failed: " + err.getMessage()).withStyle(ChatFormatting.RED);
+                done = Component.translatable("complexityanalyzer.command.web.reload_failed", err.getMessage()).withStyle(ChatFormatting.RED);
             } else if (snap != null) {
-                done = Component.literal("✅ Web data reloaded: " + humanBytes(snap.bytes().length)).withStyle(ChatFormatting.GREEN);
+                done = Component.translatable("complexityanalyzer.command.web.reload_success", humanBytes(snap.bytes().length)).withStyle(ChatFormatting.GREEN);
             } else {
-                done = Component.literal("⚠ Web reload returned no data").withStyle(ChatFormatting.YELLOW);
+                done = Component.translatable("complexityanalyzer.command.web.reload_no_data").withStyle(ChatFormatting.YELLOW);
             }
             server.execute(() -> source.sendSuccess(() -> done, true));
         });
@@ -180,21 +180,28 @@ public final class WebCommand {
     }
 
     private static String humanBytes(long n) {
-        if (n < 1024) return n + " B";
+        if (n < 1024) return n + " " + Component.translatable("complexityanalyzer.unit.size.bytes").getString();
         double k = n / 1024.0;
-        if (k < 1024) return String.format(Locale.ROOT, "%.1f KB", k);
+        if (k < 1024)
+            return String.format(Locale.ROOT, "%.1f %s", k, Component.translatable("complexityanalyzer.unit.size.kilobytes").getString());
         double m = k / 1024.0;
-        if (m < 1024) return String.format(Locale.ROOT, "%.1f MB", m);
-        return String.format(Locale.ROOT, "%.2f GB", m / 1024.0);
+        if (m < 1024)
+            return String.format(Locale.ROOT, "%.1f %s", m, Component.translatable("complexityanalyzer.unit.size.megabytes").getString());
+        return String.format(Locale.ROOT, "%.2f %s", m / 1024.0, Component.translatable("complexityanalyzer.unit.size.gigabytes").getString());
     }
 
     private static String humanDuration(long ms) {
         long sec = ms / 1000;
-        if (sec < 60) return sec + "s";
+        Component sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
+        Component mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
+        Component hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
+        Component dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short");
+
+        if (sec < 60) return sec + sSuffix.getString();
         long min = sec / 60;
-        if (min < 60) return min + "m " + (sec % 60) + "s";
+        if (min < 60) return min + mSuffix.getString() + " " + (sec % 60) + sSuffix.getString();
         long hour = min / 60;
-        if (hour < 24) return hour + "h " + (min % 60) + "m";
-        return (hour / 24) + "d " + (hour % 24) + "h";
+        if (hour < 24) return hour + hSuffix.getString() + " " + (min % 60) + mSuffix.getString();
+        return (hour / 24) + dSuffix.getString() + " " + (hour % 24) + hSuffix.getString();
     }
 }

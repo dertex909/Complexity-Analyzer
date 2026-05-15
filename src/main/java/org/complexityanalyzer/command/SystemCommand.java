@@ -49,14 +49,14 @@ public final class SystemCommand {
         AnalysisEngine engine = AnalysisBootstrap.getEngine();
 
         if (engine == null) {
-            output.sendFailure(source, Component.literal("❌ Analysis Engine is not initialized!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.engine_not_initialized"));
             return 0;
         }
 
         AnalysisEngine.State state = engine.getCurrentState();
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "⚙", "Complexity Analyzer Status", ChatFormatting.GOLD);
+        output.sendHeader(source, "⚙", "complexityanalyzer.command.system.status_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
         String stateIcon;
@@ -79,18 +79,18 @@ public final class SystemCommand {
             }
         };
 
-        output.sendEntry(source, stateIcon, "Engine State", state.toString(), ChatFormatting.GRAY, stateColor);
+        output.sendEntry(source, stateIcon, "complexityanalyzer.command.system.engine_state", state.toString(), ChatFormatting.GRAY, stateColor);
 
         if (engine.isReady()) {
             var stats = engine.getStats();
             output.sendEmptyLine(source);
-            output.sendStatusLine(source, "📊", "Data Overview", ChatFormatting.AQUA);
-            output.sendSubEntry(source, "📦", "Items with recipes", String.valueOf(stats.itemCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
-            output.sendSubEntry(source, "📜", "Total recipes", String.valueOf(stats.recipeCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
-            output.sendSubEntry(source, "💎", "Base resources", String.valueOf(stats.baseResourceCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
+            output.sendStatusLine(source, "📊", "complexityanalyzer.command.system.data_overview", ChatFormatting.AQUA);
+            output.sendSubEntry(source, "complexityanalyzer.command.system.items_with_recipes", String.valueOf(stats.itemCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
+            output.sendSubEntry(source, "complexityanalyzer.command.system.total_recipes", String.valueOf(stats.recipeCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
+            output.sendSubEntry(source, "complexityanalyzer.command.system.base_resources", String.valueOf(stats.baseResourceCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
         } else {
             output.sendEmptyLine(source);
-            output.sendTip(source, "Engine not ready. Statistics unavailable.");
+            output.sendTip(source, "complexityanalyzer.command.system.stats_unavailable");
         }
 
         output.sendEmptyLine(source);
@@ -105,17 +105,17 @@ public final class SystemCommand {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         if (engine == null) {
-            output.sendFailure(source, Component.literal("❌ Engine not initialized!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.engine_not_initialized"));
             return 0;
         }
 
         String adminName = source.getTextName();
-        output.broadcastWarning(Component.literal("⚠ Analysis system is reloading... Possible lag!"));
-        output.sendToAdmins(Component.literal("System reload initiated by " + adminName));
+        output.broadcastWarning(Component.translatable("complexityanalyzer.command.system.reloading_broadcast"));
+        output.sendToAdmins(Component.translatable("complexityanalyzer.command.system.reload_initiated_admin", adminName));
         output.sendEmptyLine(source);
-        output.sendStatusLine(source, "🔄", "Reloading Analysis Systems", ChatFormatting.YELLOW);
-        output.sendTip(source, "This may take a few seconds and cause lag.");
-        output.sendTip(source, "Running in background...");
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.system.reloading_header", ChatFormatting.YELLOW);
+        output.sendTip(source, "complexityanalyzer.command.system.reload_warning");
+        output.sendTip(source, "complexityanalyzer.command.system.running_background");
         engine.reloadAsync(source.getLevel());
         return 1;
     }
@@ -139,15 +139,16 @@ public final class SystemCommand {
 
         ChatFormatting memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN : (memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED);
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📈", "Server Performance", ChatFormatting.GOLD);
+        output.sendHeader(source, "📈", "complexityanalyzer.command.system.perf_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
         String tpsIcon = finalTps >= 19.0 ? "✓" : finalTps >= 16.0 ? "⚠" : "✗";
-        output.sendSubEntry(source, "TPS", String.format("%.2f %s", finalTps, tpsIcon), ChatFormatting.GRAY, tpsColor);
-        output.sendSubEntry(source, "MSPT", String.format("%.2f ms", mspt), ChatFormatting.GRAY, msptColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.tps_label", String.format("%.2f %s", finalTps, tpsIcon), ChatFormatting.GRAY, tpsColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.mspt_label", String.format("%.2f %s", mspt, Component.translatable("complexityanalyzer.unit.time.milliseconds_short").getString()), ChatFormatting.GRAY, msptColor);
         output.sendValueBar(source, (int) Math.min(100, mspt * 2), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
         output.sendEmptyLine(source);
-        output.sendStatusLine(source, "💾", "Memory Usage", ChatFormatting.AQUA);
-        output.sendSubEntry(source, "Used", String.format("%d MB / %d MB", usedMemory, totalMemory), ChatFormatting.GRAY, memoryColor);
+        String mbSuffix = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
+        output.sendStatusLine(source, "💾", "complexityanalyzer.command.system.memory_usage", ChatFormatting.AQUA);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.used_label", String.format("%d %s / %d %s", usedMemory, mbSuffix, totalMemory, mbSuffix), ChatFormatting.GRAY, memoryColor);
         output.sendValueBar(source, (int) memoryPercent, ChatFormatting.DARK_GRAY, String.format("%.1f%%", memoryPercent), memoryColor);
         output.sendEmptyLine(source);
         output.sendFooter(source);
@@ -160,18 +161,18 @@ public final class SystemCommand {
         AnalysisEngine engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.literal("⚠ Engine is not ready!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.engine_not_ready"));
             return 0;
         }
 
         var stats = engine.getStats();
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "Detailed Statistics", ChatFormatting.GREEN);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.system.detailed_stats_header", ChatFormatting.GREEN);
         output.sendEmptyLine(source);
-        output.sendSubEntry(source, "📦", "Items", String.valueOf(stats.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendSubEntry(source, "📜", "Recipes", String.valueOf(stats.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.items_label", String.valueOf(stats.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.recipes_label", String.valueOf(stats.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
-        output.sendSubEntry(source, "💎", "Cached Items", String.valueOf(stats.baseResourceCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.cached_items", String.valueOf(stats.baseResourceCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
         output.sendFooter(source);
         return 1;
@@ -182,11 +183,11 @@ public final class SystemCommand {
         OutputManager output = new OutputManager(source.getServer());
         ThreadPoolManager.PoolStats stats = ThreadPoolManager.getInstance().getStats();
         output.sendEmptyLine(source);
-        output.sendHeader(source, "⚙", "Thread Pool Statistics", ChatFormatting.GOLD);
+        output.sendHeader(source, "⚙", "complexityanalyzer.command.system.thread_pool_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🔹", "Parallelism Target", String.valueOf(stats.parallelism()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🔹", "Compute Pool Active", String.valueOf(stats.activeThreads()), ChatFormatting.GRAY, ChatFormatting.YELLOW);
-        output.sendEntry(source, "🔹", "Queued Tasks", String.valueOf(stats.queuedTasks()), ChatFormatting.GRAY, stats.queuedTasks() > 100 ? ChatFormatting.RED : ChatFormatting.GREEN);
+        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.parallelism_target", String.valueOf(stats.parallelism()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.compute_pool_active", String.valueOf(stats.activeThreads()), ChatFormatting.GRAY, ChatFormatting.YELLOW);
+        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.queued_tasks", String.valueOf(stats.queuedTasks()), ChatFormatting.GRAY, stats.queuedTasks() > 100 ? ChatFormatting.RED : ChatFormatting.GREEN);
         output.sendEmptyLine(source);
         output.sendFooter(source);
         return 1;

@@ -60,7 +60,8 @@ public class OutputManager {
     }
 
     public void sendToAdmins(Component message) {
-        Component adminMessage = Component.literal("[ADMIN] ").withStyle(ChatFormatting.GRAY)
+        Component adminPrefix = Component.translatable("complexityanalyzer.output.admin_prefix").withStyle(ChatFormatting.GRAY);
+        Component adminMessage = Component.literal("").append(adminPrefix)
                 .append(message.copy().withStyle(ChatFormatting.ITALIC));
 
         server.getPlayerList().getPlayers().forEach(player -> {
@@ -82,10 +83,10 @@ public class OutputManager {
         sendInfo(source, Component.empty());
     }
 
-    public void sendHeader(CommandSourceStack source, String icon, String title, ChatFormatting color) {
+    public void sendHeader(CommandSourceStack source, String icon, Object title, ChatFormatting color) {
         sendSeparator(source);
         sendInfo(source, Component.literal(icon + " ").withStyle(color)
-                .append(Component.literal(title).withStyle(color, ChatFormatting.BOLD)));
+                .append(toComponent(title).copy().withStyle(color, ChatFormatting.BOLD)));
         sendSeparator(source);
     }
 
@@ -93,83 +94,96 @@ public class OutputManager {
         sendSeparator(source);
     }
 
-    public void sendEntry(CommandSourceStack source, String icon, String label, String value, ChatFormatting labelColor, ChatFormatting valueColor) {
+    public void sendEntry(CommandSourceStack source, Object icon, Object label, Object value, ChatFormatting labelColor, ChatFormatting valueColor) {
         source.sendSuccess(() -> Component.literal("  ")
-                .append(Component.literal(icon + " ").withStyle(valueColor))
-                .append(Component.literal(label + ": ").withStyle(labelColor))
-                .append(Component.literal(value).withStyle(valueColor, ChatFormatting.BOLD)), false);
+                .append(toComponent(icon).copy().withStyle(valueColor).append(" "))
+                .append(toComponent(label).copy().append(": ").withStyle(labelColor))
+                .append(toComponent(value).copy().withStyle(valueColor, ChatFormatting.BOLD)), false);
     }
 
-    public void sendSubEntry(CommandSourceStack source, String icon, String label, String value, ChatFormatting labelColor, ChatFormatting valueColor) {
+    public void sendSubEntry(CommandSourceStack source, Object icon, Object label, Object value, ChatFormatting labelColor, ChatFormatting valueColor) {
         source.sendSuccess(() -> Component.literal("    ")
-                .append(Component.literal(icon + " ").withStyle(valueColor))
-                .append(Component.literal(label + ": ").withStyle(labelColor))
-                .append(Component.literal(value).withStyle(valueColor, ChatFormatting.BOLD)), false);
+                .append(toComponent(icon).copy().withStyle(valueColor).append(" "))
+                .append(toComponent(label).copy().append(": ").withStyle(labelColor))
+                .append(toComponent(value).copy().withStyle(valueColor, ChatFormatting.BOLD)), false);
     }
 
-    public void sendSubEntry(CommandSourceStack source, String label, String value, ChatFormatting labelColor, ChatFormatting valueColor) {
+    public void sendSubEntry(CommandSourceStack source, Object label, Object value, ChatFormatting labelColor, ChatFormatting valueColor) {
         source.sendSuccess(() -> Component.literal("    • ")
                 .withStyle(ChatFormatting.DARK_GRAY)
-                .append(Component.literal(label + ": ").withStyle(labelColor))
-                .append(Component.literal(value).withStyle(valueColor, ChatFormatting.BOLD)), false);
+                .append(toComponent(label).copy().append(": ").withStyle(labelColor))
+                .append(toComponent(value).copy().withStyle(valueColor, ChatFormatting.BOLD)), false);
     }
 
-    public void sendTip(CommandSourceStack source, String text) {
-        source.sendSuccess(() -> Component.literal("    💡 Tip: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(text).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)), false);
+    public void sendTip(CommandSourceStack source, String textKey, Object... args) {
+        source.sendSuccess(() -> Component.literal("    💡 ")
+                .append(Component.translatable("complexityanalyzer.output.tip", Component.translatable(textKey, args))
+                        .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)), false);
     }
 
-    public void sendClickableTip(CommandSourceStack source, String prefix, String linkText, String suffix, String command, String hoverText) {
+    public void sendTipLiteral(CommandSourceStack source, Object literal) {
+        source.sendSuccess(() -> Component.literal("    💡 ")
+                .append(Component.translatable("complexityanalyzer.output.tip", toComponent(literal))
+                        .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)), false);
+    }
+
+    public void sendClickableTip(CommandSourceStack source, Object prefix, Object linkText, Object suffix, String command, Object hoverText) {
         source.sendSuccess(() -> Component.literal("    💡 ")
                 .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(prefix).withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(linkText)
+                .append(toComponent(prefix).copy().withStyle(ChatFormatting.GRAY))
+                .append(toComponent(linkText).copy()
                         .withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE)
                         .withStyle(style -> style
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, command))
-                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(hoverText).withStyle(ChatFormatting.GREEN)))))
-                .append(Component.literal(suffix).withStyle(ChatFormatting.GRAY)), false);
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, toComponent(hoverText).copy().withStyle(ChatFormatting.GREEN)))))
+                .append(toComponent(suffix).copy().withStyle(ChatFormatting.GRAY)), false);
     }
 
-    public void sendProgressBar(CommandSourceStack source, String label, int percent, String textValue, ChatFormatting labelColor, ChatFormatting barColor) {
+    public void sendProgressBar(CommandSourceStack source, Object label, int percent, Object textValue, ChatFormatting labelColor, ChatFormatting barColor) {
         String barStr = getBarString(percent);
         source.sendSuccess(() -> Component.literal("    ")
-                .append(Component.literal(label + ": ").withStyle(labelColor))
+                .append(toComponent(label).copy().append(": ").withStyle(labelColor))
                 .append(Component.literal(barStr).withStyle(barColor))
-                .append(Component.literal(" " + textValue).withStyle(ChatFormatting.WHITE)), false);
+                .append(toComponent(textValue).copy().withStyle(ChatFormatting.WHITE)), false);
     }
 
-    public void sendStatusLine(CommandSourceStack source, String icon, String text, ChatFormatting color) {
+    public void sendStatusLine(CommandSourceStack source, String icon, Object text, ChatFormatting color) {
         source.sendSuccess(() -> Component.literal("  " + icon + " ")
                 .withStyle(color)
-                .append(Component.literal(text).withStyle(color)), false);
+                .append(toComponent(text).copy().withStyle(color)), false);
     }
 
-    public void sendValueBar(CommandSourceStack source, int percent, ChatFormatting barColor, String suffix, ChatFormatting suffixColor) {
+    public void sendValueBar(CommandSourceStack source, int percent, ChatFormatting barColor, Object suffix, ChatFormatting suffixColor) {
         String barStr = getBarString(percent);
         source.sendSuccess(() -> Component.literal("    ")
                 .append(Component.literal(barStr).withStyle(barColor))
-                .append(Component.literal(" " + suffix).withStyle(suffixColor)), false);
+                .append(toComponent(suffix).copy().withStyle(suffixColor)), false);
     }
 
-    public void sendLink(CommandSourceStack source, String label, String buttonText, String url, ChatFormatting btnColor, String hover) {
+    public void sendLink(CommandSourceStack source, Object label, Object buttonText, String url, ChatFormatting btnColor, String hoverKey, Object... hoverArgs) {
         source.sendSuccess(() -> Component.literal("  ")
-                .append(Component.literal(label + ": ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(buttonText)
+                .append(toComponent(label).copy().append(": ").withStyle(ChatFormatting.GRAY))
+                .append(toComponent(buttonText).copy()
                         .withStyle(btnColor, ChatFormatting.UNDERLINE)
                         .withStyle(style -> style
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url))
-                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(hover).withStyle(ChatFormatting.GREEN))))), false);
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable(hoverKey, hoverArgs).withStyle(ChatFormatting.GREEN))))), false);
     }
 
-    public void sendCopyAction(CommandSourceStack source, String label, String buttonText, String textToCopy, ChatFormatting btnColor, String hover) {
+    public void sendCopyAction(CommandSourceStack source, Object label, Object buttonText, String textToCopy, ChatFormatting btnColor, String hoverKey, Object... hoverArgs) {
         source.sendSuccess(() -> Component.literal("  ")
-                .append(Component.literal(label + ": ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(buttonText)
+                .append(toComponent(label).copy().append(": ").withStyle(ChatFormatting.GRAY))
+                .append(toComponent(buttonText).copy()
                         .withStyle(btnColor, ChatFormatting.UNDERLINE)
                         .withStyle(style -> style
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textToCopy))
-                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(hover).withStyle(ChatFormatting.GREEN))))), false);
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable(hoverKey, hoverArgs).withStyle(ChatFormatting.GREEN))))), false);
+    }
+
+    private Component toComponent(Object obj) {
+        if (obj instanceof Component c) return c;
+        if (obj instanceof String s) return Component.translatable(s);
+        return Component.literal(String.valueOf(obj));
     }
 
     private String getBarString(int percent) {

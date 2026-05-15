@@ -93,42 +93,37 @@ public class BaseResourceData {
     }
 
     public enum ResourceSourceType {
-        OVERRIDE("Override", 0.0),
+        OVERRIDE("complexityanalyzer.source_type.override", 0.0),
+        ORE("complexityanalyzer.source_type.ore", 1.0),
+        EMPIRICAL_BLOCK("complexityanalyzer.source_type.empirical_block", 1.0),
+        BLOCK("complexityanalyzer.source_type.block", 1.0),
+        BLOCK_TRANSFORMATION("complexityanalyzer.source_type.block_transformation", 1.0),
+        FARMING("complexityanalyzer.source_type.farming", 0.8),
+        CRAFTING("complexityanalyzer.source_type.crafting", 1.0),
+        RENEWABLE("complexityanalyzer.source_type.renewable", 0.8),
+        SHEARING("complexityanalyzer.source_type.shearing", 0.7),
+        FISHING("complexityanalyzer.source_type.fishing", 1.2),
+        MOB_DROP("complexityanalyzer.source_type.mob_drop", 1.8),
+        VILLAGER_TRADE("complexityanalyzer.source_type.villager_trade", 2.0),
+        PIGLIN_BARTERING("complexityanalyzer.source_type.piglin_bartering", 2.2),
+        CHEST_LOOT("complexityanalyzer.source_type.chest_loot", 3.0),
+        ARCHAEOLOGY("complexityanalyzer.source_type.archaeology", 5.0),
+        SPECIAL_LOOT("complexityanalyzer.source_type.special_loot", 4.0),
+        SPECIAL_ACTION("complexityanalyzer.source_type.special_action", 2.5),
+        GENERIC_LOOT("complexityanalyzer.source_type.generic_loot", 3.0),
+        UNKNOWN("complexityanalyzer.source_type.unknown", 10.0),
+        UNOBTAINABLE("complexityanalyzer.source_type.unobtainable", Double.POSITIVE_INFINITY);
 
-        ORE("Ore/Mining", 1.0),
-        EMPIRICAL_BLOCK("Empirical Block", 1.0),
-        BLOCK("Block", 1.0),
-        BLOCK_TRANSFORMATION("Block Transformation", 1.0),
-        FARMING("Farming", 0.8),
-        CRAFTING("Crafting", 1.0),
-
-        RENEWABLE("Renewable", 0.8),
-        SHEARING("Shearing", 0.7),
-        FISHING("Fishing", 1.2),
-
-        MOB_DROP("Mob Drop", 1.8),
-        VILLAGER_TRADE("Villager Trade", 2.0),
-        PIGLIN_BARTERING("Piglin Bartering", 2.2),
-        CHEST_LOOT("Chest Loot", 3.0),
-        ARCHAEOLOGY("Archaeology", 5.0),
-
-        SPECIAL_LOOT("Special Loot", 4.0),
-        SPECIAL_ACTION("Special Action", 2.5),
-
-        GENERIC_LOOT("Generic Loot", 3.0),
-        UNKNOWN("Unknown", 10.0),
-        UNOBTAINABLE("Unobtainable", Double.POSITIVE_INFINITY);
-
-        private final String displayName;
+        private final String translationKey;
         private final double baseMultiplier;
 
-        ResourceSourceType(String displayName, double baseMultiplier) {
-            this.displayName = displayName;
+        ResourceSourceType(String translationKey, double baseMultiplier) {
+            this.translationKey = translationKey;
             this.baseMultiplier = baseMultiplier;
         }
 
         public String getDisplayName() {
-            return displayName;
+            return translationKey;
         }
 
         public double getBaseMultiplier() {
@@ -181,8 +176,9 @@ public class BaseResourceData {
             return this;
         }
 
-        public void addMetadata(String key, String value) {
+        public Builder addMetadata(String key, String value) {
             this.metadata.put(key, value);
+            return this;
         }
 
         public Builder metadata(Map<String, String> meta) {

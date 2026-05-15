@@ -45,12 +45,8 @@ public class FastBiomeFinder {
         return newCache;
     }
 
-    public static BlockPos findBiome(
-            ServerLevel level,
-            Predicate<Holder<Biome>> biomePredicate,
-            BlockPos origin,
-            int maxRadius
-    ) {
+    public static BlockPos findBiome(ServerLevel level, Predicate<Holder<Biome>> biomePredicate,
+                                     BlockPos origin, int maxRadius) {
         CachedSamplers samplers = getSamplers(level);
         int searchY = level.getSeaLevel();
         int coarseStep = Math.max(256, maxRadius / 25);
@@ -76,6 +72,7 @@ public class FastBiomeFinder {
                     return new BlockPos(centerX + offset, y, centerZ + distance);
                 }
             }
+
             for (int offset = -distance + step; offset < distance; offset += step) {
                 if (checkBiomeFast(samplers, predicate, centerX - distance, y, centerZ + offset)) {
                     return new BlockPos(centerX - distance, y, centerZ + offset);
@@ -90,8 +87,7 @@ public class FastBiomeFinder {
     }
 
     private static BlockPos fastRandomSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                             BlockPos origin, int maxRadius, int y
-    ) {
+                                             BlockPos origin, int maxRadius, int y) {
         ThreadLocalRandom random = ThreadLocalRandom.current();
 
         for (int i = 0; i < 500; i++) {
@@ -106,8 +102,7 @@ public class FastBiomeFinder {
     }
 
     private static BlockPos refinePosition(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                           BlockPos rough, int defaultY
-    ) {
+                                           BlockPos rough, int defaultY) {
         int bestX = rough.getX();
         int bestZ = rough.getZ();
         int bestY = defaultY;
@@ -136,9 +131,7 @@ public class FastBiomeFinder {
         return new BlockPos(bestX, bestY, bestZ);
     }
 
-    private static boolean checkBiomeFast(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                          int x, int y, int z
-    ) {
+    private static boolean checkBiomeFast(CachedSamplers samplers, Predicate<Holder<Biome>> predicate, int x, int y, int z) {
         try {
             Holder<Biome> biome = samplers.biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, samplers.sampler);
             return predicate.test(biome);

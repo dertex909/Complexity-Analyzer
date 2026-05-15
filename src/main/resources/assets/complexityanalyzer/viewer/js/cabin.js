@@ -71,6 +71,12 @@ class Buf {
         return r;
     }
 
+    u64() {
+        const r = this.v.getBigUint64(this.p, true);
+        this.p += 8;
+        return r;
+    }
+
     f64() {
         const r = this.v.getFloat64(this.p, true);
         this.p += 8;
@@ -143,8 +149,8 @@ export class CabinFile {
     _parseHeader(b) {
         if (b.u32() !== MAGIC) throw new Error("Bad magic");
         this.version = b.u16();
-        this.tocOffset = b.seek(8).i64();
-        this.fileHash = b.seek(24).i64();
+        this.tocOffset = b.seek(8).u64();
+        this.fileHash = b.seek(24).u64();
 
         b.seek(Number(this.tocOffset));
         const count = b.u16();
@@ -339,7 +345,7 @@ export function readMeta(bytes, strings) {
         modVersion: strings.get(b.i32()),
         serverName: strings.get(b.i32()),
         timestampStr: strings.get(b.i32()),
-        timestampMs: Number(b.i64())
+        timestampMs: Number(b.u64())
     };
     Object.assign(res, {
         itemCount: b.i32(),

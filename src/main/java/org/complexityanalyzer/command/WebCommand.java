@@ -51,13 +51,21 @@ public final class WebCommand {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("web")
-                .then(Commands.literal("url").executes(WebCommand::executeUrl))
+                .then(Commands.literal("url").executes(WebCommand::executeUrl)
+                        .then(Commands.literal("link").executes(WebCommand::executeUrlLink)))
                 .then(Commands.literal("status").executes(WebCommand::executeStatus))
                 .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(WebCommand::executeReload));
     }
 
     public static int executeUrl(CommandContext<CommandSourceStack> ctx) {
-        CommandSourceStack source = ctx.getSource();
+        return executeUrlInternal(ctx.getSource(), false);
+    }
+
+    public static int executeUrlLink(CommandContext<CommandSourceStack> ctx) {
+        return executeUrlInternal(ctx.getSource(), true);
+    }
+
+    private static int executeUrlInternal(CommandSourceStack source, boolean rawLink) {
         OutputManager output = new OutputManager(source.getServer());
         ServerPlayer player = source.getEntity() instanceof ServerPlayer p ? p : null;
 
@@ -71,21 +79,28 @@ public final class WebCommand {
             return 0;
         }
 
+        String localUrl = url.replace("0.0.0.0", "127.0.0.1");
         String remoteUrl = null;
 
-        if ((url.contains("127.0.0.1") || url.contains("localhost")) && ipDetected) {
-            remoteUrl = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp);
+        if (ipDetected) {
+            String replaced = url
+                    .replace("127.0.0.1", publicIp)
+                    .replace("localhost", publicIp)
+                    .replace("0.0.0.0", publicIp);
+            if (!replaced.equals(url)) remoteUrl = replaced;
         }
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "🌐", "Web Dashboard", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
-        output.sendLink(source, "URL", "[Open in Browser]", url, ChatFormatting.AQUA, "Click to open: " + url);
+        String urlLabel = rawLink ? localUrl : "[Open in Browser]";
+        output.sendLink(source, "URL", urlLabel, localUrl, ChatFormatting.AQUA, "Click to open: " + localUrl);
 
         if (remoteUrl != null) {
             output.sendEmptyLine(source);
-            output.sendCopyAction(source, "For Friends", "[Copy Public Link]", remoteUrl, ChatFormatting.YELLOW, "Click to copy link with your public IP for others to join");
+            String remoteLabel = rawLink ? remoteUrl : "[Copy Public Link]";
+            output.sendCopyAction(source, "For Friends", remoteLabel, remoteUrl, ChatFormatting.YELLOW, "Click to copy link");
         }
 
         output.sendEmptyLine(source);

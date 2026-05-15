@@ -692,7 +692,7 @@ async function main() {
                     failCount = 0;
 
                     const serverHash = meta.hash.toLowerCase();
-                    const localHash = state.db.file.fileHash.toString(16).toLowerCase().padStart(16, '0');
+                    const localHash = state.db.file.fileHash.toString(16).toLowerCase();
 
                     console.debug(`[Poll] server: ${serverHash}, local: ${localHash}`);
 

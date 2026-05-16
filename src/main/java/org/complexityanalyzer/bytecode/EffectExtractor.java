@@ -1,63 +1,46 @@
 package org.complexityanalyzer.bytecode;
 
 import it.unimi.dsi.fastutil.objects.*;
+import org.complexityanalyzer.bytecode.graph.MethodRef;
 import org.complexityanalyzer.bytecode.model.ActionNode;
 import org.objectweb.asm.tree.*;
 
+import java.util.EnumSet;
+
 public final class EffectExtractor {
 
-    private static final Object2ObjectMap<String, ActionNode.ActionType> EFFECT_METHODS = new Object2ObjectOpenHashMap<>();
-
-    static {
-        EFFECT_METHODS.put("setBlockState", ActionNode.ActionType.SET_BLOCK);
-        EFFECT_METHODS.put("setBlock", ActionNode.ActionType.SET_BLOCK);
-        EFFECT_METHODS.put("destroyBlock", ActionNode.ActionType.REMOVE_BLOCK);
-        EFFECT_METHODS.put("removeBlock", ActionNode.ActionType.REMOVE_BLOCK);
-        EFFECT_METHODS.put("spawnEntity", ActionNode.ActionType.SPAWN_ENTITY);
-        EFFECT_METHODS.put("addFreshEntity", ActionNode.ActionType.SPAWN_ENTITY);
-        EFFECT_METHODS.put("addItem", ActionNode.ActionType.GIVE_ITEM);
-        EFFECT_METHODS.put("addItemStackToInventory", ActionNode.ActionType.GIVE_ITEM);
-        EFFECT_METHODS.put("give", ActionNode.ActionType.GIVE_ITEM);
-        EFFECT_METHODS.put("shrink", ActionNode.ActionType.REMOVE_ITEM);
-        EFFECT_METHODS.put("consume", ActionNode.ActionType.CONSUME_ITEM);
-        EFFECT_METHODS.put("hurtAndBreak", ActionNode.ActionType.DAMAGE_ITEM);
-        EFFECT_METHODS.put("setDamage", ActionNode.ActionType.DAMAGE_ITEM);
-        EFFECT_METHODS.put("playSound", ActionNode.ActionType.PLAY_SOUND);
-        EFFECT_METHODS.put("sendSystemMessage", ActionNode.ActionType.SEND_MESSAGE);
-        EFFECT_METHODS.put("displayClientMessage", ActionNode.ActionType.SEND_MESSAGE);
-    }
-
-    private static final String[] ITEM_CLASSES = {
-            "net/minecraft/world/item/ItemStack",
-            "net/minecraft/world/item/Item",
-            "net/neoforged/neoforge/items/ItemStackHandler"
-    };
-
-    private static final String[] WORLD_CLASSES = {
-            "net/minecraft/world/level/Level",
-            "net/minecraft/server/level/ServerLevel",
-            "net/minecraft/world/level/LevelAccessor"
-    };
+    private static final EnumSet<SemanticTag> EFFECT_TAGS = EnumSet.of(
+            SemanticTag.WORLD_MUTATION,
+            SemanticTag.ENTITY_SPAWN,
+            SemanticTag.ENTITY_KILL,
+            SemanticTag.ITEM_CONSUME,
+            SemanticTag.ITEM_PRODUCE,
+            SemanticTag.ITEM_GIVE,
+            SemanticTag.ENERGY_CONSUME,
+            SemanticTag.ENERGY_PRODUCE,
+            SemanticTag.FLUID_CONSUME,
+            SemanticTag.FLUID_PRODUCE,
+            SemanticTag.PLAYER_HURT,
+            SemanticTag.PLAYER_HEAL,
+            SemanticTag.GUI_OPEN,
+            SemanticTag.PLAY_SOUND,
+            SemanticTag.SEND_MESSAGE
+    );
 
     private EffectExtractor() {
     }
 
-    public static ObjectList<ActionNode> extract(BytecodeAnalyzer.AnalyzedMethod method) {
+    public static ObjectList<ActionNode> extract(BytecodeAnalyzer.AnalyzedMethod method, SemanticAnchorRegistry registry) {
         var actions = new ObjectArrayList<ActionNode>();
-        if (method.instructions() == null) return actions;
+        if (method.instructions() == null || registry == null) return actions;
 
         for (var insn : method.instructions()) {
             if (!(insn instanceof MethodInsnNode min)) continue;
 
-            var at = EFFECT_METHODS.get(min.name);
-            if (at == null) continue;
+            SemanticTag tag = registry.resolve(new MethodRef(min.owner, min.name, min.desc));
+            if (tag == null || !EFFECT_TAGS.contains(tag)) continue;
 
-            boolean isWorldCall = isWorldClass(min.owner);
-            boolean isItemCall = isItemClass(min.owner);
-            if (!isWorldCall && !isItemCall) continue;
-
-
-            var builder = new ActionNode.Builder().type(at);
+            var builder = new ActionNode.Builder().type(mapTagToActionType(tag));
             String target = extractTargetFromDesc(min.desc, min.owner);
             if (target != null) builder.target(target);
 
@@ -69,14 +52,22 @@ public final class EffectExtractor {
         return actions;
     }
 
-    private static boolean isWorldClass(String owner) {
-        for (var wc : WORLD_CLASSES) if (owner.equals(wc)) return true;
-        return owner.contains("Level") || owner.contains("World");
-    }
-
-    private static boolean isItemClass(String owner) {
-        for (var ic : ITEM_CLASSES) if (owner.equals(ic)) return true;
-        return owner.contains("Item");
+    private static ActionNode.ActionType mapTagToActionType(SemanticTag tag) {
+        return switch (tag) {
+            case WORLD_MUTATION -> ActionNode.ActionType.SET_BLOCK;
+            case ENTITY_SPAWN -> ActionNode.ActionType.SPAWN_ENTITY;
+            case ENTITY_KILL -> ActionNode.ActionType.REMOVE_BLOCK;
+            case ITEM_CONSUME -> ActionNode.ActionType.CONSUME_ITEM;
+            case ITEM_PRODUCE, ITEM_GIVE -> ActionNode.ActionType.GIVE_ITEM;
+            case ENERGY_CONSUME, ENERGY_PRODUCE -> ActionNode.ActionType.MODIFY_NBT;
+            case FLUID_CONSUME, FLUID_PRODUCE -> ActionNode.ActionType.MODIFY_NBT;
+            case PLAYER_HURT -> ActionNode.ActionType.DAMAGE_ITEM;
+            case PLAYER_HEAL -> ActionNode.ActionType.CONSUME_ITEM;
+            case GUI_OPEN -> ActionNode.ActionType.MODIFY_NBT;
+            case PLAY_SOUND -> ActionNode.ActionType.PLAY_SOUND;
+            case SEND_MESSAGE -> ActionNode.ActionType.SEND_MESSAGE;
+            default -> ActionNode.ActionType.MODIFY_NBT;
+        };
     }
 
     private static String extractTargetFromDesc(String desc, String owner) {

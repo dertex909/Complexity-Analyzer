@@ -25,6 +25,8 @@ public final class BytecodeAnalyzer {
 
     public record AnalyzedClass(
             String className,
+            String superName,
+            ObjectList<String> interfaces,
             ObjectList<AnalyzedMethod> methods,
             ObjectList<String> fieldTypes,
             ObjectList<String> fieldNames,
@@ -48,7 +50,9 @@ public final class BytecodeAnalyzer {
                 fNames.add(f.name);
             }
 
-            return new AnalyzedClass(internalName, methods, fTypes, fNames, node.visibleAnnotations != null
+            return new AnalyzedClass(internalName, node.superName,
+                    node.interfaces != null ? new ObjectArrayList<>(node.interfaces) : ObjectLists.emptyList(),
+                    methods, fTypes, fNames, node.visibleAnnotations != null
                     ? new ObjectArrayList<>(node.visibleAnnotations) : ObjectLists.emptyList());
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.debug("[BA] Failed {}: {}", internalName, e.getMessage());

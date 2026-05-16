@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.bytecode.cache.*;
+import org.complexityanalyzer.bytecode.graph.*;
 import org.complexityanalyzer.bytecode.model.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 
@@ -59,7 +60,7 @@ public final class BytecodeAnalysisEngine {
     public AnalysisResult analyzeAndMerge(RecipeGraph graph) {
         long start = System.currentTimeMillis();
 
-        ComplexityAnalyzer.LOGGER.info("=== [Bytecode Analysis] Starting semantic extraction ===");
+        ComplexityAnalyzer.LOGGER.info("=== [Bytecode Analysis] 3-pass call graph pipeline starting ===");
 
         bytecodeDumps.clear();
 
@@ -69,9 +70,9 @@ public final class BytecodeAnalysisEngine {
             return emptyResult(start);
         }
 
-        Map<String, byte[]> allClasses = ClassCollector.collectAll(modList);
-        Map<String, byte[]> toAnalyze = BytecodeCacheManager.filterChanged(allClasses, cache);
-        int skipped = allClasses.size() - toAnalyze.size();
+        Map<String, byte[]> allClassesRaw = ClassCollector.collectAll(modList);
+        Map<String, byte[]> toAnalyze = BytecodeCacheManager.filterChanged(allClassesRaw, cache);
+        int skipped = allClassesRaw.size() - toAnalyze.size();
 
         if (toAnalyze.isEmpty()) {
             ComplexityAnalyzer.LOGGER.info("[Bytecode] No changes detected, skipping analysis");
@@ -79,8 +80,8 @@ public final class BytecodeAnalysisEngine {
             return this.lastResult;
         }
 
-        var allEvents = new ObjectArrayList<EventNode>();
-        var allMachines = new ObjectArrayList<MachineNode>();
+        // === PASS 1: analyze bytecode + build call graphs ===
+        var analyzedClasses = new Object2ObjectOpenHashMap<String, BytecodeAnalyzer.AnalyzedClass>();
         var scanned = new AtomicInteger(0);
         var failed = new AtomicInteger(0);
 
@@ -91,36 +92,8 @@ public final class BytecodeAnalysisEngine {
                     failed.incrementAndGet();
                     return;
                 }
-
-                String modId = inferModId(clazz.className());
-
-                var events = EventDetector.detectEvents(clazz, modId);
-                if (!events.isEmpty()) for (var event : events) {
-                    var m = BytecodeAnalyzer.findMethod(clazz, event.methodName());
-                    if (m != null) {
-                        collectDump(clazz.className(), m, "EVENT: " + event.eventType());
-                        synchronized (allEvents) {
-                            allEvents.add(enrichEvent(event, m));
-                        }
-                    } else {
-                        synchronized (allEvents) {
-                            allEvents.add(event);
-                        }
-                    }
-                }
-
-                var candidate = PatternEngine.classifyMachine(clazz, modId);
-                if (candidate.isMachine()) {
-                    var tickM = BytecodeAnalyzer.findMethod(clazz, "tick");
-                    if (tickM == null) for (var tn : PatternEngine.TICK_NAMES) {
-                        tickM = BytecodeAnalyzer.findMethod(clazz, tn);
-                        if (tickM != null) break;
-                    }
-                    if (tickM != null) collectDump(clazz.className(), tickM, "MACHINE");
-                    collectClassDump(clazz.className(), clazz);
-                    synchronized (allMachines) {
-                        allMachines.add(PatternEngine.extractMachineLogic(candidate));
-                    }
+                synchronized (analyzedClasses) {
+                    analyzedClasses.put(clazz.className(), clazz);
                 }
                 scanned.incrementAndGet();
             } catch (Exception e) {
@@ -128,7 +101,76 @@ public final class BytecodeAnalysisEngine {
             }
         });
 
+        if (analyzedClasses.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.warn("[Bytecode] No classes successfully analyzed");
+            return emptyResult(start);
+        }
+
+        ComplexityAnalyzer.LOGGER.info("[Bytecode] Pass 1 complete: {} classes analyzed, {} failed", analyzedClasses.size(), failed.get());
+
+        // === PASS 2: build call graphs + run semantic analyzer ===
+        var callGraphs = CallGraphBuilder.build(analyzedClasses);
+        var anchorRegistry = SemanticAnchorRegistry.defaultRegistry();
+
+        var allProfiles = new Object2ObjectOpenHashMap<MethodRef, SemanticProfile>();
+        for (var cgEntry : callGraphs.values()) {
+            var profiles = SemanticAnalyzer.analyze(cgEntry, anchorRegistry);
+            allProfiles.putAll(profiles);
+        }
+
+        ComplexityAnalyzer.LOGGER.info("[Bytecode] Pass 2 complete: {} call graphs, {} semantic profiles",
+                callGraphs.size(), allProfiles.size());
+
+        // === PASS 3: detect events, machines, recipes ===
+        var allEvents = new ObjectArrayList<EventNode>();
+        var allMachines = new ObjectArrayList<MachineNode>();
+        var allRecipeEdges = new ObjectArrayList<SemanticEdge>();
+
+        for (var clazz : analyzedClasses.values()) {
+            String modId = inferModId(clazz.className());
+
+            var events = EventDetector.detectEvents(clazz, modId, allProfiles);
+            if (!events.isEmpty()) for (var event : events) {
+                var m = BytecodeAnalyzer.findMethod(clazz, event.methodName());
+                if (m != null) {
+                    collectDump(clazz.className(), m, "EVENT: " + event.eventType());
+                    synchronized (allEvents) {
+                        allEvents.add(enrichEvent(event, m, anchorRegistry));
+                    }
+                } else {
+                    synchronized (allEvents) {
+                        allEvents.add(event);
+                    }
+                }
+            }
+
+            var candidate = PatternEngine.classifyMachine(clazz, modId, allProfiles);
+            if (candidate.isMachine()) {
+                var tickM = BytecodeAnalyzer.findMethod(clazz, "tick");
+                if (tickM == null) for (var tn : PatternEngine.TICK_NAMES) {
+                    tickM = BytecodeAnalyzer.findMethod(clazz, tn);
+                    if (tickM != null) break;
+                }
+                if (tickM != null) collectDump(clazz.className(), tickM, "MACHINE");
+                collectClassDump(clazz.className(), clazz);
+                synchronized (allMachines) {
+                    allMachines.add(PatternEngine.extractMachineLogic(candidate, anchorRegistry));
+                }
+            }
+
+            var recipeEdges = RecipeDetector.detect(clazz, modId, anchorRegistry);
+            if (!recipeEdges.isEmpty()) {
+                synchronized (allRecipeEdges) {
+                    allRecipeEdges.addAll(recipeEdges);
+                }
+            }
+        }
+
+        ComplexityAnalyzer.LOGGER.info("[Bytecode] Pass 3 complete: {} events, {} machines, {} recipe edges",
+                allEvents.size(), allMachines.size(), allRecipeEdges.size());
+
         var edges = SemanticGraphBuilder.build(allEvents, allMachines);
+        edges.addAll(allRecipeEdges);
 
         int merged = 0;
         if (graph != null && !edges.isEmpty()) merged = GraphMerger.mergeInto(graph, edges);
@@ -145,9 +187,9 @@ public final class BytecodeAnalysisEngine {
         return this.lastResult;
     }
 
-    private static EventNode enrichEvent(EventNode event, BytecodeAnalyzer.AnalyzedMethod method) {
-        var conds = ConditionExtractor.extract(method);
-        var acts = EffectExtractor.extract(method);
+    private static EventNode enrichEvent(EventNode event, BytecodeAnalyzer.AnalyzedMethod method, SemanticAnchorRegistry registry) {
+        var conds = ConditionExtractor.extract(method, registry);
+        var acts = EffectExtractor.extract(method, registry);
         if (conds.isEmpty() && acts.isEmpty()) return event;
 
         var b = new EventNode.Builder().eventType(event.eventType()).methodName(event.methodName())

@@ -1,14 +1,12 @@
 package org.complexityanalyzer.bytecode;
 
 import it.unimi.dsi.fastutil.objects.*;
+import org.complexityanalyzer.bytecode.graph.MethodRef;
 import org.complexityanalyzer.bytecode.model.MachineNode;
 
-public final class PatternEngine {
+import java.util.Set;
 
-    private static final String[] MACHINE_FIELD_PATTERNS = {
-            "ItemStack", "NonNullList", "SimpleContainer",
-            "ItemStackHandler", "IItemHandler", "Inventory"
-    };
+public final class PatternEngine {
 
     private static final String[] TICK_METHOD_NAMES = {
             "tick", "serverTick", "clientTick", "onTick", "update",
@@ -17,6 +15,24 @@ public final class PatternEngine {
     };
 
     public static final String[] TICK_NAMES = TICK_METHOD_NAMES;
+
+    private static final SemanticProfile.SemanticProfileDefinition MACHINE_PROFILE =
+            new SemanticProfile.SemanticProfileDefinition(
+                    "MACHINE",
+                    Set.of(SemanticTag.TICK, SemanticTag.ITEM_MOVE),
+                    Set.of(SemanticTag.ENERGY_CONSUME, SemanticTag.FLUID_CONSUME, SemanticTag.ENERGY_PRODUCE,
+                            SemanticTag.FLUID_PRODUCE, SemanticTag.MACHINE_CAPABILITY, SemanticTag.MACHINE_WORKABLE_LOGIC),
+                    0.3
+            );
+
+    private static final SemanticProfile.SemanticProfileDefinition MACHINE_DEFINITION_PROFILE =
+            new SemanticProfile.SemanticProfileDefinition(
+                    "MACHINE_DEFINITION",
+                    Set.of(SemanticTag.MACHINE_DEFINITION),
+                    Set.of(SemanticTag.MACHINE_RECIPE_TYPE, SemanticTag.MACHINE_TIER, SemanticTag.MACHINE_MULTIBLOCK,
+                            SemanticTag.MACHINE_WORKABLE_LOGIC, SemanticTag.MACHINE_CAPABILITY, SemanticTag.GUI_OPEN),
+                    0.3
+            );
 
     private PatternEngine() {
     }
@@ -28,20 +44,21 @@ public final class PatternEngine {
             ObjectList<String> reasons) {
     }
 
-    public static MachineCandidate classifyMachine(BytecodeAnalyzer.AnalyzedClass clazz, String modId) {
+    public static MachineCandidate classifyMachine(BytecodeAnalyzer.AnalyzedClass clazz, String modId,
+                                                    Object2ObjectMap<MethodRef, SemanticProfile> profiles) {
         var reasons = new ObjectArrayList<String>();
+        boolean hasMachineFields = false;
 
-        boolean hasItemFields = false;
         for (var ft : clazz.fieldTypes()) {
-            for (var pat : MACHINE_FIELD_PATTERNS) {
-                if (ft.contains(pat)) {
-                    hasItemFields = true;
-                    break;
-                }
+            if (ft.contains("ItemStack") || ft.contains("NonNullList") || ft.contains("SimpleContainer")
+                    || ft.contains("ItemStackHandler") || ft.contains("IItemHandler") || ft.contains("Inventory")
+                    || ft.contains("Machine") || ft.contains("RecipeType") || ft.contains("MetaMachine")
+                    || ft.contains("Multiblock") || ft.contains("Capability") || ft.contains("Fluid")) {
+                hasMachineFields = true;
+                break;
             }
-            if (hasItemFields) break;
         }
-        if (hasItemFields) reasons.add("has ItemStack/Inventory fields");
+        if (hasMachineFields) reasons.add("has machine/inventory/capability fields");
 
         boolean hasTickMethod = false;
         for (var tn : TICK_METHOD_NAMES) {
@@ -52,12 +69,30 @@ public final class PatternEngine {
             }
         }
 
-        boolean isMachine = (hasItemFields && hasTickMethod) || (hasItemFields && clazz.methods().size() >= 4);
+        boolean profileMatch = false;
+        if (profiles != null) {
+            for (var m : clazz.methods()) {
+                MethodRef ref = new MethodRef(clazz.className(), m.name(), m.descriptor());
+                SemanticProfile profile = profiles.get(ref);
+                if (profile != null && (profile.matchesProfile(MACHINE_PROFILE, 0.3)
+                        || profile.matchesProfile(MACHINE_DEFINITION_PROFILE, 0.3)
+                        || looksLikeMachineProfile(profile))) {
+                    profileMatch = true;
+                    reasons.add("method " + m.name() + " matches MACHINE profile");
+                    break;
+                }
+            }
+        }
+
+        boolean typeLooksMachine = looksLikeMachineClass(clazz.className(), clazz.superName(), clazz.interfaces());
+        if (typeLooksMachine) reasons.add("class hierarchy/name looks like machine");
+
+        boolean isMachine = profileMatch || typeLooksMachine || (hasMachineFields && hasTickMethod) || (hasMachineFields && clazz.methods().size() >= 4);
 
         return new MachineCandidate(clazz, modId, isMachine, reasons);
     }
 
-    public static MachineNode extractMachineLogic(MachineCandidate candidate) {
+    public static MachineNode extractMachineLogic(MachineCandidate candidate, SemanticAnchorRegistry registry) {
         var builder = new MachineNode.Builder()
                 .className(candidate.clazz().className())
                 .modId(candidate.modId());
@@ -69,7 +104,7 @@ public final class PatternEngine {
         }
 
         if (tickMethod != null) {
-            var logic = MachineLogicExtractor.extract(tickMethod);
+            var logic = MachineLogicExtractor.extract(tickMethod, registry);
             for (var in : logic.inputs()) builder.addInput(in);
             for (var out : logic.outputs()) builder.addOutput(out);
             builder.deterministic(logic.deterministic());
@@ -82,5 +117,25 @@ public final class PatternEngine {
         }
 
         return builder.build();
+    }
+
+    private static boolean looksLikeMachineProfile(SemanticProfile profile) {
+        if (profile.hasTag(SemanticTag.MACHINE_RECIPE_TYPE) && profile.hasTag(SemanticTag.MACHINE_CAPABILITY)) return true;
+        if (profile.hasTag(SemanticTag.MACHINE_RECIPE_TYPE) && profile.hasTag(SemanticTag.MACHINE_TIER)) return true;
+        if (profile.hasTag(SemanticTag.MACHINE_MULTIBLOCK) && profile.hasTag(SemanticTag.MACHINE_WORKABLE_LOGIC)) return true;
+        if (profile.hasTag(SemanticTag.RECIPE_BUILDER_START) && profile.hasTag(SemanticTag.MACHINE_RECIPE_TYPE)) return true;
+        return false;
+    }
+
+    private static boolean looksLikeMachineClass(String className, String superName, ObjectList<String> interfaces) {
+        if (containsMachineWords(className) || containsMachineWords(superName)) return true;
+        for (var iface : interfaces) if (containsMachineWords(iface)) return true;
+        return false;
+    }
+
+    private static boolean containsMachineWords(String value) {
+        if (value == null) return false;
+        return value.contains("Machine") || value.contains("MetaMachine") || value.contains("Multiblock")
+                || value.contains("Workable") || value.contains("RecipeLogic") || value.contains("Generator");
     }
 }

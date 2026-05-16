@@ -1,6 +1,7 @@
 package org.complexityanalyzer.bytecode;
 
 import it.unimi.dsi.fastutil.objects.*;
+import org.complexityanalyzer.bytecode.graph.MethodRef;
 import org.complexityanalyzer.bytecode.model.EventNode;
 import org.objectweb.asm.*;
 import org.objectweb.asm.tree.AnnotationNode;
@@ -12,28 +13,11 @@ public final class EventDetector {
     private static final String SUB_DESC = "Lnet/neoforged/bus/api/SubscribeEvent;";
     private static final String SUBSCRIBER_DESC = "Lnet/neoforged/fml/common/EventBusSubscriber;";
 
-    private static final Object2ObjectMap<String, String> EVENT_MAP = new Object2ObjectOpenHashMap<>();
-
-    static {
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerInteractEvent$RightClickBlock;", "RIGHT_CLICK_BLOCK");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerInteractEvent$RightClickItem;", "RIGHT_CLICK_ITEM");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerInteractEvent$RightClickEmpty;", "RIGHT_CLICK_EMPTY");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerInteractEvent$LeftClickBlock;", "LEFT_CLICK_BLOCK");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerInteractEvent$EntityInteract;", "ENTITY_INTERACT");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/living/LivingDeathEvent;", "ENTITY_DEATH");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/living/LivingHurtEvent;", "ENTITY_HURT");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerEvent$ItemPickupEvent;", "ITEM_PICKUP");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/entity/player/PlayerEvent$ItemCraftedEvent;", "ITEM_CRAFTED");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/level/BlockEvent$BreakEvent;", "BLOCK_BREAK");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/level/BlockEvent$EntityPlaceEvent;", "BLOCK_PLACE");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/tick/LevelTickEvent;", "LEVEL_TICK");
-        EVENT_MAP.put("Lnet/neoforged/neoforge/event/tick/ServerTickEvent;", "SERVER_TICK");
-    }
-
     private EventDetector() {
     }
 
-    public static ObjectList<EventNode> detectEvents(BytecodeAnalyzer.AnalyzedClass clazz, String modId) {
+    public static ObjectList<EventNode> detectEvents(BytecodeAnalyzer.AnalyzedClass clazz, String modId,
+                                                      Object2ObjectMap<MethodRef, SemanticProfile> profiles) {
         var events = new ObjectArrayList<EventNode>();
         if (clazz == null) return events;
 
@@ -44,7 +28,10 @@ public final class EventDetector {
             if (m.visibleAnnotations() == null) continue;
             if (!hasAnn(m.visibleAnnotations(), SUB_DESC)) continue;
 
-            String et = extractEventType(m.descriptor());
+            MethodRef methodRef = new MethodRef(clazz.className(), m.name(), m.descriptor());
+            SemanticProfile profile = profiles != null ? profiles.get(methodRef) : null;
+
+            String et = inferEventType(m.descriptor(), profile);
             if (et == null) continue;
 
             events.add(new EventNode.Builder().eventType(et).methodName(m.name()).className(clazz.className()).modId(modId).build());
@@ -52,28 +39,62 @@ public final class EventDetector {
         return events;
     }
 
-    static String extractEventType(String desc) {
-        org.objectweb.asm.Type[] args = org.objectweb.asm.Type.getArgumentTypes(desc);
+    static String inferEventType(String descriptor, SemanticProfile profile) {
+        // First: use argument type as fallback (kept for compatibility)
+        org.objectweb.asm.Type[] args = org.objectweb.asm.Type.getArgumentTypes(descriptor);
         if (args.length == 0) return null;
-        String d = args[0].getDescriptor();
+        String argDesc = args[0].getDescriptor();
 
-        String known = EVENT_MAP.get(d);
-        if (known != null) return known;
+        // Second: use semantic profile if available
+        if (profile != null) {
+            if (profile.hasTag(SemanticTag.PLAYER_INTERACT)) {
+                if (profile.hasTag(SemanticTag.WORLD_MUTATION)) {
+                    if (argDesc.contains("LeftClickBlock")) return "LEFT_CLICK_BLOCK";
+                    if (argDesc.contains("RightClickBlock")) return "RIGHT_CLICK_BLOCK";
+                    return "PLAYER_BLOCK_INTERACT";
+                }
+                if (profile.hasTag(SemanticTag.ITEM_GIVE) || profile.hasTag(SemanticTag.ITEM_CONSUME)) {
+                    if (argDesc.contains("RightClickItem")) return "RIGHT_CLICK_ITEM";
+                    return "PLAYER_ITEM_INTERACT";
+                }
+                if (argDesc.contains("EntityInteract")) return "ENTITY_INTERACT";
+                return "PLAYER_INTERACT";
+            }
+            if (profile.hasTag(SemanticTag.ENTITY_KILL) || profile.hasTag(SemanticTag.ENTITY_SPAWN)) {
+                return "ENTITY_DEATH";
+            }
+            if (profile.hasTag(SemanticTag.PLAYER_HURT)) {
+                return "ENTITY_HURT";
+            }
+            if (profile.hasTag(SemanticTag.WORLD_MUTATION)) {
+                return "BLOCK_EVENT";
+            }
+            if (profile.hasTag(SemanticTag.GUI_OPEN)) {
+                return "GUI_OPEN";
+            }
+            if (profile.hasTag(SemanticTag.LOOT_TABLE_CHECK)) {
+                return "LOOT_EVENT";
+            }
+            if (profile.hasTag(SemanticTag.TICK)) {
+                return "TICK";
+            }
+        }
 
-        if (d.contains("PlayerInteractEvent")) {
-            if (d.contains("RightClickBlock")) return "RIGHT_CLICK_BLOCK";
-            if (d.contains("RightClickItem")) return "RIGHT_CLICK_ITEM";
-            if (d.contains("RightClickEmpty")) return "RIGHT_CLICK_EMPTY";
-            if (d.contains("LeftClickBlock")) return "LEFT_CLICK_BLOCK";
-            if (d.contains("EntityInteract")) return "ENTITY_INTERACT";
+        // Fallback to argument type inference
+        if (argDesc.contains("PlayerInteractEvent")) {
+            if (argDesc.contains("RightClickBlock")) return "RIGHT_CLICK_BLOCK";
+            if (argDesc.contains("RightClickItem")) return "RIGHT_CLICK_ITEM";
+            if (argDesc.contains("RightClickEmpty")) return "RIGHT_CLICK_EMPTY";
+            if (argDesc.contains("LeftClickBlock")) return "LEFT_CLICK_BLOCK";
+            if (argDesc.contains("EntityInteract")) return "ENTITY_INTERACT";
             return "PLAYER_INTERACT";
         }
-        if (d.contains("LivingDeathEvent")) return "ENTITY_DEATH";
-        if (d.contains("LivingHurtEvent")) return "ENTITY_HURT";
-        if (d.contains("BlockEvent")) return "BLOCK_EVENT";
-        if (d.contains("TickEvent")) return "TICK";
+        if (argDesc.contains("LivingDeathEvent")) return "ENTITY_DEATH";
+        if (argDesc.contains("LivingHurtEvent")) return "ENTITY_HURT";
+        if (argDesc.contains("BlockEvent")) return "BLOCK_EVENT";
+        if (argDesc.contains("TickEvent")) return "TICK";
 
-        String sn = d.substring(d.lastIndexOf('/') + 1).replace(";", "");
+        String sn = argDesc.substring(argDesc.lastIndexOf('/') + 1).replace(";", "");
         return sn.replace("Event", "").toUpperCase();
     }
 

@@ -44,6 +44,7 @@ import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.emergency.EmergencyManager;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;

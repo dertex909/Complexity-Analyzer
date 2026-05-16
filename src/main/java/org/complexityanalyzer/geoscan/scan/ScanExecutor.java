@@ -33,7 +33,8 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.core.EmergencyManager;
+import org.complexityanalyzer.core.emergency.EmergencyManager;
+import org.complexityanalyzer.core.emergency.MemoryMonitor;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
@@ -91,12 +92,12 @@ public class ScanExecutor {
             queue.offer(snapshot);
             int currentSize = size.incrementAndGet();
             if (currentSize < ScanConfig.BATCH_SAVE_THRESHOLD) return null;
-            return drainUpTo(ScanConfig.BATCH_SAVE_THRESHOLD);
+            return drainUpTo();
         }
 
-        ObjectArrayList<ChunkSnapshot> drainUpTo(int max) {
-            ObjectArrayList<ChunkSnapshot> result = new ObjectArrayList<>(max);
-            for (int i = 0; i < max; i++) {
+        ObjectArrayList<ChunkSnapshot> drainUpTo() {
+            ObjectArrayList<ChunkSnapshot> result = new ObjectArrayList<>(ScanConfig.BATCH_SAVE_THRESHOLD);
+            for (int i = 0; i < ScanConfig.BATCH_SAVE_THRESHOLD; i++) {
                 ChunkSnapshot s = queue.poll();
                 if (s == null) break;
                 size.decrementAndGet();

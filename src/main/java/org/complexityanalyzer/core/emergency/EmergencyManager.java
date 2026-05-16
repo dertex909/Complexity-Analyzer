@@ -16,9 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.core;
+package org.complexityanalyzer.core.emergency;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 
 import java.util.concurrent.atomic.AtomicBoolean;

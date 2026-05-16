@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.geoscan.scan;
+package org.complexityanalyzer.core.emergency;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
 

@@ -27,12 +27,16 @@ import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.ref.SoftReference;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ComplexityCache {
 
-    private final Reference2ObjectMap<Item, ItemComplexity> cache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-    private final Reference2ObjectMap<Item, ComplexityCategory> categoryCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private final Reference2ObjectMap<Item, SoftReference<ItemComplexity>> cache =
+            Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+
+    private final Reference2ObjectMap<Item, SoftReference<ComplexityCategory>> categoryCache =
+            Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
     private final AtomicLong hits = new AtomicLong(0);
     private final AtomicLong misses = new AtomicLong(0);
@@ -42,12 +46,14 @@ public class ComplexityCache {
 
     @Nullable
     public ItemComplexity get(Item item) {
-        var result = cache.get(item);
+        SoftReference<ItemComplexity> ref = cache.get(item);
+        ItemComplexity result = (ref != null) ? ref.get() : null;
 
         if (result != null) {
             hits.incrementAndGet();
             return result;
         } else {
+            if (ref != null) cache.remove(item);
             misses.incrementAndGet();
             return null;
         }
@@ -56,17 +62,22 @@ public class ComplexityCache {
     public void put(Item item, ItemComplexity complexity) {
         if (item == null || complexity == null) return;
 
-        cache.put(item, complexity);
-        categoryCache.put(item, complexity.getCategory());
+        cache.put(item, new SoftReference<>(complexity));
+        categoryCache.put(item, new SoftReference<>(complexity.getCategory()));
     }
 
     @Nullable
     public ComplexityCategory getCategory(Item item) {
-        return categoryCache.get(item);
+        SoftReference<ComplexityCategory> ref = categoryCache.get(item);
+        ComplexityCategory result = (ref != null) ? ref.get() : null;
+
+        if (result == null && ref != null) categoryCache.remove(item);
+        return result;
     }
 
     public boolean contains(Item item) {
-        return cache.containsKey(item);
+        SoftReference<ItemComplexity> ref = cache.get(item);
+        return ref != null && ref.get() != null;
     }
 
     public void clear() {

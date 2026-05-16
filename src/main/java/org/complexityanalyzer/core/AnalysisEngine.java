@@ -44,7 +44,6 @@ import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.core.emergency.EmergencyManager;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
@@ -140,8 +139,6 @@ public class AnalysisEngine {
 
         this.server = serverLevel.getServer();
         analysisCancelled.set(false);
-
-        EmergencyManager.startBackgroundMonitoring();
 
         ExecutorService executor = ThreadPoolManager.getInstance().getComputePool();
 
@@ -573,6 +570,28 @@ public class AnalysisEngine {
         }
 
         isShuttingDown.set(false);
+    }
+
+    public void enterEmergencyState(String reason) {
+        stateLock.lock();
+        try {
+            ComplexityAnalyzer.LOGGER.warn("!!! EMERGENCY CLEANUP TRIGGERED: {} !!!", reason);
+
+            geoManagerLock.lock();
+            try {
+                if (this.geoManager != null) {
+                    this.geoManager.shutdown();
+                    this.geoManager = null;
+                }
+            } finally {
+                geoManagerLock.unlock();
+            }
+
+            clearAllCaches();
+            ComplexityAnalyzer.LOGGER.warn("Emergency cleanup complete. Geo-scan halted, caches cleared. Engine remains active.");
+        } finally {
+            stateLock.unlock();
+        }
     }
 
     public void shutdownCompletely() {

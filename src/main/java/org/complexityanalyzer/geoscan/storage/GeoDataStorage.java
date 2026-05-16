@@ -29,6 +29,7 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.JsonSyntaxException;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.resources.ResourceLocation;
@@ -52,7 +53,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -124,29 +124,25 @@ public class GeoDataStorage {
     public void appendReconData(ResourceLocation dimension, ResourceLocation biome, ObjectArrayList<ChunkSnapshot> newSnapshots) {
         if (newSnapshots.isEmpty()) return;
         Path file = getReconFilePath(dimension, biome);
-        ResourceLocation biomeRef = biome;
 
-        // Lock-free serialization per file via ConcurrentHashMap.compute().
-        // Internal bin-level lock is fine-grained per key, so different files don't block each other.
         fileLockMarkers.compute(file, (k, v) -> {
             try {
                 Files.createDirectories(file.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
-                        StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                     for (int i = 0, n = newSnapshots.size(); i < n; i++) {
                         writer.write(GSON.toJson(newSnapshots.get(i)));
                         writer.newLine();
                     }
                 }
             } catch (IOException e) {
-                ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biomeRef, e);
+                ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
             }
             return Boolean.TRUE;
         });
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, Path>> getAllReconFilePaths() {
-        Object2ObjectOpenHashMap<ResourceLocation, Map<ResourceLocation, Path>> allPaths = new Object2ObjectOpenHashMap<>();
+    public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> getAllReconFilePaths() {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> allPaths = new Object2ObjectOpenHashMap<>();
         if (!Files.exists(reconDir)) return allPaths;
 
         try (Stream<Path> dimNamespaces = Files.list(reconDir)) {
@@ -208,18 +204,18 @@ public class GeoDataStorage {
         }
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
-        Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
+    public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
+        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
             BiomeScanData data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
             if (data != null) mapper.afterLoad(data);
             return data;
         });
 
-        ConcurrentHashMap<ResourceLocation, Map<ResourceLocation, BiomeScanData>> concurrentData = new ConcurrentHashMap<>();
-        for (Map.Entry<ResourceLocation, Map<ResourceLocation, BiomeScanData>> entry : loadedData.entrySet()) {
-            concurrentData.put(entry.getKey(), new ConcurrentHashMap<>(entry.getValue()));
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> result = new Object2ObjectOpenHashMap<>();
+        for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> entry : loadedData.object2ObjectEntrySet()) {
+            result.put(entry.getKey(), new Object2ObjectOpenHashMap<>(entry.getValue()));
         }
-        return concurrentData;
+        return result;
     }
 
     public void saveFinalBiomeData(ResourceLocation dimension, ResourceLocation biome,
@@ -271,8 +267,8 @@ public class GeoDataStorage {
         }
     }
 
-    private <T> Map<ResourceLocation, Map<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
-        Object2ObjectOpenHashMap<ResourceLocation, Map<ResourceLocation, T>> allData = new Object2ObjectOpenHashMap<>();
+    private <T> Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> allData = new Object2ObjectOpenHashMap<>();
         if (!Files.exists(rootDir)) return allData;
 
         try (Stream<Path> dimNamespaces = Files.list(rootDir)) {
@@ -348,11 +344,11 @@ public class GeoDataStorage {
         }
     }
 
-    public Map<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
-        ConcurrentHashMap<ResourceLocation, LongOpenHashSet> allCoordinates = new ConcurrentHashMap<>();
-        Map<ResourceLocation, Map<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
+    public Object2ObjectMap<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
+        Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet> allCoordinates = new Object2ObjectOpenHashMap<>();
+        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
 
-        for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry : allPaths.entrySet()) {
+        for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> dimEntry : allPaths.object2ObjectEntrySet()) {
             ResourceLocation dim = dimEntry.getKey();
             LongOpenHashSet coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
             for (Path path : dimEntry.getValue().values()) {

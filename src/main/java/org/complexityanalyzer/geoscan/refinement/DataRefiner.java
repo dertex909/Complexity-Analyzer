@@ -27,9 +27,10 @@ import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -62,7 +63,7 @@ public class DataRefiner {
                 activeThreads.put(currentThread, Boolean.TRUE);
 
                 try {
-                    Map<ResourceLocation, Map<ResourceLocation, Path>> reconPaths = database.getAllReconFilePaths();
+                    Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> reconPaths = database.getAllReconFilePaths();
                     ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine", reconPaths.size());
 
                     if (reconPaths.isEmpty()) {
@@ -92,12 +93,12 @@ public class DataRefiner {
                         return;
                     }
 
-                    int totalBiomes = reconPaths.values().stream().mapToInt(Map::size).sum();
+                    int totalBiomes = reconPaths.values().stream().mapToInt(Object2ObjectMap::size).sum();
                     int processedBiomes = 0;
 
                     notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimensions_count", reconPaths.size()).getString());
 
-                    for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry : reconPaths.entrySet()) {
+                    for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> dimEntry : reconPaths.object2ObjectEntrySet()) {
 
                         if (Thread.currentThread().isInterrupted()) {
                             handleCancellation("during dimension loop");
@@ -107,7 +108,7 @@ public class DataRefiner {
                         ResourceLocation dimension = dimEntry.getKey();
                         notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), dimEntry.getValue().size()).getString());
 
-                        for (Map.Entry<ResourceLocation, Path> biomeEntry : dimEntry.getValue().entrySet()) {
+                        for (Object2ObjectMap.Entry<ResourceLocation, Path> biomeEntry : dimEntry.getValue().object2ObjectEntrySet()) {
 
                             if (Thread.currentThread().isInterrupted()) {
                                 handleCancellation("during biome loop");
@@ -119,11 +120,9 @@ public class DataRefiner {
                             processedBiomes++;
 
                             try (Stream<ChunkSnapshot> stream = database.streamReconFile(path)) {
-                                BiomeScanData finalData = database.refineRawDataFromStream(stream, dimension);
-                                if (finalData.getChunksScanned() > 0)
-                                    database.saveBiomeData(dimension, biome, finalData);
-
-                                ComplexityAnalyzer.LOGGER.debug("[Refiner] Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finalData.getChunksScanned());
+                                BiomeScanData finData = database.refineRawDataFromStream(stream, dimension);
+                                if (finData.getChunksScanned() > 0) database.saveBiomeData(dimension, biome, finData);
+                                ComplexityAnalyzer.LOGGER.debug("[Refiner] Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finData.getChunksScanned());
                             } catch (Exception e) {
                                 ComplexityAnalyzer.LOGGER.error("Error refining {} in {}", biome, dimension, e);
                             }

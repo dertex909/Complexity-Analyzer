@@ -60,6 +60,10 @@ public class ComplexityConfig {
 
     public static final ModConfigSpec.IntValue MAX_THREADS;
 
+    public static final ModConfigSpec.BooleanValue ENABLE_SCAN_SAFETY;
+    public static final ModConfigSpec.DoubleValue MEMORY_PAUSE_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue MEMORY_CRITICAL_THRESHOLD;
+
     private static volatile int resolvedMaxThreads = -1;
     private static volatile ObjectSet<String> blacklistCache = null;
 
@@ -146,6 +150,22 @@ public class ComplexityConfig {
         MACHINE_BASE_COMPLEXITY = builder
                 .comment(" Base complexity for machines when they are not yet calculated (used as fallback)")
                 .defineInRange("baseComplexity", 100.0, 0.0, 10000.0);
+        builder.pop();
+
+        builder.push("scan_safety");
+        builder.comment(" Automatic resource monitoring for Geo-scanning to prevent server OOM.");
+
+        ENABLE_SCAN_SAFETY = builder
+                .comment(" Enable automated scan pausing and emergency cleanup when memory is low.")
+                .define("enableSafety", true);
+
+        MEMORY_PAUSE_THRESHOLD = builder
+                .comment(" Memory usage ratio (0.0-1.0) to temporarily pause scanning.")
+                .defineInRange("pauseThreshold", 0.8, 0.1, 0.95);
+
+        MEMORY_CRITICAL_THRESHOLD = builder
+                .comment(" Memory usage ratio (0.0-1.0) to trigger emergency scan halt and cache cleanup.")
+                .defineInRange("criticalThreshold", 0.9, 0.5, 0.99);
         builder.pop();
 
         SPEC = builder.build();

@@ -19,6 +19,8 @@
 package org.complexityanalyzer.geoscan.analysis;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
@@ -35,7 +37,6 @@ import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -57,16 +58,16 @@ public class HeuristicAnalyzer {
         return true;
     }
 
-    public void buildHeuristics(Map<ResourceLocation, Map<ResourceLocation, Path>> reconFilePaths, GeoDataStorage storage) {
+    public void buildHeuristics(Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> reconFilePaths, GeoDataStorage storage) {
         dimensionalHeuristics.clear();
 
-        ConcurrentHashMap<ResourceLocation, ObjectArrayList<Path>> pathsByDimension = new ConcurrentHashMap<>();
-        for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry : reconFilePaths.entrySet()) {
+        Object2ObjectOpenHashMap<ResourceLocation, ObjectArrayList<Path>> pathsByDimension = new Object2ObjectOpenHashMap<>();
+        for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> dimEntry : reconFilePaths.object2ObjectEntrySet()) {
             ObjectArrayList<Path> list = pathsByDimension.computeIfAbsent(dimEntry.getKey(), k -> new ObjectArrayList<>());
-            for (Path path : dimEntry.getValue().values()) list.add(path);
+            list.addAll(dimEntry.getValue().values());
         }
 
-        for (Map.Entry<ResourceLocation, ObjectArrayList<Path>> entry : pathsByDimension.entrySet()) {
+        for (Object2ObjectMap.Entry<ResourceLocation, ObjectArrayList<Path>> entry : pathsByDimension.object2ObjectEntrySet()) {
             ResourceLocation dimId = entry.getKey();
             ObjectArrayList<Path> paths = entry.getValue();
             ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);

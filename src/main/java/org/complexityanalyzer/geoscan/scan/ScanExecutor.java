@@ -33,8 +33,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.core.emergency.EmergencyManager;
-import org.complexityanalyzer.core.emergency.MemoryMonitor;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
@@ -81,7 +79,7 @@ public class ScanExecutor {
     private final ExecutorService analysisExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final ExecutorService workerExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    private record SessionContext(ScanSession session, Runnable onComplete, MsptMonitor monitor) {
+    private record SessionContext(ScanSession session, Runnable onComplete, EmergencyManager.MsptTracker monitor) {
     }
 
     private static final class BufferedSnapshots {
@@ -131,11 +129,6 @@ public class ScanExecutor {
         this.notifier = notifier;
     }
 
-    public ScanSession getCurrentSession() {
-        SessionContext ctx = sessionRef.get();
-        return ctx != null ? ctx.session() : null;
-    }
-
     public void execute(ScanSession newSession, Runnable onComplete) {
         if (isShutdown.get()) {
             onComplete.run();
@@ -171,7 +164,7 @@ public class ScanExecutor {
         flushAllBuffers();
         resultBuffers.clear();
 
-        MsptMonitor monitor = new MsptMonitor(server, newSession.getProfile());
+        EmergencyManager.MsptTracker monitor = new EmergencyManager.MsptTracker(server, newSession.getProfile());
         SessionContext newCtx = new SessionContext(newSession, onComplete, monitor);
         sessionRef.set(newCtx);
 
@@ -280,15 +273,15 @@ public class ScanExecutor {
     }
 
     private boolean checkMemoryAndThrottling(SessionContext myCtx) {
-        if (MemoryMonitor.isMemoryCritical()) {
-            EmergencyManager.panic("Heap usage critical (" + String.format("%.1f%%", MemoryMonitor.getUsedMemoryRatio() * 100) + ")");
+        if (EmergencyManager.isMemoryCritical()) {
+            EmergencyManager.panic("Heap usage critical (" + String.format("%.1f%%", EmergencyManager.getUsedMemoryRatio() * 100) + ")");
             return true;
         }
 
         boolean throttled = false;
-        if (MemoryMonitor.isMemoryPressureHigh()) {
+        if (EmergencyManager.isMemoryPressureHigh()) {
             throttled = true;
-            if (throttlePauseCount.get() % 10 == 0) MemoryMonitor.logMemoryStatus();
+            if (throttlePauseCount.get() % 10 == 0) EmergencyManager.logMemoryStatus();
         } else if (myCtx.monitor().isThrottled()) {
             throttled = true;
         }
@@ -299,8 +292,8 @@ public class ScanExecutor {
         throttlePauseCount.incrementAndGet();
 
         ScanSession mySession = myCtx.session();
-        while ((MemoryMonitor.isMemoryPressureHigh() || myCtx.monitor().isThrottled()) && !isShutdown.get()) {
-            if (MemoryMonitor.isMemoryCritical()) {
+        while ((EmergencyManager.isMemoryPressureHigh() || myCtx.monitor().isThrottled()) && !isShutdown.get()) {
+            if (EmergencyManager.isMemoryCritical()) {
                 EmergencyManager.panic("Heap usage critical during pause");
                 return true;
             }
@@ -383,7 +376,7 @@ public class ScanExecutor {
             this.biomeId = biomeId;
             foundByBiome.defaultReturnValue(0);
 
-            MsptMonitor monitor = myCtx.monitor();
+            EmergencyManager.MsptTracker monitor = myCtx.monitor();
             boolean limited = monitor.hasLimit();
             float mspt = monitor.getCurrentMspt();
 
@@ -424,9 +417,9 @@ public class ScanExecutor {
 
     private void drainCompletedAnalysis(ScanContext ctx, boolean waitForAll) {
         while (!ctx.pendingAnalysis.isEmpty()) {
-            CompletableFuture<ScanContext.AnalysisBatchResult> next = ctx.pendingAnalysis.get(0);
+            CompletableFuture<ScanContext.AnalysisBatchResult> next = ctx.pendingAnalysis.getFirst();
             if (!waitForAll && !next.isDone()) break;
-            ctx.pendingAnalysis.remove(0);
+            ctx.pendingAnalysis.removeFirst();
             ScanContext.AnalysisBatchResult batchResult;
             try {
                 batchResult = next.get();
@@ -554,7 +547,7 @@ public class ScanExecutor {
     private int calculateBatchSize() {
         SessionContext ctx = sessionRef.get();
         if (ctx == null) return 1;
-        MsptMonitor monitor = ctx.monitor();
+        EmergencyManager.MsptTracker monitor = ctx.monitor();
         boolean limited = monitor.hasLimit();
         float mspt = monitor.getCurrentMspt();
         return ctx.session().getProfile().policy(ctx.session().getChunksPerBiome(), mspt, limited).batchSize();

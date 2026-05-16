@@ -132,10 +132,10 @@ public final class SystemCommand {
         ChatFormatting tpsColor = tps >= 19.0 ? ChatFormatting.GREEN : (tps >= 16.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
         ChatFormatting msptColor = mspt <= 40.0 ? ChatFormatting.GREEN : (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
         Runtime runtime = Runtime.getRuntime();
-
-        long totalMemory = runtime.totalMemory() / 1024 / 1024;
-        long usedMemory = totalMemory - (runtime.freeMemory() / 1024 / 1024);
-        double memoryPercent = (double) usedMemory / totalMemory * 100;
+        long maxMemory = runtime.maxMemory() / 1024 / 1024;
+        long allocatedMemory = runtime.totalMemory() / 1024 / 1024;
+        long usedMemory = allocatedMemory - (runtime.freeMemory() / 1024 / 1024);
+        double memoryPercent = (double) usedMemory / maxMemory * 100;
 
         ChatFormatting memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN : (memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED);
         output.sendEmptyLine(source);
@@ -148,7 +148,7 @@ public final class SystemCommand {
         output.sendEmptyLine(source);
         String mbSuffix = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
         output.sendStatusLine(source, "💾", "complexityanalyzer.command.system.memory_usage", ChatFormatting.AQUA);
-        output.sendSubEntry(source, "complexityanalyzer.command.system.used_label", String.format("%d %s / %d %s", usedMemory, mbSuffix, totalMemory, mbSuffix), ChatFormatting.GRAY, memoryColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.used_label", String.format("%d %s / %d %s", usedMemory, mbSuffix, maxMemory, mbSuffix), ChatFormatting.GRAY, memoryColor);
         output.sendValueBar(source, (int) memoryPercent, ChatFormatting.DARK_GRAY, String.format("%.1f%%", memoryPercent), memoryColor);
         output.sendEmptyLine(source);
         output.sendFooter(source);

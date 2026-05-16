@@ -19,6 +19,7 @@
 package org.complexityanalyzer.geoscan.scan;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.network.chat.Component;
@@ -37,7 +38,6 @@ import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
 
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -153,7 +153,7 @@ public class ScanCoordinator {
         return Math.max(finalChunks, reconChunks);
     }
 
-    public boolean initializeSession(ScanSession session, ObjectArrayList<ScanTask> tasks) {
+    public boolean initializeSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongOpenHashSet> existingCoordinates) {
         if (!session.isValid() || tasks.isEmpty()) return false;
 
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
@@ -167,9 +167,7 @@ public class ScanCoordinator {
         }
 
         session.setTotalChunksNeeded(totalChunks);
-
-        Map<ResourceLocation, LongOpenHashSet> existing = database.loadAllReconChunkCoordinates();
-        session.loadAttemptedChunks(existing);
+        session.loadAttemptedChunks(existingCoordinates);
 
         notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks).getString());
 

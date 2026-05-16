@@ -19,6 +19,9 @@
 package org.complexityanalyzer.geoscan;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.Reference2LongMap;
@@ -36,8 +39,6 @@ import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,7 +50,7 @@ public class GeoDatabase {
     private final HeuristicAnalyzer analyzer;
     private final BiomeDataMapper mapper;
 
-    private final ConcurrentHashMap<ResourceLocation, Map<ResourceLocation, BiomeScanData>> inMemoryData;
+    private final ConcurrentHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> inMemoryData;
     private final ConcurrentHashMap<Block, AtomicLong> globalBlockCountsCache = new ConcurrentHashMap<>();
     private final AtomicLong totalBlocksInCache = new AtomicLong(0);
 
@@ -81,15 +82,15 @@ public class GeoDatabase {
         return storage.countReconChunks(dimension, biome);
     }
 
-    public Map<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
+    public Object2ObjectMap<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
         return storage.loadAllReconChunkCoordinates();
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, Path>> getAllReconFilePaths() {
+    public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> getAllReconFilePaths() {
         return storage.getAllReconFilePaths();
     }
 
-    public void buildHeuristicFromFiles(Map<ResourceLocation, Map<ResourceLocation, Path>> reconFilePaths) {
+    public void buildHeuristicFromFiles(Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> reconFilePaths) {
         analyzer.buildHeuristics(reconFilePaths, storage);
     }
 
@@ -106,7 +107,7 @@ public class GeoDatabase {
         ComplexityAnalyzer.LOGGER.info("Loading all final geo-data from disk...");
 
         this.inMemoryData.clear();
-        Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> loadedData = storage.loadAllFinalData(mapper);
+        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadedData = storage.loadAllFinalData(mapper);
         this.inMemoryData.putAll(loadedData);
 
         rebuildGlobalCache();
@@ -118,7 +119,7 @@ public class GeoDatabase {
 
         storage.saveFinalBiomeData(dimension, biome, data, mapper);
 
-        Map<ResourceLocation, BiomeScanData> dimData = inMemoryData.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>());
+        Object2ObjectMap<ResourceLocation, BiomeScanData> dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
         BiomeScanData oldData = dimData.put(biome, data);
         updateGlobalCache(oldData, data);
     }
@@ -145,8 +146,9 @@ public class GeoDatabase {
         return !inMemoryData.isEmpty();
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> getAllDimensionData() {
-        return Collections.unmodifiableMap(inMemoryData);
+    public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> getAllDimensionData() {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> copy = new Object2ObjectOpenHashMap<>(inMemoryData);
+        return Object2ObjectMaps.unmodifiable(copy);
     }
 
     public Optional<BiomeScanData> getBiomeData(ResourceLocation dim, ResourceLocation biome) {
@@ -186,7 +188,8 @@ public class GeoDatabase {
         totalBlocksInCache.set(0);
 
         long totalItems = 0;
-        for (Map<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values()) totalItems += dimMap.size();
+        for (Object2ObjectMap<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values())
+            totalItems += dimMap.size();
 
         if (totalItems == 0) {
             ComplexityAnalyzer.LOGGER.info("Global block rarity cache is empty (no data loaded).");
@@ -198,7 +201,7 @@ public class GeoDatabase {
         long processedItems = 0;
         int nextLogPercentage = 10;
 
-        for (Map<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values()) {
+        for (Object2ObjectMap<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values()) {
             for (BiomeScanData data : dimMap.values()) {
                 updateGlobalCache(null, data);
                 processedItems++;

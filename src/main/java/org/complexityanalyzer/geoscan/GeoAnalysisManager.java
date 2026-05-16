@@ -24,7 +24,10 @@ import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
@@ -297,7 +300,8 @@ public class GeoAnalysisManager {
             return;
         }
 
-        initializeAndExecuteSession(session, tasks);
+        Object2ObjectMap<ResourceLocation, LongOpenHashSet> existingCoordinates = database.loadAllReconChunkCoordinates();
+        initializeAndExecuteSession(session, tasks, existingCoordinates);
     }
 
     private void finalizeUpToDateSession() {
@@ -310,12 +314,12 @@ public class GeoAnalysisManager {
         }
     }
 
-    private void initializeAndExecuteSession(ScanSession session, ObjectArrayList<ScanTask> tasks) {
+    private void initializeAndExecuteSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongOpenHashSet> existingCoordinates) {
         try {
             server.execute(() -> {
                 if (!session.isValid() || isShutdown.get()) return;
 
-                if (!coordinator.initializeSession(session, tasks)) {
+                if (!coordinator.initializeSession(session, tasks, existingCoordinates)) {
                     coordinator.invalidateCurrentSession();
                     return;
                 }

@@ -81,10 +81,6 @@ dependencies {
     runtimeOnly(http)
     jarJar(http)
 
-    // Добавляем либу в 'игровой' classpath
-    // Если minecraftLibrary не сработает, попробуем другой вариант
-    // minecraftLibrary(http) 
-
     compileOnly(jei)
     runtimeOnly(jei)
 }

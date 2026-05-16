@@ -18,11 +18,11 @@
 
 package org.complexityanalyzer.geoscan.data;
 
-import java.util.Map;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public record ChunkSnapshot(
         int chunkX,
         int chunkZ,
-        Map<String, Integer> blockCounts
+        Object2IntOpenHashMap<String> blockCounts
 ) {
 }

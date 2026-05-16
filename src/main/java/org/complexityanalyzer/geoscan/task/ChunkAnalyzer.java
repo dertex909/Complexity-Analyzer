@@ -18,17 +18,18 @@
 
 package org.complexityanalyzer.geoscan.task;
 
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
+import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkAnalyzer {
@@ -36,6 +37,7 @@ public class ChunkAnalyzer {
 
     public @Nullable ChunkSnapshot createSnapshot(ChunkAccess chunk) {
         Reference2IntOpenHashMap<Block> blockCounts = new Reference2IntOpenHashMap<>();
+        blockCounts.defaultReturnValue(0);
         LevelChunkSection[] sections = chunk.getSections();
 
         for (LevelChunkSection section : sections) {
@@ -49,8 +51,12 @@ public class ChunkAnalyzer {
             });
         }
 
-        Map<String, Integer> finalCounts = new HashMap<>(blockCounts.size());
-        for (var entry : blockCounts.reference2IntEntrySet()) {
+        Object2IntOpenHashMap<String> finalCounts = new Object2IntOpenHashMap<>(blockCounts.size());
+        finalCounts.defaultReturnValue(0);
+
+        ObjectIterator<Reference2IntMap.Entry<Block>> it = blockCounts.reference2IntEntrySet().fastIterator();
+        while (it.hasNext()) {
+            Reference2IntMap.Entry<Block> entry = it.next();
             String blockId = blockIdCache.computeIfAbsent(
                     entry.getKey(), block -> GameRegistryManager.getBlockId(block).toString()
             );

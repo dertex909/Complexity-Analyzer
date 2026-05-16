@@ -18,6 +18,11 @@
 
 package org.complexityanalyzer.geoscan;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Block;
@@ -31,7 +36,9 @@ import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
@@ -42,8 +49,8 @@ public class GeoDatabase {
     private final HeuristicAnalyzer analyzer;
     private final BiomeDataMapper mapper;
 
-    private final Map<ResourceLocation, Map<ResourceLocation, BiomeScanData>> inMemoryData;
-    private final Map<Block, AtomicLong> globalBlockCountsCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResourceLocation, Map<ResourceLocation, BiomeScanData>> inMemoryData;
+    private final ConcurrentHashMap<Block, AtomicLong> globalBlockCountsCache = new ConcurrentHashMap<>();
     private final AtomicLong totalBlocksInCache = new AtomicLong(0);
 
     public GeoDatabase(MinecraftServer server) {
@@ -66,7 +73,7 @@ public class GeoDatabase {
         return analyzer.analyzeSnapshotForRecon(snapshot);
     }
 
-    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, List<ChunkSnapshot> newSnapshots) {
+    public void appendReconData(ResourceLocation dimension, ResourceLocation biome, ObjectArrayList<ChunkSnapshot> newSnapshots) {
         storage.appendReconData(dimension, biome, newSnapshots);
     }
 
@@ -74,7 +81,7 @@ public class GeoDatabase {
         return storage.countReconChunks(dimension, biome);
     }
 
-    public Map<ResourceLocation, Set<Long>> loadAllReconChunkCoordinates() {
+    public Map<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
         return storage.loadAllReconChunkCoordinates();
     }
 
@@ -148,21 +155,29 @@ public class GeoDatabase {
 
     private void updateGlobalCache(BiomeScanData oldData, BiomeScanData newData) {
         if (oldData != null) {
-            oldData.getInternalBlockCounts().forEach((block, count) -> {
-                long value = count.get();
+            Reference2LongOpenHashMap<Block> counts = oldData.getInternalBlockCounts();
+            ObjectIterator<Reference2LongMap.Entry<Block>> it = counts.reference2LongEntrySet().fastIterator();
+            while (it.hasNext()) {
+                Reference2LongMap.Entry<Block> entry = it.next();
+                Block block = entry.getKey();
+                long value = entry.getLongValue();
                 globalBlockCountsCache.computeIfPresent(block, (k, v) -> {
                     long newCount = v.addAndGet(-value);
                     return newCount > 0 ? v : null;
                 });
                 totalBlocksInCache.addAndGet(-value);
-            });
+            }
         }
         if (newData != null) {
-            newData.getInternalBlockCounts().forEach((block, count) -> {
-                long value = count.get();
+            Reference2LongOpenHashMap<Block> counts = newData.getInternalBlockCounts();
+            ObjectIterator<Reference2LongMap.Entry<Block>> it = counts.reference2LongEntrySet().fastIterator();
+            while (it.hasNext()) {
+                Reference2LongMap.Entry<Block> entry = it.next();
+                Block block = entry.getKey();
+                long value = entry.getLongValue();
                 globalBlockCountsCache.computeIfAbsent(block, k -> new AtomicLong(0)).addAndGet(value);
                 totalBlocksInCache.addAndGet(value);
-            });
+            }
         }
     }
 
@@ -170,9 +185,8 @@ public class GeoDatabase {
         globalBlockCountsCache.clear();
         totalBlocksInCache.set(0);
 
-        long totalItems = inMemoryData.values().stream()
-                .mapToLong(Map::size)
-                .sum();
+        long totalItems = 0;
+        for (Map<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values()) totalItems += dimMap.size();
 
         if (totalItems == 0) {
             ComplexityAnalyzer.LOGGER.info("Global block rarity cache is empty (no data loaded).");

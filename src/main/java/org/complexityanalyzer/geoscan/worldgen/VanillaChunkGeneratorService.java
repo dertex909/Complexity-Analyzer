@@ -18,14 +18,13 @@
 
 package org.complexityanalyzer.geoscan.worldgen;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.complexityanalyzer.ComplexityAnalyzer;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class VanillaChunkGeneratorService {
 
@@ -35,28 +34,30 @@ public class VanillaChunkGeneratorService {
         this.level = level;
     }
 
-    public List<ChunkAccess> generateBatch(List<ChunkPos> positions) {
-        List<ChunkAccess> results = new ArrayList<>(positions.size());
-        for (ChunkPos pos : positions) {
+    public ObjectArrayList<ChunkAccess> generateBatch(LongArrayList packedPositions) {
+        int size = packedPositions.size();
+        ObjectArrayList<ChunkAccess> results = new ObjectArrayList<>(size);
+        for (int i = 0; i < size; i++) {
             if (Thread.currentThread().isInterrupted()) {
                 results.add(null);
                 continue;
             }
-            results.add(generateChunkForAnalysis(pos));
+            long packed = packedPositions.getLong(i);
+            results.add(generateChunkForAnalysis(ChunkPos.getX(packed), ChunkPos.getZ(packed)));
         }
         return results;
     }
 
-    public ChunkAccess generateChunkForAnalysis(ChunkPos pos) {
+    public ChunkAccess generateChunkForAnalysis(int chunkX, int chunkZ) {
         try {
-            ChunkAccess chunk = level.getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FEATURES, true);
+            ChunkAccess chunk = level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FEATURES, true);
             if (chunk != null) chunk.setUnsaved(false);
             return chunk;
         } catch (IllegalStateException e) {
-            ComplexityAnalyzer.LOGGER.debug("[VanillaGen] No chunk available for {}: {}", pos, e.getMessage());
+            ComplexityAnalyzer.LOGGER.debug("[VanillaGen] No chunk available for [{}, {}]: {}", chunkX, chunkZ, e.getMessage());
             return null;
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[VanillaGen] Failed {}: {}", pos, e.getMessage());
+            ComplexityAnalyzer.LOGGER.warn("[VanillaGen] Failed [{}, {}]: {}", chunkX, chunkZ, e.getMessage());
             return null;
         }
     }

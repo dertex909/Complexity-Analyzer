@@ -24,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
@@ -33,7 +34,6 @@ import org.complexityanalyzer.geoscan.refinement.DataRefiner;
 import org.complexityanalyzer.geoscan.scan.*;
 import org.complexityanalyzer.geoscan.task.*;
 
-import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -289,7 +289,7 @@ public class GeoAnalysisManager {
     private void runBackgroundScanSetup(ScanSession session) {
         if (!session.isValid() || isShutdown.get()) return;
 
-        List<ScanTask> tasks = coordinator.prepareTasks(session);
+        ObjectArrayList<ScanTask> tasks = coordinator.prepareTasks(session);
         if (!session.isValid() || isShutdown.get()) return;
 
         if (tasks.isEmpty()) {
@@ -310,7 +310,7 @@ public class GeoAnalysisManager {
         }
     }
 
-    private void initializeAndExecuteSession(ScanSession session, List<ScanTask> tasks) {
+    private void initializeAndExecuteSession(ScanSession session, ObjectArrayList<ScanTask> tasks) {
         try {
             server.execute(() -> {
                 if (!session.isValid() || isShutdown.get()) return;

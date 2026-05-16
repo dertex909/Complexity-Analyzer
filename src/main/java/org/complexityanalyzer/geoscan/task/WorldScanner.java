@@ -18,6 +18,10 @@
 
 package org.complexityanalyzer.geoscan.task;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
+import it.unimi.dsi.fastutil.objects.ObjectSets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -31,11 +35,11 @@ import net.minecraft.world.level.biome.BiomeSource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 
-import java.util.*;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class WorldScanner {
     private static final int MAX_CACHED_LOCATIONS_PER_BIOME = 96;
@@ -49,8 +53,8 @@ public class WorldScanner {
 
     private volatile boolean fullWorldMode = false;
 
-    private final ConcurrentHashMap<String, List<BlockPos>> biomeLocationCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Set<String>> dimensionBiomeCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AtomicReference<ObjectArrayList<BlockPos>>> biomeLocationCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ObjectSet<String>> dimensionBiomeCache = new ConcurrentHashMap<>();
 
     public WorldScanner(MinecraftServer server) {
         this.server = server;
@@ -116,15 +120,17 @@ public class WorldScanner {
         String dimensionId = level.dimension().location().toString();
         String biomeId = biomeKey.location().toString();
 
-        Set<String> possibleBiomes = dimensionBiomeCache.computeIfAbsent(dimensionId, key -> {
+        ObjectSet<String> possibleBiomes = dimensionBiomeCache.computeIfAbsent(dimensionId, key -> {
             try {
                 BiomeSource biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
-                Set<String> biomes = biomeSource.possibleBiomes().stream()
-                        .map(holder -> holder.unwrapKey()
-                                .map(k -> k.location().toString()).orElse(null))
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet());
+                ObjectOpenHashSet<String> biomes = new ObjectOpenHashSet<>();
+                for (var holder : biomeSource.possibleBiomes()) {
+                    var unwrapped = holder.unwrapKey();
+                    if (unwrapped.isPresent()) {
+                        biomes.add(unwrapped.get().location().toString());
+                    }
+                }
 
                 if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
                     ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Dimension {} has {} possible biomes",
@@ -135,7 +141,7 @@ public class WorldScanner {
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Failed to get biomes for {}: {}",
                         dimensionId, e.getMessage());
-                return Collections.emptySet();
+                return ObjectSets.emptySet();
             }
         });
 
@@ -177,47 +183,54 @@ public class WorldScanner {
     }
 
     private BlockPos getCachedLocation(String cacheKey, boolean isRelocation) {
-        List<BlockPos> cached = biomeLocationCache.get(cacheKey);
-        if (cached == null) return null;
+        AtomicReference<ObjectArrayList<BlockPos>> ref = biomeLocationCache.get(cacheKey);
+        if (ref == null) return null;
+        ObjectArrayList<BlockPos> snapshot = ref.get();
+        if (snapshot == null) return null;
 
-        synchronized (cached) {
-            int size = cached.size();
-            if (size == 0) return null;
-            if (isRelocation && size < 2) return null;
+        int size = snapshot.size();
+        if (size == 0) return null;
+        if (isRelocation && size < 2) return null;
 
-            BlockPos selected;
-            if (isRelocation) {
-                int window = Math.min(size, RELOCATION_CACHE_WINDOW);
-                int index = size - 1 - ThreadLocalRandom.current().nextInt(window);
-                selected = cached.get(index);
-                return applyRelocationJitter(selected);
-            }
-
-            selected = cached.get(ThreadLocalRandom.current().nextInt(size));
-            return selected;
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        if (isRelocation) {
+            int window = Math.min(size, RELOCATION_CACHE_WINDOW);
+            int index = size - 1 - random.nextInt(window);
+            return applyRelocationJitter(snapshot.get(index));
         }
+        return snapshot.get(random.nextInt(size));
     }
 
     private void cacheLocation(String cacheKey, BlockPos pos) {
         if (shouldStop()) return;
-        List<BlockPos> cached = biomeLocationCache
-                .computeIfAbsent(cacheKey, k -> Collections.synchronizedList(new ArrayList<>()));
+        AtomicReference<ObjectArrayList<BlockPos>> ref = biomeLocationCache.computeIfAbsent(
+                cacheKey, k -> new AtomicReference<>(new ObjectArrayList<>())
+        );
 
-        synchronized (cached) {
-            for (BlockPos existing : cached) {
+        while (true) {
+            ObjectArrayList<BlockPos> current = ref.get();
+
+            for (int i = 0, n = current.size(); i < n; i++) {
+                BlockPos existing = current.get(i);
                 if (isNear(existing, pos)) return;
                 if (existing.getX() == pos.getX() && existing.getZ() == pos.getZ()) return;
             }
 
-            BlockPos immutable = pos.immutable();
-            if (cached.size() >= MAX_CACHED_LOCATIONS_PER_BIOME) cached.removeFirst();
-            cached.add(immutable);
+            int currentSize = current.size();
+            int newSize = Math.min(currentSize + 1, MAX_CACHED_LOCATIONS_PER_BIOME);
+            ObjectArrayList<BlockPos> updated = new ObjectArrayList<>(newSize);
+            int startIdx = currentSize >= MAX_CACHED_LOCATIONS_PER_BIOME ? 1 : 0;
+            for (int i = startIdx; i < currentSize; i++) updated.add(current.get(i));
+            updated.add(pos.immutable());
+
+            if (ref.compareAndSet(current, updated)) return;
         }
     }
 
     private BlockPos applyRelocationJitter(BlockPos pos) {
-        int jitterX = ThreadLocalRandom.current().nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
-        int jitterZ = ThreadLocalRandom.current().nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        int jitterX = random.nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
+        int jitterZ = random.nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
         return new BlockPos(pos.getX() + jitterX, pos.getY(), pos.getZ() + jitterZ);
     }
 

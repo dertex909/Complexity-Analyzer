@@ -18,22 +18,25 @@
 
 package org.complexityanalyzer.geoscan.analysis;
 
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
-import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class HeuristicAnalyzer {
@@ -42,7 +45,7 @@ public class HeuristicAnalyzer {
     private static final int REFINE_UNNATURAL_THRESHOLD = 64;
     private static final double NATURAL_BLOCK_RARITY_THRESHOLD = 0.00005;
 
-    private final Map<ResourceLocation, Set<Block>> dimensionalHeuristics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResourceLocation, ReferenceSet<Block>> dimensionalHeuristics = new ConcurrentHashMap<>();
 
     public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) {
         int uniqueBlockTypes = snapshot.blockCounts().size();
@@ -57,51 +60,76 @@ public class HeuristicAnalyzer {
     public void buildHeuristics(Map<ResourceLocation, Map<ResourceLocation, Path>> reconFilePaths, GeoDataStorage storage) {
         dimensionalHeuristics.clear();
 
-        Map<ResourceLocation, List<Path>> pathsByDimension = new ConcurrentHashMap<>();
-        reconFilePaths.forEach((dimId, biomeMap) ->
-                pathsByDimension.computeIfAbsent(dimId, k -> new ArrayList<>()).addAll(biomeMap.values()));
+        ConcurrentHashMap<ResourceLocation, ObjectArrayList<Path>> pathsByDimension = new ConcurrentHashMap<>();
+        for (Map.Entry<ResourceLocation, Map<ResourceLocation, Path>> dimEntry : reconFilePaths.entrySet()) {
+            ObjectArrayList<Path> list = pathsByDimension.computeIfAbsent(dimEntry.getKey(), k -> new ObjectArrayList<>());
+            for (Path path : dimEntry.getValue().values()) list.add(path);
+        }
 
-        pathsByDimension.forEach((dimId, paths) -> {
+        for (Map.Entry<ResourceLocation, ObjectArrayList<Path>> entry : pathsByDimension.entrySet()) {
+            ResourceLocation dimId = entry.getKey();
+            ObjectArrayList<Path> paths = entry.getValue();
             ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);
 
-            try (Stream<ChunkSnapshot> allSnapshotsInDim = paths.parallelStream().flatMap(storage::streamReconFile)) {
+            Object2LongOpenHashMap<Block> totalCounts = new Object2LongOpenHashMap<>();
+            totalCounts.defaultReturnValue(0L);
 
-                Map<Block, Long> totalCounts = allSnapshotsInDim
-                        .flatMap(snapshot -> snapshot.blockCounts().entrySet().stream())
-                        .collect(Collectors.groupingBy(
-                                entry -> GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey())),
-                                Collectors.summingLong(Map.Entry::getValue)
-                        ));
-
-                long totalBlocksInDim = totalCounts.values().stream().mapToLong(Long::longValue).sum();
-
-                Set<Block> dimensionHeuristic = ConcurrentHashMap.newKeySet();
-                if (totalBlocksInDim > 0) {
-                    totalCounts.forEach((block, count) -> {
-                        if (block != null && block != Blocks.AIR && (double) count / totalBlocksInDim >
-                                NATURAL_BLOCK_RARITY_THRESHOLD) dimensionHeuristic.add(block);
-                    });
+            long totalBlocksInDim = 0;
+            for (int i = 0, n = paths.size(); i < n; i++) {
+                Path path = paths.get(i);
+                try (Stream<ChunkSnapshot> snapshots = storage.streamReconFile(path)) {
+                    Iterator<ChunkSnapshot> snapIt = snapshots.iterator();
+                    while (snapIt.hasNext()) {
+                        ChunkSnapshot snapshot = snapIt.next();
+                        ObjectIterator<Object2IntMap.Entry<String>> entryIt = snapshot.blockCounts().object2IntEntrySet().fastIterator();
+                        while (entryIt.hasNext()) {
+                            Object2IntMap.Entry<String> bcEntry = entryIt.next();
+                            Block block = GameRegistryManager.getBlock(ResourceLocation.parse(bcEntry.getKey()));
+                            if (block == null) continue;
+                            int count = bcEntry.getIntValue();
+                            totalCounts.addTo(block, count);
+                            totalBlocksInDim += count;
+                        }
+                    }
                 }
-
-                dimensionalHeuristics.put(dimId, dimensionHeuristic);
-                ComplexityAnalyzer.LOGGER.info("Heuristic for {} built. Found {} common 'natural' blocks.",
-                        dimId, dimensionHeuristic.size());
             }
-        });
+
+            ReferenceOpenHashSet<Block> dimensionHeuristic = new ReferenceOpenHashSet<>();
+            if (totalBlocksInDim > 0) {
+                ObjectIterator<it.unimi.dsi.fastutil.objects.Object2LongMap.Entry<Block>> it = totalCounts.object2LongEntrySet().fastIterator();
+                while (it.hasNext()) {
+                    it.unimi.dsi.fastutil.objects.Object2LongMap.Entry<Block> tcEntry = it.next();
+                    Block block = tcEntry.getKey();
+                    long count = tcEntry.getLongValue();
+                    if (block != Blocks.AIR && (double) count / totalBlocksInDim > NATURAL_BLOCK_RARITY_THRESHOLD) {
+                        dimensionHeuristic.add(block);
+                    }
+                }
+            }
+
+            dimensionalHeuristics.put(dimId, dimensionHeuristic);
+            ComplexityAnalyzer.LOGGER.info("Heuristic for {} built. Found {} common 'natural' blocks.",
+                    dimId, dimensionHeuristic.size());
+        }
     }
 
     public BiomeScanData refineRawData(Stream<ChunkSnapshot> snapshotStream, ResourceLocation dimensionId) {
         BiomeScanData finalCleanData = new BiomeScanData();
-        snapshotStream
-                .filter(snapshot -> isChunkCleanByHeuristic(snapshot, dimensionId))
-                .forEach(snapshot -> {
-                    finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
-                    snapshot.blockCounts().forEach((blockId, count) -> {
-                        Block block = GameRegistryManager.getBlock(ResourceLocation.parse(blockId));
-                        if (block != Blocks.AIR && block != Blocks.BEDROCK)
-                            finalCleanData.addBlock(block, count.longValue());
-                    });
-                });
+        Iterator<ChunkSnapshot> it = snapshotStream.iterator();
+        while (it.hasNext()) {
+            ChunkSnapshot snapshot = it.next();
+            if (!isChunkCleanByHeuristic(snapshot, dimensionId)) continue;
+            finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
+
+            ObjectIterator<Object2IntMap.Entry<String>> bcIt = snapshot.blockCounts().object2IntEntrySet().fastIterator();
+            while (bcIt.hasNext()) {
+                Object2IntMap.Entry<String> entry = bcIt.next();
+                Block block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
+                if (block != Blocks.AIR && block != Blocks.BEDROCK) {
+                    finalCleanData.addBlock(block, entry.getIntValue());
+                }
+            }
+        }
         return finalCleanData;
     }
 
@@ -112,7 +140,7 @@ public class HeuristicAnalyzer {
     private boolean isChunkCleanByHeuristic(ChunkSnapshot snapshot, ResourceLocation dimensionId) {
         if (dimensionalHeuristics.isEmpty()) return true;
 
-        Set<Block> heuristic = dimensionalHeuristics.get(dimensionId);
+        ReferenceSet<Block> heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {
             ComplexityAnalyzer.LOGGER.warn("No heuristic found for dimension {}. Accepting chunk at [{}, {}] " +
                     "without filtering.", dimensionId, snapshot.chunkX(), snapshot.chunkZ());
@@ -120,9 +148,11 @@ public class HeuristicAnalyzer {
         }
 
         int unnaturalBlockCount = 0;
-        for (Map.Entry<String, Integer> entry : snapshot.blockCounts().entrySet()) {
+        ObjectIterator<Object2IntMap.Entry<String>> it = snapshot.blockCounts().object2IntEntrySet().fastIterator();
+        while (it.hasNext()) {
+            Object2IntMap.Entry<String> entry = it.next();
             Block block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
-            if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getValue();
+            if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getIntValue();
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }
         return true;

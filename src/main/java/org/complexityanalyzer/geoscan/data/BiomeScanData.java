@@ -18,56 +18,66 @@
 
 package org.complexityanalyzer.geoscan.data;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
 import net.minecraft.world.level.block.Block;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 public class BiomeScanData {
-    private final transient Map<Block, AtomicLong> blockCounts = new ConcurrentHashMap<>();
-    private transient Set<Long> scannedChunksSet;
+    private final transient Reference2LongOpenHashMap<Block> blockCounts = new Reference2LongOpenHashMap<>();
+    private transient LongOpenHashSet scannedChunksSet;
 
-    Map<String, Long> serializableBlockCounts = new ConcurrentHashMap<>();
-    List<Long> scannedChunks;
+    Object2LongOpenHashMap<String> serializableBlockCounts = new Object2LongOpenHashMap<>();
+    LongArrayList scannedChunks;
 
     public BiomeScanData() {
-        this.scannedChunks = new ArrayList<>();
-        this.scannedChunksSet = new HashSet<>();
+        this.scannedChunks = new LongArrayList();
+        this.scannedChunksSet = new LongOpenHashSet();
+        this.blockCounts.defaultReturnValue(0L);
+        this.serializableBlockCounts.defaultReturnValue(0L);
     }
 
     public void addBlock(Block block, long count) {
-        blockCounts.computeIfAbsent(block, k -> new AtomicLong(0)).addAndGet(count);
+        blockCounts.addTo(block, count);
     }
 
     public void addScannedChunk(int chunkX, int chunkZ) {
-        long coord = (long) chunkX << 32 | (chunkZ & 0xFFFFFFFFL);
-        if (this.scannedChunksSet == null) this.scannedChunksSet = new HashSet<>();
-        this.scannedChunksSet.add(coord);
+        long coord = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+        LongOpenHashSet set = this.scannedChunksSet;
+        if (set == null) {
+            set = new LongOpenHashSet();
+            this.scannedChunksSet = set;
+        }
+        set.add(coord);
     }
 
     public int getChunksScanned() {
-        return scannedChunksSet != null ? scannedChunksSet.size() : 0;
+        LongOpenHashSet set = this.scannedChunksSet;
+        return set != null ? set.size() : 0;
     }
 
     public long getTotalBlocks() {
-        return blockCounts.values().stream().mapToLong(AtomicLong::get).sum();
+        long sum = 0;
+        LongIterator it = blockCounts.values().iterator();
+        while (it.hasNext()) sum += it.nextLong();
+        return sum;
     }
 
     public long getBlockCount(Block block) {
-        AtomicLong count = blockCounts.get(block);
-        return (count != null) ? count.get() : 0;
+        return blockCounts.getLong(block);
     }
 
-    public Map<Block, AtomicLong> getInternalBlockCounts() {
+    public Reference2LongOpenHashMap<Block> getInternalBlockCounts() {
         return this.blockCounts;
     }
 
-    Set<Long> getInternalScannedChunksSet() {
+    LongOpenHashSet getInternalScannedChunksSet() {
         return this.scannedChunksSet;
     }
 
-    void setInternalScannedChunksSet(Set<Long> newSet) {
+    void setInternalScannedChunksSet(LongOpenHashSet newSet) {
         this.scannedChunksSet = newSet;
     }
 }

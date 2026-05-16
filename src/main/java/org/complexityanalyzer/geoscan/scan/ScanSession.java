@@ -18,13 +18,18 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.ChunkPos;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,6 +56,12 @@ public class ScanSession {
     private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
 
     private volatile ScanMetadata.ScanPhase phase = ScanMetadata.ScanPhase.RECONNAISSANCE;
+
+    public ScanSession(long sessionId, ScanProfile profile, int chunksPerBiome) {
+        this.sessionId = sessionId;
+        this.profile = profile;
+        this.chunksPerBiome = chunksPerBiome;
+    }
 
     public void recordChunkScanned() {
         totalChunksScanned.incrementAndGet();
@@ -82,24 +93,23 @@ public class ScanSession {
         return (int) (totalChunksScanned.get() * 100 / totalNeeded);
     }
 
-    public Map<ResourceLocation, Map<ResourceLocation, int[]>> getBiomeProgress() {
-        Map<ResourceLocation, Map<ResourceLocation, int[]>> result = new HashMap<>();
+    public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> getBiomeProgress() {
+        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> result = new Object2ObjectOpenHashMap<>();
 
-        for (var entry : remainingNeeds.entrySet()) {
+        for (Map.Entry<BiomeKey, AtomicInteger> entry : remainingNeeds.entrySet()) {
             BiomeKey key = entry.getKey();
             int remaining = entry.getValue().get();
             int scanned = Math.max(0, chunksPerBiome - remaining);
 
-            result.computeIfAbsent(key.dim(), k -> new HashMap<>()).put(key.biome(), new int[]{scanned, chunksPerBiome});
+            Object2ObjectMap<ResourceLocation, int[]> inner = result.get(key.dim());
+            if (inner == null) {
+                inner = new Object2ObjectOpenHashMap<>();
+                result.put(key.dim(), inner);
+            }
+            inner.put(key.biome(), new int[]{scanned, chunksPerBiome});
         }
 
         return result;
-    }
-
-    public ScanSession(long sessionId, ScanProfile profile, int chunksPerBiome) {
-        this.sessionId = sessionId;
-        this.profile = profile;
-        this.chunksPerBiome = chunksPerBiome;
     }
 
     public long getSessionId() {
@@ -160,9 +170,9 @@ public class ScanSession {
     }
 
     public ResourceLocation getRandomNeededBiome(ResourceLocation dim) {
-        List<ResourceLocation> needed = new ArrayList<>();
+        ObjectArrayList<ResourceLocation> needed = new ObjectArrayList<>();
 
-        for (var entry : remainingNeeds.entrySet()) {
+        for (Map.Entry<BiomeKey, AtomicInteger> entry : remainingNeeds.entrySet()) {
             if (entry.getKey().dim().equals(dim) && entry.getValue().get() > 0) needed.add(entry.getKey().biome());
         }
 
@@ -170,12 +180,14 @@ public class ScanSession {
         return needed.get(ThreadLocalRandom.current().nextInt(needed.size()));
     }
 
-    public List<ResourceLocation> getDimensionsWithNeeds() {
-        Set<ResourceLocation> dims = new HashSet<>();
-        for (var entry : remainingNeeds.entrySet()) {
+    public ObjectArrayList<ResourceLocation> getDimensionsWithNeeds() {
+        ObjectOpenHashSet<ResourceLocation> dims = new ObjectOpenHashSet<>();
+        for (Map.Entry<BiomeKey, AtomicInteger> entry : remainingNeeds.entrySet()) {
             if (entry.getValue().get() > 0) dims.add(entry.getKey().dim());
         }
-        return new ArrayList<>(dims);
+        ObjectArrayList<ResourceLocation> result = new ObjectArrayList<>(dims.size());
+        result.addAll(dims);
+        return result;
     }
 
     public boolean hasAnyNeeds() {
@@ -195,20 +207,17 @@ public class ScanSession {
         return remainingNeeds.size();
     }
 
-    public boolean tryMarkChunk(ResourceLocation dim, ChunkPos pos) {
+    public boolean tryMarkChunkPacked(ResourceLocation dim, long packedPos) {
         LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
-        synchronized (set) {
-            return set.add(pos.toLong());
-        }
+        return set.add(packedPos);
     }
 
-    public void loadAttemptedChunks(Map<ResourceLocation, Set<Long>> chunksByDimension) {
-        chunksByDimension.forEach((dim, chunks) -> {
-            LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
-            synchronized (set) {
-                set.addAll(chunks);
-            }
-        });
+    public void loadAttemptedChunks(Map<ResourceLocation, ? extends LongSet> chunksByDimension) {
+        for (Map.Entry<ResourceLocation, ? extends LongSet> entry : chunksByDimension.entrySet()) {
+            LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(entry.getKey(), ignored -> new LongOpenHashSet());
+            LongIterator it = entry.getValue().iterator();
+            while (it.hasNext()) set.add(it.nextLong());
+        }
     }
 
     public String getStatusString() {

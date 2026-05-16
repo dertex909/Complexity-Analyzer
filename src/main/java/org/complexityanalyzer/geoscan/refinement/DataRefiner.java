@@ -21,7 +21,6 @@ package org.complexityanalyzer.geoscan.refinement;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
@@ -31,9 +30,9 @@ import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Stream;
 
@@ -42,7 +41,8 @@ public class DataRefiner {
     private final GeoDatabase database;
     private final ScanNotifier notifier;
 
-    private final Set<Thread> activeThreads = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<Thread, Boolean> activeThreads = new ConcurrentHashMap<>();
+    private final ExecutorService refinementExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public DataRefiner(GeoDatabase database, ScanNotifier notifier) {
         this.database = database;
@@ -54,13 +54,12 @@ public class DataRefiner {
         notifier.sendSuccess(null, Component.translatable("complexityanalyzer.log.refiner.starting"));
 
         ComplexityAnalyzer.LOGGER.info("[Refiner] Submitting refinement task...");
-        ExecutorService executor = ThreadPoolManager.getInstance().getComputePool();
 
         try {
-            executor.execute(() -> {
+            refinementExecutor.execute(() -> {
                 ComplexityAnalyzer.LOGGER.info("[Refiner] Task STARTED on thread: {}", Thread.currentThread().getName());
                 Thread currentThread = Thread.currentThread();
-                activeThreads.add(currentThread);
+                activeThreads.put(currentThread, Boolean.TRUE);
 
                 try {
                     Map<ResourceLocation, Map<ResourceLocation, Path>> reconPaths = database.getAllReconFilePaths();
@@ -174,7 +173,8 @@ public class DataRefiner {
 
     public void shutdown() {
         ComplexityAnalyzer.LOGGER.info("[Refiner] Shutting down, interrupting {} threads", activeThreads.size());
-        for (Thread thread : activeThreads) thread.interrupt();
+        for (Thread thread : activeThreads.keySet()) thread.interrupt();
         activeThreads.clear();
+        refinementExecutor.shutdownNow();
     }
 }

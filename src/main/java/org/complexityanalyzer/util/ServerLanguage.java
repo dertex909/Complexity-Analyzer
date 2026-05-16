@@ -45,19 +45,25 @@ public class ServerLanguage {
                 LANGUAGES.put(locale, map != null ? map : Object2ObjectMaps.emptyMap());
             } else {
                 ComplexityAnalyzer.LOGGER.warn("[Language] Lang file not found in resources: {}.json", locale);
+                LANGUAGES.put(locale, Object2ObjectMaps.emptyMap());
             }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[Language] Failed to load server-side language: {}", locale, e);
+            LANGUAGES.put(locale, Object2ObjectMaps.emptyMap());
         }
     }
 
     public static String get(String key, String locale) {
         String cleanLocale = locale != null ? locale.toLowerCase() : DEFAULT_LOCALE;
         loadLanguage(cleanLocale);
-        String val = LANGUAGES.get(cleanLocale).get(key);
+
+        Object2ObjectMap<String, String> map = LANGUAGES.get(cleanLocale);
+        String val = map != null ? map.get(key) : null;
+
         if (val == null && !cleanLocale.equals(DEFAULT_LOCALE)) {
             loadLanguage(DEFAULT_LOCALE);
-            val = LANGUAGES.get(DEFAULT_LOCALE).get(key);
+            Object2ObjectMap<String, String> defaultMap = LANGUAGES.get(DEFAULT_LOCALE);
+            val = defaultMap != null ? defaultMap.get(key) : null;
         }
         return val;
     }

@@ -18,6 +18,9 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -34,8 +37,9 @@ import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
 
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ScanCoordinator {
 
@@ -46,7 +50,7 @@ public class ScanCoordinator {
 
     private final AtomicLong sessionIdGenerator = new AtomicLong(0);
 
-    private volatile ScanSession currentSession;
+    private final AtomicReference<ScanSession> currentSession = new AtomicReference<>(null);
 
     public ScanCoordinator(
             MinecraftServer server,
@@ -65,7 +69,7 @@ public class ScanCoordinator {
 
         long sessionId = sessionIdGenerator.incrementAndGet();
         ScanSession session = new ScanSession(sessionId, profile, chunksPerBiome);
-        this.currentSession = session;
+        this.currentSession.set(session);
 
         worldScanner.clearStopRequest();
         worldScanner.configureForScan(chunksPerBiome);
@@ -77,7 +81,7 @@ public class ScanCoordinator {
     }
 
     public void invalidateCurrentSession() {
-        ScanSession session = currentSession;
+        ScanSession session = currentSession.getAndSet(null);
         if (session != null) {
             session.invalidate();
             ComplexityAnalyzer.LOGGER.debug("Invalidated session {}", session.getSessionId());
@@ -85,14 +89,14 @@ public class ScanCoordinator {
     }
 
     public ScanSession getCurrentSession() {
-        return currentSession;
+        return currentSession.get();
     }
 
-    public List<ScanTask> prepareTasks(ScanSession session) {
-        if (!session.isValid()) return Collections.emptyList();
+    public ObjectArrayList<ScanTask> prepareTasks(ScanSession session) {
+        if (!session.isValid()) return ObjectArrayList.of();
 
         database.loadAll();
-        List<ScanTask> tasks = new ArrayList<>();
+        ObjectArrayList<ScanTask> tasks = new ObjectArrayList<>();
         int chunksPerBiome = session.getChunksPerBiome();
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Building scan tasks for {} chunks/biome", chunksPerBiome);
@@ -103,7 +107,7 @@ public class ScanCoordinator {
             ResourceKey<Level> dimension = level.dimension();
             ComplexityAnalyzer.LOGGER.info("Scanning dimension: {}", dimension.location());
 
-            Set<ResourceKey<Biome>> biomes = getBiomesForDimension(level);
+            ObjectOpenHashSet<ResourceKey<Biome>> biomes = getBiomesForDimension(level);
             ComplexityAnalyzer.LOGGER.debug("Found {} biomes in {}", biomes.size(), dimension.location());
 
             for (ResourceKey<Biome> biomeKey : biomes) {
@@ -117,21 +121,24 @@ public class ScanCoordinator {
         }
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Created {} scan tasks", tasks.size());
-        tasks.sort(Comparator.naturalOrder());
+        tasks.sort(null);
         return tasks;
     }
 
-    private Set<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
-        Set<ResourceKey<Biome>> biomes = new HashSet<>();
+    private ObjectOpenHashSet<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
+        ObjectOpenHashSet<ResourceKey<Biome>> biomes = new ObjectOpenHashSet<>();
         var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
         ComplexityAnalyzer.LOGGER.info("[Prepare] Dimension {} biomeSource: {}",
                 level.dimension().location(), biomeSource.getClass().getSimpleName());
 
-        biomeSource.possibleBiomes().forEach(holder -> holder.unwrapKey().ifPresent(key -> {
-            ComplexityAnalyzer.LOGGER.debug("[Prepare] {} -> {}", level.dimension().location(), key.location());
-            biomes.add(key);
-        }));
+        for (var holder : biomeSource.possibleBiomes()) {
+            var key = holder.unwrapKey().orElse(null);
+            if (key != null) {
+                ComplexityAnalyzer.LOGGER.debug("[Prepare] {} -> {}", level.dimension().location(), key.location());
+                biomes.add(key);
+            }
+        }
 
         ComplexityAnalyzer.LOGGER.info("[Prepare] {} has {} biomes", level.dimension().location(), biomes.size());
 
@@ -146,13 +153,14 @@ public class ScanCoordinator {
         return Math.max(finalChunks, reconChunks);
     }
 
-    public boolean initializeSession(ScanSession session, List<ScanTask> tasks) {
+    public boolean initializeSession(ScanSession session, ObjectArrayList<ScanTask> tasks) {
         if (!session.isValid() || tasks.isEmpty()) return false;
 
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
 
         int totalChunks = 0;
-        for (ScanTask task : tasks) {
+        for (int i = 0, n = tasks.size(); i < n; i++) {
+            ScanTask task = tasks.get(i);
             int needed = task.chunksToFind();
             totalChunks += needed;
             session.setBiomeNeed(task.dimension().location(), task.biome().location(), needed);
@@ -160,7 +168,7 @@ public class ScanCoordinator {
 
         session.setTotalChunksNeeded(totalChunks);
 
-        Map<ResourceLocation, Set<Long>> existing = database.loadAllReconChunkCoordinates();
+        Map<ResourceLocation, LongOpenHashSet> existing = database.loadAllReconChunkCoordinates();
         session.loadAttemptedChunks(existing);
 
         notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks).getString());
@@ -176,11 +184,10 @@ public class ScanCoordinator {
     }
 
     public void stopScan() {
-        invalidateCurrentSession();
+        ScanSession session = currentSession.getAndSet(null);
         worldScanner.requestStop();
-
-        ScanSession session = currentSession;
         if (session != null) {
+            session.invalidate();
             session.setPhase(ScanMetadata.ScanPhase.IDLE);
             session.clear();
         }

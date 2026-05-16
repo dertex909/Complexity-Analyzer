@@ -41,8 +41,8 @@ public class SpiralChunkSearcher {
         this.stepInSegment = 0;
     }
 
-    public ChunkPos next() {
-        ChunkPos nextPos = new ChunkPos(currentX, currentZ);
+    public long nextPacked() {
+        long packed = ChunkPos.asLong(currentX, currentZ);
         if (stepInSegment >= segmentLength) {
             stepInSegment = 0;
             int oldDx = dx;
@@ -54,6 +54,6 @@ public class SpiralChunkSearcher {
         currentX += dx;
         currentZ += dz;
         stepInSegment++;
-        return nextPos;
+        return packed;
     }
 }

@@ -18,6 +18,12 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -28,19 +34,28 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.EmergencyManager;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
-import org.complexityanalyzer.geoscan.task.*;
+import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
+import org.complexityanalyzer.geoscan.task.ScanNotifier;
+import org.complexityanalyzer.geoscan.task.SpiralChunkSearcher;
+import org.complexityanalyzer.geoscan.task.WorldScanner;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
-import java.util.stream.Collectors;
 
 public class ScanExecutor {
 
@@ -53,42 +68,51 @@ public class ScanExecutor {
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final AtomicInteger activeWorkerCount = new AtomicInteger(0);
 
-    private volatile ScanSession currentSession = null;
-    private volatile Runnable currentOnComplete = null;
-    private volatile MsptMonitor msptMonitor = null;
+    private final AtomicReference<SessionContext> sessionRef = new AtomicReference<>(null);
 
-    private final Object sessionLock = new Object();
-    private final AtomicBoolean completing = new AtomicBoolean(false);
-
-    private final Set<Thread> workerThreads = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<Thread, Boolean> workerThreads = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<ScanSession.BiomeKey, BufferedSnapshots> resultBuffers = new ConcurrentHashMap<>();
 
     private final AtomicInteger throttlePauseCount = new AtomicInteger(0);
     private final AtomicLong totalThrottleTimeMs = new AtomicLong(0);
-    private final ExecutorService analysisExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread thread = new Thread(r, "Complexity-Scan-Analysis");
-        thread.setDaemon(true);
-        thread.setPriority(Thread.NORM_PRIORITY - 1);
-        return thread;
-    });
+
+    private final ExecutorService analysisExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService workerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
+    private record SessionContext(ScanSession session, Runnable onComplete, MsptMonitor monitor) {
+    }
 
     private static final class BufferedSnapshots {
-        private final ArrayDeque<ChunkSnapshot> queue = new ArrayDeque<>(ScanConfig.BATCH_SAVE_THRESHOLD * 2);
+        private final ConcurrentLinkedQueue<ChunkSnapshot> queue = new ConcurrentLinkedQueue<>();
+        private final AtomicInteger size = new AtomicInteger(0);
 
-        synchronized List<ChunkSnapshot> addAndDrainIfNeeded(ChunkSnapshot snapshot) {
-            queue.addLast(snapshot);
-            if (queue.size() < ScanConfig.BATCH_SAVE_THRESHOLD) return Collections.emptyList();
-            List<ChunkSnapshot> batch = new ArrayList<>(ScanConfig.BATCH_SAVE_THRESHOLD);
-            while (batch.size() < ScanConfig.BATCH_SAVE_THRESHOLD && !queue.isEmpty()) batch.add(queue.removeFirst());
-            return batch;
+        ObjectArrayList<ChunkSnapshot> addAndDrainIfNeeded(ChunkSnapshot snapshot) {
+            queue.offer(snapshot);
+            int currentSize = size.incrementAndGet();
+            if (currentSize < ScanConfig.BATCH_SAVE_THRESHOLD) return null;
+            return drainUpTo(ScanConfig.BATCH_SAVE_THRESHOLD);
         }
 
-        synchronized List<ChunkSnapshot> drainAll() {
-            if (queue.isEmpty()) return Collections.emptyList();
-            List<ChunkSnapshot> remaining = new ArrayList<>(queue);
-            queue.clear();
-            return remaining;
+        ObjectArrayList<ChunkSnapshot> drainUpTo(int max) {
+            ObjectArrayList<ChunkSnapshot> result = new ObjectArrayList<>(max);
+            for (int i = 0; i < max; i++) {
+                ChunkSnapshot s = queue.poll();
+                if (s == null) break;
+                size.decrementAndGet();
+                result.add(s);
+            }
+            return result;
+        }
+
+        ObjectArrayList<ChunkSnapshot> drainAll() {
+            ObjectArrayList<ChunkSnapshot> result = new ObjectArrayList<>();
+            ChunkSnapshot s;
+            while ((s = queue.poll()) != null) {
+                size.decrementAndGet();
+                result.add(s);
+            }
+            return result;
         }
     }
 
@@ -106,17 +130,21 @@ public class ScanExecutor {
         this.notifier = notifier;
     }
 
+    public ScanSession getCurrentSession() {
+        SessionContext ctx = sessionRef.get();
+        return ctx != null ? ctx.session() : null;
+    }
+
     public void execute(ScanSession newSession, Runnable onComplete) {
         if (isShutdown.get()) {
             onComplete.run();
             return;
         }
 
-        synchronized (sessionLock) {
-            if (currentSession != null) currentSession.invalidate();
-            for (Thread worker : workerThreads) {
-                LockSupport.unpark(worker);
-            }
+        SessionContext oldCtx = sessionRef.get();
+        if (oldCtx != null) {
+            oldCtx.session().invalidate();
+            unparkAllWorkers();
         }
 
         long waitStart = System.currentTimeMillis();
@@ -130,129 +158,127 @@ public class ScanExecutor {
 
         batchProcessor.resetForNewSession();
 
-        synchronized (sessionLock) {
-            if (isShutdown.get()) {
-                onComplete.run();
-                return;
-            }
-
-            currentSession = newSession;
-            currentOnComplete = onComplete;
-            completing.set(false);
-            worldScanner.clearStopRequest();
-
-            msptMonitor = new MsptMonitor(server, newSession.getProfile());
-            throttlePauseCount.set(0);
-            totalThrottleTimeMs.set(0);
-
-            flushAllBuffers();
-            resultBuffers.clear();
-
-            String msptInfo = msptMonitor.hasLimit()
-                    ? Component.translatable("complexityanalyzer.log.scan.mspt_limit", msptMonitor.getMsptLimit()).getString()
-                    : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit").getString();
-
-            notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.profile_info",
-                    newSession.getProfile().displayName.toUpperCase(), msptInfo).getString());
-
-            startWorker();
+        if (isShutdown.get()) {
+            onComplete.run();
+            return;
         }
+
+        worldScanner.clearStopRequest();
+        throttlePauseCount.set(0);
+        totalThrottleTimeMs.set(0);
+
+        flushAllBuffers();
+        resultBuffers.clear();
+
+        MsptMonitor monitor = new MsptMonitor(server, newSession.getProfile());
+        SessionContext newCtx = new SessionContext(newSession, onComplete, monitor);
+        sessionRef.set(newCtx);
+
+        String msptInfo = monitor.hasLimit()
+                ? Component.translatable("complexityanalyzer.log.scan.mspt_limit", monitor.getMsptLimit()).getString()
+                : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit").getString();
+
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.profile_info",
+                newSession.getProfile().displayName.toUpperCase(), msptInfo).getString());
+
+        startWorker(newCtx);
     }
 
     public void stop() {
-        synchronized (sessionLock) {
-            if (currentSession != null) {
-                currentSession.invalidate();
-                worldScanner.requestStop();
-                flushAllBuffers();
-                logThrottleStats();
-                currentSession = null;
-                currentOnComplete = null;
-                msptMonitor = null;
-            }
-        }
+        SessionContext current = sessionRef.getAndSet(null);
+        if (current == null) return;
+        current.session().invalidate();
+        worldScanner.requestStop();
+        flushAllBuffers();
+        logThrottleStats();
     }
 
     public void updateMsptMonitor() {
-        MsptMonitor monitor = msptMonitor;
-        if (monitor != null) monitor.update();
+        SessionContext ctx = sessionRef.get();
+        if (ctx != null) ctx.monitor().update();
     }
 
     public boolean isThrottled() {
-        MsptMonitor monitor = msptMonitor;
-        return monitor != null && monitor.isThrottled();
+        SessionContext ctx = sessionRef.get();
+        return ctx != null && ctx.monitor().isThrottled();
     }
 
     public float getCurrentMspt() {
-        MsptMonitor monitor = msptMonitor;
-        return monitor != null ? monitor.getCurrentMspt() : -1;
+        SessionContext ctx = sessionRef.get();
+        return ctx != null ? ctx.monitor().getCurrentMspt() : -1;
     }
 
-    private void startWorker() {
+    private void unparkAllWorkers() {
+        for (Thread worker : workerThreads.keySet()) {
+            LockSupport.unpark(worker);
+        }
+    }
+
+    private void startWorker(SessionContext ctx) {
         if (isShutdown.get()) return;
         activeWorkerCount.incrementAndGet();
 
         try {
-            CompletableFuture.runAsync(this::workerLoop, ThreadPoolManager.getInstance().getComputePool());
+            workerExecutor.execute(() -> workerLoop(ctx));
         } catch (RejectedExecutionException e) {
             activeWorkerCount.decrementAndGet();
         }
     }
 
-    private void workerLoop() {
-        workerThreads.add(Thread.currentThread());
+    private void workerLoop(SessionContext myCtx) {
+        Thread self = Thread.currentThread();
+        workerThreads.put(self, Boolean.TRUE);
         ComplexityAnalyzer.LOGGER.info("[SCAN] Worker started");
 
-        final ScanSession mySession = currentSession;
+        final ScanSession mySession = myCtx.session();
 
         try {
-            while (!isShutdown.get() && !Thread.currentThread().isInterrupted()) {
-                ScanSession session = currentSession;
-
-                if (session != mySession || session == null || !session.isValid()) {
+            while (!isShutdown.get() && !self.isInterrupted()) {
+                SessionContext current = sessionRef.get();
+                if (current != myCtx || !mySession.isValid()) {
                     ComplexityAnalyzer.LOGGER.debug("[SCAN] Stopping — session changed or invalidated");
                     break;
                 }
 
-                if (checkMemoryAndThrottling(mySession)) {
-                    if (currentSession != mySession || !mySession.isValid()) {
+                if (checkMemoryAndThrottling(myCtx)) {
+                    if (sessionRef.get() != myCtx || !mySession.isValid()) {
                         ComplexityAnalyzer.LOGGER.debug("[SCAN] Stopping — session invalidated during pause");
                         break;
                     }
                     continue;
                 }
 
-                if (!session.hasAnyNeeds()) {
-                    tryComplete(session);
+                if (!mySession.hasAnyNeeds()) {
+                    tryComplete(myCtx);
                     break;
                 }
 
-                List<ResourceLocation> dims = session.getDimensionsWithNeeds();
+                ObjectArrayList<ResourceLocation> dims = mySession.getDimensionsWithNeeds();
                 if (dims.isEmpty()) {
-                    tryComplete(session);
+                    tryComplete(myCtx);
                     break;
                 }
 
                 ResourceLocation dimId = dims.get(ThreadLocalRandom.current().nextInt(dims.size()));
                 ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, dimId);
 
-                ResourceLocation biomeId = session.getRandomNeededBiome(dimId);
+                ResourceLocation biomeId = mySession.getRandomNeededBiome(dimId);
                 if (biomeId == null) continue;
 
                 ResourceKey<Biome> biomeKey = ResourceKey.create(Registries.BIOME, biomeId);
 
-                scanArea(mySession, dimension, biomeKey);
+                scanArea(myCtx, dimension, biomeKey);
             }
         } catch (Exception e) {
             if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error("[SCAN] Worker crashed", e);
         } finally {
-            workerThreads.remove(Thread.currentThread());
+            workerThreads.remove(self);
             activeWorkerCount.decrementAndGet();
             ComplexityAnalyzer.LOGGER.info("[SCAN] Worker stopped");
         }
     }
 
-    private boolean checkMemoryAndThrottling(ScanSession mySession) {
+    private boolean checkMemoryAndThrottling(SessionContext myCtx) {
         if (MemoryMonitor.isMemoryCritical()) {
             EmergencyManager.panic("Heap usage critical (" + String.format("%.1f%%", MemoryMonitor.getUsedMemoryRatio() * 100) + ")");
             return true;
@@ -262,7 +288,7 @@ public class ScanExecutor {
         if (MemoryMonitor.isMemoryPressureHigh()) {
             throttled = true;
             if (throttlePauseCount.get() % 10 == 0) MemoryMonitor.logMemoryStatus();
-        } else if (isThrottled()) {
+        } else if (myCtx.monitor().isThrottled()) {
             throttled = true;
         }
 
@@ -271,14 +297,14 @@ public class ScanExecutor {
         long pauseStart = System.currentTimeMillis();
         throttlePauseCount.incrementAndGet();
 
-        while ((MemoryMonitor.isMemoryPressureHigh() || isThrottled()) && !isShutdown.get()) {
+        ScanSession mySession = myCtx.session();
+        while ((MemoryMonitor.isMemoryPressureHigh() || myCtx.monitor().isThrottled()) && !isShutdown.get()) {
             if (MemoryMonitor.isMemoryCritical()) {
                 EmergencyManager.panic("Heap usage critical during pause");
                 return true;
             }
 
-            ScanSession current = currentSession;
-            if (current != mySession || current == null || !current.isValid()) break;
+            if (sessionRef.get() != myCtx || !mySession.isValid()) break;
 
             LockSupport.parkNanos(200_000_000L);
             if (Thread.currentThread().isInterrupted()) break;
@@ -289,56 +315,56 @@ public class ScanExecutor {
         return true;
     }
 
-    private void scanArea(ScanSession mySession,
-                          ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey) {
-
+    private void scanArea(SessionContext myCtx, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey) {
+        ScanSession mySession = myCtx.session();
         ResourceLocation dimId = dimension.location();
         ResourceLocation biomeId = biomeKey.location();
 
-        if (shouldStop(mySession)) return;
+        if (shouldStop(myCtx)) return;
         if (mySession.doesNotNeedBiome(dimId, biomeId)) return;
-        if (checkMemoryAndThrottling(mySession)) return;
+        if (checkMemoryAndThrottling(myCtx)) return;
 
         Optional<ChunkPos> startPos = worldScanner.findBiomeLocation(dimension, biomeKey, false);
 
-        if (startPos.isEmpty() || shouldStop(mySession)) {
+        if (startPos.isEmpty() || shouldStop(myCtx)) {
             mySession.abandonBiome(dimId, biomeId);
             return;
         }
 
-        ScanContext ctx = new ScanContext(mySession, dimension, biomeKey, dimId, biomeId);
+        ScanContext ctx = new ScanContext(myCtx, dimension, biomeKey, dimId, biomeId);
         ctx.searcher.startAt(startPos.get().x, startPos.get().z);
 
         performScan(ctx);
         logResults(ctx);
     }
 
-    private boolean shouldStop(ScanSession mySession) {
-        return !mySession.isValid() || isShutdown.get() || currentSession != mySession;
+    private boolean shouldStop(SessionContext myCtx) {
+        return !myCtx.session().isValid() || isShutdown.get() || sessionRef.get() != myCtx;
     }
 
-    private boolean waitAndCheckStop(ScanSession mySession) {
-        if (checkMemoryAndThrottling(mySession)) return shouldStop(mySession);
+    private boolean waitAndCheckStop(SessionContext myCtx) {
+        if (checkMemoryAndThrottling(myCtx)) return shouldStop(myCtx);
         return false;
     }
 
-    private class ScanContext {
-        record AnalysisBatchResult(List<ChunkBatchProcessor.ScanResult> results, int claimed) {
+    private final class ScanContext {
+        record AnalysisBatchResult(ObjectArrayList<ChunkBatchProcessor.ScanResult> results, int claimed) {
         }
 
+        final SessionContext myCtx;
         final ScanSession mySession;
         final ResourceKey<Level> dimension;
         final ResourceKey<Biome> biomeKey;
         final ResourceLocation dimId;
         final ResourceLocation biomeId;
         final SpiralChunkSearcher searcher = new SpiralChunkSearcher();
-        final Map<ResourceLocation, Integer> foundByBiome = new HashMap<>();
+        final Object2IntOpenHashMap<ResourceLocation> foundByBiome = new Object2IntOpenHashMap<>();
         final int maxScannedBudget;
         final int emptyBatchTolerance;
         final int stagnantBatchTolerance;
         final int maxPendingAnalysisBatches;
-        final ArrayDeque<CompletableFuture<AnalysisBatchResult>> pendingAnalysis = new ArrayDeque<>();
-        final HashMap<Long, ResourceLocation> transientAreaBiomeCache = new HashMap<>();
+        final ObjectArrayList<CompletableFuture<AnalysisBatchResult>> pendingAnalysis = new ObjectArrayList<>();
+        final Long2ObjectOpenHashMap<ResourceLocation> transientAreaBiomeCache = new Long2ObjectOpenHashMap<>();
 
         int scanned = 0;
         int found = 0;
@@ -346,17 +372,19 @@ public class ScanExecutor {
         int stagnantBatches = 0;
         int relocations = 0;
 
-        ScanContext(ScanSession mySession, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
+        ScanContext(SessionContext myCtx, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
                     ResourceLocation dimId, ResourceLocation biomeId) {
-            this.mySession = mySession;
+            this.myCtx = myCtx;
+            this.mySession = myCtx.session();
             this.dimension = dimension;
             this.biomeKey = biomeKey;
             this.dimId = dimId;
             this.biomeId = biomeId;
+            foundByBiome.defaultReturnValue(0);
 
-            MsptMonitor monitor = msptMonitor;
-            boolean limited = monitor != null && monitor.hasLimit();
-            float mspt = monitor != null ? monitor.getCurrentMspt() : 0f;
+            MsptMonitor monitor = myCtx.monitor();
+            boolean limited = monitor.hasLimit();
+            float mspt = monitor.getCurrentMspt();
 
             var policy = mySession.getProfile().policy(mySession.getChunksPerBiome(), mspt, limited);
             this.maxScannedBudget = policy.maxScannedBudget();
@@ -366,7 +394,7 @@ public class ScanExecutor {
         }
 
         boolean canContinue() {
-            return scanned < maxScannedBudget && mySession.isValid() && currentSession == mySession && !isShutdown.get()
+            return scanned < maxScannedBudget && mySession.isValid() && sessionRef.get() == myCtx && !isShutdown.get()
                     && mySession.hasAnyNeeds();
         }
     }
@@ -374,14 +402,14 @@ public class ScanExecutor {
     private void performScan(ScanContext ctx) {
         while (ctx.canContinue()) {
             drainCompletedAnalysis(ctx, false);
-            if (waitAndCheckStop(ctx.mySession)) break;
-            List<ChunkPos> batch = collectBatch(ctx);
+            if (waitAndCheckStop(ctx.myCtx)) break;
+            LongArrayList batch = collectBatch(ctx);
             if (batch.isEmpty()) {
                 if (handleEmptyBatch(ctx)) break;
                 continue;
             }
             ctx.emptyBatches = 0;
-            if (waitAndCheckStop(ctx.mySession)) break;
+            if (waitAndCheckStop(ctx.myCtx)) break;
             int useful = enqueueBatchAnalysis(ctx, batch);
             if (useful > 0) {
                 ctx.stagnantBatches = 0;
@@ -395,9 +423,9 @@ public class ScanExecutor {
 
     private void drainCompletedAnalysis(ScanContext ctx, boolean waitForAll) {
         while (!ctx.pendingAnalysis.isEmpty()) {
-            CompletableFuture<ScanContext.AnalysisBatchResult> next = ctx.pendingAnalysis.peekFirst();
+            CompletableFuture<ScanContext.AnalysisBatchResult> next = ctx.pendingAnalysis.get(0);
             if (!waitForAll && !next.isDone()) break;
-            ctx.pendingAnalysis.removeFirst();
+            ctx.pendingAnalysis.remove(0);
             ScanContext.AnalysisBatchResult batchResult;
             try {
                 batchResult = next.get();
@@ -411,20 +439,21 @@ public class ScanExecutor {
             }
 
             if (batchResult.claimed() > 0) ctx.stagnantBatches = 0;
-            for (ChunkBatchProcessor.ScanResult result : batchResult.results()) {
-                if (shouldStop(ctx.mySession)) return;
-                processResult(ctx, result);
+            ObjectArrayList<ChunkBatchProcessor.ScanResult> results = batchResult.results();
+            for (int i = 0, n = results.size(); i < n; i++) {
+                if (shouldStop(ctx.myCtx)) return;
+                processResult(ctx, results.get(i));
             }
         }
     }
 
-    private List<ChunkPos> collectBatch(ScanContext ctx) {
+    private LongArrayList collectBatch(ScanContext ctx) {
         int batchSize = calculateBatchSize();
-        List<ChunkPos> batch = new ArrayList<>(batchSize);
+        LongArrayList batch = new LongArrayList(batchSize);
         for (int i = 0; i < batchSize && ctx.scanned < ctx.maxScannedBudget; i++) {
-            ChunkPos pos = ctx.searcher.next();
+            long packed = ctx.searcher.nextPacked();
             ctx.scanned++;
-            if (ctx.mySession.tryMarkChunk(ctx.dimId, pos)) batch.add(pos);
+            if (ctx.mySession.tryMarkChunkPacked(ctx.dimId, packed)) batch.add(packed);
         }
         return batch;
     }
@@ -442,8 +471,8 @@ public class ScanExecutor {
     }
 
     private boolean relocateSearch(ScanContext ctx, boolean forceFreshSearch) {
-        if (waitAndCheckStop(ctx.mySession)) return true;
-        if (shouldStop(ctx.mySession)) return true;
+        if (waitAndCheckStop(ctx.myCtx)) return true;
+        if (shouldStop(ctx.myCtx)) return true;
         drainCompletedAnalysis(ctx, true);
         boolean allowCachedLocation = !forceFreshSearch && (ctx.relocations % 3 != 2);
         Optional<ChunkPos> newPos = worldScanner.findBiomeLocation(
@@ -452,7 +481,7 @@ public class ScanExecutor {
                 true,
                 allowCachedLocation
         );
-        if (newPos.isEmpty() || shouldStop(ctx.mySession)) {
+        if (newPos.isEmpty() || shouldStop(ctx.myCtx)) {
             ctx.mySession.abandonBiome(ctx.dimId, ctx.biomeId);
             return true;
         }
@@ -466,8 +495,8 @@ public class ScanExecutor {
         return false;
     }
 
-    private int enqueueBatchAnalysis(ScanContext ctx, List<ChunkPos> batch) {
-        List<ChunkBatchProcessor.LoadedChunk> loadedChunks = batchProcessor.loadBatch(
+    private int enqueueBatchAnalysis(ScanContext ctx, LongArrayList batch) {
+        ObjectArrayList<ChunkBatchProcessor.LoadedChunk> loadedChunks = batchProcessor.loadBatch(
                 ctx.dimension,
                 batch,
                 ctx.mySession,
@@ -476,17 +505,17 @@ public class ScanExecutor {
         if (loadedChunks.isEmpty()) return 0;
 
         CompletableFuture<ScanContext.AnalysisBatchResult> future = CompletableFuture.supplyAsync(() -> {
-            List<ChunkBatchProcessor.ScanResult> results = batchProcessor.analyzeLoadedBatch(loadedChunks, ctx.mySession);
+            ObjectArrayList<ChunkBatchProcessor.ScanResult> results = batchProcessor.analyzeLoadedBatch(loadedChunks, ctx.mySession);
             int claimed = 0;
-            for (ChunkBatchProcessor.ScanResult result : results) {
+            for (int i = 0, n = results.size(); i < n; i++) {
                 if (!ctx.mySession.isValid()) break;
-                ResourceLocation biome = result.biome();
+                ResourceLocation biome = results.get(i).biome();
                 if (!ctx.mySession.doesNotNeedBiome(ctx.dimId, biome)) claimed++;
             }
             return new ScanContext.AnalysisBatchResult(results, claimed);
         }, analysisExecutor);
 
-        ctx.pendingAnalysis.addLast(future);
+        ctx.pendingAnalysis.add(future);
         while (ctx.pendingAnalysis.size() >= ctx.maxPendingAnalysisBatches) {
             drainCompletedAnalysis(ctx, true);
         }
@@ -502,54 +531,49 @@ public class ScanExecutor {
             saveToBuffer(ctx.dimId, biome, snapshot);
             ctx.mySession.recordChunkScanned();
             ctx.found++;
-            ctx.foundByBiome.merge(biome, 1, Integer::sum);
+            ctx.foundByBiome.addTo(biome, 1);
         }
     }
 
     private void logResults(ScanContext ctx) {
         if (ctx.found == 0) return;
-        String biomeStats = ctx.foundByBiome.entrySet().stream()
-                .map(e -> e.getKey().getPath() + ":" + e.getValue())
-                .collect(Collectors.joining(", "));
+        StringBuilder biomeStats = new StringBuilder();
+        ObjectIterator<Object2IntMap.Entry<ResourceLocation>> it = ctx.foundByBiome.object2IntEntrySet().fastIterator();
+        boolean first = true;
+        while (it.hasNext()) {
+            Object2IntMap.Entry<ResourceLocation> entry = it.next();
+            if (!first) biomeStats.append(", ");
+            biomeStats.append(entry.getKey().getPath()).append(':').append(entry.getIntValue());
+            first = false;
+        }
 
         ComplexityAnalyzer.LOGGER.info("[SCAN] Scanned around {}: {} chunks ({})", ctx.biomeId.getPath(), ctx.found, biomeStats);
     }
 
     private int calculateBatchSize() {
-        ScanSession session = currentSession;
-        if (session == null) return 1;
-        MsptMonitor monitor = msptMonitor;
-        boolean limited = monitor != null && monitor.hasLimit();
-        float mspt = monitor != null ? monitor.getCurrentMspt() : 0f;
-        return session.getProfile().policy(session.getChunksPerBiome(), mspt, limited).batchSize();
+        SessionContext ctx = sessionRef.get();
+        if (ctx == null) return 1;
+        MsptMonitor monitor = ctx.monitor();
+        boolean limited = monitor.hasLimit();
+        float mspt = monitor.getCurrentMspt();
+        return ctx.session().getProfile().policy(ctx.session().getChunksPerBiome(), mspt, limited).batchSize();
     }
 
-    private void tryComplete(ScanSession session) {
-        if (!completing.compareAndSet(false, true)) return;
+    private void tryComplete(SessionContext myCtx) {
+        if (!sessionRef.compareAndSet(myCtx, null)) return;
 
-        synchronized (sessionLock) {
-            if (currentSession != session) {
-                completing.set(false);
-                return;
-            }
+        myCtx.session().invalidate();
 
-            session.invalidate();
+        flushAllBuffers();
+        logThrottleStats();
 
-            Runnable callback = currentOnComplete;
-            currentSession = null;
-            currentOnComplete = null;
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.complete").getString());
 
-            flushAllBuffers();
-            logThrottleStats();
-            msptMonitor = null;
-
-            notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.complete").getString());
-
-            if (callback != null && !isShutdown.get()) try {
-                server.execute(callback);
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete failed", e);
-            }
+        Runnable callback = myCtx.onComplete();
+        if (callback != null && !isShutdown.get()) try {
+            server.execute(callback);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete failed", e);
         }
     }
 
@@ -562,33 +586,29 @@ public class ScanExecutor {
     private void saveToBuffer(ResourceLocation dim, ResourceLocation biome, ChunkSnapshot snapshot) {
         ScanSession.BiomeKey key = new ScanSession.BiomeKey(dim, biome);
         BufferedSnapshots buffer = resultBuffers.computeIfAbsent(key, k -> new BufferedSnapshots());
-        List<ChunkSnapshot> batch = buffer.addAndDrainIfNeeded(snapshot);
-        if (!batch.isEmpty()) database.appendReconData(key.dim(), key.biome(), batch);
+        ObjectArrayList<ChunkSnapshot> batch = buffer.addAndDrainIfNeeded(snapshot);
+        if (batch != null && !batch.isEmpty()) database.appendReconData(key.dim(), key.biome(), batch);
     }
 
     private void flushAllBuffers() {
-        resultBuffers.forEach((key, buffer) -> {
-            List<ChunkSnapshot> remaining = buffer.drainAll();
+        for (var entry : resultBuffers.entrySet()) {
+            ScanSession.BiomeKey key = entry.getKey();
+            ObjectArrayList<ChunkSnapshot> remaining = entry.getValue().drainAll();
             if (!remaining.isEmpty()) database.appendReconData(key.dim(), key.biome(), remaining);
-        });
+        }
     }
 
     public void shutdown() {
         isShutdown.set(true);
-        synchronized (sessionLock) {
-            if (currentSession != null) {
-                currentSession.invalidate();
-                currentSession = null;
-            }
-            currentOnComplete = null;
-            msptMonitor = null;
-        }
+        SessionContext ctx = sessionRef.getAndSet(null);
+        if (ctx != null) ctx.session().invalidate();
 
-        for (Thread worker : workerThreads) {
+        for (Thread worker : workerThreads.keySet()) {
             LockSupport.unpark(worker);
             worker.interrupt();
         }
         analysisExecutor.shutdownNow();
+        workerExecutor.shutdownNow();
         flushAllBuffers();
     }
 }

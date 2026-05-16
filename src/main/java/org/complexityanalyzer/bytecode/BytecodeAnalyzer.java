@@ -85,6 +85,16 @@ public final class BytecodeAnalyzer {
         return null;
     }
 
+    public static String dumpClassFields(AnalyzedClass clazz) {
+        var sb = new StringBuilder();
+        sb.append("\n--- FIELDS: ").append(clazz.className()).append(" ---\n");
+        for (int i = 0; i < clazz.fieldNames().size(); i++) {
+            sb.append("  ").append(clazz.fieldTypes().get(i)).append(" ").append(clazz.fieldNames().get(i)).append("\n");
+        }
+        sb.append("--- END FIELDS ---\n");
+        return sb.toString();
+    }
+
     public static String dumpMethod(String className, AnalyzedMethod method) {
         var sb = new StringBuilder();
         sb.append("\n========================================\n");

@@ -117,6 +117,7 @@ public final class BytecodeAnalysisEngine {
                         if (tickM != null) break;
                     }
                     if (tickM != null) collectDump(clazz.className(), tickM, "MACHINE");
+                    collectClassDump(clazz.className(), clazz);
                     synchronized (allMachines) {
                         allMachines.add(PatternEngine.extractMachineLogic(candidate));
                     }
@@ -159,6 +160,14 @@ public final class BytecodeAnalysisEngine {
     private static String inferModId(String className) {
         String[] parts = className.split("/");
         return parts.length >= 1 ? parts[0] : "unknown";
+    }
+
+    private void collectClassDump(String className, BytecodeAnalyzer.AnalyzedClass clazz) {
+        String dump = BytecodeAnalyzer.dumpClassFields(clazz);
+        synchronized (bytecodeDumps) {
+            bytecodeDumps.add("CLASS_FIELDS: " + className);
+            bytecodeDumps.add(dump);
+        }
     }
 
     private void collectDump(String className, BytecodeAnalyzer.AnalyzedMethod method, String context) {

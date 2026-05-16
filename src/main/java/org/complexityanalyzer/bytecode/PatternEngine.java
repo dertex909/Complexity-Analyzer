@@ -11,8 +11,9 @@ public final class PatternEngine {
     };
 
     private static final String[] TICK_METHOD_NAMES = {
-            "tick", "serverTick", "onTick", "update",
-            "blockEntityTick", "containerTick"
+            "tick", "serverTick", "clientTick", "onTick", "update",
+            "blockEntityTick", "containerTick", "tickServer", "tickClient",
+            "preTick", "postTick", "doTick", "onUpdate"
     };
 
     public static final String[] TICK_NAMES = TICK_METHOD_NAMES;

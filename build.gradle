@@ -72,14 +72,24 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 def http = "io.netty:netty-codec-http:4.1.97.Final"
+def asm = "org.ow2.asm:asm:9.7.1"
+def asmTree = "org.ow2.asm:asm-tree:9.7.1"
+def asmCommons = "org.ow2.asm:asm-commons:9.7.1"
+def asmAnalysis = "org.ow2.asm:asm-analysis:9.7.1"
 def jei = "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
 dependencies {
-    implementation(http) {
-        transitive = true
-    }
-    runtimeOnly(http)
+    implementation(http)
     jarJar(http)
+
+    implementation(asm)
+    implementation(asmTree)
+    implementation(asmCommons)
+    implementation(asmAnalysis)
+    jarJar(asm)
+    jarJar(asmTree)
+    jarJar(asmCommons)
+    jarJar(asmAnalysis)
 
     compileOnly(jei)
     runtimeOnly(jei)

@@ -30,6 +30,9 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.event.AnalysisBootstrap;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public final class SystemCommand {
     private SystemCommand() {
     }
@@ -40,7 +43,8 @@ public final class SystemCommand {
                 .then(Commands.literal("tps").executes(SystemCommand::executeTps))
                 .then(Commands.literal("stats").executes(SystemCommand::executeStats))
                 .then(Commands.literal("threads").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeThreads))
-                .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeReload));
+                .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeReload))
+                .then(Commands.literal("bytecode").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeBytecode));
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
@@ -117,6 +121,59 @@ public final class SystemCommand {
         output.sendTip(source, "complexityanalyzer.command.system.reload_warning");
         output.sendTip(source, "complexityanalyzer.command.system.running_background");
         engine.reloadAsync(source.getLevel());
+        return 1;
+    }
+
+    private static int executeBytecode(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        OutputManager output = new OutputManager(source.getServer());
+        AnalysisEngine engine = AnalysisBootstrap.getEngine();
+
+        if (engine == null) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.engine_not_initialized"));
+            return 0;
+        }
+
+        var bytecodeEngine = engine.getBytecodeEngine();
+        if (bytecodeEngine == null) {
+            output.sendFailure(source, Component.literal("Bytecode engine not initialized"));
+            return 0;
+        }
+
+        var result = bytecodeEngine.getLastResult();
+        if (result == null) {
+            output.sendFailure(source, Component.literal("No bytecode analysis results available"));
+            return 0;
+        }
+
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "🔬", "Bytecode Analysis Results", ChatFormatting.GOLD);
+        output.sendEmptyLine(source);
+
+        output.sendSubEntry(source, "Events", String.valueOf(result.events.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendSubEntry(source, "Machines", String.valueOf(result.machines.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendSubEntry(source, "Edges", String.valueOf(result.edges.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendSubEntry(source, "Classes Scanned", String.valueOf(result.classesScanned), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "Classes Skipped", String.valueOf(result.classesSkipped), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "Duration", result.durationMs + "ms", ChatFormatting.GRAY, ChatFormatting.WHITE);
+
+        output.sendEmptyLine(source);
+
+        try {
+            Path exportDir = bytecodeEngine.getWorldDir().resolve("complexityanalyzer");
+            Files.createDirectories(exportDir);
+            Path exportFile = exportDir.resolve("bytecode_analysis.json");
+            String json = bytecodeEngine.exportResultsToJson();
+            Files.writeString(exportFile, json);
+
+            output.sendSuccess(source, Component.literal("Exported to: " + exportFile));
+        } catch (Exception e) {
+            output.sendFailure(source, Component.literal("Failed to export: " + e.getMessage()));
+            return 0;
+        }
+
+        output.sendEmptyLine(source);
+        output.sendFooter(source);
         return 1;
     }
 

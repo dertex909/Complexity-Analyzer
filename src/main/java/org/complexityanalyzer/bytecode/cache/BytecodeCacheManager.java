@@ -3,7 +3,6 @@ package org.complexityanalyzer.bytecode.cache;
 import it.unimi.dsi.fastutil.objects.*;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
-import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.MessageDigest;
@@ -13,20 +12,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class BytecodeCacheManager {
 
-    private static final Path CACHE_FILE = Path.of("config", "complexityanalyzer", "bytecode_cache.json");
+    private static final String CACHE_FILENAME = "bytecode_cache.json";
     private static final String HASH_ALGORITHM = "SHA-256";
 
     private BytecodeCacheManager() {
     }
 
-    public static BytecodeCache loadCache() {
-        if (!Files.exists(CACHE_FILE)) {
-            ComplexityAnalyzer.LOGGER.info("[Cache] No cache file found, full scan needed");
+    private static Path cacheFile(Path worldDir) {
+        return worldDir.resolve("complexityanalyzer").resolve(CACHE_FILENAME);
+    }
+
+    public static BytecodeCache loadCache(Path worldDir) {
+        Path file = cacheFile(worldDir);
+        if (!Files.exists(file)) {
+            ComplexityAnalyzer.LOGGER.info("[Cache] No cache file found for world {}, full scan needed", worldDir.getFileName());
             return new BytecodeCache();
         }
 
         try {
-            String json = Files.readString(CACHE_FILE, StandardCharsets.UTF_8);
+            String json = Files.readString(file, StandardCharsets.UTF_8);
             var hashes = parseJson(json);
             ComplexityAnalyzer.LOGGER.info("[Cache] Loaded {} cached class hashes", hashes.size());
             return new BytecodeCache(hashes);
@@ -36,11 +40,12 @@ public final class BytecodeCacheManager {
         }
     }
 
-    public static void saveCache(BytecodeCache cache) {
+    public static void saveCache(BytecodeCache cache, Path worldDir) {
+        Path file = cacheFile(worldDir);
         try {
-            Files.createDirectories(CACHE_FILE.getParent());
+            Files.createDirectories(file.getParent());
             String json = toJson(cache.getAll());
-            Files.writeString(CACHE_FILE, json, StandardCharsets.UTF_8);
+            Files.writeString(file, json, StandardCharsets.UTF_8);
             ComplexityAnalyzer.LOGGER.info("[Cache] Saved {} class hashes", cache.size());
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[Cache] Failed to save: {}", e.getMessage());

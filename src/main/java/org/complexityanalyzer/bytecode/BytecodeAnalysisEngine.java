@@ -7,16 +7,22 @@ import org.complexityanalyzer.bytecode.cache.*;
 import org.complexityanalyzer.bytecode.model.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class BytecodeAnalysisEngine {
 
     private final BytecodeCache cache;
+    private final Path worldDir;
     private volatile AnalysisResult lastResult;
+    private final ObjectList<String> bytecodeDumps = new ObjectArrayList<>();
 
-    public BytecodeAnalysisEngine() {
-        this.cache = BytecodeCacheManager.loadCache();
+    public BytecodeAnalysisEngine(Path worldDir) {
+        this.worldDir = worldDir;
+        this.cache = BytecodeCacheManager.loadCache(worldDir);
     }
 
     public static final class AnalysisResult {
@@ -46,10 +52,16 @@ public final class BytecodeAnalysisEngine {
         return lastResult;
     }
 
+    public Path getWorldDir() {
+        return worldDir;
+    }
+
     public AnalysisResult analyzeAndMerge(RecipeGraph graph) {
         long start = System.currentTimeMillis();
 
         ComplexityAnalyzer.LOGGER.info("=== [Bytecode Analysis] Starting semantic extraction ===");
+
+        bytecodeDumps.clear();
 
         var modList = ModList.get();
         if (modList == null) {
@@ -86,6 +98,7 @@ public final class BytecodeAnalysisEngine {
                 if (!events.isEmpty()) for (var event : events) {
                     var m = BytecodeAnalyzer.findMethod(clazz, event.methodName());
                     if (m != null) {
+                        collectDump(clazz.className(), m, "EVENT: " + event.eventType());
                         synchronized (allEvents) {
                             allEvents.add(enrichEvent(event, m));
                         }
@@ -97,8 +110,16 @@ public final class BytecodeAnalysisEngine {
                 }
 
                 var candidate = PatternEngine.classifyMachine(clazz, modId);
-                if (candidate.isMachine()) synchronized (allMachines) {
-                    allMachines.add(PatternEngine.extractMachineLogic(candidate));
+                if (candidate.isMachine()) {
+                    var tickM = BytecodeAnalyzer.findMethod(clazz, "tick");
+                    if (tickM == null) for (var tn : PatternEngine.TICK_NAMES) {
+                        tickM = BytecodeAnalyzer.findMethod(clazz, tn);
+                        if (tickM != null) break;
+                    }
+                    if (tickM != null) collectDump(clazz.className(), tickM, "MACHINE");
+                    synchronized (allMachines) {
+                        allMachines.add(PatternEngine.extractMachineLogic(candidate));
+                    }
                 }
                 scanned.incrementAndGet();
             } catch (Exception e) {
@@ -111,7 +132,9 @@ public final class BytecodeAnalysisEngine {
         int merged = 0;
         if (graph != null && !edges.isEmpty()) merged = GraphMerger.mergeInto(graph, edges);
 
-        BytecodeCacheManager.saveCache(cache);
+        BytecodeCacheManager.saveCache(cache, worldDir);
+
+        saveBytecodeDumps();
 
         long duration = System.currentTimeMillis() - start;
         ComplexityAnalyzer.LOGGER.info("[Bytecode] {} events, {} machines, {} edges ({} merged), {} scanned, {} skipped, {} failed, {}ms",
@@ -138,8 +161,90 @@ public final class BytecodeAnalysisEngine {
         return parts.length >= 1 ? parts[0] : "unknown";
     }
 
+    private void collectDump(String className, BytecodeAnalyzer.AnalyzedMethod method, String context) {
+        String dump = BytecodeAnalyzer.dumpMethod(className, method);
+        synchronized (bytecodeDumps) {
+            bytecodeDumps.add("CONTEXT: " + context + " | " + className + "." + method.name() + method.descriptor());
+            bytecodeDumps.add(dump);
+        }
+    }
+
+    private void saveBytecodeDumps() {
+        try {
+            Path dumpDir = worldDir.resolve("complexityanalyzer");
+            Files.createDirectories(dumpDir);
+            Path dumpFile = dumpDir.resolve("bytecode_dump.txt");
+
+            var sb = new StringBuilder();
+            sb.append("=== BYTECODE DUMP (").append(bytecodeDumps.size() / 2).append(" methods) ===\n\n");
+            for (var line : bytecodeDumps) sb.append(line).append("\n");
+
+            Files.writeString(dumpFile, sb.toString(), StandardCharsets.UTF_8);
+            ComplexityAnalyzer.LOGGER.info("[Bytecode] Saved {} method dumps to {}", bytecodeDumps.size() / 2, dumpFile);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[Bytecode] Failed to save dumps: {}", e.getMessage());
+        }
+    }
+
     private static AnalysisResult emptyResult(long start) {
         return new AnalysisResult(ObjectLists.emptyList(), ObjectLists.emptyList(),
                 ObjectLists.emptyList(), 0, 0, System.currentTimeMillis() - start);
+    }
+
+    public String exportResultsToJson() {
+        if (lastResult == null) return "{}";
+        var sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("  \"summary\": {\n");
+        sb.append("    \"events\": ").append(lastResult.events.size()).append(",\n");
+        sb.append("    \"machines\": ").append(lastResult.machines.size()).append(",\n");
+        sb.append("    \"edges\": ").append(lastResult.edges.size()).append(",\n");
+        sb.append("    \"classesScanned\": ").append(lastResult.classesScanned).append(",\n");
+        sb.append("    \"classesSkipped\": ").append(lastResult.classesSkipped).append(",\n");
+        sb.append("    \"durationMs\": ").append(lastResult.durationMs).append("\n");
+        sb.append("  },\n");
+
+        sb.append("  \"events\": [\n");
+        for (int i = 0; i < lastResult.events.size(); i++) {
+            var e = lastResult.events.get(i);
+            sb.append("    {\n");
+            sb.append("      \"eventType\": \"").append(e.eventType()).append("\",\n");
+            sb.append("      \"className\": \"").append(e.className()).append("\",\n");
+            sb.append("      \"methodName\": \"").append(e.methodName()).append("\",\n");
+            sb.append("      \"modId\": \"").append(e.modId()).append("\",\n");
+            sb.append("      \"conditions\": ").append(e.conditions().size()).append(",\n");
+            sb.append("      \"actions\": ").append(e.actions().size()).append("\n");
+            sb.append("    }").append(i < lastResult.events.size() - 1 ? "," : "").append("\n");
+        }
+        sb.append("  ],\n");
+
+        sb.append("  \"machines\": [\n");
+        for (int i = 0; i < lastResult.machines.size(); i++) {
+            var m = lastResult.machines.get(i);
+            sb.append("    {\n");
+            sb.append("      \"className\": \"").append(m.className()).append("\",\n");
+            sb.append("      \"modId\": \"").append(m.modId()).append("\",\n");
+            sb.append("      \"inputs\": [").append(String.join(", ", m.inputItems())).append("],\n");
+            sb.append("      \"outputs\": [").append(String.join(", ", m.outputItems())).append("],\n");
+            sb.append("      \"deterministic\": ").append(m.deterministic()).append("\n");
+            sb.append("    }").append(i < lastResult.machines.size() - 1 ? "," : "").append("\n");
+        }
+        sb.append("  ],\n");
+
+        sb.append("  \"edges\": [\n");
+        for (int i = 0; i < lastResult.edges.size(); i++) {
+            var edge = lastResult.edges.get(i);
+            sb.append("    {\n");
+            sb.append("      \"from\": \"").append(edge.from()).append("\",\n");
+            sb.append("      \"to\": \"").append(edge.to()).append("\",\n");
+            sb.append("      \"action\": \"").append(edge.action()).append("\",\n");
+            sb.append("      \"weight\": ").append(edge.weight()).append(",\n");
+            sb.append("      \"source\": \"").append(edge.source()).append("\",\n");
+            sb.append("      \"conditions\": ").append(edge.conditions().size()).append("\n");
+            sb.append("    }").append(i < lastResult.edges.size() - 1 ? "," : "").append("\n");
+        }
+        sb.append("  ]\n");
+        sb.append("}\n");
+        return sb.toString();
     }
 }

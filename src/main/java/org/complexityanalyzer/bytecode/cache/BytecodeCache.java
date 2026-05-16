@@ -1,18 +1,17 @@
 package org.complexityanalyzer.bytecode.cache;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class BytecodeCache {
-    private final Map<String, String> classHashes;
+    private final ConcurrentHashMap<String, String> classHashes;
 
     public BytecodeCache() {
-        this.classHashes = new Object2ObjectOpenHashMap<>();
+        this.classHashes = new ConcurrentHashMap<>();
     }
 
     public BytecodeCache(Map<String, String> hashes) {
-        this.classHashes = new Object2ObjectOpenHashMap<>(hashes);
+        this.classHashes = new ConcurrentHashMap<>(hashes);
     }
 
     public void put(String className, String hash) {
@@ -37,7 +36,7 @@ public final class BytecodeCache {
     }
 
     public Map<String, String> getAll() {
-        return new Object2ObjectOpenHashMap<>(classHashes);
+        return new ConcurrentHashMap<>(classHashes);
     }
 
     public void clear() {

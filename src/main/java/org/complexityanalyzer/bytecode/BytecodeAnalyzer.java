@@ -4,6 +4,11 @@ import it.unimi.dsi.fastutil.objects.*;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.objectweb.asm.*;
 import org.objectweb.asm.tree.*;
+import org.objectweb.asm.util.Textifier;
+import org.objectweb.asm.util.TraceMethodVisitor;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public final class BytecodeAnalyzer {
 
@@ -78,5 +83,27 @@ public final class BytecodeAnalyzer {
     public static AnalyzedMethod findMethod(AnalyzedClass c, String name) {
         for (var m : c.methods()) if (m.name().equals(name)) return m;
         return null;
+    }
+
+    public static String dumpMethod(String className, AnalyzedMethod method) {
+        var sb = new StringBuilder();
+        sb.append("\n========================================\n");
+        sb.append("BYTECODE DUMP: ").append(className).append(".").append(method.name()).append(method.descriptor()).append("\n");
+        sb.append("========================================\n");
+
+        if (method.instructions() == null || method.instructions().isEmpty()) {
+            sb.append("  (empty method)\n");
+            return sb.toString();
+        }
+
+        var printer = new Textifier();
+        var mp = new TraceMethodVisitor(printer);
+        for (var insn : method.instructions()) insn.accept(mp);
+
+        var sw = new StringWriter();
+        printer.print(new PrintWriter(sw));
+        sb.append(sw.toString());
+        sb.append("========================================\n");
+        return sb.toString();
     }
 }

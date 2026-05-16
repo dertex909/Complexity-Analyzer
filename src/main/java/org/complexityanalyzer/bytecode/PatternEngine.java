@@ -15,6 +15,8 @@ public final class PatternEngine {
             "blockEntityTick", "containerTick"
     };
 
+    public static final String[] TICK_NAMES = TICK_METHOD_NAMES;
+
     private PatternEngine() {
     }
 

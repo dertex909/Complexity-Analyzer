@@ -25,6 +25,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
@@ -162,7 +163,7 @@ public class AnalysisEngine {
                 this.graph = GraphBuilder.buildFromWorld(level);
 
                 ComplexityAnalyzer.LOGGER.info("Running bytecode semantic analysis...");
-                this.bytecodeEngine = new org.complexityanalyzer.bytecode.BytecodeAnalysisEngine();
+                this.bytecodeEngine = new BytecodeAnalysisEngine(serverLevel.getServer().getWorldPath(LevelResource.ROOT));
                 var bytecodeResult = this.bytecodeEngine.analyzeAndMerge(this.graph);
                 if (bytecodeResult.hasResults()) {
                     ComplexityAnalyzer.LOGGER.info("Bytecode analysis: {} events, {} machines, {} edges ({}ms)",

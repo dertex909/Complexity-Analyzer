@@ -19,6 +19,8 @@ public final class RegistryHarvestService {
     public void harvestInto(RecipeGraph graph, Level level, Path worldDir) {
         if (graph == null || level == null) return;
 
+        harvester.clearCaches();
+
         int scanned = 0;
         int harvested = 0;
         ObjectList<RecipeNode> nodes = new ObjectArrayList<>();
@@ -30,19 +32,19 @@ public final class RegistryHarvestService {
             try {
                 var items = harvester.harvest(holder.value(), level);
                 RecipeNode node = HarvestedRecipeConverter.convert(items, level);
-                if (node != null && !node.getIngredients().isEmpty()) {
+                if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty() || !node.getChemicalIngredients().isEmpty())) {
                     nodes.add(node);
                     harvested++;
                     debug.append("HARVESTED recipe=").append(holder.id())
                             .append(" result=").append(node.getResultItem())
-                            .append(" ingredients=").append(node.getIngredients().size())
+                            .append(" ingredients=").append(node.getIngredients().size() + node.getFluidIngredients().size() + node.getChemicalIngredients().size())
                             .append('\n');
                 } else {
                     debug.append("REJECTED recipe=").append(holder.id())
                             .append(" class=").append(holder.value().getClass().getName())
-                            .append(" items=").append(items.items().size())
-                            .append(" ingr=").append(items.ingredients().size())
-                            .append(" fluids=").append(items.fluids().size())
+                            .append(" items=").append(items.inputItems().size() + items.outputItems().size())
+                            .append(" ingr=").append(items.inputIngredients().size())
+                            .append(" fluids=").append(items.inputFluids().size() + items.outputFluids().size())
                             .append(" reason=no_structural_recipe_node\n");
                 }
             } catch (Throwable t) {

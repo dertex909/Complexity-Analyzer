@@ -9,6 +9,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -17,15 +18,28 @@ public final class HarvestedRecipeConverter {
     private HarvestedRecipeConverter() {
     }
 
-    public static RecipeNode convert(FastHarvester.HarvestedItems harvested, Level level) {
+    public static RecipeNode convert(HarvestedItems harvested, Level level) {
         if (harvested == null || harvested.isEmpty()) return null;
 
         ItemStack declaredResult = declaredRecipeResult(harvested.root(), level);
-        var ingredients = harvested.ingredients();
-        var stacks = harvested.items();
-        var fluids = harvested.fluids();
+        var inputIngredients = harvested.inputIngredients();
+        var inputStacks = harvested.inputItems();
+        var outputStacks = harvested.outputItems();
+        var inputFluids = harvested.inputFluids();
+        var outputFluids = harvested.outputFluids();
 
-        ItemStack output = selectOutput(declaredResult, stacks);
+        ItemStack output;
+        boolean isPlaceholder = false;
+        String placeholderId = "";
+
+        if (declaredResult.isEmpty() && outputStacks.isEmpty() && !outputFluids.isEmpty()) {
+            output = new ItemStack(net.minecraft.world.item.Items.AIR);
+            isPlaceholder = true;
+            placeholderId = GameRegistryManager.getFluidId(outputFluids.getFirst().getFluid()).toString();
+        } else {
+            output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks);
+        }
+
         if (output.isEmpty()) return null;
 
         var builder = new RecipeNode.Builder(output.getItem())
@@ -33,21 +47,33 @@ public final class HarvestedRecipeConverter {
                 .resultCount(output.getCount())
                 .rawRecipe(harvested.root());
 
+        if (isPlaceholder) {
+            builder.isPlaceholder(true);
+            builder.placeholderId(placeholderId);
+        }
+
         if (harvested.root() instanceof Recipe<?> recipe) builder.recipeType(recipe.getType());
 
-        for (Ingredient ingredient : ingredients) appendIngredient(builder, ingredient);
-        for (ItemStack stack : stacks) if (!sameStackIdentity(stack, output)) appendStackAsIngredient(builder, stack);
-        if (!fluids.isEmpty()) builder.fluidOutputs(fluids);
+        for (Ingredient ingredient : inputIngredients) appendIngredient(builder, ingredient);
+        for (ItemStack stack : inputStacks) {
+            if (!sameStackIdentity(stack, output)) appendStackAsIngredient(builder, stack);
+        }
+        for (FluidStack fluid : inputFluids) {
+            var variants = new ObjectArrayList<net.minecraft.world.level.material.Fluid>();
+            variants.add(fluid.getFluid());
+            builder.addFluidIngredient(variants, fluid.getAmount());
+        }
+
+        if (!outputStacks.isEmpty()) builder.itemOutputs(outputStacks);
+        if (!outputFluids.isEmpty()) builder.fluidOutputs(outputFluids);
 
         return builder.build();
     }
 
     private static ItemStack declaredRecipeResult(Object root, Level level) {
-        if (root instanceof Recipe<?> recipe && level != null) {
-            try {
-                return recipe.getResultItem(level.registryAccess()).copy();
-            } catch (Throwable ignored) {
-            }
+        if (root instanceof Recipe<?> recipe && level != null) try {
+            return recipe.getResultItem(level.registryAccess()).copy();
+        } catch (Throwable ignored) {
         }
         return ItemStack.EMPTY;
     }

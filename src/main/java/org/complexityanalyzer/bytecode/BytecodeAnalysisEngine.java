@@ -260,60 +260,101 @@ public final class BytecodeAnalysisEngine {
                 ObjectLists.emptyList(), 0, 0, System.currentTimeMillis() - start);
     }
 
+    private static final com.google.gson.Gson GSON = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+
+    private record ExportedSummary(
+        int events,
+        int machines,
+        int edges,
+        int classesScanned,
+        int classesSkipped,
+        long durationMs
+    ) {}
+
+    private record ExportedEvent(
+        String eventType,
+        String className,
+        String methodName,
+        String modId,
+        int conditions,
+        int actions
+    ) {}
+
+    private record ExportedMachine(
+        String className,
+        String modId,
+        java.util.List<String> inputs,
+        java.util.List<String> outputs,
+        boolean deterministic
+    ) {}
+
+    private record ExportedEdge(
+        String from,
+        String to,
+        String action,
+        double weight,
+        String source,
+        int conditions
+    ) {}
+
+    private record ExportedData(
+        ExportedSummary summary,
+        java.util.List<ExportedEvent> events,
+        java.util.List<ExportedMachine> machines,
+        java.util.List<ExportedEdge> edges
+    ) {}
+
     public String exportResultsToJson() {
         if (lastResult == null) return "{}";
-        var sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"summary\": {\n");
-        sb.append("    \"events\": ").append(lastResult.events.size()).append(",\n");
-        sb.append("    \"machines\": ").append(lastResult.machines.size()).append(",\n");
-        sb.append("    \"edges\": ").append(lastResult.edges.size()).append(",\n");
-        sb.append("    \"classesScanned\": ").append(lastResult.classesScanned).append(",\n");
-        sb.append("    \"classesSkipped\": ").append(lastResult.classesSkipped).append(",\n");
-        sb.append("    \"durationMs\": ").append(lastResult.durationMs).append("\n");
-        sb.append("  },\n");
-
-        sb.append("  \"events\": [\n");
-        for (int i = 0; i < lastResult.events.size(); i++) {
-            var e = lastResult.events.get(i);
-            sb.append("    {\n");
-            sb.append("      \"eventType\": \"").append(e.eventType()).append("\",\n");
-            sb.append("      \"className\": \"").append(e.className()).append("\",\n");
-            sb.append("      \"methodName\": \"").append(e.methodName()).append("\",\n");
-            sb.append("      \"modId\": \"").append(e.modId()).append("\",\n");
-            sb.append("      \"conditions\": ").append(e.conditions().size()).append(",\n");
-            sb.append("      \"actions\": ").append(e.actions().size()).append("\n");
-            sb.append("    }").append(i < lastResult.events.size() - 1 ? "," : "").append("\n");
+        try {
+            var summary = new ExportedSummary(
+                lastResult.events.size(),
+                lastResult.machines.size(),
+                lastResult.edges.size(),
+                lastResult.classesScanned,
+                lastResult.classesSkipped,
+                lastResult.durationMs
+            );
+            
+            var events = new java.util.ArrayList<ExportedEvent>();
+            for (var e : lastResult.events) {
+                events.add(new ExportedEvent(
+                    e.eventType(),
+                    e.className(),
+                    e.methodName(),
+                    e.modId(),
+                    e.conditions().size(),
+                    e.actions().size()
+                ));
+            }
+            
+            var machines = new java.util.ArrayList<ExportedMachine>();
+            for (var m : lastResult.machines) {
+                machines.add(new ExportedMachine(
+                    m.className(),
+                    m.modId(),
+                    new java.util.ArrayList<>(m.inputItems()),
+                    new java.util.ArrayList<>(m.outputItems()),
+                    m.deterministic()
+                ));
+            }
+            
+            var edges = new java.util.ArrayList<ExportedEdge>();
+            for (var edge : lastResult.edges) {
+                edges.add(new ExportedEdge(
+                    edge.from(),
+                    edge.to(),
+                    edge.action(),
+                    edge.weight(),
+                    edge.source() != null ? edge.source().name() : "UNKNOWN",
+                    edge.conditions().size()
+                ));
+            }
+            
+            return GSON.toJson(new ExportedData(summary, events, machines, edges));
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[Bytecode] Failed to export results to JSON", e);
+            return "{}";
         }
-        sb.append("  ],\n");
-
-        sb.append("  \"machines\": [\n");
-        for (int i = 0; i < lastResult.machines.size(); i++) {
-            var m = lastResult.machines.get(i);
-            sb.append("    {\n");
-            sb.append("      \"className\": \"").append(m.className()).append("\",\n");
-            sb.append("      \"modId\": \"").append(m.modId()).append("\",\n");
-            sb.append("      \"inputs\": [").append(String.join(", ", m.inputItems())).append("],\n");
-            sb.append("      \"outputs\": [").append(String.join(", ", m.outputItems())).append("],\n");
-            sb.append("      \"deterministic\": ").append(m.deterministic()).append("\n");
-            sb.append("    }").append(i < lastResult.machines.size() - 1 ? "," : "").append("\n");
-        }
-        sb.append("  ],\n");
-
-        sb.append("  \"edges\": [\n");
-        for (int i = 0; i < lastResult.edges.size(); i++) {
-            var edge = lastResult.edges.get(i);
-            sb.append("    {\n");
-            sb.append("      \"from\": \"").append(edge.from()).append("\",\n");
-            sb.append("      \"to\": \"").append(edge.to()).append("\",\n");
-            sb.append("      \"action\": \"").append(edge.action()).append("\",\n");
-            sb.append("      \"weight\": ").append(edge.weight()).append(",\n");
-            sb.append("      \"source\": \"").append(edge.source()).append("\",\n");
-            sb.append("      \"conditions\": ").append(edge.conditions().size()).append("\n");
-            sb.append("    }").append(i < lastResult.edges.size() - 1 ? "," : "").append("\n");
-        }
-        sb.append("  ]\n");
-        sb.append("}\n");
-        return sb.toString();
     }
 }

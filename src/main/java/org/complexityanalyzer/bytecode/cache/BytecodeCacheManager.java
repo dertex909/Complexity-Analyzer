@@ -89,55 +89,28 @@ public final class BytecodeCacheManager {
         return sb.toString();
     }
 
+    private static final com.google.gson.Gson GSON = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+
     private static Map<String, String> parseJson(String json) {
-        var map = new Object2ObjectOpenHashMap<String, String>();
-        if (json == null || json.isBlank()) return map;
-
-        json = json.trim();
-        if (!json.startsWith("{") || !json.endsWith("}")) return map;
-
-        String inner = json.substring(1, json.length() - 1).trim();
-        if (inner.isEmpty()) return map;
-
-        for (String pair : inner.split(",")) {
-            pair = pair.trim();
-            if (pair.isEmpty()) continue;
-
-            int colon = pair.indexOf(':');
-            if (colon < 0) continue;
-
-            String key = pair.substring(0, colon).trim();
-            String value = pair.substring(colon + 1).trim();
-
-            if (key.startsWith("\"") && key.endsWith("\"")) key = key.substring(1, key.length() - 1);
-            if (value.startsWith("\"") && value.endsWith("\"")) value = value.substring(1, value.length() - 1);
-
-            if (!key.isEmpty() && !value.isEmpty()) map.put(key, value);
+        if (json == null || json.isBlank()) return new Object2ObjectOpenHashMap<>();
+        try {
+            var type = new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType();
+            Map<String, String> parsed = GSON.fromJson(json, type);
+            if (parsed == null) return new Object2ObjectOpenHashMap<>();
+            return new Object2ObjectOpenHashMap<>(parsed);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[Cache] Failed to parse JSON cache", e);
+            return new Object2ObjectOpenHashMap<>();
         }
-        return map;
     }
 
     private static String toJson(Map<String, String> map) {
-        var sb = new StringBuilder();
-        sb.append("{\n");
-        var entries = new ObjectArrayList<>(map.entrySet());
-        entries.sort(Map.Entry.comparingByKey());
-
-        for (int i = 0; i < entries.size(); i++) {
-            var e = entries.get(i);
-            sb.append("  \"")
-                    .append(escapeJson(e.getKey()))
-                    .append("\": \"")
-                    .append(escapeJson(e.getValue()))
-                    .append("\"");
-            if (i < entries.size() - 1) sb.append(",");
-            sb.append("\n");
+        try {
+            var sorted = new TreeMap<>(map);
+            return GSON.toJson(sorted);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[Cache] Failed to serialize JSON cache", e);
+            return "{}";
         }
-        sb.append("}");
-        return sb.toString();
-    }
-
-    private static String escapeJson(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

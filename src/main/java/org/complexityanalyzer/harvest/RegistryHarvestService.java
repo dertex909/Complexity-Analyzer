@@ -16,12 +16,8 @@ public final class RegistryHarvestService {
         this.harvester = new FastHarvester();
     }
 
-    public int harvestInto(RecipeGraph graph, Level level) {
-        return harvestInto(graph, level, null);
-    }
-
-    public int harvestInto(RecipeGraph graph, Level level, Path worldDir) {
-        if (graph == null || level == null) return 0;
+    public void harvestInto(RecipeGraph graph, Level level, Path worldDir) {
+        if (graph == null || level == null) return;
 
         int scanned = 0;
         int harvested = 0;
@@ -62,11 +58,5 @@ public final class RegistryHarvestService {
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan: {} recipe objects scanned, {} harvested",
                 scanned, harvested);
-        HarvestDebugLog.flush(worldDir);
-        return harvested;
-    }
-
-    public void clearCaches() {
-        harvester.clearCaches();
     }
 }

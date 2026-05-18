@@ -12,3 +12,6 @@ todo.md
 /.vscode/
 /.eclipse/
 /net/minecraft/server/level/WorldGenRegion.java
+.aider*
+/plans
+/.junie/

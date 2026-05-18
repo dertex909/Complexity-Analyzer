@@ -4,9 +4,11 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -33,14 +35,14 @@ public final class HarvestedRecipeConverter {
         String placeholderId = "";
 
         if (declaredResult.isEmpty() && outputStacks.isEmpty() && !outputFluids.isEmpty()) {
-            output = new ItemStack(net.minecraft.world.item.Items.AIR);
+            output = new ItemStack(Items.AIR);
             isPlaceholder = true;
             placeholderId = GameRegistryManager.getFluidId(outputFluids.getFirst().getFluid()).toString();
         } else {
             output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks);
         }
 
-        if (output.isEmpty()) return null;
+        if (output.isEmpty() && !isPlaceholder) return null;
 
         var builder = new RecipeNode.Builder(output.getItem())
                 .category(RecipeCategory.PRIMARY)
@@ -59,7 +61,7 @@ public final class HarvestedRecipeConverter {
             if (!sameStackIdentity(stack, output)) appendStackAsIngredient(builder, stack);
         }
         for (FluidStack fluid : inputFluids) {
-            var variants = new ObjectArrayList<net.minecraft.world.level.material.Fluid>();
+            var variants = new ObjectArrayList<Fluid>();
             variants.add(fluid.getFluid());
             builder.addFluidIngredient(variants, fluid.getAmount());
         }

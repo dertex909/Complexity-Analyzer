@@ -277,9 +277,9 @@ public final class FastHarvester {
         if (visited.put(obj, Boolean.TRUE) != null) return false;
 
         var meta = RecipeReflection.getMeta(obj.getClass());
-        for (int i = 0; i < meta.scanVarHandles.length; i++) {
+        for (int i = 0; i < meta.scanFields.length; i++) {
             try {
-                var val = meta.scanVarHandles[i].get(obj);
+                var val = meta.scanFields[i].get(obj);
                 if (containsOutputAnchor(val, anchorItem, depth + 1, visited)) return true;
             } catch (Throwable ignored) {
             }
@@ -333,9 +333,9 @@ public final class FastHarvester {
         if (visited.put(obj, Boolean.TRUE) != null) return false;
 
         var meta = RecipeReflection.getMeta(obj.getClass());
-        for (int i = 0; i < meta.scanVarHandles.length; i++) {
+        for (int i = 0; i < meta.scanFields.length; i++) {
             try {
-                var val = meta.scanVarHandles[i].get(obj);
+                var val = meta.scanFields[i].get(obj);
                 if (containsIngredient(val, depth + 1, visited)) return true;
             } catch (Throwable ignored) {
             }
@@ -441,9 +441,9 @@ public final class FastHarvester {
 
         var meta = RecipeReflection.getMeta(obj.getClass());
         var localItems = new ObjectArrayList<ItemStack>();
-        for (int i = 0; i < meta.scanVarHandles.length; i++) {
+        for (int i = 0; i < meta.scanFields.length; i++) {
             try {
-                var val = meta.scanVarHandles[i].get(obj);
+                var val = meta.scanFields[i].get(obj);
                 if (val == null) continue;
                 if (val instanceof ItemStack s && !s.isEmpty()) {
                     localItems.add(s);
@@ -521,9 +521,9 @@ public final class FastHarvester {
 
         var meta = RecipeReflection.getMeta(obj.getClass());
         var localIngs = new ObjectArrayList<Ingredient>();
-        for (int i = 0; i < meta.scanVarHandles.length; i++) {
+        for (int i = 0; i < meta.scanFields.length; i++) {
             try {
-                var val = meta.scanVarHandles[i].get(obj);
+                var val = meta.scanFields[i].get(obj);
                 if (val == null) continue;
                 if (val instanceof Ingredient ing && !ing.isEmpty()) {
                     localIngs.add(ing);
@@ -588,9 +588,9 @@ public final class FastHarvester {
 
         var meta = RecipeReflection.getMeta(obj.getClass());
         var localFluids = new ObjectArrayList<FluidStack>();
-        for (int i = 0; i < meta.scanVarHandles.length; i++) {
+        for (int i = 0; i < meta.scanFields.length; i++) {
             try {
-                var val = meta.scanVarHandles[i].get(obj);
+                var val = meta.scanFields[i].get(obj);
                 if (val == null) continue;
                 if (val instanceof FluidStack fs && !fs.isEmpty()) {
                     localFluids.add(fs);
@@ -729,9 +729,9 @@ public final class FastHarvester {
         var localInputIngs = new ObjectArrayList<Ingredient>();
         var localInputFluids = new ObjectArrayList<FluidStack>();
         var localOutputFluids = new ObjectArrayList<FluidStack>();
-        for (int i = 0; i < meta.scanVarHandles.length; i++) {
+        for (int i = 0; i < meta.scanFields.length; i++) {
             try {
-                var val = meta.scanVarHandles[i].get(obj);
+                var val = meta.scanFields[i].get(obj);
                 switch (val) {
                     case null -> {
                     }

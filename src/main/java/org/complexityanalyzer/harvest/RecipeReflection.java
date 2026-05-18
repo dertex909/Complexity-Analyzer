@@ -8,7 +8,6 @@ import net.minecraft.world.level.Level;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -90,11 +89,9 @@ public final class RecipeReflection {
     }
 
     public static final class FieldAccessor implements Accessor {
-        private final VarHandle varHandle;
         private final Field field;
 
-        public FieldAccessor(VarHandle varHandle, Field field) {
-            this.varHandle = varHandle;
+        public FieldAccessor(Field field) {
             this.field = field;
         }
 
@@ -115,7 +112,6 @@ public final class RecipeReflection {
 
         @Override
         public Object extract(Object recipe, Level level) throws Throwable {
-            if (varHandle != null) return varHandle.get(recipe);
             return field.get(recipe);
         }
     }
@@ -124,8 +120,7 @@ public final class RecipeReflection {
         public final Method[] allMethods;
         public final MethodHandle[] allHandles;
         public final Field[] fields;
-        public final VarHandle[] fieldVarHandles;
-        public final VarHandle[] scanVarHandles;
+        public final Field[] scanFields;
 
         ClassMeta(Class<?> clazz) {
             var mList = new ObjectArrayList<Method>();
@@ -164,10 +159,10 @@ public final class RecipeReflection {
             this.allHandles = hList.toArray(new MethodHandle[0]);
 
             var fList = new ObjectArrayList<Field>();
-            var vhList = new ObjectArrayList<VarHandle>();
             var curCls = clazz;
             while (curCls != null && curCls != Object.class) {
                 for (var f : curCls.getDeclaredFields()) {
+                    if (Modifier.isStatic(f.getModifiers())) continue;
                     boolean duplicate = false;
                     for (int i = 0; i < fList.size(); i++) {
                         if (fList.get(i).getName().equals(f.getName())) {
@@ -178,26 +173,23 @@ public final class RecipeReflection {
                     if (duplicate) continue;
                     try {
                         f.setAccessible(true);
-                        var priv = MethodHandles.privateLookupIn(curCls, LOOKUP);
-                        var vh = priv.unreflectVarHandle(f);
                         fList.add(f);
-                        vhList.add(vh);
                     } catch (Exception ignored) {
                     }
                 }
                 curCls = curCls.getSuperclass();
             }
             this.fields = fList.toArray(new Field[0]);
-            this.fieldVarHandles = vhList.toArray(new VarHandle[0]);
 
-            var sList = new ObjectArrayList<VarHandle>();
+            var sList = new ObjectArrayList<Field>();
             for (int i = 0; i < fList.size(); i++) {
-                var type = fList.get(i).getType();
+                var f = fList.get(i);
+                var type = f.getType();
                 if (type.isPrimitive() || type == String.class || type.isEnum()) continue;
                 if (StructuralTypeClassifier.isTerminalType(type)) continue;
-                sList.add(vhList.get(i));
+                sList.add(f);
             }
-            this.scanVarHandles = sList.toArray(new VarHandle[0]);
+            this.scanFields = sList.toArray(new Field[0]);
         }
 
         private static MethodHandle createHandle(Method method) {
@@ -254,7 +246,7 @@ public final class RecipeReflection {
             var type = f.getType();
             var kind = StructuralTypeClassifier.classifyDescriptor(type.getName().replace('.', '/'));
             if (kind != null) {
-                var acc = new FieldAccessor(meta.fieldVarHandles[i], f);
+                var acc = new FieldAccessor(f);
                 switch (kind) {
                     case ITEM_STACK -> itemAcc.add(acc);
                     case INGREDIENT -> ingredientAcc.add(acc);
@@ -263,7 +255,7 @@ public final class RecipeReflection {
                     }
                 }
             } else if (isContainerReturnType(type)) {
-                probeAcc.add(new FieldAccessor(meta.fieldVarHandles[i], f));
+                probeAcc.add(new FieldAccessor(f));
             }
         }
         return new ResolvedAccessors(itemAcc, ingredientAcc, fluidAcc, probeAcc);

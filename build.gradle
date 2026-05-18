@@ -91,7 +91,6 @@ dependencies {
     jarJar(asmCommons)
     jarJar(asmAnalysis)
 
-    compileOnly(jei)
     runtimeOnly(jei)
 }
 

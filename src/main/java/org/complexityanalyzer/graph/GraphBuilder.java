@@ -27,10 +27,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.compat.jei.JeiCompatibilityModule;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
 
@@ -76,11 +77,7 @@ public class GraphBuilder {
         ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped",
                 processedCount.get(), skippedCount.get());
 
-        try {
-            JeiCompatibilityModule.collectRecipesFromJeiPlugins(graph, level);
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("JEI compatibility module failed", t);
-        }
+        new RegistryHarvestService().harvestInto(graph, level, level.getServer().getWorldPath(LevelResource.ROOT));
 
         return graph;
     }

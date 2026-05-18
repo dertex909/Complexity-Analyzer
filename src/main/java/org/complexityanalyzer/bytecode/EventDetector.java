@@ -24,14 +24,16 @@ public final class EventDetector {
         boolean classSub = clazz.visibleAnnotations() != null && hasAnn(clazz.visibleAnnotations(), SUBSCRIBER_DESC);
 
         for (var m : clazz.methods()) {
-            if ((m.access() & Opcodes.ACC_STATIC) == 0 && !classSub) continue;
-            if (m.visibleAnnotations() == null) continue;
-            if (!hasAnn(m.visibleAnnotations(), SUB_DESC)) continue;
-
             MethodRef methodRef = new MethodRef(clazz.className(), m.name(), m.descriptor());
             SemanticProfile profile = profiles != null ? profiles.get(methodRef) : null;
+            boolean methodSub = m.visibleAnnotations() != null && hasAnn(m.visibleAnnotations(), SUB_DESC);
+            boolean annotatedHandler = methodSub && (((m.access() & Opcodes.ACC_STATIC) != 0) || classSub);
+            boolean descriptorHandler = hasEventArgument(m.descriptor());
+            boolean semanticHandler = isSemanticCallback(profile);
 
-            String et = inferEventType(m.descriptor(), profile);
+            if (!annotatedHandler && !descriptorHandler && !semanticHandler) continue;
+
+            String et = inferEventType(m.descriptor(), profile, m.name());
             if (et == null) continue;
 
             events.add(new EventNode.Builder().eventType(et).methodName(m.name()).className(clazz.className()).modId(modId).build());
@@ -39,11 +41,10 @@ public final class EventDetector {
         return events;
     }
 
-    static String inferEventType(String descriptor, SemanticProfile profile) {
+    static String inferEventType(String descriptor, SemanticProfile profile, String methodName) {
         // First: use argument type as fallback (kept for compatibility)
         org.objectweb.asm.Type[] args = org.objectweb.asm.Type.getArgumentTypes(descriptor);
-        if (args.length == 0) return null;
-        String argDesc = args[0].getDescriptor();
+        String argDesc = args.length > 0 ? args[0].getDescriptor() : "";
 
         // Second: use semantic profile if available
         if (profile != null) {
@@ -75,6 +76,17 @@ public final class EventDetector {
             if (profile.hasTag(SemanticTag.LOOT_TABLE_CHECK)) {
                 return "LOOT_EVENT";
             }
+            if (profile.hasTag(SemanticTag.MACHINE_DEFINITION) || profile.hasTag(SemanticTag.MACHINE_RECIPE_TYPE)
+                    || profile.hasTag(SemanticTag.MACHINE_WORKABLE_LOGIC)) {
+                return "MACHINE_CALLBACK";
+            }
+            if (profile.hasTag(SemanticTag.RECIPE_BUILDER_START) || profile.hasTag(SemanticTag.RECIPE_INPUT)
+                    || profile.hasTag(SemanticTag.RECIPE_OUTPUT)) {
+                return "RECIPE_REGISTRATION";
+            }
+            if (profile.hasTag(SemanticTag.CAPABILITY_CHECK) || profile.hasTag(SemanticTag.MACHINE_CAPABILITY)) {
+                return "CAPABILITY_EVENT";
+            }
             if (profile.hasTag(SemanticTag.TICK)) {
                 return "TICK";
             }
@@ -93,9 +105,49 @@ public final class EventDetector {
         if (argDesc.contains("LivingHurtEvent")) return "ENTITY_HURT";
         if (argDesc.contains("BlockEvent")) return "BLOCK_EVENT";
         if (argDesc.contains("TickEvent")) return "TICK";
+        if (argDesc.contains("RegisterEvent")) return "REGISTRY_EVENT";
+        if (argDesc.contains("LifecycleEvent") || argDesc.contains("FMLCommonSetupEvent") || argDesc.contains("FMLClientSetupEvent")) return "LIFECYCLE_EVENT";
+        if (argDesc.contains("RecipesUpdatedEvent")) return "RECIPE_UPDATE";
+        if (argDesc.contains("ScreenEvent") || argDesc.contains("ContainerScreenEvent")) return "GUI_EVENT";
 
-        String sn = argDesc.substring(argDesc.lastIndexOf('/') + 1).replace(";", "");
-        return sn.replace("Event", "").toUpperCase();
+        if (!argDesc.isEmpty()) {
+            String sn = argDesc.substring(argDesc.lastIndexOf('/') + 1).replace(";", "");
+            return sn.replace("Event", "").toUpperCase();
+        }
+
+        if (methodName != null) {
+            String lower = methodName.toLowerCase();
+            if (lower.contains("register")) return "REGISTRATION_CALLBACK";
+            if (lower.contains("init") || lower.contains("setup")) return "LIFECYCLE_CALLBACK";
+            if (lower.contains("tick")) return "TICK";
+            if (lower.contains("open") || lower.contains("menu") || lower.contains("screen")) return "GUI_CALLBACK";
+        }
+
+        return null;
+    }
+
+    private static boolean hasEventArgument(String descriptor) {
+        org.objectweb.asm.Type[] args = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+        for (var arg : args) {
+            String desc = arg.getDescriptor();
+            if (desc.contains("Event") || desc.contains("Callback") || desc.contains("Listener")) return true;
+        }
+        return false;
+    }
+
+    private static boolean isSemanticCallback(SemanticProfile profile) {
+        if (profile == null) return false;
+        if (profile.confidence(SemanticTag.PLAYER_INTERACT) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.WORLD_MUTATION) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.GUI_OPEN) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.LOOT_TABLE_CHECK) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.RECIPE_BUILDER_START) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.MACHINE_DEFINITION) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.MACHINE_RECIPE_TYPE) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.MACHINE_WORKABLE_LOGIC) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.MACHINE_CAPABILITY) >= 0.7) return true;
+        if (profile.confidence(SemanticTag.CAPABILITY_CHECK) >= 0.7) return true;
+        return false;
     }
 
     private static boolean hasAnn(List<AnnotationNode> anns, String desc) {

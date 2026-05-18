@@ -27,7 +27,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,10 +36,13 @@ public class RecipeNode {
     public record ChemicalIngredient(ResourceLocation id, int amount) {
     }
 
+    public record ChemicalOutput(ResourceLocation id, long amount) {
+    }
+
     private final ObjectList<IngredientSlot> ingredients;
     private final ObjectList<FluidIngredientSlot> fluidIngredients;
     private final ObjectList<ChemicalIngredient> chemicalIngredients;
-    private final ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs;
+    private final ObjectList<ChemicalOutput> chemicalOutputs;
     private final ObjectList<ItemStack> itemOutputs;
     private final ObjectList<FluidStack> fluidOutputs;
     private final Item resultItem;
@@ -79,7 +81,7 @@ public class RecipeNode {
         this.category = category;
     }
 
-    public ObjectList<AdaptiveRecipeConverter.ChemicalOutput> getChemicalOutputs() {
+    public ObjectList<ChemicalOutput> getChemicalOutputs() {
         return chemicalOutputs;
     }
 
@@ -198,7 +200,7 @@ public class RecipeNode {
         private final ObjectList<FluidIngredientSlot> fluidIngredients = new ObjectArrayList<>();
         private ObjectList<ItemStack> itemOutputs = new ObjectArrayList<>();
         private ObjectList<FluidStack> fluidOutputs = new ObjectArrayList<>();
-        private ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
+        private ObjectList<ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
         private RecipeType<?> recipeType;
         private RecipeCategory category = RecipeCategory.PRIMARY;
         private double recipeMultiplier = 1.0;
@@ -220,7 +222,7 @@ public class RecipeNode {
             this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
         }
 
-        public Builder chemicalOutputs(ObjectList<AdaptiveRecipeConverter.ChemicalOutput> outputs) {
+        public Builder chemicalOutputs(ObjectList<ChemicalOutput> outputs) {
             this.chemicalOutputs = outputs != null ? outputs : new ObjectArrayList<>();
             return this;
         }

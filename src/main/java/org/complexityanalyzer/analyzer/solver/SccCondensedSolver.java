@@ -38,7 +38,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
@@ -524,16 +523,9 @@ public final class SccCondensedSolver {
                     if (machineItem != null) allocateItemNode(machineItem);
                 }
 
-                ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
-                if (chemOutputs.isEmpty() && recipe.getRawRecipeRef() != null) {
-                    chemOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(recipe.getRawRecipeRef(), null);
-                }
+                ObjectList<RecipeNode.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
                 for (var chem : chemOutputs) if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
 
-                if (recipe.getRawRecipeRef() != null) {
-                    var rawInputs = AdaptiveRecipeConverter.extractChemicalInputs(recipe.getRawRecipeRef());
-                    for (var chem : rawInputs) if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
-                }
                 for (var chem : recipe.getChemicalIngredients()) {
                     if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
                 }
@@ -718,16 +710,8 @@ public final class SccCondensedSolver {
                     }
                 }
 
-                ObjectList<AdaptiveRecipeConverter.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
-                if (chemOutputs.isEmpty() && recipe.getRawRecipeRef() != null) {
-                    chemOutputs = AdaptiveRecipeConverter.extractChemicalOutputs(recipe.getRawRecipeRef(), null);
-                }
+                ObjectList<RecipeNode.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
                 if (!chemOutputs.isEmpty()) {
-                    ObjectList<AdaptiveRecipeConverter.ChemicalOutput> rawChemInputs = null;
-                    if (recipe.getRawRecipeRef() != null) {
-                        rawChemInputs = AdaptiveRecipeConverter.extractChemicalInputs(recipe.getRawRecipeRef());
-                    }
-                    boolean useRaw = rawChemInputs != null && !rawChemInputs.isEmpty();
                     ObjectList<RecipeNode.ChemicalIngredient> structured = recipe.getChemicalIngredients();
 
                     int sharedItemSlotStart = itemSlotVariantStart.size();
@@ -753,24 +737,13 @@ public final class SccCondensedSolver {
                         }
                         sharedFluidSlotCount++;
                     }
-                    if (sharedValid && useRaw) {
-                        for (var chem : rawChemInputs) {
-                            if (chem == null || chem.id() == null) continue;
-                            int chemNode = chemicalToNode.getInt(chem.id());
-                            if (chemNode == -1) chemNode = allocateChemicalNode(chem.id());
-                            chemInputNode.add(chemNode);
-                            chemInputAmount.add(chem.amount() / 1000.0);
-                            sharedChemCount++;
-                        }
-                    } else {
-                        for (var chem : structured) {
-                            if (chem == null || chem.id() == null) continue;
-                            int chemNode = chemicalToNode.getInt(chem.id());
-                            if (chemNode == -1) chemNode = allocateChemicalNode(chem.id());
-                            chemInputNode.add(chemNode);
-                            chemInputAmount.add(chem.amount() / 1000.0);
-                            sharedChemCount++;
-                        }
+                    for (var chem : structured) {
+                        if (chem == null || chem.id() == null) continue;
+                        int chemNode = chemicalToNode.getInt(chem.id());
+                        if (chemNode == -1) chemNode = allocateChemicalNode(chem.id());
+                        chemInputNode.add(chemNode);
+                        chemInputAmount.add(chem.amount() / 1000.0);
+                        sharedChemCount++;
                     }
 
                     if (sharedValid) {

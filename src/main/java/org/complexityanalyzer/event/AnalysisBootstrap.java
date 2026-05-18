@@ -27,7 +27,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.compat.jei.AdaptiveRecipeConverter;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
@@ -65,8 +64,6 @@ public class AnalysisBootstrap {
         } catch (Throwable ignored) {
         }
         AnalysisEngine.getInstance().shutdownCompletely();
-        ComplexityAnalyzer.LOGGER.debug("Cleaning up AdaptiveRecipeConverter resources...");
-        AdaptiveRecipeConverter.clearCaches();
     }
 
     public static AnalysisEngine getEngine() {

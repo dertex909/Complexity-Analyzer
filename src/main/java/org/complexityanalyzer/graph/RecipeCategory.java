@@ -20,7 +20,6 @@ package org.complexityanalyzer.graph;
 
 public enum RecipeCategory {
     PRIMARY(1000, "Primary"),
-    JEI_IMPORTED(900, "JEI Plugin"),
     PROCESSING(50, "Processing"),
     STORAGE_COMPRESSION(100, "Compression"),
     RECYCLING(20, "Recycling"),

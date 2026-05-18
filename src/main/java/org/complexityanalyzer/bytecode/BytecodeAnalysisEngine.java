@@ -7,6 +7,9 @@ import org.complexityanalyzer.bytecode.cache.*;
 import org.complexityanalyzer.bytecode.graph.*;
 import org.complexityanalyzer.bytecode.model.*;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.harvest.HarvestDebugWriter;
+import org.complexityanalyzer.harvest.StructuralBytecodeHarvester;
+import org.complexityanalyzer.harvest.StructuralSemanticExporter;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -108,6 +111,19 @@ public final class BytecodeAnalysisEngine {
 
         ComplexityAnalyzer.LOGGER.info("[Bytecode] Pass 1 complete: {} classes analyzed, {} failed", analyzedClasses.size(), failed.get());
 
+        var structuralShapes = StructuralBytecodeHarvester.analyze(analyzedClasses.values());
+        int recipeShapes = 0;
+        int machineShapes = 0;
+        int codecShapes = 0;
+        for (var shape : structuralShapes) {
+            if (shape.recipeLike()) recipeShapes++;
+            if (shape.machineLike()) machineShapes++;
+            if (shape.codecLike()) codecShapes++;
+        }
+        ComplexityAnalyzer.LOGGER.info("[Harvest:Static] {} structural classes ({} recipe-like, {} machine-like, {} codec-like)",
+                structuralShapes.size(), recipeShapes, machineShapes, codecShapes);
+        HarvestDebugWriter.writeStructuralCandidates(worldDir, structuralShapes);
+
         // === PASS 2: build call graphs + run semantic analyzer ===
         var callGraphs = CallGraphBuilder.build(analyzedClasses);
         var anchorRegistry = SemanticAnchorRegistry.defaultRegistry();
@@ -125,6 +141,8 @@ public final class BytecodeAnalysisEngine {
         var allEvents = new ObjectArrayList<EventNode>();
         var allMachines = new ObjectArrayList<MachineNode>();
         var allRecipeEdges = new ObjectArrayList<SemanticEdge>();
+        allMachines.addAll(StructuralSemanticExporter.machinesFromShapes(structuralShapes));
+        allRecipeEdges.addAll(StructuralSemanticExporter.edgesFromShapes(structuralShapes));
 
         for (var clazz : analyzedClasses.values()) {
             String modId = inferModId(clazz.className());

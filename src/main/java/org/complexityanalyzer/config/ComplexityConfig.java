@@ -18,12 +18,7 @@
 
 package org.complexityanalyzer.config;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.neoforged.neoforge.common.ModConfigSpec;
-
-import java.util.Collections;
-import java.util.List;
 
 public class ComplexityConfig {
     public static final ModConfigSpec SPEC;
@@ -52,9 +47,6 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue MACHINE_TAX_PERCENTAGE;
     public static final ModConfigSpec.DoubleValue MACHINE_BASE_COMPLEXITY;
 
-    public static final ModConfigSpec.BooleanValue ENABLE_JEI_INTEGRATION;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> JEI_PLUGIN_BLACKLIST;
-
     public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
@@ -65,7 +57,6 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue MEMORY_CRITICAL_THRESHOLD;
 
     private static volatile int resolvedMaxThreads = -1;
-    private static volatile ObjectSet<String> blacklistCache = null;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -79,16 +70,6 @@ public class ComplexityConfig {
                 " WARNING: If set higher than available CPU cores, server will crash on startup!",
                 " Use 0 for local servers, set explicit limit (e.g. 4) for shared hosting."
         ).defineInRange("maxThreads", 0, 0, 1024);
-        builder.pop();
-
-        builder.push("jei_integration");
-        ENABLE_JEI_INTEGRATION = builder
-                .comment(" Enable automatic recipe extraction from JEI plugins of other mods")
-                .define("enableJeiIntegration", true);
-
-        JEI_PLUGIN_BLACKLIST = builder
-                .comment(" List of mod IDs whose JEI plugins should be ignored")
-                .defineList("jeiPluginBlacklist", Collections.emptyList(), () -> "", obj -> obj instanceof String);
         builder.pop();
 
         builder.push("limits");
@@ -184,13 +165,6 @@ public class ComplexityConfig {
         return MACHINE_BASE_COMPLEXITY.get();
     }
 
-    public static boolean isJeiPluginBlacklisted(String modId) {
-        if (blacklistCache == null) synchronized (ComplexityConfig.class) {
-            if (blacklistCache == null) blacklistCache = new ObjectOpenHashSet<>(JEI_PLUGIN_BLACKLIST.get());
-        }
-        return blacklistCache.contains(modId);
-    }
-
     public static int getMaxThreads() {
         if (resolvedMaxThreads >= 0) return resolvedMaxThreads;
 
@@ -214,6 +188,5 @@ public class ComplexityConfig {
 
     public static void resetThreadCache() {
         resolvedMaxThreads = -1;
-        blacklistCache = null;
     }
 }

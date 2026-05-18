@@ -46,7 +46,7 @@ public final class StructuralTypeClassifier {
             name.startsWith("net.minecraft.world.entity.player.Player") ||
             name.startsWith("net.minecraft.world.inventory.AbstractContainerMenu") ||
             name.startsWith("net.neoforged.neoforge.server.ServerLifecycleHooks")) return true;
-        if (name.contains("RecipeType") || name.contains("RecipeBuilder") || name.contains("RecipeCapability")) return true;
+        if (name.contains("RecipeType") || name.contains("RecipeBuilder")) return true;
         if (name.contains("EnergyStack")) return true;
         return false;
     }

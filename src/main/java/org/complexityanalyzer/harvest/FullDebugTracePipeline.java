@@ -42,6 +42,7 @@ public final class FullDebugTracePipeline {
                     .append(" out=").append(items.outputItems().size())
                     .append(" ingr=").append(items.inputIngredients().size())
                     .append(" fluids=").append(items.inputFluids().size())
+                    .append(" outFluids=").append(items.outputFluids().size())
                     .append("]\n");
         }
     }

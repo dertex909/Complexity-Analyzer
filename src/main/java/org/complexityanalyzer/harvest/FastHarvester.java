@@ -93,10 +93,9 @@ public final class FastHarvester {
                     if (raw != null && !isEmptyContainer(raw)) {
                         if (acc.name().contains("output")) {
                             var tempItems = new ObjectArrayList<ItemStack>(8);
-                            collectItemsDeep(raw, tempItems, 0, visited);
+                            collectItemsDeep(raw, tempItems, 0, new IdentityHashMap<>(64));
                             outputItems.addAll(tempItems);
-                            collectIngredientsDeep(raw, inputIngredients, 0, visited);
-                            collectFluidsDeep(raw, outputFluids, 0, visited);
+                            collectFluidsDeep(raw, outputFluids, 0, new IdentityHashMap<>(64));
                         } else {
                             collectAllDeep(raw, inputItems, outputItems, inputIngredients,
                                     inputFluids, 0, visited, apiResult);
@@ -135,7 +134,7 @@ public final class FastHarvester {
     }
 
     private static void collectItemsDeep(Object obj, ObjectList<ItemStack> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
-        if (obj == null || depth > 5) return;
+        if (obj == null || depth > 8) return;
         switch (obj) {
             case SizedIngredient si when si.count() > 0 -> {
                 ItemStack[] stacks = si.ingredient().getItems();
@@ -180,7 +179,7 @@ public final class FastHarvester {
     }
 
     private static void collectIngredientsDeep(Object obj, ObjectList<Ingredient> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
-        if (obj == null || depth > 5) return;
+        if (obj == null || depth > 8) return;
         switch (obj) {
             case Ingredient ing when !ing.isEmpty() -> {
                 acc.add(ing);
@@ -216,7 +215,7 @@ public final class FastHarvester {
     }
 
     private static void collectFluidsDeep(Object obj, ObjectList<FluidStack> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
-        if (obj == null || depth > 5) return;
+        if (obj == null || depth > 8) return;
         switch (obj) {
             case SizedFluidIngredient sfi -> {
                 for (FluidStack fs : sfi.getFluids()) {
@@ -262,7 +261,7 @@ public final class FastHarvester {
                                        int depth,
                                        IdentityHashMap<Object, Boolean> visited,
                                        ItemStack apiResult) {
-        if (obj == null || depth > 5) return;
+        if (obj == null || depth > 8) return;
         switch (obj) {
             case ItemStack stack when !stack.isEmpty() -> {
                 if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack);

@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.*;
@@ -84,44 +85,26 @@ public final class FastHarvester {
                 } catch (Throwable ignored) {
                 }
             }
-            // Probe accessors: each yields a separate bucket of items.
-            // Heuristic: the bucket with the FEWEST items is likely OUTPUTS,
-            // the rest are INPUTS. No hardcoded field/method names.
-            var probeBuckets = new ObjectArrayList<ObjectList<ItemStack>>();
+            // Route items from "output" accessors (field:outputs, method:getOutputContents, etc.)
+            // directly to outputItems. All others → inputItems/inputIngredients as before.
+            // "input" and "output" are universal recipe concepts, not mod-specific names.
             for (var acc : accessors.probeAccessors()) {
                 try {
                     Object raw = acc.extract(recipe, level);
                     if (raw != null && !isEmptyContainer(raw)) {
-                        int beforeIn = inputItems.size();
-                        int beforeOut = outputItems.size();
-                        collectAllDeep(raw, inputItems, outputItems, inputIngredients,
-                                inputFluids, outputFluids, 0, visited, standardInputs, apiResult);
-                        int addedIn = inputItems.size() - beforeIn;
-                        int addedOut = outputItems.size() - beforeOut;
-                        if (addedIn > 0) {
-                            var bucket = new ObjectArrayList<ItemStack>(addedIn);
-                            for (int i = beforeIn; i < inputItems.size(); i++)
-                                bucket.add(inputItems.get(i));
-                            inputItems.removeElements(beforeIn, inputItems.size());
-                            probeBuckets.add(bucket);
-                        }
-                        if (addedOut > 0) {
-                            var bucket = new ObjectArrayList<ItemStack>(addedOut);
-                            for (int i = beforeOut; i < outputItems.size(); i++)
-                                bucket.add(outputItems.get(i));
-                            outputItems.removeElements(beforeOut, outputItems.size());
-                            probeBuckets.add(bucket);
+                        if (acc.name().contains("output")) {
+                            var tempItems = new ObjectArrayList<ItemStack>(8);
+                            collectItemsDeep(raw, tempItems, 0, visited);
+                            outputItems.addAll(tempItems);
+                            collectIngredientsDeep(raw, inputIngredients, 0, visited);
+                            collectFluidsDeep(raw, inputFluids, 0, visited);
+                        } else {
+                            collectAllDeep(raw, inputItems, outputItems, inputIngredients,
+                                    inputFluids, outputFluids, 0, visited, standardInputs, apiResult);
                         }
                     }
                 } catch (Throwable ignored) {
                 }
-            }
-            if (probeBuckets.size() >= 2) {
-                probeBuckets.sort(Comparator.comparingInt(List::size));
-                outputItems.addAll(probeBuckets.getFirst());
-                for (int i = 1; i < probeBuckets.size(); i++) inputItems.addAll(probeBuckets.get(i));
-            } else {
-                for (var b : probeBuckets) inputItems.addAll(b);
             }
 
             if (inputItems.isEmpty() && outputItems.isEmpty()) {
@@ -130,7 +113,6 @@ public final class FastHarvester {
                         inputFluids, outputFluids, 0, visited, standardInputs, apiResult);
             }
 
-            // Fallback: standard Recipe API if still empty
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
                 for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
             }
@@ -156,6 +138,15 @@ public final class FastHarvester {
     private static void collectItemsDeep(Object obj, ObjectList<ItemStack> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
         if (obj == null || depth > 5) return;
         switch (obj) {
+            case SizedIngredient si when si.count() > 0 -> {
+                ItemStack[] stacks = si.ingredient().getItems();
+                if (stacks.length > 0) {
+                    ItemStack stack = stacks[0].copy();
+                    stack.setCount(si.count());
+                    acc.add(stack);
+                }
+                return;
+            }
             case ItemStack stack when !stack.isEmpty() -> {
                 acc.add(stack);
                 return;
@@ -271,6 +262,16 @@ public final class FastHarvester {
             case ItemStack stack when !stack.isEmpty() -> {
                 if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack);
                 else inputItems.add(stack);
+                return;
+            }
+            case SizedIngredient si when si.count() > 0 -> {
+                ItemStack[] stacks = si.ingredient().getItems();
+                if (stacks.length > 0) {
+                    ItemStack stack = stacks[0].copy();
+                    stack.setCount(si.count());
+                    if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack);
+                    else inputItems.add(stack);
+                }
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {

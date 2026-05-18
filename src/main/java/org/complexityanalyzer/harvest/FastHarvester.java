@@ -7,6 +7,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 
 import java.util.*;
 
@@ -45,13 +46,11 @@ public final class FastHarvester {
 
         try {
             // 1. Стандартный Recipe API
-            Set<Ingredient> standardInputs = new HashSet<>();
             ItemStack apiResult = ItemStack.EMPTY;
             if (recipe instanceof Recipe<?> r) {
                 for (var ing : r.getIngredients())
                     if (ing != null && !ing.isEmpty()) {
                         inputIngredients.add(ing);
-                        standardInputs.add(ing);
                     }
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
@@ -97,10 +96,10 @@ public final class FastHarvester {
                             collectItemsDeep(raw, tempItems, 0, visited);
                             outputItems.addAll(tempItems);
                             collectIngredientsDeep(raw, inputIngredients, 0, visited);
-                            collectFluidsDeep(raw, inputFluids, 0, visited);
+                            collectFluidsDeep(raw, outputFluids, 0, visited);
                         } else {
                             collectAllDeep(raw, inputItems, outputItems, inputIngredients,
-                                    inputFluids, outputFluids, 0, visited, standardInputs, apiResult);
+                                    inputFluids, 0, visited, apiResult);
                         }
                     }
                 } catch (Throwable ignored) {
@@ -110,7 +109,7 @@ public final class FastHarvester {
             if (inputItems.isEmpty() && outputItems.isEmpty()) {
                 visited.clear();
                 collectAllDeep(recipe, inputItems, outputItems, inputIngredients,
-                        inputFluids, outputFluids, 0, visited, standardInputs, apiResult);
+                        inputFluids, 0, visited, apiResult);
             }
 
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
@@ -219,6 +218,12 @@ public final class FastHarvester {
     private static void collectFluidsDeep(Object obj, ObjectList<FluidStack> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
         if (obj == null || depth > 5) return;
         switch (obj) {
+            case SizedFluidIngredient sfi -> {
+                for (FluidStack fs : sfi.getFluids()) {
+                    if (!fs.isEmpty()) acc.add(fs);
+                }
+                return;
+            }
             case FluidStack fs when !fs.isEmpty() -> {
                 acc.add(fs);
                 return;
@@ -254,8 +259,8 @@ public final class FastHarvester {
 
     private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
                                        ObjectList<Ingredient> inputIngredients, ObjectList<FluidStack> inputFluids,
-                                       ObjectList<FluidStack> outputFluids, int depth,
-                                       IdentityHashMap<Object, Boolean> visited, Set<Ingredient> standardInputs,
+                                       int depth,
+                                       IdentityHashMap<Object, Boolean> visited,
                                        ItemStack apiResult) {
         if (obj == null || depth > 5) return;
         switch (obj) {
@@ -274,6 +279,12 @@ public final class FastHarvester {
                 }
                 return;
             }
+            case SizedFluidIngredient sfi -> {
+                for (FluidStack fs : sfi.getFluids()) {
+                    if (!fs.isEmpty()) inputFluids.add(fs);
+                }
+                return;
+            }
             case Ingredient ing when !ing.isEmpty() -> {
                 inputIngredients.add(ing);
                 return;
@@ -284,21 +295,21 @@ public final class FastHarvester {
             }
             case Iterable<?> coll when !isTooLarge(coll) -> {
                 for (var item : coll)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
+                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
                 return;
             }
             case Map<?, ?> map when !isTooLarge(map) -> {
                 for (var e : map.entrySet()) {
                     Object key = e.getKey();
                     if (key != null && !isTerminal(key))
-                        collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
-                    collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
+                        collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
+                    collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
                 }
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
                 for (var item : arr)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
+                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
                 return;
             }
             default -> {
@@ -311,7 +322,7 @@ public final class FastHarvester {
             try {
                 Object val = f.get(obj);
                 if (val != null)
-                    collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
+                    collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
             } catch (Throwable ignored) {
             }
         }

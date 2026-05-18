@@ -82,37 +82,32 @@ public final class FastHarvester {
                 ObjectLists.emptyList(), null
         );
 
-        // Стандартный Recipe из Minecraft/NeoForge — обрабатываем быстро через API
+        var stdIngredients = new ObjectArrayList<Ingredient>();
+        ItemStack stdResult = ItemStack.EMPTY;
         if (recipe instanceof Recipe<?> r) {
-            var inputIngredients = new ObjectArrayList<Ingredient>();
-            for (var ing : r.getIngredients()) {
-                if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
-            }
-            var outputItems = new ObjectArrayList<ItemStack>();
+            for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) stdIngredients.add(ing);
             try {
-                var res = r.getResultItem(level.registryAccess());
-                if (!res.isEmpty()) outputItems.add(res.copy());
+                stdResult = r.getResultItem(level.registryAccess());
             } catch (Throwable ignored) {
             }
 
-            // Если это ванильный рецепт без дополнительных данных — возвращаем сразу
             Class<?> clazz = recipe.getClass();
             if (clazz.getName().startsWith("net.minecraft.") || clazz.getName().startsWith("net.neoforged.")) {
+                var out = new ObjectArrayList<ItemStack>();
+                if (!stdResult.isEmpty()) out.add(stdResult.copy());
                 return new HarvestedItems(
-                        ObjectLists.emptyList(), outputItems,
-                        inputIngredients, ObjectLists.emptyList(),
+                        ObjectLists.emptyList(), out,
+                        stdIngredients, ObjectLists.emptyList(),
                         ObjectLists.emptyList(), recipe
                 );
             }
-
-            // Даже для не-ванильных Recipe — используем стандартные inputs/outputs как базу
-            // но также сканируем поля/методы для дополнительных данных
         }
 
-        // Универсальный путь: используем UniversalAccessorResolver
         var inputItems = borrowList(TL_INPUT_ITEMS);
         var outputItems = borrowList(TL_OUTPUT_ITEMS);
         var inputIngredients = borrowList(TL_INPUT_INGREDIENTS);
+        inputIngredients.addAll(stdIngredients);
+        if (!stdResult.isEmpty()) outputItems.add(stdResult.copy());
         var inputFluids = borrowList(TL_INPUT_FLUIDS);
         var outputFluids = borrowList(TL_OUTPUT_FLUIDS);
 
@@ -178,20 +173,6 @@ public final class FastHarvester {
                         collectAllDeep(raw, inputItems, outputItems, inputIngredients,
                                 inputFluids, outputFluids, role, 1, visitedAll, standardInputs);
                     }
-                } catch (Throwable ignored) {
-                }
-            }
-
-            // Fallback: если ничего не нашли, используем стандартные inputs/outputs
-            if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
-                for (var ing : r.getIngredients()) {
-                    if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
-                }
-            }
-            if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) {
-                try {
-                    var res = r.getResultItem(level.registryAccess());
-                    if (!res.isEmpty()) outputItems.add(res.copy());
                 } catch (Throwable ignored) {
                 }
             }

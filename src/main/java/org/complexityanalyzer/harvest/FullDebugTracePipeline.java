@@ -36,12 +36,13 @@ public final class FullDebugTracePipeline {
         synchronized (this) {
             totalRecipes++;
             harvestedCount++;
-            buffer.append("HARVESTED recipe=").append(recipeId)
-                    .append(" class=").append(className)
-                    .append(" inItems=").append(items.inputItems().size())
-                    .append(" outItems=").append(items.outputItems().size())
-                    .append(" inIngr=").append(items.inputIngredients().size())
-                    .append('\n');
+            buffer.append("HARVESTED ").append(recipeId)
+                    .append("  class=").append(className)
+                    .append("  raw[items=").append(items.inputItems().size())
+                    .append(" out=").append(items.outputItems().size())
+                    .append(" ingr=").append(items.inputIngredients().size())
+                    .append(" fluids=").append(items.inputFluids().size())
+                    .append("]\n");
         }
     }
 

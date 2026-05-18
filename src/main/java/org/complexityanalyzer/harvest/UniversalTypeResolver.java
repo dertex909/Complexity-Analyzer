@@ -227,7 +227,7 @@ public final class UniversalTypeResolver {
             evidence.add("implements Recipe<?>");
         }
 
-        // ---- Шаг 2: Composition analysis ----
+        // ---- Шаг 2: Composition analysis (сканируем ВСЕ поля включая родительские) ----
         int itemFields = 0, ingrFields = 0, fluidFields = 0;
         int itemMethods = 0, ingrMethods = 0, fluidMethods = 0;
         boolean hasWrapper = false;
@@ -342,6 +342,17 @@ public final class UniversalTypeResolver {
         int score = 0;
         Kind kind = Kind.UNKNOWN;
 
+        // FluidStack/fluid-обёртки ВСЕГДА проверяем первыми (до Ingredient!)
+        if (className.endsWith("FluidStack") || className.contains(".FluidStack")) {
+            return new ResolvedType(Kind.FLUID_STACK, false, true, null, 85,
+                    List.of("fuzzy name match: FluidStack"));
+        }
+        if (className.contains("FluidStack") || className.contains("FluidIngredient")
+                || className.contains("ChemicalStack")) {
+            return new ResolvedType(Kind.FLUID_STACK, false, true, null, 75,
+                    List.of("fuzzy name match: fluid/chemical wrapper: " + className));
+        }
+
         if (className.endsWith("ItemStack") || className.endsWith(".ItemStack")) {
             score = 85;
             kind = Kind.ITEM_STACK;
@@ -351,7 +362,7 @@ public final class UniversalTypeResolver {
         } else if (className.endsWith("Ingredient") || className.contains(".Ingredient")) {
             score = 80;
             kind = Kind.INGREDIENT;
-        } else if (className.contains("Ingredient")) {
+        } else if (className.contains("Ingredient") && !className.contains("Fluid")) {
             score = 55;
             kind = Kind.INGREDIENT;
         } else if (className.endsWith("FluidStack") || className.contains(".FluidStack")) {

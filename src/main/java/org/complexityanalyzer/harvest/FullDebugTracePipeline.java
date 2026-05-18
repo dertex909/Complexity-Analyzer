@@ -1,8 +1,5 @@
 package org.complexityanalyzer.harvest;
 
-import java.lang.reflect.Field;
-
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -10,14 +7,12 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/**
- * Полный дебаг-трейсинг каждого рецепта.
- */
 public final class FullDebugTracePipeline {
 
     private static final String SEP = "═".repeat(60);
@@ -37,8 +32,38 @@ public final class FullDebugTracePipeline {
         this.buffer = new StringBuilder(256 * 1024);
     }
 
-    public TraceBuilder beginRecipe(Object recipe, String recipeId) {
-        return new TraceBuilder(this, recipe, recipeId);
+    public void traceHarvested(String recipeId, String className, HarvestedItems items) {
+        synchronized (this) {
+            totalRecipes++;
+            harvestedCount++;
+            buffer.append("HARVESTED recipe=").append(recipeId)
+                    .append(" class=").append(className)
+                    .append(" inItems=").append(items.inputItems().size())
+                    .append(" outItems=").append(items.outputItems().size())
+                    .append(" inIngr=").append(items.inputIngredients().size())
+                    .append('\n');
+        }
+    }
+
+    public void traceRejected(String recipeId, Object recipe, Level level,
+                              String reason) {
+        TraceBuilder tb = new TraceBuilder(this, recipe, recipeId);
+        tb.classInfo();
+        tb.fields();
+        tb.methods();
+        tb.accessors(level);
+        tb.rejected(reason);
+    }
+
+    public void traceFailed(String recipeId, String className, Throwable t) {
+        synchronized (this) {
+            totalRecipes++;
+            failedCount++;
+            buffer.append("FAILED recipe=").append(recipeId)
+                    .append(" class=").append(className)
+                    .append(" error=").append(t.getClass().getSimpleName())
+                    .append(": ").append(t.getMessage()).append('\n');
+        }
     }
 
     public void flush() {
@@ -51,11 +76,13 @@ public final class FullDebugTracePipeline {
         buffer.append("Failed:    ").append(failedCount).append('\n');
         buffer.append('\n');
 
-        buffer.append("Recipe types distribution:\n");
-        for (var entry : recipeTypeStats.entrySet()) {
-            buffer.append(String.format(Locale.ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
+        if (!recipeTypeStats.isEmpty()) {
+            buffer.append("Recipe types distribution:\n");
+            for (var entry : recipeTypeStats.entrySet()) {
+                buffer.append(String.format(Locale.ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
+            }
+            buffer.append('\n');
         }
-        buffer.append('\n');
 
         if (!rejectReasons.isEmpty()) {
             buffer.append("Reject reasons:\n");
@@ -79,7 +106,6 @@ public final class FullDebugTracePipeline {
         private final FullDebugTracePipeline pipeline;
         private final Object recipe;
         private final String recipeId;
-        private final String className;
         private final StringBuilder sb = new StringBuilder(4096);
         private boolean finalized;
 
@@ -87,13 +113,12 @@ public final class FullDebugTracePipeline {
             this.pipeline = pipeline;
             this.recipe = recipe;
             this.recipeId = recipeId;
-            this.className = recipe.getClass().getName();
         }
 
         public void classInfo() {
             sb.append(SEP).append('\n');
             sb.append("RECIPE: ").append(recipeId).append('\n');
-            sb.append("CLASS:  ").append(className).append('\n');
+            sb.append("CLASS:  ").append(recipe.getClass().getName()).append('\n');
 
             Class<?> clazz = recipe.getClass();
             sb.append("INTERFACES:\n");
@@ -109,18 +134,15 @@ public final class FullDebugTracePipeline {
                     .append(" score=").append(profile.totalScore())
                     .append(" isRecipe=").append(profile.isRecipe())
                     .append(" isMachine=").append(profile.isMachine())
-                    .append(" isCodec=").append(profile.isCodec())
                     .append('\n');
 
         }
 
         public void fields() {
             sb.append(MINOR_SEP).append('\n');
-            sb.append("FIELDS (");
+            sb.append("FIELDS:\n");
 
             UniversalAccessorResolver.ClassMeta meta = UniversalAccessorResolver.getMeta(recipe.getClass());
-            sb.append(meta.allFields().length).append(" total, ")
-                    .append(meta.scanFields().length).append(" scan):\n");
 
             for (Field f : meta.allFields()) {
                 try {
@@ -206,25 +228,6 @@ public final class FullDebugTracePipeline {
 
         }
 
-        public void harvested(HarvestedItems items) {
-            sb.append(MINOR_SEP).append('\n');
-            sb.append("STATUS: HARVESTED\n");
-            sb.append("RESULT:\n");
-            sb.append("  inputItems:      ").append(items.inputItems().size()).append('\n');
-            sb.append("  outputItems:     ").append(items.outputItems().size()).append('\n');
-            sb.append("  inputIngredients:").append(items.inputIngredients().size()).append('\n');
-            sb.append("  inputFluids:     ").append(items.inputFluids().size()).append('\n');
-            sb.append("  outputFluids:    ").append(items.outputFluids().size()).append('\n');
-
-            if (!items.outputItems().isEmpty()) {
-                sb.append("  Output stacks:\n");
-                for (var s : items.outputItems()) sb.append("    - ").append(formatItemStack(s)).append('\n');
-            }
-            sb.append(SEP).append('\n');
-
-            finalizeTrace(true);
-        }
-
         public void rejected(String reason) {
             sb.append(MINOR_SEP).append('\n');
             sb.append("STATUS: REJECTED\n");
@@ -234,36 +237,31 @@ public final class FullDebugTracePipeline {
             synchronized (pipeline) {
                 pipeline.rejectReasons.merge(reason, 1, Integer::sum);
             }
-            finalizeTrace(false);
+            finalizeTrace();
         }
 
-        public TraceBuilder failed(Throwable t) {
+        public void failed(Throwable t) {
             sb.append(MINOR_SEP).append('\n');
             sb.append("STATUS: FAILED\n");
             sb.append("ERROR:  ").append(t.getClass().getSimpleName())
                     .append(": ").append(t.getMessage()).append('\n');
             sb.append(SEP).append('\n');
-
-            finalizeTrace(false);
-            return this;
+            finalizeTrace();
         }
 
-        private void finalizeTrace(boolean harvested) {
+        private void finalizeTrace() {
             if (finalized) return;
             finalized = true;
 
             synchronized (pipeline) {
                 pipeline.totalRecipes++;
-                if (harvested) pipeline.harvestedCount++;
-                else pipeline.rejectedCount++;
+                pipeline.rejectedCount++;
 
-                String typeKey;
                 if (recipe instanceof Recipe<?> r) {
-                    typeKey = r.getType().toString();
+                    pipeline.recipeTypeStats.merge(r.getType().toString(), 1, Integer::sum);
                 } else {
-                    typeKey = recipe.getClass().getSimpleName();
+                    pipeline.recipeTypeStats.merge(recipe.getClass().getSimpleName(), 1, Integer::sum);
                 }
-                pipeline.recipeTypeStats.merge(typeKey, 1, Integer::sum);
                 pipeline.buffer.append(sb);
             }
         }
@@ -287,7 +285,6 @@ public final class FullDebugTracePipeline {
 
     private static String formatItemStack(ItemStack stack) {
         if (stack.isEmpty()) return "EMPTY";
-        Item item = stack.getItem();
-        return stack.getCount() + "x " + item;
+        return stack.getCount() + "x " + stack.getItem();
     }
 }

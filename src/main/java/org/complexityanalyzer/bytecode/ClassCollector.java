@@ -52,6 +52,9 @@ public final class ClassCollector {
                     failed.incrementAndGet();
                 }
             })).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ComplexityAnalyzer.LOGGER.warn("[ClassCollector] Interrupted during scan");
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[ClassCollector] Failed", e);
         }

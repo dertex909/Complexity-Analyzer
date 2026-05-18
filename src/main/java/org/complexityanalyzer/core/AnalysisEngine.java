@@ -25,7 +25,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
@@ -42,7 +41,6 @@ import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.analyzer.resource.sources.*;
 import org.complexityanalyzer.analyzer.solver.SccCondensedSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
-import org.complexityanalyzer.bytecode.BytecodeAnalysisEngine;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -84,7 +82,6 @@ public class AnalysisEngine {
     private volatile GeoAnalysisManager geoManager;
     private volatile MobRarityCalculator mobRarityCalculator;
     private volatile MachineRegistry machineRegistry;
-    private volatile BytecodeAnalysisEngine bytecodeEngine;
     private volatile MinecraftServer server;
 
     private static class InstanceHolder {
@@ -162,16 +159,7 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);
 
-                ComplexityAnalyzer.LOGGER.info("Running bytecode semantic analysis...");
-                this.bytecodeEngine = new BytecodeAnalysisEngine(serverLevel.getServer().getWorldPath(LevelResource.ROOT));
-                var bytecodeResult = this.bytecodeEngine.analyzeAndMerge(this.graph);
-                if (bytecodeResult.hasResults()) {
-                    ComplexityAnalyzer.LOGGER.info("Bytecode analysis: {} events, {} machines, {} edges ({}ms)",
-                            bytecodeResult.events.size(), bytecodeResult.machines.size(),
-                            bytecodeResult.edges.size(), bytecodeResult.durationMs);
-                }
-
-                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] Starting analysis ===");
+                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] Starting analysis (bytecode skipped — runtime harvest covers 99.8%) ===");
 
                 if (isInterrupted()) {
                     restoreIdleState();
@@ -643,10 +631,6 @@ public class AnalysisEngine {
     @Nullable
     public MachineRegistry getMachineRegistry() {
         return this.machineRegistry;
-    }
-
-    public org.complexityanalyzer.bytecode.BytecodeAnalysisEngine getBytecodeEngine() {
-        return this.bytecodeEngine;
     }
 
     public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {

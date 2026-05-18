@@ -38,7 +38,6 @@ public final class CabinFormat {
     public static final byte SEC_DROPS = 0x09;
     public static final byte SEC_SCC = 0x0A;
     public static final byte SEC_CATEGORIES = 0x0B;
-    public static final byte SEC_SEMANTIC = 0x0C;
     public static final byte SEC_IDX_ITEM_HASH = 0x20;
     public static final byte SEC_IDX_RECIPES_BY_OUTPUT = 0x21;
     public static final byte SEC_IDX_MOB_HASH = 0x22;

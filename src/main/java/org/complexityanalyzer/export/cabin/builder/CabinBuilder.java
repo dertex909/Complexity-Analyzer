@@ -100,8 +100,6 @@ public final class CabinBuilder {
         byte[] sccBytes = buildScc(solverResult);
         byte[] categoriesBytes = buildCategories();
 
-        byte[] semanticBytes = buildSemantic();
-
         byte[] idxItemHash = buildItemHashIndex();
         byte[] idxMobHash = buildMobHashIndex();
 
@@ -124,7 +122,6 @@ public final class CabinBuilder {
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_ITEM_HASH, idxItemHash));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_RECIPES_BY_OUTPUT, recipes.outputIndex));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_MOB_HASH, idxMobHash));
-        out.add(CabinSection.compressed(CabinFormat.SEC_SEMANTIC, semanticBytes));
 
         long elapsed = System.currentTimeMillis() - t0;
         ComplexityAnalyzer.LOGGER.info("[Cabin] Built {} sections (items={}, recipes={}, mobs={}, strings={}) in {} ms",
@@ -277,45 +274,6 @@ public final class CabinBuilder {
     private byte[] encodeStrings() {
         LeBuf buf = new LeBuf(Math.toIntExact(Math.min(Integer.MAX_VALUE - 16, strings.bytesEstimate())));
         strings.writeTo(buf);
-        return buf.toByteArray();
-    }
-
-    private byte[] buildSemantic() {
-        var bytecodeEngine = engine.getBytecodeEngine();
-        if (bytecodeEngine == null) {
-            LeBuf buf = new LeBuf(4);
-            buf.i32(0);
-            return buf.toByteArray();
-        }
-
-        var result = bytecodeEngine.getLastResult();
-        if (result == null || result.edges.isEmpty()) {
-            LeBuf buf = new LeBuf(4);
-            buf.i32(0);
-            return buf.toByteArray();
-        }
-
-        LeBuf buf = new LeBuf(4096);
-        buf.i32(result.edges.size());
-
-        for (var edge : result.edges) {
-            buf.i32(strings.intern(edge.from()));
-            buf.i32(strings.intern(edge.to()));
-            buf.i32(strings.intern(edge.action()));
-            buf.f64(edge.weight());
-            buf.u8(edge.source().ordinal());
-
-            buf.u16(edge.conditions().size());
-            for (var c : edge.conditions()) buf.i32(strings.intern(c));
-
-            var ctx = edge.context();
-            buf.u16(ctx.size());
-            for (var e : ctx.entrySet()) {
-                buf.i32(strings.intern(e.getKey()));
-                buf.i32(strings.intern(String.valueOf(e.getValue())));
-            }
-        }
-
         return buf.toByteArray();
     }
 

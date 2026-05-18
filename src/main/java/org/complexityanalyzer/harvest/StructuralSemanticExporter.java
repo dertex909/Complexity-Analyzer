@@ -6,11 +6,18 @@ import org.complexityanalyzer.bytecode.model.MachineNode;
 import org.complexityanalyzer.bytecode.model.SemanticEdge;
 import org.complexityanalyzer.bytecode.ConfidenceModel;
 
+/**
+ * Экспортёр структурных данных в семантические графы — v2.0.
+ * Использует {@link AntivirusStyleDetector} для финальной классификации.
+ */
 public final class StructuralSemanticExporter {
 
     private StructuralSemanticExporter() {
     }
 
+    /**
+     * Создать SemanticEdge из ClassShape.
+     */
     public static ObjectList<SemanticEdge> edgesFromShapes(ObjectList<StructuralBytecodeHarvester.ClassShape> shapes) {
         var edges = new ObjectArrayList<SemanticEdge>();
         if (shapes == null) return edges;
@@ -22,17 +29,28 @@ public final class StructuralSemanticExporter {
         return edges;
     }
 
+    /**
+     * Создать MachineNode из ClassShape.
+     */
     public static ObjectList<MachineNode> machinesFromShapes(ObjectList<StructuralBytecodeHarvester.ClassShape> shapes) {
         var machines = new ObjectArrayList<MachineNode>();
         if (shapes == null) return machines;
         for (var shape : shapes) {
             if (!shape.machineLike()) continue;
+
             var builder = new MachineNode.Builder()
                     .className(shape.className())
                     .modId(inferModId(shape.className()));
-            if (shape.stackFields() > 0 || shape.stackCreations() > 0) builder.addInput("structural:item_io");
-            if (shape.fluidFields() > 0 || shape.fluidCreations() > 0) builder.addInput("structural:fluid_io");
-            if (shape.ingredientFields() > 0 || shape.ingredientCreations() > 0) builder.addOutput("structural:recipe_logic");
+
+            if (shape.stackFields() > 0 || shape.stackCreations() > 0) {
+                builder.addInput("structural:item_io");
+            }
+            if (shape.fluidFields() > 0 || shape.fluidCreations() > 0) {
+                builder.addInput("structural:fluid_io");
+            }
+            if (shape.ingredientFields() > 0 || shape.ingredientCreations() > 0) {
+                builder.addOutput("structural:recipe_logic");
+            }
             builder.deterministic(shape.codecRefs() == 0);
             machines.add(builder.build());
         }

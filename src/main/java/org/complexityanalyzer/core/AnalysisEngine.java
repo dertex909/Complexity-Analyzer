@@ -159,7 +159,7 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);
 
-                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] Starting analysis (bytecode skipped — runtime harvest covers 99.8%) ===");
+                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] ===");
 
                 if (isInterrupted()) {
                     restoreIdleState();

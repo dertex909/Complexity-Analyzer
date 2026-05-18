@@ -42,6 +42,14 @@ public final class HarvestedRecipeConverter {
             output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks);
         }
 
+        if (output.isEmpty() && !isPlaceholder && !inputIngredients.isEmpty()) {
+            ItemStack[] items = inputIngredients.getFirst().getItems();
+            if (items.length > 0) {
+                output = items[0].copy();
+                output.setCount(1);
+            }
+        }
+
         if (output.isEmpty() && !isPlaceholder) return null;
 
         var builder = new RecipeNode.Builder(output.getItem())

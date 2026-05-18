@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class UniversalTypeResolver {
 
     private static final ConcurrentHashMap<Class<?>, ResolvedType> TYPE_CACHE = new ConcurrentHashMap<>(512);
-    private static final ConcurrentHashMap<String, ResolvedType> DESC_CACHE = new ConcurrentHashMap<>(512);
 
     /**
      * Полное описание типа с confidence score.
@@ -116,22 +115,6 @@ public final class UniversalTypeResolver {
         return result;
     }
 
-    public static ResolvedType resolveDescriptor(String descriptor) {
-        if (descriptor == null || descriptor.isEmpty()) return ResolvedType.UNKNOWN_TYPE;
-        ResolvedType existing = DESC_CACHE.get(descriptor);
-        if (existing != null) return existing;
-        DESC_CACHE.put(descriptor, ResolvedType.UNKNOWN_TYPE);
-        String dotted = descriptor.replace('/', '.');
-        ResolvedType result;
-        try {
-            Class<?> c = Class.forName(dotted, false, UniversalTypeResolver.class.getClassLoader());
-            result = resolve(c);
-        } catch (ClassNotFoundException | NoClassDefFoundError e) {
-            result = fuzzyMatchByName(dotted);
-        }
-        DESC_CACHE.put(descriptor, result);
-        return result;
-    }
 
     /**
      * Является ли тип контейнером (List, Set, Map, array, Iterable, record).
@@ -152,13 +135,6 @@ public final class UniversalTypeResolver {
                 || Number.class.isAssignableFrom(type) || type == Boolean.class || type == Character.class
                 || type.isPrimitive() || type.isEnum() || type == String.class) return true;
         return type.getName().startsWith("java.lang.invoke.") || type.getName().startsWith("java.lang.reflect.");
-    }
-
-    /**
-     * Быстрая проверка: является ли класс рецептом.
-     */
-    public static boolean isRecipeClass(Class<?> clazz) {
-        return clazz != null && Recipe.class.isAssignableFrom(clazz);
     }
 
     /**
@@ -201,7 +177,6 @@ public final class UniversalTypeResolver {
      */
     public static void clearCache() {
         TYPE_CACHE.clear();
-        DESC_CACHE.clear();
     }
 
     // ======================== Приватные методы ========================
@@ -298,7 +273,8 @@ public final class UniversalTypeResolver {
                         }
                     }
                 }
-            } catch (TypeNotPresentException | NoClassDefFoundError ignored) {}
+            } catch (TypeNotPresentException | NoClassDefFoundError ignored) {
+            }
         }
 
         // ---- Шаг 3: Вычисление confidence score ----
@@ -333,64 +309,5 @@ public final class UniversalTypeResolver {
         }
 
         return new ResolvedType(Kind.UNKNOWN, false, false, null, 0, evidence);
-    }
-
-    /**
-     * Fuzzy match по имени класса. Используется только когда класс не может быть загружен.
-     */
-    private static ResolvedType fuzzyMatchByName(String className) {
-        int score = 0;
-        Kind kind = Kind.UNKNOWN;
-
-        // FluidStack/fluid-обёртки ВСЕГДА проверяем первыми (до Ingredient!)
-        if (className.endsWith("FluidStack") || className.contains(".FluidStack")) {
-            return new ResolvedType(Kind.FLUID_STACK, false, true, null, 85,
-                    List.of("fuzzy name match: FluidStack"));
-        }
-        if (className.contains("FluidStack") || className.contains("FluidIngredient")
-                || className.contains("ChemicalStack")) {
-            return new ResolvedType(Kind.FLUID_STACK, false, true, null, 75,
-                    List.of("fuzzy name match: fluid/chemical wrapper: " + className));
-        }
-
-        if (className.endsWith("ItemStack") || className.endsWith(".ItemStack")) {
-            score = 85;
-            kind = Kind.ITEM_STACK;
-        } else if (className.contains("ItemStack")) {
-            score = 60;
-            kind = Kind.ITEM_STACK;
-        } else if (className.endsWith("Ingredient") || className.contains(".Ingredient")) {
-            score = 80;
-            kind = Kind.INGREDIENT;
-        } else if (className.contains("Ingredient") && !className.contains("Fluid")) {
-            score = 55;
-            kind = Kind.INGREDIENT;
-        } else if (className.endsWith("FluidStack") || className.contains(".FluidStack")) {
-            score = 85;
-            kind = Kind.FLUID_STACK;
-        } else if (className.contains("FluidStack")) {
-            score = 60;
-            kind = Kind.FLUID_STACK;
-        } else if (className.contains("ResourceLocation") || className.contains("ResourceKey")) {
-            return new ResolvedType(Kind.RESOURCE_ID, false, false, null, 70,
-                    List.of("fuzzy name match: ResourceLocation-like"));
-        } else if (className.contains("TagKey") || className.contains("Tag<")) {
-            return new ResolvedType(Kind.TAG, false, false, null, 65,
-                    List.of("fuzzy name match: TagKey-like"));
-        } else if (className.contains("DataComponent") || className.contains("ComponentType")) {
-            return new ResolvedType(Kind.DATA_COMPONENT, false, false, null, 60,
-                    List.of("fuzzy name match: DataComponent-like"));
-        } else if (className.contains("List<") || className.contains("Set<") || className.contains("Map<")
-                || className.startsWith("[L")) {
-            return new ResolvedType(Kind.COLLECTION, true, false, null, 40,
-                    List.of("fuzzy name match: Collection-like"));
-        }
-
-        if (score > 0) {
-            return new ResolvedType(kind, false, false, null, score,
-                    List.of("fuzzy name match: " + className));
-        }
-
-        return ResolvedType.UNKNOWN_TYPE;
     }
 }

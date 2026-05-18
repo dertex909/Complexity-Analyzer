@@ -99,6 +99,7 @@ public final class CabinBuilder {
 
         byte[] sccBytes = buildScc(solverResult);
         byte[] categoriesBytes = buildCategories();
+        byte[] fluidsBytes = buildFluidsSection();
 
         byte[] idxItemHash = buildItemHashIndex();
         byte[] idxMobHash = buildMobHashIndex();
@@ -119,6 +120,7 @@ public final class CabinBuilder {
         out.add(CabinSection.compressed(CabinFormat.SEC_DROPS, dropsBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_SCC, sccBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_CATEGORIES, categoriesBytes));
+        out.add(CabinSection.compressed(CabinFormat.SEC_FLUIDS, fluidsBytes));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_ITEM_HASH, idxItemHash));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_RECIPES_BY_OUTPUT, recipes.outputIndex));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_MOB_HASH, idxMobHash));
@@ -269,6 +271,30 @@ public final class CabinBuilder {
                        : (c.ordinal() == 0 ? 0.0 : Math.pow(10, c.ordinal()))));
         }
         return buf.toByteArray();
+    }
+
+    private byte[] buildFluidsSection() {
+        int n = orderedFluids.size();
+        LeBuf buf = new LeBuf(4 + n * 8);
+        buf.i32(n);
+        for (int i = 0; i < n; i++) {
+            Fluid fluid = orderedFluids.get(i);
+            ResourceLocation id = GameRegistryManager.getFluidId(fluid);
+            String idStr = id != null ? id.toString() : "minecraft:empty";
+            String displayName = safeFluidDisplayName(fluid);
+            buf.i32(strings.intern(idStr));
+            buf.i32(strings.intern(displayName));
+        }
+        return buf.toByteArray();
+    }
+
+    private static String safeFluidDisplayName(Fluid fluid) {
+        try {
+            return fluid.getFluidType().getDescription().getString();
+        } catch (Throwable t) {
+            ResourceLocation id = GameRegistryManager.getFluidId(fluid);
+            return id != null ? id.toString() : "unknown";
+        }
     }
 
     private byte[] encodeStrings() {

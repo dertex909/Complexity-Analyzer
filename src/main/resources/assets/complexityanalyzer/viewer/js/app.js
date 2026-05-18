@@ -421,7 +421,7 @@ function renderRecipeList(recipes) {
             <div class="hint">Fluids:</div>
             <div class="ingredient-list">
               ${r.fluidIngredients.flatMap(slot =>
-        slot.variants.map(v => `<span class="ingredient">fluid #${v} × ${slot.amount}</span>`)
+        slot.variants.map(v => renderFluidRef(v, slot.amount))
     ).join("")}
             </div>` : ""}
           ${r.chemicalIngredients.length > 0 ? `
@@ -454,6 +454,13 @@ function renderIngredientRef(itemIndex, amount) {
     const it = state.db.items.get(itemIndex);
     if (!it) return `<span class="ingredient" style="color:var(--text-muted)">#${itemIndex}</span>`;
     return `<span class="ingredient" data-idx="${itemIndex}" title="${escapeHtml(it.id)} — complexity ${formatComplexity(it.complexity)}">${escapeHtml(it.name)}${amount ? ` × ${fmt.format(amount)}` : ""}</span>`;
+}
+
+function renderFluidRef(fluidIndex, amount) {
+    if (fluidIndex < 0 || !state.db || !state.db.fluids) return `<span class="ingredient" style="color:var(--text-muted)">?${amount ? ` × ${amount} mB` : ""}</span>`;
+    const fl = state.db.fluids.get(fluidIndex);
+    if (!fl) return `<span class="ingredient" style="color:var(--text-muted)">#${fluidIndex}${amount ? ` × ${amount} mB` : ""}</span>`;
+    return `<span class="ingredient" title="${escapeHtml(fl.id)}">${escapeHtml(fl.name)}${amount ? ` × ${fmt.format(amount)} mB` : ""}</span>`;
 }
 
 async function openMobDialog(mobIndex) {

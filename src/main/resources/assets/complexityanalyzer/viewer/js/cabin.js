@@ -19,7 +19,7 @@
 export const SEC = {
     META: 0x01, STRINGS: 0x02, ITEMS: 0x03, BASE_DATA: 0x04, SOURCES: 0x05,
     RECIPES: 0x06, USAGE: 0x07, MOBS: 0x08, DROPS: 0x09, SCC: 0x0A,
-    CATEGORIES: 0x0B, IDX_ITEM_HASH: 0x20, IDX_RECIPES: 0x21, IDX_MOB_HASH: 0x22,
+    CATEGORIES: 0x0B, FLUIDS: 0x0C, IDX_ITEM_HASH: 0x20, IDX_RECIPES: 0x21, IDX_MOB_HASH: 0x22,
 };
 
 const MAGIC = 0x4E424143;
@@ -239,6 +239,22 @@ export class MobTable {
     }
 }
 
+export class FluidTable {
+    constructor(bytes, strings) {
+        this.b = bytes;
+        this.s = strings;
+        this.count = new Buf(bytes).i32();
+    }
+
+    get(i) {
+        if (i < 0 || i >= this.count) return null;
+        const b = new Buf(this.b, 4 + i * 8);
+        return {
+            index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32())
+        };
+    }
+}
+
 export function readSourcesForItem(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
     const b = new Buf(bytes, offset), out = [];
@@ -374,13 +390,16 @@ export class CabinDatabase {
 
     async open(opt = {}) {
         await this.file.open(opt);
-        const [sB, iB, mB, meB, cB, rIB] = await Promise.all([SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES].map(id => this.file.readSection(id)));
+        const [sB, iB, mB, meB, cB, rIB, flB] = await Promise.all([
+            SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES, SEC.FLUIDS
+        ].map(id => this.file.readSection(id)));
         this.strings = new StringPool(sB);
         this.items = new ItemTable(iB, this.strings);
         this.mobs = new MobTable(mB, this.strings);
         this.meta = readMeta(meB, this.strings);
         this.categories = readCategories(cB, this.strings);
         this.recipeIndex = new RecipeIndex(rIB);
+        this.fluids = new FluidTable(flB, this.strings);
     }
 
     async _ensure(key, id) {

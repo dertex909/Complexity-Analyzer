@@ -269,6 +269,7 @@ public class PlantSimulator {
         try {
             BlockState candidateState = candidate.defaultBlockState();
             if (candidateState.isAir() && candidate != Blocks.WATER) return false;
+            if (candidateState.hasBlockEntity()) return false;
             BlockState oldGround = level.getBlockState(groundPos);
             level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
             boolean survives = plantState.canSurvive(level, plantPos);

@@ -68,9 +68,24 @@ public final class FastHarvester {
         String className = clazz.getName();
         if (className.startsWith("java.") || className.startsWith("net.minecraft.")
                 || className.startsWith("it.unimi.") || className.startsWith("com.mojang.")) {
+            var inputIngredients = ObjectLists.<Ingredient>emptyList();
+            var outputItems = ObjectLists.<ItemStack>emptyList();
+            if (recipe instanceof Recipe<?> r) {
+                var ingList = new ObjectArrayList<Ingredient>();
+                for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) ingList.add(ing);
+                inputIngredients = ingList;
+                try {
+                    var res = r.getResultItem(level.registryAccess());
+                    if (!res.isEmpty()) {
+                        outputItems = new ObjectArrayList<>(1);
+                        outputItems.add(res.copy());
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
             return new HarvestedItems(
-                    ObjectLists.emptyList(), ObjectLists.emptyList(),
-                    ObjectLists.emptyList(), ObjectLists.emptyList(),
+                    ObjectLists.emptyList(), outputItems,
+                    inputIngredients, ObjectLists.emptyList(),
                     ObjectLists.emptyList(), recipe
             );
         }
@@ -107,10 +122,7 @@ public final class FastHarvester {
                 try {
                     var raw = acc.extract(recipe, level);
                     if (raw != null) {
-                        SemanticRole role = classifyAccessorByName(acc.name());
-                        if (role == SemanticRole.UNKNOWN) {
-                            role = classifyAccessorRuntime(raw, anchorItem, visitedAll);
-                        }
+                        SemanticRole role = classifyAccessor(acc, raw, anchorItem, visitedAll, standardInputs);
                         if (role == SemanticRole.OUTPUT) {
                             collectItemsDeep(raw, outputItems, 0, visitedItems);
                         } else {
@@ -131,10 +143,7 @@ public final class FastHarvester {
                 try {
                     var raw = acc.extract(recipe, level);
                     if (raw != null) {
-                        SemanticRole role = classifyAccessorByName(acc.name());
-                        if (role == SemanticRole.UNKNOWN) {
-                            role = classifyAccessorRuntime(raw, anchorItem, visitedAll);
-                        }
+                        SemanticRole role = classifyAccessor(acc, raw, anchorItem, visitedAll, standardInputs);
                         if (role == SemanticRole.OUTPUT) {
                             collectFluidsDeep(raw, outputFluids, 0, visitedFluids);
                         } else {
@@ -148,14 +157,20 @@ public final class FastHarvester {
                 try {
                     var raw = acc.extract(recipe, level);
                     if (raw != null && !isEmptyContainer(raw)) {
-                        SemanticRole role = classifyAccessorByName(acc.name());
-                        if (role == SemanticRole.UNKNOWN) {
-                            role = classifyAccessorRuntime(raw, anchorItem, visitedAll);
-                        }
+                        SemanticRole role = classifyAccessor(acc, raw, anchorItem, visitedAll, standardInputs);
                         collectAllDeep(raw, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, role, 0, visitedAll, standardInputs);
                     }
                 } catch (Throwable ignored) {
                 }
+            }
+
+            if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
+                for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
+            }
+            if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
+                var res = r.getResultItem(level.registryAccess());
+                if (!res.isEmpty()) outputItems.add(res.copy());
+            } catch (Throwable ignored) {
             }
 
             return new HarvestedItems(
@@ -179,34 +194,188 @@ public final class FastHarvester {
         }
     }
 
-    private static SemanticRole classifyAccessorByName(String name) {
-        if (name == null || name.equals("unknown")) return SemanticRole.UNKNOWN;
-        String lower = name.toLowerCase(Locale.ROOT);
-        if (lower.contains("output") || lower.contains("result") || lower.contains("product")
-                || lower.contains("produce") || lower.contains("byproduct")
-                || lower.endsWith("out") || lower.startsWith("out")
-                || lower.contains("_out_") || lower.contains("_out")) {
-            return SemanticRole.OUTPUT;
+
+    private static SemanticRole classifyAccessor(RecipeReflection.Accessor acc, Object raw, Item anchorItem, IdentityHashMap<Object, Boolean> visited, Set<Ingredient> standardInputs) {
+        if (raw == null || isEmptyContainer(raw)) return SemanticRole.UNKNOWN;
+
+        if (!standardInputs.isEmpty()) {
+            visited.clear();
+            if (containsAnyIngredient(raw, standardInputs, 0, visited)) {
+                return SemanticRole.INPUT;
+            }
         }
-        if (lower.contains("input") || lower.contains("ingr") || lower.contains("source")
-                || lower.contains("consume") || lower.contains("reactant")
-                || lower.endsWith("in") || lower.startsWith("in")
-                || lower.contains("_in_") || lower.contains("_in")) {
-            return SemanticRole.INPUT;
+
+        if (anchorItem != null) {
+            visited.clear();
+            if (containsOutputAnchor(raw, anchorItem, 0, visited)) {
+                return SemanticRole.OUTPUT;
+            }
         }
+
+        if (!standardInputs.isEmpty()) {
+            visited.clear();
+            if (containsAnyResource(raw, 0, visited)) {
+                return SemanticRole.OUTPUT;
+            }
+        }
+
+        String name = acc.name();
+        if (name != null && !name.equals("unknown")) {
+            String lower = name.toLowerCase(Locale.ROOT);
+            if (lower.contains("output") || lower.contains("result") || lower.contains("product")
+                    || lower.contains("produce") || lower.contains("byproduct")
+                    || lower.endsWith("out") || lower.startsWith("out")
+                    || lower.contains("_out_") || lower.contains("_out")) {
+                return SemanticRole.OUTPUT;
+            }
+            if (lower.contains("input") || lower.contains("ingr") || lower.contains("source")
+                    || lower.contains("consume") || lower.contains("reactant")
+                    || lower.endsWith("in") || startWithIn(lower)
+                    || lower.contains("_in_") || lower.contains("_in")) {
+                return SemanticRole.INPUT;
+            }
+        }
+
         return SemanticRole.UNKNOWN;
     }
 
-    private static SemanticRole classifyAccessorRuntime(Object raw, Item anchorItem, IdentityHashMap<Object, Boolean> visited) {
-        if (raw == null || isEmptyContainer(raw)) return SemanticRole.UNKNOWN;
+    private static boolean startWithIn(String s) {
+        return s.startsWith("in") && !s.startsWith("info") && !s.startsWith("index") && !s.startsWith("inventory");
+    }
 
-        visited.clear();
-        if (containsOutputAnchor(raw, anchorItem, 0, visited)) return SemanticRole.OUTPUT;
+    private static boolean containsAnyIngredient(Object obj, Set<Ingredient> standardInputs, int depth, IdentityHashMap<Object, Boolean> visited) {
+        if (obj == null || depth > 5) return false;
 
-        visited.clear();
-        if (containsIngredient(raw, 0, visited)) return SemanticRole.INPUT;
+        var detector = SizedIngredientDetector.getSizedDetector(obj.getClass());
+        if (detector.isSizedWrapper()) {
+            try {
+                if (detector.returnsArray()) {
+                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().extract(obj);
+                    if (stacks != null) {
+                        for (var s : stacks) {
+                            if (s != null && !s.isEmpty()) {
+                                for (var ing : standardInputs) {
+                                    if (ing.test(s)) return true;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Ingredient ing = (Ingredient) detector.ingredientExtractor().extract(obj);
+                    if (ing != null && standardInputs.contains(ing)) return true;
+                }
+            } catch (Throwable ignored) {
+            }
+            return false;
+        }
 
-        return SemanticRole.UNKNOWN;
+        switch (obj) {
+            case Ingredient ing -> {
+                return standardInputs.contains(ing);
+            }
+            case ItemStack stack when !stack.isEmpty() -> {
+                for (var ing : standardInputs) {
+                    if (ing.test(stack)) return true;
+                }
+                return false;
+            }
+            case Iterable<?> coll -> {
+                if (isTooLarge(coll)) return false;
+                for (var item : coll) {
+                    if (containsAnyIngredient(item, standardInputs, depth + 1, visited)) return true;
+                }
+                return false;
+            }
+            case Map<?, ?> map -> {
+                if (isTooLarge(map)) return false;
+                for (var entry : map.entrySet()) {
+                    if (containsAnyIngredient(entry.getValue(), standardInputs, depth + 1, visited)) return true;
+                }
+                return false;
+            }
+            case Object[] arr -> {
+                if (arr.length > 50) return false;
+                for (var item : arr) {
+                    if (containsAnyIngredient(item, standardInputs, depth + 1, visited)) return true;
+                }
+                return false;
+            }
+            case FluidStack ignored -> {
+                return false;
+            }
+            default -> {
+            }
+        }
+
+        if (StructuralTypeClassifier.isTerminalType(obj.getClass())) return false;
+        if (visited.put(obj, Boolean.TRUE) != null) return false;
+
+        var meta = RecipeReflection.getMeta(obj.getClass());
+        for (int i = 0; i < meta.scanFields.length; i++) {
+            try {
+                var val = meta.scanFields[i].get(obj);
+                if (containsAnyIngredient(val, standardInputs, depth + 1, visited)) return true;
+            } catch (Throwable ignored) {
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean containsAnyResource(Object obj, int depth, IdentityHashMap<Object, Boolean> visited) {
+        if (obj == null || depth > 5) return false;
+
+        var detector = SizedIngredientDetector.getSizedDetector(obj.getClass());
+        if (detector.isSizedWrapper()) return true;
+
+        switch (obj) {
+            case ItemStack stack when !stack.isEmpty() -> {
+                return true;
+            }
+            case FluidStack fs when !fs.isEmpty() -> {
+                return true;
+            }
+            case Ingredient ing when !ing.isEmpty() -> {
+                return true;
+            }
+            case Iterable<?> coll -> {
+                if (isTooLarge(coll)) return false;
+                for (var item : coll) {
+                    if (containsAnyResource(item, depth + 1, visited)) return true;
+                }
+                return false;
+            }
+            case Map<?, ?> map -> {
+                if (isTooLarge(map)) return false;
+                for (var entry : map.entrySet()) {
+                    if (containsAnyResource(entry.getValue(), depth + 1, visited)) return true;
+                }
+                return false;
+            }
+            case Object[] arr -> {
+                if (arr.length > 50) return false;
+                for (var item : arr) {
+                    if (containsAnyResource(item, depth + 1, visited)) return true;
+                }
+                return false;
+            }
+            default -> {
+            }
+        }
+
+        if (StructuralTypeClassifier.isTerminalType(obj.getClass())) return false;
+        if (visited.put(obj, Boolean.TRUE) != null) return false;
+
+        var meta = RecipeReflection.getMeta(obj.getClass());
+        for (int i = 0; i < meta.scanFields.length; i++) {
+            try {
+                var val = meta.scanFields[i].get(obj);
+                if (containsAnyResource(val, depth + 1, visited)) return true;
+            } catch (Throwable ignored) {
+            }
+        }
+
+        return false;
     }
 
     private static boolean containsOutputAnchor(Object obj, Item anchorItem, int depth, IdentityHashMap<Object, Boolean> visited) {
@@ -216,18 +385,14 @@ public final class FastHarvester {
         if (detector.isSizedWrapper()) {
             try {
                 if (detector.returnsArray()) {
-                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().invoke(obj);
+                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().extract(obj);
                     if (stacks != null) {
-                        for (var s : stacks) {
-                            if (s != null && s.getItem() == anchorItem) return true;
-                        }
+                        for (var s : stacks) if (s != null && s.getItem() == anchorItem) return true;
                     }
                 } else {
-                    Ingredient ing = (Ingredient) detector.ingredientExtractor().invoke(obj);
+                    Ingredient ing = (Ingredient) detector.ingredientExtractor().extract(obj);
                     if (ing != null) {
-                        for (var s : ing.getItems()) {
-                            if (s != null && s.getItem() == anchorItem) return true;
-                        }
+                        for (var s : ing.getItems()) if (s != null && s.getItem() == anchorItem) return true;
                     }
                 }
             } catch (Throwable ignored) {
@@ -365,9 +530,9 @@ public final class FastHarvester {
         var detector = SizedIngredientDetector.getSizedDetector(obj.getClass());
         if (detector.isSizedWrapper()) {
             try {
-                int count = (int) detector.countExtractor().invoke(obj);
+                int count = (int) detector.countExtractor().extract(obj);
                 if (detector.returnsArray()) {
-                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().invoke(obj);
+                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().extract(obj);
                     if (stacks != null) {
                         for (var stack : stacks) {
                             if (stack != null && !stack.isEmpty()) {
@@ -378,7 +543,7 @@ public final class FastHarvester {
                         }
                     }
                 } else {
-                    Ingredient ing = (Ingredient) detector.ingredientExtractor().invoke(obj);
+                    Ingredient ing = (Ingredient) detector.ingredientExtractor().extract(obj);
                     if (ing != null) {
                         for (var stack : ing.getItems()) {
                             if (stack != null && !stack.isEmpty()) {
@@ -466,7 +631,7 @@ public final class FastHarvester {
         if (detector.isSizedWrapper()) {
             try {
                 if (!detector.returnsArray()) {
-                    Ingredient ing = (Ingredient) detector.ingredientExtractor().invoke(obj);
+                    Ingredient ing = (Ingredient) detector.ingredientExtractor().extract(obj);
                     if (ing != null && !ing.isEmpty()) acc.add(ing);
                 }
             } catch (Throwable ignored) {
@@ -605,45 +770,35 @@ public final class FastHarvester {
         acc.addAll(localFluids);
     }
 
-    private static void collectAllDeep(Object obj,
-                                       ObjectList<ItemStack> inputItems,
-                                       ObjectList<ItemStack> outputItems,
-                                       ObjectList<Ingredient> inputIngredients,
-                                       ObjectList<FluidStack> inputFluids,
-                                       ObjectList<FluidStack> outputFluids,
-                                       SemanticRole role,
-                                       int depth,
-                                       IdentityHashMap<Object, Boolean> visited,
-                                       Set<Ingredient> standardInputs) {
+    private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
+                                       ObjectList<Ingredient> inputIngredients, ObjectList<FluidStack> inputFluids,
+                                       ObjectList<FluidStack> outputFluids, SemanticRole role, int depth,
+                                       IdentityHashMap<Object, Boolean> visited, Set<Ingredient> standardInputs) {
         if (obj == null || depth > 5) return;
 
         var detector = SizedIngredientDetector.getSizedDetector(obj.getClass());
         if (detector.isSizedWrapper()) {
             try {
-                int count = (int) detector.countExtractor().invoke(obj);
+                int count = (int) detector.countExtractor().extract(obj);
                 if (detector.returnsArray()) {
-                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().invoke(obj);
-                    if (stacks != null) {
-                        for (var stack : stacks) {
+                    ItemStack[] stacks = (ItemStack[]) detector.ingredientExtractor().extract(obj);
+                    if (stacks != null) for (var stack : stacks) {
+                        if (stack != null && !stack.isEmpty()) {
+                            var copy = stack.copy();
+                            copy.setCount(count);
+                            inputItems.add(copy);
+                        }
+                    }
+                } else {
+                    Ingredient innerIng = (Ingredient) detector.ingredientExtractor().extract(obj);
+                    if (innerIng != null) if (standardInputs.contains(innerIng)) {
+                        inputIngredients.add(innerIng);
+                    } else {
+                        for (var stack : innerIng.getItems()) {
                             if (stack != null && !stack.isEmpty()) {
                                 var copy = stack.copy();
                                 copy.setCount(count);
                                 inputItems.add(copy);
-                            }
-                        }
-                    }
-                } else {
-                    Ingredient innerIng = (Ingredient) detector.ingredientExtractor().invoke(obj);
-                    if (innerIng != null) {
-                        if (standardInputs.contains(innerIng)) {
-                            inputIngredients.add(innerIng);
-                        } else {
-                            for (var stack : innerIng.getItems()) {
-                                if (stack != null && !stack.isEmpty()) {
-                                    var copy = stack.copy();
-                                    copy.setCount(count);
-                                    inputItems.add(copy);
-                                }
                             }
                         }
                     }
@@ -666,11 +821,7 @@ public final class FastHarvester {
                 if (standardInputs.contains(ing)) {
                     inputIngredients.add(ing);
                 } else {
-                    for (var stack : ing.getItems()) {
-                        if (stack != null && !stack.isEmpty()) {
-                            inputItems.add(stack);
-                        }
-                    }
+                    for (var stack : ing.getItems()) if (stack != null && !stack.isEmpty()) inputItems.add(stack);
                 }
                 return;
             }
@@ -685,7 +836,8 @@ public final class FastHarvester {
             case Iterable<?> coll -> {
                 if (isTooLarge(coll)) return;
                 for (var item : coll)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, role, depth + 1, visited, standardInputs);
+                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids,
+                            outputFluids, role, depth + 1, visited, standardInputs);
                 return;
             }
             case Map<?, ?> map -> {
@@ -702,7 +854,8 @@ public final class FastHarvester {
             case Object[] arr -> {
                 if (arr.length > 50) return;
                 for (var item : arr)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, role, depth + 1, visited, standardInputs);
+                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids,
+                            outputFluids, role, depth + 1, visited, standardInputs);
                 return;
             }
             default -> {
@@ -743,11 +896,8 @@ public final class FastHarvester {
                         if (standardInputs.contains(ing)) {
                             localInputIngs.add(ing);
                         } else {
-                            for (var stack : ing.getItems()) {
-                                if (stack != null && !stack.isEmpty()) {
-                                    localInputItems.add(stack);
-                                }
-                            }
+                            for (var stack : ing.getItems())
+                                if (stack != null && !stack.isEmpty()) localInputItems.add(stack);
                         }
                     }
                     case FluidStack fs when !fs.isEmpty() -> {
@@ -865,8 +1015,7 @@ public final class FastHarvester {
             var rt = m.getReturnType();
             if (rt == void.class || rt == Void.class) continue;
             if (StructuralTypeClassifier.isTerminalType(rt)) continue;
-            if (rt != ItemStack.class && rt != Ingredient.class && rt != FluidStack.class
-                    && isNotContainerReturnType(rt)) continue;
+            if (rt != ItemStack.class && rt != Ingredient.class && rt != FluidStack.class && isNotContainerReturnType(rt)) continue;
             var h = meta.allHandles[i];
             if (h == null) continue;
             try {
@@ -881,9 +1030,7 @@ public final class FastHarvester {
 
     private static boolean isNotContainerReturnType(Class<?> type) {
         if (type == null || type == void.class) return true;
-        return !type.isArray()
-                && !Iterable.class.isAssignableFrom(type)
-                && !Map.class.isAssignableFrom(type);
+        return !type.isArray() && !Iterable.class.isAssignableFrom(type) && !Map.class.isAssignableFrom(type);
     }
 
     private static IdentityHashMap<Object, Boolean> borrowMap(ThreadLocal<IdentityHashMap<Object, Boolean>> tl) {

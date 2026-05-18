@@ -3,21 +3,23 @@ package org.complexityanalyzer.harvest;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class SizedIngredientDetector {
 
-    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final ConcurrentHashMap<Class<?>, SizedDetector> STRUCTURAL_SIZED_CACHE = new ConcurrentHashMap<>(256);
+
+    @FunctionalInterface
+    public interface Extractor {
+        Object extract(Object obj) throws Throwable;
+    }
 
     public record SizedDetector(
             boolean isSizedWrapper,
-            MethodHandle ingredientExtractor,
-            MethodHandle countExtractor,
+            Extractor ingredientExtractor,
+            Extractor countExtractor,
             boolean returnsArray
     ) {
     }
@@ -30,8 +32,8 @@ public final class SizedIngredientDetector {
                 return new SizedDetector(false, null, null, false);
             }
 
-            MethodHandle ingredientExtractor = null;
-            MethodHandle countExtractor = null;
+            Extractor ingredientExtractor = null;
+            Extractor countExtractor = null;
             boolean returnsArray = false;
 
             var meta = RecipeReflection.getMeta(c);
@@ -41,10 +43,10 @@ public final class SizedIngredientDetector {
                 if (m.getParameterCount() != 0) continue;
                 var rt = m.getReturnType();
                 if (rt == Ingredient.class) {
-                    ingredientExtractor = meta.allHandles[i];
+                    ingredientExtractor = m::invoke;
                     break;
                 } else if (rt == ItemStack[].class) {
-                    ingredientExtractor = meta.allHandles[i];
+                    ingredientExtractor = m::invoke;
                     returnsArray = true;
                     break;
                 }
@@ -54,17 +56,11 @@ public final class SizedIngredientDetector {
                 var f = meta.fields[i];
                 var type = f.getType();
                 if (type == Ingredient.class) {
-                    try {
-                        ingredientExtractor = LOOKUP.unreflectGetter(f);
-                    } catch (Exception ignored) {
-                    }
+                    ingredientExtractor = f::get;
                     break;
                 } else if (type == ItemStack[].class) {
-                    try {
-                        ingredientExtractor = LOOKUP.unreflectGetter(f);
-                        returnsArray = true;
-                    } catch (Exception ignored) {
-                    }
+                    ingredientExtractor = f::get;
+                    returnsArray = true;
                     break;
                 }
             }
@@ -80,7 +76,7 @@ public final class SizedIngredientDetector {
                 if (m.getParameterCount() != 0) continue;
                 var rt = m.getReturnType();
                 if (rt == int.class || rt == Integer.class) if (countNames.contains(m.getName().toLowerCase())) {
-                    countExtractor = meta.allHandles[i];
+                    countExtractor = m::invoke;
                     break;
                 }
             }
@@ -89,10 +85,7 @@ public final class SizedIngredientDetector {
                 var f = meta.fields[i];
                 var type = f.getType();
                 if (type == int.class || type == Integer.class) if (countNames.contains(f.getName().toLowerCase())) {
-                    try {
-                        countExtractor = LOOKUP.unreflectGetter(f);
-                    } catch (Exception ignored) {
-                    }
+                    countExtractor = f::get;
                     break;
                 }
             }
@@ -108,9 +101,8 @@ public final class SizedIngredientDetector {
                         intFieldCount++;
                     }
                 }
-                if (intFieldCount == 1) try {
-                    countExtractor = LOOKUP.unreflectGetter(singleIntField);
-                } catch (Exception ignored) {
+                if (intFieldCount == 1) {
+                    countExtractor = singleIntField::get;
                 }
             }
 

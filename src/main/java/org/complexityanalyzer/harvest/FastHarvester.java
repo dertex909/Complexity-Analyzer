@@ -84,19 +84,46 @@ public final class FastHarvester {
                 } catch (Throwable ignored) {
                 }
             }
+            // Probe accessors: each yields a separate bucket of items.
+            // Heuristic: the bucket with the FEWEST items is likely OUTPUTS,
+            // the rest are INPUTS. No hardcoded field/method names.
+            var probeBuckets = new ObjectArrayList<ObjectList<ItemStack>>();
             for (var acc : accessors.probeAccessors()) {
                 try {
                     Object raw = acc.extract(recipe, level);
                     if (raw != null && !isEmptyContainer(raw)) {
+                        int beforeIn = inputItems.size();
+                        int beforeOut = outputItems.size();
                         collectAllDeep(raw, inputItems, outputItems, inputIngredients,
                                 inputFluids, outputFluids, 0, visited, standardInputs, apiResult);
+                        int addedIn = inputItems.size() - beforeIn;
+                        int addedOut = outputItems.size() - beforeOut;
+                        if (addedIn > 0) {
+                            var bucket = new ObjectArrayList<ItemStack>(addedIn);
+                            for (int i = beforeIn; i < inputItems.size(); i++)
+                                bucket.add(inputItems.get(i));
+                            inputItems.removeElements(beforeIn, inputItems.size());
+                            probeBuckets.add(bucket);
+                        }
+                        if (addedOut > 0) {
+                            var bucket = new ObjectArrayList<ItemStack>(addedOut);
+                            for (int i = beforeOut; i < outputItems.size(); i++)
+                                bucket.add(outputItems.get(i));
+                            outputItems.removeElements(beforeOut, outputItems.size());
+                            probeBuckets.add(bucket);
+                        }
                     }
                 } catch (Throwable ignored) {
                 }
             }
+            if (probeBuckets.size() >= 2) {
+                probeBuckets.sort(Comparator.comparingInt(List::size));
+                outputItems.addAll(probeBuckets.getFirst());
+                for (int i = 1; i < probeBuckets.size(); i++) inputItems.addAll(probeBuckets.get(i));
+            } else {
+                for (var b : probeBuckets) inputItems.addAll(b);
+            }
 
-            // Fallback: brute-force deep scan of entire recipe object
-            // Reaches fields that the accessor system classified as UNKNOWN (e.g. GTRecipe.inputs/outputs Maps)
             if (inputItems.isEmpty() && outputItems.isEmpty()) {
                 visited.clear();
                 collectAllDeep(recipe, inputItems, outputItems, inputIngredients,
@@ -262,15 +289,9 @@ public final class FastHarvester {
             case Map<?, ?> map when !isTooLarge(map) -> {
                 for (var e : map.entrySet()) {
                     Object key = e.getKey();
-                    if (key instanceof net.minecraft.world.item.Item item && e.getValue() instanceof Number num) {
-                        ItemStack stack = new ItemStack(item, Math.max(1, num.intValue()));
-                        if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
-                        else inputItems.add(stack);
-                    } else {
-                        if (key != null && !isTerminal(key))
-                            collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
-                        collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
-                    }
+                    if (key != null && !isTerminal(key))
+                        collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
+                    collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, outputFluids, depth + 1, visited, standardInputs, apiResult);
                 }
                 return;
             }

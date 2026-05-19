@@ -413,16 +413,20 @@ function renderRecipeList(recipes) {
           ${r.ingredients.length > 0 ? `
             <div class="hint">Items needed:</div>
             <div class="ingredient-list">
-              ${r.ingredients.flatMap(slot =>
-        slot.variants.map(v => renderIngredientRef(v, slot.count))
-    ).join("")}
+              ${r.ingredients.map(slot => `
+                <div class="ingredient-slot" style="display:flex; align-items:center; gap:4px;">
+                  ${slot.variants.map(v => renderIngredientRef(v, slot.count)).join('<span class="or-separator" style="color:var(--text-muted);font-size:11px;font-weight:bold;padding:0 2px;">/</span>')}
+                </div>
+              `).join("")}
             </div>` : ""}
           ${r.fluidIngredients.length > 0 ? `
             <div class="hint">Fluids:</div>
             <div class="ingredient-list">
-              ${r.fluidIngredients.flatMap(slot =>
-        slot.variants.map(v => renderFluidRef(v, slot.amount))
-    ).join("")}
+              ${r.fluidIngredients.map(slot => `
+                <div class="ingredient-slot" style="display:flex; align-items:center; gap:4px;">
+                  ${slot.variants.map(v => renderFluidRef(v, slot.amount)).join('<span class="or-separator" style="color:var(--text-muted);font-size:11px;font-weight:bold;padding:0 2px;">/</span>')}
+                </div>
+              `).join("")}
             </div>` : ""}
           ${r.chemicalIngredients.length > 0 ? `
             <div class="hint">Chemicals:</div>

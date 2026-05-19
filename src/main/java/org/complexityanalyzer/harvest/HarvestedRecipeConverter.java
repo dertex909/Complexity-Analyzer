@@ -67,9 +67,63 @@ public final class HarvestedRecipeConverter {
 
         if (harvested.root() instanceof Recipe<?> recipe) builder.recipeType(recipe.getType());
 
-        for (Ingredient ingredient : inputIngredients) appendIngredient(builder, ingredient);
+        var transitionalItems = harvested.transitionalItems();
+        boolean isSeqAss = !transitionalItems.isEmpty();
+
+        var mergedIngredients = new java.util.LinkedHashMap<ObjectList<Item>, Integer>();
+
+        for (Ingredient ingredient : inputIngredients) {
+            var variants = new ObjectArrayList<Item>();
+            ItemStack[] stacks = ingredient.getItems();
+            int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
+            for (int i = 0; i < Math.min(stacks.length, limit); i++) {
+                ItemStack stack = stacks[i];
+                if (stack.isEmpty()) continue;
+                Item item = stack.getItem();
+                if (isSeqAss && transitionalItems.contains(item)) continue;
+                if (!variants.contains(item)) variants.add(item);
+            }
+
+            if (!variants.isEmpty()) {
+                variants.sort((a, b) -> {
+                    var idA = GameRegistryManager.getItemId(a);
+                    var idB = GameRegistryManager.getItemId(b);
+                    return idA.compareTo(idB);
+                });
+                if (isSeqAss) {
+                    mergedIngredients.put(variants, 1);
+                } else {
+                    mergedIngredients.put(variants, mergedIngredients.getOrDefault(variants, 0) + 1);
+                }
+            }
+        }
+
+        if (isSeqAss && !transitionalItems.isEmpty() && !mergedIngredients.isEmpty()) {
+            var firstKey = mergedIngredients.keySet().iterator().next();
+            for (Item transItem : transitionalItems) {
+                if (!firstKey.contains(transItem)) {
+                    firstKey.add(transItem);
+                }
+            }
+            firstKey.sort((a, b) -> {
+                var idA = GameRegistryManager.getItemId(a);
+                var idB = GameRegistryManager.getItemId(b);
+                return idA.compareTo(idB);
+            });
+        }
+
         for (ItemStack stack : inputStacks) {
-            if (!sameStackIdentity(stack, output)) appendStackAsIngredient(builder, stack);
+            if (!transitionalItems.isEmpty() && transitionalItems.contains(stack.getItem())) continue;
+            if (!sameStackIdentity(stack, output)) {
+                var variants = new ObjectArrayList<Item>();
+                variants.add(stack.getItem());
+                int count = Math.max(1, stack.getCount());
+                mergedIngredients.put(variants, mergedIngredients.getOrDefault(variants, 0) + count);
+            }
+        }
+
+        for (var entry : mergedIngredients.entrySet()) {
+            builder.addIngredient(entry.getKey(), entry.getValue());
         }
 
         if (!inputFluids.isEmpty()) {
@@ -144,25 +198,6 @@ public final class HarvestedRecipeConverter {
             }
         }
         return best.copy();
-    }
-
-    private static void appendIngredient(RecipeNode.Builder builder, Ingredient ingredient) {
-        var variants = new ObjectArrayList<Item>();
-        ItemStack[] stacks = ingredient.getItems();
-        int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
-        for (int i = 0; i < Math.min(stacks.length, limit); i++) {
-            ItemStack stack = stacks[i];
-            if (stack.isEmpty()) continue;
-            Item item = stack.getItem();
-            if (!variants.contains(item)) variants.add(item);
-        }
-        if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-    }
-
-    private static void appendStackAsIngredient(RecipeNode.Builder builder, ItemStack stack) {
-        var variants = new ObjectArrayList<Item>();
-        variants.add(stack.getItem());
-        builder.addIngredient(variants, Math.max(1, stack.getCount()));
     }
 
     private static boolean sameStackIdentity(ItemStack a, ItemStack b) {

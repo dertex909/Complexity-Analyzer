@@ -29,12 +29,15 @@ public final class FastHarvester {
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
     private static final ThreadLocal<IdentityHashMap<Object, Boolean>> TL_VISITED =
             ThreadLocal.withInitial(() -> new IdentityHashMap<>(128));
+    private static final ThreadLocal<ReferenceOpenHashSet<net.minecraft.world.item.Item>> TL_TRANSITIONAL_ITEMS =
+            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(8));
 
     public HarvestedItems harvest(Object recipe, Level level) {
         if (recipe == null) return new HarvestedItems(
                 ObjectLists.emptyList(), ObjectLists.emptyList(),
                 ObjectLists.emptyList(), ObjectLists.emptyList(),
-                ObjectLists.emptyList(), null
+                ObjectLists.emptyList(), null,
+                java.util.Collections.emptySet()
         );
 
         var inputItems = borrowList(TL_INPUT_ITEMS);
@@ -43,6 +46,8 @@ public final class FastHarvester {
         var inputFluids = borrowList(TL_INPUT_FLUIDS);
         var outputFluids = borrowList(TL_OUTPUT_FLUIDS);
         var visited = borrowMap();
+        var transitional = TL_TRANSITIONAL_ITEMS.get();
+        transitional.clear();
 
         try {
             // 1. Стандартный Recipe API
@@ -98,7 +103,7 @@ public final class FastHarvester {
                             collectFluidsDeep(raw, outputFluids, 0, new IdentityHashMap<>(64));
                         } else {
                             collectAllDeep(raw, inputItems, outputItems, inputIngredients,
-                                    inputFluids, 0, visited, apiResult);
+                                    inputFluids, 0, visited, apiResult, level);
                         }
                     }
                 } catch (Throwable ignored) {
@@ -108,7 +113,7 @@ public final class FastHarvester {
             if (inputItems.isEmpty() && outputItems.isEmpty()) {
                 visited.clear();
                 collectAllDeep(recipe, inputItems, outputItems, inputIngredients,
-                        inputFluids, 0, visited, apiResult);
+                        inputFluids, 0, visited, apiResult, level);
             }
 
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
@@ -120,13 +125,39 @@ public final class FastHarvester {
             } catch (Throwable ignored) {
             }
 
+            // 3. Filter out transitional/incomplete items collected from nested recipes
+            if (!transitional.isEmpty()) {
+                inputItems.removeIf(stack -> transitional.contains(stack.getItem()));
+                inputIngredients.removeIf(ing -> {
+                    ItemStack[] items = ing.getItems();
+                    if (items.length == 0) return false;
+                    for (ItemStack s : items) {
+                        if (!transitional.contains(s.getItem())) return false;
+                    }
+                    return true;
+                });
+            }
+
+            // 4. Deduplicate inputItems against inputIngredients
+            if (!inputIngredients.isEmpty()) {
+                inputItems.removeIf(stack -> {
+                    for (Ingredient ing : inputIngredients) {
+                        for (ItemStack ingStack : ing.getItems()) {
+                            if (ingStack.getItem() == stack.getItem()) return true;
+                        }
+                    }
+                    return false;
+                });
+            }
+
             return new HarvestedItems(
                     inputItems.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputItems),
                     outputItems.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(outputItems),
                     inputIngredients.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputIngredients),
                     inputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputFluids),
                     outputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(outputFluids),
-                    recipe
+                    recipe,
+                    new java.util.HashSet<>(transitional)
             );
         } finally {
             clearThreadLocals();
@@ -149,11 +180,11 @@ public final class FastHarvester {
                 acc.add(stack);
                 return;
             }
-            case Iterable<?> coll when !isTooLarge(coll) -> {
+            case Iterable<?> coll when isTooSmall(coll) -> {
                 for (var item : coll) collectItemsDeep(item, acc, depth + 1, visited);
                 return;
             }
-            case Map<?, ?> map when !isTooLarge(map) -> {
+            case Map<?, ?> map when isTooSmall(map) -> {
                 for (var e : map.entrySet()) {
                     collectItemsDeep(e.getKey(), acc, depth + 1, visited);
                     collectItemsDeep(e.getValue(), acc, depth + 1, visited);
@@ -185,11 +216,11 @@ public final class FastHarvester {
                 acc.add(ing);
                 return;
             }
-            case Iterable<?> coll when !isTooLarge(coll) -> {
+            case Iterable<?> coll when isTooSmall(coll) -> {
                 for (var item : coll) collectIngredientsDeep(item, acc, depth + 1, visited);
                 return;
             }
-            case Map<?, ?> map when !isTooLarge(map) -> {
+            case Map<?, ?> map when isTooSmall(map) -> {
                 for (var e : map.entrySet()) {
                     collectIngredientsDeep(e.getKey(), acc, depth + 1, visited);
                     collectIngredientsDeep(e.getValue(), acc, depth + 1, visited);
@@ -218,20 +249,18 @@ public final class FastHarvester {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case SizedFluidIngredient sfi -> {
-                for (FluidStack fs : sfi.getFluids()) {
-                    if (!fs.isEmpty()) acc.add(fs);
-                }
+                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs);
                 return;
             }
             case FluidStack fs when !fs.isEmpty() -> {
                 acc.add(fs);
                 return;
             }
-            case Iterable<?> coll when !isTooLarge(coll) -> {
+            case Iterable<?> coll when isTooSmall(coll) -> {
                 for (var item : coll) collectFluidsDeep(item, acc, depth + 1, visited);
                 return;
             }
-            case Map<?, ?> map when !isTooLarge(map) -> {
+            case Map<?, ?> map when isTooSmall(map) -> {
                 for (var e : map.entrySet()) {
                     collectFluidsDeep(e.getKey(), acc, depth + 1, visited);
                     collectFluidsDeep(e.getValue(), acc, depth + 1, visited);
@@ -258,10 +287,30 @@ public final class FastHarvester {
 
     private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
                                        ObjectList<Ingredient> inputIngredients, ObjectList<FluidStack> inputFluids,
-                                       int depth,
-                                       IdentityHashMap<Object, Boolean> visited,
-                                       ItemStack apiResult) {
+                                       int depth, IdentityHashMap<Object, Boolean> visited, ItemStack apiResult, Level level) {
         if (obj == null || depth > 8) return;
+
+        if (depth > 0 && obj instanceof Recipe<?> subRecipe && level != null) {
+            try {
+                ItemStack subOutput = subRecipe.getResultItem(level.registryAccess());
+                if (!subOutput.isEmpty() && !apiResult.isEmpty() && subOutput.getItem() != apiResult.getItem()) {
+                    TL_TRANSITIONAL_ITEMS.get().add(subOutput.getItem());
+                }
+
+                var subIngs = subRecipe.getIngredients();
+                if (subIngs.size() > 1) {
+                    Ingredient toolIng = subIngs.get(1);
+                    if (!toolIng.isEmpty()) if (visited.put(toolIng, Boolean.TRUE) == null) {
+                        inputIngredients.add(toolIng);
+                    }
+                }
+
+                collectFluidsDeep(subRecipe, inputFluids, 0, visited);
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
+
         switch (obj) {
             case ItemStack stack when !stack.isEmpty() -> {
                 if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack);
@@ -279,36 +328,63 @@ public final class FastHarvester {
                 return;
             }
             case SizedFluidIngredient sfi -> {
-                for (FluidStack fs : sfi.getFluids()) {
-                    if (!fs.isEmpty()) inputFluids.add(fs);
-                }
+                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {
-                inputIngredients.add(ing);
+                if (visited.put(ing, Boolean.TRUE) == null) {
+                    boolean alreadyExists = false;
+                    ItemStack[] ingItems = ing.getItems();
+                    for (Ingredient existing : inputIngredients) {
+                        ItemStack[] existingItems = existing.getItems();
+                        if (ingItems.length == existingItems.length) {
+                            boolean allMatch = true;
+                            for (ItemStack stackA : ingItems) {
+                                boolean found = false;
+                                for (ItemStack stackB : existingItems) {
+                                    if (stackA.getItem() == stackB.getItem()) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found) {
+                                    allMatch = false;
+                                    break;
+                                }
+                            }
+                            if (allMatch) {
+                                alreadyExists = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!alreadyExists) {
+                        inputIngredients.add(ing);
+                    }
+                }
                 return;
             }
             case FluidStack fs when !fs.isEmpty() -> {
                 inputFluids.add(fs);
                 return;
             }
-            case Iterable<?> coll when !isTooLarge(coll) -> {
+            case Iterable<?> coll when isTooSmall(coll) -> {
                 for (var item : coll)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
+                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 return;
             }
-            case Map<?, ?> map when !isTooLarge(map) -> {
+            case Map<?, ?> map when isTooSmall(map) -> {
                 for (var e : map.entrySet()) {
                     Object key = e.getKey();
                     if (key != null && !isTerminal(key))
-                        collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
-                    collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
+                        collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
+                    collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 }
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
                 for (var item : arr)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
+                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 return;
             }
             default -> {
@@ -321,17 +397,17 @@ public final class FastHarvester {
             try {
                 Object val = f.get(obj);
                 if (val != null)
-                    collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult);
+                    collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
             } catch (Throwable ignored) {
             }
         }
     }
 
-    private static boolean isTooLarge(Object obj) {
-        if (obj instanceof Collection<?> c) return c.size() > 50;
-        if (obj instanceof Map<?, ?> m) return m.size() > 50;
-        if (obj instanceof Object[] arr) return arr.length > 50;
-        return false;
+    private static boolean isTooSmall(Object obj) {
+        if (obj instanceof Collection<?> c) return c.size() <= 50;
+        if (obj instanceof Map<?, ?> m) return m.size() <= 50;
+        if (obj instanceof Object[] arr) return arr.length <= 50;
+        return true;
     }
 
     private static boolean isEmptyContainer(Object obj) {
@@ -354,6 +430,7 @@ public final class FastHarvester {
         TL_OUTPUT_FLUIDS.get().clear();
         TL_INPUT_INGREDIENTS.get().clear();
         TL_VISITED.get().clear();
+        TL_TRANSITIONAL_ITEMS.get().clear();
     }
 
     private static <T> ObjectArrayList<T> borrowList(ThreadLocal<ObjectArrayList<T>> tl) {

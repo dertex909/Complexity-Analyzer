@@ -22,7 +22,6 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.graph.*;
 
 import org.jetbrains.annotations.Nullable;
@@ -34,7 +33,6 @@ public class DepthAnalyzer {
     private Reference2ObjectMap<Item, RecipeNode> optimalRecipes;
     private final SourceManager sourceManager;
 
-    private static final int CYCLE_DEPTH = Integer.MAX_VALUE;
     private static final int IN_PROGRESS = -999;
 
     public DepthAnalyzer(RecipeGraph graph, SourceManager sourceManager) {
@@ -61,7 +59,7 @@ public class DepthAnalyzer {
     private int calculateDepth(Item item) {
         int cached = cache.getInt(item);
         if (cached != -1) {
-            if (cached == IN_PROGRESS) return CYCLE_DEPTH;
+            if (cached == IN_PROGRESS) return 0;
             return cached;
         }
 
@@ -77,18 +75,14 @@ public class DepthAnalyzer {
                     Item dep = entry.getKey();
                     if (dep != item) {
                         int depDepth = getDepth(dep);
-                        if (depDepth == CYCLE_DEPTH) {
-                            cache.put(item, CYCLE_DEPTH);
-                            return CYCLE_DEPTH;
-                        }
                         if (depDepth > maxSourceDepth) maxSourceDepth = depDepth;
                         hasValidDeps = true;
                     }
                 }
                 if (hasValidDeps) {
-                    int limitedDepth = Math.min(1 + maxSourceDepth, ComplexityConfig.MAX_DEPTH.get());
-                    cache.put(item, limitedDepth);
-                    return limitedDepth;
+                    int depthVal = 1 + maxSourceDepth;
+                    cache.put(item, depthVal);
+                    return depthVal;
                 }
             }
             cache.put(item, 0);
@@ -96,41 +90,29 @@ public class DepthAnalyzer {
         }
 
         int maxIngredientDepth = 0;
-        boolean cycleDetected = false;
 
         for (var slot : recipeToFollow.getIngredients()) {
             int slotDepth = calculateSlotDepth(slot);
-            if (slotDepth == CYCLE_DEPTH) {
-                cycleDetected = true;
-                break;
-            }
             if (slotDepth > maxIngredientDepth) maxIngredientDepth = slotDepth;
         }
 
-        int finalDepth;
-        if (cycleDetected) {
-            finalDepth = CYCLE_DEPTH;
-        } else {
-            long calculatedDepth = 1L + maxIngredientDepth;
-            finalDepth = (int) Math.min(calculatedDepth, CYCLE_DEPTH);
-        }
+        int finalDepth = 1 + maxIngredientDepth;
 
-        int limitedDepth = Math.min(finalDepth, ComplexityConfig.MAX_DEPTH.get());
-        cache.put(item, limitedDepth);
-        return limitedDepth;
+        cache.put(item, finalDepth);
+        return finalDepth;
     }
 
     private int calculateSlotDepth(IngredientSlot slot) {
         var variants = slot.getVariants();
         if (variants.isEmpty()) return 0;
 
-        int minDepth = CYCLE_DEPTH;
+        int minDepth = Integer.MAX_VALUE;
         for (var variant : variants) {
             int variantDepth = getDepth(variant);
             if (variantDepth < minDepth) minDepth = variantDepth;
         }
 
-        return minDepth;
+        return minDepth == Integer.MAX_VALUE ? 0 : minDepth;
     }
 
     @Nullable

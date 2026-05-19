@@ -2,6 +2,8 @@ package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -9,6 +11,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -68,16 +71,56 @@ public final class HarvestedRecipeConverter {
         for (ItemStack stack : inputStacks) {
             if (!sameStackIdentity(stack, output)) appendStackAsIngredient(builder, stack);
         }
-        for (FluidStack fluid : inputFluids) {
-            var variants = new ObjectArrayList<Fluid>();
-            variants.add(fluid.getFluid());
-            builder.addFluidIngredient(variants, fluid.getAmount());
+
+        if (!inputFluids.isEmpty()) {
+            var seenFluids = new Reference2DoubleOpenHashMap<Fluid>();
+            for (FluidStack fluid : inputFluids) {
+                Fluid f = normalizeFluid(fluid.getFluid());
+                if (f == Fluids.EMPTY) continue;
+                double amt = fluid.getAmount();
+                double existing = seenFluids.getDouble(f);
+                if (amt > existing) seenFluids.put(f, amt);
+            }
+            for (var entry : seenFluids.reference2DoubleEntrySet()) {
+                var variants = new ObjectArrayList<Fluid>();
+                variants.add(entry.getKey());
+                builder.addFluidIngredient(variants, (int) entry.getDoubleValue());
+            }
         }
 
         if (!outputStacks.isEmpty()) builder.itemOutputs(outputStacks);
-        if (!outputFluids.isEmpty()) builder.fluidOutputs(outputFluids);
+
+        if (!outputFluids.isEmpty()) {
+            var mergedOutputs = new Reference2DoubleOpenHashMap<Fluid>();
+            for (FluidStack fluid : outputFluids) {
+                Fluid f = normalizeFluid(fluid.getFluid());
+                if (f == Fluids.EMPTY) continue;
+                double amt = fluid.getAmount();
+                double existing = mergedOutputs.getDouble(f);
+                if (amt > existing) mergedOutputs.put(f, amt);
+            }
+            var deduplicatedOutputs = new ObjectArrayList<FluidStack>();
+            for (var entry : mergedOutputs.reference2DoubleEntrySet()) {
+                deduplicatedOutputs.add(new FluidStack(entry.getKey(), (int) entry.getDoubleValue()));
+            }
+            builder.fluidOutputs(deduplicatedOutputs);
+        }
 
         return builder.build();
+    }
+
+    private static Fluid normalizeFluid(Fluid fluid) {
+        var id = GameRegistryManager.getFluidId(fluid);
+        var fluidName = id.toString();
+        if (fluidName.contains("flowing_")) {
+            var staticName = fluidName.replace("flowing_", "");
+            try {
+                var staticFluid = GameRegistryManager.getFluid(ResourceLocation.parse(staticName));
+                if (staticFluid != null) return staticFluid;
+            } catch (Throwable ignored) {
+            }
+        }
+        return fluid;
     }
 
     private static ItemStack declaredRecipeResult(Object root, Level level) {

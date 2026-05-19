@@ -2,11 +2,21 @@ package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 
 public final class RegistryHarvestService {
@@ -56,8 +66,88 @@ public final class RegistryHarvestService {
         for (RecipeNode node : nodes) graph.addRecipe(node);
         debugTrace.flush();
 
+        try {
+            level.registryAccess().registries().forEach(entry -> {
+                var key = entry.key();
+                var registry = entry.value();
+                String namespace = key.location().getNamespace();
+                if (namespace.equals("minecraft") || namespace.equals("neoforge") || namespace.equals("forge")) {
+                    return;
+                }
+                scanRegistryForFluids(graph, registry);
+            });
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed dynamic registry fluid scan: {}", t.getMessage());
+        }
+
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
                 scanned, harvested, rejected, failed);
+    }
+
+    private void scanRegistryForFluids(RecipeGraph graph, Registry<?> registry) {
+        int count = 0;
+        for (Object element : registry) {
+            if (element == null) continue;
+            try {
+                Fluid fluid = findFluidFromElement(element);
+                if (fluid == null || fluid == Fluids.EMPTY) continue;
+                int yield = 1000;
+
+                var builder = new RecipeNode.Builder(Items.AIR)
+                        .category(RecipeCategory.PRIMARY)
+                        .resultCount(1)
+                        .recipeType(RecipeType.CRAFTING)
+                        .isPlaceholder(true);
+
+                builder.priority(100);
+                builder.placeholderId(GameRegistryManager.getFluidId(fluid).toString());
+
+                var fluidOutputs = new ObjectArrayList<FluidStack>();
+                fluidOutputs.add(new FluidStack(fluid, yield));
+                builder.fluidOutputs(fluidOutputs);
+
+                graph.addRecipe(builder.build());
+                count++;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (count > 0) {
+            ComplexityAnalyzer.LOGGER.info("[Harvest] Dynamically registered {} bedrock fluids from registry {}", count, registry.key().location());
+        }
+    }
+
+    private Fluid findFluidFromElement(Object element) {
+        if (element instanceof Fluid f) return f;
+
+        Class<?> clazz = element.getClass();
+        for (java.lang.reflect.Method method : clazz.getMethods()) {
+            if (method.getParameterCount() == 0 && !method.getName().equals("toString") && !method.getName().equals("hashCode")) {
+                Class<?> returnType = method.getReturnType();
+                if (Fluid.class.isAssignableFrom(returnType)) {
+                    try {
+                        Fluid f = (Fluid) method.invoke(element);
+                        if (f != null && f != Fluids.EMPTY) return f;
+                    } catch (Throwable ignored) {
+                    }
+                } else if (Holder.class.isAssignableFrom(returnType)) {
+                    try {
+                        Holder<?> holder = (Holder<?>) method.invoke(element);
+                        if (holder != null && holder.value() instanceof Fluid f) if (f != Fluids.EMPTY) return f;
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+
+        for (Field field : clazz.getDeclaredFields()) {
+            if (Fluid.class.isAssignableFrom(field.getType())) try {
+                field.setAccessible(true);
+                Fluid f = (Fluid) field.get(element);
+                if (f != null && f != Fluids.EMPTY) return f;
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
     }
 
     private static String buildRejectReason(HarvestedItems items) {

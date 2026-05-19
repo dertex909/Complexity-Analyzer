@@ -647,7 +647,7 @@ public final class SccCondensedSolver {
                 }
 
                 if (validItemRecipe && inputsValid) {
-                    int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget, 0.0, multiplier, resultCount,
+                    int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget, recipe.getPriority(), multiplier, resultCount,
                             itemSlotsStart, itemSlotsCount, fluidSlotsStart, fluidSlotsCount, chemInputNode.size(), 0,
                             machineNode, machineMul, -1.0, recipe);
                     addEdgesForFormula(formulaId);
@@ -695,7 +695,7 @@ public final class SccCondensedSolver {
                                 double outputAmount = entry.getDoubleValue();
                                 if (outputAmount <= 0) outputAmount = 1000.0;
                                 double outputBuckets = outputAmount / 1000.0;
-                                int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode, 0.0, multiplier, outputBuckets,
+                                int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode, recipe.getPriority(), multiplier, outputBuckets,
                                         sharedItemSlotStart, sharedItemSlotCount,
                                         sharedFluidSlotStart, sharedFluidSlotCount,
                                         chemInputNode.size(), 0,
@@ -753,7 +753,7 @@ public final class SccCondensedSolver {
                             if (chemNode == -1) chemNode = allocateChemicalNode(output.id());
                             double outputBuckets = output.amount() / 1000.0;
                             if (outputBuckets <= 0) continue;
-                            int formulaId = emitFormulaShell(F_CHEM_RECIPE, chemNode, 0.0, multiplier, outputBuckets,
+                            int formulaId = emitFormulaShell(F_CHEM_RECIPE, chemNode, recipe.getPriority(), multiplier, outputBuckets,
                                     sharedItemSlotStart, sharedItemSlotCount,
                                     sharedFluidSlotStart, sharedFluidSlotCount,
                                     sharedChemStart, sharedChemCount,

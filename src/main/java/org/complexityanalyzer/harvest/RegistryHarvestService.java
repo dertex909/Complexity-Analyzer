@@ -85,7 +85,6 @@ public final class RegistryHarvestService {
     }
 
     private void scanRegistryForFluids(RecipeGraph graph, Registry<?> registry) {
-        int count = 0;
         for (Object element : registry) {
             if (element == null) continue;
             try {
@@ -107,12 +106,8 @@ public final class RegistryHarvestService {
                 builder.fluidOutputs(fluidOutputs);
 
                 graph.addRecipe(builder.build());
-                count++;
             } catch (Throwable ignored) {
             }
-        }
-        if (count > 0) {
-            ComplexityAnalyzer.LOGGER.info("[Harvest] Dynamically registered {} bedrock fluids from registry {}", count, registry.key().location());
         }
     }
 

@@ -313,7 +313,7 @@ function readOneRecipe(b, strings) {
     const res = {
         outputItemIndex: b.i32(), recipeType: strings.get(b.i32()), category: b.u8(),
         priority: b.i32(), resultCount: b.i32(), recipeMultiplier: b.f64(),
-        flags: b.u8(), placeholderId: strings.get(b.i32())
+        flags: b.u8(), placeholderId: strings.get(b.i32()), machineItemIndex: b.i32()
     };
     res.ingredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), count = b.i32();

@@ -253,15 +253,20 @@ public final class SccCondensedSolver {
             sum += c * m.chemInputAmount[ci];
         }
 
-        int mNode = m.formulaMachineNode[f];
-        if (mNode >= 0) {
-            double mCost = costs[mNode];
-            if (Double.isInfinite(mCost)) {
+        int mStart = m.formulaMachineNode[f];
+        int mCount = m.formulaMachineCount[f];
+        if (mCount > 0) {
+            double minMachineCost = Double.POSITIVE_INFINITY;
+            for (int i = mStart; i < mStart + mCount; i++) {
+                double c = costs[m.itemVariantNode[i]];
+                if (c < minMachineCost) minMachineCost = c;
+            }
+            if (Double.isInfinite(minMachineCost)) {
                 double fb = m.formulaMachineFallback[f];
                 if (fb < 0) return Double.POSITIVE_INFINITY;
-                mCost = fb;
+                minMachineCost = fb;
             }
-            sum += mCost * m.formulaMachineMul[f];
+            sum += minMachineCost * m.formulaMachineMul[f];
         }
 
         double divisor = m.formulaOutputDivisor[f];
@@ -409,6 +414,7 @@ public final class SccCondensedSolver {
         private final IntArrayList formulaChemInputStart = new IntArrayList();
         private final IntArrayList formulaChemInputCount = new IntArrayList();
         private final IntArrayList formulaMachineNode = new IntArrayList();
+        private final IntArrayList formulaMachineCount = new IntArrayList();
         private final DoubleArrayList formulaMachineMul = new DoubleArrayList();
         private final DoubleArrayList formulaMachineFallback = new DoubleArrayList();
         private final ObjectArrayList<RecipeNode> formulaRecipe = new ObjectArrayList<>();
@@ -519,8 +525,8 @@ public final class SccCondensedSolver {
                 }
 
                 if (machineRegistry != null) {
-                    Item machineItem = machineRegistry.getMachineForRecipe(recipe.getRecipeType());
-                    if (machineItem != null) allocateItemNode(machineItem);
+                    ObjectList<Item> machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
+                    if (machineItems != null) for (Item machineItem : machineItems) allocateItemNode(machineItem);
                 }
 
                 ObjectList<RecipeNode.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
@@ -592,7 +598,7 @@ public final class SccCondensedSolver {
 
                     int formulaId = emitFormulaShell(F_SOURCE, targetNode, base, 1.0, 1.0,
                             itemSlotStart, itemSlotCnt, fluidSlotVariantStart.size(), 0, chemInputNode.size(),
-                            0, -1, 0.0, -1.0, null);
+                            0, -1, 0, 0.0, -1.0, null);
                     addEdgesForFormula(formulaId);
                 }
             }
@@ -608,15 +614,24 @@ public final class SccCondensedSolver {
                 if (Double.isInfinite(multiplier) || Double.isNaN(multiplier)) continue;
 
                 int machineNode = -1;
+                int machineCount = 0;
                 double machineMul = 0.0;
-                Item machineItem = (machineRegistry != null)
-                        ? machineRegistry.getMachineForRecipe(recipe.getRecipeType()) : null;
                 boolean zeroCostMachine = isZeroCostRecipeType(recipe.getRecipeType());
-                if (machineItem != null && !zeroCostMachine) {
-                    int candidateNode = itemToNode.getInt(machineItem);
-                    if (candidateNode != -1 && itemInCorpus.getBoolean(candidateNode)) {
-                        machineNode = candidateNode;
-                        machineMul = machineTax;
+                if (!zeroCostMachine && machineRegistry != null) {
+                    ObjectList<Item> machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
+                    if (machineItems != null) {
+                        int start = itemVariantNode.size();
+                        for (Item machineItem : machineItems) {
+                            int candidateNode = itemToNode.getInt(machineItem);
+                            if (candidateNode != -1 && itemInCorpus.getBoolean(candidateNode)) {
+                                itemVariantNode.add(candidateNode);
+                                machineCount++;
+                            }
+                        }
+                        if (machineCount > 0) {
+                            machineNode = start;
+                            machineMul = machineTax;
+                        }
                     }
                 }
 
@@ -649,7 +664,7 @@ public final class SccCondensedSolver {
                 if (validItemRecipe && inputsValid) {
                     int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, resultCount,
                             itemSlotsStart, itemSlotsCount, fluidSlotsStart, fluidSlotsCount, chemInputNode.size(), 0,
-                            machineNode, machineMul, -1.0, recipe);
+                            machineNode, machineCount, machineMul, -1.0, recipe);
                     addEdgesForFormula(formulaId);
                 } else {
                     truncateItemSlots(itemSlotsStart);
@@ -699,7 +714,7 @@ public final class SccCondensedSolver {
                                         sharedItemSlotStart, sharedItemSlotCount,
                                         sharedFluidSlotStart, sharedFluidSlotCount,
                                         chemInputNode.size(), 0,
-                                        machineNode, machineMul, machineNode >= 0 ? machineFallback : -1.0,
+                                        machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         null);
                                 addEdgesForFormula(formulaId);
                             }
@@ -757,7 +772,7 @@ public final class SccCondensedSolver {
                                     sharedItemSlotStart, sharedItemSlotCount,
                                     sharedFluidSlotStart, sharedFluidSlotCount,
                                     sharedChemStart, sharedChemCount,
-                                    machineNode, machineMul, machineNode >= 0 ? machineFallback : -1.0,
+                                    machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                     null);
                             addEdgesForFormula(formulaId);
                         }
@@ -793,7 +808,7 @@ public final class SccCondensedSolver {
 
                 int formulaId = emitFormulaShell(F_CHEM_BRIDGE, fluidNode, 0.0, 1.0, 1.0,
                         itemSlotVariantStart.size(), 0, fluidSlotVariantStart.size(), 0,
-                        chemStart, 1, -1, 0.0, -1.0, null);
+                        chemStart, 1, -1, 0, 0.0, -1.0, null);
                 addEdgesForFormula(formulaId);
             }
         }
@@ -801,12 +816,12 @@ public final class SccCondensedSolver {
         private void emitProtectedFluidFormula(int target) {
             emitFormulaShell(F_PROTECTED_FLUID, target, 1.0, 1.0, 1.0, itemSlotVariantStart.size(),
                     0, fluidSlotVariantStart.size(), 0, chemInputNode.size(), 0,
-                    -1, 0.0, -1.0, null);
+                    -1, 0, 0.0, -1.0, null);
         }
 
         private int emitFormulaShell(byte type, int target, double base, double multiplier, double divisor,
                                      int itemSlotStart, int itemSlotCount, int fluidSlotStart, int fluidSlotCount,
-                                     int chemStart, int chemCount, int machineNode, double machineMul,
+                                     int chemStart, int chemCount, int machineNode, int machineCount, double machineMul,
                                      double machineFallback, RecipeNode recipe) {
             int formulaId = formulaType.size();
             formulaType.add(type);
@@ -821,6 +836,7 @@ public final class SccCondensedSolver {
             formulaChemInputStart.add(chemStart);
             formulaChemInputCount.add(chemCount);
             formulaMachineNode.add(machineNode);
+            formulaMachineCount.add(machineCount);
             formulaMachineMul.add(machineMul);
             formulaMachineFallback.add(machineFallback);
             formulaRecipe.add(recipe);
@@ -945,9 +961,10 @@ public final class SccCondensedSolver {
                 edgeTo.add(target);
             }
 
-            int machineNode = formulaMachineNode.getInt(formulaId);
-            if (machineNode >= 0) {
-                edgeFrom.add(machineNode);
+            int mStart = formulaMachineNode.getInt(formulaId);
+            int mCount = formulaMachineCount.getInt(formulaId);
+            for (int i = mStart; i < mStart + mCount; i++) {
+                edgeFrom.add(itemVariantNode.getInt(i));
                 edgeTo.add(target);
             }
         }
@@ -991,6 +1008,7 @@ public final class SccCondensedSolver {
             m.formulaChemInputStart = formulaChemInputStart.toIntArray();
             m.formulaChemInputCount = formulaChemInputCount.toIntArray();
             m.formulaMachineNode = formulaMachineNode.toIntArray();
+            m.formulaMachineCount = formulaMachineCount.toIntArray();
             m.formulaMachineMul = formulaMachineMul.toDoubleArray();
             m.formulaMachineFallback = formulaMachineFallback.toDoubleArray();
             m.formulaRecipe = formulaRecipe.toArray(new RecipeNode[0]);
@@ -1061,6 +1079,7 @@ public final class SccCondensedSolver {
         int[] formulaChemInputStart;
         int[] formulaChemInputCount;
         int[] formulaMachineNode;
+        int[] formulaMachineCount;
         double[] formulaMachineMul;
         double[] formulaMachineFallback;
         RecipeNode[] formulaRecipe;

@@ -71,7 +71,7 @@ public class ComplexityConfig {
         builder.pop();
 
         builder.push("crafting");
-        BASE_COMPLEXITY = builder.defineInRange("baseComplexity", 5.0, 0.1, 1000.0);
+        BASE_COMPLEXITY = builder.defineInRange("baseComplexity", 1.0, 0.1, 1000.0);
         builder.pop();
 
         builder.push("mob_drops");
@@ -108,8 +108,8 @@ public class ComplexityConfig {
 
         MACHINE_TAX_PERCENTAGE = builder.comment(
                 " Tax percentage in user-friendly format (0.0 to 100.0)",
-                " Default: 7.5 means 7.5% of machine complexity is added as tax"
-        ).defineInRange("percentage", 10.0, 0.0, 100.0);
+                " Default: 5.0 means 5.0% of machine complexity is added as tax"
+        ).defineInRange("percentage", 5.0, 0.0, 100.0);
 
         MACHINE_BASE_COMPLEXITY = builder
                 .comment(" Base complexity for machines when they are not yet calculated (used as fallback)")

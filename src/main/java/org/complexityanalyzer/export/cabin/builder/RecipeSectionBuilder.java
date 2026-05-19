@@ -100,6 +100,21 @@ public final class RecipeSectionBuilder {
         buf.u8(flags);
         buf.i32(ctx.strings().intern(r.getPlaceholderId() != null ? r.getPlaceholderId() : ""));
 
+        var registry = ctx.engine().getMachineRegistry();
+        ObjectList<Item> machineItems = (registry != null) ? registry.getMachinesForRecipe(r.getRecipeType()) : null;
+        Item cheapestMachine = null;
+        double minComplexity = Double.POSITIVE_INFINITY;
+        if (machineItems != null) for (Item machineItem : machineItems) {
+            double c = ctx.engine().getComplexity(machineItem);
+            if (c < minComplexity) {
+                minComplexity = c;
+                cheapestMachine = machineItem;
+            }
+        }
+        if (cheapestMachine == null && machineItems != null && !machineItems.isEmpty()) cheapestMachine = machineItems.getFirst();
+        int machineItemIdx = (cheapestMachine != null) ? ctx.itemIndex().getInt(cheapestMachine) : -1;
+        buf.i32(machineItemIdx);
+
         var ings = r.getIngredients();
         buf.u8(Math.min(ings.size(), 0xFF));
         for (int s = 0; s < Math.min(ings.size(), 0xFF); s++) {

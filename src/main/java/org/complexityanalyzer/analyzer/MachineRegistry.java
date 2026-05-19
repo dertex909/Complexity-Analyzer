@@ -19,72 +19,49 @@
 package org.complexityanalyzer.analyzer;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 
 public class MachineRegistry {
 
-    private final Object2ObjectMap<ResourceLocation, Item> mapping = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping = new Object2ObjectOpenHashMap<>();
     private boolean initialized = false;
 
     public void initialize() {
         if (initialized) return;
         int vanilla = registerVanilla();
         ComplexityAnalyzer.LOGGER.info("Registered {} vanilla machines", vanilla);
+
+        int dynamic = registerModdedMachines();
+        ComplexityAnalyzer.LOGGER.info("Registered {} dynamic modded machines via BlockEntity scanning", dynamic);
+
         initialized = true;
     }
 
-    public void loadFromJEI(Object2ObjectMap<ResourceLocation, ObjectList<Item>> jeiCatalysts) {
-        if (jeiCatalysts.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.warn("JEI provided 0 catalysts");
-            return;
-        }
-
-        ComplexityAnalyzer.LOGGER.info("Loading machines from {} JEI catalyst entries...", jeiCatalysts.size());
-        int added = 0;
-        int updated = 0;
-        int skipped = 0;
-
-        for (var entry : Object2ObjectMaps.fastIterable(jeiCatalysts)) {
-            var typeId = entry.getKey();
-            var machines = entry.getValue();
-
-            if (machines.isEmpty()) continue;
-
-            if (typeId.getNamespace().equals("minecraft")) if (mapping.containsKey(typeId)) {
-                skipped++;
-                continue;
-            }
-
-            var machine = machines.getFirst();
-
-            if (mapping.containsKey(typeId)) {
-                updated++;
-            } else {
-                added++;
-            }
-
-            mapping.put(typeId, machine);
-        }
-
-        ComplexityAnalyzer.LOGGER.info("Loaded from JEI: {} new, {} updated, {} skipped. Total machines: {}",
-                added, updated, skipped, mapping.size());
-
-        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) logAllMachines();
+    @Nullable
+    public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
+        if (!initialized) return null;
+        var typeId = GameRegistryManager.getRecipeTypeId(type);
+        return (typeId != null) ? mapping.get(typeId) : null;
     }
 
     @Nullable
     public Item getMachineForRecipe(RecipeType<?> type) {
-        if (!initialized) return null;
-        var typeId = GameRegistryManager.getRecipeTypeId(type);
-        return (typeId != null) ? mapping.get(typeId) : null;
+        var list = getMachinesForRecipe(type);
+        return (list != null && !list.isEmpty()) ? list.getFirst() : null;
     }
 
     private int registerVanilla() {
@@ -98,6 +75,120 @@ public class MachineRegistry {
         return 7;
     }
 
+    private int registerModdedMachines() {
+        int registeredCount = 0;
+        int totalBlocks = 0;
+        int entityBlocks = 0;
+        int errors = 0;
+
+        for (Block block : BuiltInRegistries.BLOCK) {
+            totalBlocks++;
+            try {
+                Set<Object> blockVisited = new HashSet<>();
+                RecipeType<?> rt = findRecipeTypeDeep(block, 0, blockVisited);
+                if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
+            } catch (Throwable ignored) {
+            }
+
+            if (block instanceof EntityBlock entityBlock) {
+                entityBlocks++;
+                try {
+                    var be = entityBlock.newBlockEntity(BlockPos.ZERO, block.defaultBlockState());
+                    if (be != null) {
+                        Class<?> beClass = be.getClass();
+                        int scanned = scanBlockEntityClass(beClass, be, block);
+                        if (scanned == 0) {
+                            Set<Object> visited = new HashSet<>();
+                            RecipeType<?> rt = findRecipeTypeDeep(be, 0, visited);
+                            if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
+                        } else {
+                            registeredCount += scanned;
+                        }
+                    }
+                } catch (Throwable t) {
+                    errors++;
+                }
+            }
+        }
+        ComplexityAnalyzer.LOGGER.info("Dynamic machine scan results: totalBlocks={}, entityBlocks={}, registered={}, errors={}",
+                totalBlocks, entityBlocks, registeredCount, errors);
+        return registeredCount;
+    }
+
+    private int scanBlockEntityClass(Class<?> beClass, BlockEntity be, Block block) {
+        int count = 0;
+
+        for (var method : beClass.getMethods()) {
+            if (method.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(method.getReturnType())) try {
+                method.setAccessible(true);
+                RecipeType<?> recipeType = (RecipeType<?>) method.invoke(be);
+                if (recipeType != null && registerDynamicMachine(recipeType, block.asItem())) count++;
+            } catch (Throwable ignored) {
+            }
+        }
+
+        Class<?> currentClass = beClass;
+        while (currentClass != null && currentClass != Object.class) {
+            for (var field : currentClass.getDeclaredFields()) {
+                if (RecipeType.class.isAssignableFrom(field.getType())) try {
+                    field.setAccessible(true);
+                    RecipeType<?> recipeType = (RecipeType<?>) field.get(be);
+                    if (recipeType != null && registerDynamicMachine(recipeType, block.asItem())) count++;
+                } catch (Throwable ignored) {
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+
+        return count;
+    }
+
+    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, Set<Object> visited) {
+        if (obj == null || depth > 3 || !visited.add(obj)) return null;
+        Class<?> clazz = obj.getClass();
+        if (clazz.getName().startsWith("java.") || clazz.getName().startsWith("net.minecraft.")) return null;
+
+        for (var method : clazz.getMethods()) {
+            if (method.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(method.getReturnType())) try {
+                method.setAccessible(true);
+                RecipeType<?> recipeType = (RecipeType<?>) method.invoke(obj);
+                if (recipeType != null) return recipeType;
+            } catch (Throwable ignored) {
+            }
+        }
+
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (var field : current.getDeclaredFields()) {
+                try {
+                    field.setAccessible(true);
+                    Object val = field.get(obj);
+                    if (val != null) {
+                        if (val instanceof RecipeType<?> rt) return rt;
+                        RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited);
+                        if (deep != null) return deep;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return null;
+    }
+
+    private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
+        if (item == Items.AIR) return false;
+        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+        if (typeId == null) return false;
+
+        ObjectList<Item> list = mapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
+        if (!list.contains(item)) {
+            list.add(item);
+            return true;
+        }
+        return false;
+    }
+
     private void register(String recipeTypeId, String itemId) {
         var typeRL = ResourceLocation.parse(recipeTypeId);
         var itemRL = ResourceLocation.parse(itemId);
@@ -109,16 +200,7 @@ public class MachineRegistry {
             return;
         }
 
-        mapping.put(typeRL, item);
+        mapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>()).add(item);
     }
 
-    private void logAllMachines() {
-        ComplexityAnalyzer.LOGGER.debug("=== All registered machines ({}) ===", mapping.size());
-        var keys = new ObjectArrayList<>(mapping.keySet());
-        keys.sort(Comparator.comparing(ResourceLocation::toString));
-        for (var key : keys) {
-            var item = mapping.get(key);
-            ComplexityAnalyzer.LOGGER.debug("  {} -> {}", key, GameRegistryManager.getItemId(item));
-        }
-    }
 }

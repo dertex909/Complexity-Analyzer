@@ -433,6 +433,11 @@ function renderRecipeList(recipes) {
             <div class="ingredient-list">
               ${r.chemicalIngredients.map(c => `<span class="ingredient">${escapeHtml(c.id)} × ${c.amount}</span>`).join("")}
             </div>` : ""}
+          ${r.machineItemIndex !== undefined && r.machineItemIndex >= 0 ? `
+            <div class="hint">Machine:</div>
+            <div class="ingredient-list">
+              ${renderIngredientRef(r.machineItemIndex, null)}
+            </div>` : ""}
         </div>
       `).join("")}
     </div>

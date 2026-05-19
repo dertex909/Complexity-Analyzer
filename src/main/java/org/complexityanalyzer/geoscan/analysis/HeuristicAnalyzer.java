@@ -18,14 +18,7 @@
 
 package org.complexityanalyzer.geoscan.analysis;
 
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -97,9 +90,9 @@ public class HeuristicAnalyzer {
 
             ReferenceOpenHashSet<Block> dimensionHeuristic = new ReferenceOpenHashSet<>();
             if (totalBlocksInDim > 0) {
-                ObjectIterator<it.unimi.dsi.fastutil.objects.Object2LongMap.Entry<Block>> it = totalCounts.object2LongEntrySet().fastIterator();
+                ObjectIterator<Object2LongMap.Entry<Block>> it = totalCounts.object2LongEntrySet().fastIterator();
                 while (it.hasNext()) {
-                    it.unimi.dsi.fastutil.objects.Object2LongMap.Entry<Block> tcEntry = it.next();
+                    Object2LongMap.Entry<Block> tcEntry = it.next();
                     Block block = tcEntry.getKey();
                     long count = tcEntry.getLongValue();
                     if (block != Blocks.AIR && (double) count / totalBlocksInDim > NATURAL_BLOCK_RARITY_THRESHOLD) {

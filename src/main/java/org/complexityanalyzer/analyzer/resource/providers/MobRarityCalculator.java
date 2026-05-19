@@ -29,6 +29,7 @@ import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.api.IBossRegistry;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
@@ -43,8 +44,6 @@ public class MobRarityCalculator implements IBossRegistry {
 
     private final Reference2ObjectMap<EntityType<?>, BossLevel> registeredBosses = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
-    private static final double BOSS_RARITY = 50.0;
-    private static final double MINI_BOSS_RARITY = 15.0;
     private static final double HIGH_HEALTH_BONUS = 5.0;
     private static final double VERY_HIGH_HEALTH_BONUS = 10.0;
     private static final double NETHER_BONUS = 3.0;
@@ -122,9 +121,12 @@ public class MobRarityCalculator implements IBossRegistry {
         double rarity = 0.0;
 
         BossLevel bossLevel = detectBossLevel(entityType);
+        double multiplier = ComplexityConfig.BOSS_RARITY_MULTIPLIER.get();
         switch (bossLevel) {
-            case BOSS -> rarity += BOSS_RARITY;
-            case MINI_BOSS -> rarity += MINI_BOSS_RARITY;
+            case BOSS -> rarity += 2.5 * multiplier;
+            case MINI_BOSS -> rarity += 0.75 * multiplier;
+            case NONE -> {
+            }
         }
 
         double structRarity = dimensionAnalyzer.getStructureMultiplier(entityType);

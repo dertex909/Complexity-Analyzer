@@ -24,14 +24,10 @@ public class ComplexityConfig {
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.IntValue MAX_DEPTH;
-    public static final ModConfigSpec.IntValue MAX_RECURSION_DEPTH;
     public static final ModConfigSpec.IntValue MAX_INGREDIENT_VARIANTS;
     public static final ModConfigSpec.IntValue MAX_ITERATIONS;
-    public static final ModConfigSpec.IntValue CYCLE_DETECTION_DEPTH;
 
     public static final ModConfigSpec.DoubleValue BASE_COMPLEXITY;
-    public static final ModConfigSpec.DoubleValue DEPTH_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue INGREDIENT_MULTIPLIER;
 
     public static final ModConfigSpec.DoubleValue MOB_DIFFICULTY_SCALER;
     public static final ModConfigSpec.DoubleValue BOSS_RARITY_MULTIPLIER;
@@ -41,13 +37,11 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue BASE_ACTION_COST;
 
     public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
-    public static final ModConfigSpec.DoubleValue SOURCE_BIAS_THRESHOLD;
 
     public static final ModConfigSpec.BooleanValue MACHINE_TAX_ENABLED;
     public static final ModConfigSpec.DoubleValue MACHINE_TAX_PERCENTAGE;
     public static final ModConfigSpec.DoubleValue MACHINE_BASE_COMPLEXITY;
 
-    public static final ModConfigSpec.DoubleValue FLUID_BASE_COMPLEXITY;
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
     public static final ModConfigSpec.IntValue MAX_THREADS;
@@ -74,16 +68,12 @@ public class ComplexityConfig {
 
         builder.push("limits");
         MAX_DEPTH = builder.defineInRange("maxDepth", 50, 1, 1000);
-        MAX_RECURSION_DEPTH = builder.defineInRange("maxRecursionDepth", 100, 1, 1000);
         MAX_INGREDIENT_VARIANTS = builder.defineInRange("maxIngredientVariants", 20, 1, 100);
         MAX_ITERATIONS = builder.defineInRange("maxIterations", 1000, 10, 10000);
-        CYCLE_DETECTION_DEPTH = builder.defineInRange("cycleDetectionDepth", 100, 10, 500);
         builder.pop();
 
         builder.push("crafting");
         BASE_COMPLEXITY = builder.defineInRange("baseComplexity", 1.0, 0.1, 1000.0);
-        DEPTH_MULTIPLIER = builder.defineInRange("depthMultiplier", 2.0, 0.1, 100.0);
-        INGREDIENT_MULTIPLIER = builder.defineInRange("ingredientMultiplier", 0.5, 0.0, 10.0);
         builder.pop();
 
         builder.push("mob_drops");
@@ -99,14 +89,9 @@ public class ComplexityConfig {
 
         builder.push("solver_internals");
         CONVERGENCE_THRESHOLD = builder.defineInRange("convergenceThreshold", 1.0E-9, 1.0E-12, 1.0E-3);
-        SOURCE_BIAS_THRESHOLD = builder.defineInRange("sourceBiasThreshold", 1.01, 1.0, 2.0);
         builder.pop();
 
         builder.push("fluids");
-        FLUID_BASE_COMPLEXITY = builder
-                .comment(" Base complexity for generic fluids (not water/lava)")
-                .defineInRange("baseComplexity", 5.0, 0.1, 1000.0);
-
         FLUID_NORMALIZATION_FACTOR = builder
                 .comment(" Multiplier for fluid costs in recipes")
                 .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);

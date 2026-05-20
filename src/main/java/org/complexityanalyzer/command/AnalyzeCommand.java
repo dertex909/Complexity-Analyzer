@@ -125,8 +125,6 @@ public final class AnalyzeCommand {
         if (complexity < 0) {
             valueString = "—";
             valueColor = ChatFormatting.DARK_GRAY;
-        } else if (Double.isInfinite(complexity)) {
-            valueString = "∞";
         } else {
             valueString = String.format("%.2f", complexity);
         }

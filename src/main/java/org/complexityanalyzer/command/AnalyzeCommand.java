@@ -121,9 +121,19 @@ public final class AnalyzeCommand {
         output.sendStatusLine(source, "⚙", "complexityanalyzer.command.analyze.complexity_section", ChatFormatting.YELLOW);
         output.sendSubEntry(source, getCategoryIcon(category), "complexityanalyzer.command.analyze.category_label", category.getTranslationKey(), ChatFormatting.GRAY, category.getColor());
         ChatFormatting valueColor = getComplexityColor(complexity);
-        String valueString = Double.isInfinite(complexity) ? "∞" : String.format("%.2f", complexity);
+        String valueString;
+        if (complexity < 0) {
+            valueString = "—";
+            valueColor = ChatFormatting.DARK_GRAY;
+        } else if (Double.isInfinite(complexity)) {
+            valueString = "∞";
+        } else {
+            valueString = String.format("%.2f", complexity);
+        }
         output.sendSubEntry(source, "complexityanalyzer.command.analyze.value_label", valueString, ChatFormatting.GRAY, valueColor);
-        output.sendValueBar(source, (int) Math.min(100, (complexity / 100.0) * 100), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
+        if (complexity >= 0) {
+            output.sendValueBar(source, (int) Math.min(100, (complexity / 100.0) * 100), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
+        }
         output.sendEmptyLine(source);
     }
 

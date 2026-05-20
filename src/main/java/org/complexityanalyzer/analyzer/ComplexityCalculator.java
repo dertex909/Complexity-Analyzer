@@ -70,6 +70,7 @@ public class ComplexityCalculator {
     private ItemComplexity buildComplexityResult(Item item) {
         var compObj = solverResult.getComplexity(item);
         double complexity = (compObj != null) ? compObj : sourceManager.getBaseFactor(item);
+        if (Double.isInfinite(complexity) || complexity < 0) complexity = -1.0;
 
         var optimalRecipe = solverResult.optimalRecipes().get(item);
 

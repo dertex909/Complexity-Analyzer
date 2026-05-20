@@ -364,12 +364,13 @@ public class PlantSimulator {
                     mutablePos.set(worldX, y, simOriginZ + z);
 
                     try {
-                        if (isBaseLayer | isXBoundary | isZBoundary)
+                        if (isBaseLayer | isXBoundary | isZBoundary) {
                             level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
-                        else if (isLightLayer)
+                        } else if (isLightLayer) {
                             level.setBlock(mutablePos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
-                        else if (!level.getBlockState(mutablePos).isAir())
+                        } else if (!level.getBlockState(mutablePos).isAir()) {
                             level.setBlock(mutablePos, Blocks.AIR.defaultBlockState(), 3);
+                        }
                     } catch (Throwable ignored) {
                     }
                 }
@@ -464,8 +465,9 @@ public class PlantSimulator {
         try {
             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
             fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY))
+            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
                 addDrop(drops, stack, 1.0);
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -492,9 +494,11 @@ public class PlantSimulator {
     }
 
     private IntegerProperty findAgeProperty(Block b) {
-        for (Property<?> prop : b.defaultBlockState().getProperties())
-            if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth")))
+        for (Property<?> prop : b.defaultBlockState().getProperties()) {
+            if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth"))) {
                 return ip;
+            }
+        }
         return null;
     }
 }

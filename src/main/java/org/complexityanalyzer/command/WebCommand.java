@@ -26,7 +26,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
@@ -60,9 +59,8 @@ public final class WebCommand {
 
     private static int executeUrlInternal(CommandSourceStack source, boolean rawLink) {
         OutputManager output = new OutputManager(source.getServer());
-        ServerPlayer player = source.getEntity() instanceof ServerPlayer p ? p : null;
 
-        String url = CabinNettyHandler.getUrl(player);
+        String url = CabinNettyHandler.getUrl();
 
         if (url == null) {
             output.sendEmptyLine(source);

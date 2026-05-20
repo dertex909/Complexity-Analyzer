@@ -19,22 +19,18 @@
 package org.complexityanalyzer.network.multiplex;
 
 import io.netty.buffer.Unpooled;
-
-import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.InputStream;
 import java.util.Base64;
 import java.security.SecureRandom;
@@ -49,7 +45,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return uniqueVisitors.size();
     }
 
-    public static String getUrl(ServerPlayer player) {
+    public static String getUrl() {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return null;
 
@@ -57,16 +53,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         if (port <= 0) return null;
 
         String hostname = server.getLocalIp();
-
-        if (player != null) {
-            Channel connection = player.connection.getConnection().channel();
-            if (connection instanceof ConnectionAddressHolder holder) {
-                String clientHost = holder.complexity$getHostname();
-                if (clientHost != null && !clientHost.isEmpty()) hostname = clientHost.split(":")[0];
-            }
-        }
-
-        if (hostname == null || hostname.isEmpty()) hostname = "127.0.0.1";
+        if (hostname.isEmpty()) hostname = "127.0.0.1";
 
         return "http://" + hostname + ":" + port + "/" + TOKEN + "/";
     }

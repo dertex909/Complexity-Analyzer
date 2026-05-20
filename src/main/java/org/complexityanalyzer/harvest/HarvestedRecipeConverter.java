@@ -1,8 +1,9 @@
 package org.complexityanalyzer.harvest;
 
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -70,7 +71,7 @@ public final class HarvestedRecipeConverter {
         var transitionalItems = harvested.transitionalItems();
         boolean isSeqAss = !transitionalItems.isEmpty();
 
-        var mergedIngredients = new java.util.LinkedHashMap<ObjectList<Item>, Integer>();
+        var mergedIngredients = new Object2IntLinkedOpenHashMap<ObjectList<Item>>();
 
         for (Ingredient ingredient : inputIngredients) {
             var variants = new ObjectArrayList<Item>();
@@ -93,18 +94,14 @@ public final class HarvestedRecipeConverter {
                 if (isSeqAss) {
                     mergedIngredients.put(variants, 1);
                 } else {
-                    mergedIngredients.put(variants, mergedIngredients.getOrDefault(variants, 0) + 1);
+                    mergedIngredients.addTo(variants, 1);
                 }
             }
         }
 
         if (isSeqAss && !transitionalItems.isEmpty() && !mergedIngredients.isEmpty()) {
-            var firstKey = mergedIngredients.keySet().iterator().next();
-            for (Item transItem : transitionalItems) {
-                if (!firstKey.contains(transItem)) {
-                    firstKey.add(transItem);
-                }
-            }
+            var firstKey = mergedIngredients.keySet().getFirst();
+            for (Item transItem : transitionalItems) if (!firstKey.contains(transItem)) firstKey.add(transItem);
             firstKey.sort((a, b) -> {
                 var idA = GameRegistryManager.getItemId(a);
                 var idB = GameRegistryManager.getItemId(b);
@@ -118,44 +115,44 @@ public final class HarvestedRecipeConverter {
                 var variants = new ObjectArrayList<Item>();
                 variants.add(stack.getItem());
                 int count = Math.max(1, stack.getCount());
-                mergedIngredients.put(variants, mergedIngredients.getOrDefault(variants, 0) + count);
+                mergedIngredients.addTo(variants, count);
             }
         }
 
-        for (var entry : mergedIngredients.entrySet()) {
-            builder.addIngredient(entry.getKey(), entry.getValue());
+        for (var entry : mergedIngredients.object2IntEntrySet()) {
+            builder.addIngredient(entry.getKey(), entry.getIntValue());
         }
 
         if (!inputFluids.isEmpty()) {
-            var seenFluids = new Reference2DoubleOpenHashMap<Fluid>();
+            var seenFluids = new Reference2IntOpenHashMap<Fluid>();
             for (FluidStack fluid : inputFluids) {
                 Fluid f = normalizeFluid(fluid.getFluid());
                 if (f == Fluids.EMPTY) continue;
-                double amt = fluid.getAmount();
-                double existing = seenFluids.getDouble(f);
+                int amt = fluid.getAmount();
+                int existing = seenFluids.getInt(f);
                 if (amt > existing) seenFluids.put(f, amt);
             }
-            for (var entry : seenFluids.reference2DoubleEntrySet()) {
+            for (var entry : seenFluids.reference2IntEntrySet()) {
                 var variants = new ObjectArrayList<Fluid>();
                 variants.add(entry.getKey());
-                builder.addFluidIngredient(variants, (int) entry.getDoubleValue());
+                builder.addFluidIngredient(variants, entry.getIntValue());
             }
         }
 
         if (!outputStacks.isEmpty()) builder.itemOutputs(outputStacks);
 
         if (!outputFluids.isEmpty()) {
-            var mergedOutputs = new Reference2DoubleOpenHashMap<Fluid>();
+            var mergedOutputs = new Reference2IntOpenHashMap<Fluid>();
             for (FluidStack fluid : outputFluids) {
                 Fluid f = normalizeFluid(fluid.getFluid());
                 if (f == Fluids.EMPTY) continue;
-                double amt = fluid.getAmount();
-                double existing = mergedOutputs.getDouble(f);
+                int amt = fluid.getAmount();
+                int existing = mergedOutputs.getInt(f);
                 if (amt > existing) mergedOutputs.put(f, amt);
             }
             var deduplicatedOutputs = new ObjectArrayList<FluidStack>();
-            for (var entry : mergedOutputs.reference2DoubleEntrySet()) {
-                deduplicatedOutputs.add(new FluidStack(entry.getKey(), (int) entry.getDoubleValue()));
+            for (var entry : mergedOutputs.reference2IntEntrySet()) {
+                deduplicatedOutputs.add(new FluidStack(entry.getKey(), entry.getIntValue()));
             }
             builder.fluidOutputs(deduplicatedOutputs);
         }

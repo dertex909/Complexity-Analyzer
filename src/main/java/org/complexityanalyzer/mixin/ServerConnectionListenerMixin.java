@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.mixin.network;
+package org.complexityanalyzer.mixin;
 
 import io.netty.channel.Channel;
 import org.complexityanalyzer.network.multiplex.ProtocolDetector;

@@ -7,7 +7,7 @@
   "mixins": [
     "LootContextAccessor",
     "SmithingTransformRecipeAccessor",
-    "network.ServerConnectionListenerMixin"
+    "ServerConnectionListenerMixin"
   ],
   "client": [],
   "server": [],

@@ -18,9 +18,13 @@
 
 package org.complexityanalyzer.analyzer;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -31,9 +35,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class MachineRegistry {
 
@@ -81,10 +82,10 @@ public class MachineRegistry {
         int entityBlocks = 0;
         int errors = 0;
 
-        for (Block block : BuiltInRegistries.BLOCK) {
+        for (Block block : GameRegistryManager.getAllBlocks()) {
             totalBlocks++;
             try {
-                Set<Object> blockVisited = new HashSet<>();
+                ReferenceSet<Object> blockVisited = new ReferenceOpenHashSet<>();
                 RecipeType<?> rt = findRecipeTypeDeep(block, 0, blockVisited);
                 if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
             } catch (Throwable ignored) {
@@ -98,7 +99,7 @@ public class MachineRegistry {
                         Class<?> beClass = be.getClass();
                         int scanned = scanBlockEntityClass(beClass, be, block);
                         if (scanned == 0) {
-                            Set<Object> visited = new HashSet<>();
+                            ReferenceSet<Object> visited = new ReferenceOpenHashSet<>();
                             RecipeType<?> rt = findRecipeTypeDeep(be, 0, visited);
                             if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
                         } else {
@@ -143,7 +144,7 @@ public class MachineRegistry {
         return count;
     }
 
-    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, Set<Object> visited) {
+    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited) {
         if (obj == null || depth > 3 || !visited.add(obj)) return null;
         Class<?> clazz = obj.getClass();
         if (clazz.getName().startsWith("java.") || clazz.getName().startsWith("net.minecraft.")) return null;

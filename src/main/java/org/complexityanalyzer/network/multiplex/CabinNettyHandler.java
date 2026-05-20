@@ -45,6 +45,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return uniqueVisitors.size();
     }
 
+    @SuppressWarnings("ConstantValue")
     public static String getUrl() {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return null;
@@ -53,7 +54,9 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         if (port <= 0) return null;
 
         String hostname = server.getLocalIp();
-        if (hostname.isEmpty()) hostname = "127.0.0.1";
+        if (hostname == null || hostname.isEmpty() || "0.0.0.0".equals(hostname) || "0:0:0:0:0:0:0:0".equals(hostname)) {
+            hostname = "127.0.0.1";
+        }
 
         return "http://" + hostname + ":" + port + "/" + TOKEN + "/";
     }

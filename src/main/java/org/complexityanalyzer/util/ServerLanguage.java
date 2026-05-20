@@ -86,7 +86,6 @@ public class ServerLanguage {
         return val;
     }
 
-
     public static Component translate(Component component, String locale) {
         MutableComponent result;
 

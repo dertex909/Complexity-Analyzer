@@ -2,6 +2,7 @@ package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 
@@ -11,7 +12,8 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class RecipeReflection {
@@ -126,7 +128,7 @@ public final class RecipeReflection {
             var mList = new ObjectArrayList<Method>();
             var hList = new ObjectArrayList<MethodHandle>();
             var queue = new ObjectArrayList<Class<?>>();
-            var seenMethods = new HashSet<String>();
+            var seenMethods = new ObjectOpenHashSet<String>();
             queue.add(clazz);
             int idx = 0;
             while (idx < queue.size()) {

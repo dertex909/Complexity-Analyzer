@@ -440,7 +440,6 @@ public final class FastHarvester {
 
     public void clearCaches() {
         RecipeReflection.clearCaches();
-        SizedIngredientDetector.clearCache();
         AntivirusStyleDetector.clearCache();
         PatternSignatureEngine.clearCache();
         UniversalTypeResolver.clearCache();

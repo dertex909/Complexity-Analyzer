@@ -3,6 +3,10 @@ package org.complexityanalyzer.harvest;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSets;
 import net.minecraft.world.level.Level;
 
 import java.lang.invoke.MethodHandle;
@@ -11,14 +15,9 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Универсальный резолвер accessor'ов для любых классов рецептов.
- * Замена/расширение {@link RecipeReflection} — сканирует ВСЕ поля и методы,
- * не фильтруя по заранее известным типам.
- */
 public final class UniversalAccessorResolver {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -26,15 +25,10 @@ public final class UniversalAccessorResolver {
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
 
     public interface Accessor {
-        Object extract(Object recipe, Level level) throws Throwable;
 
         String type();
 
         String name();
-
-        Class<?> valueType();
-
-        HeuristicRoleClassifier.Role role();
 
         @Override
         String toString();
@@ -58,8 +52,6 @@ public final class UniversalAccessorResolver {
             MethodHandle[] allHandles
     ) {
     }
-
-    // ======================== Публичный API ========================
 
     public static ResolvedAccessors resolve(Object recipe, Level level) {
         if (recipe == null) return empty();
@@ -85,8 +77,6 @@ public final class UniversalAccessorResolver {
         META_CACHE.clear();
     }
 
-    // ======================== Приватные методы ========================
-
     private static ResolvedAccessors empty() {
         return new ResolvedAccessors(
                 ObjectLists.emptyList(), ObjectLists.emptyList(),
@@ -97,14 +87,12 @@ public final class UniversalAccessorResolver {
     private static ResolvedAccessors resolveUncached(Class<?> clazz, Object recipe, Level level) {
         ClassMeta meta = getMeta(clazz);
 
-        Set<net.minecraft.world.item.crafting.Ingredient> standardInputs = Collections.emptySet();
+        ReferenceSet<net.minecraft.world.item.crafting.Ingredient> standardInputs = ReferenceSets.emptySet();
         net.minecraft.world.item.Item anchorItem = null;
 
         if (recipe instanceof net.minecraft.world.item.crafting.Recipe<?> r && level != null) {
-            standardInputs = new HashSet<>();
-            for (var ing : r.getIngredients()) {
-                if (ing != null && !ing.isEmpty()) standardInputs.add(ing);
-            }
+            standardInputs = new ReferenceOpenHashSet<>();
+            for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) standardInputs.add(ing);
             try {
                 var result = r.getResultItem(level.registryAccess());
                 if (!result.isEmpty()) anchorItem = result.getItem();
@@ -157,7 +145,7 @@ public final class UniversalAccessorResolver {
             HeuristicRoleClassifier.RoleClassification role;
             if (recipe != null) {
                 try {
-                    Object raw = acc.extract(recipe, level);
+                    Object raw = acc.extract(recipe);
                     role = HeuristicRoleClassifier.classify(recipe, raw, f.getName(), "field", anchorItem, standardInputs);
                 } catch (Throwable e) {
                     role = HeuristicRoleClassifier.classifyField(f);
@@ -177,8 +165,6 @@ public final class UniversalAccessorResolver {
 
         return new ResolvedAccessors(inputAcc, outputAcc, unknownAcc, allAcc);
     }
-
-    // ======================== Accessor implementations ========================
 
     public static final class MethodAccessor implements Accessor {
         private final MethodHandle noArgHandle;
@@ -214,24 +200,13 @@ public final class UniversalAccessorResolver {
         }
 
         @Override
-        public Class<?> valueType() {
-            return method.getReturnType();
-        }
-
-        @Override
-        public HeuristicRoleClassifier.Role role() {
-            return roleClass.role();
-        }
-
-        @Override
         public String toString() {
             return method.getDeclaringClass().getSimpleName() + "." + method.getName()
                     + "() → " + method.getReturnType().getSimpleName()
                     + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
-        @Override
-        public Object extract(Object recipe, Level level) throws Throwable {
+        private Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
             var params = method.getParameterTypes();
             var args = new Object[params.length];
@@ -270,29 +245,16 @@ public final class UniversalAccessorResolver {
         }
 
         @Override
-        public Class<?> valueType() {
-            return field.getType();
-        }
-
-        @Override
-        public HeuristicRoleClassifier.Role role() {
-            return roleClass.role();
-        }
-
-        @Override
         public String toString() {
             return field.getDeclaringClass().getSimpleName() + "." + field.getName()
                     + " : " + field.getType().getSimpleName()
                     + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
-        @Override
-        public Object extract(Object recipe, Level level) throws Throwable {
+        private Object extract(Object recipe) throws Throwable {
             return field.get(recipe);
         }
     }
-
-    // ======================== ClassMeta builder ========================
 
     private static final class ClassMetaBuilder {
         static ClassMeta build(Class<?> clazz) {
@@ -330,7 +292,7 @@ public final class UniversalAccessorResolver {
 
             var mList = new ObjectArrayList<Method>();
             var hList = new ObjectArrayList<MethodHandle>();
-            var seenMethods = new HashSet<String>();
+            var seenMethods = new ObjectOpenHashSet<String>();
             var queue = new ObjectArrayList<Class<?>>();
             queue.add(clazz);
             int idx = 0;

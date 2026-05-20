@@ -30,7 +30,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
-import org.complexityanalyzer.analyzer.SourcePathAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
@@ -299,9 +298,6 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("Recalculating all complexity data...");
 
         this.complexityCache.clear();
-
-        SourcePathAnalyzer pathAnalyzer = new SourcePathAnalyzer(currentGraph, currentSourceManager);
-        pathAnalyzer.findItemsWithBasePath();
 
         if (isInterrupted()) return;
 

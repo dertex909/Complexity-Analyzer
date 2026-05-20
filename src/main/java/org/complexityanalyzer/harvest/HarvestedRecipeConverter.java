@@ -58,7 +58,7 @@ public final class HarvestedRecipeConverter {
         var builder = new RecipeNode.Builder(output.getItem())
                 .category(RecipeCategory.PRIMARY)
                 .resultCount(output.getCount())
-                .rawRecipe(harvested.root());
+                .rawRecipe();
 
         if (isPlaceholder) {
             builder.isPlaceholder(true);

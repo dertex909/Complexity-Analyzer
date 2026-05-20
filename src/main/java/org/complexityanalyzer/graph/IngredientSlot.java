@@ -22,7 +22,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.Item;
-import org.jetbrains.annotations.Nullable;
 
 public class IngredientSlot {
     private final ObjectList<Item> variants;
@@ -33,26 +32,12 @@ public class IngredientSlot {
         this.count = Math.max(1, count);
     }
 
-    public IngredientSlot(Item singleItem, int count) {
-        this.variants = ObjectLists.singleton(singleItem);
-        this.count = Math.max(1, count);
-    }
-
     public ObjectList<Item> getVariants() {
         return ObjectLists.unmodifiable(variants);
     }
 
     public int getCount() {
         return count;
-    }
-
-    public boolean hasMultipleVariants() {
-        return variants.size() > 1;
-    }
-
-    @Nullable
-    public Item getFirstVariant() {
-        return variants.isEmpty() ? null : variants.getFirst();
     }
 
     @Override

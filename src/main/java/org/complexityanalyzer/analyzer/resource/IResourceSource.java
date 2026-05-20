@@ -39,9 +39,5 @@ public interface IResourceSource {
         return 0;
     }
 
-    default boolean prefersRecipeOutputs() {
-        return false;
-    }
-
     String getName();
 }

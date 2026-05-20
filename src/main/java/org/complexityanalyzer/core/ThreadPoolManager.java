@@ -196,19 +196,6 @@ public class ThreadPoolManager {
         return pool;
     }
 
-    public ForkJoinPool getForkJoinPool() {
-        ensureNotShutdown();
-        ForkJoinPool pool = forkJoinPool;
-        if (pool == null || pool.isShutdown()) synchronized (LOCK) {
-            pool = forkJoinPool;
-            if (pool == null || pool.isShutdown()) {
-                initialize();
-                pool = forkJoinPool;
-            }
-        }
-        return pool;
-    }
-
     public int getParallelism() {
         return parallelism;
     }

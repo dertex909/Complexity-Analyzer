@@ -183,10 +183,6 @@ public class RecipeGraph {
         return recipes != null && !recipes.isEmpty();
     }
 
-    public int getRecipeCount(Item item) {
-        return getRecipes(item).size();
-    }
-
     public int getUsageCount(Item item) {
         var users = usageMap.get(item);
         return users != null ? users.size() : 0;
@@ -241,47 +237,6 @@ public class RecipeGraph {
         var allItems = new ReferenceOpenHashSet<>(recipesByItem.keySet());
         allItems.addAll(usageMap.keySet());
         return allItems;
-    }
-
-    public ObjectList<RecipeNode> getRecipesProducingFluid(Fluid fluid) {
-        var normalizedFluid = normalizeFluid(fluid);
-        var fluidId = GameRegistryManager.getFluidId(normalizedFluid);
-
-        var combined = new ObjectArrayList<RecipeNode>();
-        var placeholderRecipes = recipesByFluid.get(fluidId);
-        if (placeholderRecipes != null) combined.addAll(placeholderRecipes);
-
-        for (var recipe : getAllRecipes()) {
-            for (var stack : recipe.getFluidOutputs()) {
-                if (normalizeFluid(stack.getFluid()).equals(normalizedFluid)) {
-                    combined.add(recipe);
-                    break;
-                }
-            }
-        }
-
-        return combined;
-    }
-
-    public ObjectList<Item> getItemsUsingFluid(Fluid fluid) {
-        var normalizedFluid = normalizeFluid(fluid);
-        var items = new ReferenceOpenHashSet<Item>();
-
-        for (var recipe : getAllRecipes()) {
-            var uses = false;
-            for (var slot : recipe.getFluidIngredients()) {
-                for (var f : slot.getFluidVariants()) {
-                    if (normalizeFluid(f).equals(normalizedFluid)) {
-                        uses = true;
-                        break;
-                    }
-                }
-                if (uses) break;
-            }
-            if (uses) items.add(recipe.getResultItem());
-        }
-
-        return new ObjectArrayList<>(items);
     }
 
     public ReferenceSet<Fluid> getAllUsedFluids() {

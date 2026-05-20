@@ -28,7 +28,6 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -52,7 +51,6 @@ public class RecipeNode {
     private final int priority;
     private final double recipeMultiplier;
     private final boolean isPlaceholder;
-    private final transient Object rawRecipeRef;
     private RecipeCategory category;
 
     private RecipeNode(Builder builder) {
@@ -70,7 +68,6 @@ public class RecipeNode {
         this.priority = builder.priority;
         this.isPlaceholder = builder.isPlaceholder;
         this.placeholderId = builder.placeholderId;
-        this.rawRecipeRef = builder.rawRecipeRef;
     }
 
     public static RecipeNode empty(Item item) {
@@ -105,11 +102,6 @@ public class RecipeNode {
         return fluidOutputs;
     }
 
-    @Nullable
-    public Object getRawRecipeRef() {
-        return rawRecipeRef;
-    }
-
     public Item getResultItem() {
         return resultItem;
     }
@@ -138,14 +130,6 @@ public class RecipeNode {
         int total = 0;
         for (var slot : ingredients) total += slot.getCount();
         return total;
-    }
-
-    public int getIngredientSlotCount() {
-        return ingredients.size();
-    }
-
-    public int getFluidIngredientSlotCount() {
-        return fluidIngredients.size();
     }
 
     public boolean isBaseRecipe() {
@@ -187,12 +171,6 @@ public class RecipeNode {
         return "RecipeNode{" + "result=" + GameRegistryManager.getItemId(resultItem) + ", type=" + recipeType + '}';
     }
 
-    public int getTotalFluidAmount() {
-        int total = 0;
-        for (var stack : fluidOutputs) total += stack.getAmount();
-        return total;
-    }
-
     public static class Builder {
         private final Item resultItem;
         private final ObjectList<ChemicalIngredient> chemicalIngredients = new ObjectArrayList<>();
@@ -200,15 +178,14 @@ public class RecipeNode {
         private final ObjectList<FluidIngredientSlot> fluidIngredients = new ObjectArrayList<>();
         private ObjectList<ItemStack> itemOutputs = new ObjectArrayList<>();
         private ObjectList<FluidStack> fluidOutputs = new ObjectArrayList<>();
-        private ObjectList<ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
+        private final ObjectList<ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
         private RecipeType<?> recipeType;
         private RecipeCategory category = RecipeCategory.PRIMARY;
-        private double recipeMultiplier = 1.0;
+        private final double recipeMultiplier = 1.0;
         private int priority = 0;
         private int resultCount = 1;
         private boolean isPlaceholder = false;
         private String placeholderId = "";
-        private Object rawRecipeRef;
 
         public Builder(Item resultItem) {
             this.resultItem = resultItem;
@@ -222,23 +199,12 @@ public class RecipeNode {
             this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
         }
 
-        public Builder chemicalOutputs(ObjectList<ChemicalOutput> outputs) {
-            this.chemicalOutputs = outputs != null ? outputs : new ObjectArrayList<>();
-            return this;
-        }
-
-        public void addChemicalIngredient(ResourceLocation chemicalId, int amount) {
-            this.chemicalIngredients.add(new ChemicalIngredient(chemicalId, amount));
-        }
-
-        public Builder itemOutputs(ObjectList<ItemStack> outputs) {
+        public void itemOutputs(ObjectList<ItemStack> outputs) {
             this.itemOutputs = outputs;
-            return this;
         }
 
-        public Builder fluidOutputs(ObjectList<FluidStack> outputs) {
+        public void fluidOutputs(ObjectList<FluidStack> outputs) {
             this.fluidOutputs = outputs;
-            return this;
         }
 
         public Builder resultCount(int count) {
@@ -256,11 +222,6 @@ public class RecipeNode {
             return this;
         }
 
-        public Builder recipeMultiplier(double multiplier) {
-            this.recipeMultiplier = multiplier;
-            return this;
-        }
-
         public void priority(int priority) {
             this.priority = priority;
         }
@@ -274,8 +235,7 @@ public class RecipeNode {
             this.placeholderId = id;
         }
 
-        public Builder rawRecipe(Object raw) {
-            this.rawRecipeRef = raw;
+        public Builder rawRecipe() {
             return this;
         }
 

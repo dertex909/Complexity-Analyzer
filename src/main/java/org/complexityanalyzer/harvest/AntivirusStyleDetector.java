@@ -1,23 +1,14 @@
 package org.complexityanalyzer.harvest;
+
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-/**
- * Координатор трёхуровневого детекта — как антивирус.
 
- * Уровень 1: SIGNATURE — implements Recipe<?> → 100% confidence
- * Уровень 2: HEURISTIC — composition scoring из {@link PatternSignatureEngine}
- * Уровень 3: BEHAVIORAL — call-graph анализ (как класс используется)
-
- * Объединяет результаты и выдаёт финальное решение.
- */
 public final class AntivirusStyleDetector {
     private static final ConcurrentHashMap<Class<?>, CompositeDetection> DETECT_CACHE = new ConcurrentHashMap<>(512);
-    /**
-     * Финальный результат детекта с aggregated confidence.
-     */
+
     public record CompositeDetection(
             PatternSignatureEngine.DetectionLevel level,
             int signatureConfidence,
@@ -36,9 +27,11 @@ public final class AntivirusStyleDetector {
                 "No patterns detected at any level",
                 List.of()
         );
+
         public boolean isRelevant() {
             return isRecipe || isMachine || isCodec || totalConfidence > 20;
         }
+
         @Override
         public @NotNull String toString() {
             return String.format(Locale.ROOT,
@@ -47,11 +40,10 @@ public final class AntivirusStyleDetector {
                     totalConfidence, isRecipe, isMachine, isCodec, verdict);
         }
     }
-    private AntivirusStyleDetector() {}
-    // ======================== Публичный API ========================
-    /**
-     * Выполнить трёхуровневый детект класса.
-     */
+
+    private AntivirusStyleDetector() {
+    }
+
     public static CompositeDetection detect(Class<?> clazz) {
         if (clazz == null) return CompositeDetection.UNKNOWN;
         CompositeDetection existing = DETECT_CACHE.get(clazz);
@@ -60,16 +52,13 @@ public final class AntivirusStyleDetector {
         DETECT_CACHE.put(clazz, result);
         return result;
     }
-    /**
-     * Очистить кэш.
-     */
+
     public static void clearCache() {
         DETECT_CACHE.clear();
     }
-    // ======================== Приватные методы ========================
+
     private static CompositeDetection performDetection(Class<?> clazz) {
         var allEvidence = new ArrayList<String>();
-        // === Уровень 1: SIGNATURE ===
         int sigConfidence = 0;
         PatternSignatureEngine.DetectionLevel highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;
         if (Recipe.class.isAssignableFrom(clazz)) {
@@ -87,7 +76,6 @@ public final class AntivirusStyleDetector {
                 allEvidence.add("SIGNATURE[L1]: implements " + iface.getName());
             }
         }
-        // === Уровень 2: HEURISTIC ===
         PatternSignatureEngine.ClassProfile profile = PatternSignatureEngine.profile(clazz);
         int heuristicConf = profile.heuristicScore();
         allEvidence.add("HEURISTIC[L2]: score=" + heuristicConf
@@ -99,7 +87,6 @@ public final class AntivirusStyleDetector {
             highestLevel = PatternSignatureEngine.DetectionLevel.HEURISTIC;
         }
         allEvidence.addAll(profile.evidence());
-        // === Уровень 3: BEHAVIORAL (call-graph) ===
         int behavioralConf = 0;
         String pkgName = clazz.getPackage() != null ? clazz.getPackage().getName() : "";
         if (pkgName.contains("recipe") || pkgName.contains("crafting")) {
@@ -118,7 +105,6 @@ public final class AntivirusStyleDetector {
                 allEvidence.add("BEHAVIORAL[L3]: implements " + iname);
             }
         }
-        // === Финальное решение ===
         int totalConf = Math.min(sigConfidence + heuristicConf + behavioralConf, 100);
         boolean isRecipe;
         boolean isMachine;

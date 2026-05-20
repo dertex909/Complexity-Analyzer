@@ -302,8 +302,4 @@ public final class CabinBuilder {
         strings.writeTo(buf);
         return buf.toByteArray();
     }
-
-    public static long computeFileHash(byte[] file) {
-        return XxHash64.hash(file, CabinFormat.XXH64_SEED);
-    }
 }

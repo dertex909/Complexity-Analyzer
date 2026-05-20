@@ -101,11 +101,7 @@ public class ScanSession {
             int remaining = entry.getValue().get();
             int scanned = Math.max(0, chunksPerBiome - remaining);
 
-            Object2ObjectMap<ResourceLocation, int[]> inner = result.get(key.dim());
-            if (inner == null) {
-                inner = new Object2ObjectOpenHashMap<>();
-                result.put(key.dim(), inner);
-            }
+            Object2ObjectMap<ResourceLocation, int[]> inner = result.computeIfAbsent(key.dim(), k -> new Object2ObjectOpenHashMap<>());
             inner.put(key.biome(), new int[]{scanned, chunksPerBiome});
         }
 

@@ -127,9 +127,7 @@ public class WorldScanner {
                 ObjectOpenHashSet<String> biomes = new ObjectOpenHashSet<>();
                 for (var holder : biomeSource.possibleBiomes()) {
                     var unwrapped = holder.unwrapKey();
-                    if (unwrapped.isPresent()) {
-                        biomes.add(unwrapped.get().location().toString());
-                    }
+                    unwrapped.ifPresent(biomeResourceKey -> biomes.add(biomeResourceKey.location().toString()));
                 }
 
                 if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {

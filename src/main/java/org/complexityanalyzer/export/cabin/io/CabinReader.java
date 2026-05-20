@@ -45,7 +45,8 @@ public final class CabinReader {
         int magic = LeBuf.readI32(data, 0);
         if (magic != CabinFormat.MAGIC) throw new IOException("Bad magic: 0x" + Integer.toHexString(magic));
         int version = LeBuf.readU16(data, 4);
-        if (version != (CabinFormat.VERSION & 0xFFFF)) throw new IOException("Unsupported version: 0x" + Integer.toHexString(version));
+        if (version != (CabinFormat.VERSION & 0xFFFF))
+            throw new IOException("Unsupported version: 0x" + Integer.toHexString(version));
         this.tocOffset = LeBuf.readI64(data, 8);
         this.fileHash = LeBuf.readI64(data, 24);
 
@@ -67,9 +68,12 @@ public final class CabinReader {
         for (int i = 0; i < sectionCount; i++) {
             byte id = data[p++];
             byte codec = data[p++];
-            long off = LeBuf.readI64(data, p); p += 8;
-            long len = LeBuf.readI64(data, p); p += 8;
-            long unc = LeBuf.readI64(data, p); p += 8;
+            long off = LeBuf.readI64(data, p);
+            p += 8;
+            long len = LeBuf.readI64(data, p);
+            p += 8;
+            long unc = LeBuf.readI64(data, p);
+            p += 8;
             map.put(id, new Section(id, codec, off, len, unc));
         }
         return map;
@@ -79,18 +83,6 @@ public final class CabinReader {
         byte[] copy = data.clone();
         for (int i = 24; i < 32; i++) copy[i] = 0;
         return XxHash64.hash(copy, CabinFormat.XXH64_SEED);
-    }
-
-    public long getFileHash() {
-        return fileHash;
-    }
-
-    public long getTocOffset() {
-        return tocOffset;
-    }
-
-    public boolean hasSection(byte id) {
-        return sectionsById.containsKey(id);
     }
 
     public Section getSection(byte id) {
@@ -136,16 +128,5 @@ public final class CabinReader {
         } finally {
             inf.end();
         }
-    }
-
-    public static String readPoolString(byte[] strings, int ref) {
-        int n = LeBuf.readI32(strings, 0);
-        if (ref < 0 || ref >= n) throw new IllegalArgumentException("Bad string ref: " + ref);
-        int p = 4;
-        for (int i = 0; i < ref; i++) {
-            p += 2 + LeBuf.readU16(strings, p);
-        }
-        int len = LeBuf.readU16(strings, p);
-        return new String(strings, p + 2, len, StandardCharsets.UTF_8);
     }
 }

@@ -130,9 +130,7 @@ public class MobRarityCalculator implements IBossRegistry {
         }
 
         double structRarity = dimensionAnalyzer.getStructureMultiplier(entityType);
-        if (structRarity > 0) {
-            rarity += structRarity;
-        }
+        if (structRarity > 0) rarity += structRarity;
 
         if (structRarity == 0) {
             double biomeRarity = dimensionAnalyzer.getBiomeMultiplier(entityType);

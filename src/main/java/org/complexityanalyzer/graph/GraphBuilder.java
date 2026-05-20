@@ -97,7 +97,7 @@ public class GraphBuilder {
                 .recipeType(RecipeType.SMITHING)
                 .category(RecipeCategory.PRIMARY)
                 .resultCount(1)
-                .rawRecipe(recipe);
+                .rawRecipe();
 
         if (!template.isEmpty()) {
             var variants = extractVariants(template);
@@ -144,7 +144,7 @@ public class GraphBuilder {
                 .recipeType(recipe.getType())
                 .category(category)
                 .resultCount(resultStack.getCount())
-                .rawRecipe(recipe);
+                .rawRecipe();
 
         var merged = new LinkedHashMap<List<Item>, Integer>();
         for (var ingredient : ingredients) {

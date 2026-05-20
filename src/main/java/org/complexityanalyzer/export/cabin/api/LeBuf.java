@@ -120,8 +120,4 @@ public final class LeBuf {
         for (int i = 0; i < 64; i += 8) res |= ((long) (b[o++] & 0xFF)) << i;
         return res;
     }
-
-    public static double readF64(byte[] b, int o) {
-        return Double.longBitsToDouble(readI64(b, o));
-    }
 }

@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Kidokezo: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Dashibodi ya Wavuti haitumiki.",
   "complexityanalyzer.command.web.lan_tip": "Ili kuitumia katika kichezaji kimoja, lazima ubofye 'Fungua kwa LAN' kwenye menyu ya Escape.",
   "complexityanalyzer.command.web.header": "Dashibodi ya Wavuti",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Fungua katika Kivinjari]",
   "complexityanalyzer.command.web.click_to_open": "Bofya ili kufungua: %s",
-  "complexityanalyzer.command.web.for_friends": "Kwa Marafiki",
-  "complexityanalyzer.command.web.copy_public": "[Nakili Kiungo cha Umma]",
-  "complexityanalyzer.command.web.click_to_copy": "Bofya ili kunakili kiungo",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Bofya ili kunakili kiungo na IP yako ya umma ili wengine wajiunge",
+  "complexityanalyzer.command.web.ip_tip": "Ikiwa unacheza kwenye seva, muulize msimamizi kusanidi IP ya umma ya seva kwenye faili ya usanidi. Vinginevyo, ikiwa unajua IP ya seva, unaweza kubadilisha '127.0.0.1' kwenye URL nayo.",
   "complexityanalyzer.command.web.status_header": "Hali ya Mfumo wa Wavuti",
   "complexityanalyzer.command.web.status_label": "Hali",
   "complexityanalyzer.command.web.visitors": "Wageni",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Upakiaji upya wa wavuti haukufaulu: %s",
   "complexityanalyzer.command.web.reload_no_data": "Upakiaji upya wa wavuti haujarejesha data",
   "complexityanalyzer.command.web.engine_not_ready": "Injini haiko tayari: %s",
-
   "complexityanalyzer.category.absolute": "Kabisa",
   "complexityanalyzer.category.trivial": "Kidogo",
   "complexityanalyzer.category.simple": "Rahisi",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Ipitayo maumbile",
   "complexityanalyzer.category.unobtainable": "Haipatikani",
   "complexityanalyzer.category.uncalculable": "Haihesabiki",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Injini ya uchanganuzi bado haijawa tayari!",
   "complexityanalyzer.command.analyze.current_state": "Hali ya sasa: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Kipengee hakijapatikana: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Bofya hapa",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "kuona mti kamili wa kutengeneza",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Bofya ili kuona mti wa kutengeneza",
-
   "complexityanalyzer.command.entity.not_found": "❌ Aina ya huluki haipatikani: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Huluki hii haiwezi kuchanganuliwa",
   "complexityanalyzer.command.entity.not_living": "Huluki huenda lisiwe kiumbe hai: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Hakuna matone muhimu yaliyorekodiwa",
   "complexityanalyzer.command.entity.per_kill": "~ %s kwa mauaji",
   "complexityanalyzer.command.entity.yield_tip": "Mavuno ya juu = tone la kawaida zaidi",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Injini ya uchanganuzi haiko tayari!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource haijaanzishwa!",
   "complexityanalyzer.command.loot.disabled_tip": "Kipengele hiki kinaweza kuzimwa kwenye usanidi.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Kuacha kuzuia",
   "complexityanalyzer.command.loot.type.archaeology": "Akiolojia",
   "complexityanalyzer.command.loot.type.generic": "Uporaji wa kawaida",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Injini ya uchanganuzi haiko tayari!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Kipengee hakijapatikana: %s",
   "complexityanalyzer.command.tree.failed": "❌ Hitilafu katika kuunda mti wa kutengeneza: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "kina kikomo",
   "complexityanalyzer.command.tree.complex_tree_suffix": "ili kuboresha utendaji",
   "complexityanalyzer.command.tree.complex_tree_hover": "Bofya ili kuweka kikomo cha kina hadi 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Injini ya uchanganuzi bado haijawa tayari!",
   "complexityanalyzer.command.export.current_state": "Hali ya sasa: %s",
   "complexityanalyzer.command.export.full_item_header": "USAFIRISHAJI KAMILI WA KITU",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Faili",
   "complexityanalyzer.command.export.failed": "❌ %s kuhamisha kumeshindwa: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s imekamilika.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN - CHAGUA WASIFU",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "- kikomo %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- hakuna kikomo cha MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Inafuta hifadhidata ya kijiografia...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Hifadhidata ya kijiografia imefutwa!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Hifadhidata imefutwa na %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Injini ya Uchambuzi haijaanzishwa!",
   "complexityanalyzer.command.system.status_header": "Hali ya Uchambuzi wa Utata",
   "complexityanalyzer.command.system.engine_state": "Jimbo la injini",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Shabaha ya Usambamba",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "Kazi Zilizowekwa kwenye Foleni",
-
   "complexityanalyzer.command.resource.not_found": "❌ Kipengee hakijapatikana: %s",
   "complexityanalyzer.command.resource.failed": "❌ Uchanganuzi wa rasilimali haukufaulu kwa %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Hakuna data ya msingi inayopatikana",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Wastani",
   "complexityanalyzer.command.resource.difficulty.easy": "Rahisi",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Rahisi Sana",
-
   "complexityanalyzer.unit.time.ago": "%s iliyopita",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[KIKOMO CHA KINA]",
   "complexityanalyzer.command.tree.precise_calculations": "mahesabu sahihi",
   "complexityanalyzer.command.tree.gameplay_view": "mtazamo wa uchezaji wa kirafiki",
   "complexityanalyzer.unit.general.mode": "hali",
-
   "complexityanalyzer.dimension.overworld": "Duniani",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Mwisho",
-
   "complexityanalyzer.notifier.warning_tag": "ONYO!",
   "complexityanalyzer.notifier.error_tag": "Hitilafu",
   "complexityanalyzer.notifier.countdown": "Uchambuzi wa ulimwengu utaanza baada ya sekunde %d...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scan imekamilika! Hifadhidata imeboreshwa kikamilifu.",
   "complexityanalyzer.log.scan_starting": "Muda uliosalia umekamilika. Inaanza kuchanganua iliyoombwa na %s kwa vipande vya %d kwa kila biome.",
   "complexityanalyzer.log.refinement_complete": "Uboreshaji wa kimataifa umekamilika. GeoDatabase sasa inafanya kazi kikamilifu.",
-
   "complexityanalyzer.log.refiner.starting": "Upelelezi umekamilika! Inaanza uboreshaji...",
   "complexityanalyzer.log.refiner.no_data": "Hakuna data ya upelelezi iliyopatikana.",
   "complexityanalyzer.log.refiner.heuristics": "Kuunda utabiri kutoka kwa data ya upelelezi...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Wasifu wote wa %d umesafishwa kwa mafanikio.",
   "complexityanalyzer.log.refiner.error": "Hitilafu muhimu wakati wa uboreshaji!",
   "complexityanalyzer.log.refiner.finalizing": "Inakamilisha uboreshaji...",
-
   "complexityanalyzer.log.scan.starting_stats": "Inaanza kuchanganua: %d biomes, vipande %d vinahitajika",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s - kizazi cha vanilla %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Kamilisha!",
   "complexityanalyzer.log.scan.mspt_limit": ", kikomo cha MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", hakuna kikomo cha MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Takwimu za Throttle: %d kusitisha, jumla ya muda wa kusitisha: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Kawaida",
   "complexityanalyzer.geoscan.profile.fast": "Haraka",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Haraka Sana",
   "complexityanalyzer.geoscan.profile.maximum": "Upeo wa juu",
-
   "complexityanalyzer.geoscan.error.already_running": "Uchanganuzi tayari unaendeshwa au umeratibiwa.",
   "complexityanalyzer.geoscan.notification.scheduled": "Uchanganuzi wa ulimwengu ( %s mode) utaanza baada ya sekunde %d.",
   "complexityanalyzer.geoscan.error.starting": "Uchanganuzi tayari unaanza.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Hakuna uchanganuzi unaoendeshwa au kuratibiwa kwa sasa.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Uchanganuzi wa ulimwengu ulioratibiwa umeghairiwa.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Inaanza kuchanganua...",
   "complexityanalyzer.geoscan.status.scheduled": "Uchanganuzi umeratibiwa katika hali ya %s, kuanzia sekunde %d...",
   "complexityanalyzer.geoscan.status.idle": "Bila kufanya kitu",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Upelelezi (hakuna kipindi kinachoendelea)",
   "complexityanalyzer.geoscan.status.phase2": "Awamu ya 2: Kuboresha data zote zilizokusanywa...",
   "complexityanalyzer.geoscan.status.complete": "Kamilisha",
-
   "complexityanalyzer.source_type.override": "Batilisha",
   "complexityanalyzer.source_type.ore": "Madini/Madini",
   "complexityanalyzer.source_type.empirical_block": "Kizuizi cha Nguvu",

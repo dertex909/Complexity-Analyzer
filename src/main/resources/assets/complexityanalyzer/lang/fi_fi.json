@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Vinkki: %s",
   "complexityanalyzer.output.admin_prefix": "[JÄRJESTELMÄNVALVOJA]",
-  
   "complexityanalyzer.command.web.active": "Web Dashboard ei ole aktiivinen.",
   "complexityanalyzer.command.web.lan_tip": "Jos haluat käyttää sitä yksinpelissä, sinun on napsautettava 'Avaa lähiverkkoon' Escape-valikosta.",
   "complexityanalyzer.command.web.header": "Web-hallintapaneeli",
   "complexityanalyzer.command.web.url_label": "URL-osoite",
   "complexityanalyzer.command.web.open_browser": "[Avaa selaimessa]",
   "complexityanalyzer.command.web.click_to_open": "Napsauta avataksesi: %s",
-  "complexityanalyzer.command.web.for_friends": "Ystäville",
-  "complexityanalyzer.command.web.copy_public": "[Kopioi julkinen linkki]",
-  "complexityanalyzer.command.web.click_to_copy": "Napsauta kopioidaksesi linkin",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Napsauta kopioidaksesi linkin julkisella IP-osoitteellasi, jotta muut voivat liittyä",
+  "complexityanalyzer.command.web.ip_tip": "Jos pelaat palvelimella, pyydä järjestelmänvalvojaa määrittämään palvelimen julkinen IP-osoite asetustiedostossa. Vaihtoehtoisesti, jos tiedät palvelimen IP-osoitteen, voit korvata URL-osoitteen 127.0.0.1 sillä.",
   "complexityanalyzer.command.web.status_header": "Web-järjestelmän tila",
   "complexityanalyzer.command.web.status_label": "Tila",
   "complexityanalyzer.command.web.visitors": "Vierailijat",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Webin uudelleenlataus epäonnistui: %s",
   "complexityanalyzer.command.web.reload_no_data": "Web-uudelleenlataus ei palauttanut tietoja",
   "complexityanalyzer.command.web.engine_not_ready": "Moottori ei ole valmis: %s",
-
   "complexityanalyzer.category.absolute": "Ehdoton",
   "complexityanalyzer.category.trivial": "Triviaali",
   "complexityanalyzer.category.simple": "Yksinkertainen",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transsendentti",
   "complexityanalyzer.category.unobtainable": "Saamaton",
   "complexityanalyzer.category.uncalculable": "Laskematon",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Analyysimoottori ei ole vielä valmis!",
   "complexityanalyzer.command.analyze.current_state": "Nykyinen tila: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Tuotetta ei löydy: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Klikkaa tästä",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "nähdäksesi koko askartelupuun",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Napsauta nähdäksesi askartelupuun",
-
   "complexityanalyzer.command.entity.not_found": "❌ Entiteettityyppiä ei löydy: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Tätä kokonaisuutta ei voida analysoida",
   "complexityanalyzer.command.entity.not_living": "Olento ei ehkä ole elävä olento: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Merkittäviä pudotuksia ei kirjattu",
   "complexityanalyzer.command.entity.per_kill": "~ %s per tappo",
   "complexityanalyzer.command.entity.yield_tip": "Suurempi sato = yleisempi pudotus",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Analyysimoottori ei ole valmis!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSourcea ei ole alustettu!",
   "complexityanalyzer.command.loot.disabled_tip": "Tämä ominaisuus voi olla poistettu käytöstä kokoonpanossa.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Estä pudotus",
   "complexityanalyzer.command.loot.type.archaeology": "Arkeologia",
   "complexityanalyzer.command.loot.type.generic": "Yleinen Loot",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Analyysimoottori ei ole valmis!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Tuotetta ei löydy: %s",
   "complexityanalyzer.command.tree.failed": "❌ Virhe rakennettaessa puuta: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "rajoitettu syvyys",
   "complexityanalyzer.command.tree.complex_tree_suffix": "suorituskyvyn parantamiseksi",
   "complexityanalyzer.command.tree.complex_tree_hover": "Napsauta asettaaksesi syvyysrajaksi 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Analyysimoottori ei ole vielä valmis!",
   "complexityanalyzer.command.export.current_state": "Nykyinen tila: %s",
   "complexityanalyzer.command.export.full_item_header": "KOKO TUOTTEEN VIENTI",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Tiedosto",
   "complexityanalyzer.command.export.failed": "❌ %s vienti epäonnistui: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s valmis.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — VALITSE PROFIILI",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— raja %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— ei MSPT-rajoitusta",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Tyhjennetään geotietokantaa...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geotietokanta on tyhjennetty!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Tietokannan tyhjensi %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analyysimoottoria ei ole alustettu!",
   "complexityanalyzer.command.system.status_header": "Monimutkaisuusanalysaattorin tila",
   "complexityanalyzer.command.system.engine_state": "Moottorin tila",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Parallelismin tavoite",
   "complexityanalyzer.command.system.compute_pool_active": "Laskeallas aktiivinen",
   "complexityanalyzer.command.system.queued_tasks": "Jonossa olevat tehtävät",
-
   "complexityanalyzer.command.resource.not_found": "❌ Tuotetta ei löydy: %s",
   "complexityanalyzer.command.resource.failed": "❌ Resurssianalyysi epäonnistui kohteelle %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Perusresurssitietoja ei ole saatavilla",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Kohtalainen",
   "complexityanalyzer.command.resource.difficulty.easy": "Helppoa",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Erittäin helppoa",
-
   "complexityanalyzer.unit.time.ago": "%s sitten",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[SYVYYSRAJA]",
   "complexityanalyzer.command.tree.precise_calculations": "tarkat laskelmat",
   "complexityanalyzer.command.tree.gameplay_view": "peliystävällinen näkymä",
   "complexityanalyzer.unit.general.mode": "-tilassa",
-
   "complexityanalyzer.dimension.overworld": "Ylimaailma",
   "complexityanalyzer.dimension.nether": "Ei kumpikaan",
   "complexityanalyzer.dimension.the_end": "Loppu",
-
   "complexityanalyzer.notifier.warning_tag": "VAROITUS!",
   "complexityanalyzer.notifier.error_tag": "Virhe",
   "complexityanalyzer.notifier.countdown": "Maailman analyysi alkaa %d sekunnin kuluttua...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-skannaus valmis! Tietokanta on täysin optimoitu.",
   "complexityanalyzer.log.scan_starting": "Lähtölaskenta päättynyt. Aloitetaan skannaus, jonka %s pyysi %d kappaletta biomia kohti.",
   "complexityanalyzer.log.refinement_complete": "Maailmanlaajuinen tarkennus valmis. GeoDatabase on nyt täysin toiminnassa.",
-
   "complexityanalyzer.log.refiner.starting": "Tiedustelu suoritettu! Aloitetaan tarkennus...",
   "complexityanalyzer.log.refiner.no_data": "Tiedustelutietoja ei löytynyt.",
   "complexityanalyzer.log.refiner.heuristics": "Heuristiikan rakentaminen tiedustelutiedoista...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Kaikki %d biomit on jalostettu onnistuneesti.",
   "complexityanalyzer.log.refiner.error": "Kriittinen virhe jalostuksen aikana!",
   "complexityanalyzer.log.refiner.finalizing": "Viimeistetään tarkennusta...",
-
   "complexityanalyzer.log.scan.starting_stats": "Aloitetaan skannaus: %d biomeja, %d paloja tarvitaan",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — vaniljasukupolvi %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Valmis!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT-raja: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", ei MSPT-rajoitusta",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Kaasutilastot: %d taukoja, kokonaistaukoaika: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normaali",
   "complexityanalyzer.geoscan.profile.fast": "Nopeasti",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Erittäin nopea",
   "complexityanalyzer.geoscan.profile.maximum": "Maksimi",
-
   "complexityanalyzer.geoscan.error.already_running": "Skannaus on jo käynnissä tai ajoitettu.",
   "complexityanalyzer.geoscan.notification.scheduled": "Maailmanskannaus (%s-tila) alkaa %d sekunnissa.",
   "complexityanalyzer.geoscan.error.starting": "Skannaus on jo alkamassa.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Mikään tarkistus ei ole tällä hetkellä käynnissä tai ajoitettu.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Aikataulutettu maailmanskannaus on peruttu.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Aloitetaan skannaus...",
   "complexityanalyzer.geoscan.status.scheduled": "Skannaus ajoitettu %s-tilassa, alkaa %d sekunnissa...",
   "complexityanalyzer.geoscan.status.idle": "Tyhjäkäynti",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Tiedustelu (ei aktiivista istuntoa)",
   "complexityanalyzer.geoscan.status.phase2": "Vaihe 2: Kaikkien kerättyjen tietojen tarkentaminen...",
   "complexityanalyzer.geoscan.status.complete": "Täydellinen",
-
   "complexityanalyzer.source_type.override": "Ohita",
   "complexityanalyzer.source_type.ore": "Malmi/kaivostoiminta",
   "complexityanalyzer.source_type.empirical_block": "Empiirinen lohko",

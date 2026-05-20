@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Kiat: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Dasbor Web tidak aktif.",
   "complexityanalyzer.command.web.lan_tip": "Untuk menggunakannya dalam singleplayer, Anda harus mengklik 'Open to LAN' di menu Escape.",
   "complexityanalyzer.command.web.header": "Dasbor Web",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Buka di Peramban]",
   "complexityanalyzer.command.web.click_to_open": "Klik untuk membuka: %s",
-  "complexityanalyzer.command.web.for_friends": "Untuk Teman",
-  "complexityanalyzer.command.web.copy_public": "[Salin Tautan Publik]",
-  "complexityanalyzer.command.web.click_to_copy": "Klik untuk menyalin tautan",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Klik untuk menyalin tautan dengan IP publik Anda agar orang lain dapat bergabung",
+  "complexityanalyzer.command.web.ip_tip": "Jika Anda bermain di server, mintalah administrator untuk mengkonfigurasi IP publik server di file konfigurasi. Alternatifnya, jika Anda mengetahui IP server, Anda dapat mengganti '127.0.0.1' di URL dengan IP tersebut.",
   "complexityanalyzer.command.web.status_header": "Status Sistem Web",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Pengunjung",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Gagal memuat ulang web: %s",
   "complexityanalyzer.command.web.reload_no_data": "Pemuatan ulang web tidak menghasilkan data",
   "complexityanalyzer.command.web.engine_not_ready": "Mesin belum siap: %s",
-
   "complexityanalyzer.category.absolute": "Mutlak",
   "complexityanalyzer.category.trivial": "Sepele",
   "complexityanalyzer.category.simple": "Sederhana",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transenden",
   "complexityanalyzer.category.unobtainable": "Tidak dapat diperoleh",
   "complexityanalyzer.category.uncalculable": "Tak terhitung",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Mesin analisis belum siap!",
   "complexityanalyzer.command.analyze.current_state": "Keadaan saat ini: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Barang tidak ditemukan: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Klik di sini",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "untuk melihat pohon kerajinan penuh",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Klik untuk melihat pohon kerajinan",
-
   "complexityanalyzer.command.entity.not_found": "❌ Jenis entitas tidak ditemukan: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Entitas ini tidak dapat dianalisis",
   "complexityanalyzer.command.entity.not_living": "Entitas mungkin bukan makhluk hidup: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Tidak ada penurunan signifikan yang tercatat",
   "complexityanalyzer.command.entity.per_kill": "~ %s per pembunuhan",
   "complexityanalyzer.command.entity.yield_tip": "Hasil yang lebih tinggi = penurunan yang lebih umum",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Mesin analisis belum siap!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource tidak diinisialisasi!",
   "complexityanalyzer.command.loot.disabled_tip": "Fitur ini mungkin dinonaktifkan di konfigurasi.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Blokir Jatuhkan",
   "complexityanalyzer.command.loot.type.archaeology": "Arkeologi",
   "complexityanalyzer.command.loot.type.generic": "Penjarahan Generik",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Mesin analisis belum siap!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Barang tidak ditemukan: %s",
   "complexityanalyzer.command.tree.failed": "❌ Kesalahan saat membuat pohon kerajinan: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "kedalaman terbatas",
   "complexityanalyzer.command.tree.complex_tree_suffix": "untuk meningkatkan kinerja",
   "complexityanalyzer.command.tree.complex_tree_hover": "Klik untuk mengatur batas kedalaman menjadi 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Mesin analisis belum siap!",
   "complexityanalyzer.command.export.current_state": "Keadaan saat ini: %s",
   "complexityanalyzer.command.export.full_item_header": "EKSPOR BARANG LENGKAP",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Mengajukan",
   "complexityanalyzer.command.export.failed": "❌ Ekspor %s gagal: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s selesai.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — PILIH PROFIL",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— batas %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— tidak ada batasan MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Menghapus geo-database...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Basis data geografis telah dihapus!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Basis data dihapus oleh %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Mesin Analisis tidak diinisialisasi!",
   "complexityanalyzer.command.system.status_header": "Status Penganalisis Kompleksitas",
   "complexityanalyzer.command.system.engine_state": "Status Mesin",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Target Paralelisme",
   "complexityanalyzer.command.system.compute_pool_active": "Kumpulan Komputasi Aktif",
   "complexityanalyzer.command.system.queued_tasks": "Tugas yang Mengantri",
-
   "complexityanalyzer.command.resource.not_found": "❌ Barang tidak ditemukan: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analisis sumber daya gagal untuk %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Tidak ada data sumber daya dasar yang tersedia",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Sedang",
   "complexityanalyzer.command.resource.difficulty.easy": "Mudah",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Sangat Mudah",
-
   "complexityanalyzer.unit.time.ago": "%s yang lalu",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[BATAS KEDALAMAN]",
   "complexityanalyzer.command.tree.precise_calculations": "perhitungan yang tepat",
   "complexityanalyzer.command.tree.gameplay_view": "tampilan ramah gameplay",
   "complexityanalyzer.unit.general.mode": "modus",
-
   "complexityanalyzer.dimension.overworld": "Dunia Luar",
   "complexityanalyzer.dimension.nether": "bawah",
   "complexityanalyzer.dimension.the_end": "Akhir",
-
   "complexityanalyzer.notifier.warning_tag": "PERINGATAN!",
   "complexityanalyzer.notifier.error_tag": "Kesalahan",
   "complexityanalyzer.notifier.countdown": "Analisis dunia akan dimulai dalam %d detik...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Pemindaian geografis selesai! Basis data sepenuhnya dioptimalkan.",
   "complexityanalyzer.log.scan_starting": "Hitung mundur selesai. Memulai pemindaian yang diminta oleh %s untuk potongan %d per bioma.",
   "complexityanalyzer.log.refinement_complete": "Penyempurnaan global selesai. GeoDatabase kini telah beroperasi penuh.",
-
   "complexityanalyzer.log.refiner.starting": "Pengintaian selesai! Memulai penyempurnaan...",
   "complexityanalyzer.log.refiner.no_data": "Tidak ada data pengintaian yang ditemukan.",
   "complexityanalyzer.log.refiner.heuristics": "Membangun heuristik dari data pengintaian...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Semua bioma %d berhasil disempurnakan.",
   "complexityanalyzer.log.refiner.error": "Kesalahan kritis selama penyempurnaan!",
   "complexityanalyzer.log.refiner.finalizing": "Menyelesaikan penyempurnaan...",
-
   "complexityanalyzer.log.scan.starting_stats": "Memulai pemindaian: %d bioma, %d diperlukan potongan",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — generasi vanilla %s",
   "complexityanalyzer.log.scan.complete": "[PINDAI] ✅ Selesai!",
   "complexityanalyzer.log.scan.mspt_limit": ", Batas MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", tidak ada batasan MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Statistik throttle: %d jeda, total waktu jeda: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Biasa",
   "complexityanalyzer.geoscan.profile.fast": "Cepat",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Sangat Cepat",
   "complexityanalyzer.geoscan.profile.maximum": "Maksimal",
-
   "complexityanalyzer.geoscan.error.already_running": "Pemindaian sudah berjalan atau dijadwalkan.",
   "complexityanalyzer.geoscan.notification.scheduled": "Pemindaian dunia (mode %s) akan dimulai dalam %d detik.",
   "complexityanalyzer.geoscan.error.starting": "Pemindaian sudah dimulai.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Tidak ada pemindaian yang sedang berjalan atau dijadwalkan.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Pemindaian dunia terjadwal telah dibatalkan.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Memulai pemindaian...",
   "complexityanalyzer.geoscan.status.scheduled": "Pemindaian dijadwalkan dalam mode %s, dimulai dalam %d detik...",
   "complexityanalyzer.geoscan.status.idle": "Menganggur",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Pengintaian (tidak ada sesi aktif)",
   "complexityanalyzer.geoscan.status.phase2": "Fase 2: Menyempurnakan semua data yang dikumpulkan...",
   "complexityanalyzer.geoscan.status.complete": "Lengkap",
-
   "complexityanalyzer.source_type.override": "Timpa",
   "complexityanalyzer.source_type.ore": "Bijih/Penambangan",
   "complexityanalyzer.source_type.empirical_block": "Blok Empiris",

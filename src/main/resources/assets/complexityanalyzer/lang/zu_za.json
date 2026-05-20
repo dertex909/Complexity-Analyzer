@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Ithiphu: %s",
   "complexityanalyzer.output.admin_prefix": "[UMPHATHI]",
-  
   "complexityanalyzer.command.web.active": "Ideshibhodi Yewebhu ayisebenzi.",
   "complexityanalyzer.command.web.lan_tip": "Ukuze uyisebenzise kusidlali esisodwa, kufanele uchofoze okuthi 'Vula ku-LAN' kumenyu ye-Escape.",
   "complexityanalyzer.command.web.header": "Ideshibhodi Yewebhu",
   "complexityanalyzer.command.web.url_label": "I-URL",
   "complexityanalyzer.command.web.open_browser": "[Vula Kusiphequluli]",
   "complexityanalyzer.command.web.click_to_open": "Chofoza ukuze uvule: %s",
-  "complexityanalyzer.command.web.for_friends": "Kwabangane",
-  "complexityanalyzer.command.web.copy_public": "[Kopisha Isixhumanisi Esisesidlangalaleni]",
-  "complexityanalyzer.command.web.click_to_copy": "Chofoza ukuze ukopishe isixhumanisi",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Chofoza ukuze ukopishe isixhumanisi ne-IP yakho yomphakathi ukuze abanye bajoyine",
+  "complexityanalyzer.command.web.ip_tip": "Uma udlala kuseva, cela umlawuli ukuthi alungiselele i-IP yomphakathi yeseva kufayela lokulungisa. Kungenjalo, uma uyayazi i-IP yeseva, ungakwazi esikhundleni sika-'127.0.0.1' ku-URL ngayo.",
   "complexityanalyzer.command.web.status_header": "Isimo Sesistimu Yewebhu",
   "complexityanalyzer.command.web.status_label": "Isimo",
   "complexityanalyzer.command.web.visitors": "Izivakashi",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Ukulayishwa kabusha kwewebhu kuhlulekile: %s",
   "complexityanalyzer.command.web.reload_no_data": "Ukulayishwa kabusha kwewebhu akuzange kubuyise idatha",
   "complexityanalyzer.command.web.engine_not_ready": "Injini ayilungile: %s",
-
   "complexityanalyzer.category.absolute": "Impela",
   "complexityanalyzer.category.trivial": "Okuncane",
   "complexityanalyzer.category.simple": "Kulula",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Okudlulele",
   "complexityanalyzer.category.unobtainable": "Akutholakali",
   "complexityanalyzer.category.uncalculable": "Ayibaleki",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Injini yokuhlaziya ayikalungi!",
   "complexityanalyzer.command.analyze.current_state": "Isimo samanje: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Into ayitholakalanga: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Chofoza lapha",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "ukubona isihlahla esigcwele sokwenza",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Chofoza ukuze ubuke isihlahla sokwenza",
-
   "complexityanalyzer.command.entity.not_found": "❌ Uhlobo lwebhizinisi alutholakali: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Leli bhizinisi alikwazi ukuhlaziywa",
   "complexityanalyzer.command.entity.not_living": "Ibhizinisi kungenzeka kungabi isidalwa esiphilayo: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Akukho ukwehla okubalulekile okurekhodiwe",
   "complexityanalyzer.command.entity.per_kill": "~ %s ngokubulala ngakunye",
   "complexityanalyzer.command.entity.yield_tip": "Isivuno esiphezulu = ukwehla okuvamile",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Injini yokuhlaziya ayilungile!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ I-UniversalLootSource ayiqaliswanga!",
   "complexityanalyzer.command.loot.disabled_tip": "Lesi sici singase sikhutshazwe kulungiselelo.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Vimba Ukuwisa",
   "complexityanalyzer.command.loot.type.archaeology": "Imivubukulo",
   "complexityanalyzer.command.loot.type.generic": "I-Generic Loot",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Injini yokuhlaziya ayilungile!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Into ayitholakalanga: %s",
   "complexityanalyzer.command.tree.failed": "❌ Iphutha ekwakheni isihlahla: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "ukujula okulinganiselwe",
   "complexityanalyzer.command.tree.complex_tree_suffix": "ukuthuthukisa ukusebenza",
   "complexityanalyzer.command.tree.complex_tree_hover": "Chofoza ukuze usethe umkhawulo wokujula ube ngu-5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Injini yokuhlaziya ayikalungi!",
   "complexityanalyzer.command.export.current_state": "Isimo samanje: %s",
   "complexityanalyzer.command.export.full_item_header": "UKUTHUNYELWA KWENTO EGCWELE",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Ifayela",
   "complexityanalyzer.command.export.failed": "❌ %s ukuthekelisa kwehlulekile: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s kuqediwe.",
-
   "complexityanalyzer.command.geoscan.profile_header": "I-GEO-SCAN — KHETHA IPHROFAYELA",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— khawula %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— awukho umkhawulo we-MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Isula isizindalwazi se-geo...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Isizindalwazi se-geo sisusiwe!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Isizindalwazi kusulwe ngu-%s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Injini yokuhlaziya ayiqaliswanga!",
   "complexityanalyzer.command.system.status_header": "Isimo Sokuhlaziya Okuyinkimbinkimbi",
   "complexityanalyzer.command.system.engine_state": "I-Engine State",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "I-Parallelism Target",
   "complexityanalyzer.command.system.compute_pool_active": "I-Compute Pool Iyasebenza",
   "complexityanalyzer.command.system.queued_tasks": "Imisebenzi Ekulayini",
-
   "complexityanalyzer.command.resource.not_found": "❌ Into ayitholakalanga: %s",
   "complexityanalyzer.command.resource.failed": "❌ Ukuhlaziywa kwensiza kwehlulekile ku-%s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Ayikho idatha yensiza eyisisekelo etholakalayo",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Kuphakathi",
   "complexityanalyzer.command.resource.difficulty.easy": "Kulula",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Kulula Kakhulu",
-
   "complexityanalyzer.unit.time.ago": "%s edlule",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[UMKHAWULO OKUJULA]",
   "complexityanalyzer.command.tree.precise_calculations": "izibalo eziqondile",
   "complexityanalyzer.command.tree.gameplay_view": "ukubukwa komdlalo okulungele",
   "complexityanalyzer.unit.general.mode": "imodi",
-
   "complexityanalyzer.dimension.overworld": "Umhlaba jikelele",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Isiphetho",
-
   "complexityanalyzer.notifier.warning_tag": "ISEXWAYISO!",
   "complexityanalyzer.notifier.error_tag": "Iphutha",
   "complexityanalyzer.notifier.countdown": "Ukuhlaziya umhlaba kuzoqala kumasekhondi angu-%d...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "I-Geo-scan iqedile! Isizindalwazi silungiselelwe ngokugcwele.",
   "complexityanalyzer.log.scan_starting": "Ukubala wehle kuphelile. Ukuqala ukuskena okucelwe ngu-%s kokuthi %d izingcezu nge-biome ngayinye.",
   "complexityanalyzer.log.refinement_complete": "Ukucwengisiswa komhlaba wonke kuqediwe. I-GeoDatabase manje isisebenza ngokugcwele.",
-
   "complexityanalyzer.log.refiner.starting": "Ukuhlola kuqediwe! Iqala ukucwengisiswa...",
   "complexityanalyzer.log.refiner.no_data": "Ayikho idatha yokuhlola etholiwe.",
   "complexityanalyzer.log.refiner.heuristics": "Ukwakha i-heuristics kusuka kudatha yokuhlola...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Wonke ama-biome we-%d acwengwe ngempumelelo.",
   "complexityanalyzer.log.refiner.error": "Iphutha elibucayi ngesikhathi sokucwengwa!",
   "complexityanalyzer.log.refiner.finalizing": "Iqedela ukucwengwa...",
-
   "complexityanalyzer.log.scan.starting_stats": "Iqala ukuskena: %d ama-biomes, %d izingcezu ezidingekayo",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — i-vanilla generation %s",
   "complexityanalyzer.log.scan.complete": "[SKENA] ✅ Qedela!",
   "complexityanalyzer.log.scan.mspt_limit": ", umkhawulo we-MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", awukho umkhawulo we-MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Izibalo ze-Throttle: %d ukumiswa okwesikhashana, isikhathi sokumisa esiphelele: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Okuvamile",
   "complexityanalyzer.geoscan.profile.fast": "Ngokushesha",
   "complexityanalyzer.geoscan.profile.ultra_fast": "I-Ultra Fast",
   "complexityanalyzer.geoscan.profile.maximum": "Ubuningi",
-
   "complexityanalyzer.geoscan.error.already_running": "Ukuskena sekuvele kuyasebenza noma kuhleliwe.",
   "complexityanalyzer.geoscan.notification.scheduled": "Ukuskena komhlaba ( %s mode) kuzoqala kumasekhondi angu-%d.",
   "complexityanalyzer.geoscan.error.starting": "Ukuskena sekuvele kuqalile.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Asikho iskena esisebenzayo noma esihleliwe njengamanje.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Ukuskena komhlaba okuhleliwe kukhanseliwe.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Iqala ukuskena...",
   "complexityanalyzer.geoscan.status.scheduled": "Ukuskena kuhlelelwe kumodi ye-%s, kuqala kumasekhondi angu-%d...",
   "complexityanalyzer.geoscan.status.idle": "Ayisebenzi",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Ukuthola kabusha (ayikho iseshini esebenzayo)",
   "complexityanalyzer.geoscan.status.phase2": "Isigaba sesi-2: Icwenga yonke idatha eqoqiwe...",
   "complexityanalyzer.geoscan.status.complete": "Qedela",
-
   "complexityanalyzer.source_type.override": "Khipha",
   "complexityanalyzer.source_type.ore": "Insimbi/Izimayini",
   "complexityanalyzer.source_type.empirical_block": "I-Epirical Block",

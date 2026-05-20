@@ -1,17 +1,12 @@
 {
   "complexityanalyzer.output.tip": "Tip: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Web Dashboard není aktivní.",
   "complexityanalyzer.command.web.lan_tip": "Chcete-li jej použít v singleplayeru, musíte kliknout na 'Open to LAN' v nabídce Escape.",
   "complexityanalyzer.command.web.header": "Webový panel",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Otevřít v prohlížeči]",
   "complexityanalyzer.command.web.click_to_open": "Kliknutím otevřete: %s",
-  "complexityanalyzer.command.web.for_friends": "Pro přátele",
-  "complexityanalyzer.command.web.copy_public": "[Kopírovat veřejný odkaz]",
-  "complexityanalyzer.command.web.click_to_copy": "Kliknutím zkopírujete odkaz",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Kliknutím zkopírujete odkaz s vaší veřejnou IP, aby se mohli připojit ostatní",
   "complexityanalyzer.command.web.status_header": "Stav webového systému",
   "complexityanalyzer.command.web.status_label": "Stav",
   "complexityanalyzer.command.web.visitors": "Návštěvníci",
@@ -26,7 +21,6 @@
   "complexityanalyzer.command.web.reload_failed": "Opětovné načtení webu se nezdařilo: %s",
   "complexityanalyzer.command.web.reload_no_data": "Znovu načtení webu nevrátilo žádná data",
   "complexityanalyzer.command.web.engine_not_ready": "Motor není připraven: %s",
-
   "complexityanalyzer.category.absolute": "Absolutní",
   "complexityanalyzer.category.trivial": "Triviální",
   "complexityanalyzer.category.simple": "Jednoduché",
@@ -39,7 +33,6 @@
   "complexityanalyzer.category.transcendent": "Transcendentní",
   "complexityanalyzer.category.unobtainable": "Nedosažitelné",
   "complexityanalyzer.category.uncalculable": "Nevyčíslitelné",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Nástroj pro analýzu ještě není připraven!",
   "complexityanalyzer.command.analyze.current_state": "Aktuální stav: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Položka nenalezena: %s",
@@ -70,7 +63,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Klikněte zde",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "vidět celý craftovací strom",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Kliknutím zobrazíte strom vytváření",
-
   "complexityanalyzer.command.entity.not_found": "❌ Typ entity nenalezen: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Tuto entitu nelze analyzovat",
   "complexityanalyzer.command.entity.not_living": "Entita nemusí být živý tvor: %s",
@@ -104,7 +96,6 @@
   "complexityanalyzer.command.entity.no_drops": "Nebyly zaznamenány žádné výrazné poklesy",
   "complexityanalyzer.command.entity.per_kill": "~ %s za zabití",
   "complexityanalyzer.command.entity.yield_tip": "Vyšší výnos = častější pokles",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Analytický modul není připraven!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource není inicializován!",
   "complexityanalyzer.command.loot.disabled_tip": "Tato funkce může být v konfiguraci zakázána.",
@@ -130,7 +121,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "archeologie",
   "complexityanalyzer.command.loot.type.generic": "Obecná kořist",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Analytický modul není připraven!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Položka nenalezena: %s",
   "complexityanalyzer.command.tree.failed": "❌ Chyba při vytváření craftovacího stromu: %s",
@@ -183,7 +173,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "omezená hloubka",
   "complexityanalyzer.command.tree.complex_tree_suffix": "zlepšit výkon",
   "complexityanalyzer.command.tree.complex_tree_hover": "Kliknutím nastavíte limit hloubky na 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Nástroj pro analýzu ještě není připraven!",
   "complexityanalyzer.command.export.current_state": "Aktuální stav: %s",
   "complexityanalyzer.command.export.full_item_header": "VÝVOZ KOMPLETNÍHO POLOŽKY",
@@ -208,7 +197,6 @@
   "complexityanalyzer.command.export.file_label": "Soubor",
   "complexityanalyzer.command.export.failed": "❌ Export %s se nezdařil: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s dokončeno.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SKENOVÁNÍ — VYBERTE PROFIL",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— limit %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— žádný limit MSPT",
@@ -257,7 +245,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Mazání geografické databáze...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geodatabáze byla vymazána!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Databáze vymazána uživatelem %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analysis Engine není inicializován!",
   "complexityanalyzer.command.system.status_header": "Stav analyzátoru složitosti",
   "complexityanalyzer.command.system.engine_state": "Stav motoru",
@@ -284,7 +271,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Paralelní cíl",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "Úkoly ve frontě",
-
   "complexityanalyzer.command.resource.not_found": "❌ Položka nenalezena: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analýza zdrojů selhala pro %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Nejsou k dispozici žádná data základních zdrojů",
@@ -312,7 +298,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Mírný",
   "complexityanalyzer.command.resource.difficulty.easy": "Snadno",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Velmi snadné",
-
   "complexityanalyzer.unit.time.ago": "%s před",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +308,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[DEPTH LIMIT]",
   "complexityanalyzer.command.tree.precise_calculations": "precise calculations",
   "complexityanalyzer.command.tree.gameplay_view": "hratelnost přátelský pohled",
   "complexityanalyzer.unit.general.mode": "režimu",
-
   "complexityanalyzer.dimension.overworld": "Overworld",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Konec",
-
   "complexityanalyzer.notifier.warning_tag": "WARNING!",
   "complexityanalyzer.notifier.error_tag": "Chyba",
   "complexityanalyzer.notifier.countdown": "Světová analýza začne za %d sekund...",
@@ -344,7 +326,6 @@
   "complexityanalyzer.notifier.complete": "Geo-skenování dokončeno! Databáze je plně optimalizována.",
   "complexityanalyzer.log.scan_starting": "Odpočítávání skončilo. Spuštění skenování požadované %s pro %d bloky na biom.",
   "complexityanalyzer.log.refinement_complete": "Globální vylepšení dokončeno. GeoDatabáze je nyní plně funkční.",
-
   "complexityanalyzer.log.refiner.starting": "Průzkum dokončen! Spouštění upřesňování...",
   "complexityanalyzer.log.refiner.no_data": "Nebyly nalezeny žádné údaje o průzkumu.",
   "complexityanalyzer.log.refiner.heuristics": "Vytváření heuristiky z průzkumných dat...",
@@ -354,19 +335,16 @@
   "complexityanalyzer.log.refiner.success": "Všechny %d biomy byly úspěšně rafinovány.",
   "complexityanalyzer.log.refiner.error": "Kritická chyba při upřesňování!",
   "complexityanalyzer.log.refiner.finalizing": "Dokončování upřesnění...",
-
   "complexityanalyzer.log.scan.starting_stats": "Spuštění skenování: %d biomy, potřeba %d bloků",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — generace vanilky %s",
   "complexityanalyzer.log.scan.complete": "[SKENOVAT] ✅ Hotovo!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT limit: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", žádný MSPT limit",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Statistiky plynu: %d pauzy, celková doba pauzy: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normální",
   "complexityanalyzer.geoscan.profile.fast": "Fast",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra Fast",
   "complexityanalyzer.geoscan.profile.maximum": "Maximální",
-
   "complexityanalyzer.geoscan.error.already_running": "Skenování již probíhá nebo je naplánováno.",
   "complexityanalyzer.geoscan.notification.scheduled": "World scan (režim %s) se spustí za %d sekund.",
   "complexityanalyzer.geoscan.error.starting": "Skenování již začíná.",
@@ -377,7 +355,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Aktuálně neprobíhá ani není naplánováno žádné skenování.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Plánované skenování světa bylo zrušeno.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Starting scan...",
   "complexityanalyzer.geoscan.status.scheduled": "Skenování naplánováno v režimu %s, začíná za %d sekund...",
   "complexityanalyzer.geoscan.status.idle": "Nečinný",
@@ -386,7 +363,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Průzkum (žádná aktivní relace)",
   "complexityanalyzer.geoscan.status.phase2": "Fáze 2: Zpřesnění všech shromážděných dat...",
   "complexityanalyzer.geoscan.status.complete": "Dokončeno",
-
   "complexityanalyzer.source_type.override": "Override",
   "complexityanalyzer.source_type.ore": "Ore/Mining",
   "complexityanalyzer.source_type.empirical_block": "Empirical Block",
@@ -406,5 +382,6 @@
   "complexityanalyzer.source_type.special_action": "Speciální akce",
   "complexityanalyzer.source_type.generic_loot": "Obecná kořist",
   "complexityanalyzer.source_type.unknown": "Neznámý",
-  "complexityanalyzer.source_type.unobtainable": "Nedosažitelné"
+  "complexityanalyzer.source_type.unobtainable": "Nedosažitelné",
+  "complexityanalyzer.command.web.ip_tip": "Pokud hrajete na serveru, požádejte administrátora o konfiguraci veřejné IP serveru v konfiguračním souboru. Alternativně, pokud znáte IP adresu serveru, můžete jí nahradit „127.0.0.1“ v URL."
 }

@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "نکته: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "داشبورد وب فعال نیست.",
   "complexityanalyzer.command.web.lan_tip": "برای استفاده از آن در تک‌نفره، باید روی «Open to LAN» در منوی Escape کلیک کنید.",
   "complexityanalyzer.command.web.header": "داشبورد وب",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[باز کردن در مرورگر]",
   "complexityanalyzer.command.web.click_to_open": "برای باز کردن کلیک کنید: %s",
-  "complexityanalyzer.command.web.for_friends": "برای دوستان",
-  "complexityanalyzer.command.web.copy_public": "[کپی لینک عمومی]",
-  "complexityanalyzer.command.web.click_to_copy": "برای کپی لینک کلیک کنید",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "برای کپی لینک با IP عمومی خود کلیک کنید تا دیگران بپیوندند",
+  "complexityanalyzer.command.web.ip_tip": "اگر روی سرور بازی می کنید، از مدیر بخواهید که IP عمومی سرور را در فایل پیکربندی پیکربندی کند. از طرف دیگر، اگر IP سرور را می‌دانید، می‌توانید «127.0.0.1» در URL را با آن جایگزین کنید.",
   "complexityanalyzer.command.web.status_header": "وضعیت سیستم وب",
   "complexityanalyzer.command.web.status_label": "وضعیت",
   "complexityanalyzer.command.web.visitors": "بازدیدکنندگان",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "بارگیری مجدد وب انجام نشد: %s",
   "complexityanalyzer.command.web.reload_no_data": "بارگذاری مجدد وب هیچ داده ای برگرداند",
   "complexityanalyzer.command.web.engine_not_ready": "موتور آماده نیست: %s",
-
   "complexityanalyzer.category.absolute": "مطلق",
   "complexityanalyzer.category.trivial": "بی اهمیت",
   "complexityanalyzer.category.simple": "ساده",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "متعالی",
   "complexityanalyzer.category.unobtainable": "دست نیافتنی",
   "complexityanalyzer.category.uncalculable": "غیر قابل محاسبه",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ موتور آنالیز هنوز آماده نیست!",
   "complexityanalyzer.command.analyze.current_state": "وضعیت فعلی: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ مورد پیدا نشد: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "اینجا را کلیک کنید",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "برای دیدن درخت کاردستی کامل",
   "complexityanalyzer.command.analyze.tree_tip_hover": "برای مشاهده درخت کاردستی کلیک کنید",
-
   "complexityanalyzer.command.entity.not_found": "❌ نوع موجودیت یافت نشد: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ این موجودیت قابل تجزیه و تحلیل نیست",
   "complexityanalyzer.command.entity.not_living": "موجودیت ممکن است یک موجود زنده نباشد: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "افت قابل توجهی ثبت نشده است",
   "complexityanalyzer.command.entity.per_kill": "~ %s در هر کشتن",
   "complexityanalyzer.command.entity.yield_tip": "بازده بیشتر = افت رایج تر",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ موتور آنالیز آماده نیست!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource مقداردهی اولیه نشده است!",
   "complexityanalyzer.command.loot.disabled_tip": "این ویژگی ممکن است در تنظیمات غیرفعال باشد.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "باستان شناسی",
   "complexityanalyzer.command.loot.type.generic": "غارت عمومی",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ موتور آنالیز آماده نیست!",
   "complexityanalyzer.command.tree.item_not_found": "❌ مورد پیدا نشد: %s",
   "complexityanalyzer.command.tree.failed": "❌ خطا در ساخت درخت ساخت: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "عمق محدود",
   "complexityanalyzer.command.tree.complex_tree_suffix": "برای بهبود عملکرد",
   "complexityanalyzer.command.tree.complex_tree_hover": "برای تنظیم محدودیت عمق روی 5 کلیک کنید",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ موتور آنالیز هنوز آماده نیست!",
   "complexityanalyzer.command.export.current_state": "وضعیت فعلی: %s",
   "complexityanalyzer.command.export.full_item_header": "صادرات کامل اقلام",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "فایل",
   "complexityanalyzer.command.export.failed": "❌ صادرات %s انجام نشد: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s تکمیل شد.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN - نمایه را انتخاب کنید",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "- محدود کردن %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- بدون محدودیت MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 پاکسازی پایگاه داده های جغرافیایی...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ پایگاه داده های جغرافیایی پاک شده است!",
   "complexityanalyzer.command.geoscan.cleared_admin": "پایگاه داده [GeoScan] پاکسازی شده توسط %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ موتور آنالیز مقداردهی اولیه نشده است!",
   "complexityanalyzer.command.system.status_header": "وضعیت آنالیز پیچیدگی",
   "complexityanalyzer.command.system.engine_state": "وضعیت موتور",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "هدف موازی",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "وظایف در صف",
-
   "complexityanalyzer.command.resource.not_found": "❌ مورد پیدا نشد: %s",
   "complexityanalyzer.command.resource.failed": "❌ تجزیه و تحلیل منبع برای %s ناموفق بود: %s",
   "complexityanalyzer.command.resource.no_data": "⚠ هیچ داده منبع پایه در دسترس نیست",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "متوسط",
   "complexityanalyzer.command.resource.difficulty.easy": "آسان",
   "complexityanalyzer.command.resource.difficulty.very_easy": "خیلی راحت",
-
   "complexityanalyzer.unit.time.ago": "%s پیش",
   "complexityanalyzer.unit.time.seconds_short": "س",
   "complexityanalyzer.unit.time.minutes_short": "متر",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "کیلوبایت",
   "complexityanalyzer.unit.size.megabytes": "مگابایت",
   "complexityanalyzer.unit.size.gigabytes": "گیگابایت",
-
   "complexityanalyzer.unit.fluid.millibuckets": "مگابایت",
   "complexityanalyzer.command.tree.depth_limit_tag": "[محدودیت عمق]",
   "complexityanalyzer.command.tree.precise_calculations": "محاسبات دقیق",
   "complexityanalyzer.command.tree.gameplay_view": "نمای بازی دوستانه",
   "complexityanalyzer.unit.general.mode": "حالت",
-
   "complexityanalyzer.dimension.overworld": "فرا جهان",
   "complexityanalyzer.dimension.nether": "نه",
   "complexityanalyzer.dimension.the_end": "پایان",
-
   "complexityanalyzer.notifier.warning_tag": "هشدار!",
   "complexityanalyzer.notifier.error_tag": "خطا",
   "complexityanalyzer.notifier.countdown": "تجزیه و تحلیل جهان در %d ثانیه آغاز خواهد شد...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "اسکن جغرافیایی کامل شد! پایگاه داده کاملا بهینه شده است.",
   "complexityanalyzer.log.scan_starting": "شمارش معکوس تمام شد شروع اسکن توسط %s برای %d تکه در هر بیوم درخواست شده است.",
   "complexityanalyzer.log.refinement_complete": "پالایش جهانی کامل شد. GeoDatabase is now fully operational.",
-
   "complexityanalyzer.log.refiner.starting": "شناسایی کامل شد! شروع پالایش...",
   "complexityanalyzer.log.refiner.no_data": "هیچ داده شناسایی یافت نشد.",
   "complexityanalyzer.log.refiner.heuristics": "ساخت اکتشافی از داده های شناسایی...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "همه بیوم‌های %d با موفقیت پالایش شدند.",
   "complexityanalyzer.log.refiner.error": "خطای بحرانی در هنگام پالایش!",
   "complexityanalyzer.log.refiner.finalizing": "در حال تکمیل پالایش ...",
-
   "complexityanalyzer.log.scan.starting_stats": "شروع اسکن: %d بیوم، %d تکه های مورد نیاز",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s - نسل وانیلی %s",
   "complexityanalyzer.log.scan.complete": "[اسکن] ✅ کامل شد!",
   "complexityanalyzer.log.scan.mspt_limit": "، حد MSPT: %0f",
   "complexityanalyzer.log.scan.no_mspt_limit": "، بدون محدودیت MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] آمار دریچه گاز: %d مکث، کل زمان مکث: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "عادی",
   "complexityanalyzer.geoscan.profile.fast": "سریع",
   "complexityanalyzer.geoscan.profile.ultra_fast": "فوق العاده سریع",
   "complexityanalyzer.geoscan.profile.maximum": "حداکثر",
-
   "complexityanalyzer.geoscan.error.already_running": "یک اسکن از قبل اجرا یا برنامه ریزی شده است.",
   "complexityanalyzer.geoscan.notification.scheduled": "اسکن جهان (حالت %s) در %d ثانیه شروع می شود.",
   "complexityanalyzer.geoscan.error.starting": "یک اسکن از قبل شروع شده است.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "هیچ اسکنی در حال حاضر اجرا یا برنامه ریزی نشده است.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "اسکن جهانی برنامه ریزی شده لغو شده است.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "شروع اسکن...",
   "complexityanalyzer.geoscan.status.scheduled": "اسکن در حالت %s برنامه ریزی شده است، در %d ثانیه شروع می شود...",
   "complexityanalyzer.geoscan.status.idle": "بیکار",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "شناسایی (بدون جلسه فعال)",
   "complexityanalyzer.geoscan.status.phase2": "فاز 2: پالایش تمام داده های جمع آوری شده...",
   "complexityanalyzer.geoscan.status.complete": "کامل",
-
   "complexityanalyzer.source_type.override": "لغو",
   "complexityanalyzer.source_type.ore": "سنگ معدن / معدن",
   "complexityanalyzer.source_type.empirical_block": "بلوک تجربی",

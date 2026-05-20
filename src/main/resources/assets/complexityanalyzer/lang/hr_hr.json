@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Savjet: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMINISTAR]",
-  
   "complexityanalyzer.command.web.active": "Web nadzorna ploča nije aktivna.",
   "complexityanalyzer.command.web.lan_tip": "Da biste ga koristili u singleplayeru, morate kliknuti 'Open to LAN' u Escape izborniku.",
   "complexityanalyzer.command.web.header": "Web nadzorna ploča",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Otvori u pregledniku]",
   "complexityanalyzer.command.web.click_to_open": "Kliknite za otvaranje: %s",
-  "complexityanalyzer.command.web.for_friends": "Za prijatelje",
-  "complexityanalyzer.command.web.copy_public": "[Kopiraj javnu vezu]",
-  "complexityanalyzer.command.web.click_to_copy": "Kliknite za kopiranje veze",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Kliknite za kopiranje veze s vašim javnim IP-om kako bi se drugi pridružili",
+  "complexityanalyzer.command.web.ip_tip": "Ako igrate na poslužitelju, zamolite administratora da konfigurira javnu IP adresu poslužitelja u konfiguracijskoj datoteci. Alternativno, ako znate IP poslužitelja, možete njime zamijeniti '127.0.0.1' u URL-u.",
   "complexityanalyzer.command.web.status_header": "Status web sustava",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Posjetitelji",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Ponovno učitavanje weba nije uspjelo: %s",
   "complexityanalyzer.command.web.reload_no_data": "Ponovno učitavanje weba nije vratilo podatke",
   "complexityanalyzer.command.web.engine_not_ready": "Motor nije spreman: %s",
-
   "complexityanalyzer.category.absolute": "Apsolutno",
   "complexityanalyzer.category.trivial": "Trivijalan",
   "complexityanalyzer.category.simple": "Jednostavno",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendentno",
   "complexityanalyzer.category.unobtainable": "Nedostupno",
   "complexityanalyzer.category.uncalculable": "Neuračunljivo",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Motor za analizu još nije spreman!",
   "complexityanalyzer.command.analyze.current_state": "Trenutno stanje: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Stavka nije pronađena: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Kliknite ovdje",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "vidjeti puno stablo izrade",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Kliknite za prikaz stabla izrade",
-
   "complexityanalyzer.command.entity.not_found": "❌ Vrsta entiteta nije pronađena: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Ovaj entitet se ne može analizirati",
   "complexityanalyzer.command.entity.not_living": "Entitet možda nije živo biće: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Nisu zabilježeni značajniji padovi",
   "complexityanalyzer.command.entity.per_kill": "~ %s po ubojstvu",
   "complexityanalyzer.command.entity.yield_tip": "Veći prinos = češći pad",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Motor za analizu nije spreman!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource nije inicijaliziran!",
   "complexityanalyzer.command.loot.disabled_tip": "Ova značajka može biti onemogućena u konfiguraciji.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Arheologija",
   "complexityanalyzer.command.loot.type.generic": "Generički plijen",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Motor za analizu nije spreman!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Stavka nije pronađena: %s",
   "complexityanalyzer.command.tree.failed": "❌ Pogreška pri izradi stabla izrade: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "ograničena dubina",
   "complexityanalyzer.command.tree.complex_tree_suffix": "za poboljšanje performansi",
   "complexityanalyzer.command.tree.complex_tree_hover": "Kliknite za postavljanje ograničenja dubine na 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Motor za analizu još nije spreman!",
   "complexityanalyzer.command.export.current_state": "Trenutno stanje: %s",
   "complexityanalyzer.command.export.full_item_header": "POTPUNI IZVOZ ARTIKLA",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "File",
   "complexityanalyzer.command.export.failed": "❌ %s izvoz nije uspio: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s završeno.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — ODABIR PROFILA",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— granica %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— nema MSPT ograničenja",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Brisanje geo-baze podataka...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-baza podataka je očišćena!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Bazu podataka očistio %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analysis Engine nije pokrenut!",
   "complexityanalyzer.command.system.status_header": "Status analizatora složenosti",
   "complexityanalyzer.command.system.engine_state": "Stanje motora",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Cilj paralelizma",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool aktivan",
   "complexityanalyzer.command.system.queued_tasks": "Zadaci u redu čekanja",
-
   "complexityanalyzer.command.resource.not_found": "❌ Stavka nije pronađena: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analiza resursa nije uspjela za %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Nema dostupnih podataka o osnovnim resursima",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Umjereno",
   "complexityanalyzer.command.resource.difficulty.easy": "lako",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Vrlo jednostavno",
-
   "complexityanalyzer.unit.time.ago": "prije %s.",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[OGRANIČENJE DUBINE]",
   "complexityanalyzer.command.tree.precise_calculations": "precizne kalkulacije",
   "complexityanalyzer.command.tree.gameplay_view": "pogled prilagođen igranju",
   "complexityanalyzer.unit.general.mode": "način rada",
-
   "complexityanalyzer.dimension.overworld": "Nadzemlje",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Kraj",
-
   "complexityanalyzer.notifier.warning_tag": "UPOZORENJE!",
   "complexityanalyzer.notifier.error_tag": "Greška",
   "complexityanalyzer.notifier.countdown": "Analiza svijeta započet će za %d sekundi...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geografsko skeniranje dovršeno! Baza podataka je u potpunosti optimizirana.",
   "complexityanalyzer.log.scan_starting": "Odbrojavanje je završeno. %s zahtijeva pokretanje skeniranja za %d dijelova po biomu.",
   "complexityanalyzer.log.refinement_complete": "Globalno usavršavanje dovršeno. GeoDatabase je sada u potpunosti operativan.",
-
   "complexityanalyzer.log.refiner.starting": "Izviđanje završeno! Pokretanje preciziranja...",
   "complexityanalyzer.log.refiner.no_data": "Podaci o izviđanju nisu pronađeni.",
   "complexityanalyzer.log.refiner.heuristics": "Izrada heuristike iz podataka izviđanja...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Svi %d biomi su uspješno pročišćeni.",
   "complexityanalyzer.log.refiner.error": "Kritična pogreška tijekom usavršavanja!",
   "complexityanalyzer.log.refiner.finalizing": "Završetak usavršavanja...",
-
   "complexityanalyzer.log.scan.starting_stats": "Pokretanje skeniranja: %d bioma, %d potrebnih dijelova",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — vanilija generacija %s",
   "complexityanalyzer.log.scan.complete": "[SKENIRAJ] ✅ Završeno!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT ograničenje: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", nema MSPT ograničenja",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Statistika gasa: %d pauze, ukupno vrijeme pauze: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "normalno",
   "complexityanalyzer.geoscan.profile.fast": "brzo",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra brz",
   "complexityanalyzer.geoscan.profile.maximum": "Maksimalno",
-
   "complexityanalyzer.geoscan.error.already_running": "Skeniranje je već pokrenuto ili je zakazano.",
   "complexityanalyzer.geoscan.notification.scheduled": "Pretraživanje svijeta (način %s) započet će za %d sekundi.",
   "complexityanalyzer.geoscan.error.starting": "Skeniranje već počinje.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Trenutno nije pokrenuto niti planirano skeniranje.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Zakazano skeniranje svijeta je otkazano.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Pokretanje skeniranja...",
   "complexityanalyzer.geoscan.status.scheduled": "Skeniranje zakazano u %s modu, počinje za %d sekundi...",
   "complexityanalyzer.geoscan.status.idle": "besposlen",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Izviđanje (nema aktivne sesije)",
   "complexityanalyzer.geoscan.status.phase2": "Faza 2: Pročišćavanje svih prikupljenih podataka...",
   "complexityanalyzer.geoscan.status.complete": "Kompletan",
-
   "complexityanalyzer.source_type.override": "Nadjačavanje",
   "complexityanalyzer.source_type.ore": "Ruda/Rudarstvo",
   "complexityanalyzer.source_type.empirical_block": "Empirijski blok",

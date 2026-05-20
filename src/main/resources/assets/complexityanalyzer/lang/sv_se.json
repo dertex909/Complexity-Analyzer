@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Tips: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Web Dashboard är inte aktiv.",
   "complexityanalyzer.command.web.lan_tip": "För att använda det i singleplayer, måste du klicka på 'Öppna till LAN' i Escape-menyn.",
   "complexityanalyzer.command.web.header": "Webb Dashboard",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Öppna i webbläsare]",
   "complexityanalyzer.command.web.click_to_open": "Klicka för att öppna: %s",
-  "complexityanalyzer.command.web.for_friends": "För vänner",
-  "complexityanalyzer.command.web.copy_public": "[Kopiera offentlig länk]",
-  "complexityanalyzer.command.web.click_to_copy": "Klicka för att kopiera länken",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Klicka för att kopiera länken med din offentliga IP så att andra kan gå med",
+  "complexityanalyzer.command.web.ip_tip": "Om du spelar på en server, be administratören att konfigurera serverns publika IP i konfigurationsfilen. Alternativt, om du känner till serverns IP, kan du ersätta '127.0.0.1' i URL:en med den.",
   "complexityanalyzer.command.web.status_header": "Webbsystemstatus",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Besökare",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Webb omladdning misslyckades: %s",
   "complexityanalyzer.command.web.reload_no_data": "Webb omladdning returnerade ingen data",
   "complexityanalyzer.command.web.engine_not_ready": "Motorn inte klar: %s",
-
   "complexityanalyzer.category.absolute": "Absolut",
   "complexityanalyzer.category.trivial": "Trivialt",
   "complexityanalyzer.category.simple": "Enkelt",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendent",
   "complexityanalyzer.category.unobtainable": "Ouppnåeligt",
   "complexityanalyzer.category.uncalculable": "Oberäknbart",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Analysmotorn är inte klar än!",
   "complexityanalyzer.command.analyze.current_state": "Nuvarande tillstånd: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Objektet hittades inte: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Klicka här",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "för att se hela hantverksträdet",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Klicka för att se hantverksträd",
-
   "complexityanalyzer.command.entity.not_found": "❌ Enhetstyp hittades inte: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Denna enhet kan inte analyseras",
   "complexityanalyzer.command.entity.not_living": "Entitet kanske inte är en levande varelse: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Inga signifikanta sänkningar registrerades",
   "complexityanalyzer.command.entity.per_kill": "~ %s per död",
   "complexityanalyzer.command.entity.yield_tip": "Högre avkastning = vanligare fall",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Analysmotorn är inte klar!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource är inte initierad!",
   "complexityanalyzer.command.loot.disabled_tip": "Den här funktionen kan vara inaktiverad i konfigurationen.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Blockera Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Arkeologi",
   "complexityanalyzer.command.loot.type.generic": "Generiskt byte",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Analysmotorn är inte klar!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Objektet hittades inte: %s",
   "complexityanalyzer.command.tree.failed": "❌ Det gick inte att bygga ett hantverksträd: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "begränsat djup",
   "complexityanalyzer.command.tree.complex_tree_suffix": "för att förbättra prestandan",
   "complexityanalyzer.command.tree.complex_tree_hover": "Klicka för att ställa in djupgränsen till 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Analysmotorn är inte klar än!",
   "complexityanalyzer.command.export.current_state": "Nuvarande tillstånd: %s",
   "complexityanalyzer.command.export.full_item_header": "HELA ARTIKELEXPORT",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Arkiv",
   "complexityanalyzer.command.export.failed": "❌ %s export misslyckades: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s klar.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — VÄLJ PROFIL",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— begränsa %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— ingen MSPT-gräns",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Rensar geodatabas...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-databasen har rensats!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Databas rensad av %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analysmotorn är inte initierad!",
   "complexityanalyzer.command.system.status_header": "Status för komplexitetsanalysator",
   "complexityanalyzer.command.system.engine_state": "Motortillstånd",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Parallellismsmål",
   "complexityanalyzer.command.system.compute_pool_active": "Beräkna pool aktiv",
   "complexityanalyzer.command.system.queued_tasks": "Uppgifter i kö",
-
   "complexityanalyzer.command.resource.not_found": "❌ Objektet hittades inte: %s",
   "complexityanalyzer.command.resource.failed": "❌ Resursanalys misslyckades för %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Ingen basresursdata tillgänglig",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Måttlig",
   "complexityanalyzer.command.resource.difficulty.easy": "Lätt",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Mycket lätt",
-
   "complexityanalyzer.unit.time.ago": "%s sedan",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[DEPTH LIMIT]",
   "complexityanalyzer.command.tree.precise_calculations": "exakta beräkningar",
   "complexityanalyzer.command.tree.gameplay_view": "spelvänlig vy",
   "complexityanalyzer.unit.general.mode": "läge",
-
   "complexityanalyzer.dimension.overworld": "Övervärlden",
   "complexityanalyzer.dimension.nether": "Nedre",
   "complexityanalyzer.dimension.the_end": "Slutet",
-
   "complexityanalyzer.notifier.warning_tag": "VARNING!",
   "complexityanalyzer.notifier.error_tag": "Fel",
   "complexityanalyzer.notifier.countdown": "Världsanalysen startar om %d sekunder...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scanning klar! Databasen är helt optimerad.",
   "complexityanalyzer.log.scan_starting": "Nedräkningen avslutad. Startskanning begärd av %s för %d-bitar per biom.",
   "complexityanalyzer.log.refinement_complete": "Global förfining klar. GeoDatabase är nu i full drift.",
-
   "complexityanalyzer.log.refiner.starting": "Spaningen klar! Börjar finslipa...",
   "complexityanalyzer.log.refiner.no_data": "Inga spaningsdata hittades.",
   "complexityanalyzer.log.refiner.heuristics": "Bygger heuristik från spaningsdata...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Alla %d biomer har förfinats framgångsrikt.",
   "complexityanalyzer.log.refiner.error": "Kritiskt fel under förfining!",
   "complexityanalyzer.log.refiner.finalizing": "Slutför förfining...",
-
   "complexityanalyzer.log.scan.starting_stats": "Startskanning: %d biomer, %d bitar behövs",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — vaniljgeneration %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Klar!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT-gräns: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", ingen MSPT-gräns",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Gasstatistik: %d pauser, total paustid: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normal",
   "complexityanalyzer.geoscan.profile.fast": "Snabbt",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultrasnabb",
   "complexityanalyzer.geoscan.profile.maximum": "Max",
-
   "complexityanalyzer.geoscan.error.already_running": "En genomsökning körs redan eller är schemalagd.",
   "complexityanalyzer.geoscan.notification.scheduled": "Världsskanning (läge %s) startar om %d sekunder.",
   "complexityanalyzer.geoscan.error.starting": "En skanning börjar redan.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Ingen skanning körs eller planeras för närvarande.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Schemalagd världsskanning har avbrutits.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Startar skanning...",
   "complexityanalyzer.geoscan.status.scheduled": "Skanning schemalagd i %s-läge, med start om %d sekunder...",
   "complexityanalyzer.geoscan.status.idle": "Inaktiv",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Spaning (ingen aktiv session)",
   "complexityanalyzer.geoscan.status.phase2": "Fas 2: Förfina all insamlad data...",
   "complexityanalyzer.geoscan.status.complete": "Komplett",
-
   "complexityanalyzer.source_type.override": "Åsidosätt",
   "complexityanalyzer.source_type.ore": "Malm/brytning",
   "complexityanalyzer.source_type.empirical_block": "Empiriskt block",

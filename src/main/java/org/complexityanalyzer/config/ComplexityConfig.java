@@ -49,6 +49,8 @@ public class ComplexityConfig {
     public static final ModConfigSpec.DoubleValue MEMORY_PAUSE_THRESHOLD;
     public static final ModConfigSpec.DoubleValue MEMORY_CRITICAL_THRESHOLD;
 
+    public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
+
     private static volatile int resolvedMaxThreads = -1;
 
     static {
@@ -130,6 +132,13 @@ public class ComplexityConfig {
         MEMORY_CRITICAL_THRESHOLD = builder
                 .comment(" Memory usage ratio (0.0-1.0) to trigger emergency scan halt and cache cleanup.")
                 .defineInRange("criticalThreshold", 0.9, 0.5, 0.99);
+        builder.pop();
+
+        builder.push("web_server");
+        WEB_SERVER_IP = builder.comment(
+                " IP address or domain of the server for the web dashboard.",
+                " If set to 127.0.0.1, players will see a tip suggesting to change it to a public IP for remote connections."
+        ).define("ip", "127.0.0.1");
         builder.pop();
 
         SPEC = builder.build();

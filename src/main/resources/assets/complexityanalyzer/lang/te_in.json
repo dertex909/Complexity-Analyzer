@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "చిట్కా: %s",
   "complexityanalyzer.output.admin_prefix": "[అడ్మిన్]",
-  
   "complexityanalyzer.command.web.active": "వెబ్ డ్యాష్‌బోర్డ్ సక్రియంగా లేదు.",
   "complexityanalyzer.command.web.lan_tip": "సింగిల్ ప్లేయర్‌లో దీన్ని ఉపయోగించడానికి, మీరు తప్పనిసరిగా ఎస్కేప్ మెనులో 'LANకు తెరవండి'ని క్లిక్ చేయాలి.",
   "complexityanalyzer.command.web.header": "వెబ్ డ్యాష్‌బోర్డ్",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[బ్రౌజర్‌లో తెరవండి]",
   "complexityanalyzer.command.web.click_to_open": "తెరవడానికి క్లిక్ చేయండి: %s",
-  "complexityanalyzer.command.web.for_friends": "స్నేహితుల కోసం",
-  "complexityanalyzer.command.web.copy_public": "[పబ్లిక్ లింక్‌ని కాపీ చేయండి]",
-  "complexityanalyzer.command.web.click_to_copy": "లింక్‌ని కాపీ చేయడానికి క్లిక్ చేయండి",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "ఇతరులు చేరడానికి మీ పబ్లిక్ IPతో లింక్‌ను కాపీ చేయడానికి క్లిక్ చేయండి",
+  "complexityanalyzer.command.web.ip_tip": "మీరు సర్వర్‌లో ప్లే చేస్తుంటే, కాన్ఫిగర్ ఫైల్‌లో సర్వర్ పబ్లిక్ IPని కాన్ఫిగర్ చేయమని అడ్మినిస్ట్రేటర్‌ని అడగండి. ప్రత్యామ్నాయంగా, మీకు సర్వర్ IP తెలిస్తే, మీరు URLలోని '127.0.0.1'ని దానితో భర్తీ చేయవచ్చు.",
   "complexityanalyzer.command.web.status_header": "వెబ్ సిస్టమ్ స్థితి",
   "complexityanalyzer.command.web.status_label": "స్థితి",
   "complexityanalyzer.command.web.visitors": "సందర్శకులు",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "వెబ్ రీలోడ్ విఫలమైంది: %s",
   "complexityanalyzer.command.web.reload_no_data": "వెబ్ రీలోడ్ డేటా ఏదీ అందించబడలేదు",
   "complexityanalyzer.command.web.engine_not_ready": "ఇంజిన్ సిద్ధంగా లేదు: %s",
-
   "complexityanalyzer.category.absolute": "సంపూర్ణమైన",
   "complexityanalyzer.category.trivial": "అల్పమైనది",
   "complexityanalyzer.category.simple": "సరళమైనది",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "అతీతమైనది",
   "complexityanalyzer.category.unobtainable": "పొందలేనిది",
   "complexityanalyzer.category.uncalculable": "లెక్కించలేనిది",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ విశ్లేషణ ఇంజిన్ ఇంకా సిద్ధంగా లేదు!",
   "complexityanalyzer.command.analyze.current_state": "ప్రస్తుత స్థితి: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ అంశం కనుగొనబడలేదు: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "ఇక్కడ క్లిక్ చేయండి",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "పూర్తి క్రాఫ్టింగ్ చెట్టును చూడటానికి",
   "complexityanalyzer.command.analyze.tree_tip_hover": "క్రాఫ్టింగ్ ట్రీని వీక్షించడానికి క్లిక్ చేయండి",
-
   "complexityanalyzer.command.entity.not_found": "❌ ఎంటిటీ రకం కనుగొనబడలేదు: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ ఈ ఎంటిటీని విశ్లేషించడం సాధ్యం కాదు",
   "complexityanalyzer.command.entity.not_living": "ఎంటిటీ ఒక జీవి కాకపోవచ్చు: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "గణనీయమైన తగ్గుదల నమోదు కాలేదు",
   "complexityanalyzer.command.entity.per_kill": "ప్రతి హత్యకు ~ %s",
   "complexityanalyzer.command.entity.yield_tip": "అధిక దిగుబడి = మరింత సాధారణ తగ్గుదల",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ విశ్లేషణ ఇంజిన్ సిద్ధంగా లేదు!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource ప్రారంభించబడలేదు!",
   "complexityanalyzer.command.loot.disabled_tip": "కాన్ఫిగరేషన్‌లో ఈ ఫీచర్ నిలిపివేయబడి ఉండవచ్చు.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "బ్లాక్ డ్రాప్",
   "complexityanalyzer.command.loot.type.archaeology": "ఆర్కియాలజీ",
   "complexityanalyzer.command.loot.type.generic": "సాధారణ దోపిడీ",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ విశ్లేషణ ఇంజిన్ సిద్ధంగా లేదు!",
   "complexityanalyzer.command.tree.item_not_found": "❌ అంశం కనుగొనబడలేదు: %s",
   "complexityanalyzer.command.tree.failed": "❌ క్రాఫ్టింగ్ చెట్టును నిర్మించడంలో లోపం: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "పరిమిత లోతు",
   "complexityanalyzer.command.tree.complex_tree_suffix": "పనితీరును మెరుగుపరచడానికి",
   "complexityanalyzer.command.tree.complex_tree_hover": "లోతు పరిమితిని 5కి సెట్ చేయడానికి క్లిక్ చేయండి",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ విశ్లేషణ ఇంజిన్ ఇంకా సిద్ధంగా లేదు!",
   "complexityanalyzer.command.export.current_state": "ప్రస్తుత స్థితి: %s",
   "complexityanalyzer.command.export.full_item_header": "పూర్తి వస్తువు ఎగుమతి",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "ఫైల్",
   "complexityanalyzer.command.export.failed": "❌ %s ఎగుమతి విఫలమైంది: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s పూర్తయింది.",
-
   "complexityanalyzer.command.geoscan.profile_header": "జియో-స్కాన్ - ప్రొఫైల్‌ని ఎంచుకోండి",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— పరిమితి %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- MSPT పరిమితి లేదు",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 జియో-డేటాబేస్ క్లియర్ చేస్తోంది...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ జియో-డేటాబేస్ క్లియర్ చేయబడింది!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Database cleared by %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ విశ్లేషణ ఇంజిన్ ప్రారంభించబడలేదు!",
   "complexityanalyzer.command.system.status_header": "సంక్లిష్టత ఎనలైజర్ స్థితి",
   "complexityanalyzer.command.system.engine_state": "ఇంజిన్ స్థితి",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "సమాంతరత లక్ష్యం",
   "complexityanalyzer.command.system.compute_pool_active": "కంప్యూట్ పూల్ యాక్టివ్",
   "complexityanalyzer.command.system.queued_tasks": "క్యూలో ఉన్న పనులు",
-
   "complexityanalyzer.command.resource.not_found": "❌ అంశం కనుగొనబడలేదు: %s",
   "complexityanalyzer.command.resource.failed": "❌ %s : %s కోసం వనరుల విశ్లేషణ విఫలమైంది",
   "complexityanalyzer.command.resource.no_data": "⚠ బేస్ రిసోర్స్ డేటా అందుబాటులో లేదు",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "మితమైన",
   "complexityanalyzer.command.resource.difficulty.easy": "సులువు",
   "complexityanalyzer.command.resource.difficulty.very_easy": "చాలా సులభం",
-
   "complexityanalyzer.unit.time.ago": "%s క్రితం",
   "complexityanalyzer.unit.time.seconds_short": "లు",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[లోతు పరిమితి]",
   "complexityanalyzer.command.tree.precise_calculations": "ఖచ్చితమైన లెక్కలు",
   "complexityanalyzer.command.tree.gameplay_view": "గేమ్‌ప్లే-స్నేహపూర్వక వీక్షణ",
   "complexityanalyzer.unit.general.mode": "మోడ్",
-
   "complexityanalyzer.dimension.overworld": "ఓవర్ వరల్డ్",
   "complexityanalyzer.dimension.nether": "నెదర్",
   "complexityanalyzer.dimension.the_end": "ది ఎండ్",
-
   "complexityanalyzer.notifier.warning_tag": "హెచ్చరిక!",
   "complexityanalyzer.notifier.error_tag": "లోపం",
   "complexityanalyzer.notifier.countdown": "ప్రపంచ విశ్లేషణ %d సెకన్లలో ప్రారంభమవుతుంది...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "జియో స్కాన్ పూర్తయింది! Database is fully optimized.",
   "complexityanalyzer.log.scan_starting": "కౌంట్ డౌన్ పూర్తయింది. ప్రతి బయోమ్‌కి %d భాగాల కోసం %s అభ్యర్థించిన స్కాన్ ప్రారంభించడం.",
   "complexityanalyzer.log.refinement_complete": "ప్రపంచ శుద్ధీకరణ పూర్తయింది. జియోడేటాబేస్ ఇప్పుడు పూర్తిగా పని చేస్తోంది.",
-
   "complexityanalyzer.log.refiner.starting": "నిఘా పూర్తయింది! శుద్ధీకరణను ప్రారంభిస్తోంది...",
   "complexityanalyzer.log.refiner.no_data": "నిఘా డేటా ఏదీ కనుగొనబడలేదు.",
   "complexityanalyzer.log.refiner.heuristics": "నిఘా డేటా నుండి హ్యూరిస్టిక్‌లను రూపొందించడం...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "అన్ని %d బయోమ్‌లు విజయవంతంగా శుద్ధి చేయబడ్డాయి.",
   "complexityanalyzer.log.refiner.error": "శుద్ధీకరణ సమయంలో క్లిష్టమైన లోపం!",
   "complexityanalyzer.log.refiner.finalizing": "శుద్ధీకరణను పూర్తి చేస్తోంది...",
-
   "complexityanalyzer.log.scan.starting_stats": "స్కాన్ ప్రారంభించడం: %d బయోమ్‌లు, %d భాగాలు అవసరం",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — వనిల్లా తరం %s",
   "complexityanalyzer.log.scan.complete": "[స్కాన్] ✅ పూర్తయింది!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT పరిమితి: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", MSPT పరిమితి లేదు",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] థొరెటల్ గణాంకాలు: %d పాజ్‌లు, మొత్తం పాజ్ సమయం: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "సాధారణ",
   "complexityanalyzer.geoscan.profile.fast": "వేగంగా",
   "complexityanalyzer.geoscan.profile.ultra_fast": "అల్ట్రా ఫాస్ట్",
   "complexityanalyzer.geoscan.profile.maximum": "గరిష్టం",
-
   "complexityanalyzer.geoscan.error.already_running": "స్కాన్ ఇప్పటికే అమలవుతోంది లేదా షెడ్యూల్ చేయబడింది.",
   "complexityanalyzer.geoscan.notification.scheduled": "ప్రపంచ స్కాన్ ( %s మోడ్) %d సెకన్లలో ప్రారంభమవుతుంది.",
   "complexityanalyzer.geoscan.error.starting": "స్కాన్ ఇప్పటికే ప్రారంభించబడుతోంది.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "ప్రస్తుతం స్కాన్ ఏదీ అమలులో లేదు లేదా షెడ్యూల్ చేయబడలేదు.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "షెడ్యూల్ చేయబడిన ప్రపంచ స్కాన్ రద్దు చేయబడింది.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "స్కాన్ ప్రారంభిస్తోంది...",
   "complexityanalyzer.geoscan.status.scheduled": "%s మోడ్‌లో స్కాన్ షెడ్యూల్ చేయబడింది, %d సెకన్లలో ప్రారంభమవుతుంది...",
   "complexityanalyzer.geoscan.status.idle": "పనిలేకుండా",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "నిఘా (యాక్టివ్ సెషన్ లేదు)",
   "complexityanalyzer.geoscan.status.phase2": "దశ 2: సేకరించిన మొత్తం డేటాను శుద్ధి చేస్తోంది...",
   "complexityanalyzer.geoscan.status.complete": "పూర్తి",
-
   "complexityanalyzer.source_type.override": "భర్తీ చేయండి",
   "complexityanalyzer.source_type.ore": "ధాతువు/మైనింగ్",
   "complexityanalyzer.source_type.empirical_block": "అనుభావిక బ్లాక్",

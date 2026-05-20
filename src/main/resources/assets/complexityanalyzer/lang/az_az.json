@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "İpucu: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Veb İdarə Paneli aktiv deyil.",
   "complexityanalyzer.command.web.lan_tip": "Onu tək oyunçuda istifadə etmək üçün Escape menyusunda \"LAN şəbəkəsinə aç\" düyməsini sıxmalısınız.",
   "complexityanalyzer.command.web.header": "Veb İdarə Paneli",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Brauzerdə açın]",
   "complexityanalyzer.command.web.click_to_open": "Açmaq üçün klikləyin: %s",
-  "complexityanalyzer.command.web.for_friends": "Dostlar üçün",
-  "complexityanalyzer.command.web.copy_public": "[İctimai Linki Kopyalayın]",
-  "complexityanalyzer.command.web.click_to_copy": "Linki kopyalamaq üçün klikləyin",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Başqalarının qoşulması üçün ictimai IP ilə əlaqəni kopyalamaq üçün klikləyin",
+  "complexityanalyzer.command.web.ip_tip": "Əgər siz serverdə oynayırsınızsa, administratordan konfiqurasiya faylında serverin ictimai IP-sini konfiqurasiya etməyi xahiş edin. Alternativ olaraq, əgər serverin IP-ni bilirsinizsə, URL-də '127.0.0.1'i onunla əvəz edə bilərsiniz.",
   "complexityanalyzer.command.web.status_header": "Veb Sistemi Vəziyyəti",
   "complexityanalyzer.command.web.status_label": "Vəziyyət",
   "complexityanalyzer.command.web.visitors": "Ziyarətçilər",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Veb yenidən yükləmə alınmadı: %s",
   "complexityanalyzer.command.web.reload_no_data": "Vebin yenidən yüklənməsi heç bir məlumat qaytarmadı",
   "complexityanalyzer.command.web.engine_not_ready": "Mühərrik hazır deyil: %s",
-
   "complexityanalyzer.category.absolute": "Mütləq",
   "complexityanalyzer.category.trivial": "Önəmsiz",
   "complexityanalyzer.category.simple": "Sadə",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transsendent",
   "complexityanalyzer.category.unobtainable": "Əldə olunmaz",
   "complexityanalyzer.category.uncalculable": "Hesablanmayan",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Analiz mühərriki hələ hazır deyil!",
   "complexityanalyzer.command.analyze.current_state": "Cari vəziyyət: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Element tapılmadı: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Bura klikləyin",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "tam sənətkarlıq ağacı görmək",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Sənətkarlıq ağacına baxmaq üçün klikləyin",
-
   "complexityanalyzer.command.entity.not_found": "❌ Müəssisə növü tapılmadı: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Bu obyekt təhlil edilə bilməz",
   "complexityanalyzer.command.entity.not_living": "Varlıq canlı məxluq olmaya bilər: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Əhəmiyyətli düşmə qeydə alınmayıb",
   "complexityanalyzer.command.entity.per_kill": "~ %s öldürmək üçün",
   "complexityanalyzer.command.entity.yield_tip": "Daha yüksək gəlir = daha ümumi düşmə",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Analiz mühərriki hazır deyil!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource işə salınmayıb!",
   "complexityanalyzer.command.loot.disabled_tip": "Bu xüsusiyyət konfiqurasiyada deaktiv edilə bilər.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Blok Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Arxeologiya",
   "complexityanalyzer.command.loot.type.generic": "Ümumi qənimət",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Analiz mühərriki hazır deyil!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Element tapılmadı: %s",
   "complexityanalyzer.command.tree.failed": "❌ Ağac yaratmaq xətası: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "məhdud dərinlik",
   "complexityanalyzer.command.tree.complex_tree_suffix": "performansını yaxşılaşdırmaq üçün",
   "complexityanalyzer.command.tree.complex_tree_hover": "Dərinlik limitini 5-ə təyin etmək üçün klikləyin",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Analiz mühərriki hələ hazır deyil!",
   "complexityanalyzer.command.export.current_state": "Cari vəziyyət: %s",
   "complexityanalyzer.command.export.full_item_header": "TAM ƏŞYA İXRACİ",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Fayl",
   "complexityanalyzer.command.export.failed": "❌ %s ixracı uğursuz oldu: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s tamamlandı.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — PROFİLİ SEÇİN",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— limit %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- MSPT limiti yoxdur",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Geo-verilənlər bazası təmizlənir...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-verilənlər bazası təmizləndi!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Verilənlər bazası %s tərəfindən silindi",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analiz Mühərriki işə salınmayıb!",
   "complexityanalyzer.command.system.status_header": "Mürəkkəblik Analizatorunun Vəziyyəti",
   "complexityanalyzer.command.system.engine_state": "Mühərrikin vəziyyəti",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Paralellik Hədəf",
   "complexityanalyzer.command.system.compute_pool_active": "Hesablama Hövzəsi Aktivdir",
   "complexityanalyzer.command.system.queued_tasks": "Növbəyə qoyulmuş Tapşırıqlar",
-
   "complexityanalyzer.command.resource.not_found": "❌ Element tapılmadı: %s",
   "complexityanalyzer.command.resource.failed": "❌ Resurs təhlili %s üçün uğursuz oldu: %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Baza resurs məlumatları mövcud deyil",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Orta",
   "complexityanalyzer.command.resource.difficulty.easy": "Asan",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Çox asan",
-
   "complexityanalyzer.unit.time.ago": "%s əvvəl",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[DƏRİNLİK HƏDDİYASI]",
   "complexityanalyzer.command.tree.precise_calculations": "dəqiq hesablamalar",
   "complexityanalyzer.command.tree.gameplay_view": "oyuna uyğun görünüş",
   "complexityanalyzer.unit.general.mode": "rejimi",
-
   "complexityanalyzer.dimension.overworld": "Yerüstü dünya",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Son",
-
   "complexityanalyzer.notifier.warning_tag": "XƏBƏRDARLIQ!",
   "complexityanalyzer.notifier.error_tag": "Xəta",
   "complexityanalyzer.notifier.countdown": "Dünya təhlili %d saniyədən sonra başlayacaq...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-skan tamamlandı! Verilənlər bazası tam optimallaşdırılıb.",
   "complexityanalyzer.log.scan_starting": "Geri sayım tamamlandı. Hər biom üçün %d parça üçün %s tərəfindən tələb olunan skan başlayır.",
   "complexityanalyzer.log.refinement_complete": "Qlobal təkmilləşdirmə tamamlandı. GeoDatabase artıq tam fəaliyyətdədir.",
-
   "complexityanalyzer.log.refiner.starting": "Kəşfiyyat tamamlandı! Təkmilləşdirməyə başlayır...",
   "complexityanalyzer.log.refiner.no_data": "Heç bir kəşfiyyat məlumatı tapılmadı.",
   "complexityanalyzer.log.refiner.heuristics": "Kəşfiyyat məlumatlarından evristikanın qurulması...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Bütün %d biomları uğurla təmizləndi.",
   "complexityanalyzer.log.refiner.error": "Təkmilləşdirmə zamanı kritik xəta!",
   "complexityanalyzer.log.refiner.finalizing": "Təkmilləşdirmə tamamlanır...",
-
   "complexityanalyzer.log.scan.starting_stats": "Skanın başlanğıcı: %d biomlar, %d parça lazımdır",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — vanil nəsli %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Tamamlandı!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT limiti: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", MSPT limiti yoxdur",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Qaz statistikləri: %d fasilələr, ümumi fasilə vaxtı: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normal",
   "complexityanalyzer.geoscan.profile.fast": "Tez",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra Sürətli",
   "complexityanalyzer.geoscan.profile.maximum": "Maksimum",
-
   "complexityanalyzer.geoscan.error.already_running": "Skan artıq işləyir və ya planlaşdırılıb.",
   "complexityanalyzer.geoscan.notification.scheduled": "Dünya taraması ( %s rejimi) %d saniyə ərzində başlayacaq.",
   "complexityanalyzer.geoscan.error.starting": "Skan artıq başlayır.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Hazırda heç bir skan işləmir və ya planlaşdırılmır.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Planlaşdırılmış dünya taraması ləğv edildi.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Skan başlayır...",
   "complexityanalyzer.geoscan.status.scheduled": "Skan %s rejimində planlaşdırılıb, %d saniyədən sonra...",
   "complexityanalyzer.geoscan.status.idle": "Boş",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Kəşfiyyat (aktiv seans yoxdur)",
   "complexityanalyzer.geoscan.status.phase2": "Mərhələ 2: Bütün toplanmış məlumatların dəqiqləşdirilməsi...",
   "complexityanalyzer.geoscan.status.complete": "Tamamlayın",
-
   "complexityanalyzer.source_type.override": "Üstündən yazın",
   "complexityanalyzer.source_type.ore": "Filiz/Mədən",
   "complexityanalyzer.source_type.empirical_block": "Empirik blok",

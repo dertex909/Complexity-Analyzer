@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Imọran: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Dasibodu wẹẹbu ko ṣiṣẹ.",
   "complexityanalyzer.command.web.lan_tip": "Lati lo ninu ẹrọ orin ẹyọkan, o gbọdọ tẹ 'Ṣii si LAN' ni akojọ aṣayan abayo.",
   "complexityanalyzer.command.web.header": "Dasibodu wẹẹbu",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Ṣí ni Aṣàwákiri]",
   "complexityanalyzer.command.web.click_to_open": "Tẹ lati ṣii: %s",
-  "complexityanalyzer.command.web.for_friends": "Fun Awọn ọrẹ",
-  "complexityanalyzer.command.web.copy_public": "[Daakọ Ọna asopọ gbangba]",
-  "complexityanalyzer.command.web.click_to_copy": "Tẹ lati da ọna asopọ kọ",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Tẹ lati daakọ ọna asopọ pẹlu IP ti gbogbo eniyan fun awọn miiran lati darapọ mọ",
+  "complexityanalyzer.command.web.ip_tip": "Ti o ba n ṣiṣẹ lori olupin kan, beere lọwọ alabojuto lati tunto IP ti gbogbo eniyan olupin ni faili atunto. Ni omiiran, ti o ba mọ IP olupin naa, o le rọpo '127.0.0.1' ninu URL pẹlu rẹ.",
   "complexityanalyzer.command.web.status_header": "Oju opo wẹẹbu Eto Ipo",
   "complexityanalyzer.command.web.status_label": "Ipo",
   "complexityanalyzer.command.web.visitors": "Alejo",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Atunko wẹẹbu kuna: %s",
   "complexityanalyzer.command.web.reload_no_data": "Atungbejade wẹẹbu pada ko si data",
   "complexityanalyzer.command.web.engine_not_ready": "Enjini ko setan: %s",
-
   "complexityanalyzer.category.absolute": "Ni pipe",
   "complexityanalyzer.category.trivial": "Lasan",
   "complexityanalyzer.category.simple": "Rọrun",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendent",
   "complexityanalyzer.category.unobtainable": "Ti ko le gba",
   "complexityanalyzer.category.uncalculable": "Ko ṣe iṣiro",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Ẹrọ itupalẹ ko ti ṣetan sibẹsibẹ!",
   "complexityanalyzer.command.analyze.current_state": "Ipo lọwọlọwọ: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Ko ri nkan: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Tẹ ibi",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "lati wo igi iṣẹda ni kikun",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Tẹ lati wo igi iṣẹ ọwọ",
-
   "complexityanalyzer.command.entity.not_found": "❌ Iru nkan elo ko ri: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ A ko se itupale nkankan yi",
   "complexityanalyzer.command.entity.not_living": "Nkan le ma jẹ ẹda alãye: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Ko si awọn isunmọ pataki ti o gbasilẹ",
   "complexityanalyzer.command.entity.per_kill": "~ %s fun pipa",
   "complexityanalyzer.command.entity.yield_tip": "Ti o ga ikore = diẹ wọpọ ju",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Ẹrọ itupalẹ ko ti ṣetan!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource ko ṣe ipilẹṣẹ!",
   "complexityanalyzer.command.loot.disabled_tip": "Ẹya yii le jẹ alaabo ni atunto.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Dina silẹ",
   "complexityanalyzer.command.loot.type.archaeology": "Archaeology",
   "complexityanalyzer.command.loot.type.generic": "Generic ìkógun",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Ẹrọ itupalẹ ko ti ṣetan!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Ko ri nkan: %s",
   "complexityanalyzer.command.tree.failed": "❌ Aṣiṣe ni kikọ igi iṣẹ ọna: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "ijinle lopin",
   "complexityanalyzer.command.tree.complex_tree_suffix": "lati mu iṣẹ ṣiṣe dara si",
   "complexityanalyzer.command.tree.complex_tree_hover": "Tẹ lati ṣeto opin ijinle si 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Ẹrọ itupalẹ ko ti ṣetan sibẹsibẹ!",
   "complexityanalyzer.command.export.current_state": "Ipo lọwọlọwọ: %s",
   "complexityanalyzer.command.export.full_item_header": "FULL nkan okeere",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Faili",
   "complexityanalyzer.command.export.failed": "❌ %s okeere kuna: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s ti pari.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-Scan - Yan profaili",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "- ifilelẹ %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- ko si MSPT iye to",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Pipasilẹ geo-database...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-database ti jẹ imukuro!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] aaye data ti a parẹ nipasẹ %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Engine Analysis ko ni ipilẹṣẹ!",
   "complexityanalyzer.command.system.status_header": "Complexity Oluyanju Ipo",
   "complexityanalyzer.command.system.engine_state": "Enjini State",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Afojusun Parallelism",
   "complexityanalyzer.command.system.compute_pool_active": "Iṣiro Pool Iroyin",
   "complexityanalyzer.command.system.queued_tasks": "Awọn iṣẹ-ṣiṣe Queued",
-
   "complexityanalyzer.command.resource.not_found": "❌ Ko ri nkan: %s",
   "complexityanalyzer.command.resource.failed": "❌ Iṣayẹwo orisun kuna fun %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Ko si data orisun orisun ti o wa",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Déde",
   "complexityanalyzer.command.resource.difficulty.easy": "Rọrun",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Rọrun pupọ",
-
   "complexityanalyzer.unit.time.ago": "%s sẹyin",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[IGBIN OPIN]",
   "complexityanalyzer.command.tree.precise_calculations": "kongẹ isiro",
   "complexityanalyzer.command.tree.gameplay_view": "imuṣere-friendly view",
   "complexityanalyzer.unit.general.mode": "mode",
-
   "complexityanalyzer.dimension.overworld": "Agbaye",
   "complexityanalyzer.dimension.nether": "Nibe",
   "complexityanalyzer.dimension.the_end": "Ipari",
-
   "complexityanalyzer.notifier.warning_tag": "IKILO!",
   "complexityanalyzer.notifier.error_tag": "Asise",
   "complexityanalyzer.notifier.countdown": "Itupalẹ agbaye yoo bẹrẹ ni iṣẹju-aaya %d…",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scan ti pari! Aaye data ti wa ni iṣapeye ni kikun.",
   "complexityanalyzer.log.scan_starting": "Ti pari kika. Bibẹrẹ ọlọjẹ ti %s beere fun %d chunks fun biome.",
   "complexityanalyzer.log.refinement_complete": "Imudara agbaye ti pari. GeoDatabase ti ṣiṣẹ ni kikun bayi.",
-
   "complexityanalyzer.log.refiner.starting": "Reconnaissance ti pari! Bibẹrẹ isọdọtun...",
   "complexityanalyzer.log.refiner.no_data": "Ko si data isọdọtun ti a rii.",
   "complexityanalyzer.log.refiner.heuristics": "Ilé iṣẹ́-ìmọ̀-ọ̀rọ̀-ẹ̀kọ́ láti ọ̀dọ̀ àyẹ̀wò data...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Gbogbo %d biomes ti refaini ni aṣeyọri.",
   "complexityanalyzer.log.refiner.error": "Aṣiṣe pataki lakoko isọdọtun!",
   "complexityanalyzer.log.refiner.finalizing": "Ipari imudara...",
-
   "complexityanalyzer.log.scan.starting_stats": "Ibẹrẹ ọlọjẹ: %d biomes, %d chunks nilo",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s - iran fanila %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Pari!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT ifilelẹ: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", ko si MSPT iye to",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Iṣiro Throttle: %d duro, akoko idaduro lapapọ: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Deede",
   "complexityanalyzer.geoscan.profile.fast": "Yara",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra Yara",
   "complexityanalyzer.geoscan.profile.maximum": "O pọju",
-
   "complexityanalyzer.geoscan.error.already_running": "Ayẹwo ti nṣiṣẹ tẹlẹ tabi seto.",
   "complexityanalyzer.geoscan.notification.scheduled": "Aye ọlọjẹ ( %s mode) yoo bẹrẹ ni %d iṣẹju-aaya.",
   "complexityanalyzer.geoscan.error.starting": "Ayẹwo ti n bẹrẹ tẹlẹ.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Ko si ọlọjẹ ti nṣiṣẹ lọwọlọwọ tabi seto.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "A ti fagile ayẹwo aye ti a ṣeto.",
   "complexityanalyzer.geoscan.initiator_format": "%s (%s %s)",
-
   "complexityanalyzer.geoscan.status.starting": "Bibẹrẹ ọlọjẹ...",
   "complexityanalyzer.geoscan.status.scheduled": "Ṣiṣayẹwo eto ni ipo %s, bẹrẹ ni iṣẹju-aaya %d...",
   "complexityanalyzer.geoscan.status.idle": "Laiṣiṣẹ",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Ayẹwo (ko si igba ti nṣiṣe lọwọ)",
   "complexityanalyzer.geoscan.status.phase2": "Ipele 2: N ṣatunṣe gbogbo data ti a gba…",
   "complexityanalyzer.geoscan.status.complete": "Pari",
-
   "complexityanalyzer.source_type.override": "Daju",
   "complexityanalyzer.source_type.ore": "Irin/Iwakusa",
   "complexityanalyzer.source_type.empirical_block": "Empirical Block",

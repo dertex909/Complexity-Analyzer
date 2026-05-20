@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Συμβουλή: %s",
   "complexityanalyzer.output.admin_prefix": "[ΔΙΑΧΕΙΡΙΣΤΗΣ]",
-  
   "complexityanalyzer.command.web.active": "Ο Πίνακας ελέγχου Ιστού δεν είναι ενεργός.",
   "complexityanalyzer.command.web.lan_tip": "Για να το χρησιμοποιήσετε σε single player, πρέπει να κάνετε κλικ στο 'Open to LAN' στο μενού Escape.",
   "complexityanalyzer.command.web.header": "Πίνακας ελέγχου Ιστού",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Άνοιγμα στο πρόγραμμα περιήγησης]",
   "complexityanalyzer.command.web.click_to_open": "Κάντε κλικ για άνοιγμα: %s",
-  "complexityanalyzer.command.web.for_friends": "Για Φίλους",
-  "complexityanalyzer.command.web.copy_public": "[Αντιγραφή δημόσιου συνδέσμου]",
-  "complexityanalyzer.command.web.click_to_copy": "Κάντε κλικ για αντιγραφή συνδέσμου",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Κάντε κλικ για να αντιγράψετε τον σύνδεσμο με τη δημόσια IP σας για να συμμετάσχουν και άλλοι",
+  "complexityanalyzer.command.web.ip_tip": "Εάν παίζετε σε διακομιστή, ζητήστε από τον διαχειριστή να διαμορφώσει τη δημόσια IP του διακομιστή στο αρχείο διαμόρφωσης. Εναλλακτικά, εάν γνωρίζετε την IP του διακομιστή, μπορείτε να αντικαταστήσετε το '127.0.0.1' στη διεύθυνση URL με αυτό.",
   "complexityanalyzer.command.web.status_header": "Κατάσταση συστήματος Ιστού",
   "complexityanalyzer.command.web.status_label": "Κατάσταση",
   "complexityanalyzer.command.web.visitors": "Επισκέπτες",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Η επαναφόρτωση ιστού απέτυχε: %s",
   "complexityanalyzer.command.web.reload_no_data": "Η επαναφόρτωση ιστού δεν επέστρεψε δεδομένα",
   "complexityanalyzer.command.web.engine_not_ready": "Ο κινητήρας δεν είναι έτοιμος: %s",
-
   "complexityanalyzer.category.absolute": "Απόλυτο",
   "complexityanalyzer.category.trivial": "Ασήμαντο",
   "complexityanalyzer.category.simple": "Απλό",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Υπερβατικό",
   "complexityanalyzer.category.unobtainable": "Αδύνατη",
   "complexityanalyzer.category.uncalculable": "Ανυπολόγιστος",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Η μηχανή ανάλυσης δεν είναι ακόμα έτοιμη!",
   "complexityanalyzer.command.analyze.current_state": "Τρέχουσα κατάσταση: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Το προϊόν δεν βρέθηκε: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Κάντε κλικ εδώ",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "για να δείτε ολόκληρο το δέντρο χειροτεχνίας",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Κάντε κλικ για να δείτε το δέντρο χειροτεχνίας",
-
   "complexityanalyzer.command.entity.not_found": "❌ Δεν βρέθηκε τύπος οντότητας: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Αυτή η οντότητα δεν μπορεί να αναλυθεί",
   "complexityanalyzer.command.entity.not_living": "Η οντότητα μπορεί να μην είναι ζωντανό πλάσμα: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Δεν καταγράφηκαν σημαντικές πτώσεις",
   "complexityanalyzer.command.entity.per_kill": "~ %s ανά θανάτωση",
   "complexityanalyzer.command.entity.yield_tip": "Υψηλότερη απόδοση = πιο συχνή πτώση",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Η μηχανή ανάλυσης δεν είναι έτοιμη!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ Το UniversalLootSource δεν έχει αρχικοποιηθεί!",
   "complexityanalyzer.command.loot.disabled_tip": "Αυτή η δυνατότητα ενδέχεται να είναι απενεργοποιημένη στη διαμόρφωση.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Αρχαιολογία",
   "complexityanalyzer.command.loot.type.generic": "Generic Loot",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Η μηχανή ανάλυσης δεν είναι έτοιμη!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Το προϊόν δεν βρέθηκε: %s",
   "complexityanalyzer.command.tree.failed": "❌ Σφάλμα δημιουργίας δέντρου δημιουργίας: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "περιορισμένο βάθος",
   "complexityanalyzer.command.tree.complex_tree_suffix": "για τη βελτίωση της απόδοσης",
   "complexityanalyzer.command.tree.complex_tree_hover": "Κάντε κλικ για να ορίσετε το όριο βάθους στο 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Η μηχανή ανάλυσης δεν είναι ακόμα έτοιμη!",
   "complexityanalyzer.command.export.current_state": "Τρέχουσα κατάσταση: %s",
   "complexityanalyzer.command.export.full_item_header": "ΕΞΑΓΩΓΗ ΠΛΗΡΟΥ ΕΙΔΟΥΣ",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Αρχείο",
   "complexityanalyzer.command.export.failed": "❌ Η εξαγωγή %s απέτυχε: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ Ολοκληρώθηκε το %s.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — ΕΠΙΛΟΓΗ ΠΡΟΦΙΛ",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— όριο %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— χωρίς όριο MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Εκκαθάριση βάσης γεωγραφικών δεδομένων...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Η γεωγραφική βάση δεδομένων έχει εκκαθαριστεί!",
   "complexityanalyzer.command.geoscan.cleared_admin": "Η βάση δεδομένων [GeoScan] διαγράφηκε από %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Η μηχανή ανάλυσης δεν έχει αρχικοποιηθεί!",
   "complexityanalyzer.command.system.status_header": "Κατάσταση αναλυτή πολυπλοκότητας",
   "complexityanalyzer.command.system.engine_state": "Κατάσταση κινητήρα",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Στόχος παραλληλισμού",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "Εργασίες σε ουρά",
-
   "complexityanalyzer.command.resource.not_found": "❌ Το προϊόν δεν βρέθηκε: %s",
   "complexityanalyzer.command.resource.failed": "❌ Η ανάλυση πόρων απέτυχε για το %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Δεν υπάρχουν διαθέσιμα βασικά δεδομένα πόρων",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Μέτρια",
   "complexityanalyzer.command.resource.difficulty.easy": "Εύκολο",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Πολύ εύκολο",
-
   "complexityanalyzer.unit.time.ago": "%s πριν",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[ΟΡΙΟ ΒΑΘΟΥΣ]",
   "complexityanalyzer.command.tree.precise_calculations": "ακριβείς υπολογισμούς",
   "complexityanalyzer.command.tree.gameplay_view": "προβολή φιλική προς το παιχνίδι",
   "complexityanalyzer.unit.general.mode": "λειτουργία",
-
   "complexityanalyzer.dimension.overworld": "Υπερκόσμος",
   "complexityanalyzer.dimension.nether": "Ούτε",
   "complexityanalyzer.dimension.the_end": "Το Τέλος",
-
   "complexityanalyzer.notifier.warning_tag": "ΠΡΟΕΙΔΟΠΟΙΗΣΗ!",
   "complexityanalyzer.notifier.error_tag": "Σφάλμα",
   "complexityanalyzer.notifier.countdown": "Η ανάλυση του κόσμου θα ξεκινήσει σε %d δευτερόλεπτα...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Ολοκληρώθηκε η γεωγραφική σάρωση! Η βάση δεδομένων είναι πλήρως βελτιστοποιημένη.",
   "complexityanalyzer.log.scan_starting": "Η αντίστροφη μέτρηση ολοκληρώθηκε. Η έναρξη της σάρωσης ζητήθηκε από το %s για %d κομμάτια ανά βίωμα.",
   "complexityanalyzer.log.refinement_complete": "Ολοκληρώθηκε η παγκόσμια βελτίωση. Η GeoDatabase είναι πλέον πλήρως λειτουργική.",
-
   "complexityanalyzer.log.refiner.starting": "Ολοκληρώθηκε η αναγνώριση! Έναρξη βελτίωσης...",
   "complexityanalyzer.log.refiner.no_data": "Δεν βρέθηκαν δεδομένα αναγνώρισης.",
   "complexityanalyzer.log.refiner.heuristics": "Δημιουργία ευρετικών δεδομένων από αναγνωριστικά δεδομένα...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Όλα τα βιοϊώματα %d βελτιώθηκαν με επιτυχία.",
   "complexityanalyzer.log.refiner.error": "Κρίσιμο σφάλμα κατά τη βελτίωση!",
   "complexityanalyzer.log.refiner.finalizing": "Ολοκλήρωση βελτίωσης...",
-
   "complexityanalyzer.log.scan.starting_stats": "Έναρξη σάρωσης: %d βιομά, απαιτούνται %d κομμάτια",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — γενιά βανίλιας %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Ολοκληρώθηκε!",
   "complexityanalyzer.log.scan.mspt_limit": ", όριο MSPT: %.0στ",
   "complexityanalyzer.log.scan.no_mspt_limit": ", χωρίς όριο MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Στατιστικά γκαζιού: %d παύσεις, συνολικός χρόνος παύσης: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Κανονικό",
   "complexityanalyzer.geoscan.profile.fast": "Γρήγορα",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Εξαιρετικά γρήγορο",
   "complexityanalyzer.geoscan.profile.maximum": "Μέγιστο",
-
   "complexityanalyzer.geoscan.error.already_running": "Μια σάρωση εκτελείται ήδη ή έχει προγραμματιστεί.",
   "complexityanalyzer.geoscan.notification.scheduled": "Η σάρωση του κόσμου (λειτουργία %s) θα ξεκινήσει σε %d δευτερόλεπτα.",
   "complexityanalyzer.geoscan.error.starting": "Μια σάρωση ξεκινά ήδη.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Δεν εκτελείται ή προγραμματίζεται καμία σάρωση αυτήν τη στιγμή.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Η προγραμματισμένη σάρωση του κόσμου έχει ακυρωθεί.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Έναρξη σάρωσης...",
   "complexityanalyzer.geoscan.status.scheduled": "Η σάρωση έχει προγραμματιστεί σε λειτουργία %s, ξεκινά σε %d δευτερόλεπτα...",
   "complexityanalyzer.geoscan.status.idle": "Σε αδράνεια",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Αναγνώριση (χωρίς ενεργή συνεδρία)",
   "complexityanalyzer.geoscan.status.phase2": "Φάση 2: Βελτιστοποίηση όλων των συλλεγόμενων δεδομένων...",
   "complexityanalyzer.geoscan.status.complete": "Ολοκληρώθηκε",
-
   "complexityanalyzer.source_type.override": "Παράκαμψη",
   "complexityanalyzer.source_type.ore": "Μεταλλεύματα/Εξόρυξη",
   "complexityanalyzer.source_type.empirical_block": "Εμπειρικό Μπλοκ",

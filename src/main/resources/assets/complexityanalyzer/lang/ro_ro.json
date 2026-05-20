@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Sfat: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN.]",
-  
   "complexityanalyzer.command.web.active": "Tabloul de bord web nu este activ.",
   "complexityanalyzer.command.web.lan_tip": "Pentru a-l folosi în singleplayer, trebuie să faceți clic pe „Open to LAN\" în meniul Escape.",
   "complexityanalyzer.command.web.header": "Tabloul de bord web",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Deschide în browser]",
   "complexityanalyzer.command.web.click_to_open": "Faceți clic pentru a deschide: %s",
-  "complexityanalyzer.command.web.for_friends": "Pentru Prieteni",
-  "complexityanalyzer.command.web.copy_public": "[Copiați linkul public]",
-  "complexityanalyzer.command.web.click_to_copy": "Faceți clic pentru a copia linkul",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Faceți clic pentru a copia linkul cu IP-ul dvs. public pentru ca alții să se alăture",
+  "complexityanalyzer.command.web.ip_tip": "Dacă jucați pe un server, cereți administratorului să configureze IP-ul public al serverului în fișierul de configurare. Alternativ, dacă cunoașteți IP-ul serverului, puteți înlocui „127.0.0.1” în adresa URL cu acesta.",
   "complexityanalyzer.command.web.status_header": "Stare sistem web",
   "complexityanalyzer.command.web.status_label": "Stare",
   "complexityanalyzer.command.web.visitors": "Vizitatori",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Reîncărcarea web a eșuat: %s",
   "complexityanalyzer.command.web.reload_no_data": "Reîncărcarea web nu a returnat date",
   "complexityanalyzer.command.web.engine_not_ready": "Motorul nu este gata: %s",
-
   "complexityanalyzer.category.absolute": "Absolut",
   "complexityanalyzer.category.trivial": "Trivial",
   "complexityanalyzer.category.simple": "Simplu",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendent",
   "complexityanalyzer.category.unobtainable": "De neobținut",
   "complexityanalyzer.category.uncalculable": "Incalculabil",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Motorul de analiză nu este încă gata!",
   "complexityanalyzer.command.analyze.current_state": "Starea curentă: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Articol negăsit: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Click aici",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "pentru a vedea copacul complet de crafting",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Faceți clic pentru a vedea arborele de crafting",
-
   "complexityanalyzer.command.entity.not_found": "❌ Tipul de entitate nu a fost găsit: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Această entitate nu poate fi analizată",
   "complexityanalyzer.command.entity.not_living": "Entitatea ar putea să nu fie o creatură vie: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Nu s-au înregistrat scăderi semnificative",
   "complexityanalyzer.command.entity.per_kill": "~ %s per ucidere",
   "complexityanalyzer.command.entity.yield_tip": "Randament mai mare = scădere mai frecventă",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Motorul de analiză nu este gata!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource nu este inițializată!",
   "complexityanalyzer.command.loot.disabled_tip": "Această caracteristică poate fi dezactivată în configurație.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "arheologie",
   "complexityanalyzer.command.loot.type.generic": "Pradă generică",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Motorul de analiză nu este gata!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Articol negăsit: %s",
   "complexityanalyzer.command.tree.failed": "❌ Eroare la crearea arborelui de crafting: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "adâncime limitată",
   "complexityanalyzer.command.tree.complex_tree_suffix": "pentru a îmbunătăți performanța",
   "complexityanalyzer.command.tree.complex_tree_hover": "Faceți clic pentru a seta limita de adâncime la 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Motorul de analiză nu este încă gata!",
   "complexityanalyzer.command.export.current_state": "Starea curentă: %s",
   "complexityanalyzer.command.export.full_item_header": "EXPORT COMPLET DE ARTICOLE",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Fișier",
   "complexityanalyzer.command.export.failed": "❌ Exportul %s a eșuat: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s finalizat.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — SELECTARE PROFIL",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— limita %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— fără limită MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Se șterge baza de date geografice...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Baza de date geografice a fost șters!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Baza de date șters de %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Motorul de analiză nu este inițializat!",
   "complexityanalyzer.command.system.status_header": "Starea analizorului de complexitate",
   "complexityanalyzer.command.system.engine_state": "Stare motor",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Țintă de paralelism",
   "complexityanalyzer.command.system.compute_pool_active": "Pool de calcul activ",
   "complexityanalyzer.command.system.queued_tasks": "Sarcini în coadă",
-
   "complexityanalyzer.command.resource.not_found": "❌ Articol negăsit: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analiza resurselor nu a reușit pentru %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Nu sunt disponibile date despre resurse de bază",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Moderat",
   "complexityanalyzer.command.resource.difficulty.easy": "Ușor",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Foarte usor",
-
   "complexityanalyzer.unit.time.ago": "%s în urmă",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[LIMITĂ DE ADÂNCIME]",
   "complexityanalyzer.command.tree.precise_calculations": "calcule precise",
   "complexityanalyzer.command.tree.gameplay_view": "vedere prietenoasă cu jocul",
   "complexityanalyzer.unit.general.mode": "modul",
-
   "complexityanalyzer.dimension.overworld": "Overworld",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Sfârșitul",
-
   "complexityanalyzer.notifier.warning_tag": "AVERTISMENT!",
   "complexityanalyzer.notifier.error_tag": "Eroare",
   "complexityanalyzer.notifier.countdown": "Analiza lumii va începe în %d secunde...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scanare finalizată! Baza de date este complet optimizată.",
   "complexityanalyzer.log.scan_starting": "Numărătoarea inversă s-a terminat. Începe scanarea solicitată de %s pentru %d bucăți per biom.",
   "complexityanalyzer.log.refinement_complete": "Rafinament global complet. GeoDatabase este acum pe deplin operațională.",
-
   "complexityanalyzer.log.refiner.starting": "Recunoașterea completă! Începe rafinamentul...",
   "complexityanalyzer.log.refiner.no_data": "Nu s-au găsit date de recunoaștere.",
   "complexityanalyzer.log.refiner.heuristics": "Construirea euristicii din datele de recunoaștere...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Toți biomii %d au fost rafinați cu succes.",
   "complexityanalyzer.log.refiner.error": "Eroare critică în timpul rafinării!",
   "complexityanalyzer.log.refiner.finalizing": "Finalizarea rafinamentului...",
-
   "complexityanalyzer.log.scan.starting_stats": "Pornirea scanării: %d biomi, %d bucăți necesare",
   "complexityanalyzer.log.scan.profile_info": "[SCANARE] 🚀 %s — generația de vanilie %s",
   "complexityanalyzer.log.scan.complete": "[SCANARE] ✅ Finalizat!",
   "complexityanalyzer.log.scan.mspt_limit": ", limita MSPT: %,0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", fără limită MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCANARE] Statistici de accelerație: %d pauze, timpul total de pauză: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normal",
   "complexityanalyzer.geoscan.profile.fast": "Rapid",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra rapid",
   "complexityanalyzer.geoscan.profile.maximum": "Maximum",
-
   "complexityanalyzer.geoscan.error.already_running": "O scanare este deja în curs sau este programată.",
   "complexityanalyzer.geoscan.notification.scheduled": "Scanarea lumii (modul %s) va începe în %d secunde.",
   "complexityanalyzer.geoscan.error.starting": "O scanare începe deja.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "În prezent, nicio scanare nu rulează sau este programată.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Scanarea programată a lumii a fost anulată.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Se începe scanarea...",
   "complexityanalyzer.geoscan.status.scheduled": "Scanare programată în modul %s, care începe în %d secunde...",
   "complexityanalyzer.geoscan.status.idle": "Inactiv",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Recunoaștere (fără sesiune activă)",
   "complexityanalyzer.geoscan.status.phase2": "Faza 2: Rafinarea tuturor datelor colectate...",
   "complexityanalyzer.geoscan.status.complete": "Complet",
-
   "complexityanalyzer.source_type.override": "Suprascriere",
   "complexityanalyzer.source_type.ore": "Minereu/Minereu",
   "complexityanalyzer.source_type.empirical_block": "Bloc empiric",

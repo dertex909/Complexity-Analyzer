@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "提示：%s",
   "complexityanalyzer.output.admin_prefix": "[管理员]",
-  
   "complexityanalyzer.command.web.active": "Web 仪表板未激活。",
   "complexityanalyzer.command.web.lan_tip": "要在单人游戏中使用它，您必须单击 Escape 菜单中的\"打开到 LAN\"。",
   "complexityanalyzer.command.web.header": "网页仪表板",
   "complexityanalyzer.command.web.url_label": "网址",
   "complexityanalyzer.command.web.open_browser": "[在浏览器中打开]",
   "complexityanalyzer.command.web.click_to_open": "点击打开：%s",
-  "complexityanalyzer.command.web.for_friends": "给朋友",
-  "complexityanalyzer.command.web.copy_public": "[复制公共链接]",
-  "complexityanalyzer.command.web.click_to_copy": "点击复制链接",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "点击复制您的公网IP链接供其他人加入",
+  "complexityanalyzer.command.web.ip_tip": "如果您在服务器上玩，请要求管理员在配置文件中配置服务器的公共IP。或者，如果您知道服务器的 IP，则可以用它替换 URL 中的“127.0.0.1”。",
   "complexityanalyzer.command.web.status_header": "网络系统状态",
   "complexityanalyzer.command.web.status_label": "状态",
   "complexityanalyzer.command.web.visitors": "访客",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "网页重新加载失败：%s",
   "complexityanalyzer.command.web.reload_no_data": "Web 重新加载未返回任何数据",
   "complexityanalyzer.command.web.engine_not_ready": "引擎未准备好：%s",
-
   "complexityanalyzer.category.absolute": "绝对",
   "complexityanalyzer.category.trivial": "琐碎的",
   "complexityanalyzer.category.simple": "简单",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "超越",
   "complexityanalyzer.category.unobtainable": "无法获得的",
   "complexityanalyzer.category.uncalculable": "无法计算",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ 分析引擎尚未准备好！",
   "complexityanalyzer.command.analyze.current_state": "当前状态：%s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ 未找到项目：%s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "点击这里",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "查看完整的制作树",
   "complexityanalyzer.command.analyze.tree_tip_hover": "点击查看制作树",
-
   "complexityanalyzer.command.entity.not_found": "❌ 未找到实体类型：%s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ 该实体无法分析",
   "complexityanalyzer.command.entity.not_living": "实体可能不是生物：%s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "没有记录显着下降",
   "complexityanalyzer.command.entity.per_kill": "~ %s 每次击杀",
   "complexityanalyzer.command.entity.yield_tip": "更高的产量=更常见的掉落",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ 分析引擎尚未准备好！",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource 未初始化！",
   "complexityanalyzer.command.loot.disabled_tip": "该功能可能在配置中被禁用。",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "方块掉落",
   "complexityanalyzer.command.loot.type.archaeology": "考古学",
   "complexityanalyzer.command.loot.type.generic": "通用战利品",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ 分析引擎尚未准备好！",
   "complexityanalyzer.command.tree.item_not_found": "❌ 未找到项目：%s",
   "complexityanalyzer.command.tree.failed": "❌构建工艺树时出错：%s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "有限深度",
   "complexityanalyzer.command.tree.complex_tree_suffix": "提高绩效",
   "complexityanalyzer.command.tree.complex_tree_hover": "单击将深度限制设置为 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ 分析引擎尚未准备好！",
   "complexityanalyzer.command.export.current_state": "当前状态：%s",
   "complexityanalyzer.command.export.full_item_header": "全套出口",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "文件",
   "complexityanalyzer.command.export.failed": "❌ %s导出失败：%s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s 已完成。",
-
   "complexityanalyzer.command.geoscan.profile_header": "地理扫描 — 选择配置文件",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— 限制 %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— 无 MSPT 限制",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 正在清除地理数据库...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ 地理数据库已被清除！",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] 数据库已由 %s 清除",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ 分析引擎未初始化！",
   "complexityanalyzer.command.system.status_header": "复杂性分析器状态",
   "complexityanalyzer.command.system.engine_state": "发动机状态",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "并行度目标",
   "complexityanalyzer.command.system.compute_pool_active": "活动计算池",
   "complexityanalyzer.command.system.queued_tasks": "排队任务",
-
   "complexityanalyzer.command.resource.not_found": "❌ 未找到项目：%s",
   "complexityanalyzer.command.resource.failed": "❌ %s 的资源分析失败：%s",
   "complexityanalyzer.command.resource.no_data": "⚠ 没有可用的基础资源数据",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "中等",
   "complexityanalyzer.command.resource.difficulty.easy": "简单",
   "complexityanalyzer.command.resource.difficulty.very_easy": "非常简单",
-
   "complexityanalyzer.unit.time.ago": "%s 前",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "米",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "知识库",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "国标",
-
   "complexityanalyzer.unit.fluid.millibuckets": "毫巴",
   "complexityanalyzer.command.tree.depth_limit_tag": "[深度限制]",
   "complexityanalyzer.command.tree.precise_calculations": "精确的计算",
   "complexityanalyzer.command.tree.gameplay_view": "游戏友好的视图",
   "complexityanalyzer.unit.general.mode": "模式",
-
   "complexityanalyzer.dimension.overworld": "主世界",
   "complexityanalyzer.dimension.nether": "下界",
   "complexityanalyzer.dimension.the_end": "结局",
-
   "complexityanalyzer.notifier.warning_tag": "警告！",
   "complexityanalyzer.notifier.error_tag": "错误",
   "complexityanalyzer.notifier.countdown": "世界分析将在 %d 秒后开始......",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "地理扫描完成！数据库已全面优化。",
   "complexityanalyzer.log.scan_starting": "倒计时结束。 %s 请求开始扫描每个生物群落的 %d 个块。",
   "complexityanalyzer.log.refinement_complete": "全局细化完成。地理数据库现已全面运行。",
-
   "complexityanalyzer.log.refiner.starting": "侦察完毕！开始细化...",
   "complexityanalyzer.log.refiner.no_data": "没有找到任何侦察数据。",
   "complexityanalyzer.log.refiner.heuristics": "从侦察数据构建启发式...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "所有%d生物群落均已成功精炼。",
   "complexityanalyzer.log.refiner.error": "精炼过程中出现严重错误！",
   "complexityanalyzer.log.refiner.finalizing": "正在完善细化...",
-
   "complexityanalyzer.log.scan.starting_stats": "开始扫描：%d 生物群系，需要 %d 块",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — 香草一代 %s",
   "complexityanalyzer.log.scan.complete": "[扫描] ✅ 完成！",
   "complexityanalyzer.log.scan.mspt_limit": "，MSPT限制：%.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ",无MSPT限制",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] 油门统计数据：%d 暂停，总暂停时间：%d 毫秒",
-
   "complexityanalyzer.geoscan.profile.normal": "正常",
   "complexityanalyzer.geoscan.profile.fast": "快",
   "complexityanalyzer.geoscan.profile.ultra_fast": "超快",
   "complexityanalyzer.geoscan.profile.maximum": "最大",
-
   "complexityanalyzer.geoscan.error.already_running": "扫描已在运行或已计划。",
   "complexityanalyzer.geoscan.notification.scheduled": "世界扫描（%s模式）将在%d秒后开始。",
   "complexityanalyzer.geoscan.error.starting": "扫描已经开始。",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "当前没有运行或计划扫描。",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "预定的世界扫描已被取消。",
   "complexityanalyzer.geoscan.initiator_format": "%s（%s%s）",
-
   "complexityanalyzer.geoscan.status.starting": "开始扫描...",
   "complexityanalyzer.geoscan.status.scheduled": "在 %s 模式下计划扫描，在 %d 秒后开始...",
   "complexityanalyzer.geoscan.status.idle": "空闲",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "侦察（无活动会话）",
   "complexityanalyzer.geoscan.status.phase2": "第 2 阶段：完善所有收集的数据...",
   "complexityanalyzer.geoscan.status.complete": "完成",
-
   "complexityanalyzer.source_type.override": "覆盖",
   "complexityanalyzer.source_type.ore": "矿石/采矿",
   "complexityanalyzer.source_type.empirical_block": "经验块",

@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Порада: %s",
   "complexityanalyzer.output.admin_prefix": "[АДМІНІСТРАТОР]",
-  
   "complexityanalyzer.command.web.active": "Веб-панель не активна.",
   "complexityanalyzer.command.web.lan_tip": "Щоб використовувати його в одиночній грі, потрібно натиснути «Відкрити в локальну мережу» в меню виходу.",
   "complexityanalyzer.command.web.header": "Веб-панель",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Відкрити в браузері]",
   "complexityanalyzer.command.web.click_to_open": "Натисніть, щоб відкрити: %s",
-  "complexityanalyzer.command.web.for_friends": "Для друзів",
-  "complexityanalyzer.command.web.copy_public": "[Копіювати публічне посилання]",
-  "complexityanalyzer.command.web.click_to_copy": "Натисніть, щоб скопіювати посилання",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Натисніть, щоб скопіювати посилання з вашою публічною IP-адресою, щоб інші могли приєднатися",
+  "complexityanalyzer.command.web.ip_tip": "Якщо ви граєте на сервері, попросіть адміністратора налаштувати загальнодоступну IP-адресу сервера у файлі конфігурації. Крім того, якщо ви знаєте IP-адресу сервера, ви можете замінити на неї «127.0.0.1» в URL-адресі.",
   "complexityanalyzer.command.web.status_header": "Стан веб-системи",
   "complexityanalyzer.command.web.status_label": "Статус",
   "complexityanalyzer.command.web.visitors": "Відвідувачі",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Помилка веб-перезавантаження: %s",
   "complexityanalyzer.command.web.reload_no_data": "Веб-перезавантаження не повернуло даних",
   "complexityanalyzer.command.web.engine_not_ready": "Двигун не готовий: %s",
-
   "complexityanalyzer.category.absolute": "Абсолютний",
   "complexityanalyzer.category.trivial": "Тривіальний",
   "complexityanalyzer.category.simple": "просто",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Трансцендентний",
   "complexityanalyzer.category.unobtainable": "Недосяжний",
   "complexityanalyzer.category.uncalculable": "Необчислювана",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Система аналізу ще не готова!",
   "complexityanalyzer.command.analyze.current_state": "Поточний стан: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Товар не знайдено: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Натисніть тут",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "щоб побачити повне дерево крафта",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Натисніть, щоб переглянути дерево крафта",
-
   "complexityanalyzer.command.entity.not_found": "❌ Тип об’єкта не знайдено: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Цю сутність неможливо проаналізувати",
   "complexityanalyzer.command.entity.not_living": "Сутність може не бути живою істотою: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Значних падінь не зафіксовано",
   "complexityanalyzer.command.entity.per_kill": "~ %s за вбивство",
   "complexityanalyzer.command.entity.yield_tip": "Вища врожайність = більш поширене падіння",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Система аналізу не готова!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource не ініціалізовано!",
   "complexityanalyzer.command.loot.disabled_tip": "Ця функція може бути вимкнена в конфігурації.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Випадання блоку",
   "complexityanalyzer.command.loot.type.archaeology": "Археологія",
   "complexityanalyzer.command.loot.type.generic": "Загальний лут",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Система аналізу не готова!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Товар не знайдено: %s",
   "complexityanalyzer.command.tree.failed": "❌ Помилка створення дерева крафта: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "обмежена глибина",
   "complexityanalyzer.command.tree.complex_tree_suffix": "для покращення продуктивності",
   "complexityanalyzer.command.tree.complex_tree_hover": "Натисніть, щоб установити обмеження глибини на 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Система аналізу ще не готова!",
   "complexityanalyzer.command.export.current_state": "Поточний стан: %s",
   "complexityanalyzer.command.export.full_item_header": "ПОВНИЙ ЕКСПОРТ ТОВАРУ",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Файл",
   "complexityanalyzer.command.export.failed": "❌ %s не вдалося експортувати: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s завершено.",
-
   "complexityanalyzer.command.geoscan.profile_header": "ГЕО-СКАН — ВИБІР ПРОФІЛЮ",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— обмеження %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— немає ліміту MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Очищення геобази даних...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Геобазу очищено!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Базу даних очищено %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Механізм аналізу не ініціалізовано!",
   "complexityanalyzer.command.system.status_header": "Статус аналізатора складності",
   "complexityanalyzer.command.system.engine_state": "Стан двигуна",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Ціль паралелізму",
   "complexityanalyzer.command.system.compute_pool_active": "Обчислювальний пул активний",
   "complexityanalyzer.command.system.queued_tasks": "Завдання в черзі",
-
   "complexityanalyzer.command.resource.not_found": "❌ Товар не знайдено: %s",
   "complexityanalyzer.command.resource.failed": "❌ Помилка аналізу ресурсів для %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Дані базових ресурсів відсутні",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Помірний",
   "complexityanalyzer.command.resource.difficulty.easy": "легко",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Дуже легко",
-
   "complexityanalyzer.unit.time.ago": "%s тому",
   "complexityanalyzer.unit.time.seconds_short": "с",
   "complexityanalyzer.unit.time.minutes_short": "м",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "мБ",
   "complexityanalyzer.command.tree.depth_limit_tag": "[ОБМЕЖЕННЯ ГЛИБИНИ]",
   "complexityanalyzer.command.tree.precise_calculations": "точні розрахунки",
   "complexityanalyzer.command.tree.gameplay_view": "зручний для геймплея вигляд",
   "complexityanalyzer.unit.general.mode": "режим",
-
   "complexityanalyzer.dimension.overworld": "Надземний світ",
   "complexityanalyzer.dimension.nether": "Пустота",
   "complexityanalyzer.dimension.the_end": "Кінець",
-
   "complexityanalyzer.notifier.warning_tag": "ПОПЕРЕДЖЕННЯ!",
   "complexityanalyzer.notifier.error_tag": "Помилка",
   "complexityanalyzer.notifier.countdown": "Аналіз світу почнеться через %d секунд...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Геосканування завершено! База даних повністю оптимізована.",
   "complexityanalyzer.log.scan_starting": "Зворотний відлік завершено. Початок сканування за запитом %s для %d фрагментів на біом.",
   "complexityanalyzer.log.refinement_complete": "Глобальне вдосконалення завершено. Зараз GeoDatabase повністю функціонує.",
-
   "complexityanalyzer.log.refiner.starting": "Розвідку завершено! Початок уточнення...",
   "complexityanalyzer.log.refiner.no_data": "Даних розвідки не виявлено.",
   "complexityanalyzer.log.refiner.heuristics": "Побудова евристики з даних розвідки...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Усі %d біоми успішно покращено.",
   "complexityanalyzer.log.refiner.error": "Критична помилка під час доопрацювання!",
   "complexityanalyzer.log.refiner.finalizing": "Завершення уточнення...",
-
   "complexityanalyzer.log.scan.starting_stats": "Початок сканування: потрібні %d біоми, %d фрагменти",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — ванільне покоління %s",
   "complexityanalyzer.log.scan.complete": "[СКАНУВАТИ] ✅ Готово!",
   "complexityanalyzer.log.scan.mspt_limit": ", обмеження MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", без обмеження MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Статистика дросельної заслінки: %d паузи, загальний час паузи: %d мс",
-
   "complexityanalyzer.geoscan.profile.normal": "нормальний",
   "complexityanalyzer.geoscan.profile.fast": "швидко",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Надшвидкий",
   "complexityanalyzer.geoscan.profile.maximum": "Максимум",
-
   "complexityanalyzer.geoscan.error.already_running": "Сканування вже запущено або заплановано.",
   "complexityanalyzer.geoscan.notification.scheduled": "Сканування світу (режим %s) розпочнеться через %d секунд.",
   "complexityanalyzer.geoscan.error.starting": "Сканування вже починається.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Наразі сканування не виконується та не заплановано.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Заплановане сканування світу скасовано.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Початок сканування...",
   "complexityanalyzer.geoscan.status.scheduled": "Сканування заплановано в режимі %s, початок через %d секунд...",
   "complexityanalyzer.geoscan.status.idle": "Бездіяльність",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Розвідка (немає активного сеансу)",
   "complexityanalyzer.geoscan.status.phase2": "Етап 2: уточнення всіх зібраних даних...",
   "complexityanalyzer.geoscan.status.complete": "Повний",
-
   "complexityanalyzer.source_type.override": "Перевизначити",
   "complexityanalyzer.source_type.ore": "Руда/видобуток",
   "complexityanalyzer.source_type.empirical_block": "Емпіричний блок",

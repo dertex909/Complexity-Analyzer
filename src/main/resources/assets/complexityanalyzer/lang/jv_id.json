@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Tip: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Dashboard web ora aktif.",
   "complexityanalyzer.command.web.lan_tip": "Kanggo nggunakake ing singleplayer, sampeyan kudu klik 'Bukak kanggo LAN' ing menu Uwal.",
   "complexityanalyzer.command.web.header": "Dasbor Web",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Bukak ing Browser]",
   "complexityanalyzer.command.web.click_to_open": "Klik kanggo mbukak: %s",
-  "complexityanalyzer.command.web.for_friends": "Kanggo Kanca",
-  "complexityanalyzer.command.web.copy_public": "[Salin Tautan Umum]",
-  "complexityanalyzer.command.web.click_to_copy": "Klik kanggo nyalin link",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Klik kanggo nyalin link karo IP umum sampeyan supaya bisa digabung karo wong liya",
+  "complexityanalyzer.command.web.ip_tip": "Yen sampeyan lagi muter ing server, takon administrator kanggo ngatur IP umum server ing file config. Utawa, yen sampeyan ngerti IP server, sampeyan bisa ngganti '127.0.0.1' ing URL kasebut.",
   "complexityanalyzer.command.web.status_header": "Status Sistem Web",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Pengunjung",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Muat ulang web gagal: %s",
   "complexityanalyzer.command.web.reload_no_data": "Reload web ora ngasilake data",
   "complexityanalyzer.command.web.engine_not_ready": "Mesin ora siap: %s",
-
   "complexityanalyzer.category.absolute": "Absolute",
   "complexityanalyzer.category.trivial": "sepele",
   "complexityanalyzer.category.simple": "Prasaja",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transenden",
   "complexityanalyzer.category.unobtainable": "Ora bisa ditampa",
   "complexityanalyzer.category.uncalculable": "Ora bisa diitung",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Mesin analisis durung siyap!",
   "complexityanalyzer.command.analyze.current_state": "Status saiki: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Item ora ditemokake: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Klik kene",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "kanggo ndeleng wit kerajinan lengkap",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Klik kanggo ndeleng wit kerajinan",
-
   "complexityanalyzer.command.entity.not_found": "❌ Jinis entitas ora ditemokake: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Entitas iki ora bisa dianalisis",
   "complexityanalyzer.command.entity.not_living": "Entitas bisa uga dudu makhluk urip: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Ora ana tetes sing signifikan sing kacathet",
   "complexityanalyzer.command.entity.per_kill": "~ %s saben matèni",
   "complexityanalyzer.command.entity.yield_tip": "Ngasilake luwih dhuwur = luwih umum drop",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Mesin analisis durung siyap!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource ora diwiwiti!",
   "complexityanalyzer.command.loot.disabled_tip": "Fitur iki bisa dipateni ing konfigurasi.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Blok Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Arkeologi",
   "complexityanalyzer.command.loot.type.generic": "Loot Umum",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Mesin analisis durung siyap!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Item ora ditemokake: %s",
   "complexityanalyzer.command.tree.failed": "❌ Kesalahan mbangun wit kerajinan: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "ambane winates",
   "complexityanalyzer.command.tree.complex_tree_suffix": "kanggo nambah kinerja",
   "complexityanalyzer.command.tree.complex_tree_hover": "Klik kanggo nyetel watesan ambane dadi 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Mesin analisis durung siyap!",
   "complexityanalyzer.command.export.current_state": "Status saiki: %s",
   "complexityanalyzer.command.export.full_item_header": "EKSPOR ITEM FULL",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "File",
   "complexityanalyzer.command.export.failed": "❌ %s ekspor gagal: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s rampung.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN - PILIH PROFIL",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "- watesan %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- ora ana watesan MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Mbusak geo-database...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-database wis dibusak!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Database dibusak dening %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Mesin Analisis ora diwiwiti!",
   "complexityanalyzer.command.system.status_header": "Status Penganalisis Kompleksitas",
   "complexityanalyzer.command.system.engine_state": "State Engine",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Sasaran Paralelisme",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "Tugas antri",
-
   "complexityanalyzer.command.resource.not_found": "❌ Item ora ditemokake: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analisis sumber daya gagal kanggo %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Ora ana data sumber dhasar sing kasedhiya",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Moderate",
   "complexityanalyzer.command.resource.difficulty.easy": "Gampang",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Gampang banget",
-
   "complexityanalyzer.unit.time.ago": "%s kepungkur",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[WATETAN DEPTH]",
   "complexityanalyzer.command.tree.precise_calculations": "petungan tepat",
   "complexityanalyzer.command.tree.gameplay_view": "tampilan loropaken gameplay",
   "complexityanalyzer.unit.general.mode": "modus",
-
   "complexityanalyzer.dimension.overworld": "Overworld",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Pungkasan",
-
   "complexityanalyzer.notifier.warning_tag": "WARNING!",
   "complexityanalyzer.notifier.error_tag": "Kesalahan",
   "complexityanalyzer.notifier.countdown": "Analisis donya bakal diwiwiti ing %d detik...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scan rampung! Database wis dioptimalake kanthi lengkap.",
   "complexityanalyzer.log.scan_starting": "Countdown rampung. Miwiti pindai sing dijaluk %s kanggo %d potongan saben bioma.",
   "complexityanalyzer.log.refinement_complete": "Refinement global rampung. GeoDatabase saiki wis operasional.",
-
   "complexityanalyzer.log.refiner.starting": "Pengintaian rampung! Miwiti refinement...",
   "complexityanalyzer.log.refiner.no_data": "Ora ana data pengintaian sing ditemokake.",
   "complexityanalyzer.log.refiner.heuristics": "Nggawe heuristik saka data pengintaian ...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Kabeh bioma %d kasil ditapis.",
   "complexityanalyzer.log.refiner.error": "Kesalahan kritis sajrone refinement!",
   "complexityanalyzer.log.refiner.finalizing": "Rampung refinement...",
-
   "complexityanalyzer.log.scan.starting_stats": "Miwiti scan: %d bioma, %d potongan dibutuhake",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — generasi vanila %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Rampung!",
   "complexityanalyzer.log.scan.mspt_limit": ", watesan MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", ora ana watesan MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Statistik throttle: %d ngaso, total wektu ngaso: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normal",
   "complexityanalyzer.geoscan.profile.fast": "Cepet",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra Cepet",
   "complexityanalyzer.geoscan.profile.maximum": "maksimal",
-
   "complexityanalyzer.geoscan.error.already_running": "Pindai wis mlaku utawa dijadwal.",
   "complexityanalyzer.geoscan.notification.scheduled": "Pindai donya (mode %s) bakal diwiwiti ing %d detik.",
   "complexityanalyzer.geoscan.error.starting": "Pindai wis diwiwiti.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Ora ana pindai sing lagi mlaku utawa dijadwal.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Pindai donya sing dijadwal wis dibatalake.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Miwiti scan...",
   "complexityanalyzer.geoscan.status.scheduled": "Pindai dijadwalake ing mode %s, diwiwiti ing %d detik...",
   "complexityanalyzer.geoscan.status.idle": "nganggur",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Reconnaissance (ora ana sesi aktif)",
   "complexityanalyzer.geoscan.status.phase2": "Tahap 2: Nyaring kabeh data sing diklumpukake...",
   "complexityanalyzer.geoscan.status.complete": "jangkep",
-
   "complexityanalyzer.source_type.override": "Numpa",
   "complexityanalyzer.source_type.ore": "Bijih/Mining",
   "complexityanalyzer.source_type.empirical_block": "Blok Empiris",

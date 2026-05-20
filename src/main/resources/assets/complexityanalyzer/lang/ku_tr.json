@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Şîret: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Tabloya Webê ne çalak e.",
   "complexityanalyzer.command.web.lan_tip": "Ji bo ku hûn wê di lîstikvanek yekane de bikar bînin, divê hûn di menuya Escape de 'Li LAN-ê veke' bikirtînin.",
   "complexityanalyzer.command.web.header": "Web Dashboard",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Di gerokê de veke]",
   "complexityanalyzer.command.web.click_to_open": "Ji bo vekirina bikirtînin: %s",
-  "complexityanalyzer.command.web.for_friends": "Ji bo Hevalan",
-  "complexityanalyzer.command.web.copy_public": "[Girêdana Giştî kopî bikin]",
-  "complexityanalyzer.command.web.click_to_copy": "Ji bo kopîkirina girêdanê bikirtînin",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Bikirtînin da ku girêdana bi IP-ya xweya giştî kopî bikin da ku yên din tevlê bibin",
+  "complexityanalyzer.command.web.ip_tip": "Heke hûn li ser serverek dilîzin, ji rêveberê bipirsin ku IP-ya giştî ya serverê di pelê vesazkirinê de mîheng bike. Wekî din, heke hûn IP-ya serverê dizanin, hûn dikarin '127.0.0.1' di URL-ê de bi wê veguherînin.",
   "complexityanalyzer.command.web.status_header": "Rewşa Pergala Webê",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Ziyaretvan",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Barkirina malperê têk çû: %s",
   "complexityanalyzer.command.web.reload_no_data": "Ji nû ve barkirina malperê tu dane vegerandin",
   "complexityanalyzer.command.web.engine_not_ready": "Motor ne amade ye: %s",
-
   "complexityanalyzer.category.absolute": "Absolute",
   "complexityanalyzer.category.trivial": "Trivial",
   "complexityanalyzer.category.simple": "Simple",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendent",
   "complexityanalyzer.category.unobtainable": "Unobtainable",
   "complexityanalyzer.category.uncalculable": "Bêhejmar",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Motora analîzê hîn ne amade ye!",
   "complexityanalyzer.command.analyze.current_state": "Rewşa niha: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Babet nehat dîtin: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Li vir bikirtînin",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "ji bo dîtina dara çêkirinê ya tevahî",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Ji bo dîtina dara hunerê bikirtînin",
-
   "complexityanalyzer.command.entity.not_found": "❌ Cureyê saziyê nehat dîtin: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Ev sazî nayê analîz kirin",
   "complexityanalyzer.command.entity.not_living": "Dibe ku hebûn ne mexlûqek zindî be: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Ti daketinên girîng nehatine tomar kirin",
   "complexityanalyzer.command.entity.per_kill": "~ %s her kuştin",
   "complexityanalyzer.command.entity.yield_tip": "Berhema bilind = daketina hevpar",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Motora analîzê ne amade ye!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource nayê destpêkirin!",
   "complexityanalyzer.command.loot.disabled_tip": "Dibe ku ev taybetmendî di vesazkirinê de bête neçalak kirin.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Arkeolojî",
   "complexityanalyzer.command.loot.type.generic": "Generic Loot",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Motora analîzê ne amade ye!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Babet nehat dîtin: %s",
   "complexityanalyzer.command.tree.failed": "❌ Çewtiya avakirina dara çêkirinê: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "kûrahiya sînorkirî",
   "complexityanalyzer.command.tree.complex_tree_suffix": "ji bo çêtirkirina performansê",
   "complexityanalyzer.command.tree.complex_tree_hover": "Bikirtînin da ku sînorê kûrahiyê li 5-ê bicîh bikin",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Motora analîzê hîn ne amade ye!",
   "complexityanalyzer.command.export.current_state": "Rewşa niha: %s",
   "complexityanalyzer.command.export.full_item_header": "TEMÛ ITEM EXPORT",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "File",
   "complexityanalyzer.command.export.failed": "❌ %s hinartina bi ser neket: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s qediya.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN - PROFILE HILBIJARTIN",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "- sînor %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- sînorê MSPT tune",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Paqijkirina databasa erdnîgarî...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-danûstandin hate paqij kirin!",
   "complexityanalyzer.command.geoscan.cleared_admin": "Database [GeoScan] ji hêla %s ve hatî paqij kirin",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Motora Analîzê nayê destpêkirin!",
   "complexityanalyzer.command.system.status_header": "Rewşa Tevliheviya Analyzerê",
   "complexityanalyzer.command.system.engine_state": "Dewletê Engine",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Hedefa paralelîzmê",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "Karên Dorê",
-
   "complexityanalyzer.command.resource.not_found": "❌ Babet nehat dîtin: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analîzkirina çavkaniyê ji bo %s têk çû : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Daneyên çavkaniya bingehîn tune",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Moderate",
   "complexityanalyzer.command.resource.difficulty.easy": "Easy",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Pir hêsan",
-
   "complexityanalyzer.unit.time.ago": "%s berê",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[SÎNORÊ KORÊ]",
   "complexityanalyzer.command.tree.precise_calculations": "hesabên rast",
   "complexityanalyzer.command.tree.gameplay_view": "view gameplay-dostane",
   "complexityanalyzer.unit.general.mode": "mode",
-
   "complexityanalyzer.dimension.overworld": "Overworld",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Dawî",
-
   "complexityanalyzer.notifier.warning_tag": "HIŞYARÎ!",
   "complexityanalyzer.notifier.error_tag": "Error",
   "complexityanalyzer.notifier.countdown": "Analîza cîhanê dê di %d çirkeyan de dest pê bike...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scan temam bû! Database bi tevahî xweşbîn e.",
   "complexityanalyzer.log.scan_starting": "Hejmartin qediya. Ji bo %d perçeyên her biyomê ji hêla %s ve dest bi lêgerînê tê xwestin.",
   "complexityanalyzer.log.refinement_complete": "Paqijkirina gerdûnî qediya. GeoDatabase naha bi tevahî kar dike.",
-
   "complexityanalyzer.log.refiner.starting": "Keşif qediya! Destpêkirina paqijkirinê...",
   "complexityanalyzer.log.refiner.no_data": "Daneyên keşfê nehatin dîtin.",
   "complexityanalyzer.log.refiner.heuristics": "Avakirina heuristics ji daneyên keşfê ...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Hemî %d biyom bi serketî hatin paqij kirin.",
   "complexityanalyzer.log.refiner.error": "Di dema safîkirinê de xeletiya krîtîk!",
   "complexityanalyzer.log.refiner.finalizing": "Dawîkirina safîkirinê...",
-
   "complexityanalyzer.log.scan.starting_stats": "Destpêkirina sehkirinê: %d biome, %d perçe hewce ne",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s - nifşê vanilla %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Biqede!",
   "complexityanalyzer.log.scan.mspt_limit": ", Sînorê MSPT: %0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", sînorê MSPT tune",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Statîstîkên tîrêjê: %d sekinîn, dema sekinandina tevahî: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normal",
   "complexityanalyzer.geoscan.profile.fast": "Fast",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra Fast",
   "complexityanalyzer.geoscan.profile.maximum": "Maximum",
-
   "complexityanalyzer.geoscan.error.already_running": "Scanek jixwe tê xebitandin an plansaz kirin.",
   "complexityanalyzer.geoscan.notification.scheduled": "Paqijkirina cîhanê (moda %s) dê di %d çirkeyan de dest pê bike.",
   "complexityanalyzer.geoscan.error.starting": "Vekolînek jixwe dest pê dike.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Naha şopandin nayê xebitandin an plansaz kirin.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Skanandina cîhanê ya plansazkirî hate betal kirin.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Destpêkirina skankirinê...",
   "complexityanalyzer.geoscan.status.scheduled": "Scan di moda %s de hatî plansaz kirin, di %d çirkeyan de dest pê dike...",
   "complexityanalyzer.geoscan.status.idle": "Idle",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Keşif (bê danişîna çalak)",
   "complexityanalyzer.geoscan.status.phase2": "Qonaxa 2: Paqijkirina hemî daneyên berhevkirî ...",
   "complexityanalyzer.geoscan.status.complete": "Temam",
-
   "complexityanalyzer.source_type.override": "Override",
   "complexityanalyzer.source_type.ore": "Ore / Maden",
   "complexityanalyzer.source_type.empirical_block": "Block Empirical",

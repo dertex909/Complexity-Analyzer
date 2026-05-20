@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Suggerimento: %s",
   "complexityanalyzer.output.admin_prefix": "[AMMINISTRATORE]",
-  
   "complexityanalyzer.command.web.active": "Il dashboard Web non è attivo.",
   "complexityanalyzer.command.web.lan_tip": "Per usarlo in modalità giocatore singolo, devi fare clic su \"Apri su LAN\" nel menu Esci.",
   "complexityanalyzer.command.web.header": "Cruscotto Web",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Apri nel browser]",
   "complexityanalyzer.command.web.click_to_open": "Fare clic per aprire: %s",
-  "complexityanalyzer.command.web.for_friends": "Per gli amici",
-  "complexityanalyzer.command.web.copy_public": "[Copia collegamento pubblico]",
-  "complexityanalyzer.command.web.click_to_copy": "Fare clic per copiare il collegamento",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Fai clic per copiare il collegamento con il tuo IP pubblico affinché altri possano unirsi",
+  "complexityanalyzer.command.web.ip_tip": "Se stai giocando su un server, chiedi all'amministratore di configurare l'IP pubblico del server nel file di configurazione. In alternativa, se conosci l'IP del server, puoi sostituire \"127.0.0.1\" nell'URL con esso.",
   "complexityanalyzer.command.web.status_header": "Stato del sistema Web",
   "complexityanalyzer.command.web.status_label": "Stato",
   "complexityanalyzer.command.web.visitors": "Visitatori",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Ricaricamento Web non riuscito: %s",
   "complexityanalyzer.command.web.reload_no_data": "Il ricaricamento Web non ha restituito dati",
   "complexityanalyzer.command.web.engine_not_ready": "Motore non pronto: %s",
-
   "complexityanalyzer.category.absolute": "Assoluto",
   "complexityanalyzer.category.trivial": "Banale",
   "complexityanalyzer.category.simple": "Semplice",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Trascendente",
   "complexityanalyzer.category.unobtainable": "Introvabile",
   "complexityanalyzer.category.uncalculable": "Incalcolabile",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Il motore di analisi non è ancora pronto!",
   "complexityanalyzer.command.analyze.current_state": "Stato attuale: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Articolo non trovato: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Clicca qui",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "per vedere l'albero di lavorazione completo",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Fare clic per visualizzare l'albero di creazione",
-
   "complexityanalyzer.command.entity.not_found": "❌ Tipo di entità non trovato: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Questa entità non può essere analizzata",
   "complexityanalyzer.command.entity.not_living": "L'entità potrebbe non essere una creatura vivente: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Non si registrano cali significativi",
   "complexityanalyzer.command.entity.per_kill": "~ %s per uccisione",
   "complexityanalyzer.command.entity.yield_tip": "Rendimento più elevato = calo più comune",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Il motore di analisi non è pronto!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource non è inizializzato!",
   "complexityanalyzer.command.loot.disabled_tip": "Questa funzione potrebbe essere disabilitata nella configurazione.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Blocca la caduta",
   "complexityanalyzer.command.loot.type.archaeology": "Archeologia",
   "complexityanalyzer.command.loot.type.generic": "Bottino generico",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Il motore di analisi non è pronto!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Articolo non trovato: %s",
   "complexityanalyzer.command.tree.failed": "❌ Errore durante la creazione dell'albero di creazione: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "profondità limitata",
   "complexityanalyzer.command.tree.complex_tree_suffix": "per migliorare le prestazioni",
   "complexityanalyzer.command.tree.complex_tree_hover": "Fare clic per impostare il limite di profondità su 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Il motore di analisi non è ancora pronto!",
   "complexityanalyzer.command.export.current_state": "Stato attuale: %s",
   "complexityanalyzer.command.export.full_item_header": "ESPORTAZIONE COMPLETA DI ARTICOLI",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Archivio",
   "complexityanalyzer.command.export.failed": "❌ Esportazione %s non riuscita: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s completato.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCANSIONE — SELEZIONE PROFILO",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— limite %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— nessun limite MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Cancellazione del geodatabase...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Il geodatabase è stato cancellato!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Database cancellato da %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analysis Engine non è inizializzato!",
   "complexityanalyzer.command.system.status_header": "Stato dell'analizzatore di complessità",
   "complexityanalyzer.command.system.engine_state": "Stato del motore",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Obiettivo del parallelismo",
   "complexityanalyzer.command.system.compute_pool_active": "Pool di calcolo attivo",
   "complexityanalyzer.command.system.queued_tasks": "Attività in coda",
-
   "complexityanalyzer.command.resource.not_found": "❌ Articolo non trovato: %s",
   "complexityanalyzer.command.resource.failed": "❌ Analisi delle risorse non riuscita per %s: %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Nessun dato sulle risorse di base disponibile",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Moderato",
   "complexityanalyzer.command.resource.difficulty.easy": "Facile",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Molto facile",
-
   "complexityanalyzer.unit.time.ago": "%s fa",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "MB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[LIMITE DI PROFONDITÀ]",
   "complexityanalyzer.command.tree.precise_calculations": "calcoli precisi",
   "complexityanalyzer.command.tree.gameplay_view": "visualizzazione ottimizzata per il gameplay",
   "complexityanalyzer.unit.general.mode": "modalità",
-
   "complexityanalyzer.dimension.overworld": "Sopramondo",
   "complexityanalyzer.dimension.nether": "Neanche",
   "complexityanalyzer.dimension.the_end": "La fine",
-
   "complexityanalyzer.notifier.warning_tag": "ATTENZIONE!",
   "complexityanalyzer.notifier.error_tag": "Errore",
   "complexityanalyzer.notifier.countdown": "L'analisi mondiale inizierà tra %d secondi...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geo-scansione completata! Il database è completamente ottimizzato.",
   "complexityanalyzer.log.scan_starting": "Conto alla rovescia terminato. Avvio della scansione richiesta da %s per blocchi %d per bioma.",
   "complexityanalyzer.log.refinement_complete": "Affinamento globale completato. GeoDatabase è ora pienamente operativo.",
-
   "complexityanalyzer.log.refiner.starting": "Ricognizione completata! Inizio perfezionamento...",
   "complexityanalyzer.log.refiner.no_data": "Nessun dato di ricognizione trovato.",
   "complexityanalyzer.log.refiner.heuristics": "Costruire euristiche dai dati di ricognizione...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Tutti i biomi %d si sono perfezionati con successo.",
   "complexityanalyzer.log.refiner.error": "Errore critico durante il perfezionamento!",
   "complexityanalyzer.log.refiner.finalizing": "Finalizzazione del perfezionamento...",
-
   "complexityanalyzer.log.scan.starting_stats": "Scansione iniziale: biomi %d, pezzi %d necessari",
   "complexityanalyzer.log.scan.profile_info": "[SCANSIONE] 🚀 %s — generazione vanilla %s",
   "complexityanalyzer.log.scan.complete": "[SCANSIONE] ✅ Completa!",
   "complexityanalyzer.log.scan.mspt_limit": ", Limite MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", nessun limite MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCANSIONE] Statistiche acceleratore: %d pause, tempo di pausa totale: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normale",
   "complexityanalyzer.geoscan.profile.fast": "Veloce",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultraveloce",
   "complexityanalyzer.geoscan.profile.maximum": "Massimo",
-
   "complexityanalyzer.geoscan.error.already_running": "Una scansione è già in esecuzione o pianificata.",
   "complexityanalyzer.geoscan.notification.scheduled": "La scansione mondiale (modalità %s) inizierà tra %d secondi.",
   "complexityanalyzer.geoscan.error.starting": "Una scansione è già in corso.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Nessuna scansione è attualmente in esecuzione o pianificata.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "La scansione mondiale programmata è stata annullata.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Avvio scansione...",
   "complexityanalyzer.geoscan.status.scheduled": "Scansione pianificata in modalità %s, a partire da %d secondi...",
   "complexityanalyzer.geoscan.status.idle": "Inattivo",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Ricognizione (nessuna sessione attiva)",
   "complexityanalyzer.geoscan.status.phase2": "Fase 2: perfezionamento di tutti i dati raccolti...",
   "complexityanalyzer.geoscan.status.complete": "Completo",
-
   "complexityanalyzer.source_type.override": "Sostituisci",
   "complexityanalyzer.source_type.ore": "Minerale/Estrazione",
   "complexityanalyzer.source_type.empirical_block": "Blocco empirico",

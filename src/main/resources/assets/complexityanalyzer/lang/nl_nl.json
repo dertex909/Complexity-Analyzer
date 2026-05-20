@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Tip: %s",
   "complexityanalyzer.output.admin_prefix": "[BEHEERDER]",
-  
   "complexityanalyzer.command.web.active": "Webdashboard is niet actief.",
   "complexityanalyzer.command.web.lan_tip": "Om het in singleplayer te gebruiken, moet je op 'Open to LAN' klikken in het Escape-menu.",
   "complexityanalyzer.command.web.header": "Webdashboard",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Openen in browser]",
   "complexityanalyzer.command.web.click_to_open": "Klik om te openen: %s",
-  "complexityanalyzer.command.web.for_friends": "Voor vrienden",
-  "complexityanalyzer.command.web.copy_public": "[Kopieer openbare link]",
-  "complexityanalyzer.command.web.click_to_copy": "Klik om de link te kopiëren",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Klik om de link met uw openbare IP-adres te kopiëren, zodat anderen zich kunnen aansluiten",
+  "complexityanalyzer.command.web.ip_tip": "Als je op een server speelt, vraag dan de beheerder om het openbare IP-adres van de server in het configuratiebestand te configureren. Als alternatief kunt u, als u het IP-adres van de server kent, '127.0.0.1' in de URL hiermee vervangen.",
   "complexityanalyzer.command.web.status_header": "Websysteemstatus",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Bezoekers",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Opnieuw laden van web mislukt: %s",
   "complexityanalyzer.command.web.reload_no_data": "Opnieuw laden via internet heeft geen gegevens geretourneerd",
   "complexityanalyzer.command.web.engine_not_ready": "Motor niet gereed: %s",
-
   "complexityanalyzer.category.absolute": "Absoluut",
   "complexityanalyzer.category.trivial": "Triviaal",
   "complexityanalyzer.category.simple": "Eenvoudig",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendente",
   "complexityanalyzer.category.unobtainable": "Onbereikbaar",
   "complexityanalyzer.category.uncalculable": "Onberekenbaar",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Analyse-engine is nog niet klaar!",
   "complexityanalyzer.command.analyze.current_state": "Huidige status: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Artikel niet gevonden: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Klik hier",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "om de volledige knutselboom te zien",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Klik om de knutselboom te bekijken",
-
   "complexityanalyzer.command.entity.not_found": "❌ Entiteitstype niet gevonden: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Deze entiteit kan niet worden geanalyseerd",
   "complexityanalyzer.command.entity.not_living": "Entiteit is mogelijk geen levend wezen: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Er zijn geen significante dalingen geregistreerd",
   "complexityanalyzer.command.entity.per_kill": "~ %s per moord",
   "complexityanalyzer.command.entity.yield_tip": "Hogere opbrengst = vaker voorkomende drop",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Analyse-engine is niet gereed!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource is niet geïnitialiseerd!",
   "complexityanalyzer.command.loot.disabled_tip": "Deze functie is mogelijk uitgeschakeld in de configuratie.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Blok laten vallen",
   "complexityanalyzer.command.loot.type.archaeology": "Archeologie",
   "complexityanalyzer.command.loot.type.generic": "Generieke buit",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Analyse-engine is niet gereed!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Artikel niet gevonden: %s",
   "complexityanalyzer.command.tree.failed": "❌ Fout bij het bouwen van een crafting-boom: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "beperkte diepte",
   "complexityanalyzer.command.tree.complex_tree_suffix": "om de prestaties te verbeteren",
   "complexityanalyzer.command.tree.complex_tree_hover": "Klik om de dieptelimiet in te stellen op 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Analyse-engine is nog niet klaar!",
   "complexityanalyzer.command.export.current_state": "Huidige status: %s",
   "complexityanalyzer.command.export.full_item_header": "VOLLEDIGE ITEM-EXPORT",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Bestand",
   "complexityanalyzer.command.export.failed": "❌ %s exporteren mislukt: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s voltooid.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — SELECTEER PROFIEL",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— limiet %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— geen MSPT-limiet",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Geo-database leegmaken...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Geo-database is gewist!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Database gewist door %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Analysis Engine is niet geïnitialiseerd!",
   "complexityanalyzer.command.system.status_header": "Status van complexiteitsanalysator",
   "complexityanalyzer.command.system.engine_state": "Motor staat",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Parallellisme Doel",
   "complexityanalyzer.command.system.compute_pool_active": "Rekenpool actief",
   "complexityanalyzer.command.system.queued_tasks": "Taken in de wachtrij",
-
   "complexityanalyzer.command.resource.not_found": "❌ Artikel niet gevonden: %s",
   "complexityanalyzer.command.resource.failed": "❌ Bronnenanalyse mislukt voor %s: %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Geen basisbrongegevens beschikbaar",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Matig",
   "complexityanalyzer.command.resource.difficulty.easy": "Gemakkelijk",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Heel gemakkelijk",
-
   "complexityanalyzer.unit.time.ago": "%s geleden",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[DIEPTELIMIET]",
   "complexityanalyzer.command.tree.precise_calculations": "nauwkeurige berekeningen",
   "complexityanalyzer.command.tree.gameplay_view": "gameplay-vriendelijke weergave",
   "complexityanalyzer.unit.general.mode": "modus",
-
   "complexityanalyzer.dimension.overworld": "Bovenwereld",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Het einde",
-
   "complexityanalyzer.notifier.warning_tag": "WAARSCHUWING!",
   "complexityanalyzer.notifier.error_tag": "Fout",
   "complexityanalyzer.notifier.countdown": "De wereldanalyse start over %d seconden...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Geoscan voltooid! Database is volledig geoptimaliseerd.",
   "complexityanalyzer.log.scan_starting": "Het aftellen is voltooid. Startscan aangevraagd door %s voor %d brokken per bioom.",
   "complexityanalyzer.log.refinement_complete": "Mondiale verfijning voltooid. GeoDatabase is nu volledig operationeel.",
-
   "complexityanalyzer.log.refiner.starting": "Verkenning voltooid! Verfijning starten...",
   "complexityanalyzer.log.refiner.no_data": "Geen verkenningsgegevens gevonden.",
   "complexityanalyzer.log.refiner.heuristics": "Heuristieken bouwen op basis van verkenningsgegevens...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Alle %d biomen zijn met succes verfijnd.",
   "complexityanalyzer.log.refiner.error": "Kritieke fout tijdens verfijning!",
   "complexityanalyzer.log.refiner.finalizing": "Verfijning afronden...",
-
   "complexityanalyzer.log.scan.starting_stats": "Startscan: %d biomen, %d brokken nodig",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — vanillegeneratie %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Compleet!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT-limiet: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", geen MSPT-limiet",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Gaspedaalstatistieken: %d pauzes, totale pauzetijd: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normaal",
   "complexityanalyzer.geoscan.profile.fast": "Snel",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra snel",
   "complexityanalyzer.geoscan.profile.maximum": "Maximaal",
-
   "complexityanalyzer.geoscan.error.already_running": "Er wordt al een scan uitgevoerd of gepland.",
   "complexityanalyzer.geoscan.notification.scheduled": "Wereldscan (modus %s) start over %d seconden.",
   "complexityanalyzer.geoscan.error.starting": "Er wordt al een scan gestart.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Er wordt momenteel geen scan uitgevoerd of gepland.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Geplande wereldscan is geannuleerd.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Scannen starten...",
   "complexityanalyzer.geoscan.status.scheduled": "Scan gepland in de modus %s, beginnend over %d seconden...",
   "complexityanalyzer.geoscan.status.idle": "Inactief",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Verkenning (geen actieve sessie)",
   "complexityanalyzer.geoscan.status.phase2": "Fase 2: Verfijning van alle verzamelde gegevens...",
   "complexityanalyzer.geoscan.status.complete": "Compleet",
-
   "complexityanalyzer.source_type.override": "Overschrijven",
   "complexityanalyzer.source_type.ore": "Erts/mijnbouw",
   "complexityanalyzer.source_type.empirical_block": "Empirisch blok",

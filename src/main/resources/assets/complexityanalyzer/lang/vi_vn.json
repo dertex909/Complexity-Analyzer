@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Mẹo: %s",
   "complexityanalyzer.output.admin_prefix": "[Quản trị viên]",
-  
   "complexityanalyzer.command.web.active": "Bảng điều khiển web không hoạt động.",
   "complexityanalyzer.command.web.lan_tip": "Để sử dụng nó trong phần chơi đơn, bạn phải nhấp vào 'Mở sang mạng LAN' trong menu Thoát.",
   "complexityanalyzer.command.web.header": "Trang tổng quan web",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Mở trong trình duyệt]",
   "complexityanalyzer.command.web.click_to_open": "Bấm để mở: %s",
-  "complexityanalyzer.command.web.for_friends": "Dành cho bạn bè",
-  "complexityanalyzer.command.web.copy_public": "[Sao chép liên kết công khai]",
-  "complexityanalyzer.command.web.click_to_copy": "Bấm để sao chép liên kết",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Nhấn vào đây để sao chép liên kết với IP công khai của bạn để người khác tham gia",
+  "complexityanalyzer.command.web.ip_tip": "Nếu bạn đang chơi trên máy chủ, hãy yêu cầu quản trị viên định cấu hình IP công cộng của máy chủ trong tệp cấu hình. Ngoài ra, nếu bạn biết IP của máy chủ, bạn có thể thay thế '127.0.0.1' trong URL bằng IP đó.",
   "complexityanalyzer.command.web.status_header": "Trạng thái hệ thống web",
   "complexityanalyzer.command.web.status_label": "Trạng thái",
   "complexityanalyzer.command.web.visitors": "Du khách",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Tải lại web không thành công: %s",
   "complexityanalyzer.command.web.reload_no_data": "Tải lại web không trả về dữ liệu",
   "complexityanalyzer.command.web.engine_not_ready": "Động cơ chưa sẵn sàng: %s",
-
   "complexityanalyzer.category.absolute": "Tuyệt đối",
   "complexityanalyzer.category.trivial": "tầm thường",
   "complexityanalyzer.category.simple": "Đơn giản",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "siêu việt",
   "complexityanalyzer.category.unobtainable": "Không thể đạt được",
   "complexityanalyzer.category.uncalculable": "không thể tính toán",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Công cụ phân tích chưa sẵn sàng!",
   "complexityanalyzer.command.analyze.current_state": "Trạng thái hiện tại: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Không tìm thấy mục: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "bấm vào đây",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "để xem toàn bộ cây chế tạo",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Bấm vào để xem cây chế tạo",
-
   "complexityanalyzer.command.entity.not_found": "❌ Không tìm thấy loại thực thể: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Thực thể này không thể phân tích được",
   "complexityanalyzer.command.entity.not_living": "Thực thể có thể không phải là sinh vật sống: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Không có sự sụt giảm đáng kể nào được ghi nhận",
   "complexityanalyzer.command.entity.per_kill": "~ %s mỗi lần giết",
   "complexityanalyzer.command.entity.yield_tip": "Năng suất cao hơn = mức giảm phổ biến hơn",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Công cụ phân tích chưa sẵn sàng!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource chưa được khởi tạo!",
   "complexityanalyzer.command.loot.disabled_tip": "Tính năng này có thể bị tắt trong config.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Khối thả",
   "complexityanalyzer.command.loot.type.archaeology": "Khảo cổ học",
   "complexityanalyzer.command.loot.type.generic": "Chiến lợi phẩm chung",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Công cụ phân tích chưa sẵn sàng!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Không tìm thấy mục: %s",
   "complexityanalyzer.command.tree.failed": "❌ Lỗi xây dựng cây chế tạo: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "độ sâu giới hạn",
   "complexityanalyzer.command.tree.complex_tree_suffix": "để cải thiện hiệu suất",
   "complexityanalyzer.command.tree.complex_tree_hover": "Nhấp để đặt giới hạn độ sâu thành 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Công cụ phân tích chưa sẵn sàng!",
   "complexityanalyzer.command.export.current_state": "Trạng thái hiện tại: %s",
   "complexityanalyzer.command.export.full_item_header": "XUẤT HÀNG ĐẦY ĐỦ",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Tập tin",
   "complexityanalyzer.command.export.failed": "❌ %s xuất không thành công: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s đã hoàn thành.",
-
   "complexityanalyzer.command.geoscan.profile_header": "QUÉT ĐỊA LÝ — CHỌN HỒ SƠ",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— giới hạn %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- không có giới hạn MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Đang xóa cơ sở dữ liệu địa lý...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Cơ sở dữ liệu địa lý đã bị xóa!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Cơ sở dữ liệu bị xóa bởi %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Công cụ phân tích chưa được khởi tạo!",
   "complexityanalyzer.command.system.status_header": "Trạng thái phân tích độ phức tạp",
   "complexityanalyzer.command.system.engine_state": "Trạng thái động cơ",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Mục tiêu song song",
   "complexityanalyzer.command.system.compute_pool_active": "Nhóm tính toán đang hoạt động",
   "complexityanalyzer.command.system.queued_tasks": "Nhiệm vụ xếp hàng",
-
   "complexityanalyzer.command.resource.not_found": "❌ Không tìm thấy mục: %s",
   "complexityanalyzer.command.resource.failed": "❌ Phân tích tài nguyên không thành công cho %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Không có dữ liệu tài nguyên cơ sở",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Trung bình",
   "complexityanalyzer.command.resource.difficulty.easy": "Dễ dàng",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Rất dễ dàng",
-
   "complexityanalyzer.unit.time.ago": "%s trước",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "tôi",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[GIỚI HẠN SÂU]",
   "complexityanalyzer.command.tree.precise_calculations": "tính toán chính xác",
   "complexityanalyzer.command.tree.gameplay_view": "Chế độ xem thân thiện với trò chơi",
   "complexityanalyzer.unit.general.mode": "chế độ",
-
   "complexityanalyzer.dimension.overworld": "Thế giới ngầm",
   "complexityanalyzer.dimension.nether": "địa ngục",
   "complexityanalyzer.dimension.the_end": "Sự kết thúc",
-
   "complexityanalyzer.notifier.warning_tag": "CẢNH BÁO!",
   "complexityanalyzer.notifier.error_tag": "Lỗi",
   "complexityanalyzer.notifier.countdown": "Phân tích thế giới sẽ bắt đầu sau %d giây...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Quét địa lý hoàn tất! Cơ sở dữ liệu được tối ưu hóa hoàn toàn.",
   "complexityanalyzer.log.scan_starting": "Đếm ngược xong. Bắt đầu quét theo yêu cầu của %s đối với các khối %d trên mỗi quần xã.",
   "complexityanalyzer.log.refinement_complete": "Quá trình sàng lọc toàn cầu đã hoàn tất. GeoDatabase hiện đã hoạt động đầy đủ.",
-
   "complexityanalyzer.log.refiner.starting": "Cuộc trinh sát hoàn tất! Bắt đầu sàng lọc...",
   "complexityanalyzer.log.refiner.no_data": "Không tìm thấy dữ liệu trinh sát.",
   "complexityanalyzer.log.refiner.heuristics": "Xây dựng heuristic từ dữ liệu trinh sát...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Tất cả quần xã %d được tinh chế thành công.",
   "complexityanalyzer.log.refiner.error": "Lỗi nghiêm trọng trong quá trình sàng lọc!",
   "complexityanalyzer.log.refiner.finalizing": "Đang hoàn thiện quá trình tinh chỉnh...",
-
   "complexityanalyzer.log.scan.starting_stats": "Bắt đầu quét: quần xã %d, khối %d cần thiết",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — thế hệ vani %s",
   "complexityanalyzer.log.scan.complete": "[QUÉT] ✅ Hoàn tất!",
   "complexityanalyzer.log.scan.mspt_limit": ", Giới hạn MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", không có giới hạn MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Thống kê ga: %d tạm dừng, tổng thời gian tạm dừng: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Bình thường",
   "complexityanalyzer.geoscan.profile.fast": "Nhanh",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Cực nhanh",
   "complexityanalyzer.geoscan.profile.maximum": "Tối đa",
-
   "complexityanalyzer.geoscan.error.already_running": "Quá trình quét đang chạy hoặc đã được lên lịch.",
   "complexityanalyzer.geoscan.notification.scheduled": "Quét thế giới (chế độ %s) sẽ bắt đầu sau %d giây.",
   "complexityanalyzer.geoscan.error.starting": "Quá trình quét đã bắt đầu.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Hiện không có quá trình quét nào đang chạy hoặc được lên lịch.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Quét thế giới theo lịch trình đã bị hủy.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Đang bắt đầu quét...",
   "complexityanalyzer.geoscan.status.scheduled": "Quét theo lịch ở chế độ %s, bắt đầu sau %d giây...",
   "complexityanalyzer.geoscan.status.idle": "Nhàn rỗi",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Trinh sát (không có phiên hoạt động)",
   "complexityanalyzer.geoscan.status.phase2": "Giai đoạn 2: Tinh chỉnh tất cả dữ liệu được thu thập...",
   "complexityanalyzer.geoscan.status.complete": "Hoàn thành",
-
   "complexityanalyzer.source_type.override": "ghi đè",
   "complexityanalyzer.source_type.ore": "Quặng/Khai thác",
   "complexityanalyzer.source_type.empirical_block": "Khối thực nghiệm",

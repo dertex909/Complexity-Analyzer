@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Совет: %s",
   "complexityanalyzer.output.admin_prefix": "[АДМИН] ",
-
   "complexityanalyzer.command.web.active": "Веб-панель не активна.",
   "complexityanalyzer.command.web.lan_tip": "Чтобы использовать её в одиночной игре, необходимо нажать 'Открыть для сети' в меню паузы.",
   "complexityanalyzer.command.web.header": "Веб-интерфейс",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Открыть в браузере]",
   "complexityanalyzer.command.web.click_to_open": "Нажмите, чтобы открыть: %s",
-  "complexityanalyzer.command.web.for_friends": "Для друзей",
-  "complexityanalyzer.command.web.copy_public": "[Копировать ссылку]",
-  "complexityanalyzer.command.web.click_to_copy": "Нажмите, чтобы скопировать",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Нажмите, чтобы скопировать ссылку с вашим публичным IP для других игроков",
+  "complexityanalyzer.command.web.ip_tip": "Если вы играете на сервере, попросите администратора настроить публичный IP сервера в файле конфигурации. Если вы знаете IP сервера, вы можете самостоятельно заменить '127.0.0.1' в ссылке на него.",
   "complexityanalyzer.command.web.status_header": "Статус веб-системы",
   "complexityanalyzer.command.web.status_label": "Статус",
   "complexityanalyzer.command.web.visitors": "Посетители",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Ошибка обновления: %s",
   "complexityanalyzer.command.web.reload_no_data": "Обновление не вернуло данных",
   "complexityanalyzer.command.web.engine_not_ready": "Движок не готов: %s",
-
   "complexityanalyzer.category.absolute": "Абсолютный",
   "complexityanalyzer.category.trivial": "Тривиальный",
   "complexityanalyzer.category.simple": "Простой",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Трансцендентный",
   "complexityanalyzer.category.unobtainable": "Недостижимый",
   "complexityanalyzer.category.uncalculable": "Неисчисляемый",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Движок анализа еще не готов!",
   "complexityanalyzer.command.analyze.current_state": "Текущее состояние: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Предмет не найден: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Нажмите здесь",
   "complexityanalyzer.command.analyze.tree_tip_suffix": ", чтобы увидеть дерево крафта",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Показать дерево крафта",
-
   "complexityanalyzer.command.entity.not_found": "❌ Тип сущности не найден: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Эта сущность не может быть проанализирована",
   "complexityanalyzer.command.entity.not_living": "Сущность может не быть живым существом: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Значимого лута не обнаружено",
   "complexityanalyzer.command.entity.per_kill": "~%s за убийство",
   "complexityanalyzer.command.entity.yield_tip": "Чем выше выход, тем чаще выпадает предмет",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Движок анализа не готов!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSource не инициализирован!",
   "complexityanalyzer.command.loot.disabled_tip": "Эта функция может быть отключена в конфиге.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Дроп с блоков",
   "complexityanalyzer.command.loot.type.archaeology": "Археология",
   "complexityanalyzer.command.loot.type.generic": "Общий лут",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Движок анализа не готов!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Предмет не найден: %s",
   "complexityanalyzer.command.tree.failed": "❌ Ошибка при построении дерева крафта: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "ограниченную глубину",
   "complexityanalyzer.command.tree.complex_tree_suffix": " для улучшения производительности",
   "complexityanalyzer.command.tree.complex_tree_hover": "Нажмите, чтобы ограничить глубину до 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Движок анализа еще не готов!",
   "complexityanalyzer.command.export.current_state": "Текущее состояние: %s",
   "complexityanalyzer.command.export.full_item_header": "ПОЛНЫЙ ЭКСПОРТ ПРЕДМЕТОВ",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Файл",
   "complexityanalyzer.command.export.failed": "❌ Экспорт %s не удался: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s завершен.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — ВЫБОР ПРОФИЛЯ",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": " — лимит %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": " — без лимита MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Очистка гео-базы данных...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Гео-база данных очищена!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] База данных очищена игроком %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Движок анализа не инициализирован!",
   "complexityanalyzer.command.system.status_header": "Статус Complexity Analyzer",
   "complexityanalyzer.command.system.engine_state": "Состояние движка",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Целевой параллелизм",
   "complexityanalyzer.command.system.compute_pool_active": "Активных потоков",
   "complexityanalyzer.command.system.queued_tasks": "Задач в очереди",
-
   "complexityanalyzer.command.resource.not_found": "❌ Предмет не найден: %s",
   "complexityanalyzer.command.resource.failed": "❌ Не удалось проанализировать ресурс %s: %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Нет данных о базовом ресурсе",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Средне",
   "complexityanalyzer.command.resource.difficulty.easy": "Легко",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Очень легко",
-
   "complexityanalyzer.unit.time.ago": "%s назад",
   "complexityanalyzer.unit.time.seconds_short": "с",
   "complexityanalyzer.unit.time.minutes_short": "м",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "КБ",
   "complexityanalyzer.unit.size.megabytes": "МБ",
   "complexityanalyzer.unit.size.gigabytes": "ГБ",
-
   "complexityanalyzer.unit.fluid.millibuckets": "мБ",
   "complexityanalyzer.command.tree.depth_limit_tag": "[ПРЕДЕЛ ГЛУБИНЫ]",
   "complexityanalyzer.command.tree.precise_calculations": "точных расчетов",
   "complexityanalyzer.command.tree.gameplay_view": "игрового вида",
   "complexityanalyzer.unit.general.mode": "режим",
-
   "complexityanalyzer.dimension.overworld": "Верхний мир",
   "complexityanalyzer.dimension.nether": "Незер",
   "complexityanalyzer.dimension.the_end": "Край",
-
   "complexityanalyzer.notifier.warning_tag": "ВНИМАНИЕ!",
   "complexityanalyzer.notifier.error_tag": "Ошибка",
   "complexityanalyzer.notifier.countdown": "Анализ мира начнется через %d секунд...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Гео-сканирование завершено! База данных полностью оптимизирована.",
   "complexityanalyzer.log.scan_starting": "Обратный отсчет завершен. Начало сканирования по запросу %s для %d чанков на биом.",
   "complexityanalyzer.log.refinement_complete": "Глобальная очистка завершена. Гео-база данных полностью функциональна.",
-
   "complexityanalyzer.log.refiner.starting": "Разведка завершена! Начало очистки...",
   "complexityanalyzer.log.refiner.no_data": "Данные разведки не найдены.",
   "complexityanalyzer.log.refiner.heuristics": "Построение эвристик на основе данных разведки...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Все %d биомов успешно очищены.",
   "complexityanalyzer.log.refiner.error": "Критическая ошибка во время очистки!",
   "complexityanalyzer.log.refiner.finalizing": "Завершение очистки...",
-
   "complexityanalyzer.log.scan.starting_stats": "Запуск сканирования: %d биомов, необходимо %d чанков",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — ванильная генерация %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Завершено!",
   "complexityanalyzer.log.scan.mspt_limit": ", лимит MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", без лимита MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Статистика замедления: %d пауз, общее время пауз: %dмс",
-
   "complexityanalyzer.geoscan.profile.normal": "Нормальный",
   "complexityanalyzer.geoscan.profile.fast": "Быстрый",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ультра-быстрый",
   "complexityanalyzer.geoscan.profile.maximum": "Максимальный",
-
   "complexityanalyzer.geoscan.error.already_running": "Сканирование уже запущено или запланировано.",
   "complexityanalyzer.geoscan.notification.scheduled": "Сканирование мира (режим: %s) начнется через %d секунд.",
   "complexityanalyzer.geoscan.error.starting": "Сканирование уже запускается.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Нет активного или запланированного сканирования.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Запланированное сканирование мира было отменено.",
   "complexityanalyzer.geoscan.initiator_format": "%s (%s %s)",
-
   "complexityanalyzer.geoscan.status.starting": "Запуск сканирования...",
   "complexityanalyzer.geoscan.status.scheduled": "Сканирование запланировано в режиме %s, начало через %d секунд...",
   "complexityanalyzer.geoscan.status.idle": "Ожидание",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Разведка (нет активной сессии)",
   "complexityanalyzer.geoscan.status.phase2": "Фаза 2: Очистка собранных данных...",
   "complexityanalyzer.geoscan.status.complete": "Завершено",
-
   "complexityanalyzer.source_type.override": "Переопределение",
   "complexityanalyzer.source_type.ore": "Добыча/Руда",
   "complexityanalyzer.source_type.empirical_block": "Эмпирический блок",

@@ -30,38 +30,16 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.multiplex.CabinNettyHandler;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
-import java.util.Scanner;
 
 public final class WebCommand {
 
-    private static String publicIp = "127.0.0.1";
-    private static boolean ipDetected = false;
-
     private WebCommand() {
-    }
-
-    public static void setPublicIp(String ip) {
-        publicIp = ip;
-        ipDetected = true;
-    }
-
-    public static void detectPublicIpAsync() {
-        Thread.ofVirtual().start(() -> {
-            try (Scanner s = new Scanner(URI.create("https://checkip.amazonaws.com").toURL().openStream(), StandardCharsets.UTF_8).useDelimiter("\\A")) {
-                String ip = s.next().trim();
-                setPublicIp(ip);
-                ComplexityAnalyzer.LOGGER.info("[Network] Public IP detected: {}", ip);
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("[Network] Failed to detect public IP: {}", e.getMessage());
-            }
-        });
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
@@ -94,28 +72,19 @@ public final class WebCommand {
             return 0;
         }
 
-        String localUrl = url.replace("0.0.0.0", "127.0.0.1");
-        String remoteUrl = null;
-
-        if (ipDetected) {
-            String replaced = url
-                    .replace("127.0.0.1", publicIp)
-                    .replace("localhost", publicIp)
-                    .replace("0.0.0.0", publicIp);
-            if (!replaced.equals(url)) remoteUrl = replaced;
-        }
+        String publicIp = ComplexityConfig.WEB_SERVER_IP.get().trim();
+        String finalUrl = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp).replace("0.0.0.0", publicIp);
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "🌐", "complexityanalyzer.command.web.header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
-        Object urlLabel = rawLink ? localUrl : "complexityanalyzer.command.web.open_browser";
-        output.sendLink(source, "complexityanalyzer.command.web.url_label", urlLabel, localUrl, ChatFormatting.AQUA, "complexityanalyzer.command.web.click_to_open", localUrl);
+        Object urlLabel = rawLink ? finalUrl : "complexityanalyzer.command.web.open_browser";
+        output.sendLink(source, "complexityanalyzer.command.web.url_label", urlLabel, finalUrl, ChatFormatting.AQUA, "complexityanalyzer.command.web.click_to_open", finalUrl);
 
-        if (remoteUrl != null) {
+        if ("127.0.0.1".equals(publicIp)) {
             output.sendEmptyLine(source);
-            Object remoteLabel = rawLink ? remoteUrl : "complexityanalyzer.command.web.copy_public";
-            output.sendCopyAction(source, "complexityanalyzer.command.web.for_friends", remoteLabel, remoteUrl, ChatFormatting.YELLOW, "complexityanalyzer.command.web.click_to_copy");
+            output.sendTip(source, "complexityanalyzer.command.web.ip_tip");
         }
 
         output.sendEmptyLine(source);

@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Tipp: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "A webes irányítópult nem aktív.",
   "complexityanalyzer.command.web.lan_tip": "Ha egyjátékos játékban szeretné használni, kattintson a „Nyitás LAN-ra\" lehetőségre az Escape menüben.",
   "complexityanalyzer.command.web.header": "Web irányítópult",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Megnyitás a böngészőben]",
   "complexityanalyzer.command.web.click_to_open": "Kattintson a megnyitáshoz: %s",
-  "complexityanalyzer.command.web.for_friends": "Barátok számára",
-  "complexityanalyzer.command.web.copy_public": "[Nyilvános link másolása]",
-  "complexityanalyzer.command.web.click_to_copy": "Kattintson a hivatkozás másolásához",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Kattintson ide a nyilvános IP-címével járó link másolásához, hogy mások is csatlakozhassanak",
+  "complexityanalyzer.command.web.ip_tip": "Ha szerveren játszik, kérje meg a rendszergazdát, hogy konfigurálja a szerver nyilvános IP-címét a konfigurációs fájlban. Alternatív megoldásként, ha ismeri a szerver IP-címét, lecserélheti az URL-ben a „127.0.0.1”-et ezzel.",
   "complexityanalyzer.command.web.status_header": "Web rendszer állapota",
   "complexityanalyzer.command.web.status_label": "Állapot",
   "complexityanalyzer.command.web.visitors": "Látogatók",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Web újratöltés sikertelen: %s",
   "complexityanalyzer.command.web.reload_no_data": "A webes újratöltés nem adott vissza adatokat",
   "complexityanalyzer.command.web.engine_not_ready": "A motor nincs készen: %s",
-
   "complexityanalyzer.category.absolute": "Abszolút",
   "complexityanalyzer.category.trivial": "Triviális",
   "complexityanalyzer.category.simple": "Egyszerű",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transzcendens",
   "complexityanalyzer.category.unobtainable": "Elérhetetlen",
   "complexityanalyzer.category.uncalculable": "Kiszámíthatatlan",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Az elemző motor még nem áll készen!",
   "complexityanalyzer.command.analyze.current_state": "Jelenlegi állapot: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Az elem nem található: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Kattintson ide",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "hogy teljes kézműves fát lássunk",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Kattintson ide a kézműves fa megtekintéséhez",
-
   "complexityanalyzer.command.entity.not_found": "❌ Az entitástípus nem található: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Ez az entitás nem elemezhető",
   "complexityanalyzer.command.entity.not_living": "Lehet, hogy az entitás nem élőlény: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Jelentős csökkenést nem regisztráltak",
   "complexityanalyzer.command.entity.per_kill": "~ %s ölésenként",
   "complexityanalyzer.command.entity.yield_tip": "Nagyobb hozam = gyakoribb esés",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Az elemzőmotor nem áll készen!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ A UniversalLootSource nincs inicializálva!",
   "complexityanalyzer.command.loot.disabled_tip": "Ez a funkció le van tiltva a konfigurációban.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Régészet",
   "complexityanalyzer.command.loot.type.generic": "Általános zsákmány",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Az elemzőmotor nem áll készen!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Az elem nem található: %s",
   "complexityanalyzer.command.tree.failed": "❌ Hiba a fa készítésekor: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "korlátozott mélység",
   "complexityanalyzer.command.tree.complex_tree_suffix": "a teljesítmény javítására",
   "complexityanalyzer.command.tree.complex_tree_hover": "Kattintson a mélységhatár 5-re állításához",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Az elemző motor még nem áll készen!",
   "complexityanalyzer.command.export.current_state": "Jelenlegi állapot: %s",
   "complexityanalyzer.command.export.full_item_header": "TELJES TERMÉK EXPORT",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "Fájl",
   "complexityanalyzer.command.export.failed": "❌ %s exportálás sikertelen: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s kész.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN — PROFIL KIVÁLASZTÁSA",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— limit %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— nincs MSPT-korlát",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Földrajzi adatbázis törlése...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ A geo-adatbázist töröltük!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] Az adatbázist %s törölte",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Az elemzési motor nincs inicializálva!",
   "complexityanalyzer.command.system.status_header": "Komplexitáselemző állapota",
   "complexityanalyzer.command.system.engine_state": "Motor állapota",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Parallelizmus Cél",
   "complexityanalyzer.command.system.compute_pool_active": "Számítási készlet aktív",
   "complexityanalyzer.command.system.queued_tasks": "Sorba állított feladatok",
-
   "complexityanalyzer.command.resource.not_found": "❌ Az elem nem található: %s",
   "complexityanalyzer.command.resource.failed": "❌ Az erőforráselemzés sikertelen a következőhöz: %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Nem állnak rendelkezésre alapforrásadatok",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "Mérsékelt",
   "complexityanalyzer.command.resource.difficulty.easy": "Könnyű",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Nagyon könnyű",
-
   "complexityanalyzer.unit.time.ago": "%s ezelőtt",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[DEPTH LIMIT]",
   "complexityanalyzer.command.tree.precise_calculations": "pontos számításokat",
   "complexityanalyzer.command.tree.gameplay_view": "játékbarát nézet",
   "complexityanalyzer.unit.general.mode": "módban",
-
   "complexityanalyzer.dimension.overworld": "Túlvilág",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "A Vég",
-
   "complexityanalyzer.notifier.warning_tag": "FIGYELEM!",
   "complexityanalyzer.notifier.error_tag": "Hiba",
   "complexityanalyzer.notifier.countdown": "A világelemzés %d másodperc múlva kezdődik...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "A földrajzi szkennelés befejeződött! Az adatbázis teljesen optimalizált.",
   "complexityanalyzer.log.scan_starting": "A visszaszámlálás befejeződött. %s által kért szkennelés indítása %d darab biomonként.",
   "complexityanalyzer.log.refinement_complete": "A globális finomítás befejeződött. A GeoDatabase már teljesen működőképes.",
-
   "complexityanalyzer.log.refiner.starting": "A felderítés kész! Finomítás indítása...",
   "complexityanalyzer.log.refiner.no_data": "Nem találhatók felderítési adatok.",
   "complexityanalyzer.log.refiner.heuristics": "Heurisztika építése felderítési adatokból...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Minden %d biom sikeresen finomítva.",
   "complexityanalyzer.log.refiner.error": "Kritikus hiba a finomítás során!",
   "complexityanalyzer.log.refiner.finalizing": "Finomítás befejezése...",
-
   "complexityanalyzer.log.scan.starting_stats": "Szkennelés indítása: %d biomák, %d darabok szükségesek",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — vaníliageneráció %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Kész!",
   "complexityanalyzer.log.scan.mspt_limit": ", MSPT határérték: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", nincs MSPT-korlát",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Fojtószelep statisztika: %d szünetek, teljes szünetidő: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normális",
   "complexityanalyzer.geoscan.profile.fast": "Gyors",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra gyors",
   "complexityanalyzer.geoscan.profile.maximum": "Maximum",
-
   "complexityanalyzer.geoscan.error.already_running": "Egy vizsgálat már fut vagy ütemezve van.",
   "complexityanalyzer.geoscan.notification.scheduled": "A világ pásztázása (%s mód) %d másodpercen belül elindul.",
   "complexityanalyzer.geoscan.error.starting": "A szkennelés már kezdődik.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Jelenleg nem fut vagy ütemezett vizsgálat.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Az ütemezett világvizsgálatot törölték.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Keresés indítása...",
   "complexityanalyzer.geoscan.status.scheduled": "Keresés ütemezve %s módban, %d másodperc múlva kezdődik...",
   "complexityanalyzer.geoscan.status.idle": "Tétlen",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Felderítés (nincs aktív munkamenet)",
   "complexityanalyzer.geoscan.status.phase2": "2. fázis: Az összes összegyűjtött adat finomítása...",
   "complexityanalyzer.geoscan.status.complete": "Teljes",
-
   "complexityanalyzer.source_type.override": "Felülbírálás",
   "complexityanalyzer.source_type.ore": "Érc/Bányászat",
   "complexityanalyzer.source_type.empirical_block": "Empirikus blokk",

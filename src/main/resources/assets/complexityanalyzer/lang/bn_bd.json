@@ -7,10 +7,6 @@
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[ব্রাউজারে খুলুন]",
   "complexityanalyzer.command.web.click_to_open": "খুলতে ক্লিক করুন: [এস] %s",
-  "complexityanalyzer.command.web.for_friends": "বন্ধুদের জন্য",
-  "complexityanalyzer.command.web.copy_public": "[পাবলিক লিঙ্ক কপি করুন]",
-  "complexityanalyzer.command.web.click_to_copy": "লিঙ্ক কপি করতে ক্লিক করুন",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "অন্যদের যোগদানের জন্য আপনার পাবলিক আইপি দিয়ে লিঙ্ক কপি করতে ক্লিক করুন",
   "complexityanalyzer.command.web.status_header": "ওয়েব সিস্টেমের অবস্থা",
   "complexityanalyzer.command.web.status_label": "স্ট্যাটাস",
   "complexityanalyzer.command.web.visitors": "দর্শক",
@@ -386,5 +382,6 @@
   "complexityanalyzer.source_type.special_action": "বিশেষ অ্যাকশন",
   "complexityanalyzer.source_type.generic_loot": "জেনেরিক লুট",
   "complexityanalyzer.source_type.unknown": "অজানা",
-  "complexityanalyzer.source_type.unobtainable": "অপ্রাপ্ত"
+  "complexityanalyzer.source_type.unobtainable": "অপ্রাপ্ত",
+  "complexityanalyzer.command.web.ip_tip": "আপনি যদি একটি সার্ভারে খেলছেন, তাহলে প্রশাসককে কনফিগার ফাইলে সার্ভারের সর্বজনীন আইপি কনফিগার করতে বলুন। বিকল্পভাবে, আপনি যদি সার্ভারের আইপি জানেন তবে আপনি এটির সাথে URL-এ '127.0.0.1' প্রতিস্থাপন করতে পারেন।"
 }

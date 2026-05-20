@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "ヒント: %s",
   "complexityanalyzer.output.admin_prefix": "[管理者]",
-  
   "complexityanalyzer.command.web.active": "Web ダッシュボードがアクティブではありません。",
   "complexityanalyzer.command.web.lan_tip": "シングルプレイヤーで使用するには、エスケープメニューの「LAN に開く」をクリックする必要があります。",
   "complexityanalyzer.command.web.header": "ウェブダッシュボード",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[ブラウザで開く]",
   "complexityanalyzer.command.web.click_to_open": "クリックして開きます: %s",
-  "complexityanalyzer.command.web.for_friends": "友達のために",
-  "complexityanalyzer.command.web.copy_public": "[パブリックリンクをコピー]",
-  "complexityanalyzer.command.web.click_to_copy": "クリックしてリンクをコピーします",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "クリックしてパブリック IP を含むリンクをコピーし、他の人が参加できるようにします",
+  "complexityanalyzer.command.web.ip_tip": "サーバー上でプレイしている場合は、構成ファイルでサーバーのパブリック IP を構成するように管理者に依頼してください。あるいは、サーバーの IP がわかっている場合は、URL の「127.0.0.1」をそれに置き換えることができます。",
   "complexityanalyzer.command.web.status_header": "Webシステムのステータス",
   "complexityanalyzer.command.web.status_label": "ステータス",
   "complexityanalyzer.command.web.visitors": "訪問者",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Web リロードに失敗しました: %s",
   "complexityanalyzer.command.web.reload_no_data": "Web リロードではデータが返されませんでした",
   "complexityanalyzer.command.web.engine_not_ready": "エンジンの準備ができていません: %s",
-
   "complexityanalyzer.category.absolute": "絶対",
   "complexityanalyzer.category.trivial": "つまらない",
   "complexityanalyzer.category.simple": "シンプル",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "超越的な",
   "complexityanalyzer.category.unobtainable": "入手不可",
   "complexityanalyzer.category.uncalculable": "計算不能",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ 分析エンジンはまだ準備ができていません!",
   "complexityanalyzer.command.analyze.current_state": "現在の状態: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ アイテムが見つかりません: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "ここをクリックしてください",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "をクリックして全てのクラフトツリーを表示",
   "complexityanalyzer.command.analyze.tree_tip_hover": "クリックしてクラフトツリーを表示",
-
   "complexityanalyzer.command.entity.not_found": "❌ エンティティ タイプが見つかりません: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ このエンティティは分析できません",
   "complexityanalyzer.command.entity.not_living": "実体は生き物ではない可能性があります: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "大幅な減少は記録されていない",
   "complexityanalyzer.command.entity.per_kill": "キルごとに ~ %s",
   "complexityanalyzer.command.entity.yield_tip": "より高い収量 = より一般的なドロップ",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ 分析エンジンの準備ができていません!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ UniversalLootSourceが初期化されていません!",
   "complexityanalyzer.command.loot.disabled_tip": "この機能は設定で無効になっている可能性があります。",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "ブロックドロップ",
   "complexityanalyzer.command.loot.type.archaeology": "考古学",
   "complexityanalyzer.command.loot.type.generic": "一般的な戦利品",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ 分析エンジンの準備ができていません!",
   "complexityanalyzer.command.tree.item_not_found": "❌ アイテムが見つかりません: %s",
   "complexityanalyzer.command.tree.failed": "❌ クラフトツリー構築エラー: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "限られた深さ",
   "complexityanalyzer.command.tree.complex_tree_suffix": "パフォーマンスを向上させるために",
   "complexityanalyzer.command.tree.complex_tree_hover": "クリックして深さ制限を 5 に設定します",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ 分析エンジンはまだ準備ができていません!",
   "complexityanalyzer.command.export.current_state": "現在の状態: %s",
   "complexityanalyzer.command.export.full_item_header": "フルアイテムのエクスポート",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "ファイル",
   "complexityanalyzer.command.export.failed": "❌ %s エクスポートに失敗しました: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s が完了しました。",
-
   "complexityanalyzer.command.geoscan.profile_header": "ジオスキャン — プロファイルの選択",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— リミット%s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "— MSPT制限なし",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 地理データベースをクリアしています...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ 地理データベースがクリアされました!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] データベースは %s によってクリアされました",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ 分析エンジンが初期化されていません!",
   "complexityanalyzer.command.system.status_header": "複雑さアナライザーのステータス",
   "complexityanalyzer.command.system.engine_state": "エンジンの状態",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "並列処理のターゲット",
   "complexityanalyzer.command.system.compute_pool_active": "コンピューティング プールがアクティブです",
   "complexityanalyzer.command.system.queued_tasks": "キューに入れられたタスク",
-
   "complexityanalyzer.command.resource.not_found": "❌ アイテムが見つかりません: %s",
   "complexityanalyzer.command.resource.failed": "❌ %s のリソース分析に失敗しました: %s",
   "complexityanalyzer.command.resource.no_data": "⚠ 利用可能なベースリソースデータがありません",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "中等度",
   "complexityanalyzer.command.resource.difficulty.easy": "簡単",
   "complexityanalyzer.command.resource.difficulty.very_easy": "とても簡単",
-
   "complexityanalyzer.unit.time.ago": "%s前",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "メートル",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[奥行き制限]",
   "complexityanalyzer.command.tree.precise_calculations": "正確な計算",
   "complexityanalyzer.command.tree.gameplay_view": "ゲームプレイに適したビュー",
   "complexityanalyzer.unit.general.mode": "モード",
-
   "complexityanalyzer.dimension.overworld": "オーバーワールド",
   "complexityanalyzer.dimension.nether": "ネザー",
   "complexityanalyzer.dimension.the_end": "終わり",
-
   "complexityanalyzer.notifier.warning_tag": "警告!",
   "complexityanalyzer.notifier.error_tag": "エラー",
   "complexityanalyzer.notifier.countdown": "%d秒後に世界の分析が始まります...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "地理スキャンが完了しました。データベースは完全に最適化されています。",
   "complexityanalyzer.log.scan_starting": "カウントダウンが終了しました。 %s によって要求されたバイオームごとの %d チャンクのスキャンを開始します。",
   "complexityanalyzer.log.refinement_complete": "グローバルなリファインが完了しました。 GeoDatabase は完全に稼働するようになりました。",
-
   "complexityanalyzer.log.refiner.starting": "偵察完了！改良を開始しています...",
   "complexityanalyzer.log.refiner.no_data": "偵察データは見つかりませんでした。",
   "complexityanalyzer.log.refiner.heuristics": "偵察データからヒューリスティックを構築しています...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "すべての%dバイオームが正常に精製されました。",
   "complexityanalyzer.log.refiner.error": "調整中に重大なエラーが発生しました!",
   "complexityanalyzer.log.refiner.finalizing": "改良を完了しています...",
-
   "complexityanalyzer.log.scan.starting_stats": "スキャン開始: %d バイオーム、%d チャンクが必要",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — バニラ世代 %s",
   "complexityanalyzer.log.scan.complete": "[スキャン] ✅完了!",
   "complexityanalyzer.log.scan.mspt_limit": "、MSPT 制限: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": "、MSPT制限なし",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] スロットル統計: %d 一時停止、合計一時停止時間: %d ミリ秒",
-
   "complexityanalyzer.geoscan.profile.normal": "ノーマル",
   "complexityanalyzer.geoscan.profile.fast": "速い",
   "complexityanalyzer.geoscan.profile.ultra_fast": "超高速",
   "complexityanalyzer.geoscan.profile.maximum": "最大値",
-
   "complexityanalyzer.geoscan.error.already_running": "スキャンはすでに実行中か、スケジュールされています。",
   "complexityanalyzer.geoscan.notification.scheduled": "ワールドスキャン（%sモード）は%d秒後に開始されます。",
   "complexityanalyzer.geoscan.error.starting": "スキャンはすでに開始されています。",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "現在実行中またはスケジュールされているスキャンはありません。",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "予定されていたワールドスキャンがキャンセルされました。",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "スキャンを開始しています...",
   "complexityanalyzer.geoscan.status.scheduled": "%s モードでスケジュールされたスキャン、%d 秒後に開始します...",
   "complexityanalyzer.geoscan.status.idle": "アイドル状態",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "偵察 (アクティブなセッションなし)",
   "complexityanalyzer.geoscan.status.phase2": "フェーズ 2: 収集されたすべてのデータを調整します...",
   "complexityanalyzer.geoscan.status.complete": "完了",
-
   "complexityanalyzer.source_type.override": "オーバーライド",
   "complexityanalyzer.source_type.ore": "鉱石・採掘",
   "complexityanalyzer.source_type.empirical_block": "経験的ブロック",

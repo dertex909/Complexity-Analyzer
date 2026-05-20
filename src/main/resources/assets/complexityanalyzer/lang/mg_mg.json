@@ -1,17 +1,13 @@
 {
   "complexityanalyzer.output.tip": "Soso-kevitra: %s",
   "complexityanalyzer.output.admin_prefix": "[ADMIN]",
-  
   "complexityanalyzer.command.web.active": "Web Dashboard dia tsy mavitrika.",
   "complexityanalyzer.command.web.lan_tip": "Raha hampiasa azy amin'ny mpilalao tokana ianao dia tsy maintsy manindry ny 'Open to LAN' ao amin'ny menio mandositra.",
   "complexityanalyzer.command.web.header": "Web Dashboard",
   "complexityanalyzer.command.web.url_label": "URL",
   "complexityanalyzer.command.web.open_browser": "[Misokatra amin'ny navigateur]",
   "complexityanalyzer.command.web.click_to_open": "Tsindrio hanokatra: %s",
-  "complexityanalyzer.command.web.for_friends": "Ho an'ny namana",
-  "complexityanalyzer.command.web.copy_public": "[Adikao ny rohy ho an'ny daholobe]",
-  "complexityanalyzer.command.web.click_to_copy": "Tsindrio raha handika rohy",
-  "complexityanalyzer.command.web.click_to_copy_detailed": "Kitiho raha handika rohy miaraka amin'ny IP-bahoakanao mba hidiran'ny hafa",
+  "complexityanalyzer.command.web.ip_tip": "Raha milalao amin'ny mpizara ianao dia angataho ny mpandrindra mba hanitsy ny IP-bahoakan'ny mpizara ao amin'ny rakitra config. Raha tsy izany, raha fantatrao ny IP an'ny mpizara dia azonao soloina ny '127.0.0.1' ao amin'ny URL miaraka aminy.",
   "complexityanalyzer.command.web.status_header": "Satan'ny Rafitra Web",
   "complexityanalyzer.command.web.status_label": "Status",
   "complexityanalyzer.command.web.visitors": "Mpitsidika",
@@ -26,7 +22,6 @@
   "complexityanalyzer.command.web.reload_failed": "Tsy nahomby ny famerenana ny tranonkala: %s",
   "complexityanalyzer.command.web.reload_no_data": "Tsy namerina angona ny reload web",
   "complexityanalyzer.command.web.engine_not_ready": "Motera tsy vonona: %s",
-
   "complexityanalyzer.category.absolute": "tanteraka",
   "complexityanalyzer.category.trivial": "tsy misy dikany",
   "complexityanalyzer.category.simple": "Tsotra",
@@ -39,7 +34,6 @@
   "complexityanalyzer.category.transcendent": "Transcendent",
   "complexityanalyzer.category.unobtainable": "Tsy azo",
   "complexityanalyzer.category.uncalculable": "Tsy azo kajy",
-
   "complexityanalyzer.command.analyze.not_ready": "⚠ Mbola tsy vonona ny motera analyse!",
   "complexityanalyzer.command.analyze.current_state": "Fanjakana ankehitriny: %s",
   "complexityanalyzer.command.analyze.item_not_found": "❌ Zavatra tsy hita: %s",
@@ -70,7 +64,6 @@
   "complexityanalyzer.command.analyze.tree_tip_link": "Tsindrio eto",
   "complexityanalyzer.command.analyze.tree_tip_suffix": "mba hahita hazo asa tanana feno",
   "complexityanalyzer.command.analyze.tree_tip_hover": "Kitiho raha hijery hazo fanaovana asa tanana",
-
   "complexityanalyzer.command.entity.not_found": "❌ Karazana enti-manana tsy hita: %s",
   "complexityanalyzer.command.entity.not_analyzable": "⚠ Tsy azo anadihadiana ity sampana ity",
   "complexityanalyzer.command.entity.not_living": "Mety tsy zavaboary velona ny zavaboary: %s",
@@ -104,7 +97,6 @@
   "complexityanalyzer.command.entity.no_drops": "Tsy nisy fitetezana lehibe voarakitra",
   "complexityanalyzer.command.entity.per_kill": "~ %s isaky ny famonoana",
   "complexityanalyzer.command.entity.yield_tip": "Ny vokatra avo kokoa = ny fihenan'ny mahazatra kokoa",
-
   "complexityanalyzer.command.loot.not_ready": "⚠ Tsy vonona ny motera analyse!",
   "complexityanalyzer.command.loot.not_initialized": "⚠ Tsy natomboka ny UniversalLootSource!",
   "complexityanalyzer.command.loot.disabled_tip": "Ity endri-javatra ity dia mety ho kilemaina ao amin'ny config.",
@@ -130,7 +122,6 @@
   "complexityanalyzer.command.loot.type.block": "Block Drop",
   "complexityanalyzer.command.loot.type.archaeology": "Arkeolojia",
   "complexityanalyzer.command.loot.type.generic": "Generic Loot",
-
   "complexityanalyzer.command.tree.not_ready": "⚠ Tsy vonona ny motera analyse!",
   "complexityanalyzer.command.tree.item_not_found": "❌ Zavatra tsy hita: %s",
   "complexityanalyzer.command.tree.failed": "❌ Hadisoana tamin'ny fanamboarana hazo: %s",
@@ -183,7 +174,6 @@
   "complexityanalyzer.command.tree.complex_tree_link": "voafetra ny halaliny",
   "complexityanalyzer.command.tree.complex_tree_suffix": "hanatsarana ny fahombiazany",
   "complexityanalyzer.command.tree.complex_tree_hover": "Tsindrio raha hametraka fetra lalina ho 5",
-
   "complexityanalyzer.command.export.engine_not_ready": "⚠ Mbola tsy vonona ny motera analyse!",
   "complexityanalyzer.command.export.current_state": "Fanjakana ankehitriny: %s",
   "complexityanalyzer.command.export.full_item_header": "MANOndrana entana feno",
@@ -208,7 +198,6 @@
   "complexityanalyzer.command.export.file_label": "File",
   "complexityanalyzer.command.export.failed": "❌ %s tsy nahomby ny fanondranana: %s",
   "complexityanalyzer.command.export.completed_admin": "✓ %s vita.",
-
   "complexityanalyzer.command.geoscan.profile_header": "GEO-SCAN - MIFIDY PROFILE",
   "complexityanalyzer.command.geoscan.profile.limit_mspt": "— fetra %s MSPT",
   "complexityanalyzer.command.geoscan.profile.no_limit": "- tsy misy fetra MSPT",
@@ -257,7 +246,6 @@
   "complexityanalyzer.command.geoscan.clearing": "🗑 Fanadiovana ny geo-database...",
   "complexityanalyzer.command.geoscan.cleared_broadcast": "✓ Voafafa ny geo-database!",
   "complexityanalyzer.command.geoscan.cleared_admin": "[GeoScan] angon-drakitra nofafan'ny %s",
-
   "complexityanalyzer.command.system.engine_not_initialized": "❌ Tsy natomboka ny motera analyse!",
   "complexityanalyzer.command.system.status_header": "Satan'ny mpanadihady sarotra",
   "complexityanalyzer.command.system.engine_state": "Fanjakana motera",
@@ -284,7 +272,6 @@
   "complexityanalyzer.command.system.parallelism_target": "Tanjona parallèle",
   "complexityanalyzer.command.system.compute_pool_active": "Compute Pool Active",
   "complexityanalyzer.command.system.queued_tasks": "Asa nilahatra",
-
   "complexityanalyzer.command.resource.not_found": "❌ Zavatra tsy hita: %s",
   "complexityanalyzer.command.resource.failed": "❌ Tsy nahomby ny famakafakana loharano ho an'ny %s : %s",
   "complexityanalyzer.command.resource.no_data": "⚠ Tsy misy angona loharanon-karena fototra azo",
@@ -312,7 +299,6 @@
   "complexityanalyzer.command.resource.difficulty.moderate": "antonony",
   "complexityanalyzer.command.resource.difficulty.easy": "Mora",
   "complexityanalyzer.command.resource.difficulty.very_easy": "Tena mora",
-
   "complexityanalyzer.unit.time.ago": "%s lasa",
   "complexityanalyzer.unit.time.seconds_short": "s",
   "complexityanalyzer.unit.time.minutes_short": "m",
@@ -323,17 +309,14 @@
   "complexityanalyzer.unit.size.kilobytes": "KB",
   "complexityanalyzer.unit.size.megabytes": "MB",
   "complexityanalyzer.unit.size.gigabytes": "GB",
-
   "complexityanalyzer.unit.fluid.millibuckets": "mB",
   "complexityanalyzer.command.tree.depth_limit_tag": "[FETRA HALINA]",
   "complexityanalyzer.command.tree.precise_calculations": "kajy marina",
   "complexityanalyzer.command.tree.gameplay_view": "fomba fijery mahafinaritra amin'ny lalao",
   "complexityanalyzer.unit.general.mode": "fomba",
-
   "complexityanalyzer.dimension.overworld": "Overworld",
   "complexityanalyzer.dimension.nether": "Nether",
   "complexityanalyzer.dimension.the_end": "Ny Farany",
-
   "complexityanalyzer.notifier.warning_tag": "FAMPITANDREMANA!",
   "complexityanalyzer.notifier.error_tag": "Error",
   "complexityanalyzer.notifier.countdown": "Hanomboka ao anatin'ny %d segondra ny fanadihadiana eran-tany...",
@@ -344,7 +327,6 @@
   "complexityanalyzer.notifier.complete": "Vita ny geo-scan! Ny angon-drakitra dia namboarina tanteraka.",
   "complexityanalyzer.log.scan_starting": "Vita ny fanisana. Manomboka ny scan nangatahan'ny %s ho an'ny %d ampahany isaky ny biome.",
   "complexityanalyzer.log.refinement_complete": "Vita ny fanatsarana maneran-tany. Ny GeoDatabase dia efa miasa tanteraka.",
-
   "complexityanalyzer.log.refiner.starting": "Vita ny reconnaissance! Manomboka fanatsarana...",
   "complexityanalyzer.log.refiner.no_data": "Tsy misy angona fitsirihana hita.",
   "complexityanalyzer.log.refiner.heuristics": "Manangana heuristika avy amin'ny angona reconnaissance...",
@@ -354,19 +336,16 @@
   "complexityanalyzer.log.refiner.success": "Ny biôma %d rehetra dia voadio soa aman-tsara.",
   "complexityanalyzer.log.refiner.error": "Fahadisoana lehibe nandritra ny fanatsarana!",
   "complexityanalyzer.log.refiner.finalizing": "Mamarana ny fanatsarana...",
-
   "complexityanalyzer.log.scan.starting_stats": "Manomboka scan: %d biomes, %d tapany ilaina",
   "complexityanalyzer.log.scan.profile_info": "[SCAN] 🚀 %s — taranaka lavanila %s",
   "complexityanalyzer.log.scan.complete": "[SCAN] ✅ Vita!",
   "complexityanalyzer.log.scan.mspt_limit": ", fetra MSPT: %.0f",
   "complexityanalyzer.log.scan.no_mspt_limit": ", tsy misy fetra MSPT",
   "complexityanalyzer.log.scan.throttle_stats": "[SCAN] Stats throttle: %d fiatoana, fotoana fiatoana tanteraka: %d ms",
-
   "complexityanalyzer.geoscan.profile.normal": "Normal",
   "complexityanalyzer.geoscan.profile.fast": "Haingana",
   "complexityanalyzer.geoscan.profile.ultra_fast": "Ultra Fast",
   "complexityanalyzer.geoscan.profile.maximum": "Maximum",
-
   "complexityanalyzer.geoscan.error.already_running": "Efa mandeha na voalahatra ny scan.",
   "complexityanalyzer.geoscan.notification.scheduled": "Hanomboka ao anatin'ny %d segondra ny scan izao tontolo izao (mode %s).",
   "complexityanalyzer.geoscan.error.starting": "Efa manomboka ny scan.",
@@ -377,7 +356,6 @@
   "complexityanalyzer.geoscan.error.no_scan": "Tsy misy scan mandeha na voalahatra.",
   "complexityanalyzer.geoscan.notification.scheduled_cancelled": "Nofoanana ny fizahana izao tontolo izao voalahatra.",
   "complexityanalyzer.geoscan.initiator_format": "%s ( %s %s )",
-
   "complexityanalyzer.geoscan.status.starting": "Manomboka scan...",
   "complexityanalyzer.geoscan.status.scheduled": "Voalahatra amin'ny fomba %s ny scan, manomboka ao anatin'ny %d segondra...",
   "complexityanalyzer.geoscan.status.idle": "Idle",
@@ -386,7 +364,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session": "Reconnaissance (tsy misy session active)",
   "complexityanalyzer.geoscan.status.phase2": "Dingana 2: Fanadiovana ny angona voaangona rehetra...",
   "complexityanalyzer.geoscan.status.complete": "feno",
-
   "complexityanalyzer.source_type.override": "Override",
   "complexityanalyzer.source_type.ore": "Ore/Mining",
   "complexityanalyzer.source_type.empirical_block": "Empirical Block",

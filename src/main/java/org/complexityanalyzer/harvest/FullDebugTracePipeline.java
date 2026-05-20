@@ -168,7 +168,7 @@ public final class FullDebugTracePipeline {
             }
         }
 
-        public TraceBuilder methods() {
+        public void methods() {
             sb.append(MINOR_SEP).append('\n');
             sb.append("METHODS:\n");
 
@@ -212,7 +212,6 @@ public final class FullDebugTracePipeline {
             }
             sb.append(shown == 0 ? "  (no relevant methods found)\n" : "  (" + shown + " relevant methods shown)\n");
 
-            return this;
         }
 
         public void accessors(Level level) {

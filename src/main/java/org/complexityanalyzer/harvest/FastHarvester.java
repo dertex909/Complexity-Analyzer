@@ -1,6 +1,7 @@
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -9,13 +10,10 @@ import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
 
 public final class FastHarvester {
-
-    private static final Map<Object, ObjectList<ItemStack>> ITEM_SCAN_CACHE = Collections.synchronizedMap(new IdentityHashMap<>());
-    private static final Map<Object, ObjectList<Ingredient>> INGREDIENT_SCAN_CACHE = Collections.synchronizedMap(new IdentityHashMap<>());
-    private static final Map<Object, ObjectList<FluidStack>> FLUID_SCAN_CACHE = Collections.synchronizedMap(new IdentityHashMap<>());
 
     private static final ThreadLocal<ObjectArrayList<ItemStack>> TL_INPUT_ITEMS =
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(32));
@@ -27,18 +25,13 @@ public final class FastHarvester {
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
     private static final ThreadLocal<ObjectArrayList<Ingredient>> TL_INPUT_INGREDIENTS =
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
-    private static final ThreadLocal<IdentityHashMap<Object, Boolean>> TL_VISITED =
-            ThreadLocal.withInitial(() -> new IdentityHashMap<>(128));
-    private static final ThreadLocal<ReferenceOpenHashSet<net.minecraft.world.item.Item>> TL_TRANSITIONAL_ITEMS =
+    private static final ThreadLocal<ReferenceOpenHashSet<Object>> TL_VISITED =
+            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(128));
+    private static final ThreadLocal<ReferenceOpenHashSet<Item>> TL_TRANSITIONAL_ITEMS =
             ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(8));
 
     public HarvestedItems harvest(Object recipe, Level level) {
-        if (recipe == null) return new HarvestedItems(
-                ObjectLists.emptyList(), ObjectLists.emptyList(),
-                ObjectLists.emptyList(), ObjectLists.emptyList(),
-                ObjectLists.emptyList(), null,
-                java.util.Collections.emptySet()
-        );
+        if (recipe == null) return HarvestedItems.EMPTY;
 
         var inputItems = borrowList(TL_INPUT_ITEMS);
         var outputItems = borrowList(TL_OUTPUT_ITEMS);
@@ -98,9 +91,9 @@ public final class FastHarvester {
                     if (raw != null && !isEmptyContainer(raw)) {
                         if (acc.name().contains("output")) {
                             var tempItems = new ObjectArrayList<ItemStack>(8);
-                            collectItemsDeep(raw, tempItems, 0, new IdentityHashMap<>(64));
+                            collectItemsDeep(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
                             outputItems.addAll(tempItems);
-                            collectFluidsDeep(raw, outputFluids, 0, new IdentityHashMap<>(64));
+                            collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
                         } else {
                             collectAllDeep(raw, inputItems, outputItems, inputIngredients,
                                     inputFluids, 0, visited, apiResult, level);
@@ -157,14 +150,14 @@ public final class FastHarvester {
                     inputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputFluids),
                     outputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(outputFluids),
                     recipe,
-                    new java.util.HashSet<>(transitional)
+                    new ReferenceOpenHashSet<>(transitional)
             );
         } finally {
             clearThreadLocals();
         }
     }
 
-    private static void collectItemsDeep(Object obj, ObjectList<ItemStack> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static void collectItemsDeep(Object obj, ObjectList<ItemStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case SizedIngredient si when si.count() > 0 -> {
@@ -200,7 +193,7 @@ public final class FastHarvester {
         }
         if (obj instanceof FluidStack || obj instanceof Ingredient) return;
         if (isTerminal(obj)) return;
-        if (visited.put(obj, Boolean.TRUE) != null) return;
+        if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
         for (var f : meta.scanFields)
             try {
@@ -209,7 +202,7 @@ public final class FastHarvester {
             }
     }
 
-    private static void collectIngredientsDeep(Object obj, ObjectList<Ingredient> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static void collectIngredientsDeep(Object obj, ObjectList<Ingredient> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case Ingredient ing when !ing.isEmpty() -> {
@@ -236,7 +229,7 @@ public final class FastHarvester {
         }
         if (obj instanceof ItemStack || obj instanceof FluidStack) return;
         if (isTerminal(obj)) return;
-        if (visited.put(obj, Boolean.TRUE) != null) return;
+        if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
         for (var f : meta.scanFields)
             try {
@@ -245,7 +238,7 @@ public final class FastHarvester {
             }
     }
 
-    private static void collectFluidsDeep(Object obj, ObjectList<FluidStack> acc, int depth, IdentityHashMap<Object, Boolean> visited) {
+    private static void collectFluidsDeep(Object obj, ObjectList<FluidStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case SizedFluidIngredient sfi -> {
@@ -276,7 +269,7 @@ public final class FastHarvester {
         }
         if (obj instanceof ItemStack || obj instanceof Ingredient) return;
         if (isTerminal(obj)) return;
-        if (visited.put(obj, Boolean.TRUE) != null) return;
+        if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
         for (var f : meta.scanFields)
             try {
@@ -287,7 +280,7 @@ public final class FastHarvester {
 
     private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
                                        ObjectList<Ingredient> inputIngredients, ObjectList<FluidStack> inputFluids,
-                                       int depth, IdentityHashMap<Object, Boolean> visited, ItemStack apiResult, Level level) {
+                                       int depth, ReferenceOpenHashSet<Object> visited, ItemStack apiResult, Level level) {
         if (obj == null || depth > 8) return;
 
         if (depth > 0 && obj instanceof Recipe<?> subRecipe && level != null) {
@@ -300,7 +293,7 @@ public final class FastHarvester {
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
                     Ingredient toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty()) if (visited.put(toolIng, Boolean.TRUE) == null) {
+                    if (!toolIng.isEmpty()) if (visited.add(toolIng)) {
                         inputIngredients.add(toolIng);
                     }
                 }
@@ -332,7 +325,7 @@ public final class FastHarvester {
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {
-                if (visited.put(ing, Boolean.TRUE) == null) {
+                if (visited.add(ing)) {
                     boolean alreadyExists = false;
                     ItemStack[] ingItems = ing.getItems();
                     for (Ingredient existing : inputIngredients) {
@@ -391,7 +384,7 @@ public final class FastHarvester {
             }
         }
         if (isTerminal(obj)) return;
-        if (visited.put(obj, Boolean.TRUE) != null) return;
+        if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
         for (var f : meta.scanFields) {
             try {
@@ -439,17 +432,18 @@ public final class FastHarvester {
         return l;
     }
 
-    private static IdentityHashMap<Object, Boolean> borrowMap() {
+    private static ReferenceOpenHashSet<Object> borrowMap() {
         var m = FastHarvester.TL_VISITED.get();
         m.clear();
         return m;
     }
 
     public void clearCaches() {
-        ITEM_SCAN_CACHE.clear();
-        INGREDIENT_SCAN_CACHE.clear();
-        FLUID_SCAN_CACHE.clear();
         RecipeReflection.clearCaches();
         SizedIngredientDetector.clearCache();
+        AntivirusStyleDetector.clearCache();
+        PatternSignatureEngine.clearCache();
+        UniversalTypeResolver.clearCache();
+        UniversalAccessorResolver.clearCache();
     }
 }

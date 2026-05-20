@@ -1,12 +1,13 @@
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSets;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.fluids.FluidStack;
-
-import java.util.Set;
 
 public record HarvestedItems(
         ObjectList<ItemStack> inputItems,
@@ -15,8 +16,15 @@ public record HarvestedItems(
         ObjectList<FluidStack> inputFluids,
         ObjectList<FluidStack> outputFluids,
         Object root,
-        Set<Item> transitionalItems
+        ReferenceSet<Item> transitionalItems
 ) {
+    public static final HarvestedItems EMPTY = new HarvestedItems(
+            ObjectLists.emptyList(), ObjectLists.emptyList(),
+            ObjectLists.emptyList(), ObjectLists.emptyList(),
+            ObjectLists.emptyList(), null,
+            ReferenceSets.emptySet()
+    );
+
     public boolean isEmpty() {
         return inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty()
                 && inputFluids.isEmpty() && outputFluids.isEmpty();

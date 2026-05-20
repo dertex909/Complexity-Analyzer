@@ -1,9 +1,12 @@
 package org.complexityanalyzer.harvest;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class AntivirusStyleDetector {
@@ -19,18 +22,14 @@ public final class AntivirusStyleDetector {
             boolean isMachine,
             boolean isCodec,
             String verdict,
-            List<String> allEvidence
+            ObjectList<String> allEvidence
     ) {
         public static final CompositeDetection UNKNOWN = new CompositeDetection(
                 PatternSignatureEngine.DetectionLevel.UNKNOWN,
                 0, 0, 0, 0, false, false, false,
                 "No patterns detected at any level",
-                List.of()
+                ObjectLists.emptyList()
         );
-
-        public boolean isRelevant() {
-            return isRecipe || isMachine || isCodec || totalConfidence > 20;
-        }
 
         @Override
         public @NotNull String toString() {
@@ -58,7 +57,7 @@ public final class AntivirusStyleDetector {
     }
 
     private static CompositeDetection performDetection(Class<?> clazz) {
-        var allEvidence = new ArrayList<String>();
+        ObjectList<String> allEvidence = new ObjectArrayList<>();
         int sigConfidence = 0;
         PatternSignatureEngine.DetectionLevel highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;
         if (Recipe.class.isAssignableFrom(clazz)) {

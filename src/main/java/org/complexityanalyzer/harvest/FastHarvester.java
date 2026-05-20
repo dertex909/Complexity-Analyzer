@@ -43,13 +43,10 @@ public final class FastHarvester {
         transitional.clear();
 
         try {
-            // 1. Стандартный Recipe API
             ItemStack apiResult = ItemStack.EMPTY;
             if (recipe instanceof Recipe<?> r) {
-                for (var ing : r.getIngredients())
-                    if (ing != null && !ing.isEmpty()) {
-                        inputIngredients.add(ing);
-                    }
+                for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
+
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
                     if (!apiResult.isEmpty()) outputItems.add(apiResult.copy());
@@ -57,7 +54,6 @@ public final class FastHarvester {
                 }
             }
 
-            // 2. RecipeReflection accessors
             var accessors = RecipeReflection.getAccessors(recipe.getClass());
             for (var acc : accessors.itemAccessors()) {
                 try {
@@ -82,22 +78,17 @@ public final class FastHarvester {
                 } catch (Throwable ignored) {
                 }
             }
-            // Route items from "output" accessors (field:outputs, method:getOutputContents, etc.)
-            // directly to outputItems. All others → inputItems/inputIngredients as before.
-            // "input" and "output" are universal recipe concepts, not mod-specific names.
+
             for (var acc : accessors.probeAccessors()) {
                 try {
                     Object raw = acc.extract(recipe, level);
-                    if (raw != null && !isEmptyContainer(raw)) {
-                        if (acc.name().contains("output")) {
-                            var tempItems = new ObjectArrayList<ItemStack>(8);
-                            collectItemsDeep(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
-                            outputItems.addAll(tempItems);
-                            collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
-                        } else {
-                            collectAllDeep(raw, inputItems, outputItems, inputIngredients,
-                                    inputFluids, 0, visited, apiResult, level);
-                        }
+                    if (raw != null && !isEmptyContainer(raw)) if (acc.name().contains("output")) {
+                        var tempItems = new ObjectArrayList<ItemStack>(8);
+                        collectItemsDeep(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
+                        outputItems.addAll(tempItems);
+                        collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
+                    } else {
+                        collectAllDeep(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
                     }
                 } catch (Throwable ignored) {
                 }
@@ -105,8 +96,7 @@ public final class FastHarvester {
 
             if (inputItems.isEmpty() && outputItems.isEmpty()) {
                 visited.clear();
-                collectAllDeep(recipe, inputItems, outputItems, inputIngredients,
-                        inputFluids, 0, visited, apiResult, level);
+                collectAllDeep(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
             }
 
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
@@ -118,30 +108,23 @@ public final class FastHarvester {
             } catch (Throwable ignored) {
             }
 
-            // 3. Filter out transitional/incomplete items collected from nested recipes
             if (!transitional.isEmpty()) {
                 inputItems.removeIf(stack -> transitional.contains(stack.getItem()));
                 inputIngredients.removeIf(ing -> {
                     ItemStack[] items = ing.getItems();
                     if (items.length == 0) return false;
-                    for (ItemStack s : items) {
-                        if (!transitional.contains(s.getItem())) return false;
-                    }
+                    for (ItemStack s : items) if (!transitional.contains(s.getItem())) return false;
                     return true;
                 });
             }
 
-            // 4. Deduplicate inputItems against inputIngredients
-            if (!inputIngredients.isEmpty()) {
-                inputItems.removeIf(stack -> {
-                    for (Ingredient ing : inputIngredients) {
-                        for (ItemStack ingStack : ing.getItems()) {
-                            if (ingStack.getItem() == stack.getItem()) return true;
-                        }
-                    }
-                    return false;
-                });
-            }
+            if (!inputIngredients.isEmpty()) inputItems.removeIf(stack -> {
+                for (Ingredient ing : inputIngredients) {
+                    for (ItemStack ingStack : ing.getItems()) if (ingStack.getItem() == stack.getItem()) return true;
+                }
+                return false;
+            });
+
 
             return new HarvestedItems(
                     inputItems.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputItems),
@@ -195,11 +178,12 @@ public final class FastHarvester {
         if (isTerminal(obj)) return;
         if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
-        for (var f : meta.scanFields)
+        for (var f : meta.scanFields) {
             try {
                 collectItemsDeep(f.get(obj), acc, depth + 1, visited);
             } catch (Throwable ignored) {
             }
+        }
     }
 
     private static void collectIngredientsDeep(Object obj, ObjectList<Ingredient> acc, int depth, ReferenceOpenHashSet<Object> visited) {
@@ -231,11 +215,12 @@ public final class FastHarvester {
         if (isTerminal(obj)) return;
         if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
-        for (var f : meta.scanFields)
+        for (var f : meta.scanFields) {
             try {
                 collectIngredientsDeep(f.get(obj), acc, depth + 1, visited);
             } catch (Throwable ignored) {
             }
+        }
     }
 
     private static void collectFluidsDeep(Object obj, ObjectList<FluidStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
@@ -271,11 +256,12 @@ public final class FastHarvester {
         if (isTerminal(obj)) return;
         if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
-        for (var f : meta.scanFields)
+        for (var f : meta.scanFields) {
             try {
                 collectFluidsDeep(f.get(obj), acc, depth + 1, visited);
             } catch (Throwable ignored) {
             }
+        }
     }
 
     private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
@@ -293,9 +279,7 @@ public final class FastHarvester {
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
                     Ingredient toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty()) if (visited.add(toolIng)) {
-                        inputIngredients.add(toolIng);
-                    }
+                    if (!toolIng.isEmpty()) if (visited.add(toolIng)) inputIngredients.add(toolIng);
                 }
 
                 collectFluidsDeep(subRecipe, inputFluids, 0, visited);
@@ -351,9 +335,7 @@ public final class FastHarvester {
                             }
                         }
                     }
-                    if (!alreadyExists) {
-                        inputIngredients.add(ing);
-                    }
+                    if (!alreadyExists) inputIngredients.add(ing);
                 }
                 return;
             }
@@ -369,8 +351,8 @@ public final class FastHarvester {
             case Map<?, ?> map when isTooSmall(map) -> {
                 for (var e : map.entrySet()) {
                     Object key = e.getKey();
-                    if (key != null && !isTerminal(key))
-                        collectAllDeep(key, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
+                    if (key != null && !isTerminal(key)) collectAllDeep(key, inputItems, outputItems, inputIngredients,
+                            inputFluids, depth + 1, visited, apiResult, level);
                     collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 }
                 return;
@@ -389,8 +371,8 @@ public final class FastHarvester {
         for (var f : meta.scanFields) {
             try {
                 Object val = f.get(obj);
-                if (val != null)
-                    collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
+                if (val != null) collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids,
+                        depth + 1, visited, apiResult, level);
             } catch (Throwable ignored) {
             }
         }

@@ -30,6 +30,8 @@ import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
+import java.util.Arrays;
+
 public final class RecipeSectionBuilder {
 
     private final SectionBuilderContext ctx;
@@ -54,7 +56,7 @@ public final class RecipeSectionBuilder {
         int n = ctx.orderedItems().size();
         int[] firstOffset = new int[n];
         int[] count = new int[n];
-        java.util.Arrays.fill(firstOffset, CabinFormat.NULL_OFFSET);
+        Arrays.fill(firstOffset, CabinFormat.NULL_OFFSET);
 
         if (graph == null)
             return new RecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
@@ -111,7 +113,8 @@ public final class RecipeSectionBuilder {
                 cheapestMachine = machineItem;
             }
         }
-        if (cheapestMachine == null && machineItems != null && !machineItems.isEmpty()) cheapestMachine = machineItems.getFirst();
+        if (cheapestMachine == null && machineItems != null && !machineItems.isEmpty())
+            cheapestMachine = machineItems.getFirst();
         int machineItemIdx = (cheapestMachine != null) ? ctx.itemIndex().getInt(cheapestMachine) : -1;
         buf.i32(machineItemIdx);
 

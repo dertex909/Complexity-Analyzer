@@ -268,8 +268,6 @@ public final class FullDebugTracePipeline {
         }
     }
 
-    // ======================== Formatting Helpers ========================
-
     private static String formatValue(Object val) {
         return switch (val) {
             case null -> "null";

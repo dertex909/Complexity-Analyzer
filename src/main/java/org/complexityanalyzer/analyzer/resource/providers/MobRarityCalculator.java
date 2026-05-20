@@ -34,6 +34,8 @@ import org.complexityanalyzer.core.GameRegistryManager;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 public class MobRarityCalculator implements IBossRegistry {
 
     private final DimensionRarityAnalyzer dimensionAnalyzer;
@@ -55,11 +57,11 @@ public class MobRarityCalculator implements IBossRegistry {
     private static final double MINI_BOSS_HEALTH_THRESHOLD = 80.0;
     private static final double HIGH_HEALTH_THRESHOLD = 50.0;
 
-    private static final ObjectSet<String> BOSS_KEYWORDS = new ObjectOpenHashSet<>(java.util.List.of(
+    private static final ObjectSet<String> BOSS_KEYWORDS = new ObjectOpenHashSet<>(List.of(
             "boss", "dragon", "king", "queen", "lord", "ancient", "elder", "wither"
     ));
 
-    private static final ObjectSet<String> RARE_KEYWORDS = new ObjectOpenHashSet<>(java.util.List.of(
+    private static final ObjectSet<String> RARE_KEYWORDS = new ObjectOpenHashSet<>(List.of(
             "rare", "elite", "champion", "alpha", "mutant", "titan", "legendary", "prime"
     ));
 

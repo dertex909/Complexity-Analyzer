@@ -7,6 +7,9 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import it.unimi.dsi.fastutil.objects.ReferenceSets;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 
 import java.lang.invoke.MethodHandle;
@@ -87,10 +90,10 @@ public final class UniversalAccessorResolver {
     private static ResolvedAccessors resolveUncached(Class<?> clazz, Object recipe, Level level) {
         ClassMeta meta = getMeta(clazz);
 
-        ReferenceSet<net.minecraft.world.item.crafting.Ingredient> standardInputs = ReferenceSets.emptySet();
-        net.minecraft.world.item.Item anchorItem = null;
+        ReferenceSet<Ingredient> standardInputs = ReferenceSets.emptySet();
+        Item anchorItem = null;
 
-        if (recipe instanceof net.minecraft.world.item.crafting.Recipe<?> r && level != null) {
+        if (recipe instanceof Recipe<?> r && level != null) {
             standardInputs = new ReferenceOpenHashSet<>();
             for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) standardInputs.add(ing);
             try {

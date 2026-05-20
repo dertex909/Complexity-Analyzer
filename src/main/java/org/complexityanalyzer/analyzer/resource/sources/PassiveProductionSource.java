@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -36,7 +37,7 @@ public class PassiveProductionSource implements IResourceSource {
     }
 
     @Override
-    public void initialize(net.minecraft.world.level.Level level) {
+    public void initialize(Level level) {
         productionMap.put(Items.EGG, new ProductionInfo(EntityType.CHICKEN, 9000.0, "Passive (lays egg)"));
         productionMap.put(Items.ARMADILLO_SCUTE, new ProductionInfo(EntityType.ARMADILLO, 9000.0, "Brushing / Passive"));
         productionMap.put(Items.TURTLE_SCUTE, new ProductionInfo(EntityType.TURTLE, 24000.0, "Grows Up"));

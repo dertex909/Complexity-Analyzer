@@ -46,6 +46,8 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Optional;
+
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
 
     private static final int SAMPLE_COUNT = 50;
@@ -257,7 +259,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                     .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
                     .create(LootContextParamSets.BLOCK);
 
-            var context = new LootContext.Builder(params).create(java.util.Optional.empty());
+            var context = new LootContext.Builder(params).create(Optional.empty());
             if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
 
             lootTable.getRandomItems(context, drops::add);

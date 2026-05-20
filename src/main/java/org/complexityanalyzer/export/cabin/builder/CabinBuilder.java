@@ -40,6 +40,7 @@ import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 
 import java.time.Instant;
+import java.util.Arrays;
 
 public final class CabinBuilder {
 
@@ -217,7 +218,7 @@ public final class CabinBuilder {
         }
         Integer[] order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
-        java.util.Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
+        Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
         LeBuf out = new LeBuf(4 + n * 12);
         out.i32(n);
         for (int i = 0; i < n; i++) {
@@ -238,7 +239,7 @@ public final class CabinBuilder {
         }
         Integer[] order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
-        java.util.Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
+        Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
         LeBuf out = new LeBuf(4 + n * 12);
         out.i32(n);
         for (int i = 0; i < n; i++) {

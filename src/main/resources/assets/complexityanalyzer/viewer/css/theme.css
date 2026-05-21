@@ -1,0 +1,199 @@
+/* ===== Complexity Analyzer — Modern Dark Theme ===== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    /* ── Background & Surfaces ── */
+    --bg: #0a0c10;
+    --bg-panel: #111418;
+    --bg-raised: #181d24;
+    --bg-hover: #202630;
+    --bg-active: #262d38;
+    --border: #262e3a;
+    --border-light: #323b48;
+
+    /* ── Text ── */
+    --text: #e8edf2;
+    --text-dim: #9aa8b8;
+    --text-muted: #5a6878;
+    --text-bright: #ffffff;
+
+    /* ── Accent ── */
+    --accent: #5bc0ff;
+    --accent-dim: #2d7fa8;
+    --accent-glow: rgba(91, 192, 255, 0.15);
+    --accent-grad: linear-gradient(135deg, #5bc0ff, #8b6cff);
+    --accent-grad-2: linear-gradient(135deg, #5bc0ff, #4dd9b6);
+
+    /* ── Semantic ── */
+    --warn: #ffb84d;
+    --warn-dim: #b87a1a;
+    --err: #ff6b6b;
+    --err-glow: rgba(255, 107, 107, 0.15);
+    --ok: #5cd99a;
+    --ok-dim: #2d995e;
+    --info: #5bc0ff;
+
+    /* ── Fonts ── */
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+    /* ── Complexity Colors ── */
+    --cat-Absolute: #ffffff;
+    --cat-Trivial: #b8c4d0;
+    --cat-Simple: #5cd99a;
+    --cat-Moderate: #f0d060;
+    --cat-Complex: #f2943f;
+    --cat-Difficult: #ee5a5a;
+    --cat-Expert: #b178f0;
+    --cat-Master: #50d0d8;
+    --cat-Mythical: #ef8fc8;
+    --cat-Transcendent: #3cc8be;
+    --cat-Unobtainable: #7a2b2b;
+    --cat-Uncalculable: #505964;
+    --cat-EXTERNAL_FRAGMENT: #888;
+
+    /* ── Shadows ── */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px var(--accent-glow);
+
+    /* ── Radii ── */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* ── Transitions ── */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --transition-fast: 0.12s var(--ease-out);
+    --transition-normal: 0.2s var(--ease-out);
+    --transition-slow: 0.35s var(--ease-out);
+}
+
+/* ── Category Classes ── */
+.cat-Absolute { --cat-color: var(--cat-Absolute); }
+.cat-Trivial { --cat-color: var(--cat-Trivial); }
+.cat-Simple { --cat-color: var(--cat-Simple); }
+.cat-Moderate { --cat-color: var(--cat-Moderate); }
+.cat-Complex { --cat-color: var(--cat-Complex); }
+.cat-Difficult { --cat-color: var(--cat-Difficult); }
+.cat-Expert { --cat-color: var(--cat-Expert); }
+.cat-Master { --cat-color: var(--cat-Master); }
+.cat-Mythical { --cat-color: var(--cat-Mythical); }
+.cat-Transcendent { --cat-color: var(--cat-Transcendent); }
+.cat-Unobtainable { --cat-color: var(--cat-Unobtainable); }
+.cat-Uncalculable { --cat-color: var(--cat-Uncalculable); }
+.cat-EXTERNAL_FRAGMENT { --cat-color: var(--cat-EXTERNAL_FRAGMENT); }
+
+/* ── Category Pill ── */
+.category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--cat-color);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--cat-color) 15%, transparent), transparent);
+    border: 1px solid color-mix(in srgb, var(--cat-color) 30%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cat-color) 8%, transparent);
+    transition: var(--transition-normal);
+}
+.category-pill:hover {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--cat-color) 25%, transparent), transparent);
+    border-color: color-mix(in srgb, var(--cat-color) 50%, transparent);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--cat-color) 15%, transparent);
+    transform: translateY(-1px);
+}
+
+.category-pill::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cat-color);
+    box-shadow: 0 0 6px var(--cat-color);
+    flex-shrink: 0;
+}
+
+/* ── Global Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font: 13.5px/1.5 var(--sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography ── */
+h2 { margin: 0 0 6px 0; font-weight: 700; font-size: 20px; letter-spacing: -0.3px; }
+h3 { margin: 0 0 8px 0; font-weight: 600; font-size: 15px; color: var(--accent); }
+h4 { margin: 0 0 4px 0; font-weight: 500; font-size: 13px; color: var(--text-dim); }
+
+a { color: var(--accent); text-decoration: none; transition: var(--transition-fast); }
+a:hover { color: var(--text-bright); text-decoration: underline; }
+
+code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg-raised);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.kbd {
+    display: inline-block;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-sm);
+    padding: 1px 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.hint { color: var(--text-dim); font-size: 12px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: var(--transition-fast);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-light);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Selection ── */
+::selection {
+    background: var(--accent-glow);
+    color: var(--text-bright);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}

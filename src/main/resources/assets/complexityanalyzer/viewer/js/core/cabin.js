@@ -1,25 +1,8 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 export const SEC = {
     META: 0x01, STRINGS: 0x02, ITEMS: 0x03, BASE_DATA: 0x04, SOURCES: 0x05,
     RECIPES: 0x06, USAGE: 0x07, MOBS: 0x08, DROPS: 0x09, SCC: 0x0A,
     CATEGORIES: 0x0B, FLUIDS: 0x0C, IDX_ITEM_HASH: 0x20, IDX_RECIPES: 0x21, IDX_MOB_HASH: 0x22,
+    MACHINE_INDEX: 0x30, SOURCE_TYPE_INDEX: 0x31, MOD_SUMMARY: 0x32,
 };
 
 const MAGIC = 0x4E424143;
@@ -34,64 +17,23 @@ export const ITEM_FLAG = {
     IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20,
 };
 
-export const MOB_FLAG = {BOSS: 0x01, MINIBOSS: 0x02};
+export const MOB_FLAG = { BOSS: 0x01, MINIBOSS: 0x02 };
 
-class Buf {
+export class Buf {
     constructor(bytes, offset = 0) {
         this.b = bytes;
         this.v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         this.p = offset;
     }
-
-    u8() {
-        return this.b[this.p++];
-    }
-
-    u16() {
-        const r = this.v.getUint16(this.p, true);
-        this.p += 2;
-        return r;
-    }
-
-    i32() {
-        const r = this.v.getInt32(this.p, true);
-        this.p += 4;
-        return r;
-    }
-
-    u32() {
-        const r = this.v.getUint32(this.p, true);
-        this.p += 4;
-        return r;
-    }
-
-    i64() {
-        const r = this.v.getBigInt64(this.p, true);
-        this.p += 8;
-        return r;
-    }
-
-    u64() {
-        const r = this.v.getBigUint64(this.p, true);
-        this.p += 8;
-        return r;
-    }
-
-    f64() {
-        const r = this.v.getFloat64(this.p, true);
-        this.p += 8;
-        return r;
-    }
-
-    skip(n) {
-        this.p += n;
-        return this;
-    }
-
-    seek(n) {
-        this.p = n;
-        return this;
-    }
+    u8() { return this.b[this.p++]; }
+    u16() { const r = this.v.getUint16(this.p, true); this.p += 2; return r; }
+    i32() { const r = this.v.getInt32(this.p, true); this.p += 4; return r; }
+    u32() { const r = this.v.getUint32(this.p, true); this.p += 4; return r; }
+    i64() { const r = this.v.getBigInt64(this.p, true); this.p += 8; return r; }
+    u64() { const r = this.v.getBigUint64(this.p, true); this.p += 8; return r; }
+    f64() { const r = this.v.getFloat64(this.p, true); this.p += 8; return r; }
+    skip(n) { this.p += n; return this; }
+    seek(n) { this.p = n; return this; }
 }
 
 async function decompress(bytes) {
@@ -111,9 +53,9 @@ export class CabinFile {
         this.fullBytes = null;
     }
 
-    async open({preferFullDownload = false} = {}) {
+    async open({ preferFullDownload = false } = {}) {
         if (preferFullDownload) {
-            const resp = await fetch(this.url, {cache: "no-store"});
+            const resp = await fetch(this.url, { cache: "no-store" });
             if (!resp.ok) throw new Error("Failed to fetch: " + resp.status);
             this.fullBytes = new Uint8Array(await resp.arrayBuffer());
             this._parseHeader(new Buf(this.fullBytes));
@@ -151,13 +93,12 @@ export class CabinFile {
         this.version = b.u16();
         this.tocOffset = b.seek(8).u64();
         this.fileHash = b.seek(24).u64();
-
         b.seek(Number(this.tocOffset));
         const count = b.u16();
         for (let i = 0; i < count; i++) {
             const id = b.u8(), codec = b.u8();
             const offset = Number(b.i64()), length = Number(b.i64()), uncompressed = Number(b.i64());
-            this.sections.set(id, {id, codec, offset, length, uncompressed});
+            this.sections.set(id, { id, codec, offset, length, uncompressed });
         }
     }
 
@@ -172,7 +113,7 @@ export class CabinFile {
     }
 
     async _range(s, e) {
-        const r = await fetch(this.url, {headers: {Range: `bytes=${s}-${e}`}, cache: "no-store"});
+        const r = await fetch(this.url, { headers: { Range: `bytes=${s}-${e}` }, cache: "no-store" });
         if (!r.ok && r.status !== 206) throw new Error("HTTP " + r.status);
         return new Uint8Array(await r.arrayBuffer());
     }
@@ -191,7 +132,6 @@ export class StringPool {
         }
         this.decoder = new TextDecoder("utf-8");
     }
-
     get(ref) {
         if (ref < 0 || ref >= this.count || this.cache[ref] !== undefined) return this.cache[ref] ?? "";
         const b = new Buf(this.b, this.offsets[ref]);
@@ -206,7 +146,6 @@ export class ItemTable {
         this.s = strings;
         this.count = new Buf(bytes).i32();
     }
-
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * ITEM_RECORD);
@@ -226,7 +165,6 @@ export class MobTable {
         this.s = strings;
         this.count = new Buf(bytes).i32();
     }
-
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * MOB_RECORD);
@@ -245,13 +183,10 @@ export class FluidTable {
         this.s = strings;
         this.count = new Buf(bytes).i32();
     }
-
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * 8);
-        return {
-            index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32())
-        };
+        return { index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()) };
     }
 }
 
@@ -261,15 +196,8 @@ export function readSourcesForItem(bytes, strings, offset, count) {
     for (let i = 0; i < count; i++) {
         const type = strings.get(b.i32()), typeEnum = b.u8(), details = strings.get(b.i32());
         const baseFactor = b.f64(), estimated = b.f64(), ingCount = b.u16();
-        const ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
-        out.push({
-            sourceType: type,
-            sourceTypeEnum: typeEnum,
-            details,
-            baseFactor,
-            estimatedCost: estimated,
-            ingredients
-        });
+        const ingredients = Array.from({ length: ingCount }, () => ({ itemIndex: b.i32(), amount: b.f64() }));
+        out.push({ sourceType: type, sourceTypeEnum: typeEnum, details, baseFactor, estimatedCost: estimated, ingredients });
     }
     return out;
 }
@@ -283,7 +211,7 @@ export function readBaseDataForItem(bytes, strings, offset) {
         isOverride: b.u8() !== 0, overrideModId: strings.get(b.i32())
     };
     const ingCount = b.u16();
-    res.ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
+    res.ingredients = Array.from({ length: ingCount }, () => ({ itemIndex: b.i32(), amount: b.f64() }));
     const metaCount = b.u8(), meta = {};
     for (let j = 0; j < metaCount; j++) meta[strings.get(b.i32())] = strings.get(b.i32());
     res.metadata = meta;
@@ -295,18 +223,17 @@ export class RecipeIndex {
         this.b = bytes;
         this.count = new Buf(bytes).i32();
     }
-
     get(i) {
-        if (i < 0 || i >= this.count) return {offset: 0xFFFFFFFF, count: 0};
+        if (i < 0 || i >= this.count) return { offset: 0xFFFFFFFF, count: 0 };
         const b = new Buf(this.b, 4 + i * 6);
-        return {offset: b.u32(), count: b.u16()};
+        return { offset: b.u32(), count: b.u16() };
     }
 }
 
 export function readRecipesAt(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
     const b = new Buf(bytes, offset);
-    return Array.from({length: count}, () => readOneRecipe(b, strings));
+    return Array.from({ length: count }, () => readOneRecipe(b, strings));
 }
 
 function readOneRecipe(b, strings) {
@@ -315,18 +242,18 @@ function readOneRecipe(b, strings) {
         priority: b.i32(), resultCount: b.i32(), recipeMultiplier: b.f64(),
         flags: b.u8(), placeholderId: strings.get(b.i32()), machineItemIndex: b.i32()
     };
-    res.ingredients = Array.from({length: b.u8()}, () => {
+    res.ingredients = Array.from({ length: b.u8() }, () => {
         const vc = b.u8(), count = b.i32();
-        return {count, variants: Array.from({length: vc}, () => b.i32())};
+        return { count, variants: Array.from({ length: vc }, () => b.i32()) };
     });
-    res.fluidIngredients = Array.from({length: b.u8()}, () => {
+    res.fluidIngredients = Array.from({ length: b.u8() }, () => {
         const vc = b.u8(), amount = b.i32();
-        return {amount, variants: Array.from({length: vc}, () => b.i32())};
+        return { amount, variants: Array.from({ length: vc }, () => b.i32()) };
     });
-    res.chemicalIngredients = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: b.i32()}));
-    res.itemOutputs = Array.from({length: b.u8()}, () => ({itemIndex: b.i32(), count: b.i32()}));
-    res.fluidOutputs = Array.from({length: b.u8()}, () => ({fluidIndex: b.i32(), amount: b.i32()}));
-    res.chemicalOutputs = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: Number(b.i64())}));
+    res.chemicalIngredients = Array.from({ length: b.u8() }, () => ({ id: strings.get(b.i32()), amount: b.i32() }));
+    res.itemOutputs = Array.from({ length: b.u8() }, () => ({ itemIndex: b.i32(), count: b.i32() }));
+    res.fluidOutputs = Array.from({ length: b.u8() }, () => ({ fluidIndex: b.i32(), amount: b.i32() }));
+    res.chemicalOutputs = Array.from({ length: b.u8() }, () => ({ id: strings.get(b.i32()), amount: Number(b.i64()) }));
     return res;
 }
 
@@ -336,19 +263,18 @@ export class UsageTable {
         this.count = new Buf(bytes).i32();
         this.flat = 8 + this.count * 8;
     }
-
     get(i) {
         if (i < 0 || i >= this.count) return [];
         const b = new Buf(this.b, 8 + i * 8), start = b.i32(), n = b.i32();
         if (start === -1 || n === 0) return [];
-        return Array.from({length: n}, (_, j) => new Buf(this.b, this.flat + start + j * 4).i32());
+        return Array.from({ length: n }, (_, j) => new Buf(this.b, this.flat + start + j * 4).i32());
     }
 }
 
 export function readDropsForMob(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
     const b = new Buf(bytes, offset);
-    return Array.from({length: count}, () => ({
+    return Array.from({ length: count }, () => ({
         itemIndex: b.i32(), itemName: strings.get(b.i32()), yieldPerKill: b.f64(),
         killMethod: strings.get(b.i32()), itemId: strings.get(b.i32())
     }));
@@ -364,71 +290,62 @@ export function readMeta(bytes, strings) {
         timestampMs: Number(b.u64())
     };
     Object.assign(res, {
-        itemCount: b.i32(),
-        mobCount: b.i32(),
-        fluidCount: b.i32(),
-        recipeCount: b.i32(),
-        validItems: b.i32(),
-        infiniteItems: b.i32()
+        itemCount: b.i32(), mobCount: b.i32(), fluidCount: b.i32(), recipeCount: b.i32(),
+        validItems: b.i32(), infiniteItems: b.i32(), machineCount: b.i32(), modCount: b.i32()
     });
-    res.categories = Array.from({length: b.u8()}, () => ({name: strings.get(b.i32()), maxComplexity: b.f64()}));
+    res.categories = Array.from({ length: b.u8() }, () => ({ name: strings.get(b.i32()), maxComplexity: b.f64() }));
     return res;
 }
 
 export function readCategories(bytes, strings) {
     const b = new Buf(bytes);
-    return Array.from({length: b.u8()}, () => {
+    return Array.from({ length: b.u8() }, () => {
         const name = strings.get(b.i32()), n = b.i32();
-        return {name, items: Array.from({length: n}, () => b.i32())};
+        return { name, items: Array.from({ length: n }, () => b.i32()) };
     });
 }
 
-export class CabinDatabase {
-    constructor(url) {
-        this.file = new CabinFile(url);
+export function readMachineIndex(bytes) {
+    const b = new Buf(bytes);
+    const count = b.i32();
+    const machines = [];
+    let payloadStart = b.p + count * 10;
+    for (let i = 0; i < count; i++) {
+        const itemIndex = b.i32();
+        const offset = b.i32();
+        const itemCount = b.u16();
+        const items = [];
+        const pb = new Buf(bytes, payloadStart + offset);
+        for (let j = 0; j < itemCount; j++) items.push(pb.i32());
+        machines.push({ itemIndex, items });
     }
+    return machines;
+}
 
-    async open(opt = {}) {
-        await this.file.open(opt);
-        const [sB, iB, mB, meB, cB, rIB, flB] = await Promise.all([
-            SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES, SEC.FLUIDS
-        ].map(id => this.file.readSection(id)));
-        this.strings = new StringPool(sB);
-        this.items = new ItemTable(iB, this.strings);
-        this.mobs = new MobTable(mB, this.strings);
-        this.meta = readMeta(meB, this.strings);
-        this.categories = readCategories(cB, this.strings);
-        this.recipeIndex = new RecipeIndex(rIB);
-        this.fluids = new FluidTable(flB, this.strings);
+export function readSourceTypeIndex(bytes) {
+    const b = new Buf(bytes);
+    const count = b.i32();
+    const types = [];
+    for (let i = 0; i < count; i++) {
+        const typeEnum = b.u8();
+        const n = b.i32();
+        const items = Array.from({ length: n }, () => b.i32());
+        types.push({ typeEnum, items });
     }
+    return types;
+}
 
-    async _ensure(key, id) {
-        if (!this[key]) this[key] = await this.file.readSection(id);
-        return this[key];
+export function readModSummary(bytes, strings) {
+    const b = new Buf(bytes);
+    const count = b.i32();
+    const mods = [];
+    for (let i = 0; i < count; i++) {
+        mods.push({
+            modId: strings.get(b.i32()),
+            itemCount: b.i32(),
+            recipeCount: b.i32(),
+            avgComplexity: b.f64()
+        });
     }
-
-    async getItemSources(i) {
-        const it = this.items.get(i);
-        return it ? readSourcesForItem(await this._ensure('_sB', SEC.SOURCES), this.strings, it.sourcesOffset, it.sourceCount) : [];
-    }
-
-    async getItemBaseData(i) {
-        const it = this.items.get(i);
-        return it ? readBaseDataForItem(await this._ensure('_bB', SEC.BASE_DATA), this.strings, it.baseDataOffset) : null;
-    }
-
-    async getItemRecipes(i) {
-        const ref = this.recipeIndex.get(i);
-        return readRecipesAt(await this._ensure('_rB', SEC.RECIPES), this.strings, ref.offset, ref.count);
-    }
-
-    async getItemUsage(i) {
-        if (!this._u) this._u = new UsageTable(await this.file.readSection(SEC.USAGE));
-        return this._u.get(i);
-    }
-
-    async getMobDrops(i) {
-        const m = this.mobs.get(i);
-        return m ? readDropsForMob(await this._ensure('_dB', SEC.DROPS), this.strings, m.dropsOffset, m.dropCount) : [];
-    }
+    return mods;
 }

@@ -27,6 +27,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.sources.HardcodedSourcesProvider;
 import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
@@ -38,9 +39,17 @@ import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeNode;
+
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class CabinBuilder {
 
@@ -79,7 +88,6 @@ public final class CabinBuilder {
         ItemSectionBuilder itemBuilder = new ItemSectionBuilder(ctx);
         RecipeSectionBuilder recipeBuilder = new RecipeSectionBuilder(ctx);
         MobSectionBuilder mobBuilder = new MobSectionBuilder(ctx);
-
         IHardcodedSourceRegistry hardcodedRegistry = tryGetHardcodedRegistry();
         SourceManager sourceManager = engine.getSourceManager();
         MobPropertyProvider mobProvider = engine.getMobPropertyProvider();
@@ -89,24 +97,21 @@ public final class CabinBuilder {
 
         ItemSectionBuilder.BaseDataAccumulator baseAcc = itemBuilder.buildBaseData(sourceManager);
         ItemSectionBuilder.SourcesAccumulator sourcesAcc = itemBuilder.buildSources(sourceManager);
-
         ItemSectionBuilder.ItemSectionResult itemResult = itemBuilder.buildItemsSection(hardcodedRegistry, baseAcc, sourcesAcc);
 
         RecipeSectionBuilder.RecipesResult recipes = recipeBuilder.buildRecipes(graph);
         byte[] usageBytes = recipeBuilder.buildUsage(graph);
-
         MobSectionBuilder.MobsResult mobsResult = mobBuilder.buildMobs(mobProvider, mobDropSource);
         byte[] dropsBytes = mobsResult.drops;
-
         byte[] sccBytes = buildScc(solverResult);
         byte[] categoriesBytes = buildCategories();
         byte[] fluidsBytes = buildFluidsSection();
-
         byte[] idxItemHash = buildItemHashIndex();
         byte[] idxMobHash = buildMobHashIndex();
-
-        byte[] meta = buildMeta(itemResult, mobsResult, recipes);
-
+        byte[] machineIndexBytes = buildMachineIndex(graph);
+        byte[] sourceTypeIndexBytes = buildSourceTypeIndex(sourceManager);
+        byte[] modSummaryBytes = buildModSummary(graph);
+        byte[] meta = buildMeta(itemResult, mobsResult, recipes, machineIndexBytes, modSummaryBytes);
         byte[] stringsBytes = encodeStrings();
 
         ObjectList<CabinSection> out = new ObjectArrayList<>(16);
@@ -125,6 +130,9 @@ public final class CabinBuilder {
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_ITEM_HASH, idxItemHash));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_RECIPES_BY_OUTPUT, recipes.outputIndex));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_MOB_HASH, idxMobHash));
+        out.add(CabinSection.compressed(CabinFormat.SEC_MACHINE_INDEX, machineIndexBytes));
+        out.add(CabinSection.compressed(CabinFormat.SEC_SOURCE_TYPE_INDEX, sourceTypeIndexBytes));
+        out.add(CabinSection.compressed(CabinFormat.SEC_MOD_SUMMARY, modSummaryBytes));
 
         long elapsed = System.currentTimeMillis() - t0;
         ComplexityAnalyzer.LOGGER.info("[Cabin] Built {} sections (items={}, recipes={}, mobs={}, strings={}) in {} ms",
@@ -250,7 +258,144 @@ public final class CabinBuilder {
         return out.toByteArray();
     }
 
-    private byte[] buildMeta(ItemSectionBuilder.ItemSectionResult itemResult, MobSectionBuilder.MobsResult mobsResult, RecipeSectionBuilder.RecipesResult recipes) {
+    private byte[] buildMachineIndex(RecipeGraph graph) {
+        if (graph == null) {
+            LeBuf empty = new LeBuf(4);
+            empty.i32(0);
+            return empty.toByteArray();
+        }
+        var registry = engine.getMachineRegistry();
+        Int2ObjectMap<IntArrayList> machineToOutputs = new Int2ObjectOpenHashMap<>();
+        int n = orderedItems.size();
+        for (int i = 0; i < n; i++) {
+            Item item = orderedItems.get(i);
+            var recipes = graph.getRecipes(item);
+            if (recipes.isEmpty()) continue;
+            for (RecipeNode r : recipes) {
+                var rt = r.getRecipeType();
+                if (rt == null || registry == null) continue;
+                var machines = registry.getMachinesForRecipe(rt);
+                if (machines == null) continue;
+                for (Item machineItem : machines) {
+                    int mi = itemIndex.getInt(machineItem);
+                    if (mi < 0) continue;
+                    machineToOutputs.computeIfAbsent(mi, k -> new IntArrayList()).add(i);
+                }
+            }
+        }
+        for (var list : machineToOutputs.values()) {
+            IntOpenHashSet seen = new IntOpenHashSet(list);
+            list.clear();
+            list.addAll(seen);
+        }
+        int machineCount = machineToOutputs.size();
+        int[] machineIds = machineToOutputs.keySet().toIntArray();
+        Arrays.sort(machineIds);
+        LeBuf out = new LeBuf(4 + machineCount * 10 + machineCount * 4);
+        out.i32(machineCount);
+        LeBuf payload = new LeBuf(64 * 1024);
+        int[] offsets = new int[machineCount];
+        int[] counts = new int[machineCount];
+        for (int i = 0; i < machineCount; i++) {
+            int mi = machineIds[i];
+            var outputs = machineToOutputs.get(mi);
+            offsets[i] = payload.position();
+            counts[i] = outputs.size();
+            for (int j = 0; j < outputs.size(); j++) payload.i32(outputs.getInt(j));
+        }
+        for (int i = 0; i < machineCount; i++) {
+            out.i32(machineIds[i]);
+            out.i32(offsets[i]);
+            out.u16(counts[i]);
+        }
+        out.bytes(payload.array(), 0, payload.size());
+        return out.toByteArray();
+    }
+
+    private byte[] buildSourceTypeIndex(SourceManager sourceManager) {
+        if (sourceManager == null) {
+            LeBuf empty = new LeBuf(4);
+            empty.i32(0);
+            return empty.toByteArray();
+        }
+        int sourceTypeCount = BaseResourceData.ResourceSourceType.values().length;
+        IntArrayList[] buckets = new IntArrayList[sourceTypeCount];
+        for (int i = 0; i < sourceTypeCount; i++) buckets[i] = new IntArrayList();
+        int n = orderedItems.size();
+        for (int i = 0; i < n; i++) {
+            Item item = orderedItems.get(i);
+            var base = sourceManager.analyze(item);
+            if (base != null) {
+                int ord = base.getSourceType().ordinal();
+                if (ord < sourceTypeCount) buckets[ord].add(i);
+            }
+            var all = sourceManager.findAllSources(item);
+            for (var src : all) {
+                int ord = src.getSourceType().ordinal();
+                if (ord < sourceTypeCount && !buckets[ord].contains(i)) buckets[ord].add(i);
+            }
+        }
+        LeBuf out = new LeBuf(4 + sourceTypeCount * 6);
+        int nonEmpty = 0;
+        for (IntArrayList b : buckets) if (!b.isEmpty()) nonEmpty++;
+        out.i32(nonEmpty);
+        for (int i = 0; i < sourceTypeCount; i++) {
+            if (buckets[i].isEmpty()) continue;
+            out.u8(i);
+            out.i32(buckets[i].size());
+            for (int j = 0; j < buckets[i].size(); j++) out.i32(buckets[i].getInt(j));
+        }
+        return out.toByteArray();
+    }
+
+    private byte[] buildModSummary(RecipeGraph graph) {
+        Map<String, ModStats> stats = new HashMap<>();
+        int n = orderedItems.size();
+        for (int i = 0; i < n; i++) {
+            Item item = orderedItems.get(i);
+            ResourceLocation id = GameRegistryManager.getItemId(item);
+            String modId = id != null ? id.getNamespace() : "unknown";
+            ModStats s = stats.computeIfAbsent(modId, k -> new ModStats());
+            s.itemCount++;
+            ItemComplexity ic = engine.getComplexityResult(item);
+            if (ic != null && ic.isValid() && !Double.isInfinite(ic.getComplexity())) {
+                s.complexitySum += ic.getComplexity();
+                s.complexityItems++;
+            }
+        }
+        if (graph != null) {
+            for (int i = 0; i < n; i++) {
+                Item item = orderedItems.get(i);
+                var recipes = graph.getRecipes(item);
+                if (recipes.isEmpty()) continue;
+                ResourceLocation id = GameRegistryManager.getItemId(item);
+                String modId = id != null ? id.getNamespace() : "unknown";
+                ModStats s = stats.get(modId);
+                if (s != null) s.recipeCount += recipes.size();
+            }
+        }
+        LeBuf out = new LeBuf(4 + stats.size() * 20);
+        out.i32(stats.size());
+        for (Map.Entry<String, ModStats> e : stats.entrySet()) {
+            ModStats s = e.getValue();
+            double avg = s.complexityItems > 0 ? s.complexitySum / s.complexityItems : 0.0;
+            out.i32(strings.intern(e.getKey()));
+            out.i32(s.itemCount);
+            out.i32(s.recipeCount);
+            out.f64(avg);
+        }
+        return out.toByteArray();
+    }
+
+    private static class ModStats {
+        int itemCount;
+        int recipeCount;
+        double complexitySum;
+        int complexityItems;
+    }
+
+    private byte[] buildMeta(ItemSectionBuilder.ItemSectionResult itemResult, MobSectionBuilder.MobsResult mobsResult,
+                             RecipeSectionBuilder.RecipesResult recipes, byte[] machineIndexBytes, byte[] modSummaryBytes) {
         LeBuf buf = new LeBuf(512);
         buf.i32(strings.intern("complexityanalyzer"));
         buf.i32(strings.intern(modVersion));
@@ -263,6 +408,12 @@ public final class CabinBuilder {
         buf.i32(recipes.recipeCount);
         buf.i32(itemResult.validItems);
         buf.i32(itemResult.infiniteItems);
+        int machineCount = machineIndexBytes != null && machineIndexBytes.length >= 4
+                ? LeBuf.readI32(machineIndexBytes, 0) : 0;
+        int modCount = modSummaryBytes != null && modSummaryBytes.length >= 4
+                ? LeBuf.readI32(modSummaryBytes, 0) : 0;
+        buf.i32(machineCount);
+        buf.i32(modCount);
         ComplexityCategory[] cats = ComplexityCategory.values();
         buf.u8(cats.length);
         for (ComplexityCategory c : cats) {

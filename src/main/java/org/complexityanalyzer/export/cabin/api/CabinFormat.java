@@ -19,14 +19,11 @@
 package org.complexityanalyzer.export.cabin.api;
 
 public final class CabinFormat {
-
     public static final int MAGIC = 0x4E424143;
-    public static final short VERSION = 0x0101;
+    public static final short VERSION = 0x0102;
     public static final int HEADER_SIZE = 32;
-
     public static final byte CODEC_RAW = 0;
     public static final byte CODEC_DEFLATE_RAW = 1;
-
     public static final byte SEC_META = 0x01;
     public static final byte SEC_STRINGS = 0x02;
     public static final byte SEC_ITEMS = 0x03;
@@ -42,22 +39,20 @@ public final class CabinFormat {
     public static final byte SEC_IDX_ITEM_HASH = 0x20;
     public static final byte SEC_IDX_RECIPES_BY_OUTPUT = 0x21;
     public static final byte SEC_IDX_MOB_HASH = 0x22;
-
+    public static final byte SEC_MACHINE_INDEX = 0x30;
+    public static final byte SEC_SOURCE_TYPE_INDEX = 0x31;
+    public static final byte SEC_MOD_SUMMARY = 0x32;
     public static final int ITEM_RECORD_SIZE = 48;
     public static final int MOB_RECORD_SIZE = 80;
-
     public static final int ITEM_FLAG_HAS_RECIPE = 0x01;
     public static final int ITEM_FLAG_HAS_CYCLE = 0x02;
     public static final int ITEM_FLAG_IS_HARDCODED = 0x04;
     public static final int ITEM_FLAG_IS_VALID = 0x08;
     public static final int ITEM_FLAG_IS_INFINITE = 0x10;
     public static final int ITEM_FLAG_NO_RECIPE_RESULT = 0x20;
-
     public static final int MOB_FLAG_IS_BOSS = 0x01;
     public static final int MOB_FLAG_IS_MINIBOSS = 0x02;
-
     public static final int NULL_OFFSET = 0xFFFFFFFF;
-
     public static final long XXH64_SEED = 0xCAB1EDAEFACEC0DEL;
 
     private CabinFormat() {

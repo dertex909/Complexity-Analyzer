@@ -70,6 +70,7 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     position: relative;
     flex: 1;
     overflow-y: auto;
+    min-height: 0;
     background-color: var(--bg-panel);
     border: 1px solid var(--border);
     border-top: none;
@@ -77,6 +78,12 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 }
 .virtual-spacer { width: 1px; }
 .virtual-rows { position: absolute; top: 0; left: 0; right: 0; }
+
+#items-list, #fluids-list, #mobs-list, #sources-list {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
 
 .row {
     display: grid;

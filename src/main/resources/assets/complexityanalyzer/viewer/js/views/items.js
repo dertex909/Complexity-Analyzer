@@ -114,7 +114,7 @@ function updateHeaderIndicators() {
         {key: "totalIngredients", isFiltered: () => f.minTotalIngredients !== "" || f.maxTotalIngredients !== ""},
         {key: "usageCount", isFiltered: () => f.minRecipeUsages !== "" || f.maxRecipeUsages !== ""},
         {key: "category", isFiltered: () => f.categoriesFilter && f.categoriesFilter.length > 0},
-        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length < 4},
+        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length > 0},
     ];
 
     itemsDef.forEach(item => {

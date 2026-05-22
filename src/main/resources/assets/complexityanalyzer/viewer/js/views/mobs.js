@@ -88,6 +88,7 @@ export async function renderMobs(container) {
     `;
 
     wireMobFilters(tableConfig);
+    updateHeaderIndicators();
     updateMobsView();
 
     if (state.selectedMob >= 0) await renderMobDetail(null, state.selectedMob);
@@ -131,6 +132,8 @@ function updateMobsView() {
     });
 
     $("mobs-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.mobs.count)} mobs`;
+
+    updateHeaderIndicators();
 
     const mobsList = $("mobs-list");
     if (list.length === 0) {
@@ -281,4 +284,25 @@ function openPopover(headerCell, filterType) {
 
 function $(id) {
     return document.getElementById(id);
+}
+
+function updateHeaderIndicators() {
+    const f = state.filters.mobs;
+    const head = document.getElementById("mobs-head");
+    if (!head) return;
+
+    const itemsDef = [
+        {key: "id", isFiltered: () => f.modsFilter && f.modsFilter.length > 0},
+        {key: "health", isFiltered: () => f.minHealth !== "" || f.maxHealth !== ""},
+        {key: "damage", isFiltered: () => f.minDamage !== "" || f.maxDamage !== ""},
+        {key: "armor", isFiltered: () => f.minArmor !== "" || f.maxArmor !== ""},
+        {key: "combatPower", isFiltered: () => f.minCombatPower !== "" || f.maxCombatPower !== ""},
+        {key: "rarity", isFiltered: () => f.minRarity !== "" || f.maxRarity !== ""},
+        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length > 0},
+    ];
+
+    itemsDef.forEach(item => {
+        const el = head.querySelector(`[data-filter="${item.key}"]`);
+        if (el) el.classList.toggle("filtered", item.isFiltered());
+    });
 }

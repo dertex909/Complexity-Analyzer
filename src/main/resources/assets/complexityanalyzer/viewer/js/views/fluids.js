@@ -89,6 +89,7 @@ export function renderFluids(container) {
     `;
 
     wireFluidFilters(tableConfig);
+    updateHeaderIndicators();
     updateFluidsView();
 }
 
@@ -104,10 +105,10 @@ function updateHeaderIndicators() {
         if (type === "complexity") active = f.minComplexity !== "" || f.maxComplexity !== "";
         else if (type === "usageCount") active = f.minRecipeUsages !== "" || f.maxRecipeUsages !== "";
         else if (type === "category") active = f.categoriesFilter.length > 0;
-        else if (type === "flags") active = f.flagsFilter.length < 4;
+        else if (type === "flags") active = f.flagsFilter.length > 0;
         else if (type === "id") active = f.modsFilter.length > 0;
 
-        hdr.classList.toggle("filter-active", active);
+        hdr.classList.toggle("filtered", active);
     });
 
     const [sortField, sortDir] = f.sort.split("-");

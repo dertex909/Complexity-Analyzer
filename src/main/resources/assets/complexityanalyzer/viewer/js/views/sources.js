@@ -118,7 +118,7 @@ function updateHeaderIndicators() {
     const itemsDef = [
         {key: "id", isFiltered: () => f.modsFilter && f.modsFilter.length > 0},
         {key: "complexity", isFiltered: () => f.minComplexity !== "" || f.maxComplexity !== ""},
-        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length < 4},
+        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length > 0},
     ];
 
     itemsDef.forEach(item => {
@@ -298,6 +298,7 @@ export async function renderSources(container) {
         });
 
         tableConfig.initResizers("sources-head");
+        updateHeaderIndicators();
         await updateSourcesResults(db, types);
 
     } catch (e) {

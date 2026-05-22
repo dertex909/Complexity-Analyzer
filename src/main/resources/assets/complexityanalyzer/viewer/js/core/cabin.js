@@ -43,7 +43,7 @@ export const FLUID_FLAG = {
     IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20, IS_PROTECTED: 0x40,
 };
 
-export const MOB_FLAG = { BOSS: 0x01, MINIBOSS: 0x02 };
+export const MOB_FLAG = {BOSS: 0x01, MINIBOSS: 0x02};
 
 export class Buf {
     constructor(bytes, offset = 0) {
@@ -51,15 +51,56 @@ export class Buf {
         this.v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         this.p = offset;
     }
-    u8() { return this.b[this.p++]; }
-    u16() { const r = this.v.getUint16(this.p, true); this.p += 2; return r; }
-    i32() { const r = this.v.getInt32(this.p, true); this.p += 4; return r; }
-    u32() { const r = this.v.getUint32(this.p, true); this.p += 4; return r; }
-    i64() { const r = this.v.getBigInt64(this.p, true); this.p += 8; return r; }
-    u64() { const r = this.v.getBigUint64(this.p, true); this.p += 8; return r; }
-    f64() { const r = this.v.getFloat64(this.p, true); this.p += 8; return r; }
-    skip(n) { this.p += n; return this; }
-    seek(n) { this.p = n; return this; }
+
+    u8() {
+        return this.b[this.p++];
+    }
+
+    u16() {
+        const r = this.v.getUint16(this.p, true);
+        this.p += 2;
+        return r;
+    }
+
+    i32() {
+        const r = this.v.getInt32(this.p, true);
+        this.p += 4;
+        return r;
+    }
+
+    u32() {
+        const r = this.v.getUint32(this.p, true);
+        this.p += 4;
+        return r;
+    }
+
+    i64() {
+        const r = this.v.getBigInt64(this.p, true);
+        this.p += 8;
+        return r;
+    }
+
+    u64() {
+        const r = this.v.getBigUint64(this.p, true);
+        this.p += 8;
+        return r;
+    }
+
+    f64() {
+        const r = this.v.getFloat64(this.p, true);
+        this.p += 8;
+        return r;
+    }
+
+    skip(n) {
+        this.p += n;
+        return this;
+    }
+
+    seek(n) {
+        this.p = n;
+        return this;
+    }
 }
 
 async function decompress(bytes) {
@@ -79,9 +120,9 @@ export class CabinFile {
         this.fullBytes = null;
     }
 
-    async open({ preferFullDownload = false } = {}) {
+    async open({preferFullDownload = false} = {}) {
         if (preferFullDownload) {
-            const resp = await fetch(this.url, { cache: "no-store" });
+            const resp = await fetch(this.url, {cache: "no-store"});
             if (!resp.ok) throw new Error("Failed to fetch: " + resp.status);
             this.fullBytes = new Uint8Array(await resp.arrayBuffer());
             this._parseHeader(new Buf(this.fullBytes));
@@ -124,7 +165,7 @@ export class CabinFile {
         for (let i = 0; i < count; i++) {
             const id = b.u8(), codec = b.u8();
             const offset = Number(b.i64()), length = Number(b.i64()), uncompressed = Number(b.i64());
-            this.sections.set(id, { id, codec, offset, length, uncompressed });
+            this.sections.set(id, {id, codec, offset, length, uncompressed});
         }
     }
 
@@ -139,7 +180,7 @@ export class CabinFile {
     }
 
     async _range(s, e) {
-        const r = await fetch(this.url, { headers: { Range: `bytes=${s}-${e}` }, cache: "no-store" });
+        const r = await fetch(this.url, {headers: {Range: `bytes=${s}-${e}`}, cache: "no-store"});
         if (!r.ok && r.status !== 206) throw new Error("HTTP " + r.status);
         return new Uint8Array(await r.arrayBuffer());
     }
@@ -158,6 +199,7 @@ export class StringPool {
         }
         this.decoder = new TextDecoder("utf-8");
     }
+
     get(ref) {
         if (ref < 0 || ref >= this.count || this.cache[ref] !== undefined) return this.cache[ref] ?? "";
         const b = new Buf(this.b, this.offsets[ref]);
@@ -172,6 +214,7 @@ export class ItemTable {
         this.s = strings;
         this.count = new Buf(bytes).i32();
     }
+
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * ITEM_RECORD);
@@ -191,6 +234,7 @@ export class MobTable {
         this.s = strings;
         this.count = new Buf(bytes).i32();
     }
+
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * MOB_RECORD);
@@ -209,6 +253,7 @@ export class FluidTable {
         this.s = strings;
         this.count = new Buf(bytes).i32();
     }
+
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * FLUID_RECORD);
@@ -227,8 +272,15 @@ export function readSourcesForItem(bytes, strings, offset, count) {
     for (let i = 0; i < count; i++) {
         const type = strings.get(b.i32()), typeEnum = b.u8(), details = strings.get(b.i32());
         const baseFactor = b.f64(), estimated = b.f64(), ingCount = b.u16();
-        const ingredients = Array.from({ length: ingCount }, () => ({ itemIndex: b.i32(), amount: b.f64() }));
-        out.push({ sourceType: type, sourceTypeEnum: typeEnum, details, baseFactor, estimatedCost: estimated, ingredients });
+        const ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
+        out.push({
+            sourceType: type,
+            sourceTypeEnum: typeEnum,
+            details,
+            baseFactor,
+            estimatedCost: estimated,
+            ingredients
+        });
     }
     return out;
 }
@@ -242,7 +294,7 @@ export function readBaseDataForItem(bytes, strings, offset) {
         isOverride: b.u8() !== 0, overrideModId: strings.get(b.i32())
     };
     const ingCount = b.u16();
-    res.ingredients = Array.from({ length: ingCount }, () => ({ itemIndex: b.i32(), amount: b.f64() }));
+    res.ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
     const metaCount = b.u8(), meta = {};
     for (let j = 0; j < metaCount; j++) meta[strings.get(b.i32())] = strings.get(b.i32());
     res.metadata = meta;
@@ -254,10 +306,11 @@ export class RecipeIndex {
         this.b = bytes;
         this.count = new Buf(bytes).i32();
     }
+
     get(i) {
-        if (i < 0 || i >= this.count) return { offset: 0xFFFFFFFF, count: 0 };
+        if (i < 0 || i >= this.count) return {offset: 0xFFFFFFFF, count: 0};
         const b = new Buf(this.b, 4 + i * 6);
-        return { offset: b.u32(), count: b.u16() };
+        return {offset: b.u32(), count: b.u16()};
     }
 }
 
@@ -266,17 +319,18 @@ export class FluidRecipeIndex {
         this.b = bytes;
         this.count = new Buf(bytes).i32();
     }
+
     get(i) {
-        if (i < 0 || i >= this.count) return { offset: 0xFFFFFFFF, count: 0 };
+        if (i < 0 || i >= this.count) return {offset: 0xFFFFFFFF, count: 0};
         const b = new Buf(this.b, 4 + i * 6);
-        return { offset: b.u32(), count: b.u16() };
+        return {offset: b.u32(), count: b.u16()};
     }
 }
 
 export function readRecipesAt(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
     const b = new Buf(bytes, offset);
-    return Array.from({ length: count }, () => readOneRecipe(b, strings));
+    return Array.from({length: count}, () => readOneRecipe(b, strings));
 }
 
 function readOneRecipe(b, strings) {
@@ -285,19 +339,26 @@ function readOneRecipe(b, strings) {
         priority: b.i32(), resultCount: b.i32(), recipeMultiplier: b.f64(),
         flags: b.u8(), placeholderId: strings.get(b.i32()), machineItemIndex: b.i32()
     };
-    res.ingredients = Array.from({ length: b.u8() }, () => {
+    res.ingredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), count = b.i32();
-        return { count, variants: Array.from({ length: vc }, () => b.i32()) };
+        return {count, variants: Array.from({length: vc}, () => b.i32())};
     });
-    res.fluidIngredients = Array.from({ length: b.u8() }, () => {
+    res.fluidIngredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), amount = b.i32();
-        return { amount, variants: Array.from({ length: vc }, () => b.i32()) };
+        return {amount, variants: Array.from({length: vc}, () => b.i32())};
     });
-    res.chemicalIngredients = Array.from({ length: b.u8() }, () => ({ id: strings.get(b.i32()), amount: b.i32() }));
-    res.itemOutputs = Array.from({ length: b.u8() }, () => ({ itemIndex: b.i32(), count: b.i32() }));
-    res.fluidOutputs = Array.from({ length: b.u8() }, () => ({ fluidIndex: b.i32(), amount: b.i32() }));
-    res.chemicalOutputs = Array.from({ length: b.u8() }, () => ({ id: strings.get(b.i32()), amount: Number(b.i64()) }));
+    res.chemicalIngredients = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: b.i32()}));
+    res.itemOutputs = Array.from({length: b.u8()}, () => ({itemIndex: b.i32(), count: b.i32()}));
+    res.fluidOutputs = Array.from({length: b.u8()}, () => ({fluidIndex: b.i32(), amount: b.i32()}));
+    res.chemicalOutputs = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: Number(b.i64())}));
     return res;
+}
+
+export function readFlatIndex(bytes, i, count, flat) {
+    if (i < 0 || i >= count) return [];
+    const b = new Buf(bytes, 8 + i * 8), start = b.i32(), n = b.i32();
+    if (start === -1 || n === 0) return [];
+    return Array.from({length: n}, (_, j) => new Buf(bytes, flat + start + j * 4).i32());
 }
 
 export class UsageTable {
@@ -306,11 +367,9 @@ export class UsageTable {
         this.count = new Buf(bytes).i32();
         this.flat = 8 + this.count * 8;
     }
+
     get(i) {
-        if (i < 0 || i >= this.count) return [];
-        const b = new Buf(this.b, 8 + i * 8), start = b.i32(), n = b.i32();
-        if (start === -1 || n === 0) return [];
-        return Array.from({ length: n }, (_, j) => new Buf(this.b, this.flat + start + j * 4).i32());
+        return readFlatIndex(this.b, i, this.count, this.flat);
     }
 }
 
@@ -320,18 +379,16 @@ export class FluidUsageTable {
         this.count = new Buf(bytes).i32();
         this.flat = 8 + this.count * 8;
     }
+
     get(i) {
-        if (i < 0 || i >= this.count) return [];
-        const b = new Buf(this.b, 8 + i * 8), start = b.i32(), n = b.i32();
-        if (start === -1 || n === 0) return [];
-        return Array.from({ length: n }, (_, j) => new Buf(this.b, this.flat + start + j * 4).i32());
+        return readFlatIndex(this.b, i, this.count, this.flat);
     }
 }
 
 export function readDropsForMob(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
     const b = new Buf(bytes, offset);
-    return Array.from({ length: count }, () => ({
+    return Array.from({length: count}, () => ({
         itemIndex: b.i32(), itemName: strings.get(b.i32()), yieldPerKill: b.f64(),
         killMethod: strings.get(b.i32()), itemId: strings.get(b.i32())
     }));
@@ -350,15 +407,15 @@ export function readMeta(bytes, strings) {
         itemCount: b.i32(), mobCount: b.i32(), fluidCount: b.i32(), recipeCount: b.i32(),
         validItems: b.i32(), infiniteItems: b.i32(), machineCount: b.i32(), modCount: b.i32()
     });
-    res.categories = Array.from({ length: b.u8() }, () => ({ name: strings.get(b.i32()), maxComplexity: b.f64() }));
+    res.categories = Array.from({length: b.u8()}, () => ({name: strings.get(b.i32()), maxComplexity: b.f64()}));
     return res;
 }
 
 export function readCategories(bytes, strings) {
     const b = new Buf(bytes);
-    return Array.from({ length: b.u8() }, () => {
+    return Array.from({length: b.u8()}, () => {
         const name = strings.get(b.i32()), n = b.i32();
-        return { name, items: Array.from({ length: n }, () => b.i32()) };
+        return {name, items: Array.from({length: n}, () => b.i32())};
     });
 }
 
@@ -374,7 +431,7 @@ export function readMachineIndex(bytes) {
         const items = [];
         const pb = new Buf(bytes, payloadStart + offset);
         for (let j = 0; j < itemCount; j++) items.push(pb.i32());
-        machines.push({ itemIndex, items });
+        machines.push({itemIndex, items});
     }
     return machines;
 }
@@ -386,8 +443,8 @@ export function readSourceTypeIndex(bytes) {
     for (let i = 0; i < count; i++) {
         const typeEnum = b.u8();
         const n = b.i32();
-        const items = Array.from({ length: n }, () => b.i32());
-        types.push({ typeEnum, items });
+        const items = Array.from({length: n}, () => b.i32());
+        types.push({typeEnum, items});
     }
     return types;
 }

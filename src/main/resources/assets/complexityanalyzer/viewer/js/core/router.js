@@ -1,39 +1,23 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-import { state, setState, store, switchTab } from "./state.js";
+import {state, setState, store, switchTab} from "./state.js";
 
 export function initRouter() {
     const tabs = document.querySelectorAll("#main-tabs .tab");
-    tabs.forEach(t => t.addEventListener("click", () => { switchTab(t.dataset.tab); renderTabs(); updateUrl(); }));
+    tabs.forEach(t => t.addEventListener("click", () => {
+        switchTab(t.dataset.tab);
+        renderTabs();
+        updateUrl();
+    }));
     window.addEventListener("hashchange", syncFromUrl);
-    
-    // Auto-update URL whenever state is changed anywhere
+
     store.addEventListener("change", updateUrl);
-    
+
     syncFromUrl();
 }
 
 function renderTabs() {
     const active = state.tab;
     document.querySelectorAll("#main-tabs .tab").forEach(t => t.classList.toggle("active", t.dataset.tab === active));
-    
-    // Handle indented nested item sub-tabs inside sidebar
+
     const subContainer = document.getElementById("item-sub-tabs");
     const fluidSubContainer = document.getElementById("fluid-sub-tabs");
 
@@ -58,7 +42,7 @@ function renderTabs() {
                 if (isCurrentTabSubtab && !availableTabs.includes(active)) {
                     const nextTab = availableTabs.length > 0 ? availableTabs[0] : "items";
                     setTimeout(() => {
-                        setState({ tab: nextTab });
+                        setState({tab: nextTab});
                     }, 0);
                     return;
                 }
@@ -82,7 +66,7 @@ function renderTabs() {
                     subContainer.innerHTML = buttons;
                     subContainer.querySelectorAll(".sub-tab").forEach(st => {
                         st.addEventListener("click", () => {
-                            setState({ tab: st.dataset.tab });
+                            setState({tab: st.dataset.tab});
                         });
                     });
                 } else {
@@ -116,7 +100,7 @@ function renderTabs() {
                 if (isCurrentTabSubtab && !availableTabs.includes(active)) {
                     const nextTab = availableTabs.length > 0 ? availableTabs[0] : "fluids";
                     setTimeout(() => {
-                        setState({ tab: nextTab });
+                        setState({tab: nextTab});
                     }, 0);
                     return;
                 }
@@ -134,7 +118,7 @@ function renderTabs() {
                     fluidSubContainer.innerHTML = buttons;
                     fluidSubContainer.querySelectorAll(".sub-tab").forEach(st => {
                         st.addEventListener("click", () => {
-                            setState({ tab: st.dataset.tab });
+                            setState({tab: st.dataset.tab});
                         });
                     });
                 } else {
@@ -161,8 +145,8 @@ function renderTabs() {
 function updateUrl() {
     const params = new URLSearchParams();
     params.set("tab", state.tab);
-    if (state.selectedItem >= 0) params.set("item", state.selectedItem);
-    if (state.selectedMob >= 0) params.set("mob", state.selectedMob);
+    if (state.selectedItem >= 0) params.set("item", String(state.selectedItem));
+    if (state.selectedMob >= 0) params.set("mob", String(state.selectedMob));
     if (state.subTab) params.set("sub", state.subTab);
     const hash = "#" + params.toString();
     if (location.hash !== hash) history.replaceState(null, "", hash);
@@ -174,8 +158,8 @@ function syncFromUrl() {
     const item = parseInt(params.get("item") || "-1", 10);
     const mob = parseInt(params.get("mob") || "-1", 10);
     const sub = params.get("sub") || null;
-    setState({ tab, selectedItem: item, selectedMob: mob, subTab: sub });
+    setState({tab, selectedItem: item, selectedMob: mob, subTab: sub});
     renderTabs();
 }
 
-export { renderTabs, updateUrl };
+export {renderTabs, updateUrl};

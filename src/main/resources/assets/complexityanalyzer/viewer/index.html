@@ -33,7 +33,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="sidebar-title">Categories</div>
                 <button id="sidebar-hide-btn" class="sidebar-toggle-btn" title="Hide Categories">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                         stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
@@ -93,11 +94,22 @@
                 <div class="modal-body" id="fluid-modal-body"></div>
             </div>
         </div>
+
+        <div class="modal-overlay" id="mob-modal" hidden>
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 id="mob-modal-title">Mob Info</h3>
+                    <button class="modal-close" id="mob-modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="mob-modal-body"></div>
+            </div>
+        </div>
     </main>
 </div>
 
 <div class="search-overlay" id="search-overlay" hidden>
     <div class="search-box">
+        <label for="global-search" class="visually-hidden">Search</label>
         <input type="search" id="global-search" placeholder="Search items, mobs, fluids… (Ctrl+K)" autocomplete="off">
         <div class="search-results-overlay" id="search-results-overlay"></div>
     </div>

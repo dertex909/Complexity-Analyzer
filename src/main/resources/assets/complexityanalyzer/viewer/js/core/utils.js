@@ -1,11 +1,9 @@
-import { ITEM_FLAG, FLUID_FLAG, MOB_FLAG } from "./cabin.js";
+import {ITEM_FLAG, FLUID_FLAG, MOB_FLAG} from "./cabin.js";
 
-// Создаем форматтеры один раз для экономии памяти
-export const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+export const fmt = new Intl.NumberFormat("en-US", {maximumFractionDigits: 2});
 export const fmtInt = new Intl.NumberFormat("en-US");
-const fmtTooltip = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 10 });
+const fmtTooltip = new Intl.NumberFormat("de-DE", {maximumFractionDigits: 10});
 
-// Экранирование HTML
 export function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
         "&": "&amp;",
@@ -16,7 +14,6 @@ export function escapeHtml(s) {
     })[c]);
 }
 
-// Задержка выполнения (Debounce)
 export function debounce(fn, ms) {
     let t;
     return (...args) => {
@@ -25,7 +22,6 @@ export function debounce(fn, ms) {
     };
 }
 
-// Форматирование сложности
 export function formatComplexity(c) {
     if (c < 0) return "—";
     if (!isFinite(c)) return "∞";
@@ -34,7 +30,6 @@ export function formatComplexity(c) {
     return fmt.format(c);
 }
 
-// Форматирование точных значений для всплывающих подсказок (tooltips)
 export function formatRawTooltip(val) {
     if (val === undefined || val === null || !isFinite(val)) return "";
     try {
@@ -44,7 +39,6 @@ export function formatRawTooltip(val) {
     }
 }
 
-// Флаги предметов (compact = true для таблиц, false для модальных окон)
 export function getItemFlags(it, compact = false) {
     const out = [];
     const f = it.flags;
@@ -63,7 +57,6 @@ export function getItemFlags(it, compact = false) {
     return out.join("");
 }
 
-// Флаги жидкостей (compact = true для таблиц, false для модалок)
 export function getFluidFlags(fl, compact = false) {
     const out = [];
     const f = fl.flags;
@@ -82,7 +75,6 @@ export function getFluidFlags(fl, compact = false) {
     return out.join("");
 }
 
-// Флаги мобов
 export function getMobFlags(m, fallbackOnEmpty = false) {
     const out = [];
     if (m.flags & MOB_FLAG.BOSS) {

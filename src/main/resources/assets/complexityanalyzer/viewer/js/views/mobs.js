@@ -5,14 +5,69 @@ import {
     fmt,
     fmtInt
 } from "../core/utils.js";
-import { state, setFilter, selectMob } from "../core/state.js";
-import { MOB_FLAG } from "../core/cabin.js";
-import { mountVirtualList } from "../components/virtual-list.js";
-import { renderMobDetail } from "./details/mob-detail.js";
+import {state, setFilter, selectMob, getDefaultFilters} from "../core/state.js";
+import {MOB_FLAG} from "../core/cabin.js";
+import {mountVirtualList} from "../components/virtual-list.js";
+import {renderMobDetail} from "./details/mob-detail.js";
+import {
+    closeActivePopover,
+    setupResizableTable
+} from "../components/resizable-table.js";
+import {generateTableHeader} from "../components/table-columns.js";
+import {
+    createPopover,
+    getModNamespaces,
+    renderModCheckboxes,
+    renderFlagCheckboxes,
+    renderRangeInputs,
+    wireModCheckboxes,
+    wireFlagCheckboxes,
+    wireRangeInputs
+} from "../components/filter-popover.js";
+import {
+    passesModFilter,
+    passesFlagsFilter,
+    passesRangeFilter
+} from "../components/item-filter.js";
 
-export function renderMobs(container) {
+const MOBS_COLUMNS = [
+    {index: 1, label: "№", filter: null, sortable: false},
+    {index: 2, label: "Name", filter: null, sortable: true},
+    {index: 3, label: "ID", filter: "id", sortable: true},
+    {index: 4, label: "HP", filter: "health", sortable: true, numeric: true},
+    {index: 5, label: "Dmg", filter: "damage", sortable: true, numeric: true},
+    {index: 6, label: "Armor", filter: "armor", sortable: true, numeric: true},
+    {index: 7, label: "Combat", filter: "combatPower", sortable: true, numeric: true},
+    {index: 8, label: "Rarity", filter: "rarity", sortable: true, numeric: true},
+    {index: 9, label: "Flags", filter: "flags", sortable: false}
+];
+
+export async function renderMobs(container) {
     const db = state.db;
     if (!db) return;
+
+    const tableConfig = setupResizableTable({
+        tableId: "mobs",
+        cssVarPrefix: "--mob-col",
+        columnCount: 9,
+        headingColumns: [
+            {index: 4, label: "HP"},
+            {index: 5, label: "Dmg"},
+            {index: 6, label: "Armor"},
+            {index: 7, label: "Combat"},
+            {index: 8, label: "Rarity"}
+        ],
+        flagsColumn: {
+            index: 9,
+            flagChecks: [
+                f => f & MOB_FLAG.BOSS,
+                f => f & MOB_FLAG.MINIBOSS
+            ]
+        },
+        db,
+        tableType: "mobs"
+    });
+
     const f = state.filters.mobs;
 
     container.innerHTML = `
@@ -25,30 +80,17 @@ export function renderMobs(container) {
                 <option value="health-desc" ${f.sort === "health-desc" ? "selected" : ""}>HP ▼</option>
                 <option value="name-asc" ${f.sort === "name-asc" ? "selected" : ""}>Name A-Z</option>
             </select>
-            <label class="checkbox"><input type="checkbox" id="mobs-boss" ${f.bossOnly ? "checked" : ""}> bosses</label>
-            <label class="checkbox"><input type="checkbox" id="mobs-miniboss" ${f.minibossOnly ? "checked" : ""}> minibosses</label>
             <span class="flex-grow"></span>
             <span class="chip" id="mobs-count">0 mobs</span>
         </div>
-        <div class="table-head mobs-grid">
-            <span>#</span><span>Name</span><span>ID</span>
-            <span class="num">HP</span><span class="num">Dmg</span>
-            <span class="num">Armor</span><span class="num">Combat</span>
-            <span class="num">Rarity</span><span>Flags</span>
-        </div>
+        ${generateTableHeader(MOBS_COLUMNS, "mobs-grid", "mobs-head")}
         <div id="mobs-list"></div>
     `;
 
-    $("mobs-query").addEventListener("input", debounce(e => { setFilter("mobs", { query: e.target.value }); updateMobsView(); }, 120));
-    $("mobs-sort").addEventListener("change", e => { setFilter("mobs", { sort: e.target.value }); updateMobsView(); });
-    $("mobs-boss").addEventListener("change", e => { setFilter("mobs", { bossOnly: e.target.checked }); updateMobsView(); });
-    $("mobs-miniboss").addEventListener("change", e => { setFilter("mobs", { minibossOnly: e.target.checked }); updateMobsView(); });
-
+    wireMobFilters(tableConfig);
     updateMobsView();
 
-    if (state.selectedMob >= 0) {
-        renderMobDetail(container, state.selectedMob);
-    }
+    if (state.selectedMob >= 0) await renderMobDetail(null, state.selectedMob);
 }
 
 function updateMobsView() {
@@ -58,14 +100,30 @@ function updateMobsView() {
     const list = [];
     for (let i = 0; i < db.mobs.count; i++) {
         const m = db.mobs.get(i);
-        if (f.bossOnly && !(m.flags & MOB_FLAG.BOSS)) continue;
-        if (f.minibossOnly && !(m.flags & MOB_FLAG.MINIBOSS)) continue;
+
         if (q && !(m.name + " " + m.id).toLowerCase().includes(q)) continue;
+
+        if (!passesModFilter(m, f.modsFilter)) continue;
+
+        if (!passesFlagsFilter(m, f.flagsFilter, MOB_FLAG)) continue;
+
+        if (!passesRangeFilter(m.health, f.minHealth, f.maxHealth)) continue;
+        if (!passesRangeFilter(m.damage, f.minDamage, f.maxDamage)) continue;
+        if (!passesRangeFilter(m.armor, f.minArmor, f.maxArmor)) continue;
+        if (!passesRangeFilter(m.combatPower, f.minCombatPower, f.maxCombatPower)) continue;
+        if (!passesRangeFilter(m.rarity, f.minRarity, f.maxRarity)) continue;
+
         list.push(m);
     }
     const [field, dir] = f.sort.split("-");
     const sign = dir === "asc" ? 1 : -1;
-    const getVal = { combatPower: m => m.combatPower, threat: m => m.threat, rarity: m => m.rarity, health: m => m.health, name: m => m.name }[field] || (m => m.combatPower);
+    const getVal = {
+        combatPower: m => m.combatPower,
+        threat: m => m.threat,
+        rarity: m => m.rarity,
+        health: m => m.health,
+        name: m => m.name
+    }[field] || (m => m.combatPower);
     list.sort((a, b) => {
         const av = getVal(a), bv = getVal(b);
         if (typeof av === "number") return sign * (av - bv);
@@ -74,7 +132,18 @@ function updateMobsView() {
 
     $("mobs-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.mobs.count)} mobs`;
 
-    mountVirtualList($("mobs-list"), {
+    const mobsList = $("mobs-list");
+    if (list.length === 0) {
+        mobsList.innerHTML = `
+            <div class="virtual-viewport" style="display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; width: 100%; flex: 1;">
+                <div class="empty-state" style="padding: 40px 0;">
+                    <div class="icon">🔍</div>
+                    <div class="message">No mobs match your filter.</div>
+                </div>
+            </div>`;
+        return;
+    }
+    mountVirtualList(mobsList, {
         itemCount: list.length,
         itemHeight: 28,
         renderRow: (absIndex) => {
@@ -92,10 +161,124 @@ function updateMobsView() {
                 <span class="num">${fmt.format(m.rarity)}</span>
                 <span class="flags">${getMobFlags(m)}</span>
             `;
-            el.addEventListener("click", () => selectMob(m.index));
+            el.addEventListener("click", () => {
+                selectMob(m.index);
+            });
             return el;
         }
     });
 }
 
-function $(id) { return document.getElementById(id); }
+function wireMobFilters(tableConfig) {
+    const onInput = debounce((key, val) => {
+        setFilter("mobs", {[key]: val});
+        updateMobsView();
+    }, 120);
+    $("mobs-query").addEventListener("input", e => onInput("query", e.target.value));
+    $("mobs-sort").addEventListener("change", e => {
+        setFilter("mobs", {sort: e.target.value});
+        updateMobsView();
+    });
+
+    const head = document.getElementById("mobs-head");
+    if (head) head.querySelectorAll(".clickable-header").forEach(hdr => {
+        hdr.addEventListener("click", (e) => {
+            if (e.target.classList.contains("col-drag-handle")) return;
+            openPopover(hdr, hdr.dataset.filter);
+        });
+    });
+
+    tableConfig.initResizers("mobs-head");
+}
+
+function openPopover(headerCell, filterType) {
+    const pop = createPopover(headerCell, filterType);
+
+    const f = state.filters.mobs;
+    const db = state.db;
+
+    if (filterType === "health" || filterType === "damage" || filterType === "armor" || filterType === "combatPower" || filterType === "rarity") {
+        let minKey, maxKey;
+        if (filterType === "health") {
+            minKey = "minHealth";
+            maxKey = "maxHealth";
+        } else if (filterType === "damage") {
+            minKey = "minDamage";
+            maxKey = "maxDamage";
+        } else if (filterType === "armor") {
+            minKey = "minArmor";
+            maxKey = "maxArmor";
+        } else if (filterType === "combatPower") {
+            minKey = "minCombatPower";
+            maxKey = "maxCombatPower";
+        } else {
+            minKey = "minRarity";
+            maxKey = "maxRarity";
+        }
+
+        const minVal = f[minKey] ?? "";
+        const maxVal = f[maxKey] ?? "";
+
+        pop.innerHTML = renderRangeInputs(minKey, maxKey, minVal, maxVal);
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
+            setFilter("mobs", getDefaultFilters("mobs"));
+            updateMobsView();
+            closeActivePopover();
+        });
+
+        wireRangeInputs(pop, minKey, maxKey, (vals) => {
+            setFilter("mobs", vals);
+            updateMobsView();
+        }, debounce);
+
+    } else if (filterType === "id") {
+        const modsList = getModNamespaces(db, "mobs");
+
+        pop.innerHTML = `
+            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
+            <div class="checkbox-list" style="margin-top: 6px;">
+                ${renderModCheckboxes(modsList, f.modsFilter || [])}
+            </div>
+        `;
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
+            setFilter("mobs", getDefaultFilters("mobs"));
+            updateMobsView();
+            closeActivePopover();
+        });
+
+        wireModCheckboxes(pop, modsList, (checkedMods) => {
+            setFilter("mobs", {modsFilter: checkedMods});
+            updateMobsView();
+        });
+
+    } else if (filterType === "flags") {
+        const flagsList = [
+            {key: "boss", label: "👑 Boss"},
+            {key: "miniboss", label: "⚔️ Miniboss"}
+        ];
+
+        pop.innerHTML = `
+            <button class="popover-reset" id="filter-reset-btn">Reset Filter</button>
+            <div class="checkbox-list" style="margin-top: 6px;">
+                ${renderFlagCheckboxes(flagsList, f.flagsFilter || [])}
+            </div>
+        `;
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
+            setFilter("mobs", getDefaultFilters("mobs"));
+            updateMobsView();
+            closeActivePopover();
+        });
+
+        wireFlagCheckboxes(pop, (checkedFlags) => {
+            setFilter("mobs", {flagsFilter: checkedFlags});
+            updateMobsView();
+        });
+    }
+}
+
+function $(id) {
+    return document.getElementById(id);
+}

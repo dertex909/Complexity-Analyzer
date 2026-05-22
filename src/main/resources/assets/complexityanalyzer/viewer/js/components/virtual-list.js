@@ -1,5 +1,5 @@
 export function mountVirtualList(container, options) {
-    const { itemCount, itemHeight, renderRow } = options;
+    const {itemCount, itemHeight, renderRow} = options;
     const viewport = document.createElement("div");
     viewport.className = "virtual-viewport";
     const spacer = document.createElement("div");
@@ -50,9 +50,8 @@ export function mountVirtualList(container, options) {
     });
     observer.observe(viewport);
 
-    viewport.addEventListener("scroll", render, { passive: true });
-    // Also listen to window resize events just in case
-    window.addEventListener("resize", syncScrollbar, { passive: true });
+    viewport.addEventListener("scroll", render, {passive: true});
+    window.addEventListener("resize", syncScrollbar, {passive: true});
 
     render();
     syncScrollbar();

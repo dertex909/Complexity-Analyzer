@@ -1,14 +1,14 @@
-import { CabinDatabase } from "./core/db.js";
-import { state, setState, store, selectItem, selectMob, switchTab } from "./core/state.js";
-import { initRouter, renderTabs } from "./core/router.js";
-import { renderOverview } from "./views/overview.js";
-import { renderItems } from "./views/items.js";
-import { renderFluids } from "./views/fluids.js";
-import { renderMobs } from "./views/mobs.js";
-import { renderGraph } from "./views/graph.js";
-import { renderSources } from "./views/sources.js";
-import { renderItemDetail } from "./views/details/item-detail.js";
-import { renderFluidDetail } from "./views/details/fluid-detail.js";
+import {CabinDatabase} from "./core/db.js";
+import {state, setState, store, selectItem, selectMob, switchTab} from "./core/state.js";
+import {initRouter, renderTabs} from "./core/router.js";
+import {renderOverview} from "./views/overview.js";
+import {renderItems} from "./views/items.js";
+import {renderFluids} from "./views/fluids.js";
+import {renderMobs} from "./views/mobs.js";
+import {renderGraph} from "./views/graph.js";
+import {renderSources} from "./views/sources.js";
+import {renderItemDetail} from "./views/details/item-detail.js";
+import {renderFluidDetail} from "./views/details/fluid-detail.js";
 import {
     renderItemRecipesView,
     renderItemMachineRecipesView,
@@ -24,9 +24,13 @@ const fmtInt = new Intl.NumberFormat("en-US");
 
 function setStatus(cls, text) {
     const dot = document.getElementById("status-dot");
-    if (dot) { dot.className = "dot " + cls; }
+    if (dot) {
+        dot.className = "dot " + cls;
+    }
     const st = document.getElementById("status-text");
-    if (st) { st.textContent = text; }
+    if (st) {
+        st.textContent = text;
+    }
 }
 
 const VIEW_RENDERERS = {
@@ -67,8 +71,8 @@ store.addEventListener("selectItem", () => {
     }
 });
 
-store.addEventListener("selectMob", () => {
-    if (state.tab === "mobs") renderMobs(document.getElementById("tab-mobs"));
+store.addEventListener("selectMob", async () => {
+    if (state.tab === "mobs") await renderMobs(document.getElementById("tab-mobs"));
 });
 
 async function main() {
@@ -83,8 +87,8 @@ async function main() {
 
     try {
         const db = new CabinDatabase(cabinUrl);
-        await db.open({ preferFullDownload: true });
-        setState({ db });
+        await db.open({preferFullDownload: true});
+        setState({db});
 
         setStatus("ready", `${fmtInt.format(db.meta.itemCount)} items, ${fmtInt.format(db.meta.mobCount)} mobs`);
         const fl = document.getElementById("footer-left");
@@ -135,7 +139,7 @@ function startPolling(token) {
             const serverHash = meta.hash.toLowerCase();
             const localHash = state.db?.file?.fileHash?.toString(16)?.toLowerCase();
             if (serverHash && localHash && serverHash !== localHash) {
-                await state.db.open({ preferFullDownload: true });
+                await state.db.open({preferFullDownload: true});
                 setStatus("ready", `Updated! ${fmtInt.format(state.db.meta.itemCount)} items`);
                 renderCurrentTab();
                 countdown = 3;
@@ -168,30 +172,35 @@ function setupGlobalSearch() {
     });
 
     overlay.addEventListener("click", e => {
-        if (e.target === overlay) { overlay.hidden = true; }
+        if (e.target === overlay) {
+            overlay.hidden = true;
+        }
     });
 
     input.addEventListener("input", debounce(() => {
         const q = input.value.trim().toLowerCase();
-        if (q.length < 2) { results.innerHTML = ""; return; }
+        if (q.length < 2) {
+            results.innerHTML = "";
+            return;
+        }
         const matched = [];
         const db = state.db;
         for (let i = 0; i < db.items.count && matched.length < 100; i++) {
             const it = db.items.get(i);
             if (it && (it.name + " " + it.id).toLowerCase().includes(q)) {
-                matched.push({ kind: "item", name: it.name, id: it.id, index: i });
+                matched.push({kind: "item", name: it.name, id: it.id, index: i});
             }
         }
         for (let i = 0; i < db.fluids.count && matched.length < 150; i++) {
             const fl = db.fluids.get(i);
             if (fl && (fl.name + " " + fl.id).toLowerCase().includes(q)) {
-                matched.push({ kind: "fluid", name: fl.name, id: fl.id, index: i });
+                matched.push({kind: "fluid", name: fl.name, id: fl.id, index: i});
             }
         }
         for (let i = 0; i < db.mobs.count && matched.length < 200; i++) {
             const m = db.mobs.get(i);
             if (m && (m.name + " " + m.id).toLowerCase().includes(q)) {
-                matched.push({ kind: "mob", name: m.name, id: m.id, index: i });
+                matched.push({kind: "mob", name: m.name, id: m.id, index: i});
             }
         }
         results.innerHTML = matched.map(m => `
@@ -213,7 +222,7 @@ function setupGlobalSearch() {
             selectItem(index);
         } else if (item.dataset.kind === "fluid") {
             switchTab("fluids");
-            setState({ selectedItem: index });
+            setState({selectedItem: index});
             renderFluidDetail(null, index);
         } else {
             switchTab("mobs");
@@ -231,7 +240,13 @@ function debounce(fn, ms) {
 }
 
 function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[c]);
 }
 
 function initSidebarResizer() {
@@ -259,7 +274,7 @@ function initSidebarResizer() {
             if (newWidth > 500) newWidth = 500;
             document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
             localStorage.setItem("sidebarWidth", newWidth);
-            
+
             // Dispatch a window resize event to trigger layout/canvas adjustments safely
             window.dispatchEvent(new Event('resize'));
         };
@@ -268,7 +283,8 @@ function initSidebarResizer() {
             resizer.classList.remove("dragging");
             try {
                 resizer.releasePointerCapture(upEvent.pointerId);
-            } catch (err) {}
+            } catch (err) {
+            }
             document.body.style.cursor = "";
             document.body.style.userSelect = "";
             resizer.removeEventListener("pointermove", onPointerMove);
@@ -299,7 +315,7 @@ function initSidebarToggle() {
             document.body.classList.remove("collapsed");
             localStorage.setItem("sidebarCollapsed", "false");
         }
-        
+
         // Dispatch window resize events to keep charts & UI aligned:
         window.dispatchEvent(new Event('resize'));
         setTimeout(() => {

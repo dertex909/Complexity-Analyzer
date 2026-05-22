@@ -1,38 +1,32 @@
 import {
     escapeHtml,
     getMobFlags,
-    fmt,
-    fmtInt
+    fmt
 } from "../../core/utils.js";
-import { state } from "../../core/state.js";
+import {state, setState} from "../../core/state.js";
+import {setupModalClose} from "../../components/modal-utils.js";
 
-export async function renderMobDetail(container, mobIndex) {
+export async function renderMobDetail(unusedContainer, mobIndex) {
     const db = state.db;
+    if (!db) return;
     const mob = db.mobs.get(mobIndex);
     if (!mob) return;
 
-    const panel = container.querySelector("#mob-detail-panel") || document.createElement("div");
-    panel.id = "mob-detail-panel";
-    panel.className = "card";
-    panel.style.marginTop = "12px";
-    panel.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <h3 style="margin:0">${escapeHtml(mob.name)} <code class="mono-code" style="font-size:11px">${escapeHtml(mob.id)}</code></h3>
-            <button class="btn" id="mob-detail-close" style="font-size:11px;padding:4px 8px">Close</button>
-        </div>
-        <div id="mob-detail-body">Loading…</div>
-    `;
-    if (!container.contains(panel)) container.appendChild(panel);
+    const overlay = document.getElementById("mob-modal");
+    if (!overlay) return;
 
-    panel.querySelector("#mob-detail-close").addEventListener("click", () => {
-        panel.remove();
-        state.selectedMob = -1;
-    });
+    const titleEl = document.getElementById("mob-modal-title");
+    const bodyEl = document.getElementById("mob-modal-body");
+    const closeEl = document.getElementById("mob-modal-close");
 
-    const body = panel.querySelector("#mob-detail-body");
-    try {
-        const drops = await db.getMobDrops(mobIndex);
-        body.innerHTML = `
+    if (titleEl) {
+        titleEl.innerHTML = `${escapeHtml(mob.name)} <code class="mono-code" style="font-size:11px;">${escapeHtml(mob.id)}</code>`;
+    }
+
+    const hasDrops = mob.dropCount > 0;
+
+    if (bodyEl) {
+        bodyEl.innerHTML = `
             <dl class="detail-grid">
                 <dt>Category</dt><dd>${escapeHtml(mob.categoryName)}</dd>
                 <dt>Health</dt><dd>${fmt.format(mob.health)}</dd>
@@ -42,20 +36,53 @@ export async function renderMobDetail(container, mobIndex) {
                 <dt>Threat</dt><dd>${fmt.format(mob.threat)}</dd>
                 <dt>Combat power</dt><dd>${fmt.format(mob.combatPower)}</dd>
                 <dt>Rarity</dt><dd>${fmt.format(mob.rarity)}</dd>
-                <dt>Flags</dt><dd class="flags">${getMobFlags(mob, true)}</dd>
+                <dt>Flags</dt><dd class="flags">${getMobFlags(mob, false)}</dd>
             </dl>
-            <div class="section-sub">
-                <h3>Drops (${drops.length})</h3>
-                ${drops.length === 0 ? `<div class="hint">No drops recorded.</div>` : drops.map(d => `
-                    <div class="drop-row">
-                        <strong>${escapeHtml(d.itemName || "?")}</strong>
-                        <span class="hint"> — ${fmt.format(d.yieldPerKill)}/kill${d.killMethod ? ` · ${escapeHtml(d.killMethod)}` : ""}</span>
-                        ${d.itemId ? `<div class="mono-code" style="font-size:11px">${escapeHtml(d.itemId)}</div>` : ""}
-                    </div>
-                `).join("")}
+
+            <div class="modal-actions-grid">
+                <button class="modal-action-card" data-action="mob-drops" ${!hasDrops ? "disabled" : ""}>
+                    <span class="action-title">Drops</span>
+                    <span class="action-desc">${hasDrops ? "View items dropped by this mob" : "This mob has no recorded drops"}</span>
+                </button>
             </div>
         `;
+
+        bodyEl.querySelectorAll(".modal-action-card").forEach(card => {
+            if (card.hasAttribute("disabled")) return;
+            card.addEventListener("click", () => {
+                const action = card.dataset.action;
+                if (action === "mob-drops") renderDropsSection(bodyEl, mobIndex);
+            });
+        });
+    }
+
+    setupModalClose(overlay, closeEl, () => {
+        setState({selectedMob: -1});
+    });
+}
+
+async function renderDropsSection(bodyEl, mobIndex) {
+    const db = state.db;
+    if (!db) return;
+
+    try {
+        const drops = await db.getMobDrops(mobIndex);
+        bodyEl.innerHTML = `
+            <button class="btn" id="mob-back-btn" style="margin-bottom:12px;">← Back to Mob Info</button>
+            <h3>Drops (${drops.length})</h3>
+            ${drops.length === 0 ? `<div class="hint">No drops recorded.</div>` : drops.map(d => `
+                <div class="drop-row" style="padding:8px; border-bottom:1px solid var(--border);">
+                    <strong>${escapeHtml(d.itemName || "?")}</strong>
+                    <span class="hint"> — ${fmt.format(d.yieldPerKill)}/kill${d.killMethod ? ` · ${escapeHtml(d.killMethod)}` : ""}</span>
+                    ${d.itemId ? `<div class="mono-code" style="font-size:11px">${escapeHtml(d.itemId)}</div>` : ""}
+                </div>
+            `).join("")}
+        `;
+
+        bodyEl.querySelector("#mob-back-btn").addEventListener("click", () => {
+            renderMobDetail(null, mobIndex);
+        });
     } catch (e) {
-        body.innerHTML = `<div style="color:var(--err)">Error: ${escapeHtml(String(e))}</div>`;
+        bodyEl.innerHTML = `<div style="color:var(--err)">Error: ${escapeHtml(String(e))}</div>`;
     }
 }

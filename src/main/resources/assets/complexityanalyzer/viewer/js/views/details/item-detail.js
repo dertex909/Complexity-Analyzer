@@ -5,8 +5,9 @@ import {
     getItemFlags,
     fmtInt
 } from "../../core/utils.js";
-import { state, setState, selectItem } from "../../core/state.js";
-import { ITEM_FLAG } from "../../core/cabin.js";
+import {state, setState} from "../../core/state.js";
+import {ITEM_FLAG} from "../../core/cabin.js";
+import {setupModalClose} from "../../components/modal-utils.js";
 
 export function renderItemDetail(unusedContainer, itemIndex) {
     const db = state.db;
@@ -62,35 +63,15 @@ export function renderItemDetail(unusedContainer, itemIndex) {
             </div>
         `;
 
-        // Wire up action cards
         bodyEl.querySelectorAll(".modal-action-card").forEach(card => {
             if (card.hasAttribute("disabled")) return;
             card.addEventListener("click", () => {
                 const action = card.dataset.action;
                 overlay.hidden = true;
-                setState({ tab: action });
+                setState({tab: action});
             });
         });
     }
 
-    // Function to close modal safely
-    const closeModal = () => {
-        overlay.hidden = true;
-        setState({ selectedItem: -1 });
-    };
-
-    if (closeEl) {
-        // Remove existing listener if any, by cloning the element
-        const newClose = closeEl.cloneNode(true);
-        closeEl.replaceWith(newClose);
-        newClose.addEventListener("click", closeModal);
-    }
-
-    // Dynamic background click close
-    overlay.onclick = (e) => {
-        if (e.target === overlay) closeModal();
-    };
-
-    // Show the modal overlay
-    overlay.hidden = false;
+    setupModalClose(overlay, closeEl);
 }

@@ -5,8 +5,9 @@ import {
     getFluidFlags,
     fmtInt
 } from "../../core/utils.js";
-import { state, setState } from "../../core/state.js";
-import { FLUID_FLAG } from "../../core/cabin.js";
+import {state, setState} from "../../core/state.js";
+import {FLUID_FLAG} from "../../core/cabin.js";
+import {setupModalClose} from "../../components/modal-utils.js";
 
 export function renderFluidDetail(unusedContainer, fluidIndex) {
     const db = state.db;
@@ -55,25 +56,10 @@ export function renderFluidDetail(unusedContainer, fluidIndex) {
             card.addEventListener("click", () => {
                 const action = card.dataset.action;
                 overlay.hidden = true;
-                setState({ tab: action });
+                setState({tab: action});
             });
         });
     }
 
-    const closeModal = () => {
-        overlay.hidden = true;
-        setState({ selectedItem: -1 }); // We reuse selectedItem in state.js for selected fluid
-    };
-
-    if (closeEl) {
-        const newClose = closeEl.cloneNode(true);
-        closeEl.replaceWith(newClose);
-        newClose.addEventListener("click", closeModal);
-    }
-
-    overlay.onclick = (e) => {
-        if (e.target === overlay) closeModal();
-    };
-
-    overlay.hidden = false;
+    setupModalClose(overlay, closeEl);
 }

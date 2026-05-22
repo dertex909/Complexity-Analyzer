@@ -1,4 +1,5 @@
 import {ITEM_FLAG, FLUID_FLAG, MOB_FLAG} from "./cabin.js";
+import {switchTab} from "./state.js";
 
 export const fmt = new Intl.NumberFormat("en-US", {maximumFractionDigits: 2});
 export const fmtInt = new Intl.NumberFormat("en-US");
@@ -77,11 +78,47 @@ export function getFluidFlags(fl, compact = false) {
 
 export function getMobFlags(m, fallbackOnEmpty = false) {
     const out = [];
-    if (m.flags & MOB_FLAG.BOSS) {
-        out.push(`<span class="flag boss">B</span>`);
-    }
-    if (m.flags & MOB_FLAG.MINIBOSS) {
-        out.push(`<span class="flag miniboss">m</span>`);
-    }
+    if (m.flags & MOB_FLAG.BOSS) out.push(`<span class="flag boss">B</span>`);
+    if (m.flags & MOB_FLAG.MINIBOSS) out.push(`<span class="flag miniboss">m</span>`);
     return out.join("") || (fallbackOnEmpty ? `<span class="hint">—</span>` : "");
+}
+
+export function renderSubTabHeader(container, entity, subTabName, backButtonText, backTabName) {
+    container.innerHTML = `
+        <div class="sub-tab-panel-header">
+            <button class="btn btn-back" id="back-btn">← ${backButtonText}</button>
+            <div class="header-details">
+                <h2>${escapeHtml(entity.name)}</h2>
+                <span class="mono-code">${escapeHtml(entity.id)}</span>
+                <span class="category-pill cat-${entity.categoryName || "Uncalculable"}">${entity.categoryName}</span>
+                <span class="sub-tab-label-badge">${subTabName}</span>
+            </div>
+        </div>
+        <div class="sub-tab-content-body"></div>
+    `;
+
+    container.querySelector("#back-btn").addEventListener("click", () => {
+        switchTab(backTabName);
+    });
+}
+
+export function renderMachineRecipes(machineSet, recipes, db, renderRecipeRow) {
+    const html = [];
+    for (const mi of machineSet) {
+        const mItem = db.items.get(mi);
+        const mRecipes = recipes.filter(r => r.machineItemIndex === mi);
+        html.push(`
+            <div class="detail-card" style="margin-bottom: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
+                    <span>
+                        <strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem ? mItem.name : "Unknown Machine")}</strong>
+                        <span class="mono-code" style="font-size:11px;">${escapeHtml(mItem ? mItem.id : "")}</span>
+                    </span>
+                    <span class="chip">${fmtInt.format(mRecipes.length)} recipe(s)</span>
+                </div>
+                ${mRecipes.map(r => renderRecipeRow(r, db)).join("")}
+            </div>
+        `);
+    }
+    return html.join("");
 }

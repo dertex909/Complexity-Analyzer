@@ -1,32 +1,13 @@
 import {
     escapeHtml,
-    formatComplexity,
     formatRawTooltip,
-    getItemFlags,
     fmt,
-    fmtInt
+    fmtInt,
+    renderSubTabHeader,
+    renderMachineRecipes
 } from "../../core/utils.js";
-import { state, selectItem, switchTab } from "../../core/state.js";
-import { formatSourceTypeName } from "../sources.js";
-
-function renderHeader(container, item, subTabName) {
-    container.innerHTML = `
-        <div class="sub-tab-panel-header">
-            <button class="btn btn-back" id="back-to-items-btn">← Back to Items</button>
-            <div class="header-details">
-                <h2>${escapeHtml(item.name)}</h2>
-                <span class="mono-code">${escapeHtml(item.id)}</span>
-                <span class="category-pill cat-${item.categoryName || "Uncalculable"}">${item.categoryName}</span>
-                <span class="sub-tab-label-badge">${subTabName}</span>
-            </div>
-        </div>
-        <div class="sub-tab-content-body"></div>
-    `;
-
-    container.querySelector("#back-to-items-btn").addEventListener("click", () => {
-        switchTab("items");
-    });
-}
+import {state, selectItem} from "../../core/state.js";
+import {formatSourceTypeName} from "../sources.js";
 
 export async function renderItemRecipesView(container) {
     const db = state.db;
@@ -39,7 +20,7 @@ export async function renderItemRecipesView(container) {
     const item = db.items.get(itemIndex);
     if (!item) return;
 
-    renderHeader(container, item, "Recipes in Machines");
+    renderSubTabHeader(container, item, "Recipes in Machines", "Back to Items", "items");
     const body = container.querySelector(".sub-tab-content-body");
 
     body.innerHTML = `<div class="hint">Loading recipes…</div>`;
@@ -60,24 +41,7 @@ export async function renderItemRecipesView(container) {
             return;
         }
 
-        const html = [];
-        for (const mi of machineSet) {
-            const mItem = db.items.get(mi);
-            const mRecipes = recipes.filter(r => r.machineItemIndex === mi);
-            html.push(`
-                <div class="detail-card" style="margin-bottom: 16px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
-                        <span>
-                            <strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem ? mItem.name : "Unknown Machine")}</strong>
-                            <span class="mono-code" style="font-size:11px;">${escapeHtml(mItem ? mItem.id : "")}</span>
-                        </span>
-                        <span class="chip">${fmtInt.format(mRecipes.length)} recipe(s)</span>
-                    </div>
-                    ${mRecipes.map(r => renderRecipeRow(r, db)).join("")}
-                </div>
-            `);
-        }
-        body.innerHTML = html.join("");
+        body.innerHTML = renderMachineRecipes(machineSet, recipes, db, renderRecipeRow);
 
         body.querySelectorAll(".machine-link").forEach(el => {
             el.addEventListener("click", () => {
@@ -102,7 +66,7 @@ export async function renderItemMachineRecipesView(container) {
     const item = db.items.get(itemIndex);
     if (!item) return;
 
-    renderHeader(container, item, "Machine Production Output");
+    renderSubTabHeader(container, item, "Machine Production Output", "Back to Items", "items");
     const body = container.querySelector(".sub-tab-content-body");
 
     const isMachine = db.machines.some(m => m.itemIndex === itemIndex);
@@ -167,7 +131,7 @@ export async function renderItemUsesView(container) {
     const item = db.items.get(itemIndex);
     if (!item) return;
 
-    renderHeader(container, item, "Item Uses in Recipes");
+    renderSubTabHeader(container, item, "Item Uses in Recipes", "Back to Items", "items");
     const body = container.querySelector(".sub-tab-content-body");
 
     body.innerHTML = `<div class="hint">Loading item usage…</div>`;
@@ -184,9 +148,9 @@ export async function renderItemUsesView(container) {
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;">
                 ${usage.map(idx => {
-                    const it = db.items.get(idx);
-                    if (!it) return "";
-                    return `
+            const it = db.items.get(idx);
+            if (!it) return "";
+            return `
                         <div class="source-category ingredient-link" data-index="${idx}" style="display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <div style="font-weight:600; color:var(--text);">${escapeHtml(it.name)}</div>
@@ -195,7 +159,7 @@ export async function renderItemUsesView(container) {
                             <span class="category-pill cat-${it.categoryName || "Uncalculable"}" style="font-size:9px;">${it.categoryName}</span>
                         </div>
                     `;
-                }).join("")}
+        }).join("")}
             </div>
         `;
 
@@ -220,7 +184,7 @@ export async function renderItemBaseSourcesView(container) {
     const item = db.items.get(itemIndex);
     if (!item) return;
 
-    renderHeader(container, item, "Base Sources & Loot");
+    renderSubTabHeader(container, item, "Base Sources & Loot", "Back to Items", "items");
     const body = container.querySelector(".sub-tab-content-body");
 
     body.innerHTML = `<div class="hint">Loading sources…</div>`;
@@ -236,15 +200,13 @@ export async function renderItemBaseSourcesView(container) {
         }
 
         let html = "";
-        if (base) {
-            html += `
+        if (base) html += `
                 <div class="detail-card" style="margin-bottom: 16px; border-left: 3px solid var(--accent);">
                     <div style="font-size: 14px; font-weight:600; margin-bottom: 6px;">Baseline Source</div>
                     <div>Source Type: <strong>${escapeHtml(formatSourceTypeName(base.sourceType))}</strong></div>
-                    ${base.details ? `<div style="margin-top: 6px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius:4px; font-family:var(--mono);" class="mono-code">${escapeHtml(base.details)}</div>` : ""}
+                    ${base.details ? `<div style="margin-top: 6px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius:4px; font-family:var(--mono), monospace;" class="mono-code">${escapeHtml(base.details)}</div>` : ""}
                 </div>
             `;
-        }
 
         if (sources.length > 0) {
             html += `<h3 style="font-size:14px; margin-bottom: 10px; color:var(--text-dim);">Additional Extraction / Drop Channels (${sources.length})</h3>`;
@@ -261,9 +223,9 @@ export async function renderItemBaseSourcesView(container) {
                                 <div class="hint" style="font-size:10px; margin-bottom:3px;">Ingredients needed:</div>
                                 <div class="ingredient-list">
                                     ${s.ingredients.map(ing => {
-                                        const ingItem = db.items.get(ing.itemIndex);
-                                        return `<span class="ingredient ingredient-link" data-index="${ing.itemIndex}">${escapeHtml(ingItem ? ingItem.name : "#" + ing.itemIndex)} × ${fmt.format(ing.amount)}</span>`;
-                                    }).join("")}
+                    const ingItem = db.items.get(ing.itemIndex);
+                    return `<span class="ingredient ingredient-link" data-index="${ing.itemIndex}">${escapeHtml(ingItem ? ingItem.name : "#" + ing.itemIndex)} × ${fmt.format(ing.amount)}</span>`;
+                }).join("")}
                                 </div>
                             </div>
                         ` : ""}

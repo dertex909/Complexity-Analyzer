@@ -1,28 +1,11 @@
 import {
     escapeHtml,
     fmt,
-    fmtInt
+    fmtInt,
+    renderSubTabHeader,
+    renderMachineRecipes
 } from "../../core/utils.js";
-import { state, setState, switchTab } from "../../core/state.js";
-
-function renderHeader(container, fluid, subTabName) {
-    container.innerHTML = `
-        <div class="sub-tab-panel-header">
-            <button class="btn btn-back" id="back-to-fluids-btn">← Back to Fluids</button>
-            <div class="header-details">
-                <h2>${escapeHtml(fluid.name)}</h2>
-                <span class="mono-code">${escapeHtml(fluid.id)}</span>
-                <span class="category-pill cat-${fluid.categoryName || "Uncalculable"}">${fluid.categoryName}</span>
-                <span class="sub-tab-label-badge">${subTabName}</span>
-            </div>
-        </div>
-        <div class="sub-tab-content-body"></div>
-    `;
-
-    container.querySelector("#back-to-fluids-btn").addEventListener("click", () => {
-        switchTab("fluids");
-    });
-}
+import {state, setState} from "../../core/state.js";
 
 export async function renderFluidRecipesView(container) {
     const db = state.db;
@@ -35,7 +18,7 @@ export async function renderFluidRecipesView(container) {
     const fluid = db.fluids.get(fluidIndex);
     if (!fluid) return;
 
-    renderHeader(container, fluid, "Recipes in Machines");
+    renderSubTabHeader(container, fluid, "Recipes in Machines", "Back to Fluids", "fluids");
     const body = container.querySelector(".sub-tab-content-body");
 
     body.innerHTML = `<div class="hint">Loading recipes…</div>`;
@@ -57,28 +40,11 @@ export async function renderFluidRecipesView(container) {
             return;
         }
 
-        const html = [];
-        for (const mi of machineSet) {
-            const mItem = db.items.get(mi);
-            const mRecipes = recipes.filter(r => r.machineItemIndex === mi);
-            html.push(`
-                <div class="detail-card" style="margin-bottom: 16px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
-                        <span>
-                            <strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem ? mItem.name : "Unknown Machine")}</strong>
-                            <span class="mono-code" style="font-size:11px;">${escapeHtml(mItem ? mItem.id : "")}</span>
-                        </span>
-                        <span class="chip">${fmtInt.format(mRecipes.length)} recipe(s)</span>
-                    </div>
-                    ${mRecipes.map(r => renderRecipeRow(r, db)).join("")}
-                </div>
-            `);
-        }
-        body.innerHTML = html.join("");
+        body.innerHTML = renderMachineRecipes(machineSet, recipes, db, renderRecipeRow);
 
         body.querySelectorAll(".machine-link").forEach(el => {
             el.addEventListener("click", () => {
-                setState({ tab: "item-machine-recipes", selectedItem: parseInt(el.dataset.index, 10) });
+                setState({tab: "item-machine-recipes", selectedItem: parseInt(el.dataset.index, 10)});
             });
         });
 
@@ -99,7 +65,7 @@ export async function renderFluidUsesView(container) {
     const fluid = db.fluids.get(fluidIndex);
     if (!fluid) return;
 
-    renderHeader(container, fluid, "Fluid Uses in Recipes");
+    renderSubTabHeader(container, fluid, "Fluid Uses in Recipes", "Back to Fluids", "fluids");
     const body = container.querySelector(".sub-tab-content-body");
 
     body.innerHTML = `<div class="hint">Loading usage…</div>`;
@@ -116,9 +82,9 @@ export async function renderFluidUsesView(container) {
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;">
                 ${usage.map(idx => {
-                    const it = db.items.get(idx);
-                    if (!it) return "";
-                    return `
+            const it = db.items.get(idx);
+            if (!it) return "";
+            return `
                         <div class="source-category item-link" data-index="${idx}" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
                             <div>
                                 <div style="font-weight:600; color:var(--text);">${escapeHtml(it.name)}</div>
@@ -127,13 +93,13 @@ export async function renderFluidUsesView(container) {
                             <span class="category-pill cat-${it.categoryName || "Uncalculable"}" style="font-size:9px;">${it.categoryName}</span>
                         </div>
                     `;
-                }).join("")}
+        }).join("")}
             </div>
         `;
 
         body.querySelectorAll(".item-link").forEach(el => {
             el.addEventListener("click", () => {
-                setState({ tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10) });
+                setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
             });
         });
     } catch (e) {
@@ -174,13 +140,13 @@ function wireLinks(container) {
     container.querySelectorAll(".item-link").forEach(el => {
         el.addEventListener("click", (e) => {
             e.stopPropagation();
-            setState({ tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10) });
+            setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
         });
     });
     container.querySelectorAll(".fluid-link").forEach(el => {
         el.addEventListener("click", (e) => {
             e.stopPropagation();
-            setState({ tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10) });
+            setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
         });
     });
 }

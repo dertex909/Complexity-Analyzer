@@ -16,7 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* Cards */
 .card {
     background-color: var(--bg-panel);
     border: 1px solid var(--border);
@@ -24,7 +23,6 @@
     padding: 12px;
 }
 
-/* Stat grid */
 .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -34,7 +32,6 @@
 .stat-grid .value { font-size: 24px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
 .stat-grid .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
 
-/* Controls / Filter bar */
 .controls {
     display: flex;
     flex-wrap: wrap;
@@ -65,7 +62,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 
 .flex-grow { flex: 1; }
 
-/* Virtual list / Table */
 .table-head {
     display: grid;
     padding: 0;
@@ -78,45 +74,43 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     letter-spacing: 1px;
     flex: 0 0 auto;
     align-items: stretch;
-    height: 42px; /* Taller and easier to click, perfectly defined */
+    height: 42px;
 }
 .table-head .num { text-align: center; }
 
 .items-grid {
     display: grid;
     grid-template-columns: var(--col-1, 4%) var(--col-2, 12%) var(--col-3, 28%) var(--col-4, 11%) var(--col-5, 7%) var(--col-6, 10%) var(--col-7, 8%) var(--col-8, 12%) var(--col-9, 8%);
-    gap: 0px;
+    gap: 0;
     align-items: stretch;
     width: 100%;
 }
 .sources-grid {
     display: grid;
     grid-template-columns: var(--src-col-1, 6%) var(--src-col-2, 22%) var(--src-col-3, 38%) var(--src-col-4, 20%) var(--src-col-5, 14%);
-    gap: 0px;
+    gap: 0;
     align-items: stretch;
     width: 100%;
 }
 .fluids-grid {
     display: grid;
     grid-template-columns: var(--fl-col-1, 5%) var(--fl-col-2, 20%) var(--fl-col-3, 25%) var(--fl-col-4, 14%) var(--fl-col-5, 10%) var(--fl-col-6, 14%) var(--fl-col-7, 12%);
-    gap: 0px;
+    gap: 0;
     align-items: stretch;
     width: 100%;
 }
 .mobs-grid {
     display: grid;
     grid-template-columns: var(--mob-col-1, 5%) var(--mob-col-2, 15%) var(--mob-col-3, 25%) var(--mob-col-4, 10%) var(--mob-col-5, 10%) var(--mob-col-6, 10%) var(--mob-col-7, 12%) var(--mob-col-8, 8%) var(--mob-col-9, 5%);
-    gap: 0px;
+    gap: 0;
     align-items: stretch;
     width: 100%;
 }
 
-/* Hide resizer handle on the last column of any grid */
 .table-head .th-cell:last-child .col-drag-handle {
     display: none !important;
 }
 
-/* ── Resizable Header & Dropdown Popovers ── */
 .th-cell {
     position: relative;
     display: flex;
@@ -124,13 +118,13 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     justify-content: center !important;
     text-align: center !important;
     padding: 6px 10px;
-    overflow: visible; /* Required so drag handles or overlay components are visible */
+    overflow: visible;
     white-space: nowrap;
     height: 100%;
-    min-width: 0; /* Stop track from being forced to full title content width */
+    min-width: 0;
 }
 .th-cell:not(:last-child) {
-    border-right: 1px solid rgba(255, 255, 255, 0.08); /* Matches rows divider */
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 .th-cell.num {
     justify-content: center !important;
@@ -140,7 +134,7 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    pointer-events: none; /* Let clicks pass to header click handlers */
+    pointer-events: none;
 }
 .clickable-header {
     cursor: pointer;
@@ -167,8 +161,8 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     position: absolute;
     top: 0;
     bottom: 0;
-    right: -10px; /* Perfectly centered over the 1px divider border */
-    width: 20px; /* Generous 20px hover/grab target - much easier to grab */
+    right: -10px;
+    width: 20px;
     cursor: col-resize;
     background-color: transparent;
     z-index: 10;
@@ -187,7 +181,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     box-shadow: 0 0 6px var(--accent-glow);
 }
 
-/* Popover */
 .filter-popover {
     position: fixed;
     background: linear-gradient(135deg, rgba(20, 24, 30, 0.98), rgba(28, 34, 43, 0.98));
@@ -199,7 +192,7 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     min-width: 180px;
     max-height: 350px;
     overflow-y: auto;
-    font-family: var(--sans);
+    font-family: var(--sans), sans-serif;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -419,7 +412,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     padding-right: 10px;
 }
 
-/* Flags */
 .flags { display: inline-flex; gap: 3px; }
 .category-pill {
     max-width: 100%;
@@ -430,7 +422,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     display: inline-block;
 }
 
-/* ── Fulledge Seamless Tables Layout ── */
 .panel#tab-items, .panel#tab-fluids, .panel#tab-mobs, .panel#tab-sources {
     padding: 0 !important;
     gap: 0 !important;
@@ -467,7 +458,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 .flag.boss { background-color: #3a1b3a; color: #ff98e0; }
 .flag.miniboss { background-color: #2a2139; color: #b198ff; }
 
-/* Detail panels */
 .detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin-bottom: 12px; }
 .detail-grid dt { color: var(--text-dim); font-size: 12px; }
 .detail-grid dd { margin: 0; font-variant-numeric: tabular-nums; }
@@ -500,7 +490,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 
 .mono-code { font-family: var(--mono), monospace; font-size: 12px; color: var(--accent); }
 
-/* Action panel for item detail */
 .action-bar {
     display: flex;
     gap: 8px;
@@ -522,7 +511,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 .action-btn:hover { background-color: var(--bg-hover); color: var(--text); }
 .action-btn.active { border-color: var(--accent); color: var(--accent); background-color: color-mix(in srgb, var(--accent) 10%, var(--bg-raised)); }
 
-/* Tree canvas */
 .tree-canvas-container {
     position: relative;
     flex: 1;
@@ -532,7 +520,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     border-radius: 6px;
 }
 
-/* Search results */
 .search-results { display: flex; flex-direction: column; gap: 6px; }
 .search-result {
     background-color: var(--bg-panel);
@@ -549,7 +536,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 .search-result .name { flex: 1; margin: 0 10px; }
 .search-result .id { font-family: var(--mono), monospace; color: var(--text-dim); font-size: 12px; }
 
-/* Category list for Sources tab */
 .source-category {
     background-color: var(--bg-panel);
     border: 1px solid var(--border);

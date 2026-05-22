@@ -1,8 +1,12 @@
+import {
+    escapeHtml,
+    formatComplexity,
+    formatRawTooltip,
+    getItemFlags,
+    fmtInt
+} from "../../core/utils.js";
 import { state, setState, selectItem } from "../../core/state.js";
 import { ITEM_FLAG } from "../../core/cabin.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 export function renderItemDetail(unusedContainer, itemIndex) {
     const db = state.db;
@@ -34,7 +38,7 @@ export function renderItemDetail(unusedContainer, itemIndex) {
                 <dt>Depth</dt><dd title="${formatRawTooltip(item.depth)}">${fmtInt.format(item.depth)}</dd>
                 <dt>Total Ingredients</dt><dd title="${formatRawTooltip(item.totalIngredients)}">${fmtInt.format(item.totalIngredients)}</dd>
                 <dt>Recipe Usages</dt><dd title="${formatRawTooltip(item.usageCount)}">Used in <strong>${fmtInt.format(item.usageCount)}</strong> recipe(s)</dd>
-                <dt>Flags</dt><dd class="flags">${itemFlags(item)}</dd>
+                <dt>Flags</dt><dd class="flags">${getItemFlags(item, false)}</dd>
                 ${item.errorMessage ? `<dt>Error</dt><dd style="color:var(--err)">${escapeHtml(item.errorMessage)}</dd>` : ""}
             </dl>
 
@@ -89,34 +93,4 @@ export function renderItemDetail(unusedContainer, itemIndex) {
 
     // Show the modal overlay
     overlay.hidden = false;
-}
-
-function itemFlags(it) {
-    const out = [];
-    const f = it.flags;
-    if (f & ITEM_FLAG.HAS_CYCLE) out.push(`<span class="flag cycle" title="cycle">⟲ Cycle</span>`);
-    if (f & ITEM_FLAG.IS_INFINITE) out.push(`<span class="flag infinite" title="unobtainable">∞ Unobtainable</span>`);
-    if (!(f & ITEM_FLAG.HAS_RECIPE)) out.push(`<span class="flag no-recipe" title="no recipe">∅ No recipe</span>`);
-    if (f & ITEM_FLAG.IS_HARDCODED) out.push(`<span class="flag hardcoded" title="hardcoded">H Hardcoded</span>`);
-    return out.join("");
-}
-
-function formatRawTooltip(val) {
-    if (val === undefined || val === null || !isFinite(val)) return "";
-    try {
-        return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 10 }).format(val);
-    } catch (e) {
-        return String(val);
-    }
-}
-
-function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
-    if (c === 0) return "0";
-    return fmt.format(c);
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }

@@ -1,10 +1,16 @@
+import {
+    escapeHtml,
+    debounce,
+    formatComplexity,
+    formatRawTooltip,
+    getItemFlags,
+    fmt,
+    fmtInt
+} from "../core/utils.js";
 import { state, setFilter, selectItem } from "../core/state.js";
 import { ITEM_FLAG } from "../core/cabin.js";
 import { mountVirtualList } from "../components/virtual-list.js";
 import { renderItemDetail } from "./details/item-detail.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 let activePopover = null;
 
@@ -402,7 +408,7 @@ function openPopover(headerCell, filterType) {
 
     } else if (filterType === "id") {
         const selectedMods = f.modsFilter || [];
-        
+
         const allMods = new Set();
         for (let i = 0; i < db.items.count; i++) {
             const it = db.items.get(i);
@@ -556,7 +562,7 @@ function updateItemsView() {
         complexity: x => isFinite(x.complexity) ? x.complexity : Number.MAX_VALUE,
         name: x => x.name, id: x => x.id, depth: x => x.depth, usage: x => x.usageCount,
     }[field] || (x => x.complexity);
-    
+
     list.sort((a, b) => {
         const av = getVal(a), bv = getVal(b);
         if (typeof av === "number") return sign * (av - bv);
@@ -594,7 +600,7 @@ function updateItemsView() {
                 <span class="num" title="${formatRawTooltip(it.totalIngredients)}">${fmtInt.format(it.totalIngredients)}</span>
                 <span class="num" title="${formatRawTooltip(it.usageCount)}">${fmtInt.format(it.usageCount)}</span>
                 <span><span class="category-pill cat-${it.categoryName || "Uncalculable"}">${it.categoryName}</span></span>
-                <span class="flags">${itemFlags(it)}</span>
+                <span class="flags">${getItemFlags(it, true)}</span>
             `;
             el.addEventListener("click", () => { selectItem(it.index); });
             return el;
@@ -602,33 +608,4 @@ function updateItemsView() {
     });
 }
 
-function itemFlags(it) {
-    const out = [];
-    const f = it.flags;
-    if (f & ITEM_FLAG.HAS_CYCLE) out.push(`<span class="flag cycle" title="cycle">⟲</span>`);
-    if (f & ITEM_FLAG.IS_INFINITE) out.push(`<span class="flag infinite" title="unobtainable">∞</span>`);
-    if (!(f & ITEM_FLAG.HAS_RECIPE)) out.push(`<span class="flag no-recipe" title="no recipe">∅</span>`);
-    if (f & ITEM_FLAG.IS_HARDCODED) out.push(`<span class="flag hardcoded" title="hardcoded">H</span>`);
-    return out.join("");
-}
-
-function formatRawTooltip(val) {
-    if (val === undefined || val === null || !isFinite(val)) return "";
-    try {
-        return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 10 }).format(val);
-    } catch (e) {
-        return String(val);
-    }
-}
-
-function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
-    if (c === 0) return "0";
-    if (c >= 1e6) return c.toExponential(2);
-    return fmt.format(c);
-}
-
 function $(id) { return document.getElementById(id); }
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
-function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }

@@ -1,5 +1,5 @@
-import { state, setState, selectItem } from "../core/state.js";
-import { ITEM_FLAG } from "../core/cabin.js";
+import { state, setState, selectItem } from "../../core/state.js";
+import { ITEM_FLAG } from "../../core/cabin.js";
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat("en-US");

@@ -1,7 +1,7 @@
 import { state, setFilter, selectMob } from "../core/state.js";
 import { MOB_FLAG } from "../core/cabin.js";
 import { mountVirtualList } from "../components/virtual-list.js";
-import { renderMobDetail } from "./mob-detail.js";
+import { renderMobDetail } from "./details/mob-detail.js";
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat("en-US");

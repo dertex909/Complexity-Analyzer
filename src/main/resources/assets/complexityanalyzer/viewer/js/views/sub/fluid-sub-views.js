@@ -1,4 +1,4 @@
-import { state, setState, switchTab } from "../core/state.js";
+import { state, setState, switchTab } from "../../core/state.js";
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat("en-US");

@@ -1,5 +1,5 @@
-import { state } from "../core/state.js";
-import { MOB_FLAG } from "../core/cabin.js";
+import { state } from "../../core/state.js";
+import { MOB_FLAG } from "../../core/cabin.js";
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat("en-US");

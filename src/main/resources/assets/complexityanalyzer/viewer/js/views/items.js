@@ -1,7 +1,7 @@
 import { state, setFilter, selectItem } from "../core/state.js";
 import { ITEM_FLAG } from "../core/cabin.js";
 import { mountVirtualList } from "../components/virtual-list.js";
-import { renderItemDetail } from "./item-detail.js";
+import { renderItemDetail } from "./details/item-detail.js";
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat("en-US");

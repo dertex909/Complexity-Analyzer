@@ -1,6 +1,6 @@
-import { state, setState, selectItem, switchTab } from "../core/state.js";
-import { ITEM_FLAG } from "../core/cabin.js";
-import { formatSourceTypeName } from "./sources.js";
+import { state, setState, selectItem, switchTab } from "../../core/state.js";
+import { ITEM_FLAG } from "../../core/cabin.js";
+import { formatSourceTypeName } from "../sources.js";
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat("en-US");

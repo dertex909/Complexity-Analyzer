@@ -1,8 +1,10 @@
+import {
+    escapeHtml,
+    getMobFlags,
+    fmt,
+    fmtInt
+} from "../../core/utils.js";
 import { state } from "../../core/state.js";
-import { MOB_FLAG } from "../../core/cabin.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 export async function renderMobDetail(container, mobIndex) {
     const db = state.db;
@@ -40,7 +42,7 @@ export async function renderMobDetail(container, mobIndex) {
                 <dt>Threat</dt><dd>${fmt.format(mob.threat)}</dd>
                 <dt>Combat power</dt><dd>${fmt.format(mob.combatPower)}</dd>
                 <dt>Rarity</dt><dd>${fmt.format(mob.rarity)}</dd>
-                <dt>Flags</dt><dd class="flags">${mobFlags(mob)}</dd>
+                <dt>Flags</dt><dd class="flags">${getMobFlags(mob, true)}</dd>
             </dl>
             <div class="section-sub">
                 <h3>Drops (${drops.length})</h3>
@@ -57,12 +59,3 @@ export async function renderMobDetail(container, mobIndex) {
         body.innerHTML = `<div style="color:var(--err)">Error: ${escapeHtml(String(e))}</div>`;
     }
 }
-
-function mobFlags(m) {
-    const out = [];
-    if (m.flags & MOB_FLAG.BOSS) out.push(`<span class="flag boss">B</span>`);
-    if (m.flags & MOB_FLAG.MINIBOSS) out.push(`<span class="flag miniboss">m</span>`);
-    return out.join("") || "<span class=\"hint\">—</span>";
-}
-
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }

@@ -1,10 +1,14 @@
+import {
+    escapeHtml,
+    debounce,
+    getMobFlags,
+    fmt,
+    fmtInt
+} from "../core/utils.js";
 import { state, setFilter, selectMob } from "../core/state.js";
 import { MOB_FLAG } from "../core/cabin.js";
 import { mountVirtualList } from "../components/virtual-list.js";
 import { renderMobDetail } from "./details/mob-detail.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 export function renderMobs(container) {
     const db = state.db;
@@ -86,7 +90,7 @@ function updateMobsView() {
                 <span class="num">${fmt.format(m.armor)}</span>
                 <span class="num">${fmt.format(m.combatPower)}</span>
                 <span class="num">${fmt.format(m.rarity)}</span>
-                <span class="flags">${mobFlags(m)}</span>
+                <span class="flags">${getMobFlags(m)}</span>
             `;
             el.addEventListener("click", () => selectMob(m.index));
             return el;
@@ -94,13 +98,4 @@ function updateMobsView() {
     });
 }
 
-function mobFlags(m) {
-    const out = [];
-    if (m.flags & MOB_FLAG.BOSS) out.push(`<span class="flag boss">B</span>`);
-    if (m.flags & MOB_FLAG.MINIBOSS) out.push(`<span class="flag miniboss">m</span>`);
-    return out.join("");
-}
-
 function $(id) { return document.getElementById(id); }
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
-function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }

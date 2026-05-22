@@ -1,9 +1,15 @@
-import { state, setState, setFilter, selectItem } from "../core/state.js";
+import {
+    escapeHtml,
+    debounce,
+    formatComplexity,
+    formatRawTooltip,
+    getItemFlags,
+    fmt,
+    fmtInt
+} from "../core/utils.js";
+import { state, setFilter, selectItem } from "../core/state.js";
 import { ITEM_FLAG } from "../core/cabin.js";
 import { mountVirtualList } from "../components/virtual-list.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 const SOURCE_TYPE_TRANSLATIONS = {
     "loot_table": "Loot Tables",
@@ -647,49 +653,10 @@ async function updateSourcesResults(db, types) {
                 <span class="id" title="${it.id}">${it.id}</span>
                 <span title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</span>
                 <span class="num cat-${it.categoryName || "Uncalculable"}" title="${formatRawTooltip(sc)}">${formatComplexity(sc)}</span>
-                <span class="flags">${itemFlags(it)}</span>
+                <span class="flags">${getItemFlags(it, true)}</span>
             `;
             el.addEventListener("click", () => selectItem(it.index));
             return el;
         }
     });
-}
-
-function itemFlags(it) {
-    const out = [];
-    const f = it.flags;
-    if (f & ITEM_FLAG.HAS_CYCLE) out.push(`<span class="flag cycle" title="cycle">⟲</span>`);
-    if (f & ITEM_FLAG.IS_INFINITE) out.push(`<span class="flag infinite" title="unobtainable">∞</span>`);
-    if (!(f & ITEM_FLAG.HAS_RECIPE)) out.push(`<span class="flag no-recipe" title="no recipe">∅</span>`);
-    if (f & ITEM_FLAG.IS_HARDCODED) out.push(`<span class="flag hardcoded" title="hardcoded">H</span>`);
-    return out.join("");
-}
-
-function formatRawTooltip(val) {
-    if (val === undefined || val === null || !isFinite(val)) return "";
-    try {
-        return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 10 }).format(val);
-    } catch (e) {
-        return String(val);
-    }
-}
-
-function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
-    if (c === 0) return "0";
-    if (c >= 1e6) return c.toExponential(2);
-    return fmt.format(c);
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-}
-
-function debounce(fn, ms) {
-    let t;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
-    };
 }

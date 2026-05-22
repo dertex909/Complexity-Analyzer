@@ -1,7 +1,9 @@
+import {
+    escapeHtml,
+    fmt,
+    fmtInt
+} from "../../core/utils.js";
 import { state, setState, switchTab } from "../../core/state.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 function renderHeader(container, fluid, subTabName) {
     container.innerHTML = `
@@ -181,8 +183,4 @@ function wireLinks(container) {
             setState({ tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10) });
         });
     });
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }

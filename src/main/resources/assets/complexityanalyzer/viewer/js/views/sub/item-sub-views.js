@@ -1,36 +1,13 @@
-import { state, setState, selectItem, switchTab } from "../../core/state.js";
-import { ITEM_FLAG } from "../../core/cabin.js";
+import {
+    escapeHtml,
+    formatComplexity,
+    formatRawTooltip,
+    getItemFlags,
+    fmt,
+    fmtInt
+} from "../../core/utils.js";
+import { state, selectItem, switchTab } from "../../core/state.js";
 import { formatSourceTypeName } from "../sources.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
-
-function itemFlags(it) {
-    const out = [];
-    const f = it.flags;
-    if (f & ITEM_FLAG.HAS_CYCLE) out.push(`<span class="flag cycle" title="cycle">⟲</span>`);
-    if (f & ITEM_FLAG.IS_INFINITE) out.push(`<span class="flag infinite" title="unobtainable">∞</span>`);
-    if (!(f & ITEM_FLAG.HAS_RECIPE)) out.push(`<span class="flag no-recipe" title="no recipe">∅</span>`);
-    if (f & ITEM_FLAG.IS_HARDCODED) out.push(`<span class="flag hardcoded" title="hardcoded">H</span>`);
-    return out.join("");
-}
-
-function formatRawTooltip(val) {
-    if (val === undefined || val === null || !isFinite(val)) return "";
-    try {
-        return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 10 }).format(val);
-    } catch (e) {
-        return String(val);
-    }
-}
-
-function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
-    if (c === 0) return "0";
-    if (c >= 1e6) return c.toExponential(2);
-    return fmt.format(c);
-}
 
 function renderHeader(container, item, subTabName) {
     container.innerHTML = `
@@ -145,7 +122,7 @@ export async function renderItemMachineRecipesView(container) {
         // Group recipes by the items they produce
         const producedItems = new Map();
         for (const r of recipes) {
-            const prodIdx = r.resultItemIndex;
+            const prodIdx = r.outputItemIndex;
             if (!producedItems.has(prodIdx)) producedItems.set(prodIdx, []);
             producedItems.get(prodIdx).push(r);
         }
@@ -327,8 +304,4 @@ function wireIngredientLinks(container) {
             selectItem(parseInt(el.dataset.index, 10));
         });
     });
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }

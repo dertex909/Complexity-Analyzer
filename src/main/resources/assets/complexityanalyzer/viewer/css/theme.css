@@ -48,6 +48,41 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+    --col-1: 4%;
+    --col-2: 12%;
+    --col-3: 28%;
+    --col-4: 11%;
+    --col-5: 7%;
+    --col-6: 10%;
+    --col-7: 8%;
+    --col-8: 12%;
+    --col-9: 8%;
+
+    --src-col-1: 6%;
+    --src-col-2: 22%;
+    --src-col-3: 38%;
+    --src-col-4: 20%;
+    --src-col-5: 14%;
+
+    --fl-col-1: 5%;
+    --fl-col-2: 20%;
+    --fl-col-3: 25%;
+    --fl-col-4: 14%;
+    --fl-col-5: 10%;
+    --fl-col-6: 14%;
+    --fl-col-7: 12%;
+
+    --mob-col-1: 5%;
+    --mob-col-2: 15%;
+    --mob-col-3: 25%;
+    --mob-col-4: 10%;
+    --mob-col-5: 10%;
+    --mob-col-6: 10%;
+    --mob-col-7: 12%;
+    --mob-col-8: 8%;
+    --mob-col-9: 5%;
+
     --shadow-glow: 0 0 20px var(--accent-glow);
 
     --radius-sm: 0px;

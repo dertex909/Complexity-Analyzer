@@ -1,8 +1,12 @@
+import {
+    escapeHtml,
+    formatComplexity,
+    formatRawTooltip,
+    getFluidFlags,
+    fmtInt
+} from "../../core/utils.js";
 import { state, setState } from "../../core/state.js";
 import { FLUID_FLAG } from "../../core/cabin.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 export function renderFluidDetail(unusedContainer, fluidIndex) {
     const db = state.db;
@@ -30,7 +34,7 @@ export function renderFluidDetail(unusedContainer, fluidIndex) {
                 <dt>Complexity</dt><dd class="cat-${fluid.categoryName || "Uncalculable"}" style="font-weight:600; font-size:14px;" title="${formatRawTooltip(fluid.complexity)}">${formatComplexity(fluid.complexity)}</dd>
                 <dt>Category</dt><dd><span class="category-pill cat-${fluid.categoryName || "Uncalculable"}">${fluid.categoryName}</span></dd>
                 <dt>Recipe Usages</dt><dd title="${formatRawTooltip(fluid.usageCount)}">Used as ingredient in <strong>${fmtInt.format(fluid.usageCount)}</strong> item recipe(s)</dd>
-                <dt>Flags</dt><dd class="flags">${fluidFlags(fluid)}</dd>
+                <dt>Flags</dt><dd class="flags">${getFluidFlags(fluid, false)}</dd>
                 ${fluid.errorMessage ? `<dt>Error</dt><dd style="color:var(--err)">${escapeHtml(fluid.errorMessage)}</dd>` : ""}
             </dl>
 
@@ -72,34 +76,4 @@ export function renderFluidDetail(unusedContainer, fluidIndex) {
     };
 
     overlay.hidden = false;
-}
-
-function fluidFlags(fl) {
-    const out = [];
-    const f = fl.flags;
-    if (f & FLUID_FLAG.HAS_CYCLE) out.push(`<span class="flag cycle" title="cycle">⟲ Cycle</span>`);
-    if (f & FLUID_FLAG.IS_INFINITE) out.push(`<span class="flag infinite" title="unobtainable">∞ Unobtainable</span>`);
-    if (!(f & FLUID_FLAG.HAS_RECIPE)) out.push(`<span class="flag no-recipe" title="no recipe">∅ No recipe</span>`);
-    if (f & FLUID_FLAG.IS_PROTECTED) out.push(`<span class="flag hardcoded" title="protected">P Protected</span>`);
-    return out.join("");
-}
-
-function formatRawTooltip(val) {
-    if (val === undefined || val === null || !isFinite(val)) return "";
-    try {
-        return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 10 }).format(val);
-    } catch (e) {
-        return String(val);
-    }
-}
-
-function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
-    if (c === 0) return "0";
-    return fmt.format(c);
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }

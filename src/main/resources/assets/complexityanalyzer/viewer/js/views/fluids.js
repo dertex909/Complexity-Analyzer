@@ -1,10 +1,15 @@
+import {
+    escapeHtml,
+    debounce,
+    formatComplexity,
+    getFluidFlags,
+    fmt,
+    fmtInt
+} from "../core/utils.js";
 import { state, setState, setFilter } from "../core/state.js";
 import { mountVirtualList } from "../components/virtual-list.js";
 import { renderFluidDetail } from "./details/fluid-detail.js";
 import { FLUID_FLAG } from "../core/cabin.js";
-
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const fmtInt = new Intl.NumberFormat("en-US");
 
 let activePopover = null;
 
@@ -564,7 +569,7 @@ function updateFluidsView() {
                 <span class="num cat-${fl.categoryName || "Uncalculable"}" style="font-weight:600;">${formatComplexity(fl.complexity)}</span>
                 <span class="num">${fmtInt.format(fl.usageCount)}</span>
                 <span><span class="category-pill cat-${fl.categoryName || "Uncalculable"}">${fl.categoryName}</span></span>
-                <span class="flags">${fluidFlags(fl)}</span>
+                <span class="flags">${getFluidFlags(fl, true)}</span>
             `;
             el.addEventListener("click", () => {
                 setState({ selectedItem: fl.index }); // Reuse selectedItem for fluid modal in app.js
@@ -574,34 +579,3 @@ function updateFluidsView() {
         }
     });
 }
-
-function fluidFlags(fl) {
-    const out = [];
-    const f = fl.flags;
-    if (f & FLUID_FLAG.HAS_CYCLE) out.push(`<span class="flag cycle" title="cycle">⟲</span>`);
-    if (f & FLUID_FLAG.IS_INFINITE) out.push(`<span class="flag infinite" title="unobtainable">∞</span>`);
-    if (!(f & FLUID_FLAG.HAS_RECIPE)) out.push(`<span class="flag no-recipe" title="no recipe">∅</span>`);
-    if (f & FLUID_FLAG.IS_PROTECTED) out.push(`<span class="flag hardcoded" title="protected">P</span>`);
-    return out.join("");
-}
-
-function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
-    if (c === 0) return "0";
-    if (c >= 1e6) return c.toExponential(2);
-    return fmt.format(c);
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-}
-
-function debounce(fn, ms) {
-    let t;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
-    };
-}
-

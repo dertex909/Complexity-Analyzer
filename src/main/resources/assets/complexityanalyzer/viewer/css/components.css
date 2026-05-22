@@ -103,7 +103,13 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     align-items: stretch;
     width: 100%;
 }
-.mobs-grid { grid-template-columns: 60px 3fr 3fr 80px 80px 70px 100px 80px 90px; gap: 8px; }
+.mobs-grid {
+    display: grid;
+    grid-template-columns: var(--mob-col-1, 5%) var(--mob-col-2, 15%) var(--mob-col-3, 25%) var(--mob-col-4, 10%) var(--mob-col-5, 10%) var(--mob-col-6, 10%) var(--mob-col-7, 12%) var(--mob-col-8, 8%) var(--mob-col-9, 5%);
+    gap: 0px;
+    align-items: stretch;
+    width: 100%;
+}
 
 /* Hide resizer handle on the last column of any grid */
 .table-head .th-cell:last-child .col-drag-handle {
@@ -385,6 +391,33 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     padding-right: 10px;
 }
 
+.row.mobs-grid {
+    padding: 0 !important;
+    align-items: stretch !important;
+    height: 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.row.mobs-grid > * {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    height: 100%;
+}
+.row.mobs-grid > *:last-child {
+    border-right: none;
+}
+.row.mobs-grid > .num {
+    justify-content: flex-end;
+}
+.row.mobs-grid > .idx {
+    justify-content: flex-end;
+    padding-right: 10px;
+}
 
 /* Flags */
 .flags { display: inline-flex; gap: 3px; }

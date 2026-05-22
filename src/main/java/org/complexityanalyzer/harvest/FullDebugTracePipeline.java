@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class FullDebugTracePipeline {
+    private static final boolean debugClaimed = true;
 
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
@@ -44,6 +45,36 @@ public final class FullDebugTracePipeline {
                     .append(" fluids=").append(items.inputFluids().size())
                     .append(" outFluids=").append(items.outputFluids().size())
                     .append("]\n");
+
+            if (debugClaimed) {
+                if (!items.inputItems().isEmpty()) {
+                    buffer.append("  Input items: ");
+                    for (ItemStack stack : items.inputItems()) buffer.append(formatItemStack(stack)).append(", ");
+                    buffer.setLength(buffer.length() - 2);
+                    buffer.append('\n');
+                }
+
+                if (!items.outputItems().isEmpty()) {
+                    buffer.append("  Output items: ");
+                    for (ItemStack stack : items.outputItems()) buffer.append(formatItemStack(stack)).append(", ");
+                    buffer.setLength(buffer.length() - 2);
+                    buffer.append('\n');
+                }
+
+                if (!items.inputFluids().isEmpty()) {
+                    buffer.append("  Input fluids: ");
+                    for (FluidStack fs : items.inputFluids()) buffer.append(formatValue(fs)).append(", ");
+                    buffer.setLength(buffer.length() - 2);
+                    buffer.append('\n');
+                }
+
+                if (!items.outputFluids().isEmpty()) {
+                    buffer.append("  Output fluids: ");
+                    for (FluidStack fs : items.outputFluids()) buffer.append(formatValue(fs)).append(", ");
+                    buffer.setLength(buffer.length() - 2);
+                    buffer.append('\n');
+                }
+            }
         }
     }
 

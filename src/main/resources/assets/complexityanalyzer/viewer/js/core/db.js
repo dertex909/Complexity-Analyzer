@@ -3,6 +3,7 @@ import {
     RecipeIndex, FluidRecipeIndex, UsageTable, FluidUsageTable, readMeta, readCategories,
     readSourcesForItem, readBaseDataForItem, readRecipesAt,
     readDropsForMob, readMachineIndex, readSourceTypeIndex, readModSummary,
+    ITEM_FLAG,
 } from "./cabin.js";
 
 export class CabinDatabase {
@@ -29,6 +30,13 @@ export class CabinDatabase {
         this.machines = miB ? readMachineIndex(miB) : [];
         this.sourceTypes = stiB ? readSourceTypeIndex(stiB) : [];
         this.modSummary = msB ? readModSummary(msB, this.strings) : [];
+
+        let infCount = 0;
+        for (let i = 0; i < this.items.count; i++) {
+            const it = this.items.get(i);
+            if (it && (it.complexity === -1 || (it.flags & ITEM_FLAG.IS_UNCALCULABLE))) infCount++;
+        }
+        this.meta.infiniteItems = infCount;
     }
 
     async _ensure(key, id) {

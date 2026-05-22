@@ -1,4 +1,4 @@
-import { state } from "../core/state.js";
+import {state} from "../core/state.js";
 
 const fmtInt = new Intl.NumberFormat("en-US");
 
@@ -8,14 +8,14 @@ export function renderOverview(container) {
     const m = db.meta;
 
     const stats = [
-        { label: "Items", value: m.itemCount },
-        { label: "Fluids", value: m.fluidCount },
-        { label: "Mobs", value: m.mobCount },
-        { label: "Recipes", value: m.recipeCount },
-        { label: "Valid items", value: m.validItems },
-        { label: "Unobtainable", value: m.infiniteItems },
-        { label: "Machines", value: m.machineCount },
-        { label: "Mods", value: m.modCount },
+        {label: "Items", value: m.itemCount},
+        {label: "Fluids", value: m.fluidCount},
+        {label: "Mobs", value: m.mobCount},
+        {label: "Recipes", value: m.recipeCount},
+        {label: "Valid items", value: m.validItems},
+        {label: "Uncalculable", value: m.infiniteItems},
+        {label: "Machines", value: m.machineCount},
+        {label: "Mods", value: m.modCount},
     ];
 
     container.innerHTML = `

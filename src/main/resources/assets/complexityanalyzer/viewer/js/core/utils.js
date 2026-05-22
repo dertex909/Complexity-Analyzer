@@ -24,8 +24,8 @@ export function debounce(fn, ms) {
 }
 
 export function formatComplexity(c) {
-    if (c < 0) return "—";
-    if (!isFinite(c)) return "∞";
+    if (c < 0) return "-";
+    if (!isFinite(c)) return "-";
     if (c === 0) return "0";
     if (c >= 1e6) return c.toExponential(2);
     return fmt.format(c);
@@ -46,8 +46,8 @@ export function getItemFlags(it, compact = false) {
     if (f & ITEM_FLAG.HAS_CYCLE) {
         out.push(`<span class="flag cycle" title="cycle">⟲${compact ? "" : " Cycle"}</span>`);
     }
-    if (f & ITEM_FLAG.IS_INFINITE) {
-        out.push(`<span class="flag infinite" title="unobtainable">∞${compact ? "" : " Unobtainable"}</span>`);
+    if (f & ITEM_FLAG.IS_UNCALCULABLE) {
+        out.push(`<span class="flag infinite" title="uncalculable">-${compact ? "" : " Uncalculable"}</span>`);
     }
     if (!(f & ITEM_FLAG.HAS_RECIPE)) {
         out.push(`<span class="flag no-recipe" title="no recipe">∅${compact ? "" : " No recipe"}</span>`);
@@ -64,8 +64,8 @@ export function getFluidFlags(fl, compact = false) {
     if (f & FLUID_FLAG.HAS_CYCLE) {
         out.push(`<span class="flag cycle" title="cycle">⟲${compact ? "" : " Cycle"}</span>`);
     }
-    if (f & FLUID_FLAG.IS_INFINITE) {
-        out.push(`<span class="flag infinite" title="unobtainable">∞${compact ? "" : " Unobtainable"}</span>`);
+    if (f & FLUID_FLAG.IS_UNCALCULABLE) {
+        out.push(`<span class="flag infinite" title="uncalculable">-${compact ? "" : " Uncalculable"}</span>`);
     }
     if (!(f & FLUID_FLAG.HAS_RECIPE)) {
         out.push(`<span class="flag no-recipe" title="no recipe">∅${compact ? "" : " No recipe"}</span>`);

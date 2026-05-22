@@ -35,15 +35,22 @@ export const FLUID_RECORD = 30;
 
 export const ITEM_FLAG = {
     HAS_RECIPE: 0x01, HAS_CYCLE: 0x02, IS_HARDCODED: 0x04,
-    IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20,
+    IS_VALID: 0x08, IS_UNCALCULABLE: 0x10, NO_RECIPE: 0x20,
 };
 
 export const FLUID_FLAG = {
     HAS_RECIPE: 0x01, HAS_CYCLE: 0x02,
-    IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20, IS_PROTECTED: 0x40,
+    IS_VALID: 0x08, IS_UNCALCULABLE: 0x10, NO_RECIPE: 0x20, IS_PROTECTED: 0x40,
 };
 
 export const MOB_FLAG = {BOSS: 0x01, MINIBOSS: 0x02};
+
+function normalizeUncalculable(entity, flagEnum) {
+    if (entity.complexity === -1 || (entity.flags & flagEnum.IS_UNCALCULABLE)) {
+        entity.flags |= flagEnum.IS_UNCALCULABLE;
+        if (!entity.categoryName) entity.categoryName = "Uncalculable";
+    }
+}
 
 export class Buf {
     constructor(bytes, offset = 0) {
@@ -218,13 +225,15 @@ export class ItemTable {
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * ITEM_RECORD);
-        return {
+        const item = {
             index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()),
             complexity: b.f64(), depth: b.i32(), totalIngredients: b.i32(), usageCount: b.i32(),
             categoryName: this.s.get(b.i32()), baseDataOffset: b.u32(), sourcesOffset: b.u32(),
             sourceCount: b.u16(), categoryIndex: b.u8(), flags: b.u8(),
             errorMessage: this.s.get(b.i32())
         };
+        normalizeUncalculable(item, ITEM_FLAG);
+        return item;
     }
 }
 
@@ -257,12 +266,14 @@ export class FluidTable {
     get(i) {
         if (i < 0 || i >= this.count) return null;
         const b = new Buf(this.b, 4 + i * FLUID_RECORD);
-        return {
+        const fl = {
             index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()),
             complexity: b.f64(), usageCount: b.i32(),
             categoryName: this.s.get(b.i32()), categoryIndex: b.u8(), flags: b.u8(),
             errorMessage: this.s.get(b.i32())
         };
+        normalizeUncalculable(fl, FLUID_FLAG);
+        return fl;
     }
 }
 

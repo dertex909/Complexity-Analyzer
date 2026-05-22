@@ -60,7 +60,7 @@ export function renderFluids(container) {
             index: 7,
             flagChecks: [
                 f => f & FLUID_FLAG.HAS_CYCLE,
-                f => f & FLUID_FLAG.IS_INFINITE,
+                f => f & FLUID_FLAG.IS_UNCALCULABLE,
                 f => !(f & FLUID_FLAG.HAS_RECIPE),
                 f => f & FLUID_FLAG.IS_PROTECTED
             ]
@@ -223,7 +223,7 @@ function openPopover(headerCell, filterType) {
     } else if (filterType === "flags") {
         const flagsList = [
             {key: "cycle", label: "Cycle ⟲"},
-            {key: "infinite", label: "Unobtainable ∞"},
+            {key: "uncalculable", label: "Uncalculable -"},
             {key: "recipe", label: "No recipe ∅"},
             {key: "protected", label: "Protected P"}
         ];

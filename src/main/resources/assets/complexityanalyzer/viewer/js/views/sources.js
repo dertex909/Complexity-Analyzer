@@ -176,7 +176,7 @@ function openPopover(headerCell, filterType) {
     } else if (filterType === "flags") {
         const flagsList = [
             {key: "cycle", label: "⟲ Cycle"},
-            {key: "infinite", label: "∞ Unobtainable"},
+            {key: "uncalculable", label: "- Uncalculable"},
             {key: "recipe", label: "∅ No Recipe"},
             {key: "hardcoded", label: "H Hardcoded"}
         ];
@@ -219,7 +219,7 @@ export async function renderSources(container) {
             index: 5,
             flagChecks: [
                 f => f & ITEM_FLAG.HAS_CYCLE,
-                f => f & ITEM_FLAG.IS_INFINITE,
+                f => f & ITEM_FLAG.IS_UNCALCULABLE,
                 f => !(f & ITEM_FLAG.HAS_RECIPE),
                 f => f & ITEM_FLAG.IS_HARDCODED
             ]

@@ -16,7 +16,7 @@ export function passesFlagsFilter(item, flagsFilter, FLAG_ENUM) {
 
     const commonFlagChecks = {
         cycle: () => f & FLAG_ENUM.HAS_CYCLE,
-        infinite: () => f & FLAG_ENUM.IS_INFINITE,
+        uncalculable: () => f & FLAG_ENUM.IS_UNCALCULABLE,
         recipe: () => !(f & FLAG_ENUM.HAS_RECIPE),
         hardcoded: () => f & FLAG_ENUM.IS_HARDCODED,
         protected: () => f & FLAG_ENUM.IS_PROTECTED

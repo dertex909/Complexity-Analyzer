@@ -215,7 +215,7 @@ export async function renderItemBaseSourcesView(container) {
                     <div class="detail-card" style="margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
                             <strong>${escapeHtml(formatSourceTypeName(s.sourceType))}</strong>
-                            <span class="mono-code" title="${formatRawTooltip(s.estimatedCost)}">cost complexity: ${isFinite(s.estimatedCost) ? fmt.format(s.estimatedCost) : "∞"}</span>
+                            <span class="mono-code" title="${formatRawTooltip(s.estimatedCost)}">cost complexity: ${isFinite(s.estimatedCost) ? fmt.format(s.estimatedCost) : "-"}</span>
                         </div>
                         ${s.details ? `<div class="hint" style="margin-bottom: 6px;">${escapeHtml(s.details)}</div>` : ""}
                         ${s.ingredients.length > 0 ? `

@@ -124,7 +124,10 @@ function updateHeaderIndicators() {
 }
 
 function wireItemFilters(tableConfig) {
-    const onInput = debounce((key, val) => setFilter("items", {[key]: val}), 120);
+    const onInput = debounce((key, val) => {
+        setFilter("items", {[key]: val});
+        updateItemsView();
+    }, 120);
     $("items-query").addEventListener("input", e => onInput("query", e.target.value));
     $("items-sort").addEventListener("change", e => {
         setFilter("items", {sort: e.target.value});

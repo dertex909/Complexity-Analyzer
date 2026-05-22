@@ -1,7 +1,27 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 export const SEC = {
     META: 0x01, STRINGS: 0x02, ITEMS: 0x03, BASE_DATA: 0x04, SOURCES: 0x05,
     RECIPES: 0x06, USAGE: 0x07, MOBS: 0x08, DROPS: 0x09, SCC: 0x0A,
-    CATEGORIES: 0x0B, FLUIDS: 0x0C, IDX_ITEM_HASH: 0x20, IDX_RECIPES: 0x21, IDX_MOB_HASH: 0x22,
+    CATEGORIES: 0x0B, FLUIDS: 0x0C, FLUID_RECIPES: 0x0D, FLUID_USAGE: 0x0E,
+    IDX_ITEM_HASH: 0x20, IDX_RECIPES: 0x21, IDX_MOB_HASH: 0x22,
+    IDX_FLUID_HASH: 0x23, IDX_FLUID_RECIPES: 0x24,
     MACHINE_INDEX: 0x30, SOURCE_TYPE_INDEX: 0x31, MOD_SUMMARY: 0x32,
 };
 
@@ -11,10 +31,16 @@ const CODEC_RAW = 0;
 
 export const ITEM_RECORD = 48;
 export const MOB_RECORD = 80;
+export const FLUID_RECORD = 30;
 
 export const ITEM_FLAG = {
     HAS_RECIPE: 0x01, HAS_CYCLE: 0x02, IS_HARDCODED: 0x04,
     IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20,
+};
+
+export const FLUID_FLAG = {
+    HAS_RECIPE: 0x01, HAS_CYCLE: 0x02,
+    IS_VALID: 0x08, IS_INFINITE: 0x10, NO_RECIPE: 0x20, IS_PROTECTED: 0x40,
 };
 
 export const MOB_FLAG = { BOSS: 0x01, MINIBOSS: 0x02 };
@@ -185,8 +211,13 @@ export class FluidTable {
     }
     get(i) {
         if (i < 0 || i >= this.count) return null;
-        const b = new Buf(this.b, 4 + i * 8);
-        return { index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()) };
+        const b = new Buf(this.b, 4 + i * FLUID_RECORD);
+        return {
+            index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()),
+            complexity: b.f64(), usageCount: b.i32(),
+            categoryName: this.s.get(b.i32()), categoryIndex: b.u8(), flags: b.u8(),
+            errorMessage: this.s.get(b.i32())
+        };
     }
 }
 
@@ -230,6 +261,18 @@ export class RecipeIndex {
     }
 }
 
+export class FluidRecipeIndex {
+    constructor(bytes) {
+        this.b = bytes;
+        this.count = new Buf(bytes).i32();
+    }
+    get(i) {
+        if (i < 0 || i >= this.count) return { offset: 0xFFFFFFFF, count: 0 };
+        const b = new Buf(this.b, 4 + i * 6);
+        return { offset: b.u32(), count: b.u16() };
+    }
+}
+
 export function readRecipesAt(bytes, strings, offset, count) {
     if (offset === 0xFFFFFFFF || count === 0) return [];
     const b = new Buf(bytes, offset);
@@ -258,6 +301,20 @@ function readOneRecipe(b, strings) {
 }
 
 export class UsageTable {
+    constructor(bytes) {
+        this.b = bytes;
+        this.count = new Buf(bytes).i32();
+        this.flat = 8 + this.count * 8;
+    }
+    get(i) {
+        if (i < 0 || i >= this.count) return [];
+        const b = new Buf(this.b, 8 + i * 8), start = b.i32(), n = b.i32();
+        if (start === -1 || n === 0) return [];
+        return Array.from({ length: n }, (_, j) => new Buf(this.b, this.flat + start + j * 4).i32());
+    }
+}
+
+export class FluidUsageTable {
     constructor(bytes) {
         this.b = bytes;
         this.count = new Buf(bytes).i32();

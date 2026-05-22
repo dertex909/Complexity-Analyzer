@@ -1,6 +1,24 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import {
     SEC, CabinFile, StringPool, ItemTable, MobTable, FluidTable,
-    RecipeIndex, UsageTable, readMeta, readCategories,
+    RecipeIndex, FluidRecipeIndex, UsageTable, FluidUsageTable, readMeta, readCategories,
     readSourcesForItem, readBaseDataForItem, readRecipesAt,
     readDropsForMob, readMachineIndex, readSourceTypeIndex, readModSummary,
 } from "./cabin.js";
@@ -10,9 +28,9 @@ export class CabinDatabase {
 
     async open(opt = {}) {
         await this.file.open(opt);
-        const [sB, iB, mB, meB, cB, rIB, flB, miB, stiB, msB] = await Promise.all([
+        const [sB, iB, mB, meB, cB, rIB, flB, miB, stiB, msB, flRIB] = await Promise.all([
             SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES, SEC.FLUIDS,
-            SEC.MACHINE_INDEX, SEC.SOURCE_TYPE_INDEX, SEC.MOD_SUMMARY,
+            SEC.MACHINE_INDEX, SEC.SOURCE_TYPE_INDEX, SEC.MOD_SUMMARY, SEC.IDX_FLUID_RECIPES,
         ].map(id => this.file.readSection(id).catch(() => null)));
 
         this.strings = new StringPool(sB);
@@ -22,6 +40,7 @@ export class CabinDatabase {
         this.categories = readCategories(cB, this.strings);
         this.recipeIndex = new RecipeIndex(rIB);
         this.fluids = new FluidTable(flB, this.strings);
+        this.fluidRecipeIndex = new FluidRecipeIndex(flRIB);
 
         this.machines = miB ? readMachineIndex(miB) : [];
         this.sourceTypes = stiB ? readSourceTypeIndex(stiB) : [];
@@ -51,6 +70,16 @@ export class CabinDatabase {
     async getItemUsage(i) {
         if (!this._u) this._u = new UsageTable(await this.file.readSection(SEC.USAGE));
         return this._u.get(i);
+    }
+
+    async getFluidRecipes(i) {
+        const ref = this.fluidRecipeIndex.get(i);
+        return readRecipesAt(await this._ensure('_frB', SEC.FLUID_RECIPES), this.strings, ref.offset, ref.count);
+    }
+
+    async getFluidUsage(i) {
+        if (!this._fu) this._fu = new FluidUsageTable(await this.file.readSection(SEC.FLUID_USAGE));
+        return this._fu.get(i);
     }
 
     async getMobDrops(i) {

@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { state, setState, store, switchTab } from "./state.js";
 
 export function initRouter() {
@@ -17,8 +35,11 @@ function renderTabs() {
     
     // Handle indented nested item sub-tabs inside sidebar
     const subContainer = document.getElementById("item-sub-tabs");
+    const fluidSubContainer = document.getElementById("fluid-sub-tabs");
+
     if (subContainer) {
-        if (state.selectedItem >= 0 && state.db) {
+        const isItemTab = ["items", "item-recipes", "item-machine-recipes", "item-uses", "item-base-sources"].includes(active);
+        if (isItemTab && state.selectedItem >= 0 && state.db) {
             const item = state.db.items.get(state.selectedItem);
             if (item) {
                 const isMachine = state.db.machines.some(m => m.itemIndex === state.selectedItem);
@@ -75,6 +96,58 @@ function renderTabs() {
         } else {
             subContainer.style.display = "none";
             subContainer.innerHTML = "";
+        }
+    }
+
+    if (fluidSubContainer) {
+        const isFluidTab = ["fluids", "fluid-recipes", "fluid-uses"].includes(active);
+        if (isFluidTab && state.selectedItem >= 0 && state.db) {
+            const fluid = state.db.fluids.get(state.selectedItem);
+            if (fluid) {
+                const hasRecipe = (fluid.flags & 0x01) !== 0;
+                const hasUses = fluid.usageCount > 0;
+
+                const availableTabs = [];
+                if (hasRecipe) availableTabs.push("fluid-recipes");
+                if (hasUses) availableTabs.push("fluid-uses");
+
+                const isCurrentTabSubtab = ["fluid-recipes", "fluid-uses"].includes(active);
+
+                if (isCurrentTabSubtab && !availableTabs.includes(active)) {
+                    const nextTab = availableTabs.length > 0 ? availableTabs[0] : "fluids";
+                    setTimeout(() => {
+                        setState({ tab: nextTab });
+                    }, 0);
+                    return;
+                }
+
+                let buttons = "";
+                if (hasRecipe) {
+                    buttons += `<button class="sub-tab ${active === "fluid-recipes" ? "active" : ""}" data-tab="fluid-recipes">↳ Recipes in Machines</button>`;
+                }
+                if (hasUses) {
+                    buttons += `<button class="sub-tab ${active === "fluid-uses" ? "active" : ""}" data-tab="fluid-uses">↳ Uses of Fluid</button>`;
+                }
+
+                if (buttons) {
+                    fluidSubContainer.style.display = "flex";
+                    fluidSubContainer.innerHTML = buttons;
+                    fluidSubContainer.querySelectorAll(".sub-tab").forEach(st => {
+                        st.addEventListener("click", () => {
+                            setState({ tab: st.dataset.tab });
+                        });
+                    });
+                } else {
+                    fluidSubContainer.style.display = "none";
+                    fluidSubContainer.innerHTML = "";
+                }
+            } else {
+                fluidSubContainer.style.display = "none";
+                fluidSubContainer.innerHTML = "";
+            }
+        } else {
+            fluidSubContainer.style.display = "none";
+            fluidSubContainer.innerHTML = "";
         }
     }
 

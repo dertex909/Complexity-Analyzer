@@ -40,6 +40,9 @@ import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.graph.IngredientSlot;
+import org.complexityanalyzer.graph.FluidIngredientSlot;
+import org.complexityanalyzer.graph.RecipeCategory;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -88,6 +91,7 @@ public final class CabinBuilder {
         ItemSectionBuilder itemBuilder = new ItemSectionBuilder(ctx);
         RecipeSectionBuilder recipeBuilder = new RecipeSectionBuilder(ctx);
         MobSectionBuilder mobBuilder = new MobSectionBuilder(ctx);
+        FluidSectionBuilder fluidBuilder = new FluidSectionBuilder(ctx);
         IHardcodedSourceRegistry hardcodedRegistry = tryGetHardcodedRegistry();
         SourceManager sourceManager = engine.getSourceManager();
         MobPropertyProvider mobProvider = engine.getMobPropertyProvider();
@@ -105,16 +109,19 @@ public final class CabinBuilder {
         byte[] dropsBytes = mobsResult.drops;
         byte[] sccBytes = buildScc(solverResult);
         byte[] categoriesBytes = buildCategories();
-        byte[] fluidsBytes = buildFluidsSection();
+        byte[] fluidsBytes = fluidBuilder.buildFluidsSection();
+        FluidSectionBuilder.FluidRecipesResult fluidRecipes = fluidBuilder.buildFluidRecipes(graph);
+        byte[] fluidUsageBytes = fluidBuilder.buildFluidUsage(graph);
         byte[] idxItemHash = buildItemHashIndex();
         byte[] idxMobHash = buildMobHashIndex();
+        byte[] idxFluidHash = fluidBuilder.buildFluidHashIndex();
         byte[] machineIndexBytes = buildMachineIndex(graph);
         byte[] sourceTypeIndexBytes = buildSourceTypeIndex(sourceManager);
         byte[] modSummaryBytes = buildModSummary(graph);
         byte[] meta = buildMeta(itemResult, mobsResult, recipes, machineIndexBytes, modSummaryBytes);
         byte[] stringsBytes = encodeStrings();
 
-        ObjectList<CabinSection> out = new ObjectArrayList<>(16);
+        ObjectList<CabinSection> out = new ObjectArrayList<>(20);
         out.add(CabinSection.compressed(CabinFormat.SEC_META, meta));
         out.add(CabinSection.compressed(CabinFormat.SEC_STRINGS, stringsBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_ITEMS, itemResult.items));
@@ -122,6 +129,8 @@ public final class CabinBuilder {
         out.add(CabinSection.compressed(CabinFormat.SEC_SOURCES, sourcesAcc.bytes()));
         out.add(CabinSection.compressed(CabinFormat.SEC_RECIPES, recipes.payload));
         out.add(CabinSection.compressed(CabinFormat.SEC_USAGE, usageBytes));
+        out.add(CabinSection.compressed(CabinFormat.SEC_FLUID_RECIPES, fluidRecipes.payload));
+        out.add(CabinSection.compressed(CabinFormat.SEC_FLUID_USAGE, fluidUsageBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_MOBS, mobsResult.mobs));
         out.add(CabinSection.compressed(CabinFormat.SEC_DROPS, dropsBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_SCC, sccBytes));
@@ -130,6 +139,8 @@ public final class CabinBuilder {
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_ITEM_HASH, idxItemHash));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_RECIPES_BY_OUTPUT, recipes.outputIndex));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_MOB_HASH, idxMobHash));
+        out.add(CabinSection.raw(CabinFormat.SEC_IDX_FLUID_HASH, idxFluidHash));
+        out.add(CabinSection.raw(CabinFormat.SEC_IDX_FLUID_RECIPES_BY_OUTPUT, fluidRecipes.outputIndex));
         out.add(CabinSection.compressed(CabinFormat.SEC_MACHINE_INDEX, machineIndexBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_SOURCE_TYPE_INDEX, sourceTypeIndexBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_MOD_SUMMARY, modSummaryBytes));
@@ -158,7 +169,14 @@ public final class CabinBuilder {
         this.mobIndex.defaultReturnValue(-1);
         for (int i = 0; i < mobs.size(); i++) mobIndex.put(mobs.get(i), i);
 
-        ObjectList<Fluid> fluids = GameRegistryManager.getAllFluids();
+        ObjectList<Fluid> fluids = new ObjectArrayList<>();
+        for (Fluid f : GameRegistryManager.getAllFluids()) {
+            ResourceLocation id = GameRegistryManager.getFluidId(f);
+            if (id != null && id.getPath().startsWith("flowing_")) {
+                continue;
+            }
+            fluids.add(f);
+        }
         this.orderedFluids = fluids;
         this.fluidIndex = new Reference2IntOpenHashMap<>(fluids.size());
         this.fluidIndex.defaultReturnValue(-1);
@@ -423,30 +441,6 @@ public final class CabinBuilder {
                        : (c.ordinal() == 0 ? 0.0 : Math.pow(10, c.ordinal()))));
         }
         return buf.toByteArray();
-    }
-
-    private byte[] buildFluidsSection() {
-        int n = orderedFluids.size();
-        LeBuf buf = new LeBuf(4 + n * 8);
-        buf.i32(n);
-        for (int i = 0; i < n; i++) {
-            Fluid fluid = orderedFluids.get(i);
-            ResourceLocation id = GameRegistryManager.getFluidId(fluid);
-            String idStr = id != null ? id.toString() : "minecraft:empty";
-            String displayName = safeFluidDisplayName(fluid);
-            buf.i32(strings.intern(idStr));
-            buf.i32(strings.intern(displayName));
-        }
-        return buf.toByteArray();
-    }
-
-    private static String safeFluidDisplayName(Fluid fluid) {
-        try {
-            return fluid.getFluidType().getDescription().getString();
-        } catch (Throwable t) {
-            ResourceLocation id = GameRegistryManager.getFluidId(fluid);
-            return id != null ? id.toString() : "unknown";
-        }
     }
 
     private byte[] encodeStrings() {

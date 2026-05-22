@@ -129,6 +129,8 @@ public class RecipeNode {
     public int getTotalIngredientCount() {
         int total = 0;
         for (var slot : ingredients) total += slot.getCount();
+        for (var slot : fluidIngredients) total += slot.getAmount();
+        for (var slot : chemicalIngredients) total += slot.amount();
         return total;
     }
 

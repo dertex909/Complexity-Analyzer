@@ -25,6 +25,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
@@ -34,12 +35,16 @@ public class RecipeGraph {
     private final Reference2ObjectMap<Item, ReferenceSet<Item>> usageMap;
     private final Reference2ObjectMap<Item, RecipeNode> bestRecipeCache;
     private final Object2ObjectMap<ResourceLocation, ObjectList<RecipeNode>> recipesByFluid;
+    private final Reference2ObjectMap<Fluid, ObjectList<RecipeNode>> recipesByFluidOutput;
+    private final Reference2ObjectMap<Fluid, ReferenceSet<Item>> fluidUsageMap;
 
     public RecipeGraph() {
         this.recipesByItem = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
         this.usageMap = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
         this.bestRecipeCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
         this.recipesByFluid = Object2ObjectMaps.synchronize(new Object2ObjectOpenHashMap<>());
+        this.recipesByFluidOutput = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.fluidUsageMap = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
     }
 
     public ObjectList<RecipeNode> getAllRecipes() {
@@ -65,6 +70,22 @@ public class RecipeGraph {
         for (var slot : node.getIngredients()) {
             for (var ingredient : slot.getVariants()) {
                 usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+            }
+        }
+
+        for (var slot : node.getFluidIngredients()) {
+            for (var variant : slot.getFluidVariants()) {
+                Fluid normalized = normalizeFluid(variant);
+                if (normalized != Fluids.EMPTY) {
+                    fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                }
+            }
+        }
+
+        for (var stack : node.getFluidOutputs()) {
+            Fluid normalized = normalizeFluid(stack.getFluid());
+            if (normalized != Fluids.EMPTY) {
+                recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>()).add(node);
             }
         }
 
@@ -94,9 +115,8 @@ public class RecipeGraph {
 
         for (RecipeNode r : recipes) {
             var cat = r.getCategory();
-            if (cat != RecipeCategory.STORAGE_DECOMPRESSION && cat != RecipeCategory.RECYCLING
-                    && cat != RecipeCategory.UNPROCESSABLE)
-                if (best == null || r.getPriority() > best.getPriority()) best = r;
+            if (cat != RecipeCategory.STORAGE_DECOMPRESSION && cat != RecipeCategory.RECYCLING && cat !=
+                    RecipeCategory.UNPROCESSABLE) if (best == null || r.getPriority() > best.getPriority()) best = r;
         }
         if (best != null) return best;
 
@@ -183,6 +203,24 @@ public class RecipeGraph {
         return recipes != null && !recipes.isEmpty();
     }
 
+    public ObjectList<RecipeNode> getFluidRecipes(Fluid fluid) {
+        return recipesByFluidOutput.getOrDefault(normalizeFluid(fluid), ObjectLists.emptyList());
+    }
+
+    public boolean hasFluidRecipe(Fluid fluid) {
+        var recipes = recipesByFluidOutput.get(normalizeFluid(fluid));
+        return recipes != null && !recipes.isEmpty();
+    }
+
+    public int getFluidUsageCount(Fluid fluid) {
+        var users = fluidUsageMap.get(normalizeFluid(fluid));
+        return users != null ? users.size() : 0;
+    }
+
+    public ReferenceSet<Item> getItemsUsingFluid(Fluid fluid) {
+        return fluidUsageMap.getOrDefault(normalizeFluid(fluid), ReferenceSets.emptySet());
+    }
+
     public int getUsageCount(Item item) {
         var users = usageMap.get(item);
         return users != null ? users.size() : 0;
@@ -206,6 +244,7 @@ public class RecipeGraph {
 
     private static Fluid normalizeFluid(Fluid fluid) {
         var id = GameRegistryManager.getFluidId(fluid);
+        if (id == null) return fluid;
         var fluidName = id.toString();
 
         if (fluidName.contains("flowing_")) {
@@ -222,6 +261,8 @@ public class RecipeGraph {
         recipesByItem.clear();
         usageMap.clear();
         bestRecipeCache.clear();
+        recipesByFluidOutput.clear();
+        fluidUsageMap.clear();
         ComplexityAnalyzer.LOGGER.info("Recipe graph cleared");
     }
 

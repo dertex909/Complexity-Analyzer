@@ -1,3 +1,21 @@
+<!--
+  ~ Complexity Analyzer
+  ~ Copyright (C) 2025-2026 dertex909
+  ~
+  ~ This program is free software; you can redistribute it and/or modify
+  ~ it under the terms of the GNU Lesser General Public License as published by
+  ~ the Free Software Foundation; either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Lesser General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Lesser General Public License
+  ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  -->
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -27,9 +45,10 @@
         </div>
         <nav class="tabs" role="tablist" id="main-tabs">
             <button class="tab" data-tab="overview" role="tab">Overview</button>
-            <button class="tab active" data-tab="items" role="tab">Items</button>
+            <button class="tab" data-tab="items" role="tab">Items</button>
             <div id="item-sub-tabs" class="sub-tabs-container"></div>
             <button class="tab" data-tab="fluids" role="tab">Fluids</button>
+            <div id="fluid-sub-tabs" class="sub-tabs-container"></div>
             <button class="tab" data-tab="mobs" role="tab">Mobs</button>
             <button class="tab" data-tab="sources" role="tab">Base Sources</button>
             <button class="tab" data-tab="graph" role="tab">Graph</button>
@@ -46,6 +65,8 @@
         <section class="panel" id="tab-item-uses" hidden></section>
         <section class="panel" id="tab-item-base-sources" hidden></section>
         <section class="panel" id="tab-fluids" hidden></section>
+        <section class="panel" id="tab-fluid-recipes" hidden></section>
+        <section class="panel" id="tab-fluid-uses" hidden></section>
         <section class="panel" id="tab-mobs" hidden></section>
         <section class="panel" id="tab-sources" hidden></section>
         <section class="panel" id="tab-graph" hidden>
@@ -60,6 +81,16 @@
                     <button class="modal-close" id="item-modal-close">&times;</button>
                 </div>
                 <div class="modal-body" id="item-modal-body"></div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="fluid-modal" hidden>
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 id="fluid-modal-title">Fluid Info</h3>
+                    <button class="modal-close" id="fluid-modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="fluid-modal-body"></div>
             </div>
         </div>
     </main>

@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { CabinDatabase } from "./core/db.js";
 import { state, setState, store, selectItem, selectMob, switchTab } from "./core/state.js";
 import { initRouter, renderTabs } from "./core/router.js";
@@ -8,12 +26,17 @@ import { renderMobs } from "./views/mobs.js";
 import { renderGraph } from "./views/graph.js";
 import { renderSources } from "./views/sources.js";
 import { renderItemDetail } from "./views/item-detail.js";
+import { renderFluidDetail } from "./views/fluid-detail.js";
 import {
     renderItemRecipesView,
     renderItemMachineRecipesView,
     renderItemUsesView,
     renderItemBaseSourcesView
 } from "./views/item-sub-views.js";
+import {
+    renderFluidRecipesView,
+    renderFluidUsesView
+} from "./views/fluid-sub-views.js";
 
 const fmtInt = new Intl.NumberFormat("en-US");
 
@@ -35,6 +58,8 @@ const VIEW_RENDERERS = {
     "item-machine-recipes": renderItemMachineRecipesView,
     "item-uses": renderItemUsesView,
     "item-base-sources": renderItemBaseSourcesView,
+    "fluid-recipes": renderFluidRecipesView,
+    "fluid-uses": renderFluidUsesView,
 };
 
 function renderCurrentTab() {
@@ -52,7 +77,11 @@ store.addEventListener("change", () => {
 
 store.addEventListener("selectItem", () => {
     if (state.selectedItem >= 0) {
-        renderItemDetail(null, state.selectedItem);
+        if (["fluids", "fluid-recipes", "fluid-uses"].includes(state.tab)) {
+            renderFluidDetail(null, state.selectedItem);
+        } else {
+            renderItemDetail(null, state.selectedItem);
+        }
     }
 });
 
@@ -171,7 +200,13 @@ function setupGlobalSearch() {
                 matched.push({ kind: "item", name: it.name, id: it.id, index: i });
             }
         }
-        for (let i = 0; i < db.mobs.count && matched.length < 150; i++) {
+        for (let i = 0; i < db.fluids.count && matched.length < 150; i++) {
+            const fl = db.fluids.get(i);
+            if (fl && (fl.name + " " + fl.id).toLowerCase().includes(q)) {
+                matched.push({ kind: "fluid", name: fl.name, id: fl.id, index: i });
+            }
+        }
+        for (let i = 0; i < db.mobs.count && matched.length < 200; i++) {
             const m = db.mobs.get(i);
             if (m && (m.name + " " + m.id).toLowerCase().includes(q)) {
                 matched.push({ kind: "mob", name: m.name, id: m.id, index: i });
@@ -194,6 +229,10 @@ function setupGlobalSearch() {
         if (item.dataset.kind === "item") {
             switchTab("items");
             selectItem(index);
+        } else if (item.dataset.kind === "fluid") {
+            switchTab("fluids");
+            setState({ selectedItem: index });
+            renderFluidDetail(null, index);
         } else {
             switchTab("mobs");
             selectMob(index);

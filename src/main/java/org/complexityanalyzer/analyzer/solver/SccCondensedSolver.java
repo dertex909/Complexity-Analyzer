@@ -96,6 +96,8 @@ public final class SccCondensedSolver {
         return new SolverResult(
                 materialized.optimalComplexities(),
                 materialized.optimalRecipes(),
+                materialized.optimalFluidComplexities(),
+                materialized.optimalFluidRecipes(),
                 solution.fixpointIterations,
                 totalTime,
                 true
@@ -151,7 +153,7 @@ public final class SccCondensedSolver {
             }
         }
 
-        Solution sol = new Solution(m.nodeCount, m.itemCount);
+        Solution sol = new Solution(m.nodeCount, m.itemCount, m.fluidCount);
 
         int totalFixpointIterations = 0;
         int cyclicComponents = 0;
@@ -191,6 +193,14 @@ public final class SccCondensedSolver {
                         }
                     } else if (fType == F_SOURCE) {
                         if (newCost < sol.itemBestSourceCost[itemIdx]) sol.itemBestSourceCost[itemIdx] = newCost;
+                    }
+
+                    int fluidIdx = m.fluidIdxByNode[target];
+                    if (fluidIdx >= 0) if (fType == F_FLUID_RECIPE || fType == F_PROTECTED_FLUID) {
+                        if (newCost < sol.fluidBestRecipeCost[fluidIdx]) {
+                            sol.fluidBestRecipeCost[fluidIdx] = newCost;
+                            sol.fluidBestRecipeFormulaIdx[fluidIdx] = formulaIdx;
+                        }
                     }
                 }
             }
@@ -348,7 +358,9 @@ public final class SccCondensedSolver {
 
     private record MaterializedResult(
             Reference2DoubleMap<Item> optimalComplexities,
-            Reference2ObjectMap<Item, RecipeNode> optimalRecipes
+            Reference2ObjectMap<Item, RecipeNode> optimalRecipes,
+            Reference2DoubleMap<Fluid> optimalFluidComplexities,
+            Reference2ObjectMap<Fluid, RecipeNode> optimalFluidRecipes
     ) {
     }
 
@@ -381,7 +393,32 @@ public final class SccCondensedSolver {
             if (recipe != null) optimalRecipes.put(item, recipe);
         }
 
-        return new MaterializedResult(itemComplexities, optimalRecipes);
+        var fluidComplexities = new Reference2DoubleOpenHashMap<Fluid>(m.fluidCount);
+        fluidComplexities.defaultReturnValue(Double.POSITIVE_INFINITY);
+        var optimalFluidRecipes = new Reference2ObjectOpenHashMap<Fluid, RecipeNode>();
+
+        for (int n = 0; n < m.nodeCount; n++) {
+            if (m.nodeKind[n] != K_FLUID) continue;
+            Fluid fluid = m.fluidByNode[n];
+            if (fluid == null) continue;
+
+            double cost = sol.costs[n];
+            fluidComplexities.put(fluid, cost);
+
+            int fluidIdx = m.fluidIdxByNode[n];
+            if (fluidIdx < 0) continue;
+
+            double recipeBest = sol.fluidBestRecipeCost[fluidIdx];
+            if (Double.isInfinite(recipeBest)) continue;
+
+            int formulaIdx = sol.fluidBestRecipeFormulaIdx[fluidIdx];
+            if (formulaIdx < 0) continue;
+
+            RecipeNode recipe = m.formulaRecipe[formulaIdx];
+            if (recipe != null) optimalFluidRecipes.put(fluid, recipe);
+        }
+
+        return new MaterializedResult(itemComplexities, optimalRecipes, fluidComplexities, optimalFluidRecipes);
     }
 
     private static final class CompileBuilder {
@@ -394,6 +431,7 @@ public final class SccCondensedSolver {
         private final ByteList nodeKind = new ByteList();
         private final BoolList itemInCorpus = new BoolList();
         private final IntArrayList itemIdxByNode = new IntArrayList();
+        private final IntArrayList fluidIdxByNode = new IntArrayList();
         private final Reference2IntOpenHashMap<Item> itemToNode = new Reference2IntOpenHashMap<>();
         private final Reference2IntOpenHashMap<Fluid> fluidToNode = new Reference2IntOpenHashMap<>();
         private final Object2IntOpenHashMap<ResourceLocation> chemicalToNode = new Object2IntOpenHashMap<>();
@@ -460,6 +498,7 @@ public final class SccCondensedSolver {
             nodeKind.add(K_ITEM);
             itemInCorpus.addFalse();
             itemIdxByNode.add(itemCount);
+            fluidIdxByNode.add(-1);
             itemCount++;
             return node;
         }
@@ -475,6 +514,7 @@ public final class SccCondensedSolver {
             nodeKind.add(K_FLUID);
             itemInCorpus.addFalse();
             itemIdxByNode.add(-1);
+            fluidIdxByNode.add(fluidCount);
             fluidCount++;
             return node;
         }
@@ -490,6 +530,7 @@ public final class SccCondensedSolver {
             nodeKind.add(K_CHEMICAL);
             itemInCorpus.addFalse();
             itemIdxByNode.add(-1);
+            fluidIdxByNode.add(-1);
             chemicalCount++;
             return node;
         }
@@ -994,6 +1035,7 @@ public final class SccCondensedSolver {
             m.chemicalByNode = chemicalByNode.toArray(new ResourceLocation[0]);
             m.itemInCorpus = itemInCorpus.toArray();
             m.itemIdxByNode = itemIdxByNode.toIntArray();
+            m.fluidIdxByNode = fluidIdxByNode.toIntArray();
 
             m.formulaCount = formulaType.size();
             m.formulaType = formulaType.toArray();
@@ -1066,6 +1108,7 @@ public final class SccCondensedSolver {
         ResourceLocation[] chemicalByNode;
         boolean[] itemInCorpus;
         int[] itemIdxByNode;
+        int[] fluidIdxByNode;
         int formulaCount;
         byte[] formulaType;
         int[] formulaTarget;
@@ -1102,11 +1145,13 @@ public final class SccCondensedSolver {
         final double[] itemBestRecipeCost;
         final double[] itemBestSourceCost;
         final int[] itemBestRecipeFormulaIdx;
+        final double[] fluidBestRecipeCost;
+        final int[] fluidBestRecipeFormulaIdx;
         int componentCount;
         int cyclicComponents;
         int fixpointIterations;
 
-        Solution(int nodeCount, int itemCount) {
+        Solution(int nodeCount, int itemCount, int fluidCount) {
             this.costs = new double[nodeCount];
             Arrays.fill(this.costs, Double.POSITIVE_INFINITY);
             this.itemBestRecipeCost = new double[itemCount];
@@ -1115,6 +1160,10 @@ public final class SccCondensedSolver {
             Arrays.fill(this.itemBestSourceCost, Double.POSITIVE_INFINITY);
             this.itemBestRecipeFormulaIdx = new int[itemCount];
             Arrays.fill(this.itemBestRecipeFormulaIdx, -1);
+            this.fluidBestRecipeCost = new double[fluidCount];
+            Arrays.fill(this.fluidBestRecipeCost, Double.POSITIVE_INFINITY);
+            this.fluidBestRecipeFormulaIdx = new int[fluidCount];
+            Arrays.fill(this.fluidBestRecipeFormulaIdx, -1);
         }
     }
 

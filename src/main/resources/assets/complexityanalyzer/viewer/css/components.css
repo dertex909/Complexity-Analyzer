@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 /* Cards */
 .card {
     background-color: var(--bg-panel);
@@ -80,18 +98,15 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 }
 .fluids-grid {
     display: grid;
-    grid-template-columns: var(--fl-col-1, 6%) var(--fl-col-2, 44%) var(--fl-col-3, 50%);
+    grid-template-columns: var(--fl-col-1, 5%) var(--fl-col-2, 20%) var(--fl-col-3, 25%) var(--fl-col-4, 14%) var(--fl-col-5, 10%) var(--fl-col-6, 14%) var(--fl-col-7, 12%);
     gap: 0px;
     align-items: stretch;
     width: 100%;
 }
 .mobs-grid { grid-template-columns: 60px 3fr 3fr 80px 80px 70px 100px 80px 90px; gap: 8px; }
 
-/* Hide resizer handle on the last column */
-.th-cell[data-index="9"] .col-drag-handle {
-    display: none !important;
-}
-.table-head.fluids-grid .th-cell[data-index="3"] .col-drag-handle {
+/* Hide resizer handle on the last column of any grid */
+.table-head .th-cell:last-child .col-drag-handle {
     display: none !important;
 }
 
@@ -370,10 +385,6 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
     padding-right: 10px;
 }
 
-/* Hide drag handle on last column of sources grid */
-.table-head.sources-grid .th-cell[data-index="5"] .col-drag-handle {
-    display: none !important;
-}
 
 /* Flags */
 .flags { display: inline-flex; gap: 3px; }

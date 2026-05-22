@@ -21,12 +21,15 @@ package org.complexityanalyzer.analyzer.solver;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
 public record SolverResult(
         Reference2DoubleMap<Item> optimalComplexities,
         Reference2ObjectMap<Item, RecipeNode> optimalRecipes,
+        Reference2DoubleMap<Fluid> optimalFluidComplexities,
+        Reference2ObjectMap<Fluid, RecipeNode> optimalFluidRecipes,
         int iterations,
         long executionTimeMs,
         boolean converged
@@ -39,5 +42,15 @@ public record SolverResult(
     @Nullable
     public RecipeNode getOptimalRecipe(Item item) {
         return optimalRecipes.get(item);
+    }
+
+    @Nullable
+    public Double getFluidComplexity(Fluid fluid) {
+        return optimalFluidComplexities.containsKey(fluid) ? optimalFluidComplexities.getDouble(fluid) : null;
+    }
+
+    @Nullable
+    public RecipeNode getOptimalFluidRecipe(Fluid fluid) {
+        return optimalFluidRecipes.get(fluid);
     }
 }

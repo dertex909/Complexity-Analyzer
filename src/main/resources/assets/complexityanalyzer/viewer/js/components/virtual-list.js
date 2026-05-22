@@ -37,13 +37,31 @@ export function mountVirtualList(container, options) {
         });
     };
 
+    const head = container.parentNode ? container.parentNode.querySelector(".table-head") : null;
+    const syncScrollbar = () => {
+        if (head) {
+            const scrollbarWidth = viewport.offsetWidth - viewport.clientWidth;
+            head.style.paddingRight = `${scrollbarWidth}px`;
+        }
+    };
+
+    const observer = new ResizeObserver(() => {
+        syncScrollbar();
+    });
+    observer.observe(viewport);
+
     viewport.addEventListener("scroll", render, { passive: true });
+    // Also listen to window resize events just in case
+    window.addEventListener("resize", syncScrollbar, { passive: true });
+
     render();
+    syncScrollbar();
 
     return {
         refresh: () => {
             spacer.style.height = (itemCount * itemHeight) + "px";
             render();
+            syncScrollbar();
         },
         scrollToIndex: (index) => {
             viewport.scrollTop = index * itemHeight;
@@ -51,6 +69,8 @@ export function mountVirtualList(container, options) {
         },
         destroy: () => {
             viewport.removeEventListener("scroll", render);
+            window.removeEventListener("resize", syncScrollbar);
+            observer.disconnect();
         }
     };
 }

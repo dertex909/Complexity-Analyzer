@@ -7,10 +7,27 @@ export const state = {
     selectedItem: -1,
     selectedMob: -1,
     filters: {
-        items: { query: "", sort: "complexity-desc", category: "", finiteOnly: false, hasRecipe: false, hasCycle: false, isHardcoded: false, minDepth: "", maxDepth: "", minComplexity: "", maxComplexity: "" },
-        fluids: { query: "", sort: "name-asc", category: "" },
+        items: {
+            query: "",
+            sort: "complexity-desc",
+            minComplexity: "", maxComplexity: "",
+            minDepth: "", maxDepth: "",
+            minTotalIngredients: "", maxTotalIngredients: "",
+            minRecipeUsages: "", maxRecipeUsages: "",
+            categoriesFilter: [],
+            flagsFilter: ["cycle", "infinite", "recipe", "hardcoded"],
+            modsFilter: []
+        },
+        fluids: { query: "", sort: "name-asc", category: "", modsFilter: [] },
         mobs: { query: "", sort: "combatPower-desc", bossOnly: false, minibossOnly: false },
-        sources: { query: "", sourceType: null },
+        sources: {
+            query: "",
+            sourceType: null,
+            sort: "complexity-desc",
+            minComplexity: "", maxComplexity: "",
+            flagsFilter: ["cycle", "infinite", "recipe", "hardcoded"],
+            modsFilter: []
+        },
     },
     graphZoom: 1,
     graphPan: { x: 0, y: 0 },

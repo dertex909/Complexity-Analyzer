@@ -5,8 +5,15 @@ import { renderOverview } from "./views/overview.js";
 import { renderItems } from "./views/items.js";
 import { renderFluids } from "./views/fluids.js";
 import { renderMobs } from "./views/mobs.js";
-import { renderSources } from "./views/sources-view.js";
 import { renderGraph } from "./views/graph.js";
+import { renderSources } from "./views/sources.js";
+import { renderItemDetail } from "./views/item-detail.js";
+import {
+    renderItemRecipesView,
+    renderItemMachineRecipesView,
+    renderItemUsesView,
+    renderItemBaseSourcesView
+} from "./views/item-sub-views.js";
 
 const fmtInt = new Intl.NumberFormat("en-US");
 
@@ -24,6 +31,10 @@ const VIEW_RENDERERS = {
     mobs: renderMobs,
     sources: renderSources,
     graph: renderGraph,
+    "item-recipes": renderItemRecipesView,
+    "item-machine-recipes": renderItemMachineRecipesView,
+    "item-uses": renderItemUsesView,
+    "item-base-sources": renderItemBaseSourcesView,
 };
 
 function renderCurrentTab() {
@@ -40,7 +51,9 @@ store.addEventListener("change", () => {
 });
 
 store.addEventListener("selectItem", () => {
-    if (state.tab === "items") renderItems(document.getElementById("tab-items"));
+    if (state.selectedItem >= 0) {
+        renderItemDetail(null, state.selectedItem);
+    }
 });
 
 store.addEventListener("selectMob", () => {
@@ -67,6 +80,8 @@ async function main() {
         if (fl) fl.textContent = `${db.meta.modId} ${db.meta.modVersion} · file 0x${db.file.fileHash.toString(16)}`;
 
         initRouter();
+        initSidebarResizer();
+        initSidebarToggle();
         renderTabs();
         renderCurrentTab();
 
@@ -196,6 +211,91 @@ function debounce(fn, ms) {
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function initSidebarResizer() {
+    const resizer = document.getElementById("sidebar-resizer");
+    const sidebar = document.querySelector(".sidebar-left");
+    if (!resizer || !sidebar) return;
+
+    // Load initial width from localStorage
+    const savedWidth = localStorage.getItem("sidebarWidth");
+    if (savedWidth) {
+        document.documentElement.style.setProperty("--sidebar-width", savedWidth + "px");
+    }
+
+    resizer.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        resizer.classList.add("dragging");
+        resizer.setPointerCapture(e.pointerId);
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        const onPointerMove = (moveEvent) => {
+            let newWidth = moveEvent.clientX;
+            // Bound the width of the sidebar
+            if (newWidth < 185) newWidth = 185;
+            if (newWidth > 500) newWidth = 500;
+            document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
+            localStorage.setItem("sidebarWidth", newWidth);
+            
+            // Dispatch a window resize event to trigger layout/canvas adjustments safely
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        const onPointerUp = (upEvent) => {
+            resizer.classList.remove("dragging");
+            try {
+                resizer.releasePointerCapture(upEvent.pointerId);
+            } catch (err) {}
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            resizer.removeEventListener("pointermove", onPointerMove);
+            resizer.removeEventListener("pointerup", onPointerUp);
+        };
+
+        resizer.addEventListener("pointermove", onPointerMove);
+        resizer.addEventListener("pointerup", onPointerUp);
+    });
+}
+
+function initSidebarToggle() {
+    const hideBtn = document.getElementById("sidebar-hide-btn");
+    const showBtn = document.getElementById("sidebar-show-btn");
+    if (!hideBtn || !showBtn) return;
+
+    // Load initial state
+    const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+    if (isCollapsed) {
+        document.body.classList.add("collapsed");
+    }
+
+    const setCollapsed = (collapsed) => {
+        if (collapsed) {
+            document.body.classList.add("collapsed");
+            localStorage.setItem("sidebarCollapsed", "true");
+        } else {
+            document.body.classList.remove("collapsed");
+            localStorage.setItem("sidebarCollapsed", "false");
+        }
+        
+        // Dispatch window resize events to keep charts & UI aligned:
+        window.dispatchEvent(new Event('resize'));
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 150);
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 360);
+    };
+
+    hideBtn.addEventListener("click", () => {
+        setCollapsed(true);
+    });
+
+    showBtn.addEventListener("click", () => {
+        setCollapsed(false);
+    });
 }
 
 main().catch(err => console.error("Bootstrap failed:", err));

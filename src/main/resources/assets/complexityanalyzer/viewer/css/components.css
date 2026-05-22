@@ -50,26 +50,214 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 /* Virtual list / Table */
 .table-head {
     display: grid;
-    padding: 6px 8px;
-    background-color: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
+    padding: 0;
+    border: none;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     font-size: 11px;
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 1px;
     flex: 0 0 auto;
+    align-items: stretch;
+    height: 42px; /* Taller and easier to click, perfectly defined */
 }
-.table-head .num { text-align: right; }
+.table-head .num { text-align: center; }
 
-.items-grid { grid-template-columns: 60px 2fr 3fr 110px 60px 80px 110px 90px; gap: 8px; }
-.fluids-grid { grid-template-columns: 60px 2fr 3fr 80px; gap: 8px; }
+.items-grid {
+    display: grid;
+    grid-template-columns: var(--col-1, 4%) var(--col-2, 12%) var(--col-3, 28%) var(--col-4, 11%) var(--col-5, 7%) var(--col-6, 10%) var(--col-7, 8%) var(--col-8, 12%) var(--col-9, 8%);
+    gap: 0px;
+    align-items: stretch;
+    width: 100%;
+}
+.sources-grid {
+    display: grid;
+    grid-template-columns: var(--src-col-1, 6%) var(--src-col-2, 22%) var(--src-col-3, 38%) var(--src-col-4, 20%) var(--src-col-5, 14%);
+    gap: 0px;
+    align-items: stretch;
+    width: 100%;
+}
+.fluids-grid {
+    display: grid;
+    grid-template-columns: var(--fl-col-1, 6%) var(--fl-col-2, 44%) var(--fl-col-3, 50%);
+    gap: 0px;
+    align-items: stretch;
+    width: 100%;
+}
 .mobs-grid { grid-template-columns: 60px 3fr 3fr 80px 80px 70px 100px 80px 90px; gap: 8px; }
+
+/* Hide resizer handle on the last column */
+.th-cell[data-index="9"] .col-drag-handle {
+    display: none !important;
+}
+.table-head.fluids-grid .th-cell[data-index="3"] .col-drag-handle {
+    display: none !important;
+}
+
+/* ── Resizable Header & Dropdown Popovers ── */
+.th-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 6px 10px;
+    overflow: visible; /* Required so drag handles or overlay components are visible */
+    white-space: nowrap;
+    height: 100%;
+    min-width: 0; /* Stop track from being forced to full title content width */
+}
+.th-cell:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.08); /* Matches rows divider */
+}
+.th-cell.num {
+    justify-content: center !important;
+}
+.th-cell .th-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none; /* Let clicks pass to header click handlers */
+}
+.clickable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s, color 0.15s;
+}
+.clickable-header:hover {
+    background-color: var(--bg-hover);
+    color: var(--text);
+}
+.filter-indicator {
+    font-size: 8px;
+    opacity: 0.5;
+    margin-left: 2px;
+}
+.clickable-header.filtered {
+    color: var(--accent);
+}
+.clickable-header.filtered .filter-indicator {
+    opacity: 1;
+    color: var(--accent);
+}
+.col-drag-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: -10px; /* Perfectly centered over the 1px divider border */
+    width: 20px; /* Generous 20px hover/grab target - much easier to grab */
+    cursor: col-resize;
+    background-color: transparent;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+}
+.col-drag-handle::after {
+    content: '';
+    width: 2px;
+    height: 100%;
+    background-color: transparent;
+    transition: background-color 0.15s, box-shadow 0.15s;
+}
+.col-drag-handle:hover::after, .col-drag-handle.dragging::after {
+    background-color: var(--accent) !important;
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Popover */
+.filter-popover {
+    position: fixed;
+    background: linear-gradient(135deg, rgba(20, 24, 30, 0.98), rgba(28, 34, 43, 0.98));
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(91, 192, 255, 0.1);
+    padding: 12px;
+    z-index: 1000;
+    min-width: 180px;
+    max-height: 350px;
+    overflow-y: auto;
+    font-family: var(--sans);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: popover-fade 0.15s var(--ease-out);
+}
+@keyframes popover-fade {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.filter-popover .popover-reset {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, color 0.15s;
+    width: 100%;
+}
+.filter-popover .popover-reset:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+}
+.filter-popover .range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.filter-popover .range-inputs input {
+    width: 100%;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.filter-popover .range-inputs input:focus {
+    border-color: var(--accent);
+}
+.filter-popover .range-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    flex: 0 0 auto;
+}
+.filter-popover .checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.filter-popover .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+}
+.filter-popover .checkbox-item:hover {
+    color: var(--accent);
+}
+.filter-popover .checkbox-item input {
+    accent-color: var(--accent);
+}
 
 .virtual-viewport {
     position: relative;
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     min-height: 0;
     background-color: var(--bg-panel);
     border: 1px solid var(--border);
@@ -98,8 +286,129 @@ input[type="search"] { min-width: 260px; flex: 1 1 260px; max-width: 480px; }
 .row .id { font-family: var(--mono), monospace; color: var(--text-dim); }
 .row .idx { color: var(--text-muted); text-align: right; padding-right: 6px; }
 
+.row.items-grid {
+    padding: 0 !important;
+    align-items: stretch !important;
+    height: 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.row.items-grid > * {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    height: 100%;
+}
+.row.items-grid > *:last-child {
+    border-right: none;
+}
+.row.items-grid > .num {
+    justify-content: flex-end;
+}
+.row.items-grid > .idx {
+    justify-content: flex-end;
+    padding-right: 10px;
+}
+
+.row.sources-grid {
+    padding: 0 !important;
+    align-items: stretch !important;
+    height: 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.row.sources-grid > * {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    height: 100%;
+}
+.row.sources-grid > *:last-child {
+    border-right: none;
+}
+.row.sources-grid > .num {
+    justify-content: flex-end;
+}
+.row.sources-grid > .idx {
+    justify-content: flex-end;
+    padding-right: 10px;
+}
+
+.row.fluids-grid {
+    padding: 0 !important;
+    align-items: stretch !important;
+    height: 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.row.fluids-grid > * {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    height: 100%;
+}
+.row.fluids-grid > *:last-child {
+    border-right: none;
+}
+.row.fluids-grid > .num {
+    justify-content: flex-end;
+}
+.row.fluids-grid > .idx {
+    justify-content: flex-end;
+    padding-right: 10px;
+}
+
+/* Hide drag handle on last column of sources grid */
+.table-head.sources-grid .th-cell[data-index="5"] .col-drag-handle {
+    display: none !important;
+}
+
 /* Flags */
 .flags { display: inline-flex; gap: 3px; }
+.category-pill {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-sizing: border-box;
+    display: inline-block;
+}
+
+/* ── Fulledge Seamless Tables Layout ── */
+.panel#tab-items, .panel#tab-fluids, .panel#tab-mobs, .panel#tab-sources {
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+}
+
+.panel#tab-items .controls,
+.panel#tab-fluids .controls,
+.panel#tab-mobs .controls,
+.panel#tab-sources .controls {
+    padding: 12px 16px;
+    background-color: var(--bg-panel);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel#tab-items .virtual-viewport,
+.panel#tab-fluids .virtual-viewport,
+.panel#tab-mobs .virtual-viewport,
+.panel#tab-sources .virtual-viewport {
+    border: none !important;
+    border-radius: 0 !important;
+}
 .flag {
     font-size: 10px;
     padding: 1px 4px;

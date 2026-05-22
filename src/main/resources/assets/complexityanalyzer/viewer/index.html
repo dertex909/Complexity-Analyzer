@@ -9,37 +9,61 @@
     <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
-<header class="topbar">
-    <div class="brand">
-        <span class="logo">⚙</span>
-        <span class="title">Complexity Analyzer</span>
-        <span class="subtitle" id="meta-subtitle">Viewer v1.2</span>
-    </div>
-    <nav class="tabs" role="tablist" id="main-tabs">
-        <button class="tab" data-tab="overview" role="tab">Overview</button>
-        <button class="tab active" data-tab="items" role="tab">Items</button>
-        <button class="tab" data-tab="fluids" role="tab">Fluids</button>
-        <button class="tab" data-tab="mobs" role="tab">Mobs</button>
-        <button class="tab" data-tab="sources" role="tab">Sources</button>
-        <button class="tab" data-tab="graph" role="tab">Graph</button>
-    </nav>
-    <div class="status">
-        <span id="status-dot" class="dot idle"></span>
-        <span id="status-text">initializing…</span>
-    </div>
-</header>
+<div class="workspace">
+    <aside class="sidebar-left">
+        <div class="sidebar-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="sidebar-title">Categories</div>
+                <button id="sidebar-hide-btn" class="sidebar-toggle-btn" title="Hide Categories">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div class="status">
+                <span id="status-dot" class="dot idle"></span>
+                <span id="status-text">initializing…</span>
+            </div>
+        </div>
+        <nav class="tabs" role="tablist" id="main-tabs">
+            <button class="tab" data-tab="overview" role="tab">Overview</button>
+            <button class="tab active" data-tab="items" role="tab">Items</button>
+            <div id="item-sub-tabs" class="sub-tabs-container"></div>
+            <button class="tab" data-tab="fluids" role="tab">Fluids</button>
+            <button class="tab" data-tab="mobs" role="tab">Mobs</button>
+            <button class="tab" data-tab="sources" role="tab">Base Sources</button>
+            <button class="tab" data-tab="graph" role="tab">Graph</button>
+        </nav>
+    </aside>
 
-<main id="main-content">
-    <section class="panel" id="tab-overview" hidden></section>
-    <section class="panel active" id="tab-items"></section>
-    <section class="panel" id="tab-fluids" hidden></section>
-    <section class="panel" id="tab-mobs" hidden></section>
-    <section class="panel" id="tab-sources" hidden></section>
-    <section class="panel" id="tab-graph" hidden>
-        <canvas id="graph-canvas"></canvas>
-        <div id="graph-overlay" class="graph-overlay"></div>
-    </section>
-</main>
+    <div class="sidebar-resizer" id="sidebar-resizer"></div>
+
+    <main id="main-content">
+        <section class="panel" id="tab-overview" hidden></section>
+        <section class="panel active" id="tab-items"></section>
+        <section class="panel" id="tab-item-recipes" hidden></section>
+        <section class="panel" id="tab-item-machine-recipes" hidden></section>
+        <section class="panel" id="tab-item-uses" hidden></section>
+        <section class="panel" id="tab-item-base-sources" hidden></section>
+        <section class="panel" id="tab-fluids" hidden></section>
+        <section class="panel" id="tab-mobs" hidden></section>
+        <section class="panel" id="tab-sources" hidden></section>
+        <section class="panel" id="tab-graph" hidden>
+            <canvas id="graph-canvas"></canvas>
+            <div id="graph-overlay" class="graph-overlay"></div>
+        </section>
+
+        <div class="modal-overlay" id="item-modal" hidden>
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 id="item-modal-title">Item Info</h3>
+                    <button class="modal-close" id="item-modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="item-modal-body"></div>
+            </div>
+        </div>
+    </main>
+</div>
 
 <div class="search-overlay" id="search-overlay" hidden>
     <div class="search-box">
@@ -52,6 +76,12 @@
     <span id="footer-left">—</span>
     <span id="footer-right">format 0x0102</span>
 </footer>
+
+<button id="sidebar-show-btn" class="sidebar-show-btn" title="Show Categories">
+    <span class="bar"></span>
+    <span class="bar"></span>
+    <span class="bar"></span>
+</button>
 
 <script src="js/app.js" type="module"></script>
 </body>

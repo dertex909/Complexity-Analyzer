@@ -31,53 +31,58 @@ export function measureTextWidth(text, isMono = false) {
     return w;
 }
 
-function calculateInitialWidths(config) {
-    const {columnCount, headingColumns, db, tableType} = config;
-
-    const pixelWidths = {};
+function normalizeWidths(widths, columnCount) {
+    let sum = 0;
+    const parsed = {};
     for (let i = 1; i <= columnCount; i++) {
-        pixelWidths[i] = 40;
+        const val = parseFloat(widths[i]);
+        parsed[i] = isNaN(val) ? 0 : val;
+        sum += parsed[i];
     }
 
-    if (db) {
-        const count = db[tableType].count;
-        const text_1 = String(count);
-        const w_1 = measureTextWidth(text_1, false) + 24;
-        pixelWidths[1] = Math.max(pixelWidths[1], Math.ceil(w_1));
+    if (sum === 0) {
+        for (let i = 1; i <= columnCount; i++) widths[i] = `${(100 / columnCount).toFixed(4)}%`;
+        return;
     }
 
-    const w_2 = measureTextWidth("ID", false) + 32;
-    pixelWidths[2] = Math.max(pixelWidths[2], Math.ceil(w_2));
-
-    pixelWidths[3] = Math.max(pixelWidths[3], 24);
-
-    if (headingColumns) {
-        headingColumns.forEach(({index, label}) => {
-            const headingWidth = measureTextWidth(label, false) + 40;
-            pixelWidths[index] = Math.max(pixelWidths[index] || 40, headingWidth);
-        });
+    let normalizedSum = 0;
+    for (let i = 1; i < columnCount; i++) {
+        const normalizedVal = (parsed[i] / sum) * 100;
+        widths[i] = `${normalizedVal.toFixed(4)}%`;
+        normalizedSum += normalizedVal;
     }
+    widths[columnCount] = `${(100 - normalizedSum).toFixed(4)}%`;
+}
+
+function calculateInitialWidths(config) {
+    const columnCount = config.columnCount;
+    const pixelWidths = calculateDynamicMinWidths(config);
+
+    const nameColIndex = config.tableId === "mobs" ? 2 : 3;
+    if (pixelWidths[nameColIndex] !== undefined) pixelWidths[nameColIndex] = Math.max(pixelWidths[nameColIndex], 150);
 
     let totalMinWidth = 0;
-    for (let i = 1; i <= columnCount; i++) {
-        totalMinWidth += pixelWidths[i] || 40;
-    }
+    for (let i = 1; i <= columnCount; i++) totalMinWidth += pixelWidths[i] || 40;
 
     const percentages = {};
     for (let i = 1; i <= columnCount; i++) {
         const pct = ((pixelWidths[i] || 40) / totalMinWidth) * 100;
-        percentages[i] = `${Math.round(pct)}%`;
+        percentages[i] = `${pct}%`;
     }
 
+    normalizeWidths(percentages, columnCount);
     return percentages;
 }
 
 export function loadColumnWidths(tableId, config, cssVarPrefix) {
-    if (tableId === "fluids") for (let i = 1; i <= 9; i++) {
-        localStorage.removeItem(`fl-col-width-pct-${i}`);
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes("col-width-pct") && !key.includes("-v2-")) keysToRemove.push(key);
     }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
 
-    const storageKey = tableId === "fluids" ? `fl-v2-col-width-pct` : `${tableId}-col-width-pct`;
+    const storageKey = `${tableId}-v2-col-width-pct`;
     const columnCount = config.columnCount;
 
     const initialWidths = calculateInitialWidths(config);
@@ -94,6 +99,8 @@ export function loadColumnWidths(tableId, config, cssVarPrefix) {
     }
 
     const useSaved = sum >= 95 && sum <= 105 && Object.keys(savedWidths).length === columnCount;
+
+    if (useSaved) normalizeWidths(savedWidths, columnCount);
 
     for (let i = 1; i <= columnCount; i++) {
         const w = useSaved ? savedWidths[i] : initialWidths[i];
@@ -114,10 +121,13 @@ export function calculateDynamicMinWidths(config) {
     const w_1 = measureTextWidth(text_1, false) + 24;
     mins[1] = Math.max(mins[1], Math.ceil(w_1));
 
-    const w_2 = measureTextWidth("ID", false) + 32;
-    mins[2] = Math.max(mins[2], Math.ceil(w_2));
+    const nameColIndex = config.tableId === "mobs" ? 2 : 3;
+    const idColIndex = config.tableId === "mobs" ? 3 : 2;
 
-    mins[3] = Math.max(mins[3], 24);
+    const w_id = measureTextWidth("ID", false) + 32;
+    mins[idColIndex] = Math.max(mins[idColIndex], Math.ceil(w_id));
+
+    mins[nameColIndex] = Math.max(mins[nameColIndex], 24);
 
     if (config.headingColumns) config.headingColumns.forEach(({index, label}) => {
         const w = measureTextWidth(label, false) + 32;
@@ -153,7 +163,7 @@ export function initColumnResizers(headId, tableId, cssVarPrefix, defaults, getM
 
     const handles = head.querySelectorAll(".col-drag-handle");
     const columnCount = parseInt(head.dataset.columnCount) || 7;
-    const storageKey = tableId === "fluids" ? `fl-v2-col-width-pct` : `${tableId}-col-width-pct`;
+    const storageKey = `${tableId}-v2-col-width-pct`;
 
     handles.forEach(handle => {
         handle.addEventListener("pointerdown", (e) => {

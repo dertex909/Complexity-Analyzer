@@ -33,6 +33,7 @@ import org.complexityanalyzer.analyzer.resource.sources.HardcodedSourcesProvider
 import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
@@ -40,9 +41,6 @@ import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.graph.IngredientSlot;
-import org.complexityanalyzer.graph.FluidIngredientSlot;
-import org.complexityanalyzer.graph.RecipeCategory;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -440,6 +438,7 @@ public final class CabinBuilder {
                     : (c.ordinal() == ComplexityCategory.UNOBTAINABLE.ordinal() ? Double.POSITIVE_INFINITY
                        : (c.ordinal() == 0 ? 0.0 : Math.pow(10, c.ordinal()))));
         }
+        buf.f64(ComplexityConfig.getMachineTaxMultiplier());
         return buf.toByteArray();
     }
 

@@ -423,6 +423,11 @@ export function readMeta(bytes, strings) {
         validItems: b.i32(), infiniteItems: b.i32(), machineCount: b.i32(), modCount: b.i32()
     });
     res.categories = Array.from({length: b.u8()}, () => ({name: strings.get(b.i32()), maxComplexity: b.f64()}));
+    if (b.p <= bytes.length - 8) {
+        res.machineTaxMultiplier = b.f64();
+    } else {
+        res.machineTaxMultiplier = 0.05;
+    }
     return res;
 }
 

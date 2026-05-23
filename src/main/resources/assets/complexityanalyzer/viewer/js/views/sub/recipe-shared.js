@@ -49,6 +49,13 @@ export function renderRecipeRow(r, db, machineOverride = null) {
     const machineItem = machineOverride || db.items.get(r.machineItemIndex);
     const machineName = machineItem ? machineItem.name : r.recipeType;
 
+    let amortizationHtml = "";
+    if (machineItem && machineItem.complexity > 0) {
+        const taxVal = (db.meta && db.meta.machineTaxMultiplier !== undefined) ? db.meta.machineTaxMultiplier : 0.05;
+        const amortization = machineItem.complexity * taxVal;
+        amortizationHtml = `<span style="font-size: 10px; color: var(--text-dim); margin-top: -2px; margin-bottom: 4px;" title="Amortization (machine complexity tax): ${fmt.format(machineItem.complexity)} * ${taxVal * 100}%">amort: +${fmt.format(amortization)}</span>`;
+    }
+
     return `
         <div class="recipe-card ${r.category === 0 ? "primary" : ""}" style="margin-top: 6px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
             <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
@@ -63,7 +70,8 @@ export function renderRecipeRow(r, db, machineOverride = null) {
                 <span style="font-size: 20px; line-height: 1; color: var(--accent); margin: 6px 0; font-family: monospace; display: flex; align-items: center; justify-content: center;">
                   ➜
                 </span>
-                ${r.recipeMultiplier !== 1 ? `<span class="chip" style="font-size:10px; padding:1px 4px;">mult ${fmt.format(r.recipeMultiplier)}</span>` : ""}
+                ${amortizationHtml}
+                ${r.recipeMultiplier !== 1 ? `<span class="chip" style="font-size:10px; padding:1px 4px; margin-top: 2px;">mult ${fmt.format(r.recipeMultiplier)}</span>` : ""}
             </div>
 
             <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">

@@ -31,9 +31,7 @@ export async function renderFluidRecipesView(container) {
         }
 
         const machineSet = new Set();
-        for (const r of recipes) {
-            if (r.machineItemIndex >= 0) machineSet.add(r.machineItemIndex);
-        }
+        for (const r of recipes) if (r.machineItemIndex >= 0) machineSet.add(r.machineItemIndex);
 
         if (machineSet.size === 0) {
             body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">This fluid is not crafted in any machine (it might be a protected source).</div></div>`;
@@ -110,12 +108,24 @@ export async function renderFluidUsesView(container) {
 function renderRecipeRow(r, db) {
     console.log("renderRecipeRow", r);
     let yieldsStr = "fluid output";
-    if (r.resultCount > 0 && r.outputItemIndex >= 0) {
-        const outItem = db.items.get(r.outputItemIndex);
-        if (outItem) {
-            yieldsStr = `yields × ${r.resultCount} ${escapeHtml(outItem.name)}`;
+    const fluidOutputsList = [];
+
+    if (r.fluidOutputs && r.fluidOutputs.length > 0) for (const fo of r.fluidOutputs) {
+        const fl = db.fluids.get(fo.fluidIndex);
+        if (fl) {
+            const isCurrent = fo.fluidIndex === state.selectedItem;
+            const style = isCurrent ? "font-weight: 600; color: var(--accent);" : "";
+            fluidOutputsList.push(`<span style="${style}">${fmtInt.format(fo.amount)} mB ${escapeHtml(fl.name)}</span>`);
         }
     }
+
+    if (fluidOutputsList.length > 0) {
+        yieldsStr = "yields " + fluidOutputsList.join(" + ");
+    } else if (r.resultCount > 0 && r.outputItemIndex >= 0) {
+        const outItem = db.items.get(r.outputItemIndex);
+        if (outItem) yieldsStr = `yields × ${r.resultCount} ${escapeHtml(outItem.name)}`;
+    }
+
     return `
         <div class="recipe-card ${r.category === 0 ? "primary" : ""}" style="margin-top: 6px; padding: 8px 12px;">
             <div style="display:flex; justify-content:space-between;">

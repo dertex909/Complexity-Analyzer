@@ -31,6 +31,13 @@ export function formatComplexity(c) {
     return fmt.format(c);
 }
 
+export function formatComplexityDetail(c) {
+    if (c < 0) return "-";
+    if (!isFinite(c)) return "-";
+    if (c === 0) return "0";
+    return fmt.format(c);
+}
+
 export function formatRawTooltip(val) {
     if (val === undefined || val === null || !isFinite(val)) return "";
     try {

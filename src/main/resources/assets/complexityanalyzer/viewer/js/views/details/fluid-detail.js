@@ -1,6 +1,6 @@
 import {
     escapeHtml,
-    formatComplexity,
+    formatComplexityDetail,
     formatRawTooltip,
     getFluidFlags,
     fmtInt
@@ -32,7 +32,7 @@ export function renderFluidDetail(unusedContainer, fluidIndex) {
     if (bodyEl) {
         bodyEl.innerHTML = `
             <dl class="detail-grid">
-                <dt>Complexity</dt><dd class="cat-${fluid.categoryName || "Uncalculable"}" style="font-weight:600; font-size:14px;" title="${formatRawTooltip(fluid.complexity)}">${formatComplexity(fluid.complexity)}</dd>
+                <dt>Complexity</dt><dd class="cat-${fluid.categoryName || "Uncalculable"}" style="font-weight:600; font-size:14px;" title="${formatRawTooltip(fluid.complexity)}">${formatComplexityDetail(fluid.complexity)}</dd>
                 <dt>Category</dt><dd><span class="category-pill cat-${fluid.categoryName || "Uncalculable"}">${fluid.categoryName}</span></dd>
                 <dt>Recipe Usages</dt><dd title="${formatRawTooltip(fluid.usageCount)}">Used as ingredient in <strong>${fmtInt.format(fluid.usageCount)}</strong> item recipe(s)</dd>
                 <dt>Flags</dt><dd class="flags">${getFluidFlags(fluid, false)}</dd>

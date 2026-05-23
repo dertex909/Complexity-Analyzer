@@ -1,6 +1,6 @@
 import {
     escapeHtml,
-    formatComplexity,
+    formatComplexityDetail,
     formatRawTooltip,
     getItemFlags,
     fmtInt
@@ -34,7 +34,7 @@ export function renderItemDetail(unusedContainer, itemIndex) {
     if (bodyEl) {
         bodyEl.innerHTML = `
             <dl class="detail-grid">
-                <dt>Complexity</dt><dd class="cat-${item.categoryName || "Uncalculable"}" style="font-weight:600; font-size:14px;" title="${formatRawTooltip(item.complexity)}">${formatComplexity(item.complexity)}</dd>
+                <dt>Complexity</dt><dd class="cat-${item.categoryName || "Uncalculable"}" style="font-weight:600; font-size:14px;" title="${formatRawTooltip(item.complexity)}">${formatComplexityDetail(item.complexity)}</dd>
                 <dt>Category</dt><dd><span class="category-pill cat-${item.categoryName || "Uncalculable"}">${item.categoryName}</span></dd>
                 <dt>Depth</dt><dd title="${formatRawTooltip(item.depth)}">${fmtInt.format(item.depth)}</dd>
                 <dt>Total Ingredients</dt><dd title="${formatRawTooltip(item.totalIngredients)}">${fmtInt.format(item.totalIngredients)}</dd>

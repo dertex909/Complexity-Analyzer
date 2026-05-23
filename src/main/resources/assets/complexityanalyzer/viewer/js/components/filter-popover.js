@@ -1,5 +1,131 @@
-import {escapeHtml} from "../core/utils.js";
+import {escapeHtml, debounce} from "../core/utils.js";
 import {closeActivePopover, setActivePopover} from "./resizable-table.js";
+import {getDefaultFilters} from "../core/state.js";
+
+const RANGE_KEYS = {
+    complexity: ["minComplexity", "maxComplexity"],
+    depth: ["minDepth", "maxDepth"],
+    totalIngredients: ["minTotalIngredients", "maxTotalIngredients"],
+    usageCount: ["minRecipeUsages", "maxRecipeUsages"],
+    health: ["minHealth", "maxHealth"],
+    damage: ["minDamage", "maxDamage"],
+    armor: ["minArmor", "maxArmor"],
+    combatPower: ["minCombatPower", "maxCombatPower"],
+    dropCount: ["minDropCount", "maxDropCount"],
+    rarity: ["minRarity", "maxRarity"]
+};
+
+const VIEW_FLAGS = {
+    items: [
+        {key: "cycle", label: "⟲ Cycle"},
+        {key: "uncalculable", label: "- Uncalculable"},
+        {key: "recipe", label: "∅ No Recipe"},
+        {key: "hardcoded", label: "H Hardcoded"}
+    ],
+    fluids: [
+        {key: "cycle", label: "Cycle ⟲"},
+        {key: "uncalculable", label: "Uncalculable -"},
+        {key: "recipe", label: "No recipe ∅"},
+        {key: "protected", label: "Protected P"}
+    ],
+    mobs: [
+        {key: "boss", label: "👑 Boss"},
+        {key: "miniboss", label: "⚔️ Miniboss"}
+    ],
+    sources: [
+        {key: "cycle", label: "⟲ Cycle"},
+        {key: "uncalculable", label: "- Uncalculable"},
+        {key: "recipe", label: "∅ No Recipe"},
+        {key: "hardcoded", label: "H Hardcoded"}
+    ]
+};
+
+export function openFilterPopover(headerCell, filterType, viewName, db, f, onFilterApplied) {
+    const pop = createPopover(headerCell, filterType);
+
+    const resetFilter = () => {
+        if (viewName === "items") {
+            if (RANGE_KEYS[filterType]) {
+                const [minKey, maxKey] = RANGE_KEYS[filterType];
+                onFilterApplied({[minKey]: "", [maxKey]: ""});
+            } else if (filterType === "category") {
+                onFilterApplied({categoriesFilter: []});
+            } else if (filterType === "id") {
+                onFilterApplied({modsFilter: []});
+            } else {
+                onFilterApplied(getDefaultFilters("items"));
+            }
+        } else {
+            onFilterApplied(getDefaultFilters(viewName));
+        }
+        closeActivePopover();
+    };
+
+    if (RANGE_KEYS[filterType]) {
+        const [minKey, maxKey] = RANGE_KEYS[filterType];
+        const minVal = f[minKey] ?? "";
+        const maxVal = f[maxKey] ?? "";
+
+        pop.innerHTML = renderRangeInputs(minKey, maxKey, minVal, maxVal);
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", resetFilter);
+
+        wireRangeInputs(pop, minKey, maxKey, (vals) => {
+            onFilterApplied(vals);
+        }, debounce);
+
+    } else if (filterType === "category") {
+        const categoriesSet = new Set(db.categories.map(c => c.name));
+        categoriesSet.add("Uncalculable");
+        const categoriesList = Array.from(categoriesSet).sort();
+
+        pop.innerHTML = `
+            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
+            <div class="checkbox-list" style="margin-top: 6px;">
+                ${renderCategoryCheckboxes(categoriesList, f.categoriesFilter || [])}
+            </div>
+        `;
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", resetFilter);
+
+        wireCategoryCheckboxes(pop, categoriesList, (checkedCats) => {
+            onFilterApplied({categoriesFilter: checkedCats});
+        });
+
+    } else if (filterType === "id") {
+        const targetTable = viewName === "sources" ? "items" : viewName;
+        const modsList = getModNamespaces(db, targetTable);
+
+        pop.innerHTML = `
+            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
+            <div class="checkbox-list" style="margin-top: 6px;">
+                ${renderModCheckboxes(modsList, f.modsFilter || [])}
+            </div>
+        `;
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", resetFilter);
+
+        wireModCheckboxes(pop, modsList, (checkedMods) => {
+            onFilterApplied({modsFilter: checkedMods});
+        });
+
+    } else if (filterType === "flags") {
+        const flagsList = VIEW_FLAGS[viewName] || [];
+
+        pop.innerHTML = `
+            <button class="popover-reset" id="filter-reset-btn">Reset Filter</button>
+            <div class="checkbox-list" style="margin-top: 6px;">
+                ${renderFlagCheckboxes(flagsList, f.flagsFilter || [])}
+            </div>
+        `;
+
+        pop.querySelector("#filter-reset-btn").addEventListener("click", resetFilter);
+
+        wireFlagCheckboxes(pop, (checkedFlags) => {
+            onFilterApplied({flagsFilter: checkedFlags});
+        });
+    }
+}
 
 export function positionPopover(popover, headerCell, width) {
     popover.style.width = `${width}px`;

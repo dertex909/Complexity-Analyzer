@@ -6,8 +6,9 @@ import {
     renderSubTabHeader,
     renderMachineRecipes
 } from "../../core/utils.js";
-import {state, selectItem} from "../../core/state.js";
+import {state, setState} from "../../core/state.js";
 import {formatSourceTypeName} from "../sources.js";
+import {renderRecipeRow} from "./recipe-shared.js";
 
 export async function renderItemRecipesView(container) {
     const db = state.db;
@@ -45,7 +46,7 @@ export async function renderItemRecipesView(container) {
 
         body.querySelectorAll(".machine-link").forEach(el => {
             el.addEventListener("click", () => {
-                selectItem(parseInt(el.dataset.index, 10));
+                setState({tab: "item-machine-recipes", selectedItem: parseInt(el.dataset.index, 10)});
             });
         });
 
@@ -110,7 +111,7 @@ export async function renderItemMachineRecipesView(container) {
 
         body.querySelectorAll(".product-link").forEach(el => {
             el.addEventListener("click", () => {
-                selectItem(parseInt(el.dataset.index, 10));
+                setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
             });
         });
 
@@ -165,7 +166,7 @@ export async function renderItemUsesView(container) {
 
         body.querySelectorAll(".ingredient-link").forEach(el => {
             el.addEventListener("click", () => {
-                selectItem(parseInt(el.dataset.index, 10));
+                setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
             });
         });
     } catch (e) {
@@ -241,29 +242,17 @@ export async function renderItemBaseSourcesView(container) {
     }
 }
 
-function renderRecipeRow(r, db) {
-    return `
-        <div class="recipe-card ${r.category === 0 ? "primary" : ""}" style="margin-top: 6px; padding: 8px 12px;">
-            <div style="display:flex; justify-content:space-between;">
-                <strong>${escapeHtml(r.recipeType)}</strong>
-                <span>yields × ${r.resultCount} ${r.recipeMultiplier !== 1 ? `<span class="chip" style="font-size:10px; padding:1px 4px;">mult ${fmt.format(r.recipeMultiplier)}</span>` : ""}</span>
-            </div>
-            ${r.ingredients.length > 0 ? `
-                <div class="ingredient-list" style="margin-top: 6px;">
-                    ${r.ingredients.map(slot => slot.variants.map(v => `
-                        <span class="ingredient ingredient-link" data-index="${v}">${escapeHtml(db.items.get(v)?.name || "#" + v)} × ${slot.count}</span>
-                    `).join("")).join("")}
-                </div>
-            ` : `<div class="hint" style="font-size: 11px; margin-top: 4px;">No input ingredients required</div>`}
-        </div>
-    `;
-}
-
 function wireIngredientLinks(container) {
-    container.querySelectorAll(".ingredient-link").forEach(el => {
+    container.querySelectorAll(".ingredient-link, .item-link").forEach(el => {
         el.addEventListener("click", (e) => {
             e.stopPropagation();
-            selectItem(parseInt(el.dataset.index, 10));
+            setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
+        });
+    });
+    container.querySelectorAll(".fluid-link").forEach(el => {
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
         });
     });
 }

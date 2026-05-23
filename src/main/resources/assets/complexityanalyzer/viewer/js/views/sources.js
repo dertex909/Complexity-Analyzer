@@ -6,24 +6,12 @@ import {
     getItemFlags,
     fmtInt
 } from "../core/utils.js";
-import {state, setFilter, selectItem, getDefaultFilters} from "../core/state.js";
+import {state, setFilter, selectItem} from "../core/state.js";
 import {ITEM_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
-import {
-    closeActivePopover,
-    setupResizableTable
-} from "../components/resizable-table.js";
+import {setupResizableTable} from "../components/resizable-table.js";
 import {generateTableHeader} from "../components/table-columns.js";
-import {
-    createPopover,
-    getModNamespaces,
-    renderModCheckboxes,
-    renderFlagCheckboxes,
-    renderRangeInputs,
-    wireModCheckboxes,
-    wireFlagCheckboxes,
-    wireRangeInputs
-} from "../components/filter-popover.js";
+import {openFilterPopover} from "../components/filter-popover.js";
 import {
     passesModFilter,
     passesFlagsFilter,
@@ -128,77 +116,12 @@ function updateHeaderIndicators() {
 }
 
 function openPopover(headerCell, filterType) {
-    const pop = createPopover(headerCell, filterType);
-
-    const f = state.filters.sources;
     const db = state.db;
-
-    if (filterType === "complexity") {
-        const minKey = "minComplexity";
-        const maxKey = "maxComplexity";
-        const minVal = f[minKey] ?? "";
-        const maxVal = f[maxKey] ?? "";
-
-        pop.innerHTML = renderRangeInputs(minKey, maxKey, minVal, maxVal);
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", async () => {
-            setFilter("sources", getDefaultFilters("sources"));
-            await updateSourcesResults(db, resolvedSourceTypes);
-            closeActivePopover();
-        });
-
-        wireRangeInputs(pop, minKey, maxKey, async (vals) => {
-            setFilter("sources", vals);
-            await updateSourcesResults(db, resolvedSourceTypes);
-        }, debounce);
-
-    } else if (filterType === "id") {
-        const modsList = getModNamespaces(db, "items");
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderModCheckboxes(modsList, f.modsFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", async () => {
-            setFilter("sources", getDefaultFilters("sources"));
-            await updateSourcesResults(db, resolvedSourceTypes);
-            closeActivePopover();
-        });
-
-        wireModCheckboxes(pop, modsList, async (checkedMods) => {
-            setFilter("sources", {modsFilter: checkedMods});
-            await updateSourcesResults(db, resolvedSourceTypes);
-        });
-
-    } else if (filterType === "flags") {
-        const flagsList = [
-            {key: "cycle", label: "⟲ Cycle"},
-            {key: "uncalculable", label: "- Uncalculable"},
-            {key: "recipe", label: "∅ No Recipe"},
-            {key: "hardcoded", label: "H Hardcoded"}
-        ];
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Reset Filter</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderFlagCheckboxes(flagsList, f.flagsFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", async () => {
-            setFilter("sources", getDefaultFilters("sources"));
-            await updateSourcesResults(db, resolvedSourceTypes);
-            closeActivePopover();
-        });
-
-        wireFlagCheckboxes(pop, async (checkedFlags) => {
-            setFilter("sources", {flagsFilter: checkedFlags});
-            await updateSourcesResults(db, resolvedSourceTypes);
-        });
-    }
+    const f = state.filters.sources;
+    openFilterPopover(headerCell, filterType, "sources", db, f, async (patch) => {
+        setFilter("sources", patch);
+        await updateSourcesResults(db, resolvedSourceTypes);
+    });
 }
 
 export async function renderSources(container) {

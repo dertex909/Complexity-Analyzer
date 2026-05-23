@@ -3,7 +3,7 @@ import {
     fmt,
     renderSubTabHeader
 } from "../../core/utils.js";
-import {state, selectItem} from "../../core/state.js";
+import {state, setState} from "../../core/state.js";
 
 export async function renderMobDropsView(container) {
     const db = state.db;
@@ -44,7 +44,7 @@ export async function renderMobDropsView(container) {
         body.querySelectorAll(".ingredient").forEach(el => {
             el.addEventListener("click", () => {
                 const idx = parseInt(el.dataset.index, 10);
-                if (idx >= 0) selectItem(idx);
+                if (idx >= 0) setState({tab: "item-recipes", selectedItem: idx});
             });
         });
     } catch (e) {

@@ -6,27 +6,13 @@ import {
     getItemFlags,
     fmtInt
 } from "../core/utils.js";
-import {state, setFilter, selectItem, getDefaultFilters} from "../core/state.js";
+import {state, setFilter, selectItem} from "../core/state.js";
 import {ITEM_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {renderItemDetail} from "./details/item-detail.js";
-import {
-    closeActivePopover,
-    setupResizableTable
-} from "../components/resizable-table.js";
+import {setupResizableTable} from "../components/resizable-table.js";
 import {generateTableHeader} from "../components/table-columns.js";
-import {
-    createPopover,
-    getModNamespaces,
-    renderModCheckboxes,
-    renderFlagCheckboxes,
-    renderCategoryCheckboxes,
-    renderRangeInputs,
-    wireModCheckboxes,
-    wireFlagCheckboxes,
-    wireCategoryCheckboxes,
-    wireRangeInputs
-} from "../components/filter-popover.js";
+import {openFilterPopover} from "../components/filter-popover.js";
 import {
     passesModFilter,
     passesFlagsFilter,
@@ -146,113 +132,12 @@ function wireItemFilters(tableConfig) {
 }
 
 function openPopover(headerCell, filterType) {
-    const pop = createPopover(headerCell, filterType);
-
-    const f = state.filters.items;
     const db = state.db;
-
-    if (filterType === "complexity" || filterType === "depth" || filterType === "totalIngredients" || filterType === "usageCount") {
-        let minKey, maxKey;
-        if (filterType === "complexity") {
-            minKey = "minComplexity";
-            maxKey = "maxComplexity";
-        } else if (filterType === "depth") {
-            minKey = "minDepth";
-            maxKey = "maxDepth";
-        } else if (filterType === "totalIngredients") {
-            minKey = "minTotalIngredients";
-            maxKey = "maxTotalIngredients";
-        } else {
-            minKey = "minRecipeUsages";
-            maxKey = "maxRecipeUsages";
-        }
-
-        const minVal = f[minKey] ?? "";
-        const maxVal = f[maxKey] ?? "";
-
-        pop.innerHTML = renderRangeInputs(minKey, maxKey, minVal, maxVal);
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("items", {[minKey]: "", [maxKey]: ""});
-            updateItemsView();
-            closeActivePopover();
-        });
-
-        wireRangeInputs(pop, minKey, maxKey, (vals) => {
-            setFilter("items", vals);
-            updateItemsView();
-        }, debounce);
-
-    } else if (filterType === "category") {
-        const categoriesSet = new Set(db.categories.map(c => c.name));
-        categoriesSet.add("Uncalculable");
-        const categoriesList = Array.from(categoriesSet).sort();
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderCategoryCheckboxes(categoriesList, f.categoriesFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("items", {categoriesFilter: []});
-            updateItemsView();
-            closeActivePopover();
-        });
-
-        wireCategoryCheckboxes(pop, categoriesList, (checkedCats) => {
-            setFilter("items", {categoriesFilter: checkedCats});
-            updateItemsView();
-        });
-
-    } else if (filterType === "id") {
-        const modsList = getModNamespaces(db, "items");
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderModCheckboxes(modsList, f.modsFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("items", {modsFilter: []});
-            updateItemsView();
-            closeActivePopover();
-        });
-
-        wireModCheckboxes(pop, modsList, (checkedMods) => {
-            setFilter("items", {modsFilter: checkedMods});
-            updateItemsView();
-        });
-
-    } else if (filterType === "flags") {
-        const flagsList = [
-            {key: "cycle", label: "⟲ Cycle"},
-            {key: "uncalculable", label: "- Uncalculable"},
-            {key: "recipe", label: "∅ No Recipe"},
-            {key: "hardcoded", label: "H Hardcoded"}
-        ];
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Reset Filter</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderFlagCheckboxes(flagsList, f.flagsFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("items", getDefaultFilters("items"));
-            updateItemsView();
-            closeActivePopover();
-        });
-
-        wireFlagCheckboxes(pop, (checkedFlags) => {
-            setFilter("items", {flagsFilter: checkedFlags});
-            updateItemsView();
-        });
-    }
+    const f = state.filters.items;
+    openFilterPopover(headerCell, filterType, "items", db, f, (patch) => {
+        setFilter("items", patch);
+        updateItemsView();
+    });
 }
 
 function updateItemsView() {

@@ -211,7 +211,8 @@ export class StringPool {
         if (ref < 0 || ref >= this.count || this.cache[ref] !== undefined) return this.cache[ref] ?? "";
         const b = new Buf(this.b, this.offsets[ref]);
         const len = b.u16();
-        return this.cache[ref] = this.decoder.decode(this.b.subarray(b.p, b.p + len));
+        const r = this.decoder.decode(this.b.subarray(b.p, b.p + len));
+        return this.cache[ref] = r.replace(/§./g, "");
     }
 }
 
@@ -220,10 +221,12 @@ export class ItemTable {
         this.b = bytes;
         this.s = strings;
         this.count = new Buf(bytes).i32();
+        this.cache = new Array(this.count);
     }
 
     get(i) {
         if (i < 0 || i >= this.count) return null;
+        if (this.cache[i] !== undefined) return this.cache[i];
         const b = new Buf(this.b, 4 + i * ITEM_RECORD);
         const item = {
             index: i, id: this.s.get(b.i32()), name: this.s.get(b.i32()),
@@ -233,6 +236,7 @@ export class ItemTable {
             errorMessage: this.s.get(b.i32())
         };
         normalizeUncalculable(item, ITEM_FLAG);
+        this.cache[i] = item;
         return item;
     }
 }

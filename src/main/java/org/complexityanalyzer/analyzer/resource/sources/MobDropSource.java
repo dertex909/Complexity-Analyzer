@@ -389,38 +389,6 @@ public class MobDropSource implements IResourceSource {
         registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
         count++;
 
-        final double MUSIC_DISC_YIELD = 1.0 / 12.0;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_11, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_13, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_BLOCKS, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CAT, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_CHIRP, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_FAR, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MALL, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_MELLOHI, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STAL, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_STRAD, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WAIT, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_WARD, MUSIC_DISC_YIELD, "Killed by Skeleton");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_PIGSTEP, MUSIC_DISC_YIELD, "Bastion Loot");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_OTHERSIDE, MUSIC_DISC_YIELD, "Dungeon Loot");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.MUSIC_DISC_5, MUSIC_DISC_YIELD, "Ancient City Loot");
-        count++;
-
         ComplexityAnalyzer.LOGGER.info("Registered {} special kill-based drop entries.", count);
     }
 

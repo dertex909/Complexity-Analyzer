@@ -5,25 +5,13 @@ import {
     fmt,
     fmtInt
 } from "../core/utils.js";
-import {state, setFilter, selectMob, getDefaultFilters} from "../core/state.js";
+import {state, setFilter, selectMob} from "../core/state.js";
 import {MOB_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {renderMobDetail} from "./details/mob-detail.js";
-import {
-    closeActivePopover,
-    setupResizableTable
-} from "../components/resizable-table.js";
+import {setupResizableTable} from "../components/resizable-table.js";
 import {generateTableHeader} from "../components/table-columns.js";
-import {
-    createPopover,
-    getModNamespaces,
-    renderModCheckboxes,
-    renderFlagCheckboxes,
-    renderRangeInputs,
-    wireModCheckboxes,
-    wireFlagCheckboxes,
-    wireRangeInputs
-} from "../components/filter-popover.js";
+import {openFilterPopover} from "../components/filter-popover.js";
 import {
     passesModFilter,
     passesFlagsFilter,
@@ -201,94 +189,12 @@ function wireMobFilters(tableConfig) {
 }
 
 function openPopover(headerCell, filterType) {
-    const pop = createPopover(headerCell, filterType);
-
-    const f = state.filters.mobs;
     const db = state.db;
-
-    if (filterType === "health" || filterType === "damage" || filterType === "armor" || filterType === "combatPower" || filterType === "dropCount" || filterType === "rarity") {
-        let minKey, maxKey;
-        if (filterType === "health") {
-            minKey = "minHealth";
-            maxKey = "maxHealth";
-        } else if (filterType === "damage") {
-            minKey = "minDamage";
-            maxKey = "maxDamage";
-        } else if (filterType === "armor") {
-            minKey = "minArmor";
-            maxKey = "maxArmor";
-        } else if (filterType === "combatPower") {
-            minKey = "minCombatPower";
-            maxKey = "maxCombatPower";
-        } else if (filterType === "dropCount") {
-            minKey = "minDropCount";
-            maxKey = "maxDropCount";
-        } else {
-            minKey = "minRarity";
-            maxKey = "maxRarity";
-        }
-
-        const minVal = f[minKey] ?? "";
-        const maxVal = f[maxKey] ?? "";
-
-        pop.innerHTML = renderRangeInputs(minKey, maxKey, minVal, maxVal);
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("mobs", getDefaultFilters("mobs"));
-            updateMobsView();
-            closeActivePopover();
-        });
-
-        wireRangeInputs(pop, minKey, maxKey, (vals) => {
-            setFilter("mobs", vals);
-            updateMobsView();
-        }, debounce);
-
-    } else if (filterType === "id") {
-        const modsList = getModNamespaces(db, "mobs");
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderModCheckboxes(modsList, f.modsFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("mobs", getDefaultFilters("mobs"));
-            updateMobsView();
-            closeActivePopover();
-        });
-
-        wireModCheckboxes(pop, modsList, (checkedMods) => {
-            setFilter("mobs", {modsFilter: checkedMods});
-            updateMobsView();
-        });
-
-    } else if (filterType === "flags") {
-        const flagsList = [
-            {key: "boss", label: "👑 Boss"},
-            {key: "miniboss", label: "⚔️ Miniboss"}
-        ];
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Reset Filter</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderFlagCheckboxes(flagsList, f.flagsFilter || [])}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("mobs", getDefaultFilters("mobs"));
-            updateMobsView();
-            closeActivePopover();
-        });
-
-        wireFlagCheckboxes(pop, (checkedFlags) => {
-            setFilter("mobs", {flagsFilter: checkedFlags});
-            updateMobsView();
-        });
-    }
+    const f = state.filters.mobs;
+    openFilterPopover(headerCell, filterType, "mobs", db, f, (patch) => {
+        setFilter("mobs", patch);
+        updateMobsView();
+    });
 }
 
 function $(id) {

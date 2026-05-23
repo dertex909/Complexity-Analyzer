@@ -5,27 +5,15 @@ import {
     getFluidFlags,
     fmtInt
 } from "../core/utils.js";
-import {state, setState, setFilter, getDefaultFilters} from "../core/state.js";
+import {state, setState, setFilter} from "../core/state.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {renderFluidDetail} from "./details/fluid-detail.js";
 import {FLUID_FLAG} from "../core/cabin.js";
 import {
-    closeActivePopover,
     setupResizableTable
 } from "../components/resizable-table.js";
 import {generateTableHeader} from "../components/table-columns.js";
-import {
-    createPopover,
-    getModNamespaces,
-    renderModCheckboxes,
-    renderFlagCheckboxes,
-    renderCategoryCheckboxes,
-    renderRangeInputs,
-    wireModCheckboxes,
-    wireFlagCheckboxes,
-    wireCategoryCheckboxes,
-    wireRangeInputs
-} from "../components/filter-popover.js";
+import {openFilterPopover} from "../components/filter-popover.js";
 import {
     passesModFilter,
     passesFlagsFilter,
@@ -150,103 +138,12 @@ function wireFluidFilters(tableConfig) {
 }
 
 function openPopover(headerCell, filterType) {
-    const pop = createPopover(headerCell, filterType);
-
-    const f = state.filters.fluids;
     const db = state.db;
-
-    if (["complexity", "usageCount"].includes(filterType)) {
-        const minKey = `min${filterType.charAt(0).toUpperCase() + filterType.slice(1)}`;
-        const maxKey = `max${filterType.charAt(0).toUpperCase() + filterType.slice(1)}`;
-        const minVal = f[minKey] ?? "";
-        const maxVal = f[maxKey] ?? "";
-
-        pop.innerHTML = renderRangeInputs(minKey, maxKey, minVal, maxVal);
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("fluids", getDefaultFilters("fluids"));
-            updateFluidsView();
-            closeActivePopover();
-        });
-
-        wireRangeInputs(pop, minKey, maxKey, (vals) => {
-            setFilter("fluids", vals);
-            updateFluidsView();
-        }, debounce);
-
-    } else if (filterType === "category") {
-        const categoriesSet = new Set();
-        for (let i = 0; i < db.fluids.count; i++) {
-            const fl = db.fluids.get(i);
-            if (fl && fl.categoryName) categoriesSet.add(fl.categoryName);
-        }
-        const categoriesList = Array.from(categoriesSet).sort();
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderCategoryCheckboxes(categoriesList, f.categoriesFilter)}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("fluids", getDefaultFilters("fluids"));
-            updateFluidsView();
-            closeActivePopover();
-        });
-
-        wireCategoryCheckboxes(pop, categoriesList, (checkedCats) => {
-            setFilter("fluids", {categoriesFilter: checkedCats});
-            updateFluidsView();
-        });
-
-    } else if (filterType === "id") {
-        const modsList = getModNamespaces(db, "fluids");
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderModCheckboxes(modsList, f.modsFilter)}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("fluids", getDefaultFilters("fluids"));
-            updateFluidsView();
-            closeActivePopover();
-        });
-
-        wireModCheckboxes(pop, modsList, (checkedMods) => {
-            setFilter("fluids", {modsFilter: checkedMods});
-            updateFluidsView();
-        });
-
-    } else if (filterType === "flags") {
-        const flagsList = [
-            {key: "cycle", label: "Cycle ⟲"},
-            {key: "uncalculable", label: "Uncalculable -"},
-            {key: "recipe", label: "No recipe ∅"},
-            {key: "protected", label: "Protected P"}
-        ];
-
-        pop.innerHTML = `
-            <button class="popover-reset" id="filter-reset-btn">Reset Filter</button>
-            <div class="checkbox-list" style="margin-top: 6px;">
-                ${renderFlagCheckboxes(flagsList, f.flagsFilter)}
-            </div>
-        `;
-
-        pop.querySelector("#filter-reset-btn").addEventListener("click", () => {
-            setFilter("fluids", getDefaultFilters("fluids"));
-            updateFluidsView();
-            closeActivePopover();
-        });
-
-        wireFlagCheckboxes(pop, (checkedFlags) => {
-            setFilter("fluids", {flagsFilter: checkedFlags});
-            updateFluidsView();
-        });
-    }
+    const f = state.filters.fluids;
+    openFilterPopover(headerCell, filterType, "fluids", db, f, (patch) => {
+        setFilter("fluids", patch);
+        updateFluidsView();
+    });
 }
 
 function updateFluidsView() {

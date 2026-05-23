@@ -91,14 +91,119 @@ export function getMobFlags(m, fallbackOnEmpty = false) {
 }
 
 export function renderSubTabHeader(container, entity, subTabName, backButtonText, backTabName) {
+    let metadataHtml;
+
+    if (backTabName === "items") {
+        const flagsHtml = getItemFlags(entity, false);
+        metadataHtml = `
+            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Complexity:</span>
+                    <strong class="cat-${entity.categoryName || "Uncalculable"}" style="font-size: 14px; font-weight: 600;" title="${formatRawTooltip(entity.complexity)}">${formatComplexityDetail(entity.complexity)}</strong>
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Category:</span>
+                    <span class="category-pill cat-${entity.categoryName || "Uncalculable"}" style="font-size: 11px; padding: 2px 8px; margin: 0;">${entity.categoryName}</span>
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Depth:</span>
+                    <strong style="color: var(--text);" title="${formatRawTooltip(entity.depth)}">${fmtInt.format(entity.depth)}</strong>
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Total Ingredients:</span>
+                    <strong style="color: var(--text);" title="${formatRawTooltip(entity.totalIngredients)}">${fmtInt.format(entity.totalIngredients)}</strong>
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Recipe Usages:</span>
+                    <span style="color: var(--text);">Used in <strong style="color: var(--accent);">${fmtInt.format(entity.usageCount)}</strong> recipe${entity.usageCount === 1 ? "" : "s"}</span>
+                </div>
+                ${flagsHtml ? `
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Flags:</span>
+                    <span class="flags" style="display: flex; gap: 4px;">${flagsHtml}</span>
+                </div>
+                ` : ""}
+                ${entity.errorMessage ? `
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px; color: var(--err)">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Error:</span>
+                    <span style="font-size: 12px; font-weight: 500;">${escapeHtml(entity.errorMessage)}</span>
+                </div>
+                ` : ""}
+                
+                <div style="margin-left: auto; display: flex; align-items: center;">
+                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
+                </div>
+            </div>
+        `;
+    } else if (backTabName === "fluids") {
+        const flagsHtml = getFluidFlags(entity, false);
+        metadataHtml = `
+            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Complexity:</span>
+                    <strong class="cat-${entity.categoryName || "Uncalculable"}" style="font-size: 14px; font-weight: 600;" title="${formatRawTooltip(entity.complexity)}">${formatComplexityDetail(entity.complexity)}</strong>
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Category:</span>
+                    <span class="category-pill cat-${entity.categoryName || "Uncalculable"}" style="font-size: 11px; padding: 2px 8px; margin: 0;">${entity.categoryName}</span>
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Recipe Usages:</span>
+                    <span style="color: var(--text);">Used as ingredient in <strong style="color: var(--accent);">${fmtInt.format(entity.usageCount)}</strong> recipe${entity.usageCount === 1 ? "" : "s"}</span>
+                </div>
+                ${flagsHtml ? `
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Flags:</span>
+                    <span class="flags" style="display: flex; gap: 4px;">${flagsHtml}</span>
+                </div>
+                ` : ""}
+                
+                <div style="margin-left: auto; display: flex; align-items: center;">
+                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
+                </div>
+            </div>
+        `;
+    } else {
+        const flagsHtml = getMobFlags(entity, false);
+        metadataHtml = `
+            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Category:</span>
+                    <span class="category-pill cat-${entity.categoryName || "Uncalculable"}" style="font-size: 11px; padding: 2px 8px; margin: 0;">${entity.categoryName || "Mob"}</span>
+                </div>
+                ${flagsHtml ? `
+                <div style="width: 1px; height: 16px; background: var(--border);"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Flags:</span>
+                    <span class="flags" style="display: flex; gap: 4px;">${flagsHtml}</span>
+                </div>
+                ` : ""}
+                
+                <div style="margin-left: auto; display: flex; align-items: center;">
+                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
+                </div>
+            </div>
+        `;
+    }
+
     container.innerHTML = `
-        <div class="sub-tab-panel-header">
-            <button class="btn btn-back" id="back-btn">← ${backButtonText}</button>
-            <div class="header-details">
-                <h2>${escapeHtml(entity.name)}</h2>
-                <span class="mono-code">${escapeHtml(entity.id)}</span>
-                <span class="category-pill cat-${entity.categoryName || "Uncalculable"}">${entity.categoryName}</span>
-                <span class="sub-tab-label-badge">${subTabName}</span>
+        <div class="sub-tab-panel-header" style="margin-bottom: 20px;">
+            <button class="btn btn-back" id="back-btn" style="margin-bottom: 14px;">← ${backButtonText}</button>
+            <div class="header-details" style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--text);">${escapeHtml(entity.name)}</h2>
+                    <code class="mono-code" style="font-size: 13px; color: var(--accent); background: rgba(94, 199, 255, 0.05); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(94, 199, 255, 0.15);">${escapeHtml(entity.id)}</code>
+                </div>
+                ${metadataHtml}
             </div>
         </div>
         <div class="sub-tab-content-body"></div>

@@ -16,7 +16,19 @@ export function initRouter() {
 
 function renderTabs() {
     const active = state.tab;
-    document.querySelectorAll("#main-tabs .tab").forEach(t => t.classList.toggle("active", t.dataset.tab === active));
+    document.querySelectorAll("#main-tabs .tab").forEach(t => {
+        let isTabActive = t.dataset.tab === active;
+        if (t.dataset.tab === "items" && ["item-recipes", "item-machine-recipes", "item-uses", "item-base-sources"].includes(active)) {
+            isTabActive = true;
+        }
+        if (t.dataset.tab === "fluids" && ["fluid-recipes", "fluid-uses"].includes(active)) {
+            isTabActive = true;
+        }
+        if (t.dataset.tab === "mobs" && ["mob-drops"].includes(active)) {
+            isTabActive = true;
+        }
+        t.classList.toggle("active", isTabActive);
+    });
 
     const subContainer = document.getElementById("item-sub-tabs");
     const fluidSubContainer = document.getElementById("fluid-sub-tabs");
@@ -132,6 +144,54 @@ function renderTabs() {
         } else {
             fluidSubContainer.style.display = "none";
             fluidSubContainer.innerHTML = "";
+        }
+    }
+
+    const mobSubContainer = document.getElementById("mob-sub-tabs");
+    if (mobSubContainer) {
+        const isMobTab = ["mob-drops"].includes(active);
+        if (isMobTab && state.selectedMob >= 0 && state.db) {
+            const mob = state.db.mobs.get(state.selectedMob);
+            if (mob) {
+                const hasDrops = mob.dropCount > 0;
+
+                const availableTabs = [];
+                if (hasDrops) availableTabs.push("mob-drops");
+
+                const isCurrentTabSubtab = ["mob-drops"].includes(active);
+
+                if (isCurrentTabSubtab && !availableTabs.includes(active)) {
+                    const nextTab = "mobs";
+                    setTimeout(() => {
+                        setState({tab: nextTab});
+                    }, 0);
+                    return;
+                }
+
+                let buttons = "";
+                if (hasDrops) {
+                    buttons += `<button class="sub-tab ${active === "mob-drops" ? "active" : ""}" data-tab="mob-drops">↳ Drops</button>`;
+                }
+
+                if (buttons) {
+                    mobSubContainer.style.display = "flex";
+                    mobSubContainer.innerHTML = buttons;
+                    mobSubContainer.querySelectorAll(".sub-tab").forEach(st => {
+                        st.addEventListener("click", () => {
+                            setState({tab: st.dataset.tab});
+                        });
+                    });
+                } else {
+                    mobSubContainer.style.display = "none";
+                    mobSubContainer.innerHTML = "";
+                }
+            } else {
+                mobSubContainer.style.display = "none";
+                mobSubContainer.innerHTML = "";
+            }
+        } else {
+            mobSubContainer.style.display = "none";
+            mobSubContainer.innerHTML = "";
         }
     }
 

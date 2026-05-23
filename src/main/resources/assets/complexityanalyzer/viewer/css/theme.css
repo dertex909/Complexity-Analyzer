@@ -73,15 +73,16 @@
     --fl-col-6: 14%;
     --fl-col-7: 12%;
 
-    --mob-col-1: 5%;
+    --mob-col-1: 4%;
     --mob-col-2: 15%;
-    --mob-col-3: 25%;
-    --mob-col-4: 10%;
-    --mob-col-5: 10%;
-    --mob-col-6: 10%;
-    --mob-col-7: 12%;
-    --mob-col-8: 8%;
-    --mob-col-9: 5%;
+    --mob-col-3: 18%;
+    --mob-col-4: 9%;
+    --mob-col-5: 9%;
+    --mob-col-6: 9%;
+    --mob-col-7: 10%;
+    --mob-col-8: 10%;
+    --mob-col-9: 10%;
+    --mob-col-10: 6%;
 
     --shadow-glow: 0 0 20px var(--accent-glow);
 

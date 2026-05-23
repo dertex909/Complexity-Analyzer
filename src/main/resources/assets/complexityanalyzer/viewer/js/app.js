@@ -9,6 +9,7 @@ import {renderGraph} from "./views/graph.js";
 import {renderSources} from "./views/sources.js";
 import {renderItemDetail} from "./views/details/item-detail.js";
 import {renderFluidDetail} from "./views/details/fluid-detail.js";
+import {renderMobDropsView} from "./views/sub/mob-sub-views.js";
 import {
     renderItemRecipesView,
     renderItemMachineRecipesView,
@@ -42,21 +43,58 @@ const VIEW_RENDERERS = {
     "item-base-sources": renderItemBaseSourcesView,
     "fluid-recipes": renderFluidRecipesView,
     "fluid-uses": renderFluidUsesView,
+    "mob-drops": renderMobDropsView,
 };
 
+const SELECTION_DEPENDENT_TABS = new Set([
+    "item-recipes",
+    "item-machine-recipes",
+    "item-uses",
+    "item-base-sources",
+    "fluid-recipes",
+    "fluid-uses",
+    "mob-drops"
+]);
+
 let lastRenderedTab = null;
+let lastRenderedItem = null;
+let lastRenderedMob = null;
 
 function renderCurrentTab(force = false) {
     const tab = state.tab;
-    if (!force && tab === lastRenderedTab) return;
+    const item = state.selectedItem;
+    const mob = state.selectedMob;
+
+    let needsRender = force || (tab !== lastRenderedTab);
+    if (!needsRender && SELECTION_DEPENDENT_TABS.has(tab)) if (tab === "mob-drops") {
+        if (mob !== lastRenderedMob) needsRender = true;
+    } else {
+        if (item !== lastRenderedItem) needsRender = true;
+    }
+
+    if (!needsRender) return;
+
     const container = document.getElementById("tab-" + tab);
     if (!container) return;
     const renderer = VIEW_RENDERERS[tab];
     if (renderer) renderer(container);
+
     lastRenderedTab = tab;
+    lastRenderedItem = item;
+    lastRenderedMob = mob;
 }
 
 store.addEventListener("change", () => {
+    if (state.selectedItem === -1) {
+        const itemModal = document.getElementById("item-modal");
+        if (itemModal) itemModal.hidden = true;
+        const fluidModal = document.getElementById("fluid-modal");
+        if (fluidModal) fluidModal.hidden = true;
+    }
+    if (state.selectedMob === -1) {
+        const mobModal = document.getElementById("mob-modal");
+        if (mobModal) mobModal.hidden = true;
+    }
     renderTabs();
     renderCurrentTab();
 });

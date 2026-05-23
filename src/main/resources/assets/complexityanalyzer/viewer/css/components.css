@@ -157,7 +157,7 @@ input[type="search"] {
 
 .mobs-grid {
     display: grid;
-    grid-template-columns: var(--mob-col-1, 5%) var(--mob-col-2, 15%) var(--mob-col-3, 25%) var(--mob-col-4, 10%) var(--mob-col-5, 10%) var(--mob-col-6, 10%) var(--mob-col-7, 12%) var(--mob-col-8, 8%) var(--mob-col-9, 5%);
+    grid-template-columns: var(--mob-col-1, 4%) var(--mob-col-2, 15%) var(--mob-col-3, 18%) var(--mob-col-4, 9%) var(--mob-col-5, 9%) var(--mob-col-6, 9%) var(--mob-col-7, 10%) var(--mob-col-8, 10%) var(--mob-col-9, 10%) var(--mob-col-10, 6%);
     gap: 0;
     align-items: stretch;
     width: 100%;

@@ -51,7 +51,8 @@ export async function renderMobDetail(unusedContainer, mobIndex) {
             if (card.hasAttribute("disabled")) return;
             card.addEventListener("click", () => {
                 const action = card.dataset.action;
-                if (action === "mob-drops") renderDropsSection(bodyEl, mobIndex);
+                overlay.hidden = true;
+                setState({tab: action});
             });
         });
     }
@@ -59,30 +60,4 @@ export async function renderMobDetail(unusedContainer, mobIndex) {
     setupModalClose(overlay, closeEl, () => {
         setState({selectedMob: -1});
     });
-}
-
-async function renderDropsSection(bodyEl, mobIndex) {
-    const db = state.db;
-    if (!db) return;
-
-    try {
-        const drops = await db.getMobDrops(mobIndex);
-        bodyEl.innerHTML = `
-            <button class="btn" id="mob-back-btn" style="margin-bottom:12px;">← Back to Mob Info</button>
-            <h3>Drops (${drops.length})</h3>
-            ${drops.length === 0 ? `<div class="hint">No drops recorded.</div>` : drops.map(d => `
-                <div class="drop-row" style="padding:8px; border-bottom:1px solid var(--border);">
-                    <strong>${escapeHtml(d.itemName || "?")}</strong>
-                    <span class="hint"> — ${fmt.format(d.yieldPerKill)}/kill${d.killMethod ? ` · ${escapeHtml(d.killMethod)}` : ""}</span>
-                    ${d.itemId ? `<div class="mono-code" style="font-size:11px">${escapeHtml(d.itemId)}</div>` : ""}
-                </div>
-            `).join("")}
-        `;
-
-        bodyEl.querySelector("#mob-back-btn").addEventListener("click", () => {
-            renderMobDetail(null, mobIndex);
-        });
-    } catch (e) {
-        bodyEl.innerHTML = `<div style="color:var(--err)">Error: ${escapeHtml(String(e))}</div>`;
-    }
 }

@@ -38,8 +38,9 @@ const MOBS_COLUMNS = [
     {index: 5, label: "Dmg", filter: "damage", sortable: true, numeric: true},
     {index: 6, label: "Armor", filter: "armor", sortable: true, numeric: true},
     {index: 7, label: "Combat", filter: "combatPower", sortable: true, numeric: true},
-    {index: 8, label: "Rarity", filter: "rarity", sortable: true, numeric: true},
-    {index: 9, label: "Flags", filter: "flags", sortable: false}
+    {index: 8, label: "Drops", filter: "dropCount", sortable: true, numeric: true},
+    {index: 9, label: "Rarity", filter: "rarity", sortable: true, numeric: true},
+    {index: 10, label: "Flags", filter: "flags", sortable: false}
 ];
 
 export async function renderMobs(container) {
@@ -49,16 +50,17 @@ export async function renderMobs(container) {
     const tableConfig = setupResizableTable({
         tableId: "mobs",
         cssVarPrefix: "--mob-col",
-        columnCount: 9,
+        columnCount: 10,
         headingColumns: [
             {index: 4, label: "HP"},
             {index: 5, label: "Dmg"},
             {index: 6, label: "Armor"},
             {index: 7, label: "Combat"},
-            {index: 8, label: "Rarity"}
+            {index: 8, label: "Drops"},
+            {index: 9, label: "Rarity"}
         ],
         flagsColumn: {
-            index: 9,
+            index: 10,
             flagChecks: [
                 f => f & MOB_FLAG.BOSS,
                 f => f & MOB_FLAG.MINIBOSS
@@ -76,6 +78,7 @@ export async function renderMobs(container) {
             <select id="mobs-sort">
                 <option value="combatPower-desc" ${f.sort === "combatPower-desc" ? "selected" : ""}>Combat ▼</option>
                 <option value="threat-desc" ${f.sort === "threat-desc" ? "selected" : ""}>Threat ▼</option>
+                <option value="dropCount-desc" ${f.sort === "dropCount-desc" ? "selected" : ""}>Drops ▼</option>
                 <option value="rarity-desc" ${f.sort === "rarity-desc" ? "selected" : ""}>Rarity ▼</option>
                 <option value="health-desc" ${f.sort === "health-desc" ? "selected" : ""}>HP ▼</option>
                 <option value="name-asc" ${f.sort === "name-asc" ? "selected" : ""}>Name A-Z</option>
@@ -112,6 +115,7 @@ function updateMobsView() {
         if (!passesRangeFilter(m.damage, f.minDamage, f.maxDamage)) continue;
         if (!passesRangeFilter(m.armor, f.minArmor, f.maxArmor)) continue;
         if (!passesRangeFilter(m.combatPower, f.minCombatPower, f.maxCombatPower)) continue;
+        if (!passesRangeFilter(m.dropCount, f.minDropCount, f.maxDropCount)) continue;
         if (!passesRangeFilter(m.rarity, f.minRarity, f.maxRarity)) continue;
 
         list.push(m);
@@ -123,6 +127,7 @@ function updateMobsView() {
         threat: m => m.threat,
         rarity: m => m.rarity,
         health: m => m.health,
+        dropCount: m => m.dropCount,
         name: m => m.name
     }[field] || (m => m.combatPower);
     list.sort((a, b) => {
@@ -161,6 +166,7 @@ function updateMobsView() {
                 <span class="num">${fmt.format(m.damage)}</span>
                 <span class="num">${fmt.format(m.armor)}</span>
                 <span class="num">${fmt.format(m.combatPower)}</span>
+                <span class="num" style="font-weight: 500; color: var(--accent);">${fmtInt.format(m.dropCount)}</span>
                 <span class="num">${fmt.format(m.rarity)}</span>
                 <span class="flags">${getMobFlags(m)}</span>
             `;
@@ -200,7 +206,7 @@ function openPopover(headerCell, filterType) {
     const f = state.filters.mobs;
     const db = state.db;
 
-    if (filterType === "health" || filterType === "damage" || filterType === "armor" || filterType === "combatPower" || filterType === "rarity") {
+    if (filterType === "health" || filterType === "damage" || filterType === "armor" || filterType === "combatPower" || filterType === "dropCount" || filterType === "rarity") {
         let minKey, maxKey;
         if (filterType === "health") {
             minKey = "minHealth";
@@ -214,6 +220,9 @@ function openPopover(headerCell, filterType) {
         } else if (filterType === "combatPower") {
             minKey = "minCombatPower";
             maxKey = "maxCombatPower";
+        } else if (filterType === "dropCount") {
+            minKey = "minDropCount";
+            maxKey = "maxDropCount";
         } else {
             minKey = "minRarity";
             maxKey = "maxRarity";
@@ -297,6 +306,7 @@ function updateHeaderIndicators() {
         {key: "damage", isFiltered: () => f.minDamage !== "" || f.maxDamage !== ""},
         {key: "armor", isFiltered: () => f.minArmor !== "" || f.maxArmor !== ""},
         {key: "combatPower", isFiltered: () => f.minCombatPower !== "" || f.maxCombatPower !== ""},
+        {key: "dropCount", isFiltered: () => f.minDropCount !== "" || f.maxDropCount !== ""},
         {key: "rarity", isFiltered: () => f.minRarity !== "" || f.maxRarity !== ""},
         {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length > 0},
     ];

@@ -30,6 +30,7 @@ const DEFAULT_FILTERS = {
         minDamage: "", maxDamage: "",
         minArmor: "", maxArmor: "",
         minCombatPower: "", maxCombatPower: "",
+        minDropCount: "", maxDropCount: "",
         minRarity: "", maxRarity: ""
     },
     sources: {

@@ -1,7 +1,7 @@
 import {escapeHtml, fmt} from "../../core/utils.js";
 import {state} from "../../core/state.js";
 
-export function renderRecipeRow(r, db) {
+export function renderRecipeRow(r, db, machineOverride = null) {
     const inputsHtml = [];
     if (r.ingredients && r.ingredients.length > 0) for (const slot of r.ingredients) {
         for (const v of slot.variants) {
@@ -46,7 +46,7 @@ export function renderRecipeRow(r, db) {
         }
     }
 
-    const machineItem = db.items.get(r.machineItemIndex);
+    const machineItem = machineOverride || db.items.get(r.machineItemIndex);
     const machineName = machineItem ? machineItem.name : r.recipeType;
 
     return `

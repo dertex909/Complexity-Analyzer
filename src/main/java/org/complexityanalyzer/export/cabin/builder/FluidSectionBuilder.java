@@ -137,6 +137,8 @@ public final class FluidSectionBuilder {
         out.i32(0);
         int totalRecipes = 0;
 
+        var registry = ctx.engine().getMachineRegistry();
+
         for (int i = 0; i < n; i++) {
             Fluid fluid = ctx.orderedFluids().get(i);
             ObjectList<RecipeNode> recipes = graph.getFluidRecipes(fluid);
@@ -144,8 +146,21 @@ public final class FluidSectionBuilder {
             firstOffset[i] = out.position();
             int written = 0;
             for (RecipeNode r : recipes) {
-                writeFluidRecipe(out, i, r);
-                written++;
+                var recipeType = r.getRecipeType();
+                ObjectList<Item> machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
+                if (machineItems != null && !machineItems.isEmpty()) {
+                    for (Item machineItem : machineItems) {
+                        int machineItemIdx = ctx.itemIndex().getInt(machineItem);
+                        if (machineItemIdx >= 0) {
+                            RecipeSectionBuilder.writeRecipe(out, ctx, i, r, machineItemIdx);
+                            written++;
+                            if (written == 0xFFFF) break;
+                        }
+                    }
+                } else {
+                    RecipeSectionBuilder.writeRecipe(out, ctx, i, r, -1);
+                    written++;
+                }
                 if (written == 0xFFFF) break;
             }
             count[i] = written;
@@ -166,104 +181,6 @@ public final class FluidSectionBuilder {
             buf.u16(Math.min(count[i], 0xFFFF));
         }
         return buf.toByteArray();
-    }
-
-    private void writeFluidRecipe(LeBuf buf, int outputFluidIndex, RecipeNode r) {
-        buf.i32(outputFluidIndex);
-        var rt = r.getRecipeType();
-        String rtStr = rt != null ? rt.toString() : "minecraft:custom";
-        buf.i32(ctx.strings().intern(rtStr));
-        RecipeCategory cat = r.getCategory();
-        buf.u8(cat != null ? cat.ordinal() : 0);
-        buf.i32(r.getPriority());
-        buf.i32(r.getResultCount());
-        buf.f64(r.getRecipeMultiplier());
-        int flags = 0;
-        if (r.isPlaceholder()) flags |= 0x01;
-        if (r.hasFluidIngredients()) flags |= 0x02;
-        if (r.isBaseRecipe()) flags |= 0x04;
-        buf.u8(flags);
-        buf.i32(ctx.strings().intern(r.getPlaceholderId() != null ? r.getPlaceholderId() : ""));
-
-        var registry = ctx.engine().getMachineRegistry();
-        ObjectList<Item> machineItems = (registry != null) ? registry.getMachinesForRecipe(r.getRecipeType()) : null;
-        Item cheapestMachine = null;
-        double minComplexity = Double.POSITIVE_INFINITY;
-        if (machineItems != null) for (Item machineItem : machineItems) {
-            double c = ctx.engine().getComplexity(machineItem);
-            if (c < minComplexity) {
-                minComplexity = c;
-                cheapestMachine = machineItem;
-            }
-        }
-        if (cheapestMachine == null && machineItems != null && !machineItems.isEmpty())
-            cheapestMachine = machineItems.getFirst();
-        int machineItemIdx = (cheapestMachine != null) ? ctx.itemIndex().getInt(cheapestMachine) : -1;
-        buf.i32(machineItemIdx);
-
-        var ings = r.getIngredients();
-        buf.u8(Math.min(ings.size(), 0xFF));
-        for (int s = 0; s < Math.min(ings.size(), 0xFF); s++) {
-            IngredientSlot slot = ings.get(s);
-            var variants = slot.getVariants();
-            int vc = Math.min(variants.size(), 0xFF);
-            buf.u8(vc);
-            buf.i32(slot.getCount());
-            for (int v = 0; v < vc; v++) {
-                int vi = ctx.itemIndex().getInt(variants.get(v));
-                buf.i32(vi);
-            }
-        }
-
-        var fings = r.getFluidIngredients();
-        buf.u8(Math.min(fings.size(), 0xFF));
-        for (int s = 0; s < Math.min(fings.size(), 0xFF); s++) {
-            FluidIngredientSlot slot = fings.get(s);
-            var variants = slot.getFluidVariants();
-            int vc = Math.min(variants.size(), 0xFF);
-            buf.u8(vc);
-            buf.i32(slot.getAmount());
-            for (int v = 0; v < vc; v++) {
-                Fluid fluid = variants.get(v);
-                int fi = ctx.fluidIndex().getInt(fluid);
-                buf.i32(fi);
-            }
-        }
-
-        var chems = r.getChemicalIngredients();
-        buf.u8(Math.min(chems.size(), 0xFF));
-        for (int c = 0; c < Math.min(chems.size(), 0xFF); c++) {
-            var ci = chems.get(c);
-            buf.i32(ctx.strings().intern(ci.id() != null ? ci.id().toString() : ""));
-            buf.i32(ci.amount());
-        }
-
-        var iouts = r.getItemOutputs();
-        buf.u8(Math.min(iouts.size(), 0xFF));
-        for (int o = 0; o < Math.min(iouts.size(), 0xFF); o++) {
-            var stack = iouts.get(o);
-            int idx = ctx.itemIndex().getInt(stack.getItem());
-            buf.i32(idx);
-            buf.i32(stack.getCount());
-        }
-
-        var fouts = r.getFluidOutputs();
-        buf.u8(Math.min(fouts.size(), 0xFF));
-        for (int o = 0; o < Math.min(fouts.size(), 0xFF); o++) {
-            var fs = fouts.get(o);
-            int fi = ctx.fluidIndex().getInt(fs.getFluid());
-            buf.i32(fi);
-            buf.i32(fs.getAmount());
-        }
-
-        var cOuts = r.getChemicalOutputs();
-        buf.u8(Math.min(cOuts.size(), 0xFF));
-        for (int o = 0; o < Math.min(cOuts.size(), 0xFF); o++) {
-            var co = cOuts.get(o);
-            String cid = co.id() != null ? co.id().toString() : "";
-            buf.i32(ctx.strings().intern(cid));
-            buf.i64(co.amount());
-        }
     }
 
     public byte[] buildFluidUsage(RecipeGraph graph) {

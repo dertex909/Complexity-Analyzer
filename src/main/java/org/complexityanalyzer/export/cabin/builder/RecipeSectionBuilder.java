@@ -65,6 +65,8 @@ public final class RecipeSectionBuilder {
         out.i32(0);
         int totalRecipes = 0;
 
+        var registry = ctx.engine().getMachineRegistry();
+
         for (int i = 0; i < n; i++) {
             Item item = ctx.orderedItems().get(i);
             ObjectList<RecipeNode> recipes = graph.getRecipes(item);
@@ -72,8 +74,21 @@ public final class RecipeSectionBuilder {
             firstOffset[i] = out.position();
             int written = 0;
             for (RecipeNode r : recipes) {
-                writeRecipe(out, i, r);
-                written++;
+                var recipeType = r.getRecipeType();
+                ObjectList<Item> machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
+                if (machineItems != null && !machineItems.isEmpty()) {
+                    for (Item machineItem : machineItems) {
+                        int machineItemIdx = ctx.itemIndex().getInt(machineItem);
+                        if (machineItemIdx >= 0) {
+                            writeRecipe(out, ctx, i, r, machineItemIdx);
+                            written++;
+                            if (written == 0xFFFF) break;
+                        }
+                    }
+                } else {
+                    writeRecipe(out, ctx, i, r, -1);
+                    written++;
+                }
                 if (written == 0xFFFF) break;
             }
             count[i] = written;
@@ -85,7 +100,7 @@ public final class RecipeSectionBuilder {
         return new RecipesResult(out.toByteArray(), outputIndex, totalRecipes);
     }
 
-    private void writeRecipe(LeBuf buf, int outputItemIndex, RecipeNode r) {
+    public static void writeRecipe(LeBuf buf, SectionBuilderContext ctx, int outputItemIndex, RecipeNode r, int machineItemIdx) {
         buf.i32(outputItemIndex);
         var rt = r.getRecipeType();
         String rtStr = rt != null ? rt.toString() : "minecraft:custom";
@@ -102,20 +117,6 @@ public final class RecipeSectionBuilder {
         buf.u8(flags);
         buf.i32(ctx.strings().intern(r.getPlaceholderId() != null ? r.getPlaceholderId() : ""));
 
-        var registry = ctx.engine().getMachineRegistry();
-        ObjectList<Item> machineItems = (registry != null) ? registry.getMachinesForRecipe(r.getRecipeType()) : null;
-        Item cheapestMachine = null;
-        double minComplexity = Double.POSITIVE_INFINITY;
-        if (machineItems != null) for (Item machineItem : machineItems) {
-            double c = ctx.engine().getComplexity(machineItem);
-            if (c < minComplexity) {
-                minComplexity = c;
-                cheapestMachine = machineItem;
-            }
-        }
-        if (cheapestMachine == null && machineItems != null && !machineItems.isEmpty())
-            cheapestMachine = machineItems.getFirst();
-        int machineItemIdx = (cheapestMachine != null) ? ctx.itemIndex().getInt(cheapestMachine) : -1;
         buf.i32(machineItemIdx);
 
         var ings = r.getIngredients();

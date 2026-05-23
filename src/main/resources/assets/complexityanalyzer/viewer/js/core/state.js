@@ -56,6 +56,8 @@ export const state = {
     },
     graphZoom: 1,
     graphPan: {x: 0, y: 0},
+    navHistory: [],
+    isGoingBack: false
 };
 
 export function getDefaultFilters(view) {
@@ -63,8 +65,36 @@ export function getDefaultFilters(view) {
 }
 
 export function setState(patch) {
+    const isNavigation = (patch.tab !== undefined && patch.tab !== state.tab) ||
+        (patch.selectedItem !== undefined && patch.selectedItem !== state.selectedItem) ||
+        (patch.selectedMob !== undefined && patch.selectedMob !== state.selectedMob);
+
+    if (isNavigation && !state.isGoingBack) {
+        const prev = {
+            tab: state.tab,
+            selectedItem: state.selectedItem,
+            selectedMob: state.selectedMob
+        };
+        const last = state.navHistory[state.navHistory.length - 1];
+        if (!last || last.tab !== prev.tab || last.selectedItem !== prev.selectedItem || last.selectedMob !== prev.selectedMob) {
+            if (state.navHistory.length > 50) state.navHistory.shift();
+            state.navHistory.push(prev);
+        }
+    }
+
     Object.assign(state, patch);
     store.dispatchEvent(new CustomEvent("change", {detail: patch}));
+}
+
+export function goBack() {
+    if (state.navHistory && state.navHistory.length > 0) {
+        const prevState = state.navHistory.pop();
+        state.isGoingBack = true;
+        setState(prevState);
+        state.isGoingBack = false;
+        return true;
+    }
+    return false;
 }
 
 export function setFilter(view, patch) {
@@ -73,14 +103,12 @@ export function setFilter(view, patch) {
 }
 
 export function selectItem(index) {
-    state.selectedItem = index;
-    state.subTab = "info";
+    setState({selectedItem: index, subTab: "info"});
     store.dispatchEvent(new CustomEvent("selectItem", {detail: index}));
 }
 
 export function selectMob(index) {
-    state.selectedMob = index;
-    state.subTab = "info";
+    setState({selectedMob: index, subTab: "info"});
     store.dispatchEvent(new CustomEvent("selectMob", {detail: index}));
 }
 

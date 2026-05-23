@@ -22,7 +22,7 @@ function renderTabs() {
     const fluidSubContainer = document.getElementById("fluid-sub-tabs");
 
     if (subContainer) {
-        const isItemTab = ["items", "item-recipes", "item-machine-recipes", "item-uses", "item-base-sources"].includes(active);
+        const isItemTab = ["item-recipes", "item-machine-recipes", "item-uses", "item-base-sources"].includes(active);
         if (isItemTab && state.selectedItem >= 0 && state.db) {
             const item = state.db.items.get(state.selectedItem);
             if (item) {
@@ -84,7 +84,7 @@ function renderTabs() {
     }
 
     if (fluidSubContainer) {
-        const isFluidTab = ["fluids", "fluid-recipes", "fluid-uses"].includes(active);
+        const isFluidTab = ["fluid-recipes", "fluid-uses"].includes(active);
         if (isFluidTab && state.selectedItem >= 0 && state.db) {
             const fluid = state.db.fluids.get(state.selectedItem);
             if (fluid) {

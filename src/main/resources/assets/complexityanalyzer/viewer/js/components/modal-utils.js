@@ -1,12 +1,14 @@
-import {setState} from "../core/state.js";
+import {setState, goBack} from "../core/state.js";
 
 export function setupModalClose(overlay, closeEl, onClose) {
     const closeModal = () => {
         overlay.hidden = true;
         if (onClose) {
-            onClose();
+            const wentBack = goBack();
+            if (!wentBack) onClose();
         } else {
-            setState({selectedItem: -1});
+            const wentBack = goBack();
+            if (!wentBack) setState({selectedItem: -1});
         }
     };
 

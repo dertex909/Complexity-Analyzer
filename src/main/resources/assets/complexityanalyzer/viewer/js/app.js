@@ -24,13 +24,9 @@ const fmtInt = new Intl.NumberFormat("en-US");
 
 function setStatus(cls, text) {
     const dot = document.getElementById("status-dot");
-    if (dot) {
-        dot.className = "dot " + cls;
-    }
+    if (dot) dot.className = "dot " + cls;
     const st = document.getElementById("status-text");
-    if (st) {
-        st.textContent = text;
-    }
+    if (st) st.textContent = text;
 }
 
 const VIEW_RENDERERS = {
@@ -48,12 +44,16 @@ const VIEW_RENDERERS = {
     "fluid-uses": renderFluidUsesView,
 };
 
-function renderCurrentTab() {
+let lastRenderedTab = null;
+
+function renderCurrentTab(force = false) {
     const tab = state.tab;
+    if (!force && tab === lastRenderedTab) return;
     const container = document.getElementById("tab-" + tab);
     if (!container) return;
     const renderer = VIEW_RENDERERS[tab];
     if (renderer) renderer(container);
+    lastRenderedTab = tab;
 }
 
 store.addEventListener("change", () => {
@@ -62,12 +62,10 @@ store.addEventListener("change", () => {
 });
 
 store.addEventListener("selectItem", () => {
-    if (state.selectedItem >= 0) {
-        if (["fluids", "fluid-recipes", "fluid-uses"].includes(state.tab)) {
-            renderFluidDetail(null, state.selectedItem);
-        } else {
-            renderItemDetail(null, state.selectedItem);
-        }
+    if (state.selectedItem >= 0) if (["fluids", "fluid-recipes", "fluid-uses"].includes(state.tab)) {
+        renderFluidDetail(null, state.selectedItem);
+    } else {
+        renderItemDetail(null, state.selectedItem);
     }
 });
 
@@ -141,7 +139,7 @@ function startPolling(token) {
             if (serverHash && localHash && serverHash !== localHash) {
                 await state.db.open({preferFullDownload: true});
                 setStatus("ready", `Updated! ${fmtInt.format(state.db.meta.itemCount)} items`);
-                renderCurrentTab();
+                renderCurrentTab(true);
                 countdown = 3;
             } else {
                 setStatus("ready", "ready");
@@ -172,9 +170,7 @@ function setupGlobalSearch() {
     });
 
     overlay.addEventListener("click", e => {
-        if (e.target === overlay) {
-            overlay.hidden = true;
-        }
+        if (e.target === overlay) overlay.hidden = true;
     });
 
     input.addEventListener("input", debounce(() => {
@@ -254,11 +250,8 @@ function initSidebarResizer() {
     const sidebar = document.querySelector(".sidebar-left");
     if (!resizer || !sidebar) return;
 
-    // Load initial width from localStorage
     const savedWidth = localStorage.getItem("sidebarWidth");
-    if (savedWidth) {
-        document.documentElement.style.setProperty("--sidebar-width", savedWidth + "px");
-    }
+    if (savedWidth) document.documentElement.style.setProperty("--sidebar-width", savedWidth + "px");
 
     resizer.addEventListener("pointerdown", (e) => {
         e.preventDefault();
@@ -269,13 +262,10 @@ function initSidebarResizer() {
 
         const onPointerMove = (moveEvent) => {
             let newWidth = moveEvent.clientX;
-            // Bound the width of the sidebar
             if (newWidth < 185) newWidth = 185;
             if (newWidth > 500) newWidth = 500;
             document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
             localStorage.setItem("sidebarWidth", newWidth);
-
-            // Dispatch a window resize event to trigger layout/canvas adjustments safely
             window.dispatchEvent(new Event('resize'));
         };
 
@@ -301,11 +291,8 @@ function initSidebarToggle() {
     const showBtn = document.getElementById("sidebar-show-btn");
     if (!hideBtn || !showBtn) return;
 
-    // Load initial state
     const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-    if (isCollapsed) {
-        document.body.classList.add("collapsed");
-    }
+    if (isCollapsed) document.body.classList.add("collapsed");
 
     const setCollapsed = (collapsed) => {
         if (collapsed) {
@@ -316,7 +303,6 @@ function initSidebarToggle() {
             localStorage.setItem("sidebarCollapsed", "false");
         }
 
-        // Dispatch window resize events to keep charts & UI aligned:
         window.dispatchEvent(new Event('resize'));
         setTimeout(() => {
             window.dispatchEvent(new Event('resize'));

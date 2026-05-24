@@ -1,236 +1,512 @@
-import { state } from "../core/state.js";
+import {state, selectItem} from "../core/state.js";
+import {readRecipesAt} from "../core/cabin.js";
+import * as d3 from "../core/libs/d3.js";
 
-const VERT = `
-attribute vec2 a_pos;
-attribute vec3 a_col;
-varying vec3 v_col;
-void main() {
-    gl_Position = vec4(a_pos, 0.0, 1.0);
-    gl_PointSize = 4.0;
-    v_col = a_col;
-}`;
+let activeSim = null;
+let activeResizeListener = null;
 
-const FRAG = `
-precision mediump float;
-varying vec3 v_col;
-void main() {
-    float d = length(gl_PointCoord - 0.5);
-    if (d > 0.5) discard;
-    gl_FragColor = vec4(v_col, 1.0);
-}`;
+let posCacheHash = null;
+let posCache = null;
 
-function compile(gl, type, src) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    return s;
-}
-
-function createProgram(gl, vs, fs) {
-    const p = gl.createProgram();
-    gl.attachShader(p, vs);
-    gl.attachShader(p, fs);
-    gl.linkProgram(p);
-    return p;
-}
-
-const CAT_COLORS = {
-    Absolute: [1,1,1], Trivial: [0.72,0.74,0.76], Simple: [0.48,0.87,0.62], Moderate: [0.94,0.86,0.47],
-    Complex: [0.95,0.66,0.31], Difficult: [0.93,0.42,0.42], Expert: [0.69,0.51,0.94],
-    Master: [0.41,0.84,0.89], Mythical: [0.94,0.62,0.83], Transcendent: [0.27,0.78,0.75],
-    Unobtainable: [0.48,0.17,0.17], Uncalculable: [0.31,0.35,0.39], EXTERNAL_FRAGMENT: [0.63,0.63,0.63],
-};
-
-function catColor(name) { return CAT_COLORS[name] || CAT_COLORS.Uncalculable; }
-
-function hashColor(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i);
-    h = Math.abs(h);
-    return [(h & 0xFF) / 255, ((h >> 8) & 0xFF) / 255, ((h >> 16) & 0xFF) / 255];
-}
-
-export function renderGraph(container) {
-    const canvas = container.querySelector("#graph-canvas");
-    if (!canvas) return () => {};
-    const gl = canvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: false });
-    if (!gl) { canvas.style.background = "#0e1014"; return () => {}; }
+export async function renderGraph(container) {
     const db = state.db;
+    if (!db) return;
 
-    function resize() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = container.clientWidth * dpr;
-        canvas.height = container.clientHeight * dpr;
-        gl.viewport(0, 0, canvas.width, canvas.height);
+    const overlay = container.querySelector("#graph-overlay");
+    if (overlay) {
+        overlay.innerHTML = `
+            <div id="graph-loader" style="
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                background: rgba(10, 12, 16, 0.95);
+                z-index: 100;
+                color: var(--text-dim);
+                gap: 12px;
+                pointer-events: auto;
+            ">
+                <div style="
+                    width: 32px;
+                    height: 32px;
+                    border: 3px solid var(--border-light);
+                    border-top-color: var(--accent);
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                "></div>
+                <div style="font-weight: 500; color: var(--text);">Generating All-Items Graph…</div>
+                <div style="font-size: 11px;">Scanning recipe connections...</div>
+            </div>
+            <style>
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            </style>
+        `;
     }
-    resize();
-    window.addEventListener("resize", resize);
 
-    const prog = createProgram(gl, compile(gl, gl.VERTEX_SHADER, VERT), compile(gl, gl.FRAGMENT_SHADER, FRAG));
-    gl.useProgram(prog);
-    const uLoc = gl.getAttribLocation(prog, "a_pos");
-    const cLoc = gl.getAttribLocation(prog, "a_col");
-
-    // Build nodes + mod clusters
-    const itemNodes = [];
-    const modMap = new Map(); // modId -> { indices: [], color: [] }
-    for (let i = 0; i < db.items.count; i++) {
-        const it = db.items.get(i);
-        if (!it) continue;
-        itemNodes.push({ id: i, x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, vx: 0, vy: 0, col: catColor(it.categoryName) });
-        const modId = it.id.split(":")[0] || "unknown";
-        if (!modMap.has(modId)) modMap.set(modId, { indices: [], col: hashColor(modId) });
-        modMap.get(modId).indices.push(itemNodes.length - 1);
+    const canvas = container.querySelector("#graph-canvas");
+    if (!canvas) return;
+    canvas.getContext("2d");
+    if (activeSim) {
+        activeSim.stop();
+        activeSim = null;
     }
-    const modNodes = Array.from(modMap.entries()).map(([id, data]) => ({ id, indices: data.indices, col: data.col, x: 0, y: 0, vx: 0, vy: 0 }));
+    if (activeResizeListener) {
+        window.removeEventListener("resize", activeResizeListener);
+        activeResizeListener = null;
+    }
 
-    // Edges from recipes (item -> ingredient)
-    const edgePairs = [];
-    for (let i = 0; i < db.items.count && edgePairs.length < 50000; i++) {
-        const it = db.items.get(i);
-        if (!it || !(it.flags & 0x01)) continue;
-        // best-effort edge without async recipes: use usage table if loaded
-        try {
-            const usage = db._u ? db._u.get(i) : [];
-            for (const u of usage) {
-                if (u >= 0 && u < itemNodes.length) {
-                    edgePairs.push(i, u);
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+    const mCanvas = newCanvas;
+    const mCtx = mCanvas.getContext("2d");
+
+    const itemsCount = db.items.count;
+    const nodes = [];
+    const edges = [];
+    const nodeMap = new Map();
+    const neighborMap = new Map();
+
+    for (let i = 0; i < itemsCount; i++) {
+        const item = db.items.get(i);
+        if (!item) continue;
+        const nNode = {
+            id: i,
+            name: item.name,
+            category: item.categoryName || "Unknown",
+            complexity: item.complexity,
+            depth: item.depth,
+            flags: item.flags,
+            degree: 0,
+            radius: 6
+        };
+        nodes.push(nNode);
+        nodeMap.set(i, nNode);
+        neighborMap.set(i, new Set());
+    }
+
+    const edgeKeySet = new Set();
+
+    const addEdge = (idA, idB) => {
+        if (idA < 0 || idA >= itemsCount || idB < 0 || idB >= itemsCount) return;
+
+        const minVal = Math.min(idA, idB);
+        const maxVal = Math.max(idA, idB);
+        const edgeK = `${minVal}-${maxVal}`;
+
+        if (!edgeKeySet.has(edgeK)) {
+            edgeKeySet.add(edgeK);
+            edges.push({source: minVal, target: maxVal});
+
+            const nA = nodeMap.get(minVal);
+            const nB = nodeMap.get(maxVal);
+            if (nA) nA.degree++;
+            if (nB) nB.degree++;
+
+            neighborMap.get(minVal).add(maxVal);
+            neighborMap.get(maxVal).add(minVal);
+        }
+    };
+
+    if (db._rB) for (let i = 0; i < itemsCount; i++) {
+        const ref = db.recipeIndex.get(i);
+        if (ref && ref.offset !== 0xFFFFFFFF && ref.count > 0) try {
+            const recipes = readRecipesAt(db._rB, db.strings, ref.offset, ref.count);
+            for (const recipe of recipes) {
+                const outInd = recipe.outputItemIndex;
+                if (outInd >= 0 && outInd < itemsCount) {
+                    for (const ing of recipe.ingredients) for (const vi of ing.variants) addEdge(vi, outInd);
+                    for (const otherOut of recipe.itemOutputs) addEdge(outInd, otherOut.itemIndex);
                 }
             }
-        } catch (e) {}
-    }
-
-    let zoom = state.graphZoom || 0.3;
-    let pan = state.graphPan || { x: canvas.width / 2, y: canvas.height / 2 };
-    let dragging = false;
-    let lastMouse = { x: 0, y: 0 };
-    let running = true;
-
-    function physicsStep() {
-        const active = zoom < 0.6 ? modNodes : itemNodes;
-        // Repulsion O(n^2) — throttle for large N
-        const limit = active.length > 3000 ? 2000 : active.length;
-        for (let i = 0; i < limit; i++) {
-            for (let j = i + 1; j < limit; j++) {
-                const dx = active[i].x - active[j].x;
-                const dy = active[i].y - active[j].y;
-                const dist2 = dx * dx + dy * dy + 1;
-                const force = 8000 / dist2;
-                const fx = (dx / Math.sqrt(dist2)) * force;
-                const fy = (dy / Math.sqrt(dist2)) * force;
-                active[i].vx += fx; active[i].vy += fy;
-                active[j].vx -= fx; active[j].vy -= fy;
-            }
-        }
-        for (const n of active) {
-            n.vx *= 0.92;
-            n.vy *= 0.92;
-            n.x += n.vx;
-            n.y += n.vy;
-        }
-        // Update mod positions from item averages
-        for (const m of modNodes) {
-            let sx = 0, sy = 0, c = 0;
-            for (const idx of m.indices) {
-                sx += itemNodes[idx].x;
-                sy += itemNodes[idx].y;
-                c++;
-            }
-            if (c) { m.x = sx / c; m.y = sy / c; }
+        } catch (e) {
         }
     }
 
-    function toNDC(v, w, h, px, py, zm) {
-        return [((v[0] + px) / w) * 2 - 1, -((v[1] + py) / h) * 2 + 1];
+    const activeNodes = nodes.filter(n => n.degree > 0);
+    const activeNodeMap = new Map();
+    activeNodes.forEach(n => {
+        n.radius = Math.max(5, 3.5 + Math.sqrt(n.degree) * 1.5);
+        activeNodeMap.set(n.id, n);
+    });
+
+    const resolvedEdges = edges.map(e => {
+        const sNode = activeNodeMap.get(e.source);
+        const tNode = activeNodeMap.get(e.target);
+        if (sNode && tNode) return {source: sNode, target: tNode};
+        return null;
+    }).filter(Boolean);
+
+    const currentHash = db.file.fileHash.toString();
+    let isLayoutCached = false;
+
+    if (posCacheHash === currentHash && posCache) {
+        activeNodes.forEach(node => {
+            const cached = posCache.get(node.id);
+            if (cached) {
+                node.x = cached.x;
+                node.y = cached.y;
+                node.vx = 0;
+                node.vy = 0;
+            }
+        });
+        isLayoutCached = true;
+    } else {
+        activeNodes.forEach((n, idx) => {
+            const angle = idx * 0.15;
+            const radius = 22 * Math.sqrt(idx);
+            n.x = radius * Math.cos(angle);
+            n.y = radius * Math.sin(angle);
+        });
+    }
+
+    // noinspection JSUnresolvedFunction
+    const simulation = d3.forceSimulation(activeNodes)
+        .force("link", d3.forceLink(resolvedEdges).distance(60).strength(0.8))
+        .force("charge", d3.forceManyBody().strength(-120).distanceMax(500))
+        .force("collide", d3.forceCollide(d => d.radius + 6).iterations(2))
+        .force("center", d3.forceCenter(0, 0).strength(0.01));
+
+    activeSim = simulation;
+
+    if (!isLayoutCached) {
+        const tickCount = activeNodes.length > 500 ? 55 : 85;
+        for (let i = 0; i < tickCount; i++) simulation.tick();
+        posCache = new Map();
+        activeNodes.forEach(n => {
+            posCache.set(n.id, {x: n.x, y: n.y});
+        });
+        posCacheHash = currentHash;
+    }
+
+    const loader = container.querySelector("#graph-loader");
+    if (loader) loader.remove();
+
+    let zoom = 1.0;
+    let pan = {x: 0, y: 0};
+    let hoveredNode = null;
+    let isPanning = false;
+    let lastMouse = {x: 0, y: 0};
+    let startMouse = {x: 0, y: 0};
+
+    function transformCoords(clientX, clientY) {
+        const bounds = mCanvas.getBoundingClientRect();
+        const mX = clientX - bounds.left;
+        const mY = clientY - bounds.top;
+        return {
+            x: (mX - pan.x) / zoom,
+            y: (mY - pan.y) / zoom
+        };
+    }
+
+    function isNeighbor(n1, n2) {
+        if (!n1 || !n2) return false;
+        const neighbors = neighborMap.get(n1.id);
+        return neighbors && neighbors.has(n2.id);
+    }
+
+    const categoryColors = new Map();
+
+    function getCatColor(cat) {
+        if (!cat) return "#5bc0ff";
+        if (categoryColors.has(cat)) return categoryColors.get(cat);
+        const cssVarName = `--cat-${cat.replace(/\s+/g, "_")}`;
+        let col = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
+        if (!col) col = getComputedStyle(document.documentElement).getPropertyValue(`--cat-${cat}`).trim();
+        if (!col) col = "#5bc0ff";
+        categoryColors.set(cat, col);
+        return col;
     }
 
     function draw() {
-        const w = canvas.width, h = canvas.height;
-        gl.clearColor(0.055, 0.062, 0.078, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        const w = mCanvas.clientWidth;
+        const h = mCanvas.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
 
-        const useMods = zoom < 0.6;
-        const active = useMods ? modNodes : itemNodes;
-        const pointSize = useMods ? 12.0 : 4.0;
-        const count = Math.min(active.length, 30000);
-
-        const posArr = new Float32Array(count * 2);
-        const colArr = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            const n = active[i];
-            const [nx, ny] = toNDC([n.x, n.y], w, h, pan.x - w / 2, pan.y - h / 2, zoom);
-            posArr[i * 2] = nx;
-            posArr[i * 2 + 1] = ny;
-            colArr[i * 3] = n.col[0];
-            colArr[i * 3 + 1] = n.col[1];
-            colArr[i * 3 + 2] = n.col[2];
+        if (mCanvas.width !== w * dpr || mCanvas.height !== h * dpr) {
+            mCanvas.width = w * dpr;
+            mCanvas.height = h * dpr;
         }
 
-        const posBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, posArr, gl.DYNAMIC_DRAW);
-        gl.enableVertexAttribArray(uLoc);
-        gl.vertexAttribPointer(uLoc, 2, gl.FLOAT, false, 0, 0);
+        mCtx.save();
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+        mCtx.scale(dpr, dpr);
 
-        const colBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, colArr, gl.DYNAMIC_DRAW);
-        gl.enableVertexAttribArray(cLoc);
-        gl.vertexAttribPointer(cLoc, 3, gl.FLOAT, false, 0, 0);
+        mCtx.translate(pan.x, pan.y);
+        mCtx.scale(zoom, zoom);
 
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.drawArrays(gl.POINTS, 0, count);
+        mCtx.lineWidth = 1.0 / zoom;
+        for (const edge of resolvedEdges) {
+            const hA = edge.source;
+            const hB = edge.target;
 
-        // draw edges if zoom close enough
-        if (!useMods && edgePairs.length > 0 && zoom > 0.8) {
-            const eCount = Math.min(edgePairs.length, 20000);
-            const ePos = new Float32Array(eCount * 2);
-            const eCol = new Float32Array(eCount * 3);
-            const alpha = Math.min(1, (zoom - 0.8) * 2);
-            for (let i = 0; i < eCount; i++) {
-                const nodeIdx = edgePairs[i];
-                const n = itemNodes[nodeIdx];
-                const [nx, ny] = toNDC([n.x, n.y], w, h, pan.x - w / 2, pan.y - h / 2, zoom);
-                ePos[i * 2] = nx;
-                ePos[i * 2 + 1] = ny;
-                eCol[i * 3] = 0.23; eCol[i * 3 + 1] = 0.55; eCol[i * 3 + 2] = 0.69;
+            let edgeOpacity = 0.12;
+            let edgeColor = "#4a5568";
+            let linkWidth = 1.0 / zoom;
+
+            if (hoveredNode) if (hA === hoveredNode || hB === hoveredNode) {
+                edgeOpacity = 0.85;
+                edgeColor = "#5bc0ff";
+                linkWidth = 2.0 / zoom;
+            } else {
+                edgeOpacity = 0.03;
             }
-            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-            gl.bufferData(gl.ARRAY_BUFFER, ePos, gl.DYNAMIC_DRAW);
-            gl.vertexAttribPointer(uLoc, 2, gl.FLOAT, false, 0, 0);
-            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-            gl.bufferData(gl.ARRAY_BUFFER, eCol, gl.DYNAMIC_DRAW);
-            gl.vertexAttribPointer(cLoc, 3, gl.FLOAT, false, 0, 0);
-            gl.lineWidth(1);
-            gl.drawArrays(gl.LINES, 0, eCount);
+
+            mCtx.strokeStyle = edgeColor;
+            mCtx.globalAlpha = edgeOpacity;
+            mCtx.lineWidth = linkWidth;
+            mCtx.beginPath();
+            mCtx.moveTo(hA.x, hA.y);
+            mCtx.lineTo(hB.x, hB.y);
+            mCtx.stroke();
+        }
+        mCtx.globalAlpha = 1.0;
+
+        for (const node of activeNodes) {
+            let opacity = 1.0;
+            let strokeColor = "#0a0c10";
+            let strokeWidth = 1.2 / zoom;
+
+            if (hoveredNode) if (node === hoveredNode) {
+                opacity = 1.0;
+                strokeColor = "#ffffff";
+                strokeWidth = 3.0 / zoom;
+            } else if (isNeighbor(node, hoveredNode)) {
+                opacity = 0.95;
+                strokeColor = "rgba(255, 255, 255, 0.75)";
+                strokeWidth = 2.0 / zoom;
+            } else {
+                opacity = 0.22;
+            }
+
+            mCtx.globalAlpha = opacity;
+            mCtx.fillStyle = getCatColor(node.category);
+            mCtx.strokeStyle = strokeColor;
+            mCtx.lineWidth = strokeWidth;
+
+            mCtx.beginPath();
+            mCtx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+            mCtx.fill();
+            mCtx.stroke();
+        }
+        mCtx.globalAlpha = 1.0;
+
+        for (const node of activeNodes) {
+            let matchesLabel = false;
+            let opacity = 1.0;
+
+            if (hoveredNode) {
+                if (node === hoveredNode) {
+                    matchesLabel = true;
+                    opacity = 1.0;
+                } else if (isNeighbor(node, hoveredNode)) {
+                    matchesLabel = true;
+                    opacity = 0.85;
+                }
+            } else {
+                if (zoom >= 0.8) {
+                    matchesLabel = true;
+                    opacity = Math.min(1.0, (zoom - 0.7) * 4);
+                } else if (zoom >= 0.4 && node.degree >= 8) {
+                    matchesLabel = true;
+                    opacity = Math.min(0.8, (zoom - 0.3) * 3);
+                }
+            }
+
+            if (matchesLabel) {
+                mCtx.fillStyle = `rgba(232, 237, 242, ${opacity})`;
+                mCtx.font = "bold 9px system-ui, -apple-system, sans-serif";
+                mCtx.textAlign = "center";
+                mCtx.textBaseline = "top";
+
+                mCtx.strokeStyle = `rgba(10, 12, 16, ${opacity * 0.95})`;
+                mCtx.lineWidth = 3.2 / zoom;
+                mCtx.lineJoin = "round";
+                mCtx.strokeText(node.name, node.x, node.y + node.radius + 4);
+                mCtx.fillText(node.name, node.x, node.y + node.radius + 4);
+            }
+        }
+
+        mCtx.restore();
+    }
+
+    function recenterGraph() {
+        if (activeNodes.length === 0) return;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const n of activeNodes) {
+            if (n.x < minX) minX = n.x;
+            if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.y > maxY) maxY = n.y;
+        }
+
+        const gW = maxX - minX;
+        const gH = maxY - minY;
+
+        const pad = 48;
+        const targetW = mCanvas.clientWidth - pad * 2;
+        const targetH = mCanvas.clientHeight - pad * 2;
+
+        zoom = Math.max(0.08, Math.min(1.4, Math.min(targetW / (gW || 1), targetH / (gH || 1))));
+        pan.x = (mCanvas.clientWidth - gW * zoom) / 2 - minX * zoom;
+        pan.y = (mCanvas.clientHeight - gH * zoom) / 2 - minY * zoom;
+        draw();
+    }
+
+    recenterGraph();
+
+    mCanvas.addEventListener("pointerdown", e => {
+        mCanvas.setPointerCapture(e.pointerId);
+        lastMouse = {x: e.clientX, y: e.clientY};
+        startMouse = {x: e.clientX, y: e.clientY};
+
+        const graphCoords = transformCoords(e.clientX, e.clientY);
+        let clickedNode = null;
+        let cDist = 24 / zoom;
+
+        for (const n of activeNodes) {
+            const dst = Math.hypot(n.x - graphCoords.x, n.y - graphCoords.y);
+            if (dst < Math.max(n.radius, cDist)) {
+                clickedNode = n;
+                cDist = dst;
+            }
+        }
+
+        if (clickedNode) {
+        }
+        isPanning = true;
+    });
+
+    mCanvas.addEventListener("pointermove", e => {
+        const currCoords = transformCoords(e.clientX, e.clientY);
+
+        if (!isPanning) {
+            let found = null;
+            let bestDist = 20 / zoom;
+
+            for (const n of activeNodes) {
+                const dst = Math.hypot(n.x - currCoords.x, n.y - currCoords.y);
+                if (dst < Math.max(n.radius, bestDist)) {
+                    found = n;
+                    bestDist = dst;
+                }
+            }
+
+            if (hoveredNode !== found) {
+                hoveredNode = found;
+                draw();
+            }
+        }
+
+        if (isPanning) {
+            pan.x += e.clientX - lastMouse.x;
+            pan.y += e.clientY - lastMouse.y;
+            draw();
+        }
+
+        lastMouse = {x: e.clientX, y: e.clientY};
+    });
+
+    mCanvas.addEventListener("pointerup", e => {
+        try {
+            mCanvas.releasePointerCapture(e.pointerId);
+        } catch (_) {
+        }
+
+        isPanning = false;
+
+        const moveDist = Math.hypot(e.clientX - startMouse.x, e.clientY - startMouse.y);
+        if (moveDist < 4 && hoveredNode) selectItem(hoveredNode.id);
+    });
+
+    mCanvas.addEventListener("wheel", e => {
+        e.preventDefault();
+        const pivot = transformCoords(e.clientX, e.clientY);
+
+        const zoomFactor = e.deltaY > 0 ? 0.88 : 1.14;
+        const newZoom = Math.max(0.04, Math.min(8, zoom * zoomFactor));
+
+        pan.x = e.clientX - mCanvas.getBoundingClientRect().left - pivot.x * newZoom;
+        pan.y = e.clientY - mCanvas.getBoundingClientRect().top - pivot.y * newZoom;
+        zoom = newZoom;
+
+        draw();
+    }, {passive: false});
+
+    function onResize() {
+        draw();
+    }
+
+    window.addEventListener("resize", onResize);
+    activeResizeListener = onResize;
+
+    simulation.on("tick", () => {
+        draw();
+    });
+
+    if (overlay) {
+        overlay.innerHTML = `
+            <div class="card" style="
+                position: absolute;
+                bottom: 16px;
+                left: 16px;
+                pointer-events: auto;
+                padding: 14px;
+                width: 260px;
+                background: rgba(17, 20, 24, 0.95);
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow-lg);
+                font-family: var(--sans), sans-serif;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            ">
+                <h4 style="margin: 0; color: var(--accent); font-size: 13px; font-weight: 600;">Recipe Network Graph</h4>
+                <div style="font-size: 11px; display: flex; justify-content: space-between;">
+                    <span>Nodes (Connected items):</span>
+                    <strong style="color: var(--text);">${activeNodes.length}</strong>
+                </div>
+                <div style="font-size: 11px; display: flex; justify-content: space-between;; margin-bottom: 4px;">
+                    <span>Total Connections:</span>
+                    <strong style="color: var(--text);">${resolvedEdges.length}</strong>
+                </div>
+                <div style="
+                    font-size: 10px;
+                    line-height: 1.4;
+                    color: var(--text-dim);
+                    border-top: 1px solid var(--border);
+                    padding-top: 8px;
+                    margin-bottom: 4px;
+                ">
+                    • <strong>Scroll wheel</strong> to zoom in & out<br>
+                    • <strong>Left-click & drag</strong> to pan<br>
+                    • <strong>Hover</strong> circles to see recipe flows<br>
+                    • <strong>Click a circle</strong> to open full details
+                </div>
+                <button id="recenter-graph-btn" style="
+                    background: var(--bg-hover);
+                    border: 1px solid var(--border);
+                    color: var(--text);
+                    padding: 6px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    text-align: center;
+                    width: 100%;
+                    transition: background var(--transition-fast);
+                    font-weight: 500;
+                ">Recenter Graph</button>
+            </div>
+        `;
+
+        const btn = overlay.querySelector("#recenter-graph-btn");
+        if (btn) {
+            btn.addEventListener("click", () => {
+                recenterGraph();
+            });
+            btn.addEventListener("pointerdown", e => e.stopPropagation());
         }
     }
-
-    function frame() {
-        if (!running) return;
-        physicsStep();
-        draw();
-        requestAnimationFrame(frame);
-    }
-
-    canvas.addEventListener("mousedown", e => { dragging = true; lastMouse = { x: e.clientX, y: e.clientY }; });
-    window.addEventListener("mousemove", e => {
-        if (!dragging) return;
-        pan.x += e.clientX - lastMouse.x;
-        pan.y += e.clientY - lastMouse.y;
-        lastMouse = { x: e.clientX, y: e.clientY };
-        state.graphPan = pan;
-    });
-    window.addEventListener("mouseup", () => { dragging = false; });
-    canvas.addEventListener("wheel", e => {
-        e.preventDefault();
-        const factor = e.deltaY > 0 ? 0.9 : 1.1;
-        zoom *= factor;
-        zoom = Math.max(0.05, Math.min(5, zoom));
-        state.graphZoom = zoom;
-    });
-
-    frame();
-    return () => { running = false; window.removeEventListener("resize", resize); };
 }

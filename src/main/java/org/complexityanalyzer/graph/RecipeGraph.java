@@ -24,6 +24,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -37,6 +38,7 @@ public class RecipeGraph {
     private final Object2ObjectMap<ResourceLocation, ObjectList<RecipeNode>> recipesByFluid;
     private final Reference2ObjectMap<Fluid, ObjectList<RecipeNode>> recipesByFluidOutput;
     private final Reference2ObjectMap<Fluid, ReferenceSet<Item>> fluidUsageMap;
+    private final ObjectList<RecipeNode> allRecipesList;
 
     public RecipeGraph() {
         this.recipesByItem = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
@@ -45,20 +47,22 @@ public class RecipeGraph {
         this.recipesByFluid = Object2ObjectMaps.synchronize(new Object2ObjectOpenHashMap<>());
         this.recipesByFluidOutput = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
         this.fluidUsageMap = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.allRecipesList = ObjectLists.synchronize(new ObjectArrayList<>());
     }
 
     public ObjectList<RecipeNode> getAllRecipes() {
-        var all = new ObjectArrayList<RecipeNode>();
-        synchronized (recipesByItem) {
-            for (var list : recipesByItem.values()) all.addAll(list);
-        }
-        return all;
+        return new ObjectArrayList<>(allRecipesList);
     }
 
     public void addRecipe(RecipeNode node) {
         Item result = node.getResultItem();
+        if (result == Items.AIR && !node.isPlaceholder() && node.getFluidOutputs().isEmpty() && node.getChemicalOutputs().isEmpty()) {
+            return;
+        }
 
-        recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>()).add(node);
+        allRecipesList.add(node);
+
+        if (result != Items.AIR) recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>()).add(node);
 
         if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) try {
             var fluidId = ResourceLocation.parse(node.getPlaceholderId());
@@ -69,14 +73,16 @@ public class RecipeGraph {
 
         for (var slot : node.getIngredients()) {
             for (var ingredient : slot.getVariants()) {
-                usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                if (result != Items.AIR) {
+                    usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                }
             }
         }
 
         for (var slot : node.getFluidIngredients()) {
             for (var variant : slot.getFluidVariants()) {
                 Fluid normalized = normalizeFluid(variant);
-                if (normalized != Fluids.EMPTY) {
+                if (normalized != Fluids.EMPTY) if (result != Items.AIR) {
                     fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
                 }
             }
@@ -235,11 +241,7 @@ public class RecipeGraph {
     }
 
     public int getTotalRecipeCount() {
-        int total = 0;
-        synchronized (recipesByItem) {
-            for (var list : recipesByItem.values()) total += list.size();
-        }
-        return total;
+        return allRecipesList.size();
     }
 
     private static Fluid normalizeFluid(Fluid fluid) {
@@ -263,6 +265,7 @@ public class RecipeGraph {
         bestRecipeCache.clear();
         recipesByFluidOutput.clear();
         fluidUsageMap.clear();
+        allRecipesList.clear();
         ComplexityAnalyzer.LOGGER.info("Recipe graph cleared");
     }
 

@@ -6,16 +6,12 @@ console.log("[GRAPH_DEBUG] Module graph.js loaded.");
 
 let activeSim = null;
 let activeResizeListener = null;
-
-// Глобальный кэш структуры и координат
 let cachedHash = null;
 let cachedActiveNodes = null;
 let cachedResolvedEdges = null;
 let cachedNeighborMap = null;
 
-// Сброс кэша под свободную физику расталкивания
 const LAYOUT_VERSION = "v5_perfect_spread";
-
 const categoryColors = new Map();
 
 export async function renderGraph(container) {
@@ -82,7 +78,6 @@ export async function renderGraph(container) {
     const currentHash = db.file.fileHash.toString();
     const cacheKey = currentHash + "_" + LAYOUT_VERSION;
 
-    // Локальные переменные состояния
     let activeNodes = [];
     let resolvedEdges = [];
     let neighborMap = new Map();
@@ -96,10 +91,6 @@ export async function renderGraph(container) {
     let lastMouse = {x: 0, y: 0};
     let startMouse = {x: 0, y: 0};
     let lastHoverCheck = 0;
-
-    // ==========================================
-    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    // ==========================================
 
     function transformCoords(clientX, clientY) {
         const bounds = mCanvas.getBoundingClientRect();
@@ -145,7 +136,6 @@ export async function renderGraph(container) {
         mCtx.translate(pan.x, pan.y);
         mCtx.scale(zoom, zoom);
 
-        // Границы видимой области в координатах графа (для клиппинга)
         const minGraphX = -pan.x / zoom;
         const maxGraphX = (w - pan.x) / zoom;
         const minGraphY = -pan.y / zoom;
@@ -157,7 +147,6 @@ export async function renderGraph(container) {
         const edgeMinY = minGraphY - padEdge;
         const edgeMaxY = maxGraphY + padEdge;
 
-        // 4.1. Отрисовка связей (Только при активном наведении мыши!)
         if (hoveredNode) {
             mCtx.strokeStyle = "#5bc0ff";
             mCtx.globalAlpha = 0.95;
@@ -183,7 +172,6 @@ export async function renderGraph(container) {
         }
         mCtx.globalAlpha = 1.0;
 
-        // 4.2. Отрисовка узлов (только красивые круги)
         const drawStroke = zoom >= 0.2;
 
         for (const node of activeNodes) {
@@ -199,18 +187,16 @@ export async function renderGraph(container) {
             let strokeColor = "#0a0c10";
             let strokeWidth = 1.2 / zoom;
 
-            if (hoveredNode) {
-                if (node === hoveredNode) {
-                    opacity = 1.0;
-                    strokeColor = "#ffffff";
-                    strokeWidth = 3.0 / zoom;
-                } else if (isNeighbor(node, hoveredNode)) {
-                    opacity = 0.95;
-                    strokeColor = "rgba(255, 255, 255, 0.75)";
-                    strokeWidth = 2.0 / zoom;
-                } else {
-                    opacity = 0.22;
-                }
+            if (hoveredNode) if (node === hoveredNode) {
+                opacity = 1.0;
+                strokeColor = "#ffffff";
+                strokeWidth = 3.0 / zoom;
+            } else if (isNeighbor(node, hoveredNode)) {
+                opacity = 0.95;
+                strokeColor = "rgba(255, 255, 255, 0.75)";
+                strokeWidth = 2.0 / zoom;
+            } else {
+                opacity = 0.22;
             }
 
             mCtx.globalAlpha = opacity;
@@ -225,7 +211,6 @@ export async function renderGraph(container) {
         }
         mCtx.globalAlpha = 1.0;
 
-        // 4.3. Отрисовка подписей (с клиппингом)
         for (const node of activeNodes) {
             const rLimit = node.radius + 150;
             if (node.x < minGraphX - rLimit || node.x > maxGraphX + rLimit ||
@@ -295,10 +280,6 @@ export async function renderGraph(container) {
         draw();
     }
 
-    // ==========================================
-    // ШАГ 1: ПОЛУЧЕНИЕ ДАННЫХ (КЭШ ИЛИ СБОРКА)
-    // ==========================================
-
     if (cachedHash === cacheKey && cachedActiveNodes && cachedResolvedEdges) {
         console.log("[GRAPH_DEBUG] Restored from global cache. Version:", LAYOUT_VERSION);
         activeNodes = cachedActiveNodes;
@@ -354,20 +335,18 @@ export async function renderGraph(container) {
             }
         };
 
-        if (db._rB) {
-            for (let i = 0; i < itemsCount; i++) {
-                const ref = db.recipeIndex.get(i);
-                if (ref && ref.offset !== 0xFFFFFFFF && ref.count > 0) try {
-                    const recipes = readRecipesAt(db._rB, db.strings, ref.offset, ref.count);
-                    for (const recipe of recipes) {
-                        const outInd = recipe.outputItemIndex;
-                        if (outInd >= 0 && outInd < itemsCount) {
-                            for (const ing of recipe.ingredients) for (const vi of ing.variants) addEdge(vi, outInd);
-                            for (const otherOut of recipe.itemOutputs) addEdge(outInd, otherOut.itemIndex);
-                        }
+        if (db._rB) for (let i = 0; i < itemsCount; i++) {
+            const ref = db.recipeIndex.get(i);
+            if (ref && ref.offset !== 0xFFFFFFFF && ref.count > 0) try {
+                const recipes = readRecipesAt(db._rB, db.strings, ref.offset, ref.count);
+                for (const recipe of recipes) {
+                    const outInd = recipe.outputItemIndex;
+                    if (outInd >= 0 && outInd < itemsCount) {
+                        for (const ing of recipe.ingredients) for (const vi of ing.variants) addEdge(vi, outInd);
+                        for (const otherOut of recipe.itemOutputs) addEdge(outInd, otherOut.itemIndex);
                     }
-                } catch (e) {
                 }
+            } catch (e) {
             }
         }
 
@@ -398,22 +377,14 @@ export async function renderGraph(container) {
         cachedNeighborMap = neighborMap;
     }
 
-    // ==========================================
-    // ШАГ 2: НАСТРОЙКА СИМУЛЯЦИИ D3 (Усилена до предела против наложений!)
-    // ==========================================
-
     // noinspection JSUnresolvedFunction
     const simulation = d3.forceSimulation(activeNodes)
-        .force("link", d3.forceLink(resolvedEdges).distance(240).strength(0.0005)) // Экстремально мягкие связи, чтобы не сжимало в кучу
-        .force("charge", d3.forceManyBody().strength(-250).distanceMax(1000))    // Сильное расталкивание
-        .force("collide", d3.forceCollide(d => d.radius * 2.5 + 40).iterations(6)) // Огромный масштабируемый радиус коллизий с 6 итерациями
+        .force("link", d3.forceLink(resolvedEdges).distance(240).strength(0.0005))
+        .force("charge", d3.forceManyBody().strength(-250).distanceMax(1000))
+        .force("collide", d3.forceCollide(d => d.radius * 2.5 + 40).iterations(6))
         .force("center", d3.forceCenter(0, 0).strength(0.01));
 
     activeSim = simulation;
-
-    // ==========================================
-    // ШАГ 3: АСИНХРОННЫЙ РАСЧЕТ ШАГОВ ФИЗИКИ
-    // ==========================================
 
     const loader = container.querySelector("#graph-loader");
 
@@ -426,7 +397,7 @@ export async function renderGraph(container) {
             return;
         }
 
-        const tickCount = activeNodes.length > 500 ? 180 : 250; // Больше тиков для идеальной стабилизации новой физики
+        const tickCount = activeNodes.length > 500 ? 180 : 250;
         let ticksRun = 0;
 
         const doTicks = () => {
@@ -453,10 +424,6 @@ export async function renderGraph(container) {
 
         doTicks();
     });
-
-    // ==========================================
-    // ШАГ 4: СЛУШАТЕЛИ СОБЫТИЙ
-    // ==========================================
 
     console.log("[GRAPH_DEBUG] Graph initialized, binding event listeners.");
 

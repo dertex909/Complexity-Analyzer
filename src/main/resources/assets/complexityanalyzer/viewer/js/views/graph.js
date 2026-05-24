@@ -13,7 +13,7 @@ let cachedActiveNodes = null;
 let cachedResolvedEdges = null;
 let cachedNeighborMap = null;
 
-// Версионирование кэша физики, принудительно сбрасывающее старую слипшуюся раскладку
+// Сброс кэша под свободную физику расталкивания
 const LAYOUT_VERSION = "v5_perfect_spread";
 
 const categoryColors = new Map();
@@ -93,9 +93,6 @@ export async function renderGraph(container) {
     let hoveredNode = null;
 
     let isPanning = false;
-    let isZooming = false;
-    let wheelTimeout = null;
-
     let lastMouse = {x: 0, y: 0};
     let startMouse = {x: 0, y: 0};
     let lastHoverCheck = 0;
@@ -154,83 +151,39 @@ export async function renderGraph(container) {
         const minGraphY = -pan.y / zoom;
         const maxGraphY = (h - pan.y) / zoom;
 
-        // Погрешность для отсечения невидимых линий связей (AABB Clipping)
         const padEdge = 20;
         const edgeMinX = minGraphX - padEdge;
         const edgeMaxX = maxGraphX + padEdge;
         const edgeMinY = minGraphY - padEdge;
         const edgeMaxY = maxGraphY + padEdge;
 
-        // Отрисовка связей (Только если не двигаем, не скроллим и масштаб не экстремально мелкий)
-        const shouldDrawEdges = !isPanning && !isZooming && zoom >= 0.10;
-
-        if (shouldDrawEdges) {
-            const totalEdges = resolvedEdges.length;
-
-            if (hoveredNode) {
-                // ПУТЬ 1: Если наведен курсор — рисуем ТОЛЬКО активные связи этого узла.
-                // Полностью отключаем отрисовку 136 000 неактивных линий на фоне (убирает лаги наведения на 100%)
-                mCtx.strokeStyle = "#5bc0ff";
-                mCtx.globalAlpha = 0.95;
-                mCtx.lineWidth = 2.5 / zoom;
-                mCtx.beginPath();
-                for (const edge of resolvedEdges) {
-                    const hA = edge.source;
-                    const hB = edge.target;
-                    if (hA === hoveredNode || hB === hoveredNode) {
-                        // Клиппинг активной линии
-                        const segMinX = hA.x < hB.x ? hA.x : hB.x;
-                        const segMaxX = hA.x > hB.x ? hA.x : hB.x;
-                        const segMinY = hA.y < hB.y ? hA.y : hB.y;
-                        const segMaxY = hA.y > hB.y ? hA.y : hB.y;
-                        if (segMaxX < edgeMinX || segMinX > edgeMaxX || segMaxY < edgeMinY || segMinY > edgeMaxY) {
-                            continue;
-                        }
-
-                        mCtx.moveTo(hA.x, hA.y);
-                        mCtx.lineTo(hB.x, hB.y);
+        // 4.1. Отрисовка связей (Только при активном наведении мыши!)
+        if (hoveredNode) {
+            mCtx.strokeStyle = "#5bc0ff";
+            mCtx.globalAlpha = 0.95;
+            mCtx.lineWidth = 2.5 / zoom;
+            mCtx.beginPath();
+            for (const edge of resolvedEdges) {
+                const hA = edge.source;
+                const hB = edge.target;
+                if (hA === hoveredNode || hB === hoveredNode) {
+                    const segMinX = hA.x < hB.x ? hA.x : hB.x;
+                    const segMaxX = hA.x > hB.x ? hA.x : hB.x;
+                    const segMinY = hA.y < hB.y ? hA.y : hB.y;
+                    const segMaxY = hA.y > hB.y ? hA.y : hB.y;
+                    if (segMaxX < edgeMinX || segMinX > edgeMaxX || segMaxY < edgeMinY || segMinY > edgeMaxY) {
+                        continue;
                     }
-                }
-                mCtx.stroke();
-            } else {
-                // ПУТЬ 2: Общий обзор. Равномерно прореживаем связи до безопасного лимита в 10 000 линий
-                const isZoomedOut = zoom < 0.25;
-                const step = (isZoomedOut && totalEdges > 10000) ? Math.ceil(totalEdges / 10000) : 1;
-                const edgeOpacity = zoom < 0.25 ? Math.max(0.0, (zoom - 0.05) * 0.6) : 0.12;
 
-                if (edgeOpacity > 0.005) {
-                    mCtx.strokeStyle = "#4a5568";
-                    mCtx.globalAlpha = edgeOpacity;
-                    mCtx.lineWidth = 1.0 / zoom;
-                    mCtx.beginPath();
-
-                    let drawnCount = 0;
-                    for (let i = 0; i < totalEdges; i += step) {
-                        const edge = resolvedEdges[i];
-                        const hA = edge.source;
-                        const hB = edge.target;
-
-                        // Быстрое отсечение невидимой линии на CPU
-                        const segMinX = hA.x < hB.x ? hA.x : hB.x;
-                        const segMaxX = hA.x > hB.x ? hA.x : hB.x;
-                        const segMinY = hA.y < hB.y ? hA.y : hB.y;
-                        const segMaxY = hA.y > hB.y ? hA.y : hB.y;
-                        if (segMaxX < edgeMinX || segMinX > edgeMaxX || segMaxY < edgeMinY || segMinY > edgeMaxY) {
-                            continue;
-                        }
-
-                        mCtx.moveTo(hA.x, hA.y);
-                        mCtx.lineTo(hB.x, hB.y);
-                        drawnCount++;
-                        if (drawnCount >= 10000) break; // Лимит безопасности
-                    }
-                    mCtx.stroke();
+                    mCtx.moveTo(hA.x, hA.y);
+                    mCtx.lineTo(hB.x, hB.y);
                 }
             }
+            mCtx.stroke();
         }
         mCtx.globalAlpha = 1.0;
 
-        // 4.2. Отрисовка узлов (с клиппингом)
+        // 4.2. Отрисовка узлов (только красивые круги)
         const drawStroke = zoom >= 0.2;
 
         for (const node of activeNodes) {
@@ -262,9 +215,9 @@ export async function renderGraph(container) {
 
             mCtx.globalAlpha = opacity;
             mCtx.fillStyle = getCatColor(node.category);
+
             mCtx.strokeStyle = strokeColor;
             mCtx.lineWidth = strokeWidth;
-
             mCtx.beginPath();
             mCtx.arc(node.x, node.y, rDraw, 0, 2 * Math.PI);
             mCtx.fill();
@@ -451,7 +404,7 @@ export async function renderGraph(container) {
 
     // noinspection JSUnresolvedFunction
     const simulation = d3.forceSimulation(activeNodes)
-        .force("link", d3.forceLink(resolvedEdges).distance(220).strength(0.001)) // Ослабили связи до 0.001, чтобы не стягивало в кучу
+        .force("link", d3.forceLink(resolvedEdges).distance(240).strength(0.0005)) // Экстремально мягкие связи, чтобы не сжимало в кучу
         .force("charge", d3.forceManyBody().strength(-250).distanceMax(1000))    // Сильное расталкивание
         .force("collide", d3.forceCollide(d => d.radius * 2.5 + 40).iterations(6)) // Огромный масштабируемый радиус коллизий с 6 итерациями
         .force("center", d3.forceCenter(0, 0).strength(0.01));
@@ -577,8 +530,6 @@ export async function renderGraph(container) {
     mCanvas.addEventListener("wheel", e => {
         e.preventDefault();
 
-        isZooming = true;
-
         const pivot = transformCoords(e.clientX, e.clientY);
         const zoomFactor = e.deltaY > 0 ? 0.88 : 1.14;
         const newZoom = Math.max(0.04, Math.min(8, zoom * zoomFactor));
@@ -588,12 +539,6 @@ export async function renderGraph(container) {
         zoom = newZoom;
 
         draw();
-
-        clearTimeout(wheelTimeout);
-        wheelTimeout = setTimeout(() => {
-            isZooming = false;
-            draw();
-        }, 150);
     }, {passive: false});
 
     function onResize() {

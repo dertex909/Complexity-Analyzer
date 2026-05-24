@@ -12,7 +12,12 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 
 import java.util.Collection;
 import java.util.Map;
-
+/*
+* не находится рецепты из креейта миксирование и ее машины. через антигравити завтра фикс нада делат.
+* в вебе тож не видно.
+*
+*
+* */
 public final class FastHarvester {
 
     private static final ThreadLocal<ObjectArrayList<ItemStack>> TL_INPUT_ITEMS =

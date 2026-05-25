@@ -33,6 +33,8 @@ public final class UniversalAccessorResolver {
 
         String name();
 
+        Object extract(Object recipe, Level level) throws Throwable;
+
         @Override
         String toString();
     }
@@ -148,7 +150,7 @@ public final class UniversalAccessorResolver {
             HeuristicRoleClassifier.RoleClassification role;
             if (recipe != null) {
                 try {
-                    Object raw = acc.extract(recipe);
+                    Object raw = acc.extract(recipe, level);
                     role = HeuristicRoleClassifier.classify(recipe, raw, f.getName(), "field", anchorItem, standardInputs);
                 } catch (Throwable e) {
                     role = HeuristicRoleClassifier.classifyField(f);
@@ -209,7 +211,7 @@ public final class UniversalAccessorResolver {
                     + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
-        private Object extract(Object recipe, Level level) throws Throwable {
+        public Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
             var params = method.getParameterTypes();
             var args = new Object[params.length];
@@ -254,7 +256,8 @@ public final class UniversalAccessorResolver {
                     + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
-        private Object extract(Object recipe) throws Throwable {
+        @Override
+        public Object extract(Object recipe, Level level) throws Throwable {
             return field.get(recipe);
         }
     }

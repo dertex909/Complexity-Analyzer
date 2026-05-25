@@ -251,13 +251,17 @@ public final class FullDebugTracePipeline {
 
             UniversalAccessorResolver.ResolvedAccessors accessors = UniversalAccessorResolver.resolve(recipe, level);
 
-            sb.append("  Input accessors:  ").append(accessors.inputAccessors().size()).append('\n');
-            for (var acc : accessors.inputAccessors()) sb.append("    ").append(acc).append('\n');
-            sb.append("  Output accessors: ").append(accessors.outputAccessors().size()).append('\n');
-            for (var acc : accessors.outputAccessors()) sb.append("    ").append(acc).append('\n');
-            sb.append("  Unknown accessors:").append(accessors.unknownAccessors().size()).append('\n');
-            for (var acc : accessors.unknownAccessors()) sb.append("    ").append(acc).append('\n');
-
+            for (var acc : accessors.allAccessors()) {
+                try {
+                    Object val = acc.extract(recipe, level);
+                    String valStr = formatValue(val);
+                    sb.append(String.format(Locale.ROOT, "  [%s] %-50s = %s\n",
+                                            acc.type(), acc, valStr));
+                } catch (Throwable t) {
+                    sb.append(String.format(Locale.ROOT, "  [ERR] %-50s = %s\n",
+                                            acc, t.getClass().getSimpleName()));
+                }
+            }
         }
 
         public void rejected(String reason) {

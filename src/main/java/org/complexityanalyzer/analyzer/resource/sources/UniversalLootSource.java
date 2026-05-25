@@ -130,26 +130,20 @@ public class UniversalLootSource implements IResourceSource {
                 }
 
                 try {
-                    LootTable lootTable = CompletableFuture.supplyAsync(() ->
-                            reloadableRegistries.getLootTable(lootTableKey), server).join();
-
-                    if (lootTable == LootTable.EMPTY) {
-                        tablesSkipped++;
-                        continue;
-                    }
-                    tablesProcessed++;
-
-                    var lootParams = contextDef.createLootParams(serverLevel);
-                    if (lootParams == null) {
-                        ComplexityAnalyzer.LOGGER.debug("[ULS] Failed to create loot params for '{}', skipping.", lootTableId);
-                        continue;
-                    }
-
                     var catchCounts = CompletableFuture.supplyAsync(() -> {
+                        LootTable lootTable = reloadableRegistries.getLootTable(lootTableKey);
+                        if (lootTable == LootTable.EMPTY) return null;
+
+                        var lootParams = contextDef.createLootParams(serverLevel);
+                        if (lootParams == null) {
+                            ComplexityAnalyzer.LOGGER.debug("[ULS] Failed to create loot params for '{}', skipping.", lootTableId);
+                            return null;
+                        }
+
                         var counts = new Reference2IntOpenHashMap<Item>();
                         long simulationStart = System.currentTimeMillis();
-
                         boolean hasLoggedError = false;
+
                         for (int i = 0; i < SIMULATION_COUNT; i++) {
                             if (System.currentTimeMillis() - simulationStart > SIMULATION_TIMEOUT_MS) {
                                 ComplexityAnalyzer.LOGGER.warn("[ULS] Simulation timeout for '{}' after {} iterations. Skipping.", lootTableId, i);
@@ -174,7 +168,11 @@ public class UniversalLootSource implements IResourceSource {
                         return counts;
                     }, server).join();
 
-                    if (catchCounts.isEmpty()) continue;
+                    if (catchCounts == null || catchCounts.isEmpty()) {
+                        tablesSkipped++;
+                        continue;
+                    }
+                    tablesProcessed++;
 
                     for (var itemEntry : catchCounts.reference2IntEntrySet()) {
                         var item = itemEntry.getKey();

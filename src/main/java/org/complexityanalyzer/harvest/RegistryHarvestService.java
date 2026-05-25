@@ -17,6 +17,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 
 public final class RegistryHarvestService {
@@ -71,9 +72,7 @@ public final class RegistryHarvestService {
                 var key = entry.key();
                 var registry = entry.value();
                 String namespace = key.location().getNamespace();
-                if (namespace.equals("minecraft") || namespace.equals("neoforge") || namespace.equals("forge")) {
-                    return;
-                }
+                if (namespace.equals("minecraft") || namespace.equals("neoforge") || namespace.equals("forge")) return;
                 scanRegistryForFluids(graph, registry);
             });
         } catch (Throwable t) {
@@ -115,7 +114,7 @@ public final class RegistryHarvestService {
         if (element instanceof Fluid f) return f;
 
         Class<?> clazz = element.getClass();
-        for (java.lang.reflect.Method method : clazz.getMethods()) {
+        for (Method method : clazz.getMethods()) {
             if (method.getParameterCount() == 0 && !method.getName().equals("toString") && !method.getName().equals("hashCode")) {
                 Class<?> returnType = method.getReturnType();
                 if (Fluid.class.isAssignableFrom(returnType)) {

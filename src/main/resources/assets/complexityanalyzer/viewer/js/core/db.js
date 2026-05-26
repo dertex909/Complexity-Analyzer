@@ -5,6 +5,7 @@ import {
     readDropsForMob, readMachineIndex, readSourceTypeIndex, readModSummary,
     ITEM_FLAG,
 } from "./cabin.js";
+import {mergeDuplicateRecipes} from "../views/sub/recipe-shared.js";
 
 export class CabinDatabase {
     constructor(url) {
@@ -198,54 +199,6 @@ export class CabinDatabase {
         return m ? readDropsForMob(await this._ensure('_dB', SEC.DROPS), this.strings, m.dropsOffset, m.dropCount) : [];
     }
 
-    getRecipeIdentityKey(r) {
-        const ingPart = r.ingredients ? r.ingredients.map(ing => {
-            const vars = ing.variants ? [...ing.variants].sort().join(",") : "";
-            return `${vars}:${ing.count}`;
-        }).join(";") : "";
-
-        const fluidIngPart = r.fluidIngredients ? r.fluidIngredients.map(f => {
-            const vars = f.variants ? [...f.variants].sort().join(",") : "";
-            return `${vars}:${f.amount}`;
-        }).join(";") : "";
-
-        const itemOutPart = r.itemOutputs ? [...r.itemOutputs].sort((a, b) => a.itemIndex - b.itemIndex).map(out => `${out.itemIndex}:${out.count}`).join(",") : "";
-        const fluidOutPart = r.fluidOutputs ? [...r.fluidOutputs].sort((a, b) => a.fluidIndex - b.fluidIndex).map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "";
-
-        return `${r.recipeType || "minecraft:custom"}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
-    }
-
-    getRecipeKey(r) {
-        return this.getRecipeIdentityKey(r);
-    }
-
-    deduplicateRecipes(recipesList) {
-        const unique = [];
-        const keyToRecipe = new Map();
-        for (const r of recipesList) {
-            const idKey = this.getRecipeIdentityKey(r);
-            if (!keyToRecipe.has(idKey)) {
-                const rCopy = {
-                    ...r,
-                    allMachineIndexes: []
-                };
-                if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
-                    rCopy.allMachineIndexes.push(r.machineItemIndex);
-                }
-                keyToRecipe.set(idKey, rCopy);
-                unique.push(rCopy);
-            } else {
-                const existing = keyToRecipe.get(idKey);
-                if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
-                    if (!existing.allMachineIndexes.includes(r.machineItemIndex)) {
-                        existing.allMachineIndexes.push(r.machineItemIndex);
-                    }
-                }
-            }
-        }
-        return unique;
-    }
-
     async getRecipesByMachine(machineItemIndex) {
         const machine = this.machines.find(m => m.itemIndex === machineItemIndex);
         if (!machine) return [];
@@ -269,6 +222,6 @@ export class CabinDatabase {
             }
         }
 
-        return this.deduplicateRecipes(rawRecipes);
+        return mergeDuplicateRecipes(rawRecipes);
     }
 }

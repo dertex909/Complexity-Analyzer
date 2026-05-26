@@ -18,7 +18,7 @@ export function getRecipeIdentityKey(r) {
     return `${r.recipeType || "minecraft:custom"}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
 }
 
-export function mergeDuplicateRecipes(recipes, db) {
+export function mergeDuplicateRecipes(recipes) {
     const unique = [];
     const keyToRecipe = new Map();
     for (const r of recipes) {
@@ -269,7 +269,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
         };
     }
 
-    const merged = mergeDuplicateRecipes(sorted, db);
+    const merged = mergeDuplicateRecipes(sorted);
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
     const resorted = sortRecipes(merged, db, activeSort, body);
 
@@ -357,7 +357,7 @@ export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machin
         };
     }
 
-    const merged = mergeDuplicateRecipes(recipes, db);
+    const merged = mergeDuplicateRecipes(recipes);
     const sorted = sortRecipes(merged, db, activeSort, body);
 
     body.innerHTML = renderRecipeControlsHtml(activeSort, merged.length) + `
@@ -450,6 +450,14 @@ function compareByComplexity(a, b) {
     return compA - compB;
 }
 
+function resolveActiveVariant(slotVariants, activeVariantIdx, state) {
+    if (activeVariantIdx === -1 || !slotVariants.some(v => v.index === activeVariantIdx)) {
+        const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
+        activeVariantIdx = selectedIdx !== -1 ? slotVariants[selectedIdx].index : slotVariants[0].index;
+    }
+    return activeVariantIdx;
+}
+
 export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     const inputsHtml = [];
     const recipeKey = getRecipeIdentityKey(r);
@@ -472,10 +480,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                     ? body._customState.selectedIngredients.get(ingKey)
                     : -1;
 
-                if (activeVariantIdx === -1 || !slotVariants.some(v => v.index === activeVariantIdx)) {
-                    const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
-                    activeVariantIdx = selectedIdx !== -1 ? slotVariants[selectedIdx].index : slotVariants[0].index;
-                }
+                activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
                 const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
 
@@ -530,10 +535,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                     ? body._customState.selectedIngredients.get(fluidKey)
                     : -1;
 
-                if (activeVariantIdx === -1 || !slotVariants.some(v => v.index === activeVariantIdx)) {
-                    const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
-                    activeVariantIdx = selectedIdx !== -1 ? slotVariants[selectedIdx].index : slotVariants[0].index;
-                }
+                activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
                 const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
 
@@ -620,7 +622,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         amortizationHtml = `<span style="font-size: 10px; color: var(--text-dim); margin-top: -2px; margin-bottom: 4px;" title="Amortization (machine complexity tax): ${fmt.format(machineItem.complexity)} * ${taxVal * 100}%">amort: +${fmt.format(amortization)}</span>`;
     }
 
-    let machineHtml = "";
+    let machineHtml;
     if (allMachinesIdxs.length > 1) {
         const sortedMachines = [...allMachinesIdxs].map(mi => ({
             index: mi,

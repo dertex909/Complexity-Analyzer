@@ -84,76 +84,14 @@ export async function renderItemMachineRecipesView(container) {
             return;
         }
 
-        const producedItems = new Map();
-        const producedFluids = new Map();
-        for (const r of recipes) {
-            const prodIdx = getPrimaryRecipeOutputIndex(r, db);
-            if (prodIdx >= 0) {
-                if (!producedItems.has(prodIdx)) producedItems.set(prodIdx, []);
-                producedItems.get(prodIdx).push(r);
-            } else {
-                const fluidIdx = getPrimaryRecipeFluidOutputIndex(r, db);
-                if (fluidIdx >= 0) {
-                    if (!producedFluids.has(fluidIdx)) producedFluids.set(fluidIdx, []);
-                    producedFluids.get(fluidIdx).push(r);
-                }
-            }
-        }
-        if (producedItems.size === 0 && producedFluids.size === 0) {
-            body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">No item or fluid output recipes are registered for this machine.</div></div>`;
-            return;
-        }
-
-        const html = [];
-        if (producedItems.size > 0) {
-            html.push(`<h3 style="font-size:14px; margin-bottom: 12px; color:var(--text-dim); border-bottom:1px solid var(--border); padding-bottom:4px;">Item Products</h3>`);
-            for (const [prodIdx, rList] of producedItems.entries()) {
-                const pItem = db.items.get(prodIdx);
-                html.push(`
-                    <div class="detail-card" style="margin-bottom: 12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; margin-bottom: 8px;">
-                            <span>
-                                <strong style="color:var(--accent); cursor:pointer;" class="product-link" data-index="${prodIdx}">${escapeHtml(pItem ? pItem.name : "Unknown Output")}</strong>
-                                <span class="mono-code" style="font-size:11px;">${escapeHtml(pItem ? pItem.id : "")}</span>
-                            </span>
-                        </div>
-                        ${rList.map(r => renderRecipeRow(r, db, item)).join("")}
-                    </div>
-                `);
-            }
-        }
-
-        if (producedFluids.size > 0) {
-            html.push(`<h3 style="font-size:14px; margin-top: 16px; margin-bottom: 12px; color:var(--text-dim); border-bottom:1px solid var(--border); padding-bottom:4px;">Fluid Products</h3>`);
-            for (const [fluidIdx, rList] of producedFluids.entries()) {
-                const pFluid = db.fluids.get(fluidIdx);
-                html.push(`
-                    <div class="detail-card" style="margin-bottom: 12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; margin-bottom: 8px;">
-                            <span>
-                                <strong style="color:var(--accent); cursor:pointer;" class="fluid-link" data-index="${fluidIdx}">${escapeHtml(pFluid ? pFluid.name : "Unknown Fluid")}</strong>
-                                <span class="mono-code" style="font-size:11px;">${escapeHtml(pFluid ? pFluid.id : "")}</span>
-                            </span>
-                        </div>
-                        ${rList.map(r => renderRecipeRow(r, db, item)).join("")}
-                    </div>
-                `);
-            }
-        }
-
-        body.innerHTML = html.join("");
-
-        body.querySelectorAll(".product-link").forEach(el => {
-            el.addEventListener("click", () => {
-                setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-            });
-        });
-
-        body.querySelectorAll(".fluid-link").forEach(el => {
-            el.addEventListener("click", () => {
-                setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-            });
-        });
+        body.innerHTML = `
+            <div style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px;">
+                <strong>Machine Overview:</strong> This machine has <strong>${fmtInt.format(recipes.length)}</strong> registered recipe(s).
+            </div>
+            <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
+                ${recipes.map(r => renderRecipeRow(r, db, item)).join("")}
+            </div>
+        `;
 
         wireIngredientLinks(body);
     } catch (e) {
@@ -212,29 +150,6 @@ export async function renderItemUsesView(container) {
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading usage: ${escapeHtml(String(e))}</div>`;
     }
-}
-
-function getPrimaryRecipeOutputIndex(r, db) {
-    if (r.itemOutputs && r.itemOutputs.length > 0) {
-        const out = r.itemOutputs.find(o => {
-            const item = db.items.get(o.itemIndex);
-            return item && item.id !== "minecraft:air" && o.count > 0;
-        });
-        if (out) return out.itemIndex;
-    }
-    const fallback = db.items.get(r.outputItemIndex);
-    return fallback && fallback.id !== "minecraft:air" ? r.outputItemIndex : -1;
-}
-
-function getPrimaryRecipeFluidOutputIndex(r, db) {
-    if (r.fluidOutputs && r.fluidOutputs.length > 0) {
-        const out = r.fluidOutputs.find(o => {
-            const fluid = db.fluids.get(o.fluidIndex);
-            return fluid && fluid.id !== "minecraft:empty" && o.amount > 0;
-        });
-        if (out) return out.fluidIndex;
-    }
-    return -1;
 }
 
 export async function renderItemBaseSourcesView(container) {

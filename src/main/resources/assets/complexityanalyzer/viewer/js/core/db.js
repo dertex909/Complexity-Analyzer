@@ -150,10 +150,38 @@ export class CabinDatabase {
     async getRecipesByMachine(machineItemIndex) {
         const machine = this.machines.find(m => m.itemIndex === machineItemIndex);
         if (!machine) return [];
+
         const recipes = [];
+        const seenKeys = new Set();
+
+        const addRecipe = (r) => {
+            const key = `${r.recipeType}_${r.machineItemIndex}_${r.priority}_` +
+                (r.ingredients ? r.ingredients.map(ing => ing.variants.join(",")).join(";") : "") + "_" +
+                (r.fluidIngredients ? r.fluidIngredients.map(f => f.variants.join(",")).join(";") : "") + "_" +
+                (r.itemOutputs ? r.itemOutputs.map(out => `${out.itemIndex}:${out.count}`).join(",") : "") + "_" +
+                (r.fluidOutputs ? r.fluidOutputs.map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "");
+
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                recipes.push(r);
+            }
+        };
+
         for (const itemIdx of machine.items) {
-            const itemRecipes = await this.getItemRecipes(itemIdx);
-            recipes.push(...itemRecipes);
+            try {
+                const itemRecipes = await this.getItemRecipes(itemIdx);
+                for (const r of itemRecipes) addRecipe(r);
+            } catch (e) {
+                console.error("Error loading item recipes:", e);
+            }
+        }
+
+        for (let i = 0; i < this.fluids.count; i++) {
+            try {
+                const fluidRecipes = await this.getFluidRecipes(i);
+                for (const r of fluidRecipes) if (r.machineItemIndex === machineItemIndex) addRecipe(r);
+            } catch (e) {
+            }
         }
         return recipes;
     }

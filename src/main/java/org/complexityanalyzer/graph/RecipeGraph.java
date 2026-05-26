@@ -60,16 +60,89 @@ public class RecipeGraph {
             return;
         }
 
-        allRecipesList.add(node);
-
-        if (result != Items.AIR) recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>()).add(node);
+        if (result != Items.AIR) {
+            var list = recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>());
+            int dupIdx = -1;
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i).equals(node)) {
+                    dupIdx = i;
+                    break;
+                }
+            }
+            if (dupIdx != -1) {
+                RecipeNode existing = list.get(dupIdx);
+                boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
+                        || node.getItemOutputs().size() > existing.getItemOutputs().size()
+                        || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                if (nodeIsBetter) {
+                    list.set(dupIdx, node);
+                    int allIdx = allRecipesList.indexOf(existing);
+                    if (allIdx != -1) {
+                        allRecipesList.set(allIdx, node);
+                    } else {
+                        allRecipesList.add(node);
+                    }
+                    for (var slot : node.getFluidIngredients()) {
+                        for (var variant : slot.getFluidVariants()) {
+                            Fluid normalized = normalizeFluid(variant);
+                            if (normalized != Fluids.EMPTY) {
+                                fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                            }
+                        }
+                    }
+                    for (var stack : node.getFluidOutputs()) {
+                        Fluid normalized = normalizeFluid(stack.getFluid());
+                        if (normalized != Fluids.EMPTY) {
+                            var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
+                            if (!foList.contains(node)) foList.add(node);
+                        }
+                    }
+                    bestRecipeCache.remove(result);
+                }
+                return;
+            } else {
+                list.add(node);
+            }
+        }
 
         if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) try {
             var fluidId = ResourceLocation.parse(node.getPlaceholderId());
-            recipesByFluid.computeIfAbsent(fluidId, k -> new ObjectArrayList<>()).add(node);
+            var list = recipesByFluid.computeIfAbsent(fluidId, k -> new ObjectArrayList<>());
+            int dupIdx = -1;
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i).equals(node)) {
+                    dupIdx = i;
+                    break;
+                }
+            }
+            if (dupIdx != -1) {
+                RecipeNode existing = list.get(dupIdx);
+                boolean nodeIsBetter = node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                if (nodeIsBetter) {
+                    list.set(dupIdx, node);
+                    int allIdx = allRecipesList.indexOf(existing);
+                    if (allIdx != -1) {
+                        allRecipesList.set(allIdx, node);
+                    } else {
+                        allRecipesList.add(node);
+                    }
+                    for (var stack : node.getFluidOutputs()) {
+                        Fluid normalized = normalizeFluid(stack.getFluid());
+                        if (normalized != Fluids.EMPTY) {
+                            var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
+                            if (!foList.contains(node)) foList.add(node);
+                        }
+                    }
+                }
+                return;
+            } else {
+                list.add(node);
+            }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.warn("Invalid placeholder ID: {}", node.getPlaceholderId());
         }
+
+        allRecipesList.add(node);
 
         for (var slot : node.getIngredients()) {
             for (var ingredient : slot.getVariants()) {
@@ -91,7 +164,8 @@ public class RecipeGraph {
         for (var stack : node.getFluidOutputs()) {
             Fluid normalized = normalizeFluid(stack.getFluid());
             if (normalized != Fluids.EMPTY) {
-                recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>()).add(node);
+                var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
+                if (!foList.contains(node)) foList.add(node);
             }
         }
 

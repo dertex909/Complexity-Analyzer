@@ -23,6 +23,8 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.Item;
 
+import java.util.Objects;
+
 public class IngredientSlot {
     private final ObjectList<Item> variants;
     private final int count;
@@ -38,6 +40,18 @@ public class IngredientSlot {
 
     public int getCount() {
         return count;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof IngredientSlot that)) return false;
+        return count == that.count && Objects.equals(variants, that.variants);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(variants, count);
     }
 
     @Override

@@ -150,21 +150,78 @@ public class RecipeNode {
         return recipeMultiplier;
     }
 
+    private static boolean equalItemStackLists(ObjectList<ItemStack> list1, ObjectList<ItemStack> list2) {
+        if (list1 == list2) return true;
+        if (list1 == null || list2 == null) return false;
+        if (list1.size() != list2.size()) return false;
+        for (int i = 0; i < list1.size(); i++) {
+            ItemStack s1 = list1.get(i);
+            ItemStack s2 = list2.get(i);
+            if (s1 == s2) continue;
+            if (s1 == null || s2 == null) return false;
+            if (s1.getItem() != s2.getItem() || s1.getCount() != s2.getCount()) return false;
+        }
+        return true;
+    }
+
+    private static boolean equalFluidStackLists(ObjectList<FluidStack> list1, ObjectList<FluidStack> list2) {
+        if (list1 == list2) return true;
+        if (list1 == null || list2 == null) return false;
+        if (list1.size() != list2.size()) return false;
+        for (int i = 0; i < list1.size(); i++) {
+            FluidStack s1 = list1.get(i);
+            FluidStack s2 = list2.get(i);
+            if (s1 == s2) continue;
+            if (s1 == null || s2 == null) return false;
+            if (s1.getFluid() != s2.getFluid() || s1.getAmount() != s2.getAmount()) return false;
+        }
+        return true;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RecipeNode that = (RecipeNode) o;
+        if (resultCount != that.resultCount) return false;
+        if (isPlaceholder != that.isPlaceholder) return false;
         if (!resultItem.equals(that.resultItem)) return false;
         if (!Objects.equals(recipeType, that.recipeType)) return false;
-        return ingredients.equals(that.ingredients);
+        if (!Objects.equals(placeholderId, that.placeholderId)) return false;
+        if (!ingredients.equals(that.ingredients)) return false;
+        if (!fluidIngredients.equals(that.fluidIngredients)) return false;
+        if (!chemicalIngredients.equals(that.chemicalIngredients)) return false;
+        if (!chemicalOutputs.equals(that.chemicalOutputs)) return false;
+        if (!equalItemStackLists(itemOutputs, that.itemOutputs)) return false;
+        return equalFluidStackLists(fluidOutputs, that.fluidOutputs);
     }
 
     @Override
     public int hashCode() {
         int result = resultItem.hashCode();
         result = 31 * result + (recipeType != null ? recipeType.hashCode() : 0);
+        result = 31 * result + resultCount;
+        result = 31 * result + (isPlaceholder ? 1 : 0);
+        result = 31 * result + (placeholderId != null ? placeholderId.hashCode() : 0);
         result = 31 * result + ingredients.hashCode();
+        result = 31 * result + fluidIngredients.hashCode();
+        result = 31 * result + chemicalIngredients.hashCode();
+        result = 31 * result + chemicalOutputs.hashCode();
+
+        int outputsHash = 1;
+        for (ItemStack stack : itemOutputs) {
+            int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getItem().hashCode() * 31 + stack.getCount());
+            outputsHash = 31 * outputsHash + stackHash;
+        }
+        result = 31 * result + outputsHash;
+
+        int fluidOutputsHash = 1;
+        for (FluidStack stack : fluidOutputs) {
+            int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getFluid().hashCode() * 31 + stack.getAmount());
+            fluidOutputsHash = 31 * fluidOutputsHash + stackHash;
+        }
+        result = 31 * result + fluidOutputsHash;
+
         return result;
     }
 

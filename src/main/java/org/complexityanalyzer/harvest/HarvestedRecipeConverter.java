@@ -47,7 +47,7 @@ public final class HarvestedRecipeConverter {
         }
 
         if (output.isEmpty() && !isPlaceholder && !inputIngredients.isEmpty()) {
-            ItemStack[] items = inputIngredients.getFirst().getItems();
+            ItemStack[] items = inputIngredients.getFirst().ingredient().getItems();
             if (items.length > 0) {
                 output = items[0].copy();
                 output.setCount(1);
@@ -71,7 +71,9 @@ public final class HarvestedRecipeConverter {
 
         var mergedIngredients = new Object2IntLinkedOpenHashMap<ObjectList<Item>>();
 
-        for (Ingredient ingredient : inputIngredients) {
+        for (var hi : inputIngredients) {
+            Ingredient ingredient = hi.ingredient();
+            int ingredientCount = hi.count();
             var variants = new ObjectArrayList<Item>();
             ItemStack[] stacks = ingredient.getItems();
             int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
@@ -90,9 +92,9 @@ public final class HarvestedRecipeConverter {
                     return idA.compareTo(idB);
                 });
                 if (isSeqAss) {
-                    mergedIngredients.put(variants, 1);
+                    mergedIngredients.put(variants, ingredientCount);
                 } else {
-                    mergedIngredients.addTo(variants, 1);
+                    mergedIngredients.addTo(variants, ingredientCount);
                 }
             }
         }
@@ -137,7 +139,21 @@ public final class HarvestedRecipeConverter {
             }
         }
 
-        if (!outputStacks.isEmpty()) builder.itemOutputs(outputStacks);
+        if (!outputStacks.isEmpty()) {
+            var deduplicatedOutputs = new ObjectArrayList<ItemStack>();
+            for (ItemStack stack : outputStacks) {
+                if (stack.isEmpty()) continue;
+                boolean alreadyAdded = false;
+                for (ItemStack existing : deduplicatedOutputs) {
+                    if (existing.getItem() == stack.getItem() && existing.getCount() == stack.getCount()) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded) deduplicatedOutputs.add(stack);
+            }
+            builder.itemOutputs(deduplicatedOutputs);
+        }
 
         if (!outputFluids.isEmpty()) {
             var mergedOutputs = new Reference2IntOpenHashMap<Fluid>();

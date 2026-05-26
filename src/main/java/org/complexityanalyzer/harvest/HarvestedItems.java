@@ -12,12 +12,15 @@ import net.neoforged.neoforge.fluids.FluidStack;
 public record HarvestedItems(
         ObjectList<ItemStack> inputItems,
         ObjectList<ItemStack> outputItems,
-        ObjectList<Ingredient> inputIngredients,
+        ObjectList<HarvestedIngredient> inputIngredients,
         ObjectList<FluidStack> inputFluids,
         ObjectList<FluidStack> outputFluids,
         Object root,
         ReferenceSet<Item> transitionalItems
 ) {
+    public record HarvestedIngredient(Ingredient ingredient, int count) {
+    }
+
     public static final HarvestedItems EMPTY = new HarvestedItems(
             ObjectLists.emptyList(), ObjectLists.emptyList(),
             ObjectLists.emptyList(), ObjectLists.emptyList(),

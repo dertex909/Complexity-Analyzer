@@ -27,7 +27,7 @@ public final class FastHarvester {
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
     private static final ThreadLocal<ObjectArrayList<FluidStack>> TL_OUTPUT_FLUIDS =
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
-    private static final ThreadLocal<ObjectArrayList<Ingredient>> TL_INPUT_INGREDIENTS =
+    private static final ThreadLocal<ObjectArrayList<HarvestedItems.HarvestedIngredient>> TL_INPUT_INGREDIENTS =
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
     private static final ThreadLocal<ReferenceOpenHashSet<Object>> TL_VISITED =
             ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(128));
@@ -49,7 +49,9 @@ public final class FastHarvester {
         try {
             ItemStack apiResult = ItemStack.EMPTY;
             if (recipe instanceof Recipe<?> r) {
-                for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
+                for (var ing : r.getIngredients())
+                    if (ing != null && !ing.isEmpty())
+                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
 
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
@@ -69,7 +71,8 @@ public final class FastHarvester {
             for (var acc : accessors.ingredientAccessors()) {
                 try {
                     Object raw = acc.extract(recipe, level);
-                    if (raw instanceof Ingredient ing && !ing.isEmpty()) inputIngredients.add(ing);
+                    if (raw instanceof Ingredient ing && !ing.isEmpty())
+                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                     else if (raw != null) collectIngredientsDeep(raw, inputIngredients, 0, visited);
                 } catch (Throwable ignored) {
                 }
@@ -113,7 +116,9 @@ public final class FastHarvester {
             }
 
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
-                for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) inputIngredients.add(ing);
+                for (var ing : r.getIngredients()) {
+                    if (ing != null && !ing.isEmpty()) inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                }
             }
             if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
                 var res = r.getResultItem(level.registryAccess());
@@ -123,8 +128,8 @@ public final class FastHarvester {
 
             if (!transitional.isEmpty()) {
                 inputItems.removeIf(stack -> transitional.contains(stack.getItem()));
-                inputIngredients.removeIf(ing -> {
-                    ItemStack[] items = ing.getItems();
+                inputIngredients.removeIf(hi -> {
+                    ItemStack[] items = hi.ingredient().getItems();
                     if (items.length == 0) return false;
                     for (ItemStack s : items) if (!transitional.contains(s.getItem())) return false;
                     return true;
@@ -132,8 +137,10 @@ public final class FastHarvester {
             }
 
             if (!inputIngredients.isEmpty()) inputItems.removeIf(stack -> {
-                for (Ingredient ing : inputIngredients) {
-                    for (ItemStack ingStack : ing.getItems()) if (ingStack.getItem() == stack.getItem()) return true;
+                for (var hi : inputIngredients) {
+                    for (ItemStack ingStack : hi.ingredient().getItems()) {
+                        if (ingStack.getItem() == stack.getItem()) return true;
+                    }
                 }
                 return false;
             });
@@ -203,15 +210,20 @@ public final class FastHarvester {
         }
     }
 
-    private static void collectIngredientsDeep(Object obj, ObjectList<Ingredient> acc, int depth, ReferenceOpenHashSet<Object> visited) {
+    private static void collectIngredientsDeep(Object obj, ObjectList<HarvestedItems.HarvestedIngredient> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case Optional<?> opt -> {
                 opt.ifPresent(o -> collectIngredientsDeep(o, acc, depth + 1, visited));
                 return;
             }
+            case SizedIngredient si when si.count() > 0 -> {
+                Ingredient ing = si.ingredient();
+                if (!ing.isEmpty()) acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
+                return;
+            }
             case Ingredient ing when !ing.isEmpty() -> {
-                acc.add(ing);
+                acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
@@ -332,7 +344,7 @@ public final class FastHarvester {
     }
 
     private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
-                                       ObjectList<Ingredient> inputIngredients, ObjectList<FluidStack> inputFluids,
+                                       ObjectList<HarvestedItems.HarvestedIngredient> inputIngredients, ObjectList<FluidStack> inputFluids,
                                        int depth, ReferenceOpenHashSet<Object> visited, ItemStack apiResult, Level level) {
         if (obj == null || depth > 8) return;
 
@@ -346,7 +358,8 @@ public final class FastHarvester {
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
                     Ingredient toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty()) if (visited.add(toolIng)) inputIngredients.add(toolIng);
+                    if (!toolIng.isEmpty()) if (visited.add(toolIng))
+                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
                 }
 
                 collectFluidsDeep(subRecipe, inputFluids, 0, visited);
@@ -366,13 +379,9 @@ public final class FastHarvester {
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
-                ItemStack[] stacks = si.ingredient().getItems();
-                if (stacks.length > 0) {
-                    ItemStack stack = stacks[0].copy();
-                    stack.setCount(si.count());
-                    if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack);
-                    else inputItems.add(stack);
-                }
+                Ingredient ing = si.ingredient();
+                if (!ing.isEmpty()) if (visited.add(ing))
+                    inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
             }
             case SizedFluidIngredient sfi -> {
@@ -383,7 +392,8 @@ public final class FastHarvester {
                 if (visited.add(ing)) {
                     boolean alreadyExists = false;
                     ItemStack[] ingItems = ing.getItems();
-                    for (Ingredient existing : inputIngredients) {
+                    for (var existingHi : inputIngredients) {
+                        Ingredient existing = existingHi.ingredient();
                         ItemStack[] existingItems = existing.getItems();
                         if (ingItems.length == existingItems.length) {
                             boolean allMatch = true;
@@ -406,7 +416,7 @@ public final class FastHarvester {
                             }
                         }
                     }
-                    if (!alreadyExists) inputIngredients.add(ing);
+                    if (!alreadyExists) inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 }
                 return;
             }

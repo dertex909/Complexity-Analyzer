@@ -198,7 +198,7 @@ export class CabinDatabase {
         return m ? readDropsForMob(await this._ensure('_dB', SEC.DROPS), this.strings, m.dropsOffset, m.dropCount) : [];
     }
 
-    getRecipeKey(r) {
+    getRecipeIdentityKey(r) {
         const ingPart = r.ingredients ? r.ingredients.map(ing => {
             const vars = ing.variants ? [...ing.variants].sort().join(",") : "";
             return `${vars}:${ing.count}`;
@@ -212,17 +212,35 @@ export class CabinDatabase {
         const itemOutPart = r.itemOutputs ? [...r.itemOutputs].sort((a, b) => a.itemIndex - b.itemIndex).map(out => `${out.itemIndex}:${out.count}`).join(",") : "";
         const fluidOutPart = r.fluidOutputs ? [...r.fluidOutputs].sort((a, b) => a.fluidIndex - b.fluidIndex).map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "";
 
-        return `${r.recipeType}_${r.machineItemIndex}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
+        return `${r.recipeType || "minecraft:custom"}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
+    }
+
+    getRecipeKey(r) {
+        return this.getRecipeIdentityKey(r);
     }
 
     deduplicateRecipes(recipesList) {
         const unique = [];
-        const seen = new Set();
+        const keyToRecipe = new Map();
         for (const r of recipesList) {
-            const key = this.getRecipeKey(r);
-            if (!seen.has(key)) {
-                seen.add(key);
-                unique.push(r);
+            const idKey = this.getRecipeIdentityKey(r);
+            if (!keyToRecipe.has(idKey)) {
+                const rCopy = {
+                    ...r,
+                    allMachineIndexes: []
+                };
+                if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+                    rCopy.allMachineIndexes.push(r.machineItemIndex);
+                }
+                keyToRecipe.set(idKey, rCopy);
+                unique.push(rCopy);
+            } else {
+                const existing = keyToRecipe.get(idKey);
+                if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+                    if (!existing.allMachineIndexes.includes(r.machineItemIndex)) {
+                        existing.allMachineIndexes.push(r.machineItemIndex);
+                    }
+                }
             }
         }
         return unique;

@@ -1,9 +1,58 @@
-import {escapeHtml, fmt, renderMachineRecipes} from "../../core/utils.js";
+import {escapeHtml, fmt} from "../../core/utils.js";
 import {state, setState} from "../../core/state.js";
 
-export function getRecipeCost(r, db) {
+export function getRecipeIdentityKey(r) {
+    const ingPart = r.ingredients ? r.ingredients.map(ing => {
+        const vars = ing.variants ? [...ing.variants].sort().join(",") : "";
+        return `${vars}:${ing.count}`;
+    }).join(";") : "";
+
+    const fluidIngPart = r.fluidIngredients ? r.fluidIngredients.map(f => {
+        const vars = f.variants ? [...f.variants].sort().join(",") : "";
+        return `${vars}:${f.amount}`;
+    }).join(";") : "";
+
+    const itemOutPart = r.itemOutputs ? [...r.itemOutputs].sort((a, b) => a.itemIndex - b.itemIndex).map(out => `${out.itemIndex}:${out.count}`).join(",") : "";
+    const fluidOutPart = r.fluidOutputs ? [...r.fluidOutputs].sort((a, b) => a.fluidIndex - b.fluidIndex).map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "";
+
+    return `${r.recipeType || "minecraft:custom"}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
+}
+
+export function mergeDuplicateRecipes(recipes, db) {
+    const unique = [];
+    const keyToRecipe = new Map();
+    for (const r of recipes) {
+        const idKey = getRecipeIdentityKey(r);
+        if (!keyToRecipe.has(idKey)) {
+            const rCopy = {
+                ...r,
+                allMachineIndexes: []
+            };
+            if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+                rCopy.allMachineIndexes.push(r.machineItemIndex);
+            }
+            keyToRecipe.set(idKey, rCopy);
+            unique.push(rCopy);
+        } else {
+            const existing = keyToRecipe.get(idKey);
+            if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+                if (!existing.allMachineIndexes.includes(r.machineItemIndex)) {
+                    existing.allMachineIndexes.push(r.machineItemIndex);
+                }
+            }
+        }
+    }
+    return unique;
+}
+
+export function getRecipeCost(r, db, body = null) {
     let cost = 0;
-    const machineItem = db.items.get(r.machineItemIndex);
+    const recipeKey = getRecipeIdentityKey(r);
+    let activeMachineIdx = (body && body._customState && body._customState.selectedMachines.has(recipeKey))
+        ? body._customState.selectedMachines.get(recipeKey)
+        : r.machineItemIndex;
+
+    const machineItem = db.items.get(activeMachineIdx);
     if (machineItem) {
         const isCraftable = !!((machineItem.flags & 0x01) && machineItem.complexity > 0 && !(machineItem.flags & 0x10));
         if (isCraftable) {
@@ -13,26 +62,65 @@ export function getRecipeCost(r, db) {
             cost += 10000000;
         }
     }
-    if (r.ingredients) for (const slot of r.ingredients) if (slot.variants && slot.variants.length > 0) {
-        let minComp = Infinity;
-        for (const v of slot.variants) {
-            const item = db.items.get(v);
-            if (item && isFinite(item.complexity) && item.complexity > 0 && !(item.flags & 0x10)) {
-                if (item.complexity < minComp) minComp = item.complexity;
+
+    if (r.ingredients) {
+        for (let slotIdx = 0; slotIdx < r.ingredients.length; slotIdx++) {
+            const slot = r.ingredients[slotIdx];
+            if (slot.variants && slot.variants.length > 0) {
+                let activeVariant = -1;
+                const ingKey = `${recipeKey}_ing_${slotIdx}`;
+                if (body && body._customState && body._customState.selectedIngredients.has(ingKey)) {
+                    activeVariant = body._customState.selectedIngredients.get(ingKey);
+                }
+
+                if (activeVariant !== -1) {
+                    const item = db.items.get(activeVariant);
+                    if (item && isFinite(item.complexity) && item.complexity > 0 && !(item.flags & 0x10)) {
+                        cost += slot.count * item.complexity;
+                    }
+                } else {
+                    let minComp = Infinity;
+                    for (const v of slot.variants) {
+                        const item = db.items.get(v);
+                        if (item && isFinite(item.complexity) && item.complexity > 0 && !(item.flags & 0x10)) {
+                            if (item.complexity < minComp) minComp = item.complexity;
+                        }
+                    }
+                    if (minComp !== Infinity) cost += slot.count * minComp;
+                }
             }
         }
-        if (minComp !== Infinity) cost += slot.count * minComp;
     }
-    if (r.fluidIngredients) for (const slot of r.fluidIngredients) if (slot.variants && slot.variants.length > 0) {
-        let minComp = Infinity;
-        for (const v of slot.variants) {
-            const fl = db.fluids.get(v);
-            if (fl && isFinite(fl.complexity) && fl.complexity > 0 && !(fl.flags & 0x10)) {
-                if (fl.complexity < minComp) minComp = fl.complexity;
+
+    if (r.fluidIngredients) {
+        for (let slotIdx = 0; slotIdx < r.fluidIngredients.length; slotIdx++) {
+            const slot = r.fluidIngredients[slotIdx];
+            if (slot.variants && slot.variants.length > 0) {
+                let activeVariant = -1;
+                const fluidKey = `${recipeKey}_fluid_${slotIdx}`;
+                if (body && body._customState && body._customState.selectedIngredients.has(fluidKey)) {
+                    activeVariant = body._customState.selectedIngredients.get(fluidKey);
+                }
+
+                if (activeVariant !== -1) {
+                    const fl = db.fluids.get(activeVariant);
+                    if (fl && isFinite(fl.complexity) && fl.complexity > 0 && !(fl.flags & 0x10)) {
+                        cost += (slot.amount / 1000) * fl.complexity;
+                    }
+                } else {
+                    let minComp = Infinity;
+                    for (const v of slot.variants) {
+                        const fl = db.fluids.get(v);
+                        if (fl && isFinite(fl.complexity) && fl.complexity > 0 && !(fl.flags & 0x10)) {
+                            if (fl.complexity < minComp) minComp = fl.complexity;
+                        }
+                    }
+                    if (minComp !== Infinity) cost += (slot.amount / 1000) * minComp;
+                }
             }
         }
-        if (minComp !== Infinity) cost += (slot.amount / 1000) * minComp;
     }
+
     return cost;
 }
 
@@ -62,8 +150,8 @@ export function isRecipeCalculable(r, db) {
     return true;
 }
 
-export function getRecipeUnitCost(r, db) {
-    const totalCost = getRecipeCost(r, db);
+export function getRecipeUnitCost(r, db, body = null) {
+    const totalCost = getRecipeCost(r, db, body);
     const tab = state.tab;
     const itemIndex = state.selectedItem;
 
@@ -90,7 +178,7 @@ export function getRecipeUnitCost(r, db) {
     return totalCost;
 }
 
-export function sortRecipes(recipes, db, sortType) {
+export function sortRecipes(recipes, db, sortType, body = null) {
     const sorted = [...recipes];
     sorted.sort((a, b) => {
         const calcA = isRecipeCalculable(a, db);
@@ -98,16 +186,24 @@ export function sortRecipes(recipes, db, sortType) {
 
         if (calcA !== calcB) return calcA ? -1 : 1;
 
-        const machineA = db.items.get(a.machineItemIndex);
-        const machineB = db.items.get(b.machineItemIndex);
+        const activeMachineA = (body && body._customState && body._customState.selectedMachines.has(getRecipeIdentityKey(a)))
+            ? body._customState.selectedMachines.get(getRecipeIdentityKey(a))
+            : a.machineItemIndex;
 
-        const craftableA = a.machineItemIndex < 0 || (machineA ? !!((machineA.flags & 0x01) && machineA.complexity > 0 && !(machineA.flags & 0x10)) : false);
-        const craftableB = b.machineItemIndex < 0 || (machineB ? !!((machineB.flags & 0x01) && machineB.complexity > 0 && !(machineB.flags & 0x10)) : false);
+        const activeMachineB = (body && body._customState && body._customState.selectedMachines.has(getRecipeIdentityKey(b)))
+            ? body._customState.selectedMachines.get(getRecipeIdentityKey(b))
+            : b.machineItemIndex;
+
+        const machineA = db.items.get(activeMachineA);
+        const machineB = db.items.get(activeMachineB);
+
+        const craftableA = activeMachineA < 0 || (machineA ? !!((machineA.flags & 0x01) && machineA.complexity > 0 && !(machineA.flags & 0x10)) : false);
+        const craftableB = activeMachineB < 0 || (machineB ? !!((machineB.flags & 0x01) && machineB.complexity > 0 && !(machineB.flags & 0x10)) : false);
 
         if (craftableA !== craftableB) return craftableA ? -1 : 1;
 
-        const costA = getRecipeUnitCost(a, db);
-        const costB = getRecipeUnitCost(b, db);
+        const costA = getRecipeUnitCost(a, db, body);
+        const costB = getRecipeUnitCost(b, db, body);
 
         if (sortType === "cheapest") {
             if (Math.abs(costA - costB) > 0.001) return costA - costB;
@@ -166,19 +262,77 @@ export function wireRecipeLinks(container) {
 }
 
 export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage) {
-    const machineSet = new Set();
-    for (const r of sorted) if (r.machineItemIndex !== undefined) machineSet.add(r.machineItemIndex);
+    if (!body._customState) {
+        body._customState = {
+            selectedMachines: new Map(),
+            selectedIngredients: new Map()
+        };
+    }
 
-    if (machineSet.size === 0) {
+    const merged = mergeDuplicateRecipes(sorted, db);
+    const activeSort = localStorage.getItem("recipes-sort") || "optimal";
+    const resorted = sortRecipes(merged, db, activeSort, body);
+
+    const machineToRecipes = new Map();
+    for (const r of resorted) {
+        let allMachinesIdxs = r.allMachineIndexes || [];
+        if (allMachinesIdxs.length === 0 && r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+            allMachinesIdxs = [r.machineItemIndex];
+        }
+
+        const recipeKey = getRecipeIdentityKey(r);
+        const activeMachineIdx = body._customState.selectedMachines.has(recipeKey)
+            ? body._customState.selectedMachines.get(recipeKey)
+            : (allMachinesIdxs.length > 0 ? allMachinesIdxs[0] : (r.machineItemIndex !== undefined ? r.machineItemIndex : -1));
+
+        if (!machineToRecipes.has(activeMachineIdx)) {
+            machineToRecipes.set(activeMachineIdx, []);
+        }
+        machineToRecipes.get(activeMachineIdx).push(r);
+    }
+
+    if (machineToRecipes.size === 0) {
         body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">${escapeHtml(emptyMessage)}</div></div>`;
         return;
     }
 
-    const activeSort = localStorage.getItem("recipes-sort") || "optimal";
+    const sortedMachines = Array.from(machineToRecipes.keys()).sort((a, b) => {
+        const itemA = a >= 0 ? db.items.get(a) : null;
+        const itemB = b >= 0 ? db.items.get(b) : null;
+        if (!itemA && itemB) return 1;
+        if (itemA && !itemB) return -1;
+        return 0;
+    });
 
-    body.innerHTML = renderRecipeControlsHtml(activeSort, sorted.length) + `
+    const groupsHtml = sortedMachines.map(mi => {
+        const mItem = mi >= 0 ? db.items.get(mi) : null;
+        const mRecipes = machineToRecipes.get(mi);
+        const isRaw = !mItem;
+
+        const nameHtml = mItem
+            ? `<strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem.name)}</strong>`
+            : `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;
+
+        const idHtml = mItem
+            ? `<span class="mono-code" style="font-size:11px;">${escapeHtml(mItem.id)}</span>` : ``;
+
+        return `
+            <div class="detail-card ${isRaw ? 'raw-craft-card' : ''}" style="margin-bottom: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid ${isRaw ? 'rgba(239, 68, 68, 0.2)' : 'var(--border)'}; padding-bottom: 8px; margin-bottom: 8px;">
+                    <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        ${nameHtml}
+                        ${idHtml}
+                    </span>
+                    <span class="chip" style="${isRaw ? 'background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);' : ''}">${mRecipes.length} recipe(s)</span>
+                </div>
+                ${mRecipes.map(r => renderRecipeRow(r, db, body)).join("")}
+            </div>
+        `;
+    }).join("");
+
+    body.innerHTML = renderRecipeControlsHtml(activeSort, merged.length) + `
         <div class="recipes-grouped-list">
-            ${renderMachineRecipes(machineSet, sorted, db, renderRecipeRow)}
+            ${groupsHtml}
         </div>
     `;
 
@@ -190,27 +344,37 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
 
     wireRecipeLinks(body);
     wireRecipeSortListener(body, onSortChange);
-    wireVariantDropdowns(body);
+    wireRecipeDropdowns(body, onSortChange);
 }
 
 export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machineOverride = null) {
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
-    const sorted = sortRecipes(recipes, db, activeSort);
 
-    body.innerHTML = renderRecipeControlsHtml(activeSort, recipes.length) + `
+    if (!body._customState) {
+        body._customState = {
+            selectedMachines: new Map(),
+            selectedIngredients: new Map()
+        };
+    }
+
+    const merged = mergeDuplicateRecipes(recipes, db);
+    const sorted = sortRecipes(merged, db, activeSort, body);
+
+    body.innerHTML = renderRecipeControlsHtml(activeSort, merged.length) + `
         <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
-            ${sorted.map(r => renderRecipeRow(r, db, machineOverride)).join("")}
+            ${sorted.map(r => renderRecipeRow(r, db, body, machineOverride)).join("")}
         </div>
     `;
 
     wireRecipeLinks(body);
     wireRecipeSortListener(body, onSortChange);
-    wireVariantDropdowns(body);
+    wireRecipeDropdowns(body, onSortChange);
 }
 
-export function wireVariantDropdowns(container) {
+export function wireRecipeDropdowns(container, onReRender) {
     container.querySelectorAll(".variant-group").forEach(grp => {
         const trigger = grp.querySelector(".variant-trigger");
+        if (!trigger) return;
 
         trigger.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -240,6 +404,44 @@ export function wireVariantDropdowns(container) {
             e.stopPropagation();
         });
     });
+
+    container.querySelectorAll(".variant-machine-substitute").forEach(el => {
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const recipeKey = el.dataset.recipeKey;
+            const machineIndex = parseInt(el.dataset.machineIndex, 10);
+            if (container && container._customState) {
+                container._customState.selectedMachines.set(recipeKey, machineIndex);
+            }
+            onReRender();
+        });
+    });
+
+    container.querySelectorAll(".variant-item-substitute").forEach(el => {
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const recipeKey = el.dataset.recipeKey;
+            const slotIndex = parseInt(el.dataset.slotIndex, 10);
+            const variantIndex = parseInt(el.dataset.variantIndex, 10);
+            if (container && container._customState) {
+                container._customState.selectedIngredients.set(`${recipeKey}_ing_${slotIndex}`, variantIndex);
+            }
+            onReRender();
+        });
+    });
+
+    container.querySelectorAll(".variant-fluid-substitute").forEach(el => {
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const recipeKey = el.dataset.recipeKey;
+            const slotIndex = parseInt(el.dataset.slotIndex, 10);
+            const variantIndex = parseInt(el.dataset.variantIndex, 10);
+            if (container && container._customState) {
+                container._customState.selectedIngredients.set(`${recipeKey}_fluid_${slotIndex}`, variantIndex);
+            }
+            onReRender();
+        });
+    });
 }
 
 function compareByComplexity(a, b) {
@@ -248,45 +450,56 @@ function compareByComplexity(a, b) {
     return compA - compB;
 }
 
-export function renderRecipeRow(r, db, machineOverride = null) {
+export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     const inputsHtml = [];
+    const recipeKey = getRecipeIdentityKey(r);
 
-    if (r.ingredients && r.ingredients.length > 0) for (const slot of r.ingredients) {
-        const slotVariants = [...slot.variants].map(v => ({index: v, item: db.items.get(v)}))
-            .filter(x => x.item)
-            .sort(compareByComplexity);
+    if (r.ingredients && r.ingredients.length > 0) {
+        for (let slotIdx = 0; slotIdx < r.ingredients.length; slotIdx++) {
+            const slot = r.ingredients[slotIdx];
+            const slotVariants = [...slot.variants].map(v => ({index: v, item: db.items.get(v)}))
+                .filter(x => x.item)
+                .sort(compareByComplexity);
 
-        if (slotVariants.length === 0) continue;
+            if (slotVariants.length === 0) continue;
 
-        if (slotVariants.length === 1) {
-            const v = slotVariants[0];
-            inputsHtml.push(`<span class="ingredient item-link" data-index="${v.index}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.count}</span>`);
-        } else {
-            const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
-            let head;
-            if (selectedIdx !== -1) {
-                head = slotVariants[selectedIdx];
+            if (slotVariants.length === 1) {
+                const v = slotVariants[0];
+                inputsHtml.push(`<span class="ingredient item-link" data-index="${v.index}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.count}</span>`);
             } else {
-                head = slotVariants[0];
-            }
+                const ingKey = `${recipeKey}_ing_${slotIdx}`;
+                let activeVariantIdx = (body && body._customState && body._customState.selectedIngredients.has(ingKey))
+                    ? body._customState.selectedIngredients.get(ingKey)
+                    : -1;
 
-            const variantItemsHtml = slotVariants.map(v => {
-                const isHead = v.index === head.index;
-                return `
-                        <div class="variant-item item-link" data-index="${v.index}">
+                if (activeVariantIdx === -1 || !slotVariants.some(v => v.index === activeVariantIdx)) {
+                    const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
+                    activeVariantIdx = selectedIdx !== -1 ? slotVariants[selectedIdx].index : slotVariants[0].index;
+                }
+
+                const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
+
+                const variantItemsHtml = slotVariants.map(v => {
+                    const isHead = v.index === head.index;
+                    return `
+                        <div class="variant-item variant-item-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}">
                             <span class="name" style="${isHead ? 'font-weight: 600; color: #fbbf24;' : ''}">${escapeHtml(v.item.name || "#" + v.index)}</span>
                             <span class="count">× ${slot.count}</span>
                         </div>
                     `;
-            }).join("");
+                }).join("");
 
-            inputsHtml.push(`
+                inputsHtml.push(`
                     <div class="variant-group">
-                        <span class="ingredient variant-trigger">
-                            ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.count}
-                            <span class="arrow">▼</span>
-                        </span>
-                        <div class="variant-dropdown">
+                        <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); font-family: var(--mono), monospace; font-size: 11px;">
+                            <span class="item-link" data-index="${head.index}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #f59e0b; border-right: 1px solid rgba(245, 158, 11, 0.2);" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+                                ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.count}
+                            </span>
+                            <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #f59e0b;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+                                <span class="arrow">▼</span>
+                            </span>
+                        </div>
+                        <div class="variant-dropdown" style="border-color: #f59e0b; text-align: left;">
                             <div class="variant-dropdown-header">
                                 <span>ALTERNATIVE VARIANTS</span>
                                 <span>(Lowest cost first)</span>
@@ -295,45 +508,56 @@ export function renderRecipeRow(r, db, machineOverride = null) {
                         </div>
                     </div>
                 `);
+            }
         }
     }
 
-    if (r.fluidIngredients && r.fluidIngredients.length > 0) for (const slot of r.fluidIngredients) {
-        const slotVariants = [...slot.variants].map(v => ({index: v, item: db.fluids.get(v)}))
-            .filter(x => x.item)
-            .sort(compareByComplexity);
+    if (r.fluidIngredients && r.fluidIngredients.length > 0) {
+        for (let slotIdx = 0; slotIdx < r.fluidIngredients.length; slotIdx++) {
+            const slot = r.fluidIngredients[slotIdx];
+            const slotVariants = [...slot.variants].map(v => ({index: v, item: db.fluids.get(v)}))
+                .filter(x => x.item)
+                .sort(compareByComplexity);
 
-        if (slotVariants.length === 0) continue;
+            if (slotVariants.length === 0) continue;
 
-        if (slotVariants.length === 1) {
-            const v = slotVariants[0];
-            inputsHtml.push(`<span class="ingredient fluid-link" data-index="${v.index}" style="color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08);">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.amount} mB</span>`);
-        } else {
-            const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
-            let head;
-            if (selectedIdx !== -1) {
-                head = slotVariants[selectedIdx];
+            if (slotVariants.length === 1) {
+                const v = slotVariants[0];
+                inputsHtml.push(`<span class="ingredient fluid-link" data-index="${v.index}" style="color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08);">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.amount} mB</span>`);
             } else {
-                head = slotVariants[0];
-            }
+                const fluidKey = `${recipeKey}_fluid_${slotIdx}`;
+                let activeVariantIdx = (body && body._customState && body._customState.selectedIngredients.has(fluidKey))
+                    ? body._customState.selectedIngredients.get(fluidKey)
+                    : -1;
 
-            const variantItemsHtml = slotVariants.map(v => {
-                const isHead = v.index === head.index;
-                return `
-                        <div class="variant-item fluid-link" data-index="${v.index}" style="border-left: 2px solid rgba(94, 199, 255, 0.4);">
+                if (activeVariantIdx === -1 || !slotVariants.some(v => v.index === activeVariantIdx)) {
+                    const selectedIdx = slotVariants.findIndex(v => v.index === state.selectedItem);
+                    activeVariantIdx = selectedIdx !== -1 ? slotVariants[selectedIdx].index : slotVariants[0].index;
+                }
+
+                const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
+
+                const variantItemsHtml = slotVariants.map(v => {
+                    const isHead = v.index === head.index;
+                    return `
+                        <div class="variant-item variant-fluid-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" style="border-left: 2px solid rgba(94, 199, 255, 0.4);">
                             <span class="name" style="${isHead ? 'font-weight: 600; color: #5ec7ff;' : ''}">${escapeHtml(v.item.name || "#" + v.index)}</span>
                             <span class="count" style="color: #5ec7ff;">× ${slot.amount} mB</span>
                         </div>
                     `;
-            }).join("");
+                }).join("");
 
-            inputsHtml.push(`
+                inputsHtml.push(`
                     <div class="variant-group">
-                        <span class="ingredient variant-trigger" style="border-color: #5ec7ff !important; color: #5ec7ff !important; background: rgba(94, 199, 255, 0.05) !important;">
-                            ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.amount} mB
-                            <span class="arrow" style="color: #5ec7ff;">▼</span>
-                        </span>
-                        <div class="variant-dropdown" style="border-color: rgba(94, 199, 255, 0.6);">
+                        <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #5ec7ff; background: rgba(94, 199, 255, 0.05); font-family: var(--mono), monospace; font-size: 11px;">
+                            <span class="fluid-link" data-index="${head.index}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #5ec7ff; border-right: 1px solid rgba(94, 199, 255, 0.2);" onmouseover="this.style.color='#8dd5ff'; this.style.background='rgba(94, 199, 255, 0.1)';" onmouseout="this.style.color='#5ec7ff'; this.style.background='transparent';">
+                                ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.amount} mB
+                            </span>
+                            <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #5ec7ff;" onmouseover="this.style.color='#8dd5ff'; this.style.background='rgba(94, 199, 255, 0.1)';" onmouseout="this.style.color='#5ec7ff'; this.style.background='transparent';">
+                                <span class="arrow" style="color: #5ec7ff;">▼</span>
+                            </span>
+                        </div>
+                        <div class="variant-dropdown" style="border-color: rgba(94, 199, 255, 0.6); text-align: left;">
                             <div class="variant-dropdown-header" style="color: #5ec7ff; border-bottom: 1px solid rgba(94, 199, 255, 0.2); background: rgba(94, 199, 255, 0.1);">
                                 <span>ALTERNATIVE FLUIDS</span>
                                 <span>(Lowest cost first)</span>
@@ -342,6 +566,7 @@ export function renderRecipeRow(r, db, machineOverride = null) {
                         </div>
                     </div>
                 `);
+            }
         }
     }
 
@@ -372,7 +597,20 @@ export function renderRecipeRow(r, db, machineOverride = null) {
         }
     }
 
-    const machineItem = machineOverride || db.items.get(r.machineItemIndex);
+    let allMachinesIdxs = r.allMachineIndexes || [];
+    if (allMachinesIdxs.length === 0 && r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+        allMachinesIdxs = [r.machineItemIndex];
+    }
+
+    let activeMachineIdx = (body && body._customState && body._customState.selectedMachines.has(recipeKey))
+        ? body._customState.selectedMachines.get(recipeKey)
+        : (allMachinesIdxs.length > 0 ? allMachinesIdxs[0] : r.machineItemIndex);
+
+    if (allMachinesIdxs.length > 0 && !allMachinesIdxs.includes(activeMachineIdx)) {
+        activeMachineIdx = allMachinesIdxs[0];
+    }
+
+    const machineItem = machineOverride || db.items.get(activeMachineIdx);
     const machineName = machineItem ? machineItem.name : r.recipeType;
 
     let amortizationHtml = "";
@@ -380,6 +618,47 @@ export function renderRecipeRow(r, db, machineOverride = null) {
         const taxVal = (db.meta && db.meta.machineTaxMultiplier !== undefined) ? db.meta.machineTaxMultiplier : 0.05;
         const amortization = machineItem.complexity * taxVal;
         amortizationHtml = `<span style="font-size: 10px; color: var(--text-dim); margin-top: -2px; margin-bottom: 4px;" title="Amortization (machine complexity tax): ${fmt.format(machineItem.complexity)} * ${taxVal * 100}%">amort: +${fmt.format(amortization)}</span>`;
+    }
+
+    let machineHtml = "";
+    if (allMachinesIdxs.length > 1) {
+        const sortedMachines = [...allMachinesIdxs].map(mi => ({
+            index: mi,
+            item: db.items.get(mi)
+        })).filter(x => x.item).sort(compareByComplexity);
+
+        const machineItemsHtml = sortedMachines.map(mOpt => {
+            const isHead = mOpt.index === activeMachineIdx;
+            return `
+                <div class="variant-item variant-machine-substitute" data-recipe-key="${recipeKey}" data-machine-index="${mOpt.index}">
+                    <span class="name" style="${isHead ? 'font-weight: 600; color: #fbbf24;' : ''}">${escapeHtml(mOpt.item.name)}</span>
+                </div>
+            `;
+        }).join("");
+
+        machineHtml = `
+            <div class="variant-group" style="margin-bottom: 4px;">
+                <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); font-family: var(--mono), monospace; font-size: 11px;">
+                    <strong class="machine-link" data-index="${activeMachineIdx}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #f59e0b; border-right: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; font-weight: 600; line-height: 1.3;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+                        ${escapeHtml(machineName)}
+                    </strong>
+                    <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #f59e0b;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+                        <span class="arrow">▼</span>
+                    </span>
+                </div>
+                <div class="variant-dropdown" style="text-align: left; border-color: #f59e0b;">
+                    <div class="variant-dropdown-header">
+                        <span>COMPATIBLE MACHINES</span>
+                        <span>(Lowest cost first)</span>
+                    </div>
+                    ${machineItemsHtml}
+                </div>
+            </div>
+        `;
+    } else {
+        machineHtml = machineItem
+            ? `<strong style="cursor:pointer; color: var(--accent); font-size: 11px; font-weight: 600; line-height: 1.3;" class="machine-link" data-index="${activeMachineIdx}">${escapeHtml(machineName)}</strong>`
+            : `<strong style="font-size: 11px; font-weight: 600; color: var(--accent); line-height: 1.3;">${escapeHtml(machineName)}</strong>`;
     }
 
     return `
@@ -392,7 +671,7 @@ export function renderRecipeRow(r, db, machineOverride = null) {
             </div>
             
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 120px; max-width: 260px; text-align: center; padding: 0 16px; border-left: 1px dashed rgba(255,255,255,0.08); border-right: 1px dashed rgba(255,255,255,0.08);">
-                <strong style="font-size: 11px; font-weight: 600; color: var(--accent); line-height: 1.3; overflow-wrap: break-word; word-break: break-word;" title="${escapeHtml(r.recipeType)}">${escapeHtml(machineName)}</strong>
+                ${machineHtml}
                 <span style="font-size: 20px; line-height: 1; color: var(--accent); margin: 6px 0; font-family: monospace; display: flex; align-items: center; justify-content: center;">
                   ➜
                 </span>

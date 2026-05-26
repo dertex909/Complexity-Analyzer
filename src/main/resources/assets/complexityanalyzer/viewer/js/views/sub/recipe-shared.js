@@ -242,17 +242,19 @@ export function wireVariantDropdowns(container) {
     });
 }
 
+function compareByComplexity(a, b) {
+    const compA = (a.item.complexity === -1 || (a.item.flags & 0x10)) ? Number.MAX_VALUE : a.item.complexity;
+    const compB = (b.item.complexity === -1 || (b.item.flags & 0x10)) ? Number.MAX_VALUE : b.item.complexity;
+    return compA - compB;
+}
+
 export function renderRecipeRow(r, db, machineOverride = null) {
     const inputsHtml = [];
 
     if (r.ingredients && r.ingredients.length > 0) for (const slot of r.ingredients) {
         const slotVariants = [...slot.variants].map(v => ({index: v, item: db.items.get(v)}))
             .filter(x => x.item)
-            .sort((a, b) => {
-                const compA = (a.item.complexity === -1 || (a.item.flags & 0x10)) ? Number.MAX_VALUE : a.item.complexity;
-                const compB = (b.item.complexity === -1 || (b.item.flags & 0x10)) ? Number.MAX_VALUE : b.item.complexity;
-                return compA - compB;
-            });
+            .sort(compareByComplexity);
 
         if (slotVariants.length === 0) continue;
 
@@ -299,11 +301,7 @@ export function renderRecipeRow(r, db, machineOverride = null) {
     if (r.fluidIngredients && r.fluidIngredients.length > 0) for (const slot of r.fluidIngredients) {
         const slotVariants = [...slot.variants].map(v => ({index: v, item: db.fluids.get(v)}))
             .filter(x => x.item)
-            .sort((a, b) => {
-                const compA = (a.item.complexity === -1 || (a.item.flags & 0x10)) ? Number.MAX_VALUE : a.item.complexity;
-                const compB = (b.item.complexity === -1 || (b.item.flags & 0x10)) ? Number.MAX_VALUE : b.item.complexity;
-                return compA - compB;
-            });
+            .sort(compareByComplexity);
 
         if (slotVariants.length === 0) continue;
 

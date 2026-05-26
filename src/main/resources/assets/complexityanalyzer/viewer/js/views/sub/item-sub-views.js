@@ -7,7 +7,6 @@ import {
 import {state} from "../../core/state.js";
 import {formatSourceTypeName} from "../sources.js";
 import {
-    sortRecipes,
     renderAndWireGroupedRecipes,
     renderAndWireFlatRecipes,
     wireRecipeLinks
@@ -35,16 +34,16 @@ export async function renderItemRecipesView(container) {
             return;
         }
 
-        const activeSort = localStorage.getItem("recipes-sort") || "optimal";
-        const sorted = sortRecipes(recipes, db, activeSort);
-
-        renderAndWireGroupedRecipes(
-            body,
-            sorted,
-            db,
-            () => renderItemRecipesView(container),
-            "This item is not crafted in any machine (it might be a base source)."
-        );
+        const runRender = () => {
+            renderAndWireGroupedRecipes(
+                body,
+                recipes,
+                db,
+                runRender,
+                "This item is not crafted in any machine (it might be a base source)."
+            );
+        };
+        runRender();
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading recipes: ${escapeHtml(String(e))}</div>`;
     }
@@ -78,7 +77,10 @@ export async function renderItemMachineRecipesView(container) {
             return;
         }
 
-        renderAndWireFlatRecipes(body, recipes, db, () => renderItemMachineRecipesView(container), item);
+        const runRender = () => {
+            renderAndWireFlatRecipes(body, recipes, db, runRender, item);
+        };
+        runRender();
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading machine recipes: ${escapeHtml(String(e))}</div>`;
     }
@@ -127,7 +129,10 @@ export async function renderItemUsesView(container) {
         }
 
         const recipes = db.deduplicateRecipes(rawRecipes);
-        renderAndWireFlatRecipes(body, recipes, db, () => renderItemUsesView(container));
+        const runRender = () => {
+            renderAndWireFlatRecipes(body, recipes, db, runRender);
+        };
+        runRender();
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading usage: ${escapeHtml(String(e))}</div>`;
     }

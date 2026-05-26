@@ -4,7 +4,6 @@ import {
 } from "../../core/utils.js";
 import {state} from "../../core/state.js";
 import {
-    sortRecipes,
     renderAndWireGroupedRecipes,
     renderAndWireFlatRecipes
 } from "./recipe-shared.js";
@@ -31,16 +30,16 @@ export async function renderFluidRecipesView(container) {
             return;
         }
 
-        const activeSort = localStorage.getItem("recipes-sort") || "optimal";
-        const sorted = sortRecipes(recipes, db, activeSort);
-
-        renderAndWireGroupedRecipes(
-            body,
-            sorted,
-            db,
-            () => renderFluidRecipesView(container),
-            "This fluid is not crafted in any machine (it might be a protected source)."
-        );
+        const runRender = () => {
+            renderAndWireGroupedRecipes(
+                body,
+                recipes,
+                db,
+                runRender,
+                "This fluid is not crafted in any machine (it might be a protected source)."
+            );
+        };
+        runRender();
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading recipes: ${escapeHtml(String(e))}</div>`;
     }
@@ -89,7 +88,10 @@ export async function renderFluidUsesView(container) {
         }
 
         const recipes = db.deduplicateRecipes(rawRecipes);
-        renderAndWireFlatRecipes(body, recipes, db, () => renderFluidUsesView(container));
+        const runRender = () => {
+            renderAndWireFlatRecipes(body, recipes, db, runRender);
+        };
+        runRender();
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading usage: ${escapeHtml(String(e))}</div>`;
     }

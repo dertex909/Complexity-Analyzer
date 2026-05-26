@@ -37,6 +37,34 @@ export class CabinDatabase {
             const visiting = new Set();
             const self = this;
 
+            function getHeuristicCost(rec) {
+                let cost = 0;
+                if (rec.ingredients) for (const slot of rec.ingredients) {
+                    if (slot.variants && slot.variants.length > 0) {
+                        let minComp = Infinity;
+                        for (const v of slot.variants) {
+                            const it = self.items.get(v);
+                            if (it && it.complexity !== -1 && !(it.flags & 0x10)) {
+                                if (it.complexity < minComp) minComp = it.complexity;
+                            }
+                        }
+                        if (minComp !== Infinity) {
+                            cost += slot.count * minComp;
+                        } else {
+                            cost += 1000000;
+                        }
+                    }
+                }
+                return cost;
+            }
+
+            function hasSelfLoop(rec, targetIdx) {
+                if (rec.ingredients) for (const slot of rec.ingredients) {
+                    if (slot.variants && slot.variants.includes(targetIdx)) return true;
+                }
+                return false;
+            }
+
             function solve(itemIdx) {
                 if (cache.has(itemIdx)) return cache.get(itemIdx);
                 if (visiting.has(itemIdx)) return 1;
@@ -69,13 +97,36 @@ export class CabinDatabase {
                     return 1;
                 }
 
-                const r = recipes.find(rec => rec.category === 0) || recipes[0];
+                const sortedRecipes = [...recipes].sort((a, b) => {
+                    const loopA = hasSelfLoop(a, itemIdx);
+                    const loopB = hasSelfLoop(b, itemIdx);
+                    if (loopA !== loopB) return loopA ? 1 : -1;
+
+                    const costA = getHeuristicCost(a);
+                    const costB = getHeuristicCost(b);
+                    return costA - costB;
+                });
+
+                const r = sortedRecipes[0];
 
                 let sum = 0;
                 if (r.ingredients && r.ingredients.length > 0) for (const slot of r.ingredients) {
                     if (slot.variants && slot.variants.length > 0) {
-                        const variantIdx = slot.variants[0];
-                        const variantIngCount = solve(variantIdx);
+                        let bestVariantIdx = slot.variants[0];
+                        let minComp = Infinity;
+
+                        for (const v of slot.variants) {
+                            const it = self.items.get(v);
+                            if (it) {
+                                const comp = (it.complexity === -1 || (it.flags & 0x10)) ? Infinity : it.complexity;
+                                if (comp < minComp) {
+                                    minComp = comp;
+                                    bestVariantIdx = v;
+                                }
+                            }
+                        }
+
+                        const variantIngCount = solve(bestVariantIdx);
                         sum += slot.count * variantIngCount;
                     }
                 }

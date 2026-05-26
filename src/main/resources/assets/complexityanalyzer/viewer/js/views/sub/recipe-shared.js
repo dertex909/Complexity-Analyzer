@@ -167,7 +167,7 @@ export function wireRecipeLinks(container) {
 
 export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage) {
     const machineSet = new Set();
-    for (const r of sorted) if (r.machineItemIndex >= 0) machineSet.add(r.machineItemIndex);
+    for (const r of sorted) if (r.machineItemIndex !== undefined) machineSet.add(r.machineItemIndex);
 
     if (machineSet.size === 0) {
         body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">${escapeHtml(emptyMessage)}</div></div>`;

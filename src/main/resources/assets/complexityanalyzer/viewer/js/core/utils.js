@@ -216,17 +216,35 @@ export function renderSubTabHeader(container, entity, subTabName, backButtonText
 
 export function renderMachineRecipes(machineSet, recipes, db, renderRecipeRow) {
     const html = [];
-    for (const mi of machineSet) {
-        const mItem = db.items.get(mi);
+    const sortedMachines = Array.from(machineSet).sort((a, b) => {
+        const itemA = a >= 0 ? db.items.get(a) : null;
+        const itemB = b >= 0 ? db.items.get(b) : null;
+        if (!itemA && itemB) return 1;
+        if (itemA && !itemB) return -1;
+        return 0;
+    });
+
+    for (const mi of sortedMachines) {
+        const mItem = mi >= 0 ? db.items.get(mi) : null;
         const mRecipes = recipes.filter(r => r.machineItemIndex === mi);
+        if (mRecipes.length === 0) continue;
+        const isRaw = !mItem;
+
+        const nameHtml = mItem
+            ? `<strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem.name)}</strong>`
+            : `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;
+
+        const idHtml = mItem
+            ? `<span class="mono-code" style="font-size:11px;">${escapeHtml(mItem.id)}</span>` : ``;
+
         html.push(`
-            <div class="detail-card" style="margin-bottom: 16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
-                    <span>
-                        <strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem ? mItem.name : "Unknown Machine")}</strong>
-                        <span class="mono-code" style="font-size:11px;">${escapeHtml(mItem ? mItem.id : "")}</span>
+            <div class="detail-card ${isRaw ? 'raw-craft-card' : ''}" style="margin-bottom: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid ${isRaw ? 'rgba(239, 68, 68, 0.2)' : 'var(--border)'}; padding-bottom: 8px; margin-bottom: 8px;">
+                    <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        ${nameHtml}
+                        ${idHtml}
                     </span>
-                    <span class="chip">${fmtInt.format(mRecipes.length)} recipe(s)</span>
+                    <span class="chip" style="${isRaw ? 'background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);' : ''}">${fmtInt.format(mRecipes.length)} recipe(s)</span>
                 </div>
                 ${mRecipes.map(r => renderRecipeRow(r, db)).join("")}
             </div>

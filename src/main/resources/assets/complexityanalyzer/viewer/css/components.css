@@ -888,3 +888,20 @@ input[type="search"] {
     font-weight: 600;
     margin-left: 8px;
 }
+
+.raw-craft-card {
+    border-left: 4px solid #ef4444 !important;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.04) 0%, rgba(20, 20, 25, 0) 100%);
+}
+
+.raw-craft-badge {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}

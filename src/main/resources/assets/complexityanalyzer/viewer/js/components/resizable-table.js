@@ -190,6 +190,9 @@ export function initColumnResizers(headId, tableId, cssVarPrefix, defaults, getM
 
             const minWidths = getMinWidths();
 
+            let currentPct_i = startPct[index];
+            let currentPct_j = startPct[index + 1];
+
             const onPointerMove = (moveEvent) => {
                 const deltaX = moveEvent.clientX - startX;
                 const deltaPct = (deltaX / totalWidth) * 100;
@@ -210,16 +213,11 @@ export function initColumnResizers(headId, tableId, cssVarPrefix, defaults, getM
 
                 const clampedDeltaPct = Math.max(minDeltaPct, Math.min(deltaPct, maxDeltaPct));
 
-                const newPct_i = startPct[i] + clampedDeltaPct;
-                const newPct_j = startPct[j] - clampedDeltaPct;
+                currentPct_i = startPct[i] + clampedDeltaPct;
+                currentPct_j = startPct[j] - clampedDeltaPct;
 
-                document.documentElement.style.setProperty(`${cssVarPrefix}-${i}`, `${newPct_i}%`);
-                document.documentElement.style.setProperty(`${cssVarPrefix}-${j}`, `${newPct_j}%`);
-
-                localStorage.setItem(`${storageKey}-${i}`, `${newPct_i}%`);
-                localStorage.setItem(`${storageKey}-${j}`, `${newPct_j}%`);
-
-                window.dispatchEvent(new Event('resize'));
+                document.documentElement.style.setProperty(`${cssVarPrefix}-${i}`, `${currentPct_i}%`);
+                document.documentElement.style.setProperty(`${cssVarPrefix}-${j}`, `${currentPct_j}%`);
             };
 
             const onPointerUp = (upEvent) => {
@@ -230,6 +228,11 @@ export function initColumnResizers(headId, tableId, cssVarPrefix, defaults, getM
                 }
                 handle.removeEventListener("pointermove", onPointerMove);
                 handle.removeEventListener("pointerup", onPointerUp);
+
+                localStorage.setItem(`${storageKey}-${index}`, `${currentPct_i}%`);
+                localStorage.setItem(`${storageKey}-${index + 1}`, `${currentPct_j}%`);
+
+                window.dispatchEvent(new Event('resize'));
             };
 
             handle.addEventListener("pointermove", onPointerMove);

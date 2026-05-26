@@ -1,5 +1,158 @@
-import {escapeHtml, fmt} from "../../core/utils.js";
-import {state} from "../../core/state.js";
+import {escapeHtml, fmt, renderMachineRecipes} from "../../core/utils.js";
+import {state, setState} from "../../core/state.js";
+
+export function getRecipeCost(r, db) {
+    let cost = 0;
+    const machineItem = db.items.get(r.machineItemIndex);
+    if (machineItem && machineItem.complexity > 0) {
+        const taxVal = (db.meta && db.meta.machineTaxMultiplier !== undefined) ? db.meta.machineTaxMultiplier : 0.05;
+        cost += machineItem.complexity * taxVal;
+    }
+    if (r.ingredients) for (const slot of r.ingredients) {
+        if (slot.variants && slot.variants.length > 0) {
+            const firstVar = db.items.get(slot.variants[0]);
+            if (firstVar && isFinite(firstVar.complexity) && firstVar.complexity > 0) {
+                cost += slot.count * firstVar.complexity;
+            }
+        }
+    }
+    if (r.fluidIngredients) for (const slot of r.fluidIngredients) {
+        if (slot.variants && slot.variants.length > 0) {
+            const firstVar = db.fluids.get(slot.variants[0]);
+            if (firstVar && isFinite(firstVar.complexity) && firstVar.complexity > 0) {
+                cost += (slot.amount / 1000) * firstVar.complexity;
+            }
+        }
+    }
+    return cost;
+}
+
+export function isRecipeCalculable(r, db) {
+    if (r.ingredients) for (const slot of r.ingredients) {
+        if (slot.variants && slot.variants.length > 0) {
+            const firstVar = db.items.get(slot.variants[0]);
+            if (firstVar && (firstVar.complexity === -1 || (firstVar.flags & 0x10))) return false;
+        }
+    }
+    if (r.fluidIngredients) for (const slot of r.fluidIngredients) {
+        if (slot.variants && slot.variants.length > 0) {
+            const firstVar = db.fluids.get(slot.variants[0]);
+            if (firstVar && (firstVar.complexity === -1 || (firstVar.flags & 0x10))) return false;
+        }
+    }
+    return true;
+}
+
+export function sortRecipes(recipes, db, sortType) {
+    const sorted = [...recipes];
+    sorted.sort((a, b) => {
+        const calcA = isRecipeCalculable(a, db);
+        const calcB = isRecipeCalculable(b, db);
+
+        if (calcA !== calcB) return calcA ? -1 : 1;
+
+        const costA = getRecipeCost(a, db);
+        const costB = getRecipeCost(b, db);
+
+        if (sortType === "cheapest") {
+            if (Math.abs(costA - costB) > 0.001) return costA - costB;
+            if (a.category !== b.category) return a.category - b.category;
+            return b.priority - a.priority;
+        }
+
+        if (sortType === "primary") {
+            if (a.category !== b.category) return a.category - b.category;
+            if (Math.abs(costA - costB) > 0.001) return costA - costB;
+            return b.priority - a.priority;
+        }
+
+        const isPrimaryA = a.category === 0;
+        const isPrimaryB = b.category === 0;
+        if (isPrimaryA !== isPrimaryB) return isPrimaryA ? -1 : 1;
+        if (Math.abs(costA - costB) > 0.001) return costA - costB;
+        return b.priority - a.priority;
+    });
+    return sorted;
+}
+
+export function renderRecipeControlsHtml(activeSort, recipeCount) {
+    return `
+        <div class="controls" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center; background: var(--bg-panel); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;">
+            <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 500; letter-spacing: 1px;">Sort recipes by:</span>
+            <select id="recipes-sort" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
+                <option value="optimal" ${activeSort === "optimal" ? "selected" : ""}>Optimal (Primary first, sorted by cost)</option>
+                <option value="primary" ${activeSort === "primary" ? "selected" : ""}>Primary recipes first</option>
+                <option value="cheapest" ${activeSort === "cheapest" ? "selected" : ""}>Cheapest first (Absolute Cost)</option>
+            </select>
+            <span class="flex-grow"></span>
+            <span class="chip" style="font-size: 11px; padding: 2px 8px;">${recipeCount} recipe(s)</span>
+        </div>
+    `;
+}
+
+export function wireRecipeSortListener(container, callback) {
+    const select = container.querySelector("#recipes-sort");
+    if (select) select.addEventListener("change", (e) => {
+        localStorage.setItem("recipes-sort", e.target.value);
+        callback();
+    });
+}
+
+export function wireRecipeLinks(container) {
+    container.querySelectorAll(".ingredient-link, .item-link").forEach(el => {
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
+        });
+    });
+    container.querySelectorAll(".fluid-link").forEach(el => {
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
+        });
+    });
+}
+
+export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage) {
+    const machineSet = new Set();
+    for (const r of sorted) if (r.machineItemIndex >= 0) machineSet.add(r.machineItemIndex);
+
+    if (machineSet.size === 0) {
+        body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">${escapeHtml(emptyMessage)}</div></div>`;
+        return;
+    }
+
+    const activeSort = localStorage.getItem("recipes-sort") || "optimal";
+
+    body.innerHTML = renderRecipeControlsHtml(activeSort, sorted.length) + `
+        <div class="recipes-grouped-list">
+            ${renderMachineRecipes(machineSet, sorted, db, renderRecipeRow)}
+        </div>
+    `;
+
+    body.querySelectorAll(".machine-link").forEach(el => {
+        el.addEventListener("click", () => {
+            setState({tab: "item-machine-recipes", selectedItem: parseInt(el.dataset.index, 10)});
+        });
+    });
+
+    wireRecipeLinks(body);
+    wireRecipeSortListener(body, onSortChange);
+}
+
+export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machineOverride = null) {
+    const activeSort = localStorage.getItem("recipes-sort") || "optimal";
+    const sorted = sortRecipes(recipes, db, activeSort);
+
+    body.innerHTML = renderRecipeControlsHtml(activeSort, recipes.length) + `
+        <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
+            ${sorted.map(r => renderRecipeRow(r, db, machineOverride)).join("")}
+        </div>
+    `;
+
+    wireRecipeLinks(body);
+    wireRecipeSortListener(body, onSortChange);
+}
 
 export function renderRecipeRow(r, db, machineOverride = null) {
     const inputsHtml = [];

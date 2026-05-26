@@ -2,13 +2,16 @@ import {
     escapeHtml,
     formatRawTooltip,
     fmt,
-    fmtInt,
-    renderSubTabHeader,
-    renderMachineRecipes
+    renderSubTabHeader
 } from "../../core/utils.js";
-import {state, setState} from "../../core/state.js";
+import {state} from "../../core/state.js";
 import {formatSourceTypeName} from "../sources.js";
-import {renderRecipeRow} from "./recipe-shared.js";
+import {
+    sortRecipes,
+    renderAndWireGroupedRecipes,
+    renderAndWireFlatRecipes,
+    wireRecipeLinks
+} from "./recipe-shared.js";
 
 export async function renderItemRecipesView(container) {
     const db = state.db;
@@ -32,25 +35,16 @@ export async function renderItemRecipesView(container) {
             return;
         }
 
-        const machineSet = new Set();
-        for (const r of recipes) {
-            if (r.machineItemIndex >= 0) machineSet.add(r.machineItemIndex);
-        }
+        const activeSort = localStorage.getItem("recipes-sort") || "optimal";
+        const sorted = sortRecipes(recipes, db, activeSort);
 
-        if (machineSet.size === 0) {
-            body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">This item is not crafted in any machine (it might be a base source).</div></div>`;
-            return;
-        }
-
-        body.innerHTML = renderMachineRecipes(machineSet, recipes, db, renderRecipeRow);
-
-        body.querySelectorAll(".machine-link").forEach(el => {
-            el.addEventListener("click", () => {
-                setState({tab: "item-machine-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-            });
-        });
-
-        wireIngredientLinks(body);
+        renderAndWireGroupedRecipes(
+            body,
+            sorted,
+            db,
+            () => renderItemRecipesView(container),
+            "This item is not crafted in any machine (it might be a base source)."
+        );
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading recipes: ${escapeHtml(String(e))}</div>`;
     }
@@ -84,16 +78,7 @@ export async function renderItemMachineRecipesView(container) {
             return;
         }
 
-        body.innerHTML = `
-            <div style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px;">
-                <strong>Machine Overview:</strong> This machine has <strong>${fmtInt.format(recipes.length)}</strong> registered recipe(s).
-            </div>
-            <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
-                ${recipes.map(r => renderRecipeRow(r, db, item)).join("")}
-            </div>
-        `;
-
-        wireIngredientLinks(body);
+        renderAndWireFlatRecipes(body, recipes, db, () => renderItemMachineRecipesView(container), item);
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading machine recipes: ${escapeHtml(String(e))}</div>`;
     }
@@ -142,28 +127,7 @@ export async function renderItemUsesView(container) {
         }
 
         const recipes = db.deduplicateRecipes(rawRecipes);
-
-        body.innerHTML = `
-            <div style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px;">
-                <strong>Usage Overview:</strong> Used as a direct or alternative ingredient in <strong>${fmtInt.format(recipes.length)}</strong> recipe(s).
-            </div>
-            <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
-                ${recipes.map(r => renderRecipeRow(r, db)).join("")}
-            </div>
-        `;
-
-        body.querySelectorAll(".ingredient-link, .item-link").forEach(el => {
-            el.addEventListener("click", (e) => {
-                e.stopPropagation();
-                setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-            });
-        });
-        body.querySelectorAll(".fluid-link").forEach(el => {
-            el.addEventListener("click", (e) => {
-                e.stopPropagation();
-                setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-            });
-        });
+        renderAndWireFlatRecipes(body, recipes, db, () => renderItemUsesView(container));
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading usage: ${escapeHtml(String(e))}</div>`;
     }
@@ -231,23 +195,8 @@ export async function renderItemBaseSourcesView(container) {
         }
 
         body.innerHTML = html;
-        wireIngredientLinks(body);
+        wireRecipeLinks(body);
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading sources: ${escapeHtml(String(e))}</div>`;
     }
-}
-
-function wireIngredientLinks(container) {
-    container.querySelectorAll(".ingredient-link, .item-link").forEach(el => {
-        el.addEventListener("click", (e) => {
-            e.stopPropagation();
-            setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-        });
-    });
-    container.querySelectorAll(".fluid-link").forEach(el => {
-        el.addEventListener("click", (e) => {
-            e.stopPropagation();
-            setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
-        });
-    });
 }

@@ -3,7 +3,8 @@ import {
     fmt,
     renderSubTabHeader
 } from "../../core/utils.js";
-import {state, setState} from "../../core/state.js";
+import {state} from "../../core/state.js";
+import {wireRecipeLinks} from "./recipe-shared.js";
 
 export async function renderMobDropsView(container) {
     const db = state.db;
@@ -30,7 +31,7 @@ export async function renderMobDropsView(container) {
         body.innerHTML = `
             <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
                 ${drops.map(d => `
-                    <div class="card drop-row ingredient" data-index="${d.itemIndex}" style="display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 10px 14px; cursor: pointer; border-radius: 6px; border: 1px solid var(--border); transition: border-color 0.15s ease;">
+                    <div class="card drop-row ingredient ingredient-link" data-index="${d.itemIndex}" style="display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 10px 14px; cursor: pointer; border-radius: 6px; border: 1px solid var(--border); transition: border-color 0.15s ease;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <strong style="font-size: 14px; color: var(--text);">${escapeHtml(d.itemName || "?")}</strong>
                             <span class="hint" style="font-size: 13px;">— ${fmt.format(d.yieldPerKill)}/kill${d.killMethod ? ` · ${escapeHtml(d.killMethod)}` : ""}</span>
@@ -41,12 +42,7 @@ export async function renderMobDropsView(container) {
             </div>
         `;
 
-        body.querySelectorAll(".ingredient").forEach(el => {
-            el.addEventListener("click", () => {
-                const idx = parseInt(el.dataset.index, 10);
-                if (idx >= 0) setState({tab: "item-recipes", selectedItem: idx});
-            });
-        });
+        wireRecipeLinks(body);
     } catch (e) {
         body.innerHTML = `<div style="color:var(--err)">Error loading drops: ${escapeHtml(String(e))}</div>`;
     }

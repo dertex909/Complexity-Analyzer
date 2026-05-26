@@ -1,6 +1,33 @@
 import {escapeHtml, fmt} from "../../core/utils.js";
 import {state, setState} from "../../core/state.js";
 
+function saveScrollPositions(elem) {
+    const scrollPositions = [];
+    let parent = elem;
+    while (parent) {
+        if (parent.scrollTop !== undefined) {
+            scrollPositions.push({element: parent, top: parent.scrollTop, left: parent.scrollLeft});
+        }
+        parent = parent.parentElement;
+    }
+    const winTop = window.scrollY || document.documentElement.scrollTop;
+    const winLeft = window.scrollX || document.documentElement.scrollLeft;
+    return {
+        winTop,
+        winLeft,
+        scrollPositions
+    };
+}
+
+function restoreScrollPositions(saved) {
+    if (!saved) return;
+    for (const p of saved.scrollPositions) {
+        p.element.scrollTop = p.top;
+        p.element.scrollLeft = p.left;
+    }
+    window.scrollTo(saved.winLeft, saved.winTop);
+}
+
 export function getRecipeIdentityKey(r) {
     const ingPart = r.ingredients ? r.ingredients.map(ing => {
         const vars = ing.variants ? [...ing.variants].sort().join(",") : "";
@@ -48,9 +75,7 @@ export function mergeDuplicateRecipes(recipes) {
 export function getRecipeCost(r, db, body = null) {
     let cost = 0;
     const recipeKey = getRecipeIdentityKey(r);
-    let activeMachineIdx = (body && body._customState && body._customState.selectedMachines.has(recipeKey))
-        ? body._customState.selectedMachines.get(recipeKey)
-        : r.machineItemIndex;
+    const activeMachineIdx = resolveBestMachine(r, db, body);
 
     const machineItem = db.items.get(activeMachineIdx);
     if (machineItem) {
@@ -178,7 +203,7 @@ export function getRecipeUnitCost(r, db, body = null) {
     return totalCost;
 }
 
-export function sortRecipes(recipes, db, sortType, body = null) {
+export function sortRecipes(recipes, db, sortType) {
     const sorted = [...recipes];
     sorted.sort((a, b) => {
         const calcA = isRecipeCalculable(a, db);
@@ -186,24 +211,52 @@ export function sortRecipes(recipes, db, sortType, body = null) {
 
         if (calcA !== calcB) return calcA ? -1 : 1;
 
-        const activeMachineA = (body && body._customState && body._customState.selectedMachines.has(getRecipeIdentityKey(a)))
-            ? body._customState.selectedMachines.get(getRecipeIdentityKey(a))
-            : a.machineItemIndex;
+        let allMsA = a.allMachineIndexes || [];
+        if (allMsA.length === 0 && a.machineItemIndex !== undefined && a.machineItemIndex >= 0) allMsA = [a.machineItemIndex];
+        let bestMachineIdxA = a.machineItemIndex;
+        if (allMsA.length > 0) {
+            let minVal = Infinity;
+            for (const mi of allMsA) {
+                const m = db.items.get(mi);
+                if (m) {
+                    const isC = !!((m.flags & 0x01) && m.complexity > 0 && !(m.flags & 0x10));
+                    const cv = isC ? m.complexity : 10000000;
+                    if (cv < minVal) {
+                        minVal = cv;
+                        bestMachineIdxA = mi;
+                    }
+                }
+            }
+        }
 
-        const activeMachineB = (body && body._customState && body._customState.selectedMachines.has(getRecipeIdentityKey(b)))
-            ? body._customState.selectedMachines.get(getRecipeIdentityKey(b))
-            : b.machineItemIndex;
+        let allMsB = b.allMachineIndexes || [];
+        if (allMsB.length === 0 && b.machineItemIndex !== undefined && b.machineItemIndex >= 0) allMsB = [b.machineItemIndex];
+        let bestMachineIdxB = b.machineItemIndex;
+        if (allMsB.length > 0) {
+            let minVal = Infinity;
+            for (const mi of allMsB) {
+                const m = db.items.get(mi);
+                if (m) {
+                    const isC = !!((m.flags & 0x01) && m.complexity > 0 && !(m.flags & 0x10));
+                    const cv = isC ? m.complexity : 10000000;
+                    if (cv < minVal) {
+                        minVal = cv;
+                        bestMachineIdxB = mi;
+                    }
+                }
+            }
+        }
 
-        const machineA = db.items.get(activeMachineA);
-        const machineB = db.items.get(activeMachineB);
+        const machineA = db.items.get(bestMachineIdxA);
+        const machineB = db.items.get(bestMachineIdxB);
 
-        const craftableA = activeMachineA < 0 || (machineA ? !!((machineA.flags & 0x01) && machineA.complexity > 0 && !(machineA.flags & 0x10)) : false);
-        const craftableB = activeMachineB < 0 || (machineB ? !!((machineB.flags & 0x01) && machineB.complexity > 0 && !(machineB.flags & 0x10)) : false);
+        const craftableA = bestMachineIdxA < 0 || (machineA ? !!((machineA.flags & 0x01) && machineA.complexity > 0 && !(machineA.flags & 0x10)) : false);
+        const craftableB = bestMachineIdxB < 0 || (machineB ? !!((machineB.flags & 0x01) && machineB.complexity > 0 && !(machineB.flags & 0x10)) : false);
 
         if (craftableA !== craftableB) return craftableA ? -1 : 1;
 
-        const costA = getRecipeUnitCost(a, db, body);
-        const costB = getRecipeUnitCost(b, db, body);
+        const costA = getRecipeUnitCost(a, db, null);
+        const costB = getRecipeUnitCost(b, db, null);
 
         if (sortType === "cheapest") {
             if (Math.abs(costA - costB) > 0.001) return costA - costB;
@@ -262,6 +315,8 @@ export function wireRecipeLinks(container) {
 }
 
 export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage) {
+    const scrollState = saveScrollPositions(body);
+
     if (!body._customState) {
         body._customState = {
             selectedMachines: new Map(),
@@ -271,7 +326,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
 
     const merged = mergeDuplicateRecipes(sorted);
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
-    const resorted = sortRecipes(merged, db, activeSort, body);
+    const resorted = sortRecipes(merged, db, activeSort);
 
     const machineToRecipes = new Map();
     for (const r of resorted) {
@@ -280,10 +335,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
             allMachinesIdxs = [r.machineItemIndex];
         }
 
-        const recipeKey = getRecipeIdentityKey(r);
-        const activeMachineIdx = body._customState.selectedMachines.has(recipeKey)
-            ? body._customState.selectedMachines.get(recipeKey)
-            : (allMachinesIdxs.length > 0 ? allMachinesIdxs[0] : (r.machineItemIndex !== undefined ? r.machineItemIndex : -1));
+        const activeMachineIdx = resolveBestMachine(r, db, body);
 
         if (!machineToRecipes.has(activeMachineIdx)) {
             machineToRecipes.set(activeMachineIdx, []);
@@ -345,9 +397,15 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
     wireRecipeLinks(body);
     wireRecipeSortListener(body, onSortChange);
     wireRecipeDropdowns(body, onSortChange);
+
+    restoreScrollPositions(scrollState);
+    requestAnimationFrame(() => {
+        restoreScrollPositions(scrollState);
+    });
 }
 
 export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machineOverride = null) {
+    const scrollState = saveScrollPositions(body);
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
 
     if (!body._customState) {
@@ -358,7 +416,7 @@ export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machin
     }
 
     const merged = mergeDuplicateRecipes(recipes);
-    const sorted = sortRecipes(merged, db, activeSort, body);
+    const sorted = sortRecipes(merged, db, activeSort);
 
     body.innerHTML = renderRecipeControlsHtml(activeSort, merged.length) + `
         <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
@@ -369,6 +427,11 @@ export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machin
     wireRecipeLinks(body);
     wireRecipeSortListener(body, onSortChange);
     wireRecipeDropdowns(body, onSortChange);
+
+    restoreScrollPositions(scrollState);
+    requestAnimationFrame(() => {
+        restoreScrollPositions(scrollState);
+    });
 }
 
 export function wireRecipeDropdowns(container, onReRender) {
@@ -409,9 +472,10 @@ export function wireRecipeDropdowns(container, onReRender) {
         el.addEventListener("click", (e) => {
             e.stopPropagation();
             const recipeKey = el.dataset.recipeKey;
+            const machineKey = el.dataset.machineKey || recipeKey;
             const machineIndex = parseInt(el.dataset.machineIndex, 10);
             if (container && container._customState) {
-                container._customState.selectedMachines.set(recipeKey, machineIndex);
+                container._customState.selectedMachines.set(machineKey, machineIndex);
             }
             onReRender();
         });
@@ -456,6 +520,37 @@ function resolveActiveVariant(slotVariants, activeVariantIdx, state) {
         activeVariantIdx = selectedIdx !== -1 ? slotVariants[selectedIdx].index : slotVariants[0].index;
     }
     return activeVariantIdx;
+}
+
+export function resolveBestMachine(r, db, body) {
+    const machineKey = r.recipeType || "minecraft:custom";
+    if (body && body._customState && body._customState.selectedMachines.has(machineKey)) {
+        return body._customState.selectedMachines.get(machineKey);
+    }
+
+    let allMs = r.allMachineIndexes || [];
+    if (allMs.length === 0 && r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
+        allMs = [r.machineItemIndex];
+    }
+
+    if (allMs.length > 0) {
+        let minMachineCost = Infinity;
+        let bestMachineIdx = allMs[0];
+        const taxVal = (db.meta && db.meta.machineTaxMultiplier !== undefined) ? db.meta.machineTaxMultiplier : 0.05;
+        for (const mi of allMs) {
+            const mItem = db.items.get(mi);
+            if (mItem) {
+                const isCraftable = !!((mItem.flags & 0x01) && mItem.complexity > 0 && !(mItem.flags & 0x10));
+                const costVal = isCraftable ? (mItem.complexity * taxVal) : 10000000;
+                if (costVal < minMachineCost) {
+                    minMachineCost = costVal;
+                    bestMachineIdx = mi;
+                }
+            }
+        }
+        return bestMachineIdx;
+    }
+    return r.machineItemIndex !== undefined ? r.machineItemIndex : -1;
 }
 
 export function renderRecipeRow(r, db, body = null, machineOverride = null) {
@@ -604,13 +699,8 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         allMachinesIdxs = [r.machineItemIndex];
     }
 
-    let activeMachineIdx = (body && body._customState && body._customState.selectedMachines.has(recipeKey))
-        ? body._customState.selectedMachines.get(recipeKey)
-        : (allMachinesIdxs.length > 0 ? allMachinesIdxs[0] : r.machineItemIndex);
-
-    if (allMachinesIdxs.length > 0 && !allMachinesIdxs.includes(activeMachineIdx)) {
-        activeMachineIdx = allMachinesIdxs[0];
-    }
+    const machineKey = r.recipeType || "minecraft:custom";
+    let activeMachineIdx = resolveBestMachine(r, db, body);
 
     const machineItem = machineOverride || db.items.get(activeMachineIdx);
     const machineName = machineItem ? machineItem.name : r.recipeType;
@@ -632,7 +722,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         const machineItemsHtml = sortedMachines.map(mOpt => {
             const isHead = mOpt.index === activeMachineIdx;
             return `
-                <div class="variant-item variant-machine-substitute" data-recipe-key="${recipeKey}" data-machine-index="${mOpt.index}">
+                <div class="variant-item variant-machine-substitute" data-recipe-key="${recipeKey}" data-machine-key="${machineKey}" data-machine-index="${mOpt.index}">
                     <span class="name" style="${isHead ? 'font-weight: 600; color: #fbbf24;' : ''}">${escapeHtml(mOpt.item.name)}</span>
                 </div>
             `;

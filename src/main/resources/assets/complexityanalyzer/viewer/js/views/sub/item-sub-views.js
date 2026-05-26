@@ -121,30 +121,47 @@ export async function renderItemUsesView(container) {
             return;
         }
 
+        const rawRecipes = [];
+
+        for (const prodIdx of usage) {
+            try {
+                const itemRecipes = await db.getItemRecipes(prodIdx);
+                for (const r of itemRecipes) {
+                    let usesItem = false;
+                    if (r.ingredients) for (const slot of r.ingredients) {
+                        if (slot.variants && slot.variants.includes(itemIndex)) {
+                            usesItem = true;
+                            break;
+                        }
+                    }
+                    if (usesItem) rawRecipes.push(r);
+                }
+            } catch (e) {
+                console.error("Error loading usage recipes:", e);
+            }
+        }
+
+        const recipes = db.deduplicateRecipes(rawRecipes);
+
         body.innerHTML = `
-            <div style="padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px;">
-                <strong>Usage Overview:</strong> Used as a direct or alternative ingredient in <strong>${fmtInt.format(usage.length)}</strong> recipe(s).
+            <div style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px;">
+                <strong>Usage Overview:</strong> Used as a direct or alternative ingredient in <strong>${fmtInt.format(recipes.length)}</strong> recipe(s).
             </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;">
-                ${usage.map(idx => {
-            const it = db.items.get(idx);
-            if (!it) return "";
-            return `
-                        <div class="source-category ingredient-link" data-index="${idx}" style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="font-weight:600; color:var(--text);">${escapeHtml(it.name)}</div>
-                                <div class="mono-code" style="font-size:10px; color:var(--text-muted);">${escapeHtml(it.id)}</div>
-                            </div>
-                            <span class="category-pill cat-${it.categoryName || "Uncalculable"}" style="font-size:9px;">${it.categoryName}</span>
-                        </div>
-                    `;
-        }).join("")}
+            <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
+                ${recipes.map(r => renderRecipeRow(r, db)).join("")}
             </div>
         `;
 
-        body.querySelectorAll(".ingredient-link").forEach(el => {
-            el.addEventListener("click", () => {
+        body.querySelectorAll(".ingredient-link, .item-link").forEach(el => {
+            el.addEventListener("click", (e) => {
+                e.stopPropagation();
                 setState({tab: "item-recipes", selectedItem: parseInt(el.dataset.index, 10)});
+            });
+        });
+        body.querySelectorAll(".fluid-link").forEach(el => {
+            el.addEventListener("click", (e) => {
+                e.stopPropagation();
+                setState({tab: "fluid-recipes", selectedItem: parseInt(el.dataset.index, 10)});
             });
         });
     } catch (e) {

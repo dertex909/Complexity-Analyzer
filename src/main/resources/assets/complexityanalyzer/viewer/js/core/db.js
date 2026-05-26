@@ -147,30 +147,37 @@ export class CabinDatabase {
         return m ? readDropsForMob(await this._ensure('_dB', SEC.DROPS), this.strings, m.dropsOffset, m.dropCount) : [];
     }
 
+    getRecipeKey(r) {
+        return `${r.recipeType}_${r.machineItemIndex}_${r.priority}_` +
+            (r.ingredients ? r.ingredients.map(ing => ing.variants.join(",")).join(";") : "") + "_" +
+            (r.fluidIngredients ? r.fluidIngredients.map(f => f.variants.join(",")).join(";") : "") + "_" +
+            (r.itemOutputs ? r.itemOutputs.map(out => `${out.itemIndex}:${out.count}`).join(",") : "") + "_" +
+            (r.fluidOutputs ? r.fluidOutputs.map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "");
+    }
+
+    deduplicateRecipes(recipesList) {
+        const unique = [];
+        const seen = new Set();
+        for (const r of recipesList) {
+            const key = this.getRecipeKey(r);
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(r);
+            }
+        }
+        return unique;
+    }
+
     async getRecipesByMachine(machineItemIndex) {
         const machine = this.machines.find(m => m.itemIndex === machineItemIndex);
         if (!machine) return [];
 
-        const recipes = [];
-        const seenKeys = new Set();
-
-        const addRecipe = (r) => {
-            const key = `${r.recipeType}_${r.machineItemIndex}_${r.priority}_` +
-                (r.ingredients ? r.ingredients.map(ing => ing.variants.join(",")).join(";") : "") + "_" +
-                (r.fluidIngredients ? r.fluidIngredients.map(f => f.variants.join(",")).join(";") : "") + "_" +
-                (r.itemOutputs ? r.itemOutputs.map(out => `${out.itemIndex}:${out.count}`).join(",") : "") + "_" +
-                (r.fluidOutputs ? r.fluidOutputs.map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "");
-
-            if (!seenKeys.has(key)) {
-                seenKeys.add(key);
-                recipes.push(r);
-            }
-        };
+        const rawRecipes = [];
 
         for (const itemIdx of machine.items) {
             try {
                 const itemRecipes = await this.getItemRecipes(itemIdx);
-                for (const r of itemRecipes) addRecipe(r);
+                rawRecipes.push(...itemRecipes);
             } catch (e) {
                 console.error("Error loading item recipes:", e);
             }
@@ -179,10 +186,11 @@ export class CabinDatabase {
         for (let i = 0; i < this.fluids.count; i++) {
             try {
                 const fluidRecipes = await this.getFluidRecipes(i);
-                for (const r of fluidRecipes) if (r.machineItemIndex === machineItemIndex) addRecipe(r);
+                for (const r of fluidRecipes) if (r.machineItemIndex === machineItemIndex) rawRecipes.push(r);
             } catch (e) {
             }
         }
-        return recipes;
+
+        return this.deduplicateRecipes(rawRecipes);
     }
 }

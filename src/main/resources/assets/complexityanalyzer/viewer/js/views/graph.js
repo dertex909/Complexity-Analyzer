@@ -2,8 +2,6 @@ import {state, selectItem} from "../core/state.js";
 import {readRecipesAt} from "../core/cabin.js";
 import * as d3 from "../core/libs/d3.js";
 
-console.log("[GRAPH_DEBUG] Module graph.js loaded.");
-
 let activeSim = null;
 let activeResizeListener = null;
 let cachedHash = null;
@@ -15,13 +13,9 @@ const LAYOUT_VERSION = "v5_perfect_spread";
 const categoryColors = new Map();
 
 export async function renderGraph(container) {
-    console.log("[GRAPH_DEBUG] renderGraph() invoked.");
 
     const db = state.db;
-    if (!db) {
-        console.warn("[GRAPH_DEBUG] Database is not ready.");
-        return;
-    }
+    if (!db) return;
 
     const overlay = container.querySelector("#graph-overlay");
     if (overlay) {
@@ -281,13 +275,11 @@ export async function renderGraph(container) {
     }
 
     if (cachedHash === cacheKey && cachedActiveNodes && cachedResolvedEdges) {
-        console.log("[GRAPH_DEBUG] Restored from global cache. Version:", LAYOUT_VERSION);
         activeNodes = cachedActiveNodes;
         resolvedEdges = cachedResolvedEdges;
         neighborMap = cachedNeighborMap;
         isLayoutCached = true;
     } else {
-        console.log("[GRAPH_DEBUG] Cache miss. Regenerating graph with spread layout forces...");
         const itemsCount = db.items.count;
         const nodes = [];
         const edges = [];
@@ -425,8 +417,6 @@ export async function renderGraph(container) {
         doTicks();
     });
 
-    console.log("[GRAPH_DEBUG] Graph initialized, binding event listeners.");
-
     mCanvas.addEventListener("pointerdown", e => {
         mCanvas.setPointerCapture(e.pointerId);
         lastMouse = {x: e.clientX, y: e.clientY};
@@ -514,8 +504,6 @@ export async function renderGraph(container) {
 
     window.addEventListener("resize", onResize);
     activeResizeListener = onResize;
-
-    console.log("[GRAPH_DEBUG] Graph interface ready.");
 
     if (overlay) {
         overlay.innerHTML = `

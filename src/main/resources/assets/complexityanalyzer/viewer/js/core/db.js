@@ -148,11 +148,20 @@ export class CabinDatabase {
     }
 
     getRecipeKey(r) {
-        return `${r.recipeType}_${r.machineItemIndex}_${r.priority}_` +
-            (r.ingredients ? r.ingredients.map(ing => ing.variants.join(",")).join(";") : "") + "_" +
-            (r.fluidIngredients ? r.fluidIngredients.map(f => f.variants.join(",")).join(";") : "") + "_" +
-            (r.itemOutputs ? r.itemOutputs.map(out => `${out.itemIndex}:${out.count}`).join(",") : "") + "_" +
-            (r.fluidOutputs ? r.fluidOutputs.map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "");
+        const ingPart = r.ingredients ? r.ingredients.map(ing => {
+            const vars = ing.variants ? [...ing.variants].sort().join(",") : "";
+            return `${vars}:${ing.count}`;
+        }).join(";") : "";
+
+        const fluidIngPart = r.fluidIngredients ? r.fluidIngredients.map(f => {
+            const vars = f.variants ? [...f.variants].sort().join(",") : "";
+            return `${vars}:${f.amount}`;
+        }).join(";") : "";
+
+        const itemOutPart = r.itemOutputs ? [...r.itemOutputs].sort((a, b) => a.itemIndex - b.itemIndex).map(out => `${out.itemIndex}:${out.count}`).join(",") : "";
+        const fluidOutPart = r.fluidOutputs ? [...r.fluidOutputs].sort((a, b) => a.fluidIndex - b.fluidIndex).map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "";
+
+        return `${r.recipeType}_${r.machineItemIndex}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
     }
 
     deduplicateRecipes(recipesList) {

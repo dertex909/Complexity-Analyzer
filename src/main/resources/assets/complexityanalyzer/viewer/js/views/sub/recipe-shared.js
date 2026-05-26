@@ -60,12 +60,6 @@ export function sortRecipes(recipes, db, sortType) {
             return b.priority - a.priority;
         }
 
-        if (sortType === "primary") {
-            if (a.category !== b.category) return a.category - b.category;
-            if (Math.abs(costA - costB) > 0.001) return costA - costB;
-            return b.priority - a.priority;
-        }
-
         const isPrimaryA = a.category === 0;
         const isPrimaryB = b.category === 0;
         if (isPrimaryA !== isPrimaryB) return isPrimaryA ? -1 : 1;
@@ -81,7 +75,6 @@ export function renderRecipeControlsHtml(activeSort, recipeCount) {
             <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 500; letter-spacing: 1px;">Sort recipes by:</span>
             <select id="recipes-sort" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
                 <option value="optimal" ${activeSort === "optimal" ? "selected" : ""}>Optimal (Primary first, sorted by cost)</option>
-                <option value="primary" ${activeSort === "primary" ? "selected" : ""}>Primary recipes first</option>
                 <option value="cheapest" ${activeSort === "cheapest" ? "selected" : ""}>Cheapest first (Absolute Cost)</option>
             </select>
             <span class="flex-grow"></span>

@@ -67,8 +67,13 @@ public final class RegistryHarvestService {
 
         for (var holder : recipes) {
             scanned++;
+            if (holder.value().isSpecial()) continue;
+            java.util.Set<Class<?>> terminals;
             try {
+                TerminalTypeRegistry.startTracking();
                 var items = harvester.harvest(holder.value(), level);
+                terminals = TerminalTypeRegistry.stopTracking();
+
                 RecipeNode node = HarvestedRecipeConverter.convert(items, level);
 
                 if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty() || !node.getChemicalIngredients().isEmpty())) {
@@ -79,6 +84,8 @@ public final class RegistryHarvestService {
                     rejected++;
                     String reason = buildRejectReason(items);
                     debugTrace.traceRejected(holder.id().toString(), holder.value(), level, reason);
+                    java.util.List<String> termNames = terminals.stream().map(Class::getName).sorted().toList();
+                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug] Rejected recipe: {} (class: {}). Reason: {}. Terminals encountered: {}", holder.id(), holder.value().getClass().getName(), reason, termNames);
                 }
             } catch (Throwable t) {
                 failed++;

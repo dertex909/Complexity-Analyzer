@@ -33,10 +33,12 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.Locale;
 
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
@@ -50,6 +52,8 @@ public final class RegistryHarvestService {
 
         harvester.clearCaches();
 
+        var recipes = level.getRecipeManager().getRecipes();
+        int totalRecipes = recipes.size();
         int scanned = 0;
         int harvested = 0;
         int rejected = 0;
@@ -58,9 +62,10 @@ public final class RegistryHarvestService {
 
         FullDebugTracePipeline debugTrace = new FullDebugTracePipeline(worldDir);
 
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Starting runtime recipe scan...");
+        ComplexityAnalyzer.LOGGER.info("[Harvest] Starting runtime recipe scan (Total: {} recipes)...", totalRecipes);
+        long startTime = System.currentTimeMillis();
 
-        for (var holder : level.getRecipeManager().getRecipes()) {
+        for (var holder : recipes) {
             scanned++;
             try {
                 var items = harvester.harvest(holder.value(), level);
@@ -79,6 +84,15 @@ public final class RegistryHarvestService {
                 failed++;
                 debugTrace.traceFailed(holder.id().toString(), holder.value().getClass().getName(), t);
                 ComplexityAnalyzer.LOGGER.debug("[Harvest] Failed to scan recipe {}: {}", holder.id(), t.getMessage());
+            }
+
+            if (scanned % 1000 == 0 || scanned == totalRecipes) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                final String remainingStr = getRemaining(elapsed, scanned, totalRecipes);
+
+                ComplexityAnalyzer.LOGGER.info("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
+                        scanned, totalRecipes, String.format(java.util.Locale.US, "%.1f", (scanned * 100.0) / totalRecipes),
+                        remainingStr, harvested, rejected, failed);
             }
         }
 
@@ -99,6 +113,20 @@ public final class RegistryHarvestService {
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
                 scanned, harvested, rejected, failed);
+    }
+
+    private static @NotNull String getRemaining(long elapsed, int scanned, int totalRecipes) {
+        double avgTimePerRecipe = (double) elapsed / scanned;
+        long estimatedTotal = (long) (avgTimePerRecipe * totalRecipes);
+        long estimatedRemaining = estimatedTotal - elapsed;
+
+        String remainingStr;
+        if (estimatedRemaining > 60000) {
+            remainingStr = String.format(Locale.US, "%dm %ds", estimatedRemaining / 60000, (estimatedRemaining % 60000) / 1000);
+        } else {
+            remainingStr = String.format(Locale.US, "%ds", estimatedRemaining / 1000);
+        }
+        return remainingStr;
     }
 
     private void scanRegistryForFluids(RecipeGraph graph, Registry<?> registry) {

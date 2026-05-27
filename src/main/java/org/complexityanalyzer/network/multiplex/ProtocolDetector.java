@@ -24,10 +24,16 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import java.util.List;
 
 public class ProtocolDetector extends ByteToMessageDecoder {
+
+    private static final ObjectSet<String> PRESERVED_HANDLERS = new ObjectOpenHashSet<>(new String[]{"ssl", "proxydetector", "haproxy"});
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
@@ -42,6 +48,14 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     }
 
     private void setupHttpPipeline(ChannelHandlerContext ctx) {
+        ObjectList<String> names = new ObjectArrayList<>(ctx.pipeline().names());
+        for (String name : names) {
+            if (!name.equals(ctx.name()) && !PRESERVED_HANDLERS.contains(name.toLowerCase())) try {
+                ctx.pipeline().remove(name);
+            } catch (Throwable ignored) {
+            }
+        }
+
         ctx.pipeline().addAfter(ctx.name(), "http_codec", new HttpServerCodec());
         ctx.pipeline().addAfter("http_codec", "http_aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
         ctx.pipeline().addAfter("http_aggregator", "http_chunked", new ChunkedWriteHandler());

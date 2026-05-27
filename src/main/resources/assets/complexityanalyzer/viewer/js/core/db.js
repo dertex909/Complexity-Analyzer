@@ -242,4 +242,8 @@ export class CabinDatabase {
 
         return mergeDuplicateRecipes(rawRecipes);
     }
+
+    deduplicateRecipes(recipes) {
+        return mergeDuplicateRecipes(recipes);
+    }
 }

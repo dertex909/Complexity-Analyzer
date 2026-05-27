@@ -51,6 +51,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 
+import static org.apache.logging.log4j.Level.WARN;
+
 public class UniversalLootSource implements IResourceSource {
 
     private static final int SIMULATION_COUNT = 500;
@@ -61,9 +63,7 @@ public class UniversalLootSource implements IResourceSource {
     private static class LootFunctionFilter extends AbstractFilter {
         @Override
         public Result filter(LogEvent event) {
-            if (event == null || event.getLevel() != org.apache.logging.log4j.Level.WARN) {
-                return Result.NEUTRAL;
-            }
+            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
 
             String loggerName = event.getLoggerName();
             if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {

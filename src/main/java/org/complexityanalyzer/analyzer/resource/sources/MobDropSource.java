@@ -243,7 +243,8 @@ public class MobDropSource implements IResourceSource {
 
     private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable,
                                     DamageSourceConfig config, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
-        long baseSeed = entityInstance.getType().hashCode() ^ ((long) config.methodName.hashCode() << 16);
+        long baseSeed = GameRegistryManager.getEntityTypeId(entityInstance.getType()).toString().hashCode()
+                ^ ((long) config.methodName.hashCode() << 16);
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
                 var builder = new LootParams.Builder(level)

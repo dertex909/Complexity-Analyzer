@@ -19,15 +19,14 @@
 package org.complexityanalyzer.analyzer.resource;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -48,17 +47,36 @@ public class SourceManager {
     }
 
     public void initialize(Level level) {
-        ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources in parallel...", sources.size());
+        ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources sequentially on the server thread...", sources.size());
 
         var successCount = new AtomicInteger(0);
         var failCount = new AtomicInteger(0);
 
         var sourceSnapshot = new ObjectArrayList<>(sources);
-        var futures = new CompletableFuture[sourceSnapshot.size()];
 
-        for (int i = 0; i < sourceSnapshot.size(); i++) {
-            var source = sourceSnapshot.get(i);
-            futures[i] = CompletableFuture.runAsync(() -> {
+        if (level instanceof ServerLevel serverLevel) {
+            var server = serverLevel.getServer();
+            Runnable initRunnable = () -> {
+                for (var source : sourceSnapshot) {
+                    try {
+                        long start = System.currentTimeMillis();
+                        source.initialize(level);
+                        successCount.incrementAndGet();
+                        ComplexityAnalyzer.LOGGER.info("Initialized resource source: {} in {}ms", source.getName(), (System.currentTimeMillis() - start));
+                    } catch (Exception e) {
+                        failCount.incrementAndGet();
+                        ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
+                    }
+                }
+            };
+
+            if (server.isSameThread()) {
+                initRunnable.run();
+            } else {
+                server.submit(initRunnable).join();
+            }
+        } else {
+            for (var source : sourceSnapshot) {
                 try {
                     source.initialize(level);
                     successCount.incrementAndGet();
@@ -67,10 +85,8 @@ public class SourceManager {
                     failCount.incrementAndGet();
                     ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
                 }
-            }, ThreadPoolManager.getInstance().getComputePool());
+            }
         }
-
-        CompletableFuture.allOf(futures).join();
 
         ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed",
                 successCount.get(), failCount.get());

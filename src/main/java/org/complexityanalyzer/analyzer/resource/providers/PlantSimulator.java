@@ -34,6 +34,7 @@ import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BonemealableBlock;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
@@ -259,6 +260,7 @@ public class PlantSimulator {
         for (Direction dir : Direction.values()) {
             mutablePos.setWithOffset(plantPos, dir);
             for (Block b : blocks) {
+                if (b instanceof EntityBlock || b.defaultBlockState().hasBlockEntity()) continue;
                 if (tryGroundQuickly(b, plantState, level, mutablePos, plantPos)) return new GroundResult(b, dir);
             }
         }
@@ -266,10 +268,10 @@ public class PlantSimulator {
     }
 
     private boolean tryGroundQuickly(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
+        if (candidate instanceof EntityBlock || candidate.defaultBlockState().hasBlockEntity()) return false;
         try {
             BlockState candidateState = candidate.defaultBlockState();
             if (candidateState.isAir() && candidate != Blocks.WATER) return false;
-            if (candidateState.hasBlockEntity()) return false;
             BlockState oldGround = level.getBlockState(groundPos);
             level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
             boolean survives = plantState.canSurvive(level, plantPos);

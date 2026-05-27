@@ -37,8 +37,10 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.storage.loot.LootContext;
 import org.complexityanalyzer.mixin.LootContextAccessor;
+
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
@@ -68,8 +70,11 @@ public class UniversalLootSource implements IResourceSource {
             String loggerName = event.getLoggerName();
             if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
                 String message = event.getMessage().getFormattedMessage();
-                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
-                        || message.contains("Couldn't find a compatible enchantment"))) return Result.DENY;
+                if (message != null && (message.contains("Couldn't set damage")
+                        || message.contains("Couldn't smelt")
+                        || message.contains("Couldn't find a compatible enchantment")
+                        || message.contains("Failed to apply component patch")
+                )) return Result.DENY;
             }
 
             return Result.NEUTRAL;
@@ -83,13 +88,22 @@ public class UniversalLootSource implements IResourceSource {
             return;
         }
 
-        var lootKeysFuture = getCompletableFuture(serverLevel);
-
-        try {
-            var allLootTableKeys = lootKeysFuture.join();
-            processLootTables(serverLevel, allLootTableKeys);
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys from server thread. Aborting analysis.", e);
+        var server = serverLevel.getServer();
+        if (server.isSameThread()) {
+            try {
+                var allLootTableKeys = getAllLootTableKeys(server);
+                processLootTables(serverLevel, allLootTableKeys);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys on server thread. Aborting analysis.", e);
+            }
+        } else {
+            var lootKeysFuture = getCompletableFuture(serverLevel);
+            try {
+                var allLootTableKeys = lootKeysFuture.join();
+                processLootTables(serverLevel, allLootTableKeys);
+            } catch (Exception e) {
+                ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys from server thread. Aborting analysis.", e);
+            }
         }
     }
 
@@ -134,7 +148,7 @@ public class UniversalLootSource implements IResourceSource {
                 }
 
                 try {
-                    var catchCounts = CompletableFuture.supplyAsync(() -> {
+                    java.util.function.Supplier<Reference2IntOpenHashMap<Item>> countsSupplier = () -> {
                         LootTable lootTable = reloadableRegistries.getLootTable(lootTableKey);
                         if (lootTable == LootTable.EMPTY) return null;
 
@@ -182,7 +196,14 @@ public class UniversalLootSource implements IResourceSource {
                             }
                         }
                         return counts;
-                    }, server).join();
+                    };
+
+                    Reference2IntOpenHashMap<Item> catchCounts;
+                    if (server.isSameThread()) {
+                        catchCounts = countsSupplier.get();
+                    } else {
+                        catchCounts = CompletableFuture.supplyAsync(countsSupplier, server).join();
+                    }
 
                     if (catchCounts == null || catchCounts.isEmpty()) {
                         tablesSkipped++;

@@ -26,3 +26,10 @@ type = "required"
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId="alltheleaks"
+type="incompatible"
+ordering="NONE"
+side="BOTH"
+reason="Incompatible with AllTheLeaks due to multithreaded recipe harvesting conflicts."

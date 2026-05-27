@@ -86,7 +86,7 @@ public final class RegistryHarvestService {
                 ComplexityAnalyzer.LOGGER.debug("[Harvest] Failed to scan recipe {}: {}", holder.id(), t.getMessage());
             }
 
-            if (scanned % 1000 == 0 || scanned == totalRecipes) {
+            if ((scanned < 1000 && scanned % 100 == 0) || scanned == totalRecipes) {
                 long elapsed = System.currentTimeMillis() - startTime;
                 final String remainingStr = getRemaining(elapsed, scanned, totalRecipes);
 

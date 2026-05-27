@@ -57,21 +57,19 @@ import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.logging.log4j.Level.WARN;
 
 public class MobDropSource implements IResourceSource {
     private final MobPropertyProvider mobProvider;
     private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
-    private static final int SIMULATION_COUNT = 500;
+    private static final int SIMULATION_COUNT = 100;
 
     private static final ReferenceSet<EntityType<?>> SPECIAL_KILL_ENTITIES = new ReferenceOpenHashSet<>(new EntityType<?>[]{
             EntityType.WITHER,
@@ -111,11 +109,17 @@ public class MobDropSource implements IResourceSource {
 
         ObjectList<EntityType<?>> entityTypes;
         try {
-            entityTypes = CompletableFuture.supplyAsync(() -> {
+            if (server.isSameThread()) {
                 var types = new ObjectArrayList<EntityType<?>>();
                 GameRegistryManager.getAllEntityTypes().forEach(types::add);
-                return types;
-            }, server).join();
+                entityTypes = types;
+            } else {
+                entityTypes = CompletableFuture.supplyAsync(() -> {
+                    var types = new ObjectArrayList<EntityType<?>>();
+                    GameRegistryManager.getAllEntityTypes().forEach(types::add);
+                    return types;
+                }, server).join();
+            }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] Failed to get entity types from server thread. Aborting.", e);
             return;
@@ -127,7 +131,7 @@ public class MobDropSource implements IResourceSource {
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes) {
         MinecraftServer server = serverLevel.getServer();
 
-        ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables in parallel...");
+        ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();
 
         registerSpecialKillDrops();
@@ -137,74 +141,79 @@ public class MobDropSource implements IResourceSource {
         filter.start();
         rootLogger.addFilter(filter);
 
-        ObjectList<DamageSourceConfig> damageConfigs = null;
-
         try {
-            var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
-            var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
-            damageConfigs = createDamageSources(serverLevel, fakePlayer);
+            Runnable simulationRunnable = () -> {
+                ObjectList<DamageSourceConfig> damageConfigs = null;
+                try {
+                    var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
+                    var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
+                    damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
-            var executor = ThreadPoolManager.getInstance().getComputePool();
-            var futures = new ObjectArrayList<CompletableFuture<Void>>();
-            var processedCounter = new AtomicInteger(0);
-            final var finalConfigs = damageConfigs;
+                    int processedEntities = 0;
+                    final var finalConfigs = damageConfigs;
 
-            for (var entityType : entityTypes) {
-                if (SPECIAL_KILL_ENTITIES.contains(entityType)) continue;
+                    for (var entityType : entityTypes) {
+                        if (SPECIAL_KILL_ENTITIES.contains(entityType)) continue;
 
-                futures.add(CompletableFuture.runAsync(() -> {
-                    var lootTableKey = entityType.getDefaultLootTable();
-                    var lootTable = CompletableFuture.supplyAsync(() ->
-                            server.reloadableRegistries().getLootTable(lootTableKey), server).join();
-                    if (lootTable == LootTable.EMPTY) return;
-                    if (entityType.getCategory() == MobCategory.MISC) return;
+                        var lootTableKey = entityType.getDefaultLootTable();
+                        var lootTable = server.reloadableRegistries().getLootTable(lootTableKey);
+                        if (lootTable == LootTable.EMPTY) continue;
+                        if (entityType.getCategory() == MobCategory.MISC) continue;
 
-                    Entity entityInstance;
-                    try {
-                        entityInstance = entityType.create(serverLevel);
-                    } catch (Exception e) {
-                        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
-                                GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
-                        return;
-                    }
-
-                    if (entityInstance == null) {
-                        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
-                                GameRegistryManager.getEntityTypeId(entityType));
-                        return;
-                    }
-
-                    var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
-                    for (var config : finalConfigs) {
-                        if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) continue;
-                        simulateKillMethod(serverLevel, entityInstance, lootTable, config, combinedDrops);
-                    }
-
-                    for (var entry : combinedDrops.reference2ObjectEntrySet()) {
-                        var stats = entry.getValue();
-                        if (stats.totalDropped > 0) synchronized (dropMap) {
-                            dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
-                                    .add(new MobDropData(entry.getKey(), entityType, stats.getAverageYield(), stats.getBestMethod()));
+                        Entity entityInstance;
+                        try {
+                            entityInstance = entityType.create(serverLevel);
+                        } catch (Exception e) {
+                            ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
+                                    GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
+                            continue;
                         }
+
+                        if (entityInstance == null) {
+                            ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
+                                    GameRegistryManager.getEntityTypeId(entityType));
+                            continue;
+                        }
+
+                        var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
+                        for (var config : finalConfigs) {
+                            if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER)
+                                continue;
+                            simulateKillMethod(serverLevel, entityInstance, lootTable, config, combinedDrops);
+                        }
+
+                        synchronized (dropMap) {
+                            for (var entry : combinedDrops.reference2ObjectEntrySet()) {
+                                var stats = entry.getValue();
+                                if (stats.totalDropped > 0) {
+                                    dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
+                                            .add(new MobDropData(entry.getKey(), entityType, stats.getAverageYield(), stats.getBestMethod()));
+                                }
+                            }
+                        }
+                        processedEntities++;
+                        entityInstance.discard();
                     }
-                    processedCounter.incrementAndGet();
-                    entityInstance.discard();
-                }, executor));
+
+                    long duration = System.currentTimeMillis() - startTime;
+                    ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, dropMap.size(), duration);
+
+                } finally {
+                    if (damageConfigs != null) for (DamageSourceConfig config : damageConfigs) {
+                        if (config.attackingEntity != null) config.attackingEntity.discard();
+                    }
+                }
+            };
+
+            if (server.isSameThread()) {
+                simulationRunnable.run();
+            } else {
+                CompletableFuture.runAsync(simulationRunnable, server).join();
             }
-
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-            int processedEntities = processedCounter.get();
-
-            long duration = System.currentTimeMillis() - startTime;
-            ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, dropMap.size(), duration);
 
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
         } finally {
-            if (damageConfigs != null) for (DamageSourceConfig config : damageConfigs) {
-                if (config.attackingEntity != null) config.attackingEntity.discard();
-            }
-
             try {
                 rootLogger.get().removeFilter(filter);
                 filter.stop();

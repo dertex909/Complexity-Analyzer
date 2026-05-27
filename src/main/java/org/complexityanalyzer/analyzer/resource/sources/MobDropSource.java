@@ -26,6 +26,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
@@ -38,6 +39,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -55,10 +57,14 @@ import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.logging.log4j.Level.WARN;
 
@@ -66,7 +72,6 @@ public class MobDropSource implements IResourceSource {
     private final MobPropertyProvider mobProvider;
     private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
     private static final int SIMULATION_COUNT = 500;
-    private static final Object LOOT_LOCK = new Object();
 
     private static final ReferenceSet<EntityType<?>> SPECIAL_KILL_ENTITIES = new ReferenceOpenHashSet<>(new EntityType<?>[]{
             EntityType.WITHER,
@@ -122,9 +127,8 @@ public class MobDropSource implements IResourceSource {
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes) {
         MinecraftServer server = serverLevel.getServer();
 
-        ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables...");
+        ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables in parallel...");
         long startTime = System.currentTimeMillis();
-        int processedEntities = 0;
 
         registerSpecialKillDrops();
 
@@ -140,44 +144,60 @@ public class MobDropSource implements IResourceSource {
             var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
             damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
+            var executor = ThreadPoolManager.getInstance().getComputePool();
+            var futures = new ObjectArrayList<CompletableFuture<Void>>();
+            var processedCounter = new AtomicInteger(0);
+            final var finalConfigs = damageConfigs;
+
             for (var entityType : entityTypes) {
                 if (SPECIAL_KILL_ENTITIES.contains(entityType)) continue;
 
-                var lootTableKey = entityType.getDefaultLootTable();
-                var lootTable = CompletableFuture.supplyAsync(() ->
-                        server.reloadableRegistries().getLootTable(lootTableKey), server).join();
-                if (lootTable == LootTable.EMPTY) continue;
-                if (entityType.getCategory() == MobCategory.MISC) continue;
+                futures.add(CompletableFuture.runAsync(() -> {
+                    var lootTableKey = entityType.getDefaultLootTable();
+                    var lootTable = CompletableFuture.supplyAsync(() ->
+                            server.reloadableRegistries().getLootTable(lootTableKey), server).join();
+                    if (lootTable == LootTable.EMPTY) return;
+                    if (entityType.getCategory() == MobCategory.MISC) return;
 
-                Entity entityInstance;
-                try {
-                    entityInstance = entityType.create(serverLevel);
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
-                            GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
-                    continue;
-                }
+                    Entity entityInstance;
+                    try {
+                        entityInstance = entityType.create(serverLevel);
+                    } catch (Exception e) {
+                        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
+                                GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
+                        return;
+                    }
 
-                if (entityInstance == null) {
-                    ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
-                            GameRegistryManager.getEntityTypeId(entityType));
-                    continue;
-                }
+                    if (entityInstance == null) {
+                        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
+                                GameRegistryManager.getEntityTypeId(entityType));
+                        return;
+                    }
 
-                var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
-                for (var config : damageConfigs) {
-                    if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) continue;
-                    simulateKillMethod(serverLevel, entityInstance, lootTable, config, combinedDrops);
-                }
+                    var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
+                    for (var config : finalConfigs) {
+                        if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER) continue;
+                        simulateKillMethod(serverLevel, entityInstance, lootTable, config, combinedDrops);
+                    }
 
-                for (var entry : combinedDrops.reference2ObjectEntrySet()) {
-                    var stats = entry.getValue();
-                    if (stats.totalDropped > 0) dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
-                            .add(new MobDropData(entry.getKey(), entityType, stats.getAverageYield(), stats.getBestMethod()));
-                }
-                processedEntities++;
-                entityInstance.discard();
+                    for (var entry : combinedDrops.reference2ObjectEntrySet()) {
+                        var stats = entry.getValue();
+                        if (stats.totalDropped > 0) synchronized (dropMap) {
+                            dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
+                                    .add(new MobDropData(entry.getKey(), entityType, stats.getAverageYield(), stats.getBestMethod()));
+                        }
+                    }
+                    processedCounter.incrementAndGet();
+                    entityInstance.discard();
+                }, executor));
             }
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+            int processedEntities = processedCounter.get();
+
+            long duration = System.currentTimeMillis() - startTime;
+            ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, dropMap.size(), duration);
+
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
         } finally {
@@ -191,9 +211,6 @@ public class MobDropSource implements IResourceSource {
             } catch (Exception ignored) {
             }
         }
-
-        long duration = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, dropMap.size(), duration);
     }
 
     private ObjectList<DamageSourceConfig> createDamageSources(ServerLevel level, ServerPlayer player) {
@@ -226,6 +243,7 @@ public class MobDropSource implements IResourceSource {
 
     private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable,
                                     DamageSourceConfig config, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
+        long baseSeed = entityInstance.getType().hashCode() ^ ((long) config.methodName.hashCode() << 16);
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
                 var builder = new LootParams.Builder(level)
@@ -242,12 +260,18 @@ public class MobDropSource implements IResourceSource {
                         builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
                     }
                 }
-                if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
                 var lootParams = builder.create(LootContextParamSets.ENTITY);
-                ObjectList<ItemStack> drops;
-                synchronized (LOOT_LOCK) {
-                    drops = new ObjectArrayList<>(lootTable.getRandomItems(lootParams));
+                var context = new LootContext.Builder(lootParams).create(Optional.empty());
+                var deterministicRandom = RandomSource.create(baseSeed + i);
+                try {
+                    ((LootContextAccessor) context).setRandom(deterministicRandom);
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.warn("[MobDropSource] Failed to inject random into LootContext: {}", e.getMessage());
                 }
+
+                if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
+                ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
+                lootTable.getRandomItems(context, drops::add);
                 if (config.isOnFire) entityInstance.clearFire();
                 for (var stack : drops) {
                     combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics())
@@ -262,14 +286,21 @@ public class MobDropSource implements IResourceSource {
 
     @Override
     public boolean canProvide(Item item) {
-        return dropMap.containsKey(item);
+        synchronized (dropMap) {
+            return dropMap.containsKey(item);
+        }
     }
 
     @Override
     @Nullable
     public BaseResourceData analyze(Item item) {
         if (!canProvide(item)) return null;
-        var list = dropMap.get(item);
+        ObjectList<MobDropData> list;
+        synchronized (dropMap) {
+            var raw = dropMap.get(item);
+            list = raw != null ? new ObjectArrayList<>(raw) : null;
+        }
+        if (list == null) return null;
         var best = (BaseResourceData) null;
         for (var data : list) {
             var current = calculateComplexityForDrop(item, data);
@@ -280,8 +311,10 @@ public class MobDropSource implements IResourceSource {
 
     public ObjectList<MobDropData> getDropsForEntity(EntityType<?> entityType) {
         var results = new ObjectArrayList<MobDropData>();
-        for (var allDrops : dropMap.values()) {
-            for (var data : allDrops) if (data.sourceMob() == entityType) results.add(data);
+        synchronized (dropMap) {
+            for (var allDrops : dropMap.values()) {
+                for (var data : allDrops) if (data.sourceMob() == entityType) results.add(data);
+            }
         }
         return results;
     }

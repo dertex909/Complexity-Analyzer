@@ -34,6 +34,11 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.storage.loot.LootContext;
+import org.complexityanalyzer.mixin.LootContextAccessor;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
@@ -45,7 +50,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
 
 public class UniversalLootSource implements IResourceSource {
 
@@ -143,6 +147,7 @@ public class UniversalLootSource implements IResourceSource {
                         var counts = new Reference2IntOpenHashMap<Item>();
                         long simulationStart = System.currentTimeMillis();
                         boolean hasLoggedError = false;
+                        long baseSeed = lootTableId.hashCode();
 
                         for (int i = 0; i < SIMULATION_COUNT; i++) {
                             if (System.currentTimeMillis() - simulationStart > SIMULATION_TIMEOUT_MS) {
@@ -152,7 +157,18 @@ public class UniversalLootSource implements IResourceSource {
                             }
 
                             try {
-                                var items = lootTable.getRandomItems(lootParams);
+                                var context = new LootContext.Builder(lootParams).create(Optional.empty());
+                                var deterministicRandom = RandomSource.create(baseSeed + i);
+                                try {
+                                    ((LootContextAccessor) context).setRandom(deterministicRandom);
+                                } catch (Exception e) {
+                                    if (!hasLoggedError) {
+                                        ComplexityAnalyzer.LOGGER.warn("[ULS] Failed to inject random: {}", e.getMessage());
+                                    }
+                                }
+
+                                var items = new ObjectArrayList<ItemStack>();
+                                lootTable.getRandomItems(context, items::add);
                                 if (items.isEmpty()) continue;
 
                                 for (var stack : items) {

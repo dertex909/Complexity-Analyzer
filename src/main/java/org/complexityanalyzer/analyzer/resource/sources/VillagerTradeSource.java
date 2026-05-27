@@ -73,6 +73,7 @@ public class VillagerTradeSource implements IResourceSource {
         var pendingTrades = new ObjectArrayList<PendingTrade>();
         var skippedByType = new Object2IntOpenHashMap<String>();
 
+        int tradeIndex = 0;
         for (Int2ObjectMap<VillagerTrades.ItemListing[]> professionTrades : VillagerTrades.TRADES.values()) {
             for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : professionTrades.int2ObjectEntrySet()) {
                 int tradeLevel = levelEntry.getIntKey();
@@ -88,7 +89,7 @@ public class VillagerTradeSource implements IResourceSource {
                     }
 
                     try {
-                        var randomSource = RandomSource.create();
+                        var randomSource = RandomSource.create(42L + tradeIndex++);
                         var offer = listing.getOffer(null, randomSource);
 
                         if (offer != null && !offer.getResult().isEmpty()) {
@@ -135,7 +136,7 @@ public class VillagerTradeSource implements IResourceSource {
                 }
 
                 try {
-                    var randomSource = RandomSource.create();
+                    var randomSource = RandomSource.create(987654321L + i);
                     var offer = pending.listing.getOffer(villager, randomSource);
 
                     if (offer != null && !offer.getResult().isEmpty()) {

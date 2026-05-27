@@ -163,6 +163,10 @@ public class MobDropSource implements IResourceSource {
                         Entity entityInstance;
                         try {
                             entityInstance = entityType.create(serverLevel);
+                            if (entityInstance != null) {
+                                var spawnPos = serverLevel.getSharedSpawnPos();
+                                entityInstance.setPos(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+                            }
                         } catch (Exception e) {
                             ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
                                     GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
@@ -225,6 +229,13 @@ public class MobDropSource implements IResourceSource {
     private ObjectList<DamageSourceConfig> createDamageSources(ServerLevel level, ServerPlayer player) {
         var configs = new ObjectArrayList<DamageSourceConfig>();
 
+        var spawnPos = level.getSharedSpawnPos();
+        double sx = spawnPos.getX() + 0.5;
+        double sy = spawnPos.getY() + 0.5;
+        double sz = spawnPos.getZ() + 0.5;
+
+        player.setPos(sx, sy, sz);
+
         configs.add(new DamageSourceConfig("Player Attack", level.damageSources().playerAttack(player), false, player, null));
         configs.add(new DamageSourceConfig("Fire", level.damageSources().onFire(), true, player, null));
         configs.add(new DamageSourceConfig("Lava", level.damageSources().lava(), true, player, null));
@@ -232,6 +243,7 @@ public class MobDropSource implements IResourceSource {
         configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
 
         var chargedCreeper = new Creeper(EntityType.CREEPER, level);
+        chargedCreeper.setPos(sx, sy, sz);
         var creeperNBT = new CompoundTag();
         creeperNBT.putBoolean("powered", true);
         chargedCreeper.readAdditionalSaveData(creeperNBT);
@@ -242,7 +254,9 @@ public class MobDropSource implements IResourceSource {
                 null, chargedCreeper));
 
         var skeleton = new Skeleton(EntityType.SKELETON, level);
+        skeleton.setPos(sx, sy, sz);
         var arrow = new Arrow(EntityType.ARROW, level);
+        arrow.setPos(sx, sy, sz);
         arrow.setOwner(skeleton);
         configs.add(new DamageSourceConfig("Skeleton Arrow", level.damageSources().arrow(arrow, skeleton),
                 false, null, skeleton));

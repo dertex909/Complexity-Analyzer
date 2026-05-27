@@ -72,7 +72,7 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 def http = "io.netty:netty-codec-http:4.1.97.Final"
-def jei = "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+def jei = "mezz.jei:jei-${minecraft_version}-neoforge:19.25.0.325"
 
 dependencies {
     implementation(http)

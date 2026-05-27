@@ -19,6 +19,7 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
@@ -273,10 +274,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             RandomSource deterministicRandom = RandomSource.create(baseSeed + i);
             ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
 
+            BlockPos spawnPos = level.getSharedSpawnPos();
+            Vec3 originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+
             var params = new LootParams.Builder(level)
                     .withParameter(LootContextParams.BLOCK_STATE, blockState)
                     .withParameter(LootContextParams.TOOL, tool)
-                    .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+                    .withParameter(LootContextParams.ORIGIN, originVec)
                     .create(LootContextParamSets.BLOCK);
 
             var context = new LootContext.Builder(params).create(Optional.empty());

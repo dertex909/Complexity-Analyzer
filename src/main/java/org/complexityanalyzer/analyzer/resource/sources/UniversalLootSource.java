@@ -19,6 +19,7 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -73,7 +74,6 @@ public class UniversalLootSource implements IResourceSource {
                 if (message != null && (message.contains("Couldn't set damage")
                         || message.contains("Couldn't smelt")
                         || message.contains("Couldn't find a compatible enchantment")
-                        || message.contains("Failed to apply component patch")
                 )) return Result.DENY;
             }
 
@@ -326,8 +326,10 @@ public class UniversalLootSource implements IResourceSource {
 
     private record LootContextDefinition(BaseResourceData.ResourceSourceType sourceType, double baseActionCost) {
         public LootParams createLootParams(ServerLevel level) {
+            BlockPos spawnPos = level.getSharedSpawnPos();
+            Vec3 originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
             var builder = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.ORIGIN, new Vec3(0, 0, 0));
+                    .withParameter(LootContextParams.ORIGIN, originVec);
 
             if (sourceType == BaseResourceData.ResourceSourceType.FISHING) {
                 builder.withParameter(LootContextParams.TOOL, new ItemStack(Items.FISHING_ROD));
@@ -343,6 +345,7 @@ public class UniversalLootSource implements IResourceSource {
                 try {
                     var piglinEntity = EntityType.PIGLIN.create(level);
                     if (piglinEntity != null) {
+                        piglinEntity.setPos(originVec.x, originVec.y, originVec.z);
                         builder.withParameter(LootContextParams.THIS_ENTITY, piglinEntity);
                         return builder.create(LootContextParamSets.PIGLIN_BARTER);
                     }

@@ -7,7 +7,9 @@
   "mixins": [
     "LootContextAccessor",
     "SmithingTransformRecipeAccessor",
-    "ServerConnectionListenerMixin"
+    "ServerConnectionListenerMixin",
+    "ChunkGeneratorMixin",
+    "ServerChunkCacheMixin"
   ],
   "client": [],
   "server": [],

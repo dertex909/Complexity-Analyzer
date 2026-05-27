@@ -729,9 +729,9 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         }).join("");
 
         machineHtml = `
-            <div class="variant-group" style="margin-bottom: 4px;">
-                <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); font-family: var(--mono), monospace; font-size: 11px;">
-                    <strong class="machine-link" data-index="${activeMachineIdx}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #f59e0b; border-right: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; font-weight: 600; line-height: 1.3;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+            <div class="variant-group" style="margin-bottom: 4px; white-space: nowrap;">
+                <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); font-family: var(--mono), monospace; font-size: 11px; white-space: nowrap;">
+                    <strong class="machine-link" data-index="${activeMachineIdx}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #f59e0b; border-right: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
                         ${escapeHtml(machineName)}
                     </strong>
                     <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #f59e0b;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
@@ -749,8 +749,8 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         `;
     } else {
         machineHtml = machineItem
-            ? `<strong style="cursor:pointer; color: var(--accent); font-size: 11px; font-weight: 600; line-height: 1.3;" class="machine-link" data-index="${activeMachineIdx}">${escapeHtml(machineName)}</strong>`
-            : `<strong style="font-size: 11px; font-weight: 600; color: var(--accent); line-height: 1.3;">${escapeHtml(machineName)}</strong>`;
+            ? `<strong style="cursor:pointer; color: var(--accent); font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" class="machine-link" data-index="${activeMachineIdx}">${escapeHtml(machineName)}</strong>`
+            : `<strong style="font-size: 11px; font-weight: 600; color: var(--accent); line-height: 1.3; white-space: nowrap;">${escapeHtml(machineName)}</strong>`;
     }
 
     return `
@@ -762,7 +762,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 </div>
             </div>
             
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 120px; max-width: 260px; text-align: center; padding: 0 16px; border-left: 1px dashed rgba(255,255,255,0.08); border-right: 1px dashed rgba(255,255,255,0.08);">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 120px; max-width: 450px; text-align: center; padding: 0 16px; border-left: 1px dashed rgba(255,255,255,0.08); border-right: 1px dashed rgba(255,255,255,0.08);">
                 ${machineHtml}
                 <span style="font-size: 20px; line-height: 1; color: var(--accent); margin: 6px 0; font-family: monospace; display: flex; align-items: center; justify-content: center;">
                   ➜

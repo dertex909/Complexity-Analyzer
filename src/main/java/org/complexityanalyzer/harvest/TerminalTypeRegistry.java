@@ -23,22 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class TerminalTypeRegistry {
 
     private static final ConcurrentHashMap<Class<?>, Boolean> CACHE = new ConcurrentHashMap<>(2048);
-    private static final ThreadLocal<java.util.Set<Class<?>>> TRACKED_TERMINALS = ThreadLocal.withInitial(java.util.HashSet::new);
-    private static volatile boolean trackingEnabled = false;
 
     private TerminalTypeRegistry() {
-    }
-
-    public static void startTracking() {
-        TRACKED_TERMINALS.get().clear();
-        trackingEnabled = true;
-    }
-
-    public static java.util.Set<Class<?>> stopTracking() {
-        trackingEnabled = false;
-        var set = new java.util.HashSet<>(TRACKED_TERMINALS.get());
-        TRACKED_TERMINALS.get().clear();
-        return set;
     }
 
     public static boolean isTerminalType(Class<?> type) {
@@ -48,14 +34,10 @@ public final class TerminalTypeRegistry {
                 || type == Character.class || Number.class.isAssignableFrom(type)) return true;
 
         Boolean cached = CACHE.get(type);
-        if (cached != null) {
-            if (cached && trackingEnabled) TRACKED_TERMINALS.get().add(type);
-            return cached;
-        }
+        if (cached != null) return cached;
 
         boolean result = computeIsTerminal(type);
         CACHE.put(type, result);
-        if (result && trackingEnabled) TRACKED_TERMINALS.get().add(type);
         return result;
     }
 

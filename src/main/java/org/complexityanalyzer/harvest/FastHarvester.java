@@ -312,7 +312,7 @@ public final class FastHarvester {
         if (!visited.add(obj)) return;
 
         var meta = RecipeReflection.getMeta(obj.getClass());
-        if (depth <= 1) {
+        if (depth <= 5) {
             for (int i = 0; i < meta.allMethods.length; i++) {
                 var m = meta.allMethods[i];
                 var h = meta.allHandles[i];
@@ -455,7 +455,7 @@ public final class FastHarvester {
         if (!visited.add(obj)) return;
 
         var meta = RecipeReflection.getMeta(obj.getClass());
-        if (depth <= 1) {
+        if (depth <= 5) {
             for (int i = 0; i < meta.allMethods.length; i++) {
                 var m = meta.allMethods[i];
                 var h = meta.allHandles[i];

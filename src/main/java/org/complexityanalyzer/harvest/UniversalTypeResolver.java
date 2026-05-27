@@ -84,9 +84,7 @@ public final class UniversalTypeResolver {
     }
 
     public static boolean isTerminalType(Class<?> type) {
-        if (type == null || Number.class.isAssignableFrom(type) || type == Boolean.class || type == Character.class
-                || type.isPrimitive() || type.isEnum() || type == String.class) return true;
-        return type.getName().startsWith("java.lang.invoke.") || type.getName().startsWith("java.lang.reflect.");
+        return TerminalTypeRegistry.isTerminalType(type);
     }
 
     public static Class<?> extractInnerType(Field field) {

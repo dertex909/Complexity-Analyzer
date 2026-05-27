@@ -39,27 +39,7 @@ public final class StructuralTypeClassifier {
     }
 
     public static boolean isTerminalType(Class<?> type) {
-        if (type == null) return true;
-        if (type.isPrimitive() || type.isEnum() || type == String.class) return true;
-        if (Number.class.isAssignableFrom(type) || type == Boolean.class || type == Character.class) return true;
-        String name = type.getName();
-        if (name.startsWith("java.lang.invoke.") || name.startsWith("java.lang.reflect.")) return true;
-        if (name.startsWith("net.minecraft.world.level.Level") ||
-                name.startsWith("net.minecraft.server.") ||
-                name.startsWith("net.minecraft.client.") ||
-                name.startsWith("net.minecraft.network.") ||
-                name.startsWith("net.minecraft.world.entity.Entity") ||
-                name.startsWith("net.minecraft.world.level.block.entity.BlockEntity") ||
-                name.startsWith("net.minecraft.world.item.crafting.RecipeManager") ||
-                name.startsWith("net.minecraft.core.RegistryAccess") ||
-                name.startsWith("net.minecraft.world.entity.player.Player") ||
-                name.startsWith("net.minecraft.world.inventory.AbstractContainerMenu") ||
-                name.startsWith("net.neoforged.neoforge.server.ServerLifecycleHooks") ||
-                name.startsWith("net.neoforged.neoforge.registries.") ||
-                name.startsWith("net.neoforged.fml.") ||
-                name.startsWith("com.mojang.")) return true;
-        if (name.contains("RecipeType") || name.contains("RecipeBuilder")) return true;
-        return name.contains("EnergyStack");
+        return TerminalTypeRegistry.isTerminalType(type);
     }
 
     private static Kind classifyName(String name) {

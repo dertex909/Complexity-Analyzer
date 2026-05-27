@@ -518,19 +518,10 @@ public final class FastHarvester {
     private static boolean isTerminal(Object obj) {
         if (obj == null) return true;
         Class<?> c = obj.getClass();
-        if (c.isPrimitive() || c == String.class || c.isEnum() || Number.class.isAssignableFrom(c) || c == Boolean.class || c == Character.class)
-            return true;
-
         String name = c.getName();
-        return name.startsWith("net.minecraft.world.level.material.Fluid")
-                || name.startsWith("net.minecraft.world.item.Item")
-                || name.startsWith("net.minecraft.world.level.block.Block")
-                || name.startsWith("net.minecraft.resources.ResourceLocation")
-                || name.startsWith("net.minecraft.tags.TagKey")
-                || name.startsWith("net.minecraft.core.Holder")
-                || name.startsWith("net.minecraft.core.Registry")
-                || name.startsWith("java.")
-                || StructuralTypeClassifier.isTerminalType(c);
+        if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.")
+                || name.startsWith("com.sun.") || name.startsWith("jdk.")) return true;
+        return TerminalTypeRegistry.isTerminalType(c);
     }
 
     private static void clearThreadLocals() {
@@ -561,5 +552,6 @@ public final class FastHarvester {
         PatternSignatureEngine.clearCache();
         UniversalTypeResolver.clearCache();
         UniversalAccessorResolver.clearCache();
+        TerminalTypeRegistry.clearCache();
     }
 }

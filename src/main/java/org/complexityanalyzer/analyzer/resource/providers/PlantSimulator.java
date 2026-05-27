@@ -75,8 +75,8 @@ public class PlantSimulator {
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
     private static final int BARRIER_RADIUS = 16;
     private static final int SEARCH_RADIUS = 32;
-    private static final int DEPTH_BELOW = 100;
-    private static final int HEIGHT_ABOVE = 100;
+    private static final int DEPTH_BELOW = 30;
+    private static final int HEIGHT_ABOVE = 30;
     private static final int MAX_TICKS = 50;
     private static final int MAX_BONEMEAL = 8;
     private static final long MAX_SIMULATION_MS = 2000;
@@ -366,11 +366,16 @@ public class PlantSimulator {
                     mutablePos.set(worldX, y, simOriginZ + z);
 
                     try {
+                        BlockState current = level.getBlockState(mutablePos);
                         if (isBaseLayer | isXBoundary | isZBoundary) {
-                            level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
+                            if (!current.is(Blocks.BARRIER)) {
+                                level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
+                            }
                         } else if (isLightLayer) {
-                            level.setBlock(mutablePos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
-                        } else if (!level.getBlockState(mutablePos).isAir()) {
+                            if (!current.is(Blocks.LIGHT)) {
+                                level.setBlock(mutablePos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
+                            }
+                        } else if (!current.isAir()) {
                             level.setBlock(mutablePos, Blocks.AIR.defaultBlockState(), 3);
                         }
                     } catch (Throwable ignored) {

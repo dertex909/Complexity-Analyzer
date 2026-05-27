@@ -357,7 +357,7 @@ public class MobRarityCalculator implements IBossRegistry {
             case WATER_AMBIENT -> 3.0;
             case UNDERGROUND_WATER_CREATURE -> 4.0;
             case AXOLOTLS -> 6.0;
-            case MISC -> 1.0;
+            case null, default -> 1.0;
         };
     }
 

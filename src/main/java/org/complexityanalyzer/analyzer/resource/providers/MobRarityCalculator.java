@@ -350,8 +350,7 @@ public class MobRarityCalculator implements IBossRegistry {
     }
 
     private double analyzeMobCategory(EntityType<?> entityType) {
-        MobCategory category = entityType.getCategory();
-        return switch (category) {
+        return switch (entityType.getCategory()) {
             case MONSTER, CREATURE -> 0.0;
             case AMBIENT, WATER_CREATURE -> 2.0;
             case WATER_AMBIENT -> 3.0;

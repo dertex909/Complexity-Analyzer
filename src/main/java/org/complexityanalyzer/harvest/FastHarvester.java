@@ -28,8 +28,7 @@ import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -135,7 +134,8 @@ public final class FastHarvester {
 
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {
                 for (var ing : r.getIngredients()) {
-                    if (ing != null && !ing.isEmpty()) inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                    if (ing != null && !ing.isEmpty())
+                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 }
             }
             if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
@@ -311,48 +311,35 @@ public final class FastHarvester {
         if (isTerminal(obj)) return;
         if (!visited.add(obj)) return;
 
-        Class<?> cls = obj.getClass();
-        Method[] methods;
-        try {
-            methods = cls.getMethods();
-        } catch (Throwable t) {
-            try {
-                methods = cls.getDeclaredMethods();
-            } catch (Throwable t2) {
-                methods = null;
-            }
-        }
-
-        if (methods != null) for (Method m : methods) {
-            try {
-                if (m.getParameterCount() == 0 && !Modifier.isStatic(m.getModifiers())) {
+        var meta = RecipeReflection.getMeta(obj.getClass());
+        if (depth <= 1) {
+            for (int i = 0; i < meta.allMethods.length; i++) {
+                var m = meta.allMethods[i];
+                var h = meta.allHandles[i];
+                if (h == null) continue;
+                try {
                     Class<?> rt = m.getReturnType();
                     String rtName = rt.getName();
 
                     if (FluidStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
                             || Stream.class.isAssignableFrom(rt) || rtName.contains("Fluid")) {
 
-                        if (rt == void.class || rt == Void.class || rt.isPrimitive() || rt == String.class || Number.class.isAssignableFrom(rt) || rt == Boolean.class || rt == Character.class) {
-                            continue;
-                        }
                         String mName = m.getName();
                         if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
                                 || mName.equals("getFluid")) continue;
 
-                        m.setAccessible(true);
-                        Object val = m.invoke(obj);
+                        Object val = h.invoke(obj);
                         if (val != null && val != obj) if (val instanceof Stream<?> stream) {
-                            stream.forEach(element -> collectFluidsDeep(element, acc, depth + 1, visited));
+                            stream.limit(100).forEach(element -> collectFluidsDeep(element, acc, depth + 1, visited));
                         } else {
                             collectFluidsDeep(val, acc, depth + 1, visited);
                         }
                     }
+                } catch (Throwable ignored) {
                 }
-            } catch (Throwable ignored) {
             }
         }
 
-        var meta = RecipeReflection.getMeta(obj.getClass());
         for (var f : meta.scanFields) {
             try {
                 collectFluidsDeep(f.get(obj), acc, depth + 1, visited);
@@ -467,21 +454,13 @@ public final class FastHarvester {
         if (isTerminal(obj)) return;
         if (!visited.add(obj)) return;
 
-        Class<?> cls = obj.getClass();
-        Method[] methods;
-        try {
-            methods = cls.getMethods();
-        } catch (Throwable t) {
-            try {
-                methods = cls.getDeclaredMethods();
-            } catch (Throwable t2) {
-                methods = null;
-            }
-        }
-
-        if (methods != null) for (Method m : methods) {
-            try {
-                if (m.getParameterCount() == 0 && !Modifier.isStatic(m.getModifiers())) {
+        var meta = RecipeReflection.getMeta(obj.getClass());
+        if (depth <= 1) {
+            for (int i = 0; i < meta.allMethods.length; i++) {
+                var m = meta.allMethods[i];
+                var h = meta.allHandles[i];
+                if (h == null) continue;
+                try {
                     Class<?> rt = m.getReturnType();
                     String rtName = rt.getName();
 
@@ -496,27 +475,22 @@ public final class FastHarvester {
                             || rtName.contains("Item")
                             || rtName.contains("Stack")) {
 
-                        if (rt == void.class || rt == Void.class || rt.isPrimitive() || rt == String.class || Number.class.isAssignableFrom(rt) || rt == Boolean.class || rt == Character.class) {
-                            continue;
-                        }
                         String mName = m.getName();
                         if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
                                 || mName.equals("getFluid") || mName.equals("getItem")) continue;
 
-                        m.setAccessible(true);
-                        Object val = m.invoke(obj);
+                        Object val = h.invoke(obj);
                         if (val != null && val != obj) if (val instanceof Stream<?> stream) {
-                            stream.forEach(element -> collectAllDeep(element, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
+                            stream.limit(100).forEach(element -> collectAllDeep(element, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
                         } else {
                             collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                         }
                     }
+                } catch (Throwable ignored) {
                 }
-            } catch (Throwable ignored) {
             }
         }
 
-        var meta = RecipeReflection.getMeta(obj.getClass());
         for (var f : meta.scanFields) {
             try {
                 Object val = f.get(obj);

@@ -66,10 +66,7 @@ public final class HarvestedRecipeConverter {
 
         if (output.isEmpty() && !isPlaceholder && !inputIngredients.isEmpty()) {
             ItemStack[] items = inputIngredients.getFirst().ingredient().getItems();
-            if (items.length > 0) {
-                output = items[0].copy();
-                output.setCount(1);
-            }
+            if (items.length > 0) output = new ItemStack(items[0].getItem(), 1);
         }
 
         if (output.isEmpty() && !isPlaceholder) return null;
@@ -168,7 +165,7 @@ public final class HarvestedRecipeConverter {
                         break;
                     }
                 }
-                if (!alreadyAdded) deduplicatedOutputs.add(stack);
+                if (!alreadyAdded) deduplicatedOutputs.add(stack.copy());
             }
             builder.itemOutputs(deduplicatedOutputs);
         }
@@ -215,7 +212,7 @@ public final class HarvestedRecipeConverter {
     }
 
     private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks) {
-        if (!declaredResult.isEmpty()) return declaredResult;
+        if (!declaredResult.isEmpty()) return declaredResult.copy();
         ItemStack best = ItemStack.EMPTY;
         int bestScore = Integer.MAX_VALUE;
         for (ItemStack stack : stacks) {

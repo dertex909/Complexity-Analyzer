@@ -103,7 +103,7 @@ public final class FastHarvester {
                     if (acc.name().contains("output")) {
                         collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
                     } else {
-                        if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs);
+                        if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs.copy());
                         else collectFluidsDeep(raw, inputFluids, 0, visited);
                     }
                 } catch (Throwable ignored) {
@@ -195,7 +195,7 @@ public final class FastHarvester {
                 return;
             }
             case ItemStack stack when !stack.isEmpty() -> {
-                acc.add(stack);
+                acc.add(stack.copy());
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
@@ -282,11 +282,11 @@ public final class FastHarvester {
                 return;
             }
             case SizedFluidIngredient sfi -> {
-                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs);
+                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs.copy());
                 return;
             }
             case FluidStack fs when !fs.isEmpty() -> {
-                acc.add(fs);
+                acc.add(fs.copy());
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
@@ -392,8 +392,8 @@ public final class FastHarvester {
                 return;
             }
             case ItemStack stack when !stack.isEmpty() -> {
-                if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack);
-                else inputItems.add(stack);
+                if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack.copy());
+                else inputItems.add(stack.copy());
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
@@ -439,7 +439,7 @@ public final class FastHarvester {
                 return;
             }
             case FluidStack fs when !fs.isEmpty() -> {
-                inputFluids.add(fs);
+                inputFluids.add(fs.copy());
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
@@ -555,7 +555,8 @@ public final class FastHarvester {
                 || name.startsWith("net.minecraft.tags.TagKey")
                 || name.startsWith("net.minecraft.core.Holder")
                 || name.startsWith("net.minecraft.core.Registry")
-                || name.startsWith("java.");
+                || name.startsWith("java.")
+                || StructuralTypeClassifier.isTerminalType(c);
     }
 
     private static void clearThreadLocals() {

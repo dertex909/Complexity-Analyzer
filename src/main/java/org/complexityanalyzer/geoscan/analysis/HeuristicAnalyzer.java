@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 public class HeuristicAnalyzer {
 
-    private static final int RECON_DIVERSITY_THRESHOLD = 100;
+    private static final int RECON_DIVERSITY_THRESHOLD = 200;
     private static final int REFINE_UNNATURAL_THRESHOLD = 64;
     private static final double NATURAL_BLOCK_RARITY_THRESHOLD = 0.00005;
 

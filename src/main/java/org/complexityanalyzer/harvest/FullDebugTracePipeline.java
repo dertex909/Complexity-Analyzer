@@ -274,10 +274,10 @@ public final class FullDebugTracePipeline {
                     Object val = acc.extract(recipe, level);
                     String valStr = formatValue(val);
                     sb.append(String.format(Locale.ROOT, "  [%s] %-50s = %s\n",
-                                            acc.type(), acc, valStr));
+                            acc.type(), acc, valStr));
                 } catch (Throwable t) {
                     sb.append(String.format(Locale.ROOT, "  [ERR] %-50s = %s\n",
-                                            acc, t.getClass().getSimpleName()));
+                            acc, t.getClass().getSimpleName()));
                 }
             }
         }

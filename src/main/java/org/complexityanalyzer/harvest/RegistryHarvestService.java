@@ -22,25 +22,23 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Locale;
 
 import static net.minecraft.core.registries.Registries.FLUID;
+import static net.minecraft.world.item.Items.AIR;
+import static net.minecraft.world.item.crafting.RecipeType.CRAFTING;
+import static org.complexityanalyzer.graph.RecipeCategory.PRIMARY;
+import static net.minecraft.world.level.material.Fluids.EMPTY;
 
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
@@ -62,7 +60,7 @@ public final class RegistryHarvestService {
         int failed = 0;
         ObjectList<RecipeNode> nodes = new ObjectArrayList<>();
 
-        FullDebugTracePipeline debugTrace = new FullDebugTracePipeline(worldDir);
+        var debugTrace = new FullDebugTracePipeline(worldDir);
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Starting runtime recipe scan (Total: {} recipes)...", totalRecipes);
         long startTime = System.currentTimeMillis();
@@ -70,18 +68,18 @@ public final class RegistryHarvestService {
         for (var holder : recipes) {
             scanned++;
             try {
-                var items = harvester.harvest(holder.value(), level);
-
-                RecipeNode node = HarvestedRecipeConverter.convert(items, level);
+                var recipe = holder.value();
+                var items = harvester.harvest(recipe, level);
+                var node = HarvestedRecipeConverter.convert(items, level);
 
                 if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty() || !node.getChemicalIngredients().isEmpty())) {
                     nodes.add(node);
                     harvested++;
-                    debugTrace.traceHarvested(holder.id().toString(), holder.value().getClass().getName(), items);
+                    debugTrace.traceHarvested(holder.id().toString(), recipe.getClass().getName(), items);
                 } else {
                     rejected++;
                     String reason = buildRejectReason(items);
-                    debugTrace.traceRejected(holder.id().toString(), holder.value(), level, reason);
+                    debugTrace.traceRejected(holder.id().toString(), recipe, level, reason);
                 }
             } catch (Throwable t) {
                 failed++;
@@ -91,15 +89,15 @@ public final class RegistryHarvestService {
 
             if ((scanned < 1000 && scanned % 100 == 0) || (scanned >= 1000 && scanned % 1000 == 0) || scanned == totalRecipes) {
                 long elapsed = System.currentTimeMillis() - startTime;
-                final String remainingStr = getRemaining(elapsed, scanned, totalRecipes);
+                final var remainingStr = getRemaining(elapsed, scanned, totalRecipes);
 
                 ComplexityAnalyzer.LOGGER.info("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
-                        scanned, totalRecipes, String.format(java.util.Locale.US, "%.1f", (scanned * 100.0) / totalRecipes),
+                        scanned, totalRecipes, String.format(Locale.US, "%.1f", (scanned * 100.0) / totalRecipes),
                         remainingStr, harvested, rejected, failed);
             }
         }
 
-        for (RecipeNode node : nodes) graph.addRecipe(node);
+        for (var node : nodes) graph.addRecipe(node);
         debugTrace.flush();
 
         try {
@@ -128,17 +126,17 @@ public final class RegistryHarvestService {
     }
 
     private void scanRegistryForFluids(RecipeGraph graph, Registry<?> registry) {
-        for (Object element : registry) {
+        for (var element : registry) {
             if (element == null) continue;
             try {
-                Fluid fluid = findFluidFromElement(element);
-                if (fluid == null || fluid == Fluids.EMPTY) continue;
+                var fluid = findFluidFromElement(element);
+                if (fluid == null || fluid == EMPTY) continue;
                 int yield = 1000;
 
-                var builder = new RecipeNode.Builder(Items.AIR)
-                        .category(RecipeCategory.PRIMARY)
+                var builder = new RecipeNode.Builder(AIR)
+                        .category(PRIMARY)
                         .resultCount(1)
-                        .recipeType(RecipeType.CRAFTING)
+                        .recipeType(CRAFTING)
                         .isPlaceholder(true);
 
                 builder.priority(100);
@@ -160,30 +158,30 @@ public final class RegistryHarvestService {
         if (TerminalTypeRegistry.isTerminalType(element.getClass())) return null;
 
         Class<?> clazz = element.getClass();
-        for (Method method : clazz.getMethods()) {
+        for (var method : clazz.getMethods()) {
             if (method.getParameterCount() == 0 && !method.getName().equals("toString") && !method.getName().equals("hashCode")) {
                 Class<?> returnType = method.getReturnType();
                 if (Fluid.class.isAssignableFrom(returnType)) {
                     try {
-                        Fluid f = (Fluid) method.invoke(element);
-                        if (f != null && f != Fluids.EMPTY) return f;
+                        var f = (Fluid) method.invoke(element);
+                        if (f != null && f != EMPTY) return f;
                     } catch (Throwable ignored) {
                     }
                 } else if (Holder.class.isAssignableFrom(returnType)) {
                     try {
                         Holder<?> holder = (Holder<?>) method.invoke(element);
-                        if (holder != null && holder.value() instanceof Fluid f) if (f != Fluids.EMPTY) return f;
+                        if (holder != null && holder.value() instanceof Fluid f) if (f != EMPTY) return f;
                     } catch (Throwable ignored) {
                     }
                 }
             }
         }
 
-        for (Field field : clazz.getDeclaredFields()) {
+        for (var field : clazz.getDeclaredFields()) {
             if (Fluid.class.isAssignableFrom(field.getType())) try {
                 field.setAccessible(true);
-                Fluid f = (Fluid) field.get(element);
-                if (f != null && f != Fluids.EMPTY) return f;
+                var f = (Fluid) field.get(element);
+                if (f != null && f != EMPTY) return f;
             } catch (Throwable ignored) {
             }
         }

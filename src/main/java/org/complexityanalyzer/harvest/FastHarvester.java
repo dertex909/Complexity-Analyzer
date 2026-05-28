@@ -29,7 +29,6 @@ import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -89,14 +88,14 @@ public final class FastHarvester {
                 var accessors = RecipeReflection.getAccessors(recipe.getClass());
                 for (var acc : accessors.itemAccessors()) {
                     try {
-                        Object raw = acc.extract(recipe, level);
+                        var raw = acc.extract(recipe, level);
                         if (raw != null) collectItemsDeep(raw, inputItems, 0, visited);
                     } catch (Throwable ignored) {
                     }
                 }
                 for (var acc : accessors.ingredientAccessors()) {
                     try {
-                        Object raw = acc.extract(recipe, level);
+                        var raw = acc.extract(recipe, level);
                         if (raw instanceof Ingredient ing && !ing.isEmpty())
                             inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                         else if (raw != null) collectIngredientsDeep(raw, inputIngredients, 0, visited);
@@ -105,7 +104,7 @@ public final class FastHarvester {
                 }
                 for (var acc : accessors.fluidAccessors()) {
                     try {
-                        Object raw = acc.extract(recipe, level);
+                        var raw = acc.extract(recipe, level);
                         if (raw == null) continue;
 
                         if (acc.name().contains("output")) {
@@ -120,7 +119,7 @@ public final class FastHarvester {
 
                 for (var acc : accessors.probeAccessors()) {
                     try {
-                        Object raw = acc.extract(recipe, level);
+                        var raw = acc.extract(recipe, level);
                         if (raw != null && !isEmptyContainer(raw)) {
                             String nameLower = acc.name().toLowerCase(java.util.Locale.ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
@@ -246,7 +245,7 @@ public final class FastHarvester {
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
-                Ingredient ing = si.ingredient();
+                var ing = si.ingredient();
                 if (!ing.isEmpty()) acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
             }
@@ -292,7 +291,7 @@ public final class FastHarvester {
                 return;
             }
             case SizedFluidIngredient sfi -> {
-                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs.copy());
+                for (var fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs.copy());
                 return;
             }
             case FluidStack fs when !fs.isEmpty() -> {
@@ -338,7 +337,7 @@ public final class FastHarvester {
                         if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
                                 || mName.equals("getFluid")) continue;
 
-                        Object val = h.invoke(obj);
+                        var val = h.invoke(obj);
                         if (val != null && val != obj) if (val instanceof Stream<?> stream) {
                             stream.limit(100).forEach(element -> collectFluidsDeep(element, acc, depth + 1, visited));
                         } else {
@@ -365,14 +364,14 @@ public final class FastHarvester {
 
         if (depth > 0 && obj instanceof Recipe<?> subRecipe && level != null) {
             try {
-                ItemStack subOutput = subRecipe.getResultItem(level.registryAccess());
+                var subOutput = subRecipe.getResultItem(level.registryAccess());
                 if (!subOutput.isEmpty() && !apiResult.isEmpty() && subOutput.getItem() != apiResult.getItem()) {
                     TL_TRANSITIONAL_ITEMS.get().add(subOutput.getItem());
                 }
 
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
-                    Ingredient toolIng = subIngs.get(1);
+                    var toolIng = subIngs.get(1);
                     if (!toolIng.isEmpty()) if (visited.add(toolIng))
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
                 }
@@ -394,7 +393,7 @@ public final class FastHarvester {
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
-                Ingredient ing = si.ingredient();
+                var ing = si.ingredient();
                 if (!ing.isEmpty()) if (visited.add(ing))
                     inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
@@ -408,13 +407,13 @@ public final class FastHarvester {
                     boolean alreadyExists = false;
                     ItemStack[] ingItems = ing.getItems();
                     for (var existingHi : inputIngredients) {
-                        Ingredient existing = existingHi.ingredient();
+                        var existing = existingHi.ingredient();
                         ItemStack[] existingItems = existing.getItems();
                         if (ingItems.length == existingItems.length) {
                             boolean allMatch = true;
-                            for (ItemStack stackA : ingItems) {
+                            for (var stackA : ingItems) {
                                 boolean found = false;
-                                for (ItemStack stackB : existingItems) {
+                                for (var stackB : existingItems) {
                                     if (stackA.getItem() == stackB.getItem()) {
                                         found = true;
                                         break;
@@ -446,7 +445,7 @@ public final class FastHarvester {
             }
             case Map<?, ?> map when isTooSmall(map) -> {
                 for (var e : map.entrySet()) {
-                    Object key = e.getKey();
+                    var key = e.getKey();
                     if (key != null && !isTerminal(key)) collectAllDeep(key, inputItems, outputItems, inputIngredients,
                             inputFluids, depth + 1, visited, apiResult, level);
                     collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
@@ -489,7 +488,7 @@ public final class FastHarvester {
                         if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
                                 || mName.equals("getFluid") || mName.equals("getItem")) continue;
 
-                        Object val = h.invoke(obj);
+                        var val = h.invoke(obj);
                         if (val != null && val != obj) if (val instanceof Stream<?> stream) {
                             stream.limit(100).forEach(element -> collectAllDeep(element, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
                         } else {
@@ -503,7 +502,7 @@ public final class FastHarvester {
 
         for (var f : meta.scanFields) {
             try {
-                Object val = f.get(obj);
+                var val = f.get(obj);
                 if (val != null) collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids,
                         depth + 1, visited, apiResult, level);
             } catch (Throwable ignored) {

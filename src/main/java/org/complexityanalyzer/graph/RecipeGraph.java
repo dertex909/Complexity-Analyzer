@@ -19,17 +19,18 @@
 package org.complexityanalyzer.graph;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
+
+import static net.minecraft.core.registries.Registries.ITEM;
+import static net.minecraft.world.item.Items.AIR;
+import static net.minecraft.world.level.material.Fluids.EMPTY;
 
 public class RecipeGraph {
     private final Reference2ObjectMap<Item, ObjectList<RecipeNode>> recipesByItem;
@@ -55,12 +56,12 @@ public class RecipeGraph {
     }
 
     public void addRecipe(RecipeNode node) {
-        Item result = node.getResultItem();
-        if (result == Items.AIR && !node.isPlaceholder() && node.getFluidOutputs().isEmpty() && node.getChemicalOutputs().isEmpty()) {
+        var result = node.getResultItem();
+        if (result == AIR && !node.isPlaceholder() && node.getFluidOutputs().isEmpty() && node.getChemicalOutputs().isEmpty()) {
             return;
         }
 
-        if (result != Items.AIR) {
+        if (result != AIR) {
             var list = recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>());
             int dupIdx = -1;
             for (int i = 0; i < list.size(); i++) {
@@ -70,7 +71,7 @@ public class RecipeGraph {
                 }
             }
             if (dupIdx != -1) {
-                RecipeNode existing = list.get(dupIdx);
+                var existing = list.get(dupIdx);
                 boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
                         || node.getItemOutputs().size() > existing.getItemOutputs().size()
                         || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
@@ -84,15 +85,15 @@ public class RecipeGraph {
                     }
                     for (var slot : node.getFluidIngredients()) {
                         for (var variant : slot.getFluidVariants()) {
-                            Fluid normalized = normalizeFluid(variant);
-                            if (normalized != Fluids.EMPTY) {
+                            var normalized = normalizeFluid(variant);
+                            if (normalized != EMPTY) {
                                 fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
                             }
                         }
                     }
                     for (var stack : node.getFluidOutputs()) {
-                        Fluid normalized = normalizeFluid(stack.getFluid());
-                        if (normalized != Fluids.EMPTY) {
+                        var normalized = normalizeFluid(stack.getFluid());
+                        if (normalized != EMPTY) {
                             var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
                             if (!foList.contains(node)) foList.add(node);
                         }
@@ -116,7 +117,7 @@ public class RecipeGraph {
                 }
             }
             if (dupIdx != -1) {
-                RecipeNode existing = list.get(dupIdx);
+                var existing = list.get(dupIdx);
                 boolean nodeIsBetter = node.getFluidOutputs().size() > existing.getFluidOutputs().size();
                 if (nodeIsBetter) {
                     list.set(dupIdx, node);
@@ -127,8 +128,8 @@ public class RecipeGraph {
                         allRecipesList.add(node);
                     }
                     for (var stack : node.getFluidOutputs()) {
-                        Fluid normalized = normalizeFluid(stack.getFluid());
-                        if (normalized != Fluids.EMPTY) {
+                        var normalized = normalizeFluid(stack.getFluid());
+                        if (normalized != EMPTY) {
                             var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
                             if (!foList.contains(node)) foList.add(node);
                         }
@@ -146,7 +147,7 @@ public class RecipeGraph {
 
         for (var slot : node.getIngredients()) {
             for (var ingredient : slot.getVariants()) {
-                if (result != Items.AIR) {
+                if (result != AIR) {
                     usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
                 }
             }
@@ -154,16 +155,16 @@ public class RecipeGraph {
 
         for (var slot : node.getFluidIngredients()) {
             for (var variant : slot.getFluidVariants()) {
-                Fluid normalized = normalizeFluid(variant);
-                if (normalized != Fluids.EMPTY) if (result != Items.AIR) {
+                var normalized = normalizeFluid(variant);
+                if (normalized != EMPTY) if (result != AIR) {
                     fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
                 }
             }
         }
 
         for (var stack : node.getFluidOutputs()) {
-            Fluid normalized = normalizeFluid(stack.getFluid());
-            if (normalized != Fluids.EMPTY) {
+            var normalized = normalizeFluid(stack.getFluid());
+            if (normalized != EMPTY) {
                 var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
                 if (!foList.contains(node)) foList.add(node);
             }
@@ -208,11 +209,11 @@ public class RecipeGraph {
     public int reclassifyRecipesBasedOnComplexity(Reference2DoubleMap<Item> complexities) {
         int reclassified = 0;
 
-        var oresTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ores"));
-        var rawMaterialsTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
-        var storageBlocksTag = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
-        var dusts = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:dusts"));
-        var crushed = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:crushed"));
+        var oresTag = TagKey.create(ITEM, ResourceLocation.parse("c:ores"));
+        var rawMaterialsTag = TagKey.create(ITEM, ResourceLocation.parse("c:raw_materials"));
+        var storageBlocksTag = TagKey.create(ITEM, ResourceLocation.parse("c:storage_blocks"));
+        var dusts = TagKey.create(ITEM, ResourceLocation.parse("c:dusts"));
+        var crushed = TagKey.create(ITEM, ResourceLocation.parse("c:crushed"));
 
         for (var item : getAllItems()) {
             if (!hasRecipe(item)) continue;
@@ -225,8 +226,10 @@ public class RecipeGraph {
             for (var recipe : recipes) {
                 if (recipe.getCategory() != RecipeCategory.PRIMARY) continue;
 
-                var recipeType = recipe.getRecipeType().toString();
-                if (!isVanillaRecipeType(recipeType)) continue;
+                var recipeType = recipe.getRecipeType();
+                var recipeTypeRL = recipeType != null ? GameRegistryManager.getRecipeTypeId(recipeType) : null;
+                var recipeTypeStr = recipeTypeRL != null ? recipeTypeRL.toString() : "";
+                if (!isVanillaRecipeType(recipeTypeStr)) continue;
 
                 var isReverseRecipe = false;
                 var hasRawMaterial = false;
@@ -344,11 +347,7 @@ public class RecipeGraph {
     }
 
     public GraphStats getStats() {
-        return new GraphStats(
-                recipesByItem.size(),
-                getTotalRecipeCount(),
-                usageMap.size()
-        );
+        return new GraphStats(recipesByItem.size(), getTotalRecipeCount(), usageMap.size());
     }
 
     public ReferenceSet<Item> getCorpus() {
@@ -375,8 +374,7 @@ public class RecipeGraph {
     ) {
         @Override
         public @NotNull String toString() {
-            return String.format("GraphStats{items=%d, recipes=%d, ingredients=%d}",
-                    itemsWithRecipes, totalRecipes, itemsUsedAsIngredients);
+            return String.format("GraphStats{items=%d, recipes=%d, ingredients=%d}", itemsWithRecipes, totalRecipes, itemsUsedAsIngredients);
         }
     }
 }

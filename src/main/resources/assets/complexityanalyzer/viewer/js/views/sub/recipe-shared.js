@@ -718,9 +718,9 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     }
 
     const machineKey = r.recipeType || "minecraft:custom";
-    let activeMachineIdx = resolveBestMachine(r, db, body);
+    let activeMachineIdx = machineOverride ? machineOverride.index : resolveBestMachine(r, db, body);
 
-    const machineItem = machineOverride || db.items.get(activeMachineIdx);
+    const machineItem = db.items.get(activeMachineIdx);
     const machineName = machineItem ? machineItem.name : r.recipeType;
 
     let amortizationHtml = "";

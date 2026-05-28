@@ -40,6 +40,8 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Locale;
 
+import static net.minecraft.core.registries.Registries.FLUID;
+
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
 
@@ -101,13 +103,8 @@ public final class RegistryHarvestService {
         debugTrace.flush();
 
         try {
-            level.registryAccess().registries().forEach(entry -> {
-                var key = entry.key();
-                var registry = entry.value();
-                String namespace = key.location().getNamespace();
-                if (namespace.equals("minecraft") || namespace.equals("neoforge") || namespace.equals("forge")) return;
-                scanRegistryForFluids(graph, registry);
-            });
+            var fluidRegistry = level.registryAccess().registry(FLUID);
+            fluidRegistry.ifPresent(fluids -> scanRegistryForFluids(graph, fluids));
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed dynamic registry fluid scan: {}", t.getMessage());
         }

@@ -89,7 +89,10 @@ export async function renderItemMachineRecipesView(container) {
 
     body.innerHTML = `<div class="hint">Loading machine recipes…</div>`;
     try {
-        const recipes = (await db.getRecipesByMachine(itemIndex)).filter(r => r.machineItemIndex === itemIndex);
+        const recipes = (await db.getRecipesByMachine(itemIndex)).filter(r => {
+            const allMs = r.allMachineIndexes || [];
+            return r.machineItemIndex === itemIndex || allMs.includes(itemIndex);
+        });
         if (recipes.length === 0) {
             body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">No recipes are registered for this machine.</div></div>`;
             return;

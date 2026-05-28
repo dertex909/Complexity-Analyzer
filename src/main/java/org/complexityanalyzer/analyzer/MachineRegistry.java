@@ -196,7 +196,7 @@ public class MachineRegistry {
 
         var item = GameRegistryManager.getItem(itemRL);
 
-        if (item == Items.AIR) {
+        if (item == null || item == Items.AIR) {
             ComplexityAnalyzer.LOGGER.warn("Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
             return;
         }

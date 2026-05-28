@@ -81,6 +81,16 @@ public final class PatternSignatureEngine {
 
     public static ClassProfile profile(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("class is null");
+        if (TerminalTypeRegistry.isTerminalType(clazz)) return new ClassProfile(
+                clazz.getName().replace('.', '/'), clazz, DetectionLevel.UNKNOWN,
+                0, 0, 0,
+                false, false, false,
+                0, 0, 0, 0,
+                0, 0, 0,
+                0, 0, 0,
+                it.unimi.dsi.fastutil.objects.ObjectLists.emptyList(),
+                it.unimi.dsi.fastutil.objects.ObjectLists.emptyList()
+        );
         ClassProfile existing = PROFILE_CACHE.get(clazz);
         if (existing != null) return existing;
         ClassProfile result = buildProfile(clazz);

@@ -70,6 +70,10 @@ public final class UniversalTypeResolver {
 
     public static ResolvedType resolve(Class<?> clazz) {
         if (clazz == null) return ResolvedType.UNKNOWN_TYPE;
+        if (isTerminalType(clazz)) {
+            if (clazz.isPrimitive() || Number.class.isAssignableFrom(clazz)) return ResolvedType.NUMBER_TYPE;
+            return ResolvedType.UNKNOWN_TYPE;
+        }
         ResolvedType existing = TYPE_CACHE.get(clazz);
         if (existing != null) return existing;
         TYPE_CACHE.put(clazz, ResolvedType.UNKNOWN_TYPE);

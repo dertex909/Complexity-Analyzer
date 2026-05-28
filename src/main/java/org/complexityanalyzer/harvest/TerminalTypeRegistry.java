@@ -45,9 +45,13 @@ public final class TerminalTypeRegistry {
         String name = c.getName();
         if (name.isEmpty()) return true;
 
-        if (name.contains("RecipeType") || name.contains("RecipeBuilder") || name.contains("RecipeSerializer")
-                || name.contains("EnergyStack") || name.contains("$$Lambda$") || name.contains("MethodHandle")
-                || name.contains("VarHandle")) return true;
+        if (name.contains(".client.") || name.contains(".client") || name.contains(".gui.")
+                || name.contains(".renderer.") || name.contains(".render.") || name.contains(".screens.")
+                || name.contains(".sound.") || name.contains(".sounds.") || name.contains("net.minecraft.client")
+                || name.contains("net/minecraft/client/") || name.contains("KeyMapping") || name.contains("VarHandle")
+                || name.contains("ModelResourceLocation") || name.contains("RecipeType")
+                || name.contains("RecipeBuilder") || name.contains("RecipeSerializer") || name.contains("EnergyStack")
+                || name.contains("$$Lambda$") || name.contains("MethodHandle")) return true;
 
         int firstDot = name.indexOf('.');
         if (firstDot == -1) return false;

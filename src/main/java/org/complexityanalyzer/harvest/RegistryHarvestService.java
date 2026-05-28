@@ -158,7 +158,9 @@ public final class RegistryHarvestService {
     }
 
     private Fluid findFluidFromElement(Object element) {
+        if (element == null) return null;
         if (element instanceof Fluid f) return f;
+        if (TerminalTypeRegistry.isTerminalType(element.getClass())) return null;
 
         Class<?> clazz = element.getClass();
         for (Method method : clazz.getMethods()) {

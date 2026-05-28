@@ -152,6 +152,7 @@ public final class RecipeReflection {
             while (idx < queue.size()) {
                 var current = queue.get(idx++);
                 if (current == null || current == Object.class) continue;
+                if (StructuralTypeClassifier.isTerminalType(current)) continue;
                 for (var m : current.getDeclaredMethods()) {
                     if (m.getParameterCount() != 0) continue;
                     if (Modifier.isStatic(m.getModifiers())) continue;

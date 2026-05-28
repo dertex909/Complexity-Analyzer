@@ -23,6 +23,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -65,7 +66,14 @@ public final class FastHarvester {
 
         try {
             ItemStack apiResult = ItemStack.EMPTY;
+            boolean isVanillaRecipe = false;
+
             if (recipe instanceof Recipe<?> r) {
+                var type = r.getType();
+                if (type == RecipeType.CRAFTING || type == RecipeType.SMELTING || type == RecipeType.BLASTING
+                        || type == RecipeType.SMOKING || type == RecipeType.CAMPFIRE_COOKING
+                        || type == RecipeType.STONECUTTING || type == RecipeType.SMITHING) isVanillaRecipe = true;
+
                 for (var ing : r.getIngredients())
                     if (ing != null && !ing.isEmpty())
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
@@ -77,59 +85,61 @@ public final class FastHarvester {
                 }
             }
 
-            var accessors = RecipeReflection.getAccessors(recipe.getClass());
-            for (var acc : accessors.itemAccessors()) {
-                try {
-                    Object raw = acc.extract(recipe, level);
-                    if (raw != null) collectItemsDeep(raw, inputItems, 0, visited);
-                } catch (Throwable ignored) {
-                }
-            }
-            for (var acc : accessors.ingredientAccessors()) {
-                try {
-                    Object raw = acc.extract(recipe, level);
-                    if (raw instanceof Ingredient ing && !ing.isEmpty())
-                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                    else if (raw != null) collectIngredientsDeep(raw, inputIngredients, 0, visited);
-                } catch (Throwable ignored) {
-                }
-            }
-            for (var acc : accessors.fluidAccessors()) {
-                try {
-                    Object raw = acc.extract(recipe, level);
-                    if (raw == null) continue;
-
-                    if (acc.name().contains("output")) {
-                        collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
-                    } else {
-                        if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs.copy());
-                        else collectFluidsDeep(raw, inputFluids, 0, visited);
+            if (!isVanillaRecipe) {
+                var accessors = RecipeReflection.getAccessors(recipe.getClass());
+                for (var acc : accessors.itemAccessors()) {
+                    try {
+                        Object raw = acc.extract(recipe, level);
+                        if (raw != null) collectItemsDeep(raw, inputItems, 0, visited);
+                    } catch (Throwable ignored) {
                     }
-                } catch (Throwable ignored) {
                 }
-            }
+                for (var acc : accessors.ingredientAccessors()) {
+                    try {
+                        Object raw = acc.extract(recipe, level);
+                        if (raw instanceof Ingredient ing && !ing.isEmpty())
+                            inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                        else if (raw != null) collectIngredientsDeep(raw, inputIngredients, 0, visited);
+                    } catch (Throwable ignored) {
+                    }
+                }
+                for (var acc : accessors.fluidAccessors()) {
+                    try {
+                        Object raw = acc.extract(recipe, level);
+                        if (raw == null) continue;
 
-            for (var acc : accessors.probeAccessors()) {
-                try {
-                    Object raw = acc.extract(recipe, level);
-                    if (raw != null && !isEmptyContainer(raw)) {
-                        String nameLower = acc.name().toLowerCase(java.util.Locale.ROOT);
-                        if (nameLower.contains("output") || nameLower.contains("result")) {
-                            var tempItems = new ObjectArrayList<ItemStack>(8);
-                            collectItemsDeep(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
-                            outputItems.addAll(tempItems);
+                        if (acc.name().contains("output")) {
                             collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
                         } else {
-                            collectAllDeep(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
+                            if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs.copy());
+                            else collectFluidsDeep(raw, inputFluids, 0, visited);
                         }
+                    } catch (Throwable ignored) {
                     }
-                } catch (Throwable ignored) {
                 }
-            }
 
-            if (inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty() && inputFluids.isEmpty() && outputFluids.isEmpty()) {
-                visited.clear();
-                collectAllDeep(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
+                for (var acc : accessors.probeAccessors()) {
+                    try {
+                        Object raw = acc.extract(recipe, level);
+                        if (raw != null && !isEmptyContainer(raw)) {
+                            String nameLower = acc.name().toLowerCase(java.util.Locale.ROOT);
+                            if (nameLower.contains("output") || nameLower.contains("result")) {
+                                var tempItems = new ObjectArrayList<ItemStack>(8);
+                                collectItemsDeep(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
+                                outputItems.addAll(tempItems);
+                                collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
+                            } else {
+                                collectAllDeep(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
+
+                if (inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty() && inputFluids.isEmpty() && outputFluids.isEmpty()) {
+                    visited.clear();
+                    collectAllDeep(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
+                }
             }
 
             if (inputIngredients.isEmpty() && inputItems.isEmpty() && recipe instanceof Recipe<?> r) {

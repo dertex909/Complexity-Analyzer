@@ -273,18 +273,7 @@ public class ScanExecutor {
     }
 
     private boolean checkMemoryAndThrottling(SessionContext myCtx) {
-        if (EmergencyManager.isMemoryCritical()) {
-            EmergencyManager.panic("Heap usage critical (" + String.format("%.1f%%", EmergencyManager.getUsedMemoryRatio() * 100) + ")");
-            return true;
-        }
-
-        boolean throttled = false;
-        if (EmergencyManager.isMemoryPressureHigh()) {
-            throttled = true;
-            if (throttlePauseCount.get() % 10 == 0) EmergencyManager.logMemoryStatus();
-        } else if (myCtx.monitor().isThrottled()) {
-            throttled = true;
-        }
+        boolean throttled = myCtx.monitor().isThrottled();
 
         if (!throttled) return false;
 
@@ -292,12 +281,7 @@ public class ScanExecutor {
         throttlePauseCount.incrementAndGet();
 
         ScanSession mySession = myCtx.session();
-        while ((EmergencyManager.isMemoryPressureHigh() || myCtx.monitor().isThrottled()) && !isShutdown.get()) {
-            if (EmergencyManager.isMemoryCritical()) {
-                EmergencyManager.panic("Heap usage critical during pause");
-                return true;
-            }
-
+        while (myCtx.monitor().isThrottled() && !isShutdown.get()) {
             if (sessionRef.get() != myCtx || !mySession.isValid()) break;
 
             LockSupport.parkNanos(200_000_000L);

@@ -568,28 +568,6 @@ public class AnalysisEngine {
         isShuttingDown.set(false);
     }
 
-    public void enterEmergencyState(String reason) {
-        stateLock.lock();
-        try {
-            ComplexityAnalyzer.LOGGER.warn("!!! EMERGENCY CLEANUP TRIGGERED: {} !!!", reason);
-
-            geoManagerLock.lock();
-            try {
-                if (this.geoManager != null) {
-                    this.geoManager.shutdown();
-                    this.geoManager = null;
-                }
-            } finally {
-                geoManagerLock.unlock();
-            }
-
-            clearAllCaches();
-            ComplexityAnalyzer.LOGGER.warn("Emergency cleanup complete. Geo-scan halted, caches cleared. Engine remains active.");
-        } finally {
-            stateLock.unlock();
-        }
-    }
-
     public void shutdownCompletely() {
         shutdown();
         ThreadPoolManager.getInstance().shutdown();

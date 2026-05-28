@@ -20,55 +20,11 @@ package org.complexityanalyzer.geoscan.scan;
 
 import net.minecraft.server.MinecraftServer;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class EmergencyManager {
-
-    private static final AtomicBoolean PANICKING = new AtomicBoolean(false);
-
-    public static boolean isMemoryPressureHigh() {
-        if (!ComplexityConfig.ENABLE_SCAN_SAFETY.get()) return false;
-        return getUsedMemoryRatio() > ComplexityConfig.MEMORY_PAUSE_THRESHOLD.get();
-    }
-
-    public static boolean isMemoryCritical() {
-        if (!ComplexityConfig.ENABLE_SCAN_SAFETY.get()) return false;
-        return getUsedMemoryRatio() > ComplexityConfig.MEMORY_CRITICAL_THRESHOLD.get();
-    }
-
-    public static double getUsedMemoryRatio() {
-        Runtime runtime = Runtime.getRuntime();
-        long used = runtime.totalMemory() - runtime.freeMemory();
-        return (double) used / runtime.maxMemory();
-    }
-
-    public static void logMemoryStatus() {
-        Runtime runtime = Runtime.getRuntime();
-        long max = runtime.maxMemory() / (1024 * 1024);
-        long allocated = runtime.totalMemory() / (1024 * 1024);
-        long used = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
-        ComplexityAnalyzer.LOGGER.warn("[EmergencyManager] Memory: {}MB / {}MB (Allocated: {}MB) - {}%",
-                used, max, allocated, getUsedMemoryRatio() * 100);
-    }
-
-    public static void panic(String reason) {
-        if (PANICKING.compareAndSet(false, true)) {
-            ComplexityAnalyzer.LOGGER.error("!!! EMERGENCY PANIC: {} !!!", reason);
-            AnalysisEngine.getInstance().enterEmergencyState(reason);
-
-            Thread.startVirtualThread(() -> {
-                try {
-                    Thread.sleep(30000);
-                    PANICKING.set(false);
-                } catch (InterruptedException ignored) {
-                }
-            });
-        }
-    }
 
     public static class MsptTracker {
         private final MinecraftServer server;

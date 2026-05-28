@@ -71,15 +71,22 @@ export function mergeDuplicateRecipes(recipes) {
         if (!keyToRecipe.has(idKey)) {
             const rCopy = {
                 ...r,
-                allMachineIndexes: []
+                allMachineIndexes: r.allMachineIndexes ? [...r.allMachineIndexes] : []
             };
             if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
-                rCopy.allMachineIndexes.push(r.machineItemIndex);
+                if (!rCopy.allMachineIndexes.includes(r.machineItemIndex)) {
+                    rCopy.allMachineIndexes.push(r.machineItemIndex);
+                }
             }
             keyToRecipe.set(idKey, rCopy);
             unique.push(rCopy);
         } else {
             const existing = keyToRecipe.get(idKey);
+            if (r.allMachineIndexes) for (const mi of r.allMachineIndexes) {
+                if (mi !== undefined && mi >= 0 && !existing.allMachineIndexes.includes(mi)) {
+                    existing.allMachineIndexes.push(mi);
+                }
+            }
             if (r.machineItemIndex !== undefined && r.machineItemIndex >= 0) {
                 if (!existing.allMachineIndexes.includes(r.machineItemIndex)) {
                     existing.allMachineIndexes.push(r.machineItemIndex);

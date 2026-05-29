@@ -1,8 +1,9 @@
 package org.complexityanalyzer.harvest;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -11,12 +12,11 @@ import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 
 import java.lang.reflect.Modifier;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class DynamicRecipeHarvester {
 
@@ -28,7 +28,7 @@ public final class DynamicRecipeHarvester {
         ComplexityAnalyzer.LOGGER.info("[Harvest] Starting autonomous dynamic recipe probe...");
         var recipeManager = level.getRecipeManager();
 
-        Map<RecipeType<?>, Class<?>> inputTypeMap = new LinkedHashMap<>();
+        Object2ObjectMap<RecipeType<?>, Class<?>> inputTypeMap = new Object2ObjectLinkedOpenHashMap<>();
         for (var holder : recipeManager.getRecipes()) {
             var type = holder.value().getType();
             if (inputTypeMap.containsKey(type)) continue;
@@ -47,7 +47,7 @@ public final class DynamicRecipeHarvester {
         int addedCount = 0;
 
         for (var entry : inputTypeMap.entrySet()) {
-            for (Item item : BuiltInRegistries.ITEM) {
+            for (var item : GameRegistryManager.getAllItems()) {
                 try {
                     var inputObj = createInput(entry.getValue(), item);
                     if (inputObj == null) continue;
@@ -79,7 +79,7 @@ public final class DynamicRecipeHarvester {
 
     private static Object createInput(Class<?> inputClass, Item item) {
         var stack = new ItemStack(item);
-        List<ItemStack> singleList = List.of(stack);
+        var singleList = List.of(stack);
 
         for (var m : inputClass.getMethods()) {
             if (!Modifier.isStatic(m.getModifiers()) || !m.getName().equals("of")

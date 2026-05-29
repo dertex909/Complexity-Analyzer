@@ -43,6 +43,7 @@ public final class ComplexityCommand {
                 .then(TreeCommand.register())
                 .then(ResourceCommand.register())
                 .then(GeoScanCommands.register())
+                .then(XkDecoDebugCommand.register())
         );
 
         ComplexityAnalyzer.LOGGER.info("Registered /complexity command with decentralized architecture");

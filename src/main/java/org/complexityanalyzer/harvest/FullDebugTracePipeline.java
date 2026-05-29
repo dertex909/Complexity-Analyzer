@@ -25,7 +25,6 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,28 +66,28 @@ public final class FullDebugTracePipeline {
             if (debugClaimed) {
                 if (!items.inputItems().isEmpty()) {
                     buffer.append("  Input items: ");
-                    for (ItemStack stack : items.inputItems()) buffer.append(formatItemStack(stack)).append(", ");
+                    for (var stack : items.inputItems()) buffer.append(formatItemStack(stack)).append(", ");
                     buffer.setLength(buffer.length() - 2);
                     buffer.append('\n');
                 }
 
                 if (!items.outputItems().isEmpty()) {
                     buffer.append("  Output items: ");
-                    for (ItemStack stack : items.outputItems()) buffer.append(formatItemStack(stack)).append(", ");
+                    for (var stack : items.outputItems()) buffer.append(formatItemStack(stack)).append(", ");
                     buffer.setLength(buffer.length() - 2);
                     buffer.append('\n');
                 }
 
                 if (!items.inputFluids().isEmpty()) {
                     buffer.append("  Input fluids: ");
-                    for (FluidStack fs : items.inputFluids()) buffer.append(formatValue(fs)).append(", ");
+                    for (var fs : items.inputFluids()) buffer.append(formatValue(fs)).append(", ");
                     buffer.setLength(buffer.length() - 2);
                     buffer.append('\n');
                 }
 
                 if (!items.outputFluids().isEmpty()) {
                     buffer.append("  Output fluids: ");
-                    for (FluidStack fs : items.outputFluids()) buffer.append(formatValue(fs)).append(", ");
+                    for (var fs : items.outputFluids()) buffer.append(formatValue(fs)).append(", ");
                     buffer.setLength(buffer.length() - 2);
                     buffer.append('\n');
                 }
@@ -96,9 +95,8 @@ public final class FullDebugTracePipeline {
         }
     }
 
-    public void traceRejected(String recipeId, Object recipe, Level level,
-                              String reason) {
-        TraceBuilder tb = new TraceBuilder(this, recipe, recipeId);
+    public void traceRejected(String recipeId, Object recipe, Level level, String reason) {
+        var tb = new TraceBuilder(this, recipe, recipeId);
         tb.classInfo();
         tb.fields();
         tb.methods();
@@ -143,9 +141,9 @@ public final class FullDebugTracePipeline {
         }
 
         try {
-            Path dir = worldDir.resolve("complexityanalyzer");
+            var dir = worldDir.resolve("complexityanalyzer");
             Files.createDirectories(dir);
-            Path file = dir.resolve("runtime_harvest.txt");
+            var file = dir.resolve("runtime_harvest.txt");
             Files.writeString(file, buffer.toString(), StandardCharsets.UTF_8);
             ComplexityAnalyzer.LOGGER.info("[Harvest:Debug] Written {} recipes trace to {}", totalRecipes, file);
         } catch (Throwable t) {
@@ -171,35 +169,32 @@ public final class FullDebugTracePipeline {
             sb.append("RECIPE: ").append(recipeId).append('\n');
             sb.append("CLASS:  ").append(recipe.getClass().getName()).append('\n');
 
-            Class<?> clazz = recipe.getClass();
+            var clazz = recipe.getClass();
             sb.append("INTERFACES:\n");
-            for (Class<?> iface : clazz.getInterfaces()) {
-                sb.append("  - ").append(iface.getName()).append('\n');
-            }
+            for (var iface : clazz.getInterfaces()) sb.append("  - ").append(iface.getName()).append('\n');
             if (clazz.getSuperclass() != null && clazz.getSuperclass() != Object.class) {
                 sb.append("  extends ").append(clazz.getSuperclass().getName()).append('\n');
             }
 
-            PatternSignatureEngine.ClassProfile profile = PatternSignatureEngine.profile(clazz);
+            var profile = PatternSignatureEngine.profile(clazz);
             sb.append("SIGNATURE: level=").append(profile.level())
                     .append(" score=").append(profile.totalScore())
                     .append(" isRecipe=").append(profile.isRecipe())
                     .append(" isMachine=").append(profile.isMachine())
                     .append('\n');
-
         }
 
         public void fields() {
             sb.append(MINOR_SEP).append('\n');
             sb.append("FIELDS:\n");
 
-            UniversalAccessorResolver.ClassMeta meta = UniversalAccessorResolver.getMeta(recipe.getClass());
+            var meta = UniversalAccessorResolver.getMeta(recipe.getClass());
 
-            for (Field f : meta.allFields()) {
+            for (var f : meta.allFields()) {
                 try {
-                    Object val = f.get(recipe);
-                    String valStr = formatValue(val);
-                    HeuristicRoleClassifier.RoleClassification role = HeuristicRoleClassifier.classifyField(f);
+                    var val = f.get(recipe);
+                    var valStr = formatValue(val);
+                    var role = HeuristicRoleClassifier.classifyField(f);
 
                     sb.append(String.format(Locale.ROOT,
                             "  [%s] %-30s : %-40s = %s\n",
@@ -221,17 +216,17 @@ public final class FullDebugTracePipeline {
             sb.append(MINOR_SEP).append('\n');
             sb.append("METHODS:\n");
 
-            UniversalAccessorResolver.ClassMeta meta = UniversalAccessorResolver.getMeta(recipe.getClass());
+            var meta = UniversalAccessorResolver.getMeta(recipe.getClass());
             int shown = 0;
             for (int i = 0; i < meta.allMethods().length; i++) {
                 var m = meta.allMethods()[i];
                 var h = meta.allHandles()[i];
                 if (h == null) continue;
 
-                Class<?> rt = m.getReturnType();
+                var rt = m.getReturnType();
                 if (rt == void.class || rt == Void.class) continue;
 
-                HeuristicRoleClassifier.RoleClassification role = HeuristicRoleClassifier.classifyMethod(m);
+                var role = HeuristicRoleClassifier.classifyMethod(m);
 
                 if (role.role() == HeuristicRoleClassifier.Role.UNKNOWN
                         && !UniversalTypeResolver.isContainerType(rt)
@@ -243,7 +238,7 @@ public final class FullDebugTracePipeline {
 
                 shown++;
                 try {
-                    Object val = h.invoke(recipe);
+                    var val = h.invoke(recipe);
                     String valStr = formatValue(val);
                     sb.append(String.format(Locale.ROOT,
                             "  [%s] %-30s() → %-40s = %s\n",
@@ -267,11 +262,11 @@ public final class FullDebugTracePipeline {
             sb.append(MINOR_SEP).append('\n');
             sb.append("ACCESSOR EXTRACTION:\n");
 
-            UniversalAccessorResolver.ResolvedAccessors accessors = UniversalAccessorResolver.resolve(recipe, level);
+            var accessors = UniversalAccessorResolver.resolve(recipe, level);
 
             for (var acc : accessors.allAccessors()) {
                 try {
-                    Object val = acc.extract(recipe, level);
+                    var val = acc.extract(recipe, level);
                     String valStr = formatValue(val);
                     sb.append(String.format(Locale.ROOT, "  [%s] %-50s = %s\n",
                             acc.type(), acc, valStr));

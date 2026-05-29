@@ -54,7 +54,7 @@ public class ComplexityConfig {
     private static volatile int resolvedMaxThreads = -1;
 
     static {
-        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        var builder = new ModConfigSpec.Builder();
 
         builder.push("threading");
         MAX_THREADS = builder.comment(

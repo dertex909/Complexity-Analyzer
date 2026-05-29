@@ -59,7 +59,7 @@ public class ThreadPoolManager {
     }
 
     public static ThreadPoolManager getInstance() {
-        ThreadPoolManager localInstance = instance;
+        var localInstance = instance;
         if (localInstance == null || localInstance.isShutdown.get()) synchronized (LOCK) {
             localInstance = instance;
             if (localInstance == null || localInstance.isShutdown.get()) {
@@ -71,7 +71,7 @@ public class ThreadPoolManager {
 
     public static void reinitialize() {
         synchronized (LOCK) {
-            ThreadPoolManager existing = instance;
+            var existing = instance;
 
             if (existing != null) {
                 if (!existing.isShutdown.get()) existing.shutdown();
@@ -112,7 +112,7 @@ public class ThreadPoolManager {
                         60L, TimeUnit.SECONDS,
                         new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                         r -> {
-                            Thread t = new Thread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
+                            var t = new Thread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
                             t.setDaemon(true);
                             t.setPriority(Thread.MIN_PRIORITY);
                             return t;
@@ -123,7 +123,7 @@ public class ThreadPoolManager {
                 this.forkJoinPool = new ForkJoinPool(
                         parallelism,
                         pool -> {
-                            ForkJoinWorkerThread thread = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+                            var thread = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
                             thread.setName("Complexity-ForkJoin-" + thread.getPoolIndex());
                             thread.setDaemon(true);
                             return thread;
@@ -133,7 +133,7 @@ public class ThreadPoolManager {
                         true
                 );
 
-                Thread oldWatchdog = shutdownWatchdog;
+                var oldWatchdog = shutdownWatchdog;
                 if (oldWatchdog != null && oldWatchdog.isAlive()) oldWatchdog.interrupt();
 
                 shutdownWatchdog = new Thread(() -> {
@@ -160,8 +160,8 @@ public class ThreadPoolManager {
     private void forceShutdown() {
         if (!isShutdown.compareAndSet(false, true)) return;
 
-        ExecutorService compute = computePool;
-        ForkJoinPool fj = forkJoinPool;
+        var compute = computePool;
+        var fj = forkJoinPool;
 
         if (compute != null && !compute.isShutdown()) {
             int droppedCount = compute.shutdownNow().size();
@@ -185,7 +185,7 @@ public class ThreadPoolManager {
 
     public ExecutorService getComputePool() {
         ensureNotShutdown();
-        ExecutorService pool = computePool;
+        var pool = computePool;
         if (pool == null || pool.isShutdown()) synchronized (LOCK) {
             pool = computePool;
             if (pool == null || pool.isShutdown()) {
@@ -211,14 +211,14 @@ public class ThreadPoolManager {
             long shutdownStartTime = System.currentTimeMillis();
             ComplexityAnalyzer.LOGGER.info("Shutting down ThreadPoolManager...");
 
-            Thread watchdog = shutdownWatchdog;
+            var watchdog = shutdownWatchdog;
             if (watchdog != null) {
                 watchdog.interrupt();
                 shutdownWatchdog = null;
             }
 
-            ExecutorService compute = computePool;
-            ForkJoinPool fj = forkJoinPool;
+            var compute = computePool;
+            var fj = forkJoinPool;
 
             if (compute != null && !compute.isShutdown()) compute.shutdown();
             if (fj != null && !fj.isShutdown()) fj.shutdown();
@@ -289,7 +289,7 @@ public class ThreadPoolManager {
 
         int interrupted = 0;
         for (int i = 0; i < count; i++) {
-            Thread t = threads[i];
+            var t = threads[i];
             if (t != null && t.isAlive()) {
                 String name = t.getName();
                 if (name.startsWith("Complexity-Compute-") || name.startsWith("Complexity-ForkJoin-")) {
@@ -328,8 +328,8 @@ public class ThreadPoolManager {
     private static final PoolStats EMPTY_STATS = new PoolStats(0, 0, 0, 0, 0, 0);
 
     public PoolStats getStats() {
-        ExecutorService compute = computePool;
-        ForkJoinPool fj = forkJoinPool;
+        var compute = computePool;
+        var fj = forkJoinPool;
 
         if (compute == null || fj == null || isShutdown.get()) return EMPTY_STATS;
 

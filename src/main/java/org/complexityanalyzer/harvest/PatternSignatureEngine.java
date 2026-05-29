@@ -23,8 +23,6 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,9 +89,9 @@ public final class PatternSignatureEngine {
                 it.unimi.dsi.fastutil.objects.ObjectLists.emptyList(),
                 it.unimi.dsi.fastutil.objects.ObjectLists.emptyList()
         );
-        ClassProfile existing = PROFILE_CACHE.get(clazz);
+        var existing = PROFILE_CACHE.get(clazz);
         if (existing != null) return existing;
-        ClassProfile result = buildProfile(clazz);
+        var result = buildProfile(clazz);
         PROFILE_CACHE.put(clazz, result);
         return result;
     }
@@ -112,7 +110,7 @@ public final class PatternSignatureEngine {
             evidence.add("SIGNATURE: implements Recipe<?>");
             interfaces.add("Recipe<?>");
         }
-        for (Class<?> iface : clazz.getInterfaces()) {
+        for (var iface : clazz.getInterfaces()) {
             String name = iface.getSimpleName();
             if (!name.startsWith("I") && !name.endsWith("able")) continue;
             interfaces.add(iface.getName().replace('/', '.'));
@@ -121,11 +119,11 @@ public final class PatternSignatureEngine {
         int collectionFields = 0, resourceIdFields = 0, tagFields = 0;
         int itemStackMethods = 0, ingredientMethods = 0, fluidStackMethods = 0;
         int codecRefs = 0;
-        Class<?> scan = clazz;
+        var scan = clazz;
         while (scan != null && scan != Object.class) {
-            for (Field f : scan.getDeclaredFields()) {
+            for (var f : scan.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
-                UniversalTypeResolver.ResolvedType fieldType = UniversalTypeResolver.resolve(f.getType());
+                var fieldType = UniversalTypeResolver.resolve(f.getType());
                 final String e = "field " + f.getName() + ": " + f.getType().getSimpleName();
                 switch (fieldType.kind()) {
                     case ITEM_STACK -> {
@@ -147,9 +145,9 @@ public final class PatternSignatureEngine {
                 }
                 if (fieldType.isCollection() || UniversalTypeResolver.isContainerType(f.getType())) {
                     collectionFields++;
-                    Class<?> inner = UniversalTypeResolver.extractInnerType(f);
+                    var inner = UniversalTypeResolver.extractInnerType(f);
                     if (inner != null) {
-                        UniversalTypeResolver.ResolvedType innerType = UniversalTypeResolver.resolve(inner);
+                        var innerType = UniversalTypeResolver.resolve(inner);
                         switch (innerType.kind()) {
                             case ITEM_STACK -> itemStackFields += 2;
                             case INGREDIENT -> ingredientFields += 2;
@@ -160,19 +158,17 @@ public final class PatternSignatureEngine {
                     }
                 }
                 String fieldTypeName = f.getType().getName();
-                if (fieldTypeName.contains("Codec") || fieldTypeName.contains("MapCodec")) {
-                    codecRefs++;
-                }
+                if (fieldTypeName.contains("Codec") || fieldTypeName.contains("MapCodec")) codecRefs++;
             }
             scan = scan.getSuperclass();
         }
-        for (Method m : clazz.getMethods()) {
+        for (var m : clazz.getMethods()) {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() > 1) continue;
             if (m.getDeclaringClass() == Object.class) continue;
             String methodName = m.getName();
-            Class<?> returnType = m.getReturnType();
-            UniversalTypeResolver.ResolvedType resolvedReturn = UniversalTypeResolver.resolve(returnType);
+            var returnType = m.getReturnType();
+            var resolvedReturn = UniversalTypeResolver.resolve(returnType);
             switch (resolvedReturn.kind()) {
                 case ITEM_STACK -> {
                     itemStackMethods++;
@@ -189,9 +185,9 @@ public final class PatternSignatureEngine {
                 default -> {
                 }
             }
-            Class<?> inner = UniversalTypeResolver.extractInnerType(m);
+            var inner = UniversalTypeResolver.extractInnerType(m);
             if (inner != null) {
-                UniversalTypeResolver.ResolvedType innerType = UniversalTypeResolver.resolve(inner);
+                var innerType = UniversalTypeResolver.resolve(inner);
                 switch (innerType.kind()) {
                     case ITEM_STACK -> itemStackMethods++;
                     case INGREDIENT -> ingredientMethods++;
@@ -223,13 +219,8 @@ public final class PatternSignatureEngine {
             level = DetectionLevel.UNKNOWN;
         }
 
-        boolean isRecipe = (signatureScore >= 100)
-                || (ingredientFields + ingredientMethods > 0
-                && (itemStackFields + itemStackMethods + fluidStackFields + fluidStackMethods) > 0);
-        boolean isMachine = !isRecipe
-                && (itemStackFields + fluidStackFields > 0)
-                && collectionFields > 2
-                && heuristicScore >= MACHINE_THRESHOLD;
+        boolean isRecipe = (signatureScore >= 100) || (ingredientFields + ingredientMethods > 0 && (itemStackFields + itemStackMethods + fluidStackFields + fluidStackMethods) > 0);
+        boolean isMachine = !isRecipe && (itemStackFields + fluidStackFields > 0) && collectionFields > 2 && heuristicScore >= MACHINE_THRESHOLD;
         boolean isCodec = codecRefs > 0 && heuristicScore >= CODEC_THRESHOLD;
         return new ClassProfile(
                 className, clazz, level,

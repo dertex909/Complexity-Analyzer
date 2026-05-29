@@ -26,7 +26,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -39,30 +38,30 @@ import java.util.Comparator;
 public class EntityAnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation entityId) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.not_ready"));
             return 0;
         }
 
-        EntityType<?> entityType = GameRegistryManager.getEntityType(entityId);
+        var entityType = GameRegistryManager.getEntityType(entityId);
         if (entityType == EntityType.PIG && !entityId.equals(ResourceLocation.parse("minecraft:pig"))) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.not_found", entityId.toString()));
             return 0;
         }
 
-        MobPropertyProvider mobProvider = engine.getMobPropertyProvider();
-        MobDropSource mobDropSource = engine.getMobDropSource();
+        var mobProvider = engine.getMobPropertyProvider();
+        var mobDropSource = engine.getMobDropSource();
 
         if (mobProvider == null) {
             output.sendFailure(source, Component.literal("⚠ MobPropertyProvider is not initialized!"));
             return 0;
         }
 
-        MobPropertyProvider.MobProperties props = mobProvider.getProperties(entityType);
+        var props = mobProvider.getProperties(entityType);
         if (props == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.not_analyzable"));
             output.sendTip(source, "complexityanalyzer.command.entity.not_living", entityId.toString());
@@ -78,7 +77,7 @@ public class EntityAnalyzeCommand {
     private static void displayAnalysis(CommandSourceStack source, EntityType<?> type,
                                         MobPropertyProvider.MobProperties props, ObjectList<MobDropData> drops,
                                         MobPropertyProvider mobProvider, OutputManager output) {
-        Component entityName = type.getDescription();
+        var entityName = type.getDescription();
 
         double survivability = props.calculateSurvivability();
         double threat = props.calculateThreat();
@@ -105,17 +104,17 @@ public class EntityAnalyzeCommand {
         output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", ChatFormatting.RED);
 
         double health = props.maxHealth();
-        ChatFormatting healthColor = getHealthColor(health);
+        var healthColor = getHealthColor(health);
         output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", String.format("%.1f", health), ChatFormatting.GRAY, healthColor);
         output.sendValueBar(source, (int) Math.min(100, health), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         double attack = props.attackDamage();
-        ChatFormatting attackColor = getAttackColor(attack);
+        var attackColor = getAttackColor(attack);
         output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", String.format("%.1f", attack), ChatFormatting.GRAY, attackColor);
         output.sendValueBar(source, (int) Math.min(100, attack * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         double armor = props.armor();
-        ChatFormatting armorColor = getArmorColor(armor);
+        var armorColor = getArmorColor(armor);
         output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", String.format("%.1f", armor), ChatFormatting.GRAY, armorColor);
         if (armor > 0) output.sendValueBar(
                 source, (int) Math.min(100, armor * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
@@ -127,13 +126,13 @@ public class EntityAnalyzeCommand {
                                                  double combatPower, OutputManager output) {
         output.sendStatusLine(source, "⚡", "complexityanalyzer.command.entity.combat_section", ChatFormatting.GOLD);
 
-        ChatFormatting survColor = getFactorColor(survivability, 50.0);
+        var survColor = getFactorColor(survivability, 50.0);
         output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", String.format("%.2f", survivability), ChatFormatting.GRAY, survColor);
 
-        ChatFormatting threatColor = getFactorColor(threat, 5.0);
+        var threatColor = getFactorColor(threat, 5.0);
         output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", String.format("%.2f", threat), ChatFormatting.GRAY, threatColor);
 
-        ChatFormatting powerColor = getCombatPowerColor(combatPower);
+        var powerColor = getCombatPowerColor(combatPower);
         output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", String.format("%.2f", combatPower), ChatFormatting.GRAY, powerColor);
 
         output.sendValueBar(source, (int) Math.min(100, combatPower * 0.5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);

@@ -27,10 +27,11 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
-import net.minecraft.network.chat.*;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.tree.CraftingTreeBuilder;
@@ -38,10 +39,8 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
-import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.core.GameRegistryManager;
 
-import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 
 public final class TreeCommand {
@@ -71,26 +70,26 @@ public final class TreeCommand {
     public static final int DEFAULT_MAX_DEPTH = 100;
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId, String mode, int maxDepth) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady() || engine.getDepthAnalyzer() == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.tree.not_ready"));
             return 0;
         }
 
-        DisplayMode displayMode = "economic".equalsIgnoreCase(mode) ? DisplayMode.ECONOMIC_COST : DisplayMode.PLAYER_INSTRUCTION;
+        var displayMode = "economic".equalsIgnoreCase(mode) ? DisplayMode.ECONOMIC_COST : DisplayMode.PLAYER_INSTRUCTION;
 
-        Item item = GameRegistryManager.getItem(itemId);
+        var item = GameRegistryManager.getItem(itemId);
         if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.tree.item_not_found", itemId.toString()));
             return 0;
         }
 
         try {
-            CraftingTreeBuilder builder = new CraftingTreeBuilder(engine);
-            CraftingTreeData treeData = builder.build(item, displayMode, maxDepth);
+            var builder = new CraftingTreeBuilder(engine);
+            var treeData = builder.build(item, displayMode, maxDepth);
             renderTree(source, treeData, itemId, output, engine);
             return 1;
         } catch (Exception e) {
@@ -109,7 +108,7 @@ public final class TreeCommand {
 
     private static void renderHeader(CommandSourceStack source, CraftingTreeData data,
                                      OutputManager output, AnalysisEngine engine) {
-        Component itemName = data.getRootItem().getDescription();
+        var itemName = data.getRootItem().getDescription();
         double complexity = engine.getComplexity(data.getRootItem());
 
         output.sendEmptyLine(source);
@@ -119,9 +118,9 @@ public final class TreeCommand {
         output.sendEntry(source, "⚖", "complexityanalyzer.command.tree.complexity_label", String.format("%.2f", complexity), ChatFormatting.GRAY, getComplexityColor(complexity));
 
         String modeKey = data.getDisplayMode() == DisplayMode.PLAYER_INSTRUCTION ? "complexityanalyzer.command.tree.mode.player" : "complexityanalyzer.command.tree.mode.economic";
-        Component modeName = Component.translatable(modeKey);
+        var modeName = Component.translatable(modeKey);
 
-        ChatFormatting modeColor = data.getDisplayMode() == DisplayMode.PLAYER_INSTRUCTION ? ChatFormatting.AQUA : ChatFormatting.GOLD;
+        var modeColor = data.getDisplayMode() == DisplayMode.PLAYER_INSTRUCTION ? ChatFormatting.AQUA : ChatFormatting.GOLD;
 
         output.sendEntry(source, data.getDisplayMode() == DisplayMode.PLAYER_INSTRUCTION ? "👤" : "💰", "complexityanalyzer.command.tree.mode_label", modeName, ChatFormatting.GRAY, modeColor);
         output.sendEntry(source, "🔍", "complexityanalyzer.command.tree.max_depth_label", String.valueOf(data.getMaxDepth()), ChatFormatting.GRAY, ChatFormatting.YELLOW);
@@ -133,7 +132,7 @@ public final class TreeCommand {
     private static void renderTreeNode(CommandSourceStack source, TreeNode node, String prefix, boolean isLast,
                                        DisplayMode mode, OutputManager output, AnalysisEngine engine) {
         String branchChar = isLast ? "└─ " : "├─ ";
-        MutableComponent line = Component.literal(prefix).append(Component.literal(branchChar).withStyle(ChatFormatting.DARK_GRAY));
+        var line = Component.literal(prefix).append(Component.literal(branchChar).withStyle(ChatFormatting.DARK_GRAY));
         line.append(formatNode(node, mode, engine));
         output.sendInfo(source, line);
 
@@ -141,17 +140,17 @@ public final class TreeCommand {
             String childPrefix = prefix + (isLast ? "   " : "│  ");
             int totalChildren = node.getItemChildren().size() + node.getFluidChildren().size();
             int currentIndex = 0;
-            for (TreeNode child : node.getItemChildren()) {
+            for (var child : node.getItemChildren()) {
                 currentIndex++;
                 renderTreeNode(source, child, childPrefix, currentIndex == totalChildren, mode, output, engine);
             }
-            for (FluidNode fluid : node.getFluidChildren()) {
+            for (var fluid : node.getFluidChildren()) {
                 currentIndex++;
                 boolean isLastChild = (currentIndex == totalChildren);
                 String fluidBranch = isLastChild ? "└─ " : "├─ ";
                 String displayAmount = formatFluidAmount(fluid.getAmount(), mode);
-                Component fluidDisplayName = fluid.getFluidName();
-                MutableComponent fluidLine = Component.literal(childPrefix)
+                var fluidDisplayName = fluid.getFluidName();
+                var fluidLine = Component.literal(childPrefix)
                         .append(Component.literal(fluidBranch).withStyle(ChatFormatting.DARK_GRAY))
                         .append(Component.literal("💧 ").withStyle(ChatFormatting.AQUA))
                         .append(Component.literal(displayAmount + " ").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
@@ -164,7 +163,7 @@ public final class TreeCommand {
     }
 
     private static String formatFluidAmount(double amount, DisplayMode mode) {
-        Component suffix = Component.translatable("complexityanalyzer.unit.fluid.millibuckets");
+        var suffix = Component.translatable("complexityanalyzer.unit.fluid.millibuckets");
         if (mode == DisplayMode.PLAYER_INSTRUCTION) {
             return (int) Math.ceil(amount) + suffix.getString();
         } else {
@@ -173,7 +172,7 @@ public final class TreeCommand {
     }
 
     private static Component createFluidHoverText(FluidNode fluid, TreeNode parentNode) {
-        MutableComponent hover = Component.empty();
+        var hover = Component.empty();
 
         hover.append(Component.translatable("complexityanalyzer.command.tree.fluid_resource").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
         hover.append(Component.literal("\n").append(Component.translatable("complexityanalyzer.command.tree.name_label")).append(": ").withStyle(ChatFormatting.GRAY))
@@ -198,8 +197,8 @@ public final class TreeCommand {
             quantityString = node.getNeededAmount() > 0.001 ? String.format("%.2fx ", node.getNeededAmount()) : "";
         }
 
-        ChatFormatting complexityColor = getComplexityColor(node.getComplexity());
-        MutableComponent component = Component.empty();
+        var complexityColor = getComplexityColor(node.getComplexity());
+        var component = Component.empty();
 
         switch (node.getType()) {
             case NO_DATA:
@@ -256,7 +255,7 @@ public final class TreeCommand {
     }
 
     private static Component createDetailedHoverText(TreeNode node, AnalysisEngine engine) {
-        MutableComponent hover = Component.empty();
+        var hover = Component.empty();
 
         switch (node.getType()) {
             case NO_DATA:
@@ -298,7 +297,7 @@ public final class TreeCommand {
             case CRAFTING:
                 hover.append(Component.translatable("complexityanalyzer.command.tree.crafting_recipe").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-                Component machineType = node.getMachineType();
+                var machineType = node.getMachineType();
                 if (machineType != null && !machineType.getString().isEmpty()) hover
                         .append(Component.literal("\n🏭 ").append(Component.translatable("complexityanalyzer.command.tree.machine_label")).append(": ").withStyle(ChatFormatting.GRAY))
                         .append(machineType.copy().withStyle(ChatFormatting.AQUA));
@@ -306,7 +305,7 @@ public final class TreeCommand {
         }
 
         if (node.getItem() != null) {
-            ItemComplexity complexity = engine.getComplexityResult(node.getItem());
+            var complexity = engine.getComplexityResult(node.getItem());
             if (complexity != null) {
                 hover.append(Component.literal("\n\n📊 ").append(Component.translatable("complexityanalyzer.command.tree.complexity_label")).append(": ").withStyle(ChatFormatting.GRAY))
                         .append(Component.literal(String.format("%.2f", complexity.getComplexity())).withStyle(getComplexityColor(complexity.getComplexity()), ChatFormatting.BOLD));
@@ -344,14 +343,14 @@ public final class TreeCommand {
     }
 
     private static void renderBaseResources(CommandSourceStack source, CraftingTreeData data, OutputManager output) {
-        Reference2DoubleMap<Item> baseResources = data.getBaseResources();
+        var baseResources = data.getBaseResources();
 
         if (baseResources.isEmpty()) {
             output.sendTip(source, "complexityanalyzer.command.tree.no_base_resources");
             return;
         }
 
-        DisplayMode mode = data.getDisplayMode();
+        var mode = data.getDisplayMode();
         String titleKey = mode == DisplayMode.PLAYER_INSTRUCTION ? "complexityanalyzer.command.tree.shopping_list" : "complexityanalyzer.command.tree.precise_requirements";
         output.sendStatusLine(source, "🎒", titleKey, ChatFormatting.GREEN);
 
@@ -364,9 +363,9 @@ public final class TreeCommand {
         output.sendEmptyLine(source);
 
         for (var entry : Reference2DoubleMaps.fastIterable(baseResources)) {
-            Item item = entry.getKey();
+            var item = entry.getKey();
             double amount = entry.getDoubleValue();
-            Component itemName = item.getDescription();
+            var itemName = item.getDescription();
 
             if (mode == DisplayMode.PLAYER_INSTRUCTION) {
                 int amountForPlayer = (int) Math.ceil(amount);
@@ -387,8 +386,8 @@ public final class TreeCommand {
                                    OutputManager output) {
         output.sendStatusLine(source, "💡", "complexityanalyzer.command.tree.tips_section", ChatFormatting.YELLOW);
 
-        DisplayMode mode = data.getDisplayMode();
-        TreeStatistics stats = data.getStatistics();
+        var mode = data.getDisplayMode();
+        var stats = data.getStatistics();
 
         if (mode == DisplayMode.PLAYER_INSTRUCTION) {
             String economicCommand = "/complexity tree " + itemId + " mode economic";

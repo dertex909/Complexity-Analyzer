@@ -20,11 +20,14 @@ package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
@@ -59,6 +62,7 @@ public final class RegistryHarvestService {
         int rejected = 0;
         int failed = 0;
         ObjectList<RecipeNode> nodes = new ObjectArrayList<>();
+        ObjectSet<ResourceLocation> knownRecipeIds = new ObjectOpenHashSet<>();
 
         var debugTrace = new FullDebugTracePipeline(worldDir);
 
@@ -67,6 +71,7 @@ public final class RegistryHarvestService {
 
         for (var holder : recipes) {
             scanned++;
+            knownRecipeIds.add(holder.id());
             try {
                 var recipe = holder.value();
                 var items = harvester.harvest(recipe, level);
@@ -99,6 +104,7 @@ public final class RegistryHarvestService {
 
         for (var node : nodes) graph.addRecipe(node);
         debugTrace.flush();
+        DynamicRecipeHarvester.harvest(graph, level, knownRecipeIds);
 
         try {
             var fluidRegistry = level.registryAccess().registry(FLUID);

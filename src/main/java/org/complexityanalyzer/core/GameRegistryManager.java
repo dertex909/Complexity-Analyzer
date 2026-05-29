@@ -60,37 +60,37 @@ public class GameRegistryManager {
 
         long startTime = System.currentTimeMillis();
 
-        for (Block block : BuiltInRegistries.BLOCK) {
-            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+        for (var block : BuiltInRegistries.BLOCK) {
+            var id = BuiltInRegistries.BLOCK.getKey(block);
             BLOCK_MAP.put(id, block);
             BLOCK_ID_MAP.put(block, id);
             ALL_BLOCKS.add(block);
         }
 
-        for (Item item : BuiltInRegistries.ITEM) {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+        for (var item : BuiltInRegistries.ITEM) {
+            var id = BuiltInRegistries.ITEM.getKey(item);
             ITEM_MAP.put(id, item);
             ITEM_ID_MAP.put(item, id);
             ALL_ITEMS.add(item);
             ALL_ITEM_IDS.add(id);
         }
 
-        for (Fluid fluid : BuiltInRegistries.FLUID) {
-            ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid);
+        for (var fluid : BuiltInRegistries.FLUID) {
+            var id = BuiltInRegistries.FLUID.getKey(fluid);
             FLUID_MAP.put(id, fluid);
             FLUID_ID_MAP.put(fluid, id);
             ALL_FLUIDS.add(fluid);
         }
 
-        for (RecipeType<?> recipeType : BuiltInRegistries.RECIPE_TYPE) {
-            ResourceLocation id = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType);
+        for (var recipeType : BuiltInRegistries.RECIPE_TYPE) {
+            var id = BuiltInRegistries.RECIPE_TYPE.getKey(recipeType);
             RECIPE_TYPE_MAP.put(id, recipeType);
             RECIPE_TYPE_ID_MAP.put(recipeType, id);
             ALL_RECIPE_TYPES.add(recipeType);
         }
 
-        for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
-            ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        for (var entityType : BuiltInRegistries.ENTITY_TYPE) {
+            var id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
             ENTITY_TYPE_MAP.put(id, entityType);
             ENTITY_TYPE_ID_MAP.put(entityType, id);
             ALL_ENTITY_TYPES.add(entityType);

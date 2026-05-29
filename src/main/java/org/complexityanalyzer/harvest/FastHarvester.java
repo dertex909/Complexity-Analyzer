@@ -29,11 +29,7 @@ import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -68,7 +64,7 @@ public final class FastHarvester {
         transitional.clear();
 
         try {
-            ItemStack apiResult = ItemStack.EMPTY;
+            var apiResult = ItemStack.EMPTY;
             boolean isVanillaRecipe = false;
 
             if (recipe instanceof Recipe<?> r) {
@@ -154,11 +150,6 @@ public final class FastHarvester {
             if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
                 var res = r.getResultItem(level.registryAccess());
                 if (!res.isEmpty()) outputItems.add(res.copy());
-            } catch (Throwable ignored) {
-            }
-
-            if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
-                probeRecipeOutputs(r, level, outputItems);
             } catch (Throwable ignored) {
             }
 
@@ -562,134 +553,6 @@ public final class FastHarvester {
         var m = FastHarvester.TL_VISITED.get();
         m.clear();
         return m;
-    }
-
-    private void probeRecipeOutputs(Recipe<?> recipe, Level level, ObjectList<ItemStack> outputItems) {
-        Method assembleMethod = null;
-        for (Method m : recipe.getClass().getMethods()) {
-            if (m.getName().equals("assemble") && m.getParameterCount() == 2) {
-                assembleMethod = m;
-                break;
-            }
-        }
-        if (assembleMethod == null) return;
-
-        Class<?> inputClass = assembleMethod.getParameterTypes()[0];
-        List<List<ItemStack>> ingredientOptions = new ArrayList<>();
-        for (Ingredient ing : recipe.getIngredients()) {
-            if (ing == null || ing.isEmpty()) continue;
-            List<ItemStack> options = new ArrayList<>();
-            for (ItemStack stack : ing.getItems()) {
-                if (stack != null && !stack.isEmpty()) {
-                    options.add(stack);
-                }
-            }
-            if (!options.isEmpty()) {
-                ingredientOptions.add(options);
-            }
-        }
-
-        if (ingredientOptions.isEmpty()) return;
-
-        List<List<ItemStack>> combos = new ArrayList<>();
-        try {
-            generateCombinations(ingredientOptions, 0, new ArrayList<>(), combos, 256);
-        } catch (Throwable ignored) {
-            return;
-        }
-
-        for (List<ItemStack> combo : combos) {
-            try {
-                Object inputObj = createRecipeInput(inputClass, combo);
-                if (inputObj != null) {
-                    ItemStack output = (ItemStack) assembleMethod.invoke(recipe, inputObj, level.registryAccess());
-                    if (output != null && !output.isEmpty()) {
-                        boolean alreadyHas = false;
-                        for (ItemStack existing : outputItems) {
-                            if (existing.getItem() == output.getItem()) {
-                                alreadyHas = true;
-                                break;
-                            }
-                        }
-                        if (!alreadyHas) {
-                            outputItems.add(output.copy());
-                        }
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private void generateCombinations(List<List<ItemStack>> options, int index, List<ItemStack> current, List<List<ItemStack>> result, int maxLimit) {
-        if (result.size() >= maxLimit) return;
-        if (index == options.size()) {
-            result.add(new ArrayList<>(current));
-            return;
-        }
-        for (ItemStack stack : options.get(index)) {
-            current.add(stack);
-            generateCombinations(options, index + 1, current, result, maxLimit);
-            current.removeLast();
-            if (result.size() >= maxLimit) break;
-        }
-    }
-
-    private Object createRecipeInput(Class<?> inputClass, List<ItemStack> items) {
-        for (Method m : inputClass.getMethods()) {
-            if (Modifier.isStatic(m.getModifiers()) && m.getName().equals("of") && m.getReturnType() == inputClass) {
-                try {
-                    int paramCount = m.getParameterCount();
-                    if (paramCount == 1 && m.getParameterTypes()[0].isAssignableFrom(ItemStack.class)) {
-                        if (!items.isEmpty()) {
-                            return m.invoke(null, items.getFirst());
-                        }
-                    } else if (paramCount == 3 && m.getParameterTypes()[0] == int.class && m.getParameterTypes()[1] == int.class && List.class.isAssignableFrom(m.getParameterTypes()[2])) {
-                        int size = items.size();
-                        int width = (int) Math.ceil(Math.sqrt(size));
-                        if (width == 0) width = 1;
-                        int height = width;
-                        List<ItemStack> padded = new ArrayList<>(width * height);
-                        for (int i = 0; i < width * height; i++) {
-                            padded.add(i < items.size() ? items.get(i) : ItemStack.EMPTY);
-                        }
-                        return m.invoke(null, width, height, padded);
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        for (var constr : inputClass.getDeclaredConstructors()) {
-            try {
-                constr.setAccessible(true);
-                int paramCount = constr.getParameterCount();
-                if (paramCount == 1 && constr.getParameterTypes()[0].isAssignableFrom(ItemStack.class)) {
-                    if (!items.isEmpty()) {
-                        return constr.newInstance(items.getFirst());
-                    }
-                } else if (paramCount == 3 && constr.getParameterTypes()[0] == int.class && constr.getParameterTypes()[1] == int.class && List.class.isAssignableFrom(constr.getParameterTypes()[2])) {
-                    int size = items.size();
-                    int width = (int) Math.ceil(Math.sqrt(size));
-                    if (width == 0) width = 1;
-                    int height = width;
-                    List<ItemStack> padded = new ArrayList<>(width * height);
-                    for (int i = 0; i < width * height; i++) {
-                        padded.add(i < items.size() ? items.get(i) : ItemStack.EMPTY);
-                    }
-                    return constr.newInstance(width, height, padded);
-                } else if (paramCount == 3 && constr.getParameterTypes()[0].isAssignableFrom(ItemStack.class) && constr.getParameterTypes()[1].isAssignableFrom(ItemStack.class) && constr.getParameterTypes()[2].isAssignableFrom(ItemStack.class)) {
-                    ItemStack p0 = !items.isEmpty() ? items.get(0) : ItemStack.EMPTY;
-                    ItemStack p1 = items.size() > 1 ? items.get(1) : ItemStack.EMPTY;
-                    ItemStack p2 = items.size() > 2 ? items.get(2) : ItemStack.EMPTY;
-                    return constr.newInstance(p0, p1, p2);
-                } else if (paramCount == 1 && List.class.isAssignableFrom(constr.getParameterTypes()[0])) {
-                    return constr.newInstance(items);
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-        return null;
     }
 
     public void clearCaches() {

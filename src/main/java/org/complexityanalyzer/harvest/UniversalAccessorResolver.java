@@ -78,19 +78,19 @@ public final class UniversalAccessorResolver {
 
     public static ResolvedAccessors resolve(Object recipe, Level level) {
         if (recipe == null) return empty();
-        Class<?> clazz = recipe.getClass();
-        ResolvedAccessors existing = ACCESSOR_CACHE.get(clazz);
+        var clazz = recipe.getClass();
+        var existing = ACCESSOR_CACHE.get(clazz);
         if (existing != null) return existing;
         ACCESSOR_CACHE.put(clazz, empty());
-        ResolvedAccessors result = resolveUncached(clazz, recipe, level);
+        var result = resolveUncached(clazz, recipe, level);
         ACCESSOR_CACHE.put(clazz, result);
         return result;
     }
 
     public static ClassMeta getMeta(Class<?> clazz) {
-        ClassMeta existing = META_CACHE.get(clazz);
+        var existing = META_CACHE.get(clazz);
         if (existing != null) return existing;
-        ClassMeta result = ClassMetaBuilder.build(clazz);
+        var result = ClassMetaBuilder.build(clazz);
         META_CACHE.put(clazz, result);
         return result;
     }
@@ -108,7 +108,7 @@ public final class UniversalAccessorResolver {
     }
 
     private static ResolvedAccessors resolveUncached(Class<?> clazz, Object recipe, Level level) {
-        ClassMeta meta = getMeta(clazz);
+        var meta = getMeta(clazz);
 
         ReferenceSet<Ingredient> standardInputs = ReferenceSets.emptySet();
         Item anchorItem = null;
@@ -129,19 +129,19 @@ public final class UniversalAccessorResolver {
         var allAcc = new ObjectArrayList<Accessor>(16);
 
         for (int i = 0; i < meta.allMethods().length; i++) {
-            Method m = meta.allMethods()[i];
-            MethodHandle h = meta.allHandles()[i];
+            var m = meta.allMethods()[i];
+            var h = meta.allHandles()[i];
             if (h == null) continue;
 
-            Class<?> returnType = m.getReturnType();
+            var returnType = m.getReturnType();
             if (returnType == void.class || returnType == Void.class) continue;
             if (UniversalTypeResolver.isTerminalType(returnType)) continue;
 
-            MethodAccessor acc = new MethodAccessor(h, m);
+            var acc = new MethodAccessor(h, m);
             HeuristicRoleClassifier.RoleClassification role;
             if (recipe != null) {
                 try {
-                    Object raw = acc.extract(recipe, level);
+                    var raw = acc.extract(recipe, level);
                     role = HeuristicRoleClassifier.classify(recipe, raw, m.getName(), "method", anchorItem, standardInputs);
                 } catch (Throwable e) {
                     role = HeuristicRoleClassifier.classifyMethod(m);
@@ -159,16 +159,16 @@ public final class UniversalAccessorResolver {
             }
         }
 
-        for (Field f : meta.allFields()) {
-            Class<?> fieldType = f.getType();
+        for (var f : meta.allFields()) {
+            var fieldType = f.getType();
             if (fieldType.isPrimitive() || fieldType == String.class || fieldType.isEnum()) continue;
             if (UniversalTypeResolver.isTerminalType(fieldType)) continue;
 
-            FieldAccessor acc = new FieldAccessor(f);
+            var acc = new FieldAccessor(f);
             HeuristicRoleClassifier.RoleClassification role;
             if (recipe != null) {
                 try {
-                    Object raw = acc.extract(recipe, level);
+                    var raw = acc.extract(recipe, level);
                     role = HeuristicRoleClassifier.classify(recipe, raw, f.getName(), "field", anchorItem, standardInputs);
                 } catch (Throwable e) {
                     role = HeuristicRoleClassifier.classifyField(f);
@@ -285,7 +285,7 @@ public final class UniversalAccessorResolver {
             var fList = new ObjectArrayList<Field>();
             var curCls = clazz;
             while (curCls != null && curCls != Object.class) {
-                for (Field f : curCls.getDeclaredFields()) {
+                for (var f : curCls.getDeclaredFields()) {
                     if (Modifier.isStatic(f.getModifiers())) continue;
                     boolean dup = false;
                     for (int i = 0; i < fList.size(); i++) {
@@ -306,8 +306,8 @@ public final class UniversalAccessorResolver {
             Field[] allFields = fList.toArray(new Field[0]);
 
             var sList = new ObjectArrayList<Field>();
-            for (Field f : fList) {
-                Class<?> type = f.getType();
+            for (var f : fList) {
+                var type = f.getType();
                 if (type.isPrimitive() || type == String.class || type.isEnum()) continue;
                 if (UniversalTypeResolver.isTerminalType(type)) continue;
                 sList.add(f);
@@ -321,13 +321,13 @@ public final class UniversalAccessorResolver {
             queue.add(clazz);
             int idx = 0;
             while (idx < queue.size()) {
-                Class<?> current = queue.get(idx++);
+                var current = queue.get(idx++);
                 if (current == null || current == Object.class) continue;
-                for (Method m : current.getDeclaredMethods()) {
+                for (var m : current.getDeclaredMethods()) {
                     if (Modifier.isStatic(m.getModifiers())) continue;
                     if (m.getParameterCount() > 1) continue;
 
-                    Class<?> rt = m.getReturnType();
+                    var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;
                     if (rt.isPrimitive()) continue;
                     if (rt == String.class || rt == Boolean.class
@@ -335,13 +335,13 @@ public final class UniversalAccessorResolver {
 
                     if (!seenMethods.add(m.getName())) continue;
 
-                    MethodHandle handle = createHandle(m);
+                    var handle = createHandle(m);
                     if (handle != null) {
                         mList.add(m);
                         hList.add(handle);
                     }
                 }
-                Class<?> sup = current.getSuperclass();
+                var sup = current.getSuperclass();
                 if (sup != null && sup != Object.class) queue.add(sup);
                 Collections.addAll(queue, current.getInterfaces());
             }

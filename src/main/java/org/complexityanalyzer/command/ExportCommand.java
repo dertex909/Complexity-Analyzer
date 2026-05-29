@@ -61,9 +61,9 @@ public final class ExportCommand {
     }
 
     public static int executeAllItems(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -73,7 +73,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportAllItems(source.getServer(), engine);
+            var exportPath = ComplexityExporter.exportAllItems(source.getServer(), engine);
             sendSuccess(output, source, "Full item export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -83,9 +83,9 @@ public final class ExportCommand {
     }
 
     public static int executeItemsByCategory(CommandContext<CommandSourceStack> context, String categoryName) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -96,7 +96,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportItemsByCategory(source.getServer(), engine, categoryName);
+            var exportPath = ComplexityExporter.exportItemsByCategory(source.getServer(), engine, categoryName);
             sendSuccess(output, source, "Item category export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -106,9 +106,9 @@ public final class ExportCommand {
     }
 
     public static int executeTopItems(CommandContext<CommandSourceStack> context, int count) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -119,7 +119,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportTopItems(source.getServer(), engine, count);
+            var exportPath = ComplexityExporter.exportTopItems(source.getServer(), engine, count);
             sendSuccess(output, source, "Top items export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -129,9 +129,9 @@ public final class ExportCommand {
     }
 
     public static int executeItemsCSV(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -141,7 +141,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportItemsCSV(source.getServer(), engine);
+            var exportPath = ComplexityExporter.exportItemsCSV(source.getServer(), engine);
             sendSuccess(output, source, "Items CSV export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -151,9 +151,9 @@ public final class ExportCommand {
     }
 
     public static int executeSingleItem(CommandContext<CommandSourceStack> context, String itemId) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -164,7 +164,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportSingleItem(source.getServer(), engine, itemId);
+            var exportPath = ComplexityExporter.exportSingleItem(source.getServer(), engine, itemId);
             sendSuccess(output, source, "Single item export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -174,9 +174,9 @@ public final class ExportCommand {
     }
 
     public static int executeAllMobs(CommandContext<CommandSourceStack> context, String format) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         if (!"csv".equalsIgnoreCase(format) && !"json".equalsIgnoreCase(format)) {
@@ -192,7 +192,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportAllMobs(source.getServer(), engine, format);
+            var exportPath = ComplexityExporter.exportAllMobs(source.getServer(), engine, format);
             sendSuccess(output, source, "All mobs export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -202,9 +202,9 @@ public final class ExportCommand {
     }
 
     public static int executeMobsByCategory(CommandContext<CommandSourceStack> context, String categoryName) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -215,7 +215,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportMobsByCategory(source.getServer(), engine, categoryName);
+            var exportPath = ComplexityExporter.exportMobsByCategory(source.getServer(), engine, categoryName);
             sendSuccess(output, source, "Mob category export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -225,9 +225,9 @@ public final class ExportCommand {
     }
 
     public static int executeTopMobs(CommandContext<CommandSourceStack> context, int count) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -238,7 +238,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportTopMobs(source.getServer(), engine, count);
+            var exportPath = ComplexityExporter.exportTopMobs(source.getServer(), engine, count);
             sendSuccess(output, source, "Top mobs export", exportPath);
             return 1;
         } catch (Exception e) {
@@ -248,9 +248,9 @@ public final class ExportCommand {
     }
 
     public static int executeSingleMob(CommandContext<CommandSourceStack> context, String mobId) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
         output.sendEmptyLine(source);
@@ -261,7 +261,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            Path exportPath = ComplexityExporter.exportSingleMob(source.getServer(), engine, mobId);
+            var exportPath = ComplexityExporter.exportSingleMob(source.getServer(), engine, mobId);
             sendSuccess(output, source, "Single mob export", exportPath);
             return 1;
         } catch (Exception e) {

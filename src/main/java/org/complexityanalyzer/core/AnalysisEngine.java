@@ -52,7 +52,6 @@ import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -97,7 +96,7 @@ public class AnalysisEngine {
 
     @Nullable
     public SolverResult getSolverResult() {
-        ComplexityCalculator calc = this.calculator;
+        var calc = this.calculator;
         return (calc != null) ? calc.getSolverResult() : null;
     }
 
@@ -107,7 +106,7 @@ public class AnalysisEngine {
             return;
         }
 
-        State current = currentState.get();
+        var current = currentState.get();
         if (current == State.FAILED) {
             stateLock.lock();
             try {
@@ -139,12 +138,12 @@ public class AnalysisEngine {
         this.server = serverLevel.getServer();
         analysisCancelled.set(false);
 
-        ExecutorService executor = ThreadPoolManager.getInstance().getComputePool();
+        var executor = ThreadPoolManager.getInstance().getComputePool();
 
         ComplexityAnalyzer.LOGGER.info("Starting background analysis with {} threads...",
                 ThreadPoolManager.getInstance().getParallelism());
 
-        Future<?> task = executor.submit(() -> {
+        var task = executor.submit(() -> {
             try {
                 if (isInterrupted()) {
                     restoreIdleState();
@@ -215,10 +214,10 @@ public class AnalysisEngine {
         }
 
         try {
-            MinecraftServer srv = this.server;
+            var srv = this.server;
             if (srv != null && !isInterrupted()) {
                 createGeoManager(srv);
-                GeoAnalysisManager geoMgr = getGeoManager();
+                var geoMgr = getGeoManager();
                 if (geoMgr != null && !isInterrupted()) geoMgr.startInitialScanIfNeeded();
             }
         } catch (Exception e) {
@@ -258,7 +257,7 @@ public class AnalysisEngine {
         this.mobPropProvider = new MobPropertyProvider();
         this.mobPropProvider.initialize();
 
-        DimensionRarityAnalyzer dimensionAnalyzer = new DimensionRarityAnalyzer(serverLevel);
+        var dimensionAnalyzer = new DimensionRarityAnalyzer(serverLevel);
         this.mobRarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
         this.mobPropProvider.setRarityCalculator(this.mobRarityCalculator);
 
@@ -282,7 +281,7 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("Resource sources configured with {} providers. Initializing all...", initialSources.size());
         this.sourceManager.initialize(serverLevel);
 
-        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) for (IResourceSource source : initialSources) {
+        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) for (var source : initialSources) {
             ComplexityAnalyzer.LOGGER.debug("  - {} (priority: {})", source.getName(), source.getPriority());
         }
 
@@ -290,8 +289,8 @@ public class AnalysisEngine {
     }
 
     public void recalculateComplexity() {
-        RecipeGraph currentGraph = this.graph;
-        SourceManager currentSourceManager = this.sourceManager;
+        var currentGraph = this.graph;
+        var currentSourceManager = this.sourceManager;
 
         if (isInterrupted() || currentGraph == null || currentSourceManager == null) return;
 
@@ -301,8 +300,8 @@ public class AnalysisEngine {
 
         if (isInterrupted()) return;
 
-        SccCondensedSolver solver = new SccCondensedSolver(currentGraph, currentSourceManager, this.machineRegistry);
-        SolverResult solverResult = solver.solve();
+        var solver = new SccCondensedSolver(currentGraph, currentSourceManager, this.machineRegistry);
+        var solverResult = solver.solve();
 
         if (isInterrupted()) {
             ComplexityAnalyzer.LOGGER.info("Analysis was cancelled after solver finished.");
@@ -359,9 +358,9 @@ public class AnalysisEngine {
         geoManagerLock.lock();
         try {
             if (isShuttingDown.get()) return;
-            GeoAnalysisManager oldManager = this.geoManager;
+            var oldManager = this.geoManager;
             if (oldManager != null) oldManager.shutdown();
-            GeoDatabase geoDB = this.geoDatabase;
+            var geoDB = this.geoDatabase;
             if (geoDB != null) this.geoManager = new GeoAnalysisManager(server, geoDB, this);
         } finally {
             geoManagerLock.unlock();
@@ -385,7 +384,7 @@ public class AnalysisEngine {
         try {
             if (!isReady() || isShuttingDown.get()) return;
 
-            GeoDatabase geoDB = this.geoDatabase;
+            var geoDB = this.geoDatabase;
             if (geoDB != null) {
                 geoDB.clear();
                 ComplexityAnalyzer.LOGGER.info("GeoDatabase cleared. Recalculating complexity...");
@@ -415,7 +414,7 @@ public class AnalysisEngine {
 
     @Nullable
     public ItemComplexity getComplexityResult(Item item) {
-        ComplexityCalculator calc = this.calculator;
+        var calc = this.calculator;
         if (calc == null || !isReady()) return null;
         return calc.getOrCalculateComplexity(item);
     }
@@ -431,23 +430,23 @@ public class AnalysisEngine {
     }
 
     public int getUsageCount(Item item) {
-        RecipeGraph currentGraph = this.graph;
+        var currentGraph = this.graph;
         return (currentGraph != null && isReady()) ? currentGraph.getUsageCount(item) : 0;
     }
 
     public boolean hasRecipe(Item item) {
-        RecipeGraph currentGraph = this.graph;
+        var currentGraph = this.graph;
         return currentGraph != null && isReady() && currentGraph.hasRecipe(item);
     }
 
     public ObjectList<BaseResourceData> findAllSourcesForItem(Item item) {
-        SourceManager sm = this.sourceManager;
+        var sm = this.sourceManager;
         return (sm != null && isReady()) ? sm.findAllSources(item) : ObjectLists.emptyList();
     }
 
     @Nullable
     public BaseResourceData getBaseResourceData(Item item) {
-        SourceManager sm = this.sourceManager;
+        var sm = this.sourceManager;
         return (sm != null && isReady()) ? sm.analyze(item) : null;
     }
 
@@ -463,7 +462,7 @@ public class AnalysisEngine {
             return;
         }
 
-        MinecraftServer srv = serverLevel.getServer();
+        var srv = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.info("Reload requested. Scheduling on server thread...");
 
@@ -481,12 +480,12 @@ public class AnalysisEngine {
     private void performReloadOnServerThread(ServerLevel serverLevel) {
         ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 1: Shutdown ===");
         analysisCancelled.set(true);
-        Future<?> currentTask = currentAnalysisTask.getAndSet(null);
+        var currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) currentTask.cancel(true);
 
         geoManagerLock.lock();
         try {
-            GeoAnalysisManager geoMgr = this.geoManager;
+            var geoMgr = this.geoManager;
             if (geoMgr != null) {
                 geoMgr.shutdown();
                 this.geoManager = null;
@@ -536,7 +535,7 @@ public class AnalysisEngine {
 
         analysisCancelled.set(true);
 
-        Future<?> currentTask = currentAnalysisTask.getAndSet(null);
+        var currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) {
             currentTask.cancel(true);
             try {
@@ -547,7 +546,7 @@ public class AnalysisEngine {
 
         geoManagerLock.lock();
         try {
-            GeoAnalysisManager geoMgr = this.geoManager;
+            var geoMgr = this.geoManager;
             if (geoMgr != null) {
                 geoMgr.shutdown();
                 this.geoManager = null;
@@ -579,7 +578,7 @@ public class AnalysisEngine {
 
         complexityCache.clear();
 
-        MobRarityCalculator calc = mobRarityCalculator;
+        var calc = mobRarityCalculator;
         if (calc != null) calc.clearCache();
 
         ComplexityAnalyzer.LOGGER.info("All caches cleared.");
@@ -587,7 +586,7 @@ public class AnalysisEngine {
 
     @Nullable
     public MobDropSource getMobDropSource() {
-        SourceManager sm = this.sourceManager;
+        var sm = this.sourceManager;
         if (sm == null) return null;
         return sm.getSourceByType(MobDropSource.class);
     }
@@ -613,7 +612,7 @@ public class AnalysisEngine {
     public EngineStats getStats() {
         if (!isReady()) return new EngineStats(currentState.get(), 0, 0, 0);
 
-        RecipeGraph currentGraph = this.graph;
+        var currentGraph = this.graph;
         if (currentGraph == null) return new EngineStats(currentState.get(), 0, 0, 0);
 
         return new EngineStats(currentState.get(), currentGraph.getAllItems().size(), currentGraph.getTotalRecipeCount(), 0);
@@ -621,7 +620,7 @@ public class AnalysisEngine {
 
     @Nullable
     public <T extends IResourceSource> T getSourceByType(Class<T> type) {
-        SourceManager sm = this.sourceManager;
+        var sm = this.sourceManager;
         if (sm == null) return null;
         return sm.getSourceByType(type);
     }

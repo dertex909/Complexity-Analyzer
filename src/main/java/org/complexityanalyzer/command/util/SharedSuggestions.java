@@ -63,7 +63,7 @@ public final class SharedSuggestions {
 
     private static void refreshLootTables() {
         CACHED_LOOT_TABLES.clear();
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var engine = AnalysisEngine.getInstance();
 
         var uls = engine.getSourceByType(UniversalLootSource.class);
         if (uls == null) return;

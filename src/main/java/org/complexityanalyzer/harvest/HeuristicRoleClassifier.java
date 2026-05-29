@@ -93,8 +93,9 @@ public final class HeuristicRoleClassifier {
             evidence.add("Type is Ingredient");
         }
 
-        Role role = confidence >= 60 ? (methods.contains(ClassificationMethod.OUTPUT_ANCHOR_MATCH) ? Role.OUTPUT :
-                                        methods.contains(ClassificationMethod.STANDARD_INPUT_MATCH) ? Role.INPUT : Role.UNKNOWN) : Role.UNKNOWN;
+        var role = confidence >= 60 ? (methods.contains(ClassificationMethod.OUTPUT_ANCHOR_MATCH) ? Role.OUTPUT :
+                                       methods.contains(ClassificationMethod.STANDARD_INPUT_MATCH) ? Role.INPUT :
+                                       Role.UNKNOWN) : Role.UNKNOWN;
         return new RoleClassification(role, Math.min(100, confidence), methods, evidence);
     }
 

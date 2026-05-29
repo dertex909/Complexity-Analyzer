@@ -74,10 +74,10 @@ public final class UniversalTypeResolver {
             if (clazz.isPrimitive() || Number.class.isAssignableFrom(clazz)) return ResolvedType.NUMBER_TYPE;
             return ResolvedType.UNKNOWN_TYPE;
         }
-        ResolvedType existing = TYPE_CACHE.get(clazz);
+        var existing = TYPE_CACHE.get(clazz);
         if (existing != null) return existing;
         TYPE_CACHE.put(clazz, ResolvedType.UNKNOWN_TYPE);
-        ResolvedType result = resolveUncached(clazz);
+        var result = resolveUncached(clazz);
         TYPE_CACHE.put(clazz, result);
         return result;
     }
@@ -142,12 +142,12 @@ public final class UniversalTypeResolver {
         int itemMethods = 0, ingrMethods = 0, fluidMethods = 0;
         boolean hasWrapper = false;
 
-        Class<?> scan = clazz;
+        var scan = clazz;
         while (scan != null && scan != Object.class) {
-            for (Field f : scan.getDeclaredFields()) {
+            for (var f : scan.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
 
-                ResolvedType fieldType = resolve(f.getType());
+                var fieldType = resolve(f.getType());
                 String fieldDesc = "field " + f.getName() + ": " + f.getType().getSimpleName();
 
                 switch (fieldType.kind()) {
@@ -166,9 +166,9 @@ public final class UniversalTypeResolver {
                 }
 
                 if (fieldType.isCollection()) {
-                    Class<?> inner = extractInnerType(f);
+                    var inner = extractInnerType(f);
                     if (inner != null) {
-                        ResolvedType innerType = resolve(inner);
+                        var innerType = resolve(inner);
                         switch (innerType.kind()) {
                             case ITEM_STACK -> itemFields += 2;
                             case INGREDIENT -> ingrFields += 2;
@@ -182,12 +182,12 @@ public final class UniversalTypeResolver {
             scan = scan.getSuperclass();
         }
 
-        for (Method m : clazz.getMethods()) {
+        for (var m : clazz.getMethods()) {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() != 0) continue;
             if (m.getDeclaringClass() == Object.class) continue;
 
-            ResolvedType returnType = resolve(m.getReturnType());
+            var returnType = resolve(m.getReturnType());
 
             switch (returnType.kind()) {
                 case ITEM_STACK -> itemMethods++;
@@ -196,11 +196,11 @@ public final class UniversalTypeResolver {
             }
 
             try {
-                Type genericReturn = m.getGenericReturnType();
+                var genericReturn = m.getGenericReturnType();
                 if (genericReturn instanceof ParameterizedType pt) {
                     Type[] args = pt.getActualTypeArguments();
                     if (args.length > 0 && args[0] instanceof Class<?> innerClass) {
-                        ResolvedType inner = resolve(innerClass);
+                        var inner = resolve(innerClass);
                         switch (inner.kind()) {
                             case ITEM_STACK -> itemMethods++;
                             case INGREDIENT -> ingrMethods++;

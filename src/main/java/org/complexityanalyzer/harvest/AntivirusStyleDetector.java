@@ -63,9 +63,9 @@ public final class AntivirusStyleDetector {
 
     public static CompositeDetection detect(Class<?> clazz) {
         if (clazz == null) return CompositeDetection.UNKNOWN;
-        CompositeDetection existing = DETECT_CACHE.get(clazz);
+        var existing = DETECT_CACHE.get(clazz);
         if (existing != null) return existing;
-        CompositeDetection result = performDetection(clazz);
+        var result = performDetection(clazz);
         DETECT_CACHE.put(clazz, result);
         return result;
     }
@@ -77,13 +77,13 @@ public final class AntivirusStyleDetector {
     private static CompositeDetection performDetection(Class<?> clazz) {
         ObjectList<String> allEvidence = new ObjectArrayList<>();
         int sigConfidence = 0;
-        PatternSignatureEngine.DetectionLevel highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;
+        var highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;
         if (Recipe.class.isAssignableFrom(clazz)) {
             sigConfidence = 100;
             highestLevel = PatternSignatureEngine.DetectionLevel.SIGNATURE;
             allEvidence.add("SIGNATURE[L1]: implements Recipe<?>");
         }
-        for (Class<?> iface : clazz.getInterfaces()) {
+        for (var iface : clazz.getInterfaces()) {
             String name = iface.getSimpleName();
             if (name.contains("Recipe") || name.contains("Crafting") || name.contains("Processing")) {
                 if (sigConfidence < 90) {
@@ -93,7 +93,7 @@ public final class AntivirusStyleDetector {
                 allEvidence.add("SIGNATURE[L1]: implements " + iface.getName());
             }
         }
-        PatternSignatureEngine.ClassProfile profile = PatternSignatureEngine.profile(clazz);
+        var profile = PatternSignatureEngine.profile(clazz);
         int heuristicConf = profile.heuristicScore();
         allEvidence.add("HEURISTIC[L2]: score=" + heuristicConf
                 + " itemF=" + profile.itemStackFields() + " ingrF=" + profile.ingredientFields()
@@ -115,7 +115,7 @@ public final class AntivirusStyleDetector {
             behavioralConf += 10;
             allEvidence.add("BEHAVIORAL[L3]: class name contains 'Recipe'");
         }
-        for (Class<?> iface : clazz.getInterfaces()) {
+        for (var iface : clazz.getInterfaces()) {
             String iname = iface.getSimpleName();
             if (iname.contains("Input") || iname.contains("Output")) {
                 behavioralConf += 5;

@@ -24,7 +24,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
@@ -44,23 +43,23 @@ public final class SystemCommand {
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisBootstrap.getEngine();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisBootstrap.getEngine();
 
         if (engine == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.engine_not_initialized"));
             return 0;
         }
 
-        AnalysisEngine.State state = engine.getCurrentState();
+        var state = engine.getCurrentState();
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "⚙", "complexityanalyzer.command.system.status_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
         String stateIcon;
-        ChatFormatting stateColor = switch (state.toString()) {
+        var stateColor = switch (state.toString()) {
             case "READY" -> {
                 stateIcon = "✓";
                 yield ChatFormatting.GREEN;
@@ -100,9 +99,9 @@ public final class SystemCommand {
     }
 
     private static int executeReload(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         if (engine == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.engine_not_initialized"));
@@ -121,23 +120,23 @@ public final class SystemCommand {
     }
 
     private static int executeTps(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        MinecraftServer server = source.getServer();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var server = source.getServer();
 
         double mspt = server.getAverageTickTimeNanos() / 1_000_000.0D;
         double tps = 1000.0 / Math.max(50.0, mspt);
         double finalTps = Math.min(20.0, tps);
 
-        ChatFormatting tpsColor = tps >= 19.0 ? ChatFormatting.GREEN : (tps >= 16.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
-        ChatFormatting msptColor = mspt <= 40.0 ? ChatFormatting.GREEN : (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
-        Runtime runtime = Runtime.getRuntime();
+        var tpsColor = tps >= 19.0 ? ChatFormatting.GREEN : (tps >= 16.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
+        var msptColor = mspt <= 40.0 ? ChatFormatting.GREEN : (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
+        var runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory() / 1024 / 1024;
         long allocatedMemory = runtime.totalMemory() / 1024 / 1024;
         long usedMemory = allocatedMemory - (runtime.freeMemory() / 1024 / 1024);
         double memoryPercent = (double) usedMemory / maxMemory * 100;
 
-        ChatFormatting memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN : (memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED);
+        var memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN : (memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED);
         output.sendEmptyLine(source);
         output.sendHeader(source, "📈", "complexityanalyzer.command.system.perf_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
@@ -156,9 +155,9 @@ public final class SystemCommand {
     }
 
     private static int executeStats(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.engine_not_ready"));
@@ -179,9 +178,9 @@ public final class SystemCommand {
     }
 
     private static int executeThreads(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        ThreadPoolManager.PoolStats stats = ThreadPoolManager.getInstance().getStats();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var stats = ThreadPoolManager.getInstance().getStats();
         output.sendEmptyLine(source);
         output.sendHeader(source, "⚙", "complexityanalyzer.command.system.thread_pool_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);

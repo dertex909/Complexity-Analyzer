@@ -26,7 +26,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
@@ -45,7 +44,7 @@ public final class HarvestedRecipeConverter {
     public static RecipeNode convert(HarvestedItems harvested, Level level) {
         if (harvested == null || harvested.isEmpty()) return null;
 
-        ItemStack declaredResult = declaredRecipeResult(harvested.root(), level);
+        var declaredResult = declaredRecipeResult(harvested.root(), level);
         var inputIngredients = harvested.inputIngredients();
         var inputStacks = harvested.inputItems();
         var outputStacks = harvested.outputItems();
@@ -87,15 +86,15 @@ public final class HarvestedRecipeConverter {
         var mergedIngredients = new Object2IntLinkedOpenHashMap<ObjectList<Item>>();
 
         for (var hi : inputIngredients) {
-            Ingredient ingredient = hi.ingredient();
+            var ingredient = hi.ingredient();
             int ingredientCount = hi.count();
             var variants = new ObjectArrayList<Item>();
             ItemStack[] stacks = ingredient.getItems();
             int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
             for (int i = 0; i < Math.min(stacks.length, limit); i++) {
-                ItemStack stack = stacks[i];
+                var stack = stacks[i];
                 if (stack.isEmpty()) continue;
-                Item item = stack.getItem();
+                var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
                 if (!variants.contains(item)) variants.add(item);
             }
@@ -140,8 +139,8 @@ public final class HarvestedRecipeConverter {
 
         if (!inputFluids.isEmpty()) {
             var seenFluids = new Reference2IntOpenHashMap<Fluid>();
-            for (FluidStack fluid : inputFluids) {
-                Fluid f = normalizeFluid(fluid.getFluid());
+            for (var fluid : inputFluids) {
+                var f = normalizeFluid(fluid.getFluid());
                 if (f == Fluids.EMPTY) continue;
                 int amt = fluid.getAmount();
                 int existing = seenFluids.getInt(f);
@@ -156,10 +155,10 @@ public final class HarvestedRecipeConverter {
 
         if (!outputStacks.isEmpty()) {
             var deduplicatedOutputs = new ObjectArrayList<ItemStack>();
-            for (ItemStack stack : outputStacks) {
+            for (var stack : outputStacks) {
                 if (stack.isEmpty()) continue;
                 boolean alreadyAdded = false;
-                for (ItemStack existing : deduplicatedOutputs) {
+                for (var existing : deduplicatedOutputs) {
                     if (existing.getItem() == stack.getItem() && existing.getCount() == stack.getCount()) {
                         alreadyAdded = true;
                         break;
@@ -172,8 +171,8 @@ public final class HarvestedRecipeConverter {
 
         if (!outputFluids.isEmpty()) {
             var mergedOutputs = new Reference2IntOpenHashMap<Fluid>();
-            for (FluidStack fluid : outputFluids) {
-                Fluid f = normalizeFluid(fluid.getFluid());
+            for (var fluid : outputFluids) {
+                var f = normalizeFluid(fluid.getFluid());
                 if (f == Fluids.EMPTY) continue;
                 int amt = fluid.getAmount();
                 int existing = mergedOutputs.getInt(f);
@@ -213,9 +212,9 @@ public final class HarvestedRecipeConverter {
 
     private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks) {
         if (!declaredResult.isEmpty()) return declaredResult.copy();
-        ItemStack best = ItemStack.EMPTY;
+        var best = ItemStack.EMPTY;
         int bestScore = Integer.MAX_VALUE;
-        for (ItemStack stack : stacks) {
+        for (var stack : stacks) {
             if (stack.isEmpty()) continue;
             int score = stack.getCount() <= 0 ? Integer.MAX_VALUE : stack.getCount();
             if (best.isEmpty() || score < bestScore) {

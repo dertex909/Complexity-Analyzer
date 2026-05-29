@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.command;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -27,7 +28,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.network.chat.*;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
@@ -35,7 +38,7 @@ import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import static net.minecraft.network.chat.Style.EMPTY;
 
 public class GeoScanCommands {
 
@@ -62,8 +65,8 @@ public class GeoScanCommands {
     }
 
     private static int showProfileHelp(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.profile_header", ChatFormatting.GOLD);
@@ -71,7 +74,7 @@ public class GeoScanCommands {
 
         for (ScanProfile profile : ScanProfile.values()) {
             String icon = getProfileIcon(profile);
-            Component msptInfo = profile.hasMsptLimit() ?
+            var msptInfo = profile.hasMsptLimit() ?
                     Component.translatable("complexityanalyzer.command.geoscan.profile.limit_mspt", (int) profile.msptLimit) :
                     Component.translatable("complexityanalyzer.command.geoscan.profile.no_limit");
 
@@ -92,8 +95,8 @@ public class GeoScanCommands {
 
     private static int executeScan(CommandContext<CommandSourceStack> context,
                                    int chunks, String profileName, boolean force) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
 
         final ScanProfile profile;
         try {
@@ -114,7 +117,7 @@ public class GeoScanCommands {
 
             String initiatorName = source.getTextName();
             String icon = getProfileIcon(profile);
-            ChatFormatting color = getProfileColor(profile);
+            var color = getProfileColor(profile);
 
             output.sendEmptyLine(source);
             output.sendHeader(source, force ? "⚡" : "📊", force ? "complexityanalyzer.command.geoscan.force_header" : "complexityanalyzer.command.geoscan.scheduled_header", force ? ChatFormatting.RED : ChatFormatting.AQUA);
@@ -160,8 +163,8 @@ public class GeoScanCommands {
     }
 
     private static int executeStop(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
 
         var manager = AnalysisEngine.getInstance().getGeoManager();
         if (manager != null) {
@@ -181,8 +184,8 @@ public class GeoScanCommands {
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
 
         var manager = AnalysisEngine.getInstance().getGeoManager();
         if (manager != null) {
@@ -190,7 +193,7 @@ public class GeoScanCommands {
             output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.status_header", ChatFormatting.GOLD);
             output.sendEmptyLine(source);
 
-            ScanSession session = manager.getCurrentSession();
+            var session = manager.getCurrentSession();
 
             if (session != null && session.isValid()) {
                 renderActiveStatus(output, source, manager, session);
@@ -198,7 +201,7 @@ public class GeoScanCommands {
                 output.sendStatusLine(source, "⏳", manager.getStatus(), ChatFormatting.YELLOW);
             } else {
                 String status = manager.getStatus();
-                ChatFormatting color = status.toLowerCase().contains("complete") ? ChatFormatting.GREEN : ChatFormatting.GRAY;
+                var color = status.toLowerCase().contains("complete") ? ChatFormatting.GREEN : ChatFormatting.GRAY;
                 String statusIcon = status.toLowerCase().contains("complete") ? "✓" : "💤";
                 output.sendStatusLine(source, statusIcon, status, color);
             }
@@ -213,9 +216,9 @@ public class GeoScanCommands {
 
     private static void renderActiveStatus(OutputManager output, CommandSourceStack source,
                                            GeoAnalysisManager manager, ScanSession session) {
-        ScanProfile profile = session.getProfile();
+        var profile = session.getProfile();
         String icon = getProfileIcon(profile);
-        ChatFormatting color = getProfileColor(profile);
+        var color = getProfileColor(profile);
 
         output.sendSubEntry(source, icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, ChatFormatting.GRAY, color);
         output.sendSubEntry(source, "complexityanalyzer.command.geoscan.background_gen", "", ChatFormatting.GRAY, ChatFormatting.AQUA);
@@ -234,7 +237,7 @@ public class GeoScanCommands {
         if (profile.hasMsptLimit()) {
             float mspt = manager.getCurrentMspt();
 
-            MutableComponent msptLine = Component.literal("  MSPT: ").withStyle(ChatFormatting.GRAY);
+            var msptLine = Component.literal("  MSPT: ").withStyle(ChatFormatting.GRAY);
 
             if (manager.isThrottled()) {
                 msptLine.append(Component.literal(String.format("%.1f", mspt)).withStyle(ChatFormatting.RED))
@@ -251,12 +254,12 @@ public class GeoScanCommands {
 
         output.sendEmptyLine(source);
 
-        MutableComponent biomeStatus = Component.translatable("complexityanalyzer.command.geoscan.biome_details").withStyle(ChatFormatting.AQUA);
+        var biomeStatus = Component.translatable("complexityanalyzer.command.geoscan.biome_details").withStyle(ChatFormatting.AQUA);
         biomeStatus.append(Component.literal(" "));
 
-        MutableComponent tooltip = buildBiomeTooltip(session);
+        var tooltip = buildBiomeTooltip(session);
 
-        biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details").withStyle(Style.EMPTY
+        biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details").withStyle(EMPTY
                 .withColor(ChatFormatting.DARK_AQUA).withItalic(true)
                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
 
@@ -264,7 +267,7 @@ public class GeoScanCommands {
     }
 
     private static MutableComponent buildBiomeTooltip(ScanSession session) {
-        MutableComponent tooltip = Component.empty();
+        var tooltip = Component.empty();
 
         tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
@@ -274,7 +277,7 @@ public class GeoScanCommands {
         int maxBiomes = 25;
 
         for (var dimEntry : progress.entrySet()) {
-            ResourceLocation dimId = dimEntry.getKey();
+            var dimId = dimEntry.getKey();
 
             tooltip.append(Component.literal("\n").append(Component.literal("▸ ")
                     .append(formatDimensionName(dimId)).append("\n").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
@@ -288,13 +291,13 @@ public class GeoScanCommands {
                     return tooltip;
                 }
 
-                ResourceLocation biomeId = biomeEntry.getKey();
+                var biomeId = biomeEntry.getKey();
                 int[] stats = biomeEntry.getValue();
                 int scanned = stats[0];
                 int needed = stats[1];
                 boolean complete = scanned >= needed;
 
-                MutableComponent biomeLine = Component.literal("  ");
+                var biomeLine = Component.literal("  ");
 
                 if (complete) {
                     biomeLine.append(Component.literal("✓ ").withStyle(ChatFormatting.GREEN));
@@ -319,9 +322,9 @@ public class GeoScanCommands {
     }
 
     private static int executeClear(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         var manager = engine.getGeoManager();
         if (manager != null) {
@@ -361,9 +364,9 @@ public class GeoScanCommands {
     }
 
     private static String formatTime(long seconds) {
-        Component sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
-        Component mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
-        Component hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
+        var sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
+        var mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
+        var hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
 
         if (seconds < 60) {
             return seconds + sSuffix.getString();

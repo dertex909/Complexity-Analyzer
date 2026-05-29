@@ -25,7 +25,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.server.MinecraftServer;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
@@ -58,8 +57,7 @@ public final class WebCommand {
     }
 
     private static int executeUrlInternal(CommandSourceStack source, boolean rawLink) {
-        OutputManager output = new OutputManager(source.getServer());
-
+        var output = new OutputManager(source.getServer());
         String url = CabinNettyHandler.getUrl();
 
         if (url == null) {
@@ -77,7 +75,7 @@ public final class WebCommand {
         output.sendHeader(source, "🌐", "complexityanalyzer.command.web.header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
-        Object urlLabel = rawLink ? finalUrl : "complexityanalyzer.command.web.open_browser";
+        var urlLabel = rawLink ? finalUrl : "complexityanalyzer.command.web.open_browser";
         output.sendLink(source, "complexityanalyzer.command.web.url_label", urlLabel, finalUrl, ChatFormatting.AQUA, "complexityanalyzer.command.web.click_to_open", finalUrl);
 
         if ("127.0.0.1".equals(publicIp)) {
@@ -91,11 +89,11 @@ public final class WebCommand {
     }
 
     public static int executeStatus(CommandContext<CommandSourceStack> ctx) {
-        CommandSourceStack source = ctx.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        CabinBackgroundService svc = CabinBackgroundService.getInstance();
-        CabinBackgroundService.Snapshot snap = svc.getSnapshot();
-        CabinBackgroundService.Status status = svc.getStatus();
+        var source = ctx.getSource();
+        var output = new OutputManager(source.getServer());
+        var svc = CabinBackgroundService.getInstance();
+        var snap = svc.getSnapshot();
+        var status = svc.getStatus();
         output.sendEmptyLine(source);
         output.sendHeader(source, "📊", "complexityanalyzer.command.web.status_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
@@ -113,7 +111,7 @@ public final class WebCommand {
             output.sendTip(source, "complexityanalyzer.command.web.no_data");
         }
 
-        Throwable err = svc.getLastError();
+        var err = svc.getLastError();
         if (err != null) {
             output.sendEmptyLine(source);
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.last_error", err.getMessage()));
@@ -125,10 +123,10 @@ public final class WebCommand {
     }
 
     public static int executeReload(CommandContext<CommandSourceStack> ctx) {
-        CommandSourceStack source = ctx.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        MinecraftServer server = source.getServer();
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = ctx.getSource();
+        var output = new OutputManager(source.getServer());
+        var server = source.getServer();
+        var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
             return 0;
@@ -174,10 +172,10 @@ public final class WebCommand {
 
     private static String humanDuration(long ms) {
         long sec = ms / 1000;
-        Component sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
-        Component mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
-        Component hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
-        Component dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short");
+        var sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
+        var mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
+        var hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
+        var dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short");
 
         if (sec < 60) return sec + sSuffix.getString();
         long min = sec / 60;

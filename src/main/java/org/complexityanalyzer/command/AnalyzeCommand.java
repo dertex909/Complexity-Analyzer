@@ -58,9 +58,9 @@ public final class AnalyzeCommand {
     }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.not_ready"));
@@ -68,14 +68,14 @@ public final class AnalyzeCommand {
             return 0;
         }
 
-        Item item = GameRegistryManager.getItem(itemId);
+        var item = GameRegistryManager.getItem(itemId);
         if (item == null || (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air")))) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.item_not_found", itemId.toString()));
             return 0;
         }
 
         try {
-            ItemComplexity optimal = engine.getComplexityResult(item);
+            var optimal = engine.getComplexityResult(item);
             if (optimal == null) {
                 output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.failed", itemId.toString()));
                 return 0;
@@ -99,7 +99,7 @@ public final class AnalyzeCommand {
             OutputManager output,
             ResourceLocation itemId
     ) {
-        Component itemName = (item != null) ? item.getDescription() : Component.literal(itemId.toString());
+        var itemName = (item != null) ? item.getDescription() : Component.literal(itemId.toString());
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📊", "complexityanalyzer.command.analyze.header", ChatFormatting.GOLD);
@@ -116,7 +116,7 @@ public final class AnalyzeCommand {
     }
 
     private static void displayMainInfo(CommandSourceStack source, ItemComplexity optimal, OutputManager output) {
-        ComplexityCategory category = optimal.getCategory();
+        var category = optimal.getCategory();
         double complexity = optimal.getComplexity();
         output.sendStatusLine(source, "⚙", "complexityanalyzer.command.analyze.complexity_section", ChatFormatting.YELLOW);
         output.sendSubEntry(source, getCategoryIcon(category), "complexityanalyzer.command.analyze.category_label", category.getTranslationKey(), ChatFormatting.GRAY, category.getColor());
@@ -145,7 +145,7 @@ public final class AnalyzeCommand {
         if (optimal.hasRecipe()) {
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.has_recipe", "complexityanalyzer.command.analyze.yes", ChatFormatting.GRAY, ChatFormatting.WHITE);
             int depth = optimal.getDepth();
-            ChatFormatting depthColor = depth <= 2 ? ChatFormatting.GREEN : depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+            var depthColor = depth <= 2 ? ChatFormatting.GREEN : depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
             output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.depth")), String.valueOf(depth), ChatFormatting.DARK_GRAY, depthColor);
             int usageCount = engine.getUsageCount(item);
             output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.used_in")), Component.translatable("complexityanalyzer.command.analyze.used_in_count", usageCount), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
@@ -153,17 +153,17 @@ public final class AnalyzeCommand {
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.type_label", "complexityanalyzer.command.analyze.base_resource", ChatFormatting.GRAY, ChatFormatting.GOLD);
         }
 
-        ObjectList<BaseResourceData> allSources = engine.findAllSourcesForItem(item);
+        var allSources = engine.findAllSourcesForItem(item);
         if (!allSources.isEmpty()) {
             output.sendTip(source, "complexityanalyzer.command.analyze.alt_sources");
             ObjectList<SourceWithCost> sortedSources = new ObjectArrayList<>(allSources.size());
-            for (BaseResourceData data : allSources) {
+            for (var data : allSources) {
                 double fullEstimatedCost = data.getBaseFactor();
                 var sourceItems = data.getSourceItems();
                 if (!sourceItems.isEmpty()) for (var entry : Reference2DoubleMaps.fastIterable(sourceItems)) {
                     Item sourceItem = entry.getKey();
                     double amount = entry.getDoubleValue();
-                    ItemComplexity sourceComplexity = engine.getComplexityResult(sourceItem);
+                    var sourceComplexity = engine.getComplexityResult(sourceItem);
                     if (sourceComplexity != null && sourceComplexity.isValid()) {
                         fullEstimatedCost += sourceComplexity.getComplexity() * amount;
                     } else {
@@ -175,11 +175,11 @@ public final class AnalyzeCommand {
             }
 
             sortedSources.sort(Comparator.comparingDouble(SourceWithCost::fullCost));
-            for (SourceWithCost swc : sortedSources) {
+            for (var swc : sortedSources) {
                 String icon = getSourceIcon(swc.data().getSourceType());
                 String costString = Double.isInfinite(swc.fullCost()) ? "∞" : String.format("%.2f", swc.fullCost());
 
-                ChatFormatting costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED
+                var costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED
                         : swc.fullCost() < 10 ? ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
 
                 output.sendSubEntry(source, icon, swc.data().getSourceType().getDisplayName(), Component.translatable("complexityanalyzer.command.analyze.cost", costString), ChatFormatting.WHITE, costColor);

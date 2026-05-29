@@ -35,16 +35,16 @@ import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
 public class LootAnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation lootTableId) {
-        CommandSourceStack source = context.getSource();
-        OutputManager output = new OutputManager(source.getServer());
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.loot.not_ready"));
             return 0;
         }
 
-        UniversalLootSource uls = engine.getSourceByType(UniversalLootSource.class);
+        var uls = engine.getSourceByType(UniversalLootSource.class);
         if (uls == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.loot.not_initialized"));
             output.sendTip(source, "complexityanalyzer.command.loot.disabled_tip");
@@ -53,7 +53,7 @@ public class LootAnalyzeCommand {
 
         ObjectList<BaseResourceData> itemsFromTable = new ObjectArrayList<>();
         for (var typeEntry : Reference2ObjectMaps.fastIterable(uls.getAllLootData())) {
-            for (BaseResourceData data : typeEntry.getValue().values()) {
+            for (var data : typeEntry.getValue().values()) {
                 if (data.getDetails().contains(lootTableId.toString())) itemsFromTable.add(data);
             }
         }
@@ -122,7 +122,7 @@ public class LootAnalyzeCommand {
         ObjectList<BaseResourceData> veryRare = new ObjectArrayList<>();
         ObjectList<BaseResourceData> legendary = new ObjectArrayList<>();
 
-        for (BaseResourceData data : items) {
+        for (var data : items) {
             double chance = extractChance(data);
             if (chance > 20.0) {
                 common.add(data);
@@ -160,12 +160,12 @@ public class LootAnalyzeCommand {
     private static void displayRarityCategory(CommandSourceStack source, String rarityKey, String icon,
                                               ChatFormatting color, ObjectList<BaseResourceData> items, OutputManager output) {
         output.sendStatusLine(source, icon, Component.translatable("complexityanalyzer.command.loot.rarity." + rarityKey).append(" (" + items.size() + ")"), color);
-        for (BaseResourceData data : items) displayItem(source, data, output);
+        for (var data : items) displayItem(source, data, output);
         output.sendEmptyLine(source);
     }
 
     private static void displayItem(CommandSourceStack source, BaseResourceData data, OutputManager output) {
-        Component itemComponent = data.getItem().getDescription();
+        var itemComponent = data.getItem().getDescription();
         double chance = extractChance(data);
         output.sendSubEntry(source, itemComponent, String.format("%.2f%%", chance), ChatFormatting.WHITE, getChanceColor(chance));
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);

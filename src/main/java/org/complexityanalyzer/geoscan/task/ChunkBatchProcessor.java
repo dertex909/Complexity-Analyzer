@@ -22,14 +22,11 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -66,7 +63,7 @@ public class ChunkBatchProcessor {
 
     private BiomeContext getBiomeContext(ResourceKey<Level> dimension) {
         return biomeContexts.computeIfAbsent(dimension, dim -> {
-            ServerLevel level = server.getLevel(dim);
+            var level = server.getLevel(dim);
             if (level == null) throw new IllegalStateException("Level not found: " + dim);
             return new BiomeContext(
                     level.getChunkSource().getGenerator().getBiomeSource(),
@@ -78,7 +75,7 @@ public class ChunkBatchProcessor {
 
     private VanillaChunkGeneratorService getGenerator(ResourceKey<Level> dimension) {
         return generators.computeIfAbsent(dimension, dim -> {
-            ServerLevel level = server.getLevel(dim);
+            var level = server.getLevel(dim);
             if (level == null) throw new IllegalStateException("Level not found: " + dim);
             return new VanillaChunkGeneratorService(level);
         });
@@ -92,15 +89,15 @@ public class ChunkBatchProcessor {
     private ResourceLocation checkBiomeCached(BiomeContext ctx, ResourceKey<Level> dim, int chunkX, int chunkZ) {
         long key = cacheKey(dim, chunkX, chunkZ);
 
-        ResourceLocation cached = biomeCache.get(key);
+        var cached = biomeCache.get(key);
         if (cached != null) return cached;
 
         int blockX = (chunkX << 4) + 8;
         int blockZ = (chunkZ << 4) + 8;
 
         try {
-            Holder<Biome> biome = ctx.biomeSource.getNoiseBiome(blockX >> 2, ctx.seaLevel >> 2, blockZ >> 2, ctx.sampler);
-            ResourceLocation result = biome.unwrapKey().map(ResourceKey::location).orElse(null);
+            var biome = ctx.biomeSource.getNoiseBiome(blockX >> 2, ctx.seaLevel >> 2, blockZ >> 2, ctx.sampler);
+            var result = biome.unwrapKey().map(ResourceKey::location).orElse(null);
             if (result != null && biomeCache.size() < BIOME_CACHE_MAX_SIZE) biomeCache.put(key, result);
             return result;
         } catch (Exception e) {
@@ -115,35 +112,31 @@ public class ChunkBatchProcessor {
         long key = cacheKey(dimension, chunkX, chunkZ);
 
         if (transientBiomeCache != null) {
-            ResourceLocation cached = transientBiomeCache.get(key);
+            var cached = transientBiomeCache.get(key);
             if (cached != null) return cached;
         }
 
-        ResourceLocation biome = checkBiomeCached(ctx, dimension, chunkX, chunkZ);
+        var biome = checkBiomeCached(ctx, dimension, chunkX, chunkZ);
         if (biome != null && transientBiomeCache != null) transientBiomeCache.put(key, biome);
         return biome;
     }
 
-    public ObjectArrayList<LoadedChunk> loadBatch(
-            ResourceKey<Level> dimension,
-            LongArrayList packedPositions,
-            ScanSession session,
-            @Nullable Long2ObjectMap<ResourceLocation> transientBiomeCache
-    ) {
+    public ObjectArrayList<LoadedChunk> loadBatch(ResourceKey<Level> dimension, LongArrayList packedPositions,
+                                                  ScanSession session, @Nullable Long2ObjectMap<ResourceLocation> transientBiomeCache) {
         int size = packedPositions.size();
         if (size == 0) return ObjectArrayList.of();
-        ServerLevel level = server.getLevel(dimension);
+        var level = server.getLevel(dimension);
         if (level == null) return ObjectArrayList.of();
-        ResourceLocation dimId = dimension.location();
-        BiomeContext ctx = getBiomeContext(dimension);
+        var dimId = dimension.location();
+        var ctx = getBiomeContext(dimension);
 
-        LongArrayList toGenerate = new LongArrayList(size);
+        var toGenerate = new LongArrayList(size);
         Long2ObjectOpenHashMap<ResourceLocation> biomeMap = new Long2ObjectOpenHashMap<>(size * 2);
 
         for (int i = 0; i < size; i++) {
             if (!session.isValid()) break;
             long packed = packedPositions.getLong(i);
-            ResourceLocation biome = resolveBiome(ctx, dimension, packed, transientBiomeCache);
+            var biome = resolveBiome(ctx, dimension, packed, transientBiomeCache);
             if (biome == null) continue;
             if (session.doesNotNeedBiome(dimId, biome)) continue;
             toGenerate.add(packed);
@@ -152,17 +145,17 @@ public class ChunkBatchProcessor {
 
         if (toGenerate.isEmpty()) return ObjectArrayList.of();
 
-        VanillaChunkGeneratorService generator = getGenerator(dimension);
-        ObjectArrayList<ChunkAccess> chunks = generator.generateBatch(toGenerate);
+        var generator = getGenerator(dimension);
+        var chunks = generator.generateBatch(toGenerate);
 
         int chunksSize = chunks.size();
         ObjectArrayList<LoadedChunk> loadedChunks = new ObjectArrayList<>(chunksSize);
 
         for (int i = 0; i < chunksSize; i++) {
-            ChunkAccess chunk = chunks.get(i);
+            var chunk = chunks.get(i);
             if (chunk == null || !session.isValid()) continue;
             long packed = toGenerate.getLong(i);
-            ResourceLocation biome = biomeMap.get(packed);
+            var biome = biomeMap.get(packed);
             if (session.doesNotNeedBiome(dimId, biome)) continue;
             loadedChunks.add(new LoadedChunk(chunk, packed, biome));
         }
@@ -178,8 +171,8 @@ public class ChunkBatchProcessor {
 
         for (int i = 0; i < size; i++) {
             if (!session.isValid()) break;
-            LoadedChunk loadedChunk = loadedChunks.get(i);
-            ChunkSnapshot snapshot = analyzer.createSnapshot(loadedChunk.chunk());
+            var loadedChunk = loadedChunks.get(i);
+            var snapshot = analyzer.createSnapshot(loadedChunk.chunk());
             if (snapshot == null) continue;
             results.add(new ScanResult(snapshot, loadedChunk.biome()));
         }

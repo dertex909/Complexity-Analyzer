@@ -35,10 +35,10 @@ public final class CabinWriter {
 
     public static byte[] writeToBytes(ObjectList<CabinSection> sections) {
         long estimated = CabinFormat.HEADER_SIZE + 2L + (long) sections.size() * TOC_ENTRY_SIZE;
-        for (CabinSection s : sections) estimated += s.uncompressedSize();
+        for (var s : sections) estimated += s.uncompressedSize();
         if (estimated > Integer.MAX_VALUE - 1024)
             throw new IllegalStateException("Cabin payload too large: " + estimated);
-        LeBuf out = new LeBuf((int) estimated);
+        var out = new LeBuf((int) estimated);
 
         out.i32(CabinFormat.MAGIC);
         out.u16(CabinFormat.VERSION);
@@ -57,7 +57,7 @@ public final class CabinWriter {
         byte[] codecs = new byte[sectionCount];
 
         for (int i = 0; i < sectionCount; i++) {
-            CabinSection s = sections.get(i);
+            var s = sections.get(i);
             byte[] data = s.payload();
             byte[] toWrite;
             byte codec;
@@ -84,7 +84,7 @@ public final class CabinWriter {
         long tocOffset = out.position();
         out.u16(sectionCount);
         for (int i = 0; i < sectionCount; i++) {
-            CabinSection s = sections.get(i);
+            var s = sections.get(i);
             out.u8(s.id() & 0xFF);
             out.u8(codecs[i] & 0xFF);
             out.i64(offsets[i]);
@@ -101,7 +101,7 @@ public final class CabinWriter {
     }
 
     private static byte[] deflateRaw(byte[] data) {
-        Deflater def = new Deflater(Deflater.BEST_COMPRESSION, true);
+        var def = new Deflater(Deflater.BEST_COMPRESSION, true);
         try {
             def.setInput(data);
             def.finish();

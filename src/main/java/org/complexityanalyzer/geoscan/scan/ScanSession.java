@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
-import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -96,12 +95,12 @@ public class ScanSession {
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> getBiomeProgress() {
         Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> result = new Object2ObjectOpenHashMap<>();
 
-        for (Map.Entry<BiomeKey, AtomicInteger> entry : remainingNeeds.entrySet()) {
-            BiomeKey key = entry.getKey();
+        for (var entry : remainingNeeds.entrySet()) {
+            var key = entry.getKey();
             int remaining = entry.getValue().get();
             int scanned = Math.max(0, chunksPerBiome - remaining);
 
-            Object2ObjectMap<ResourceLocation, int[]> inner = result.computeIfAbsent(key.dim(), k -> new Object2ObjectOpenHashMap<>());
+            var inner = result.computeIfAbsent(key.dim(), k -> new Object2ObjectOpenHashMap<>());
             inner.put(key.biome(), new int[]{scanned, chunksPerBiome});
         }
 
@@ -141,18 +140,18 @@ public class ScanSession {
     }
 
     public void abandonBiome(ResourceLocation dim, ResourceLocation biome) {
-        AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
+        var remaining = remainingNeeds.get(new BiomeKey(dim, biome));
         if (remaining == null) return;
         remaining.set(0);
     }
 
     public boolean doesNotNeedBiome(ResourceLocation dim, ResourceLocation biome) {
-        AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
+        var remaining = remainingNeeds.get(new BiomeKey(dim, biome));
         return remaining == null || remaining.get() <= 0;
     }
 
     public boolean tryClaimChunk(ResourceLocation dim, ResourceLocation biome) {
-        AtomicInteger remaining = remainingNeeds.get(new BiomeKey(dim, biome));
+        var remaining = remainingNeeds.get(new BiomeKey(dim, biome));
         if (remaining == null) return false;
 
         int current;
@@ -168,7 +167,7 @@ public class ScanSession {
     public ResourceLocation getRandomNeededBiome(ResourceLocation dim) {
         ObjectArrayList<ResourceLocation> needed = new ObjectArrayList<>();
 
-        for (Map.Entry<BiomeKey, AtomicInteger> entry : remainingNeeds.entrySet()) {
+        for (var entry : remainingNeeds.entrySet()) {
             if (entry.getKey().dim().equals(dim) && entry.getValue().get() > 0) needed.add(entry.getKey().biome());
         }
 
@@ -178,7 +177,7 @@ public class ScanSession {
 
     public ObjectArrayList<ResourceLocation> getDimensionsWithNeeds() {
         ObjectOpenHashSet<ResourceLocation> dims = new ObjectOpenHashSet<>();
-        for (Map.Entry<BiomeKey, AtomicInteger> entry : remainingNeeds.entrySet()) {
+        for (var entry : remainingNeeds.entrySet()) {
             if (entry.getValue().get() > 0) dims.add(entry.getKey().dim());
         }
         ObjectArrayList<ResourceLocation> result = new ObjectArrayList<>(dims.size());
@@ -187,9 +186,7 @@ public class ScanSession {
     }
 
     public boolean hasAnyNeeds() {
-        for (AtomicInteger remaining : remainingNeeds.values()) {
-            if (remaining.get() > 0) return true;
-        }
+        for (var remaining : remainingNeeds.values()) if (remaining.get() > 0) return true;
         return false;
     }
 
@@ -204,14 +201,14 @@ public class ScanSession {
     }
 
     public boolean tryMarkChunkPacked(ResourceLocation dim, long packedPos) {
-        LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
+        var set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
         return set.add(packedPos);
     }
 
     public void loadAttemptedChunks(Map<ResourceLocation, ? extends LongSet> chunksByDimension) {
-        for (Map.Entry<ResourceLocation, ? extends LongSet> entry : chunksByDimension.entrySet()) {
-            LongOpenHashSet set = attemptedChunksByDimension.computeIfAbsent(entry.getKey(), ignored -> new LongOpenHashSet());
-            LongIterator it = entry.getValue().iterator();
+        for (var entry : chunksByDimension.entrySet()) {
+            var set = attemptedChunksByDimension.computeIfAbsent(entry.getKey(), ignored -> new LongOpenHashSet());
+            var it = entry.getValue().iterator();
             while (it.hasNext()) set.add(it.nextLong());
         }
     }

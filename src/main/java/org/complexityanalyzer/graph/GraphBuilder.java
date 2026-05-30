@@ -162,7 +162,7 @@ public class GraphBuilder {
                     var idB = GameRegistryManager.getItemId(b);
                     return idA.compareTo(idB);
                 });
-                List<Item> key = new ArrayList<>(variants);
+                var key = new ArrayList<>(variants);
                 merged.put(key, merged.getOrDefault(key, 0) + 1);
             }
         }

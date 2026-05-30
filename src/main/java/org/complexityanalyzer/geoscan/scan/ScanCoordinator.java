@@ -27,7 +27,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.GeoDatabase;
@@ -68,7 +67,7 @@ public class ScanCoordinator {
         invalidateCurrentSession();
 
         long sessionId = sessionIdGenerator.incrementAndGet();
-        ScanSession session = new ScanSession(sessionId, profile, chunksPerBiome);
+        var session = new ScanSession(sessionId, profile, chunksPerBiome);
         this.currentSession.set(session);
 
         worldScanner.clearStopRequest();
@@ -81,7 +80,7 @@ public class ScanCoordinator {
     }
 
     public void invalidateCurrentSession() {
-        ScanSession session = currentSession.getAndSet(null);
+        var session = currentSession.getAndSet(null);
         if (session != null) {
             session.invalidate();
             ComplexityAnalyzer.LOGGER.debug("Invalidated session {}", session.getSessionId());
@@ -101,16 +100,16 @@ public class ScanCoordinator {
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Building scan tasks for {} chunks/biome", chunksPerBiome);
 
-        for (ServerLevel level : server.getAllLevels()) {
+        for (var level : server.getAllLevels()) {
             if (!session.isValid()) break;
 
-            ResourceKey<Level> dimension = level.dimension();
+            var dimension = level.dimension();
             ComplexityAnalyzer.LOGGER.info("Scanning dimension: {}", dimension.location());
 
-            ObjectOpenHashSet<ResourceKey<Biome>> biomes = getBiomesForDimension(level);
+            var biomes = getBiomesForDimension(level);
             ComplexityAnalyzer.LOGGER.debug("Found {} biomes in {}", biomes.size(), dimension.location());
 
-            for (ResourceKey<Biome> biomeKey : biomes) {
+            for (var biomeKey : biomes) {
                 if (!session.isValid()) break;
 
                 int existingChunks = getExistingChunkCount(dimension.location(), biomeKey.location());
@@ -182,7 +181,7 @@ public class ScanCoordinator {
     }
 
     public void stopScan() {
-        ScanSession session = currentSession.getAndSet(null);
+        var session = currentSession.getAndSet(null);
         worldScanner.requestStop();
         if (session != null) {
             session.invalidate();

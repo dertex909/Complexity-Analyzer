@@ -155,8 +155,8 @@ public class RecipeNode {
         if (list1 == null || list2 == null) return false;
         if (list1.size() != list2.size()) return false;
         for (int i = 0; i < list1.size(); i++) {
-            ItemStack s1 = list1.get(i);
-            ItemStack s2 = list2.get(i);
+            var s1 = list1.get(i);
+            var s2 = list2.get(i);
             if (s1 == s2) continue;
             if (s1 == null || s2 == null) return false;
             if (s1.getItem() != s2.getItem() || s1.getCount() != s2.getCount()) return false;
@@ -169,8 +169,8 @@ public class RecipeNode {
         if (list1 == null || list2 == null) return false;
         if (list1.size() != list2.size()) return false;
         for (int i = 0; i < list1.size(); i++) {
-            FluidStack s1 = list1.get(i);
-            FluidStack s2 = list2.get(i);
+            var s1 = list1.get(i);
+            var s2 = list2.get(i);
             if (s1 == s2) continue;
             if (s1 == null || s2 == null) return false;
             if (s1.getFluid() != s2.getFluid() || s1.getAmount() != s2.getAmount()) return false;
@@ -182,7 +182,7 @@ public class RecipeNode {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        RecipeNode that = (RecipeNode) o;
+        var that = (RecipeNode) o;
         if (resultCount != that.resultCount) return false;
         if (isPlaceholder != that.isPlaceholder) return false;
         if (!resultItem.equals(that.resultItem)) return false;
@@ -209,14 +209,14 @@ public class RecipeNode {
         result = 31 * result + chemicalOutputs.hashCode();
 
         int outputsHash = 1;
-        for (ItemStack stack : itemOutputs) {
+        for (var stack : itemOutputs) {
             int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getItem().hashCode() * 31 + stack.getCount());
             outputsHash = 31 * outputsHash + stackHash;
         }
         result = 31 * result + outputsHash;
 
         int fluidOutputsHash = 1;
-        for (FluidStack stack : fluidOutputs) {
+        for (var stack : fluidOutputs) {
             int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getFluid().hashCode() * 31 + stack.getAmount());
             fluidOutputsHash = 31 * fluidOutputsHash + stackHash;
         }

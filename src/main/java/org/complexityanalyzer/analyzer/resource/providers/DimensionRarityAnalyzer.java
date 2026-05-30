@@ -19,18 +19,15 @@
 package org.complexityanalyzer.analyzer.resource.providers;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.random.WeightedRandomList;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
@@ -75,7 +72,7 @@ public class DimensionRarityAnalyzer {
             if (!spawnOverrides.isEmpty()) {
                 structuresAnalyzed++;
 
-                ResourceKey<Level> dimension = guessDimensionFromStructure(structureKey);
+                var dimension = guessDimensionFromStructure(structureKey);
 
                 for (var override : spawnOverrides.values()) {
                     for (var spawner : override.spawns().unwrap()) {
@@ -112,7 +109,7 @@ public class DimensionRarityAnalyzer {
                 var chunkGenerator = dimension.getChunkSource().getGenerator();
                 var biomeSource = chunkGenerator.getBiomeSource();
 
-                ObjectSet<Holder<Biome>> biomeHolders = new ObjectOpenHashSet<>(biomeSource.possibleBiomes());
+                var biomeHolders = new ObjectOpenHashSet<>(biomeSource.possibleBiomes());
 
                 for (var biomeHolder : biomeHolders) {
                     biomeHolder.unwrapKey().ifPresent(biomeKey ->
@@ -205,11 +202,11 @@ public class DimensionRarityAnalyzer {
     }
 
     private static boolean mobSpawnsInBiome(EntityType<?> entityType, Biome biome) {
-        MobSpawnSettings spawnSettings = biome.getMobSettings();
+        var spawnSettings = biome.getMobSettings();
 
-        for (MobCategory category : MobCategory.values()) {
-            WeightedRandomList<MobSpawnSettings.SpawnerData> spawners = spawnSettings.getMobs(category);
-            for (MobSpawnSettings.SpawnerData spawner : spawners.unwrap()) if (spawner.type == entityType) return true;
+        for (var category : MobCategory.values()) {
+            var spawners = spawnSettings.getMobs(category);
+            for (var spawner : spawners.unwrap()) if (spawner.type == entityType) return true;
         }
 
         return false;

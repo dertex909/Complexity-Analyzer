@@ -19,7 +19,6 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
@@ -30,7 +29,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -42,10 +42,10 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
+import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -77,8 +77,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes concurrently.", getName());
         long startTime = System.currentTimeMillis();
-        AtomicInteger pathsFound = new AtomicInteger(0);
-        AtomicInteger blocksSkipped = new AtomicInteger(0);
+        var pathsFound = new AtomicInteger(0);
+        var blocksSkipped = new AtomicInteger(0);
 
         var server = serverLevel.getServer();
         var toolsToTest = createTestTools(serverLevel);
@@ -87,7 +87,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         ConcurrentHashMap<Item, ConcurrentLinkedQueue<BaseResourceData>> localPaths = new ConcurrentHashMap<>();
         ObjectList<CompletableFuture<Void>> futures = new ObjectArrayList<>();
 
-        for (Block blockToMine : GameRegistryManager.getAllBlocks()) {
+        for (var blockToMine : GameRegistryManager.getAllBlocks()) {
             if (blockToMine == Blocks.AIR || blockToMine == Blocks.CAVE_AIR || blockToMine == Blocks.VOID_AIR) {
                 continue;
             }
@@ -100,13 +100,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             futures.add(CompletableFuture.runAsync(() -> {
                 try {
-                    BlockState defaultState = blockToMine.defaultBlockState();
+                    var defaultState = blockToMine.defaultBlockState();
                     ObjectList<ItemStack> candidates = new ObjectArrayList<>();
                     boolean requiresTool = defaultState.requiresCorrectToolForDrops();
 
                     if (!requiresTool) candidates.add(ItemStack.EMPTY);
 
-                    for (ItemStack tool : toolsToTest) {
+                    for (var tool : toolsToTest) {
                         if (tool.isEmpty()) continue;
                         boolean isCorrect = tool.isCorrectToolForDrops(defaultState);
                         if (requiresTool && !isCorrect) continue;
@@ -116,9 +116,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                         candidates.add(tool);
                     }
 
-                    for (ItemStack toolStack : candidates) {
+                    for (var toolStack : candidates) {
                         try {
-                            LootTable lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
+                            var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                             if (lootTable == LootTable.EMPTY) continue;
 
                             long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
@@ -129,7 +129,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                             boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
 
                             double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
-                            RarityInfo rarityInfo = calculateRarityFactor(blockToMine);
+                            var rarityInfo = calculateRarityFactor(blockToMine);
                             double rarityFactor = rarityInfo.factor();
 
                             double enchantCost = 0;
@@ -144,7 +144,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                 var itemsPerAction = entry.getDoubleValue();
                                 if (itemsPerAction <= 0) continue;
 
-                                Reference2DoubleMap<Item> sourceItems = calculateSourceItems(toolStack, itemsPerAction);
+                                var sourceItems = calculateSourceItems(toolStack, itemsPerAction);
 
                                 StringBuilder details = new StringBuilder();
                                 details.append("Mined from ").append(blockToMine.getName().getString());
@@ -165,7 +165,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                                 boolean isSelfDrop = droppedItem == blockToMine.asItem();
 
-                                BaseResourceData data = new BaseResourceData.Builder(droppedItem, this)
+                                var data = new BaseResourceData.Builder(droppedItem, this)
                                         .sourceType(getSourceType())
                                         .sourceSpecifier(blockToMine.getName().getString())
                                         .details(details.toString())
@@ -246,7 +246,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 Items.NETHERITE_HOE
         };
 
-        for (Item base : bases) {
+        for (var base : bases) {
             var stTool = new ItemStack(base);
             silkTouch.ifPresent(h -> stTool.enchant(h, 1));
             tools.add(stTool);
@@ -271,11 +271,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         Reference2LongMap<Item> firstSample = null;
 
         for (int i = 0; i < SAMPLE_COUNT; i++) {
-            RandomSource deterministicRandom = RandomSource.create(baseSeed + i);
+            var deterministicRandom = RandomSource.create(baseSeed + i);
             ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
 
-            BlockPos spawnPos = level.getSharedSpawnPos();
-            Vec3 originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+            var spawnPos = level.getSharedSpawnPos();
+            var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
 
             var params = new LootParams.Builder(level)
                     .withParameter(LootContextParams.BLOCK_STATE, blockState)
@@ -343,7 +343,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         if (itemsPerAction <= 0) return sourceItems;
 
         double invYield = 1.0 / itemsPerAction;
-        Item toolItem = toolStack.getItem();
+        var toolItem = toolStack.getItem();
 
         if (toolItem != Items.AIR) {
             double durability = toolStack.getMaxDamage();

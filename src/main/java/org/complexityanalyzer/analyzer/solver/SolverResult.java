@@ -48,9 +48,4 @@ public record SolverResult(
     public Double getFluidComplexity(Fluid fluid) {
         return optimalFluidComplexities.containsKey(fluid) ? optimalFluidComplexities.getDouble(fluid) : null;
     }
-
-    @Nullable
-    public RecipeNode getOptimalFluidRecipe(Fluid fluid) {
-        return optimalFluidRecipes.get(fluid);
-    }
 }

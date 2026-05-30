@@ -20,15 +20,7 @@ package org.complexityanalyzer.analyzer.solver;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -37,12 +29,10 @@ import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.graph.IngredientSlot;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.util.Arrays;
 
@@ -131,7 +121,7 @@ public final class SccCondensedSolver {
     }
 
     private Solution solveCompiled(CompiledModel m) {
-        TarjanResult tarjan = tarjanScc(m.nodeCount, m.adjStart, m.adjNode);
+        var tarjan = tarjanScc(m.nodeCount, m.adjStart, m.adjNode);
         int[] componentOf = tarjan.componentOf;
         int componentCount = tarjan.componentCount;
 
@@ -153,7 +143,7 @@ public final class SccCondensedSolver {
             }
         }
 
-        Solution sol = new Solution(m.nodeCount, m.itemCount, m.fluidCount);
+        var sol = new Solution(m.nodeCount, m.itemCount, m.fluidCount);
 
         int totalFixpointIterations = 0;
         int cyclicComponents = 0;
@@ -372,7 +362,7 @@ public final class SccCondensedSolver {
         for (int n = 0; n < m.nodeCount; n++) {
             if (m.nodeKind[n] != K_ITEM) continue;
             if (!m.itemInCorpus[n]) continue;
-            Item item = m.itemByNode[n];
+            var item = m.itemByNode[n];
             if (item == null) continue;
 
             double cost = sol.costs[n];
@@ -399,7 +389,7 @@ public final class SccCondensedSolver {
 
         for (int n = 0; n < m.nodeCount; n++) {
             if (m.nodeKind[n] != K_FLUID) continue;
-            Fluid fluid = m.fluidByNode[n];
+            var fluid = m.fluidByNode[n];
             if (fluid == null) continue;
 
             double cost = sol.costs[n];
@@ -537,40 +527,40 @@ public final class SccCondensedSolver {
 
         private void allocateNodes() {
             var corpus = graph.getCorpus();
-            for (Item item : corpus) {
+            for (var item : corpus) {
                 int node = allocateItemNode(item);
                 itemInCorpus.setTrue(node);
             }
 
-            for (Fluid fluid : graph.getAllUsedFluids()) allocateFluidNode(fluid);
+            for (var fluid : graph.getAllUsedFluids()) allocateFluidNode(fluid);
 
             allocateFluidNode(Fluids.WATER);
             allocateFluidNode(Fluids.LAVA);
 
-            for (RecipeNode recipe : graph.getAllRecipes()) {
-                Item resultItem = recipe.getResultItem();
+            for (var recipe : graph.getAllRecipes()) {
+                var resultItem = recipe.getResultItem();
                 if (resultItem != null) allocateItemNode(resultItem);
 
-                for (IngredientSlot slot : recipe.getIngredients()) {
-                    for (Item variant : slot.getVariants()) if (variant != null) allocateItemNode(variant);
+                for (var slot : recipe.getIngredients()) {
+                    for (var variant : slot.getVariants()) if (variant != null) allocateItemNode(variant);
                 }
                 for (var slot : recipe.getFluidIngredients()) {
-                    for (Fluid variant : slot.getFluidVariants()) {
-                        Fluid normalized = normalizeFluid(variant);
+                    for (var variant : slot.getFluidVariants()) {
+                        var normalized = normalizeFluid(variant);
                         if (normalized != Fluids.EMPTY) allocateFluidNode(normalized);
                     }
                 }
                 for (var stack : recipe.getFluidOutputs()) {
-                    Fluid normalized = normalizeFluid(stack.getFluid());
+                    var normalized = normalizeFluid(stack.getFluid());
                     if (normalized != Fluids.EMPTY) allocateFluidNode(normalized);
                 }
 
                 if (machineRegistry != null) {
-                    ObjectList<Item> machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
+                    var machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
                     if (machineItems != null) for (Item machineItem : machineItems) allocateItemNode(machineItem);
                 }
 
-                ObjectList<RecipeNode.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
+                var chemOutputs = recipe.getChemicalOutputs();
                 for (var chem : chemOutputs) if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
 
                 for (var chem : recipe.getChemicalIngredients()) {
@@ -578,40 +568,40 @@ public final class SccCondensedSolver {
                 }
             }
 
-            for (Item item : GameRegistryManager.getAllItems()) {
-                ObjectList<BaseResourceData> sources = sourceManager.findAllSources(item);
+            for (var item : GameRegistryManager.getAllItems()) {
+                var sources = sourceManager.findAllSources(item);
                 if (sources.isEmpty()) continue;
 
                 int node = allocateItemNode(item);
                 itemInCorpus.setTrue(node);
 
-                for (BaseResourceData data : sources) {
+                for (var data : sources) {
                     if (data == null) continue;
                     var sourceItems = data.getSourceItems();
                     if (sourceItems.isEmpty()) continue;
                     for (var entry : sourceItems.reference2DoubleEntrySet()) {
-                        Item dep = entry.getKey();
+                        var dep = entry.getKey();
                         if (dep != null) allocateItemNode(dep);
                     }
                 }
             }
 
             for (var entry : chemicalToNode.object2IntEntrySet()) {
-                ResourceLocation id = entry.getKey();
-                Fluid fluid = GameRegistryManager.getFluid(id);
+                var id = entry.getKey();
+                var fluid = GameRegistryManager.getFluid(id);
                 if (fluid != null && fluid != Fluids.EMPTY && !isProtectedFluid(fluid)) allocateFluidNode(fluid);
             }
         }
 
         private void compileSourceFormulas() {
-            for (Item item : GameRegistryManager.getAllItems()) {
+            for (var item : GameRegistryManager.getAllItems()) {
                 int targetNode = itemToNode.getInt(item);
                 if (targetNode == -1) continue;
 
-                ObjectList<BaseResourceData> sources = sourceManager.findAllSources(item);
+                var sources = sourceManager.findAllSources(item);
                 if (sources.isEmpty()) continue;
 
-                for (BaseResourceData data : sources) {
+                for (var data : sources) {
                     if (data == null) continue;
                     double base = data.getBaseFactor();
                     if (Double.isNaN(base) || Double.isInfinite(base)) continue;
@@ -620,9 +610,9 @@ public final class SccCondensedSolver {
                     int itemSlotCnt = 0;
                     boolean depsOk = true;
 
-                    Reference2DoubleMap<Item> sourceItems = data.getSourceItems();
+                    var sourceItems = data.getSourceItems();
                     for (var entry : sourceItems.reference2DoubleEntrySet()) {
-                        Item dep = entry.getKey();
+                        var dep = entry.getKey();
                         double amount = entry.getDoubleValue();
                         if (dep == null || amount == 0.0) continue;
                         if (dep == item) continue;
@@ -650,7 +640,7 @@ public final class SccCondensedSolver {
             double machineTax = ComplexityConfig.getMachineTaxMultiplier();
             double machineFallback = ComplexityConfig.getMachineBaseComplexity();
 
-            for (RecipeNode recipe : graph.getAllRecipes()) {
+            for (var recipe : graph.getAllRecipes()) {
                 double multiplier = recipe.getRecipeMultiplier();
                 if (Double.isInfinite(multiplier) || Double.isNaN(multiplier)) continue;
 
@@ -659,10 +649,10 @@ public final class SccCondensedSolver {
                 double machineMul = 0.0;
                 boolean zeroCostMachine = isZeroCostRecipeType(recipe.getRecipeType());
                 if (!zeroCostMachine && machineRegistry != null) {
-                    ObjectList<Item> machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
+                    var machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
                     if (machineItems != null) {
                         int start = itemVariantNode.size();
-                        for (Item machineItem : machineItems) {
+                        for (var machineItem : machineItems) {
                             int candidateNode = itemToNode.getInt(machineItem);
                             if (candidateNode != -1 && itemInCorpus.getBoolean(candidateNode)) {
                                 itemVariantNode.add(candidateNode);
@@ -676,7 +666,7 @@ public final class SccCondensedSolver {
                     }
                 }
 
-                Item resultItem = recipe.getResultItem();
+                var resultItem = recipe.getResultItem();
                 int itemTarget = (resultItem != null) ? itemToNode.getInt(resultItem) : -1;
                 int resultCount = recipe.getResultCount();
                 boolean validItemRecipe = itemTarget != -1 && resultCount > 0;
@@ -686,7 +676,7 @@ public final class SccCondensedSolver {
                 int fluidSlotsCount = 0;
                 boolean inputsValid = true;
 
-                for (IngredientSlot slot : recipe.getIngredients()) {
+                for (var slot : recipe.getIngredients()) {
                     if (appendItemSlot(slot.getVariants(), slot.getCount())) {
                         inputsValid = false;
                         break;
@@ -715,7 +705,7 @@ public final class SccCondensedSolver {
                 if (!recipe.getFluidOutputs().isEmpty()) {
                     Reference2DoubleOpenHashMap<Fluid> grouped = new Reference2DoubleOpenHashMap<>();
                     for (var stack : recipe.getFluidOutputs()) {
-                        Fluid normalized = normalizeFluid(stack.getFluid());
+                        var normalized = normalizeFluid(stack.getFluid());
                         if (normalized == Fluids.EMPTY || isProtectedFluid(normalized)) continue;
                         grouped.addTo(normalized, stack.getAmount());
                     }
@@ -727,7 +717,7 @@ public final class SccCondensedSolver {
                         int sharedFluidSlotCount = 0;
                         boolean sharedValid = true;
 
-                        for (IngredientSlot slot : recipe.getIngredients()) {
+                        for (var slot : recipe.getIngredients()) {
                             if (appendItemSlot(slot.getVariants(), slot.getCount())) {
                                 sharedValid = false;
                                 break;
@@ -745,7 +735,7 @@ public final class SccCondensedSolver {
 
                         if (sharedValid) {
                             for (var entry : grouped.reference2DoubleEntrySet()) {
-                                Fluid fluid = entry.getKey();
+                                var fluid = entry.getKey();
                                 int fluidNode = fluidToNode.getInt(fluid);
                                 if (fluidNode == -1) fluidNode = allocateFluidNode(fluid);
                                 double outputAmount = entry.getDoubleValue();
@@ -766,9 +756,9 @@ public final class SccCondensedSolver {
                     }
                 }
 
-                ObjectList<RecipeNode.ChemicalOutput> chemOutputs = recipe.getChemicalOutputs();
+                var chemOutputs = recipe.getChemicalOutputs();
                 if (!chemOutputs.isEmpty()) {
-                    ObjectList<RecipeNode.ChemicalIngredient> structured = recipe.getChemicalIngredients();
+                    var structured = recipe.getChemicalIngredients();
 
                     int sharedItemSlotStart = itemSlotVariantStart.size();
                     int sharedItemSlotCount = 0;
@@ -778,7 +768,7 @@ public final class SccCondensedSolver {
                     int sharedChemCount = 0;
                     boolean sharedValid = true;
 
-                    for (IngredientSlot slot : recipe.getIngredients()) {
+                    for (var slot : recipe.getIngredients()) {
                         if (appendItemSlot(slot.getVariants(), slot.getCount())) {
                             sharedValid = false;
                             break;
@@ -835,9 +825,9 @@ public final class SccCondensedSolver {
 
         private void compileChemicalBridgeFormulas() {
             for (var entry : chemicalToNode.object2IntEntrySet()) {
-                ResourceLocation id = entry.getKey();
+                var id = entry.getKey();
                 int chemNode = entry.getIntValue();
-                Fluid fluid = GameRegistryManager.getFluid(id);
+                var fluid = GameRegistryManager.getFluid(id);
                 if (fluid == null || fluid == Fluids.EMPTY) continue;
                 if (isProtectedFluid(fluid)) continue;
                 int fluidNode = fluidToNode.getInt(fluid);
@@ -889,7 +879,7 @@ public final class SccCondensedSolver {
             int variantStart = itemVariantNode.size();
             int added = 0;
             ReferenceOpenHashSet<Item> seen = null;
-            for (Item v : variants) {
+            for (var v : variants) {
                 if (v == null) continue;
                 if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
                 if (!seen.add(v)) continue;
@@ -918,9 +908,9 @@ public final class SccCondensedSolver {
             int variantStart = fluidVariantNode.size();
             int added = 0;
             ReferenceOpenHashSet<Fluid> seen = null;
-            for (Fluid v : variants) {
+            for (var v : variants) {
                 if (v == null) continue;
-                Fluid normalized = normalizeFluid(v);
+                var normalized = normalizeFluid(v);
                 if (normalized == Fluids.EMPTY) continue;
                 if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
                 if (!seen.add(normalized)) continue;
@@ -1076,12 +1066,12 @@ public final class SccCondensedSolver {
 
     private static Fluid normalizeFluid(Fluid fluid) {
         if (fluid == null) return Fluids.EMPTY;
-        ResourceLocation id = GameRegistryManager.getFluidId(fluid);
+        var id = GameRegistryManager.getFluidId(fluid);
         if (id == null) return fluid;
         String fluidName = id.toString();
         if (!fluidName.contains("flowing_")) return fluid;
-        ResourceLocation staticId = ResourceLocation.parse(fluidName.replace("flowing_", ""));
-        Fluid staticFluid = GameRegistryManager.getFluid(staticId);
+        var staticId = ResourceLocation.parse(fluidName.replace("flowing_", ""));
+        var staticFluid = GameRegistryManager.getFluid(staticId);
         if (staticFluid == null || staticFluid == Fluids.EMPTY) return fluid;
         return staticFluid;
     }
@@ -1092,7 +1082,7 @@ public final class SccCondensedSolver {
 
     private static boolean isZeroCostRecipeType(RecipeType<?> recipeType) {
         if (recipeType == null) return false;
-        ResourceLocation typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
         if (typeId == null) return false;
         return typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
     }

@@ -33,7 +33,6 @@ import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.analyzer.resource.providers.BlockPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.DimensionRarityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
@@ -44,11 +43,11 @@ import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.data.ItemComplexity;
+import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
@@ -75,7 +74,6 @@ public class AnalysisEngine {
     private volatile ComplexityCalculator calculator;
     private volatile DepthAnalyzer depthAnalyzer;
     private volatile GeoDatabase geoDatabase;
-    private volatile BlockPropertyProvider blockPropProvider;
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
     private volatile MobRarityCalculator mobRarityCalculator;
@@ -251,9 +249,6 @@ public class AnalysisEngine {
     }
 
     private void initializeCoreProviders(ServerLevel serverLevel) {
-        this.blockPropProvider = new BlockPropertyProvider();
-        this.blockPropProvider.initialize();
-
         this.mobPropProvider = new MobPropertyProvider();
         this.mobPropProvider.initialize();
 

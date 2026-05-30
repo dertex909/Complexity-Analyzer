@@ -122,7 +122,7 @@ public class MobRarityCalculator implements IBossRegistry {
 
         double rarity = 0.0;
 
-        BossLevel bossLevel = detectBossLevel(entityType);
+        var bossLevel = detectBossLevel(entityType);
         double multiplier = ComplexityConfig.BOSS_RARITY_MULTIPLIER.get();
         switch (bossLevel) {
             case BOSS -> rarity += 2.5 * multiplier;
@@ -177,14 +177,14 @@ public class MobRarityCalculator implements IBossRegistry {
     }
 
     private BossLevel detectBossLevelInternal(EntityType<?> entityType) {
-        BossLevel classCheck = detectByClass(entityType);
+        var classCheck = detectByClass(entityType);
         if (classCheck != BossLevel.NONE) {
             ComplexityAnalyzer.LOGGER.debug("[BossDetection] {} detected as {} by class",
                     getEntityName(entityType), classCheck);
             return classCheck;
         }
 
-        BossLevel vanillaCheck = detectVanillaBoss(entityType);
+        var vanillaCheck = detectVanillaBoss(entityType);
         if (vanillaCheck != BossLevel.NONE) return vanillaCheck;
 
         double health = getEntityHealth(entityType);
@@ -214,7 +214,7 @@ public class MobRarityCalculator implements IBossRegistry {
 
     private BossLevel detectByClass(EntityType<?> entityType) {
         try {
-            Class<?> entityClass = entityType.getBaseClass();
+            var entityClass = entityType.getBaseClass();
 
             if (WitherBoss.class.isAssignableFrom(entityClass)) return BossLevel.BOSS;
             if (EnderDragon.class.isAssignableFrom(entityClass)) return BossLevel.BOSS;

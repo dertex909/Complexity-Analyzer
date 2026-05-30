@@ -18,20 +18,17 @@
 
 package org.complexityanalyzer.export.cabin.builder;
 
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
-import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 
@@ -58,17 +55,17 @@ public final class ItemSectionBuilder {
     public ItemSectionResult buildItemsSection(IHardcodedSourceRegistry hardcodedRegistry, BaseDataAccumulator baseAcc,
                                                SourcesAccumulator sourcesAcc) {
         int n = ctx.orderedItems().size();
-        LeBuf buf = new LeBuf(CabinFormat.ITEM_RECORD_SIZE * n + 4);
+        var buf = new LeBuf(CabinFormat.ITEM_RECORD_SIZE * n + 4);
         buf.i32(n);
         int validCount = 0;
         int infiniteCount = 0;
         for (int i = 0; i < n; i++) {
-            Item item = ctx.orderedItems().get(i);
-            ResourceLocation id = GameRegistryManager.getItemId(item);
+            var item = ctx.orderedItems().get(i);
+            var id = GameRegistryManager.getItemId(item);
             String idStr = id != null ? id.toString() : "minecraft:air";
             String displayName = safeDisplayName(item);
 
-            ItemComplexity ic = ctx.engine().getComplexityResult(item);
+            var ic = ctx.engine().getComplexityResult(item);
             double complexity;
             int depth;
             int totalIngredients;
@@ -106,8 +103,8 @@ public final class ItemSectionBuilder {
             int nameRef = ctx.strings().intern(displayName);
             int categoryRef = ctx.strings().intern(category.getDisplayName());
 
-            BaseDataEntry baseEntry = baseAcc.entries[i];
-            SourcesEntry sourcesEntry = sourcesAcc.entries[i];
+            var baseEntry = baseAcc.entries[i];
+            var sourcesEntry = sourcesAcc.entries[i];
 
             int recordStart = buf.position();
             buf.i32(idRef);
@@ -149,13 +146,13 @@ public final class ItemSectionBuilder {
     }
 
     public BaseDataAccumulator buildBaseData(SourceManager sourceManager) {
-        BaseDataAccumulator acc = new BaseDataAccumulator();
+        var acc = new BaseDataAccumulator();
         int n = ctx.orderedItems().size();
         acc.entries = new BaseDataEntry[n];
         if (sourceManager == null) return acc;
         for (int i = 0; i < n; i++) {
-            Item item = ctx.orderedItems().get(i);
-            BaseResourceData data = sourceManager.analyze(item);
+            var item = ctx.orderedItems().get(i);
+            var data = sourceManager.analyze(item);
             if (data == null) continue;
             int offset = acc.payload.position();
             writeBaseData(acc.payload, data);
@@ -221,13 +218,13 @@ public final class ItemSectionBuilder {
     }
 
     public SourcesAccumulator buildSources(SourceManager sourceManager) {
-        SourcesAccumulator acc = new SourcesAccumulator();
+        var acc = new SourcesAccumulator();
         int n = ctx.orderedItems().size();
         acc.entries = new SourcesEntry[n];
         if (sourceManager == null) return acc;
         for (int i = 0; i < n; i++) {
-            Item item = ctx.orderedItems().get(i);
-            ObjectList<BaseResourceData> all = sourceManager.findAllSources(item);
+            var item = ctx.orderedItems().get(i);
+            var all = sourceManager.findAllSources(item);
             if (all.isEmpty()) continue;
             int offset = acc.payload.position();
             int count = Math.min(all.size(), 0xFFFF);
@@ -245,7 +242,7 @@ public final class ItemSectionBuilder {
         double estimated = base;
         var src = d.getSourceItems();
         if (!src.isEmpty()) for (var e : Reference2DoubleMaps.fastIterable(src)) {
-            ItemComplexity child = ctx.engine().getComplexityResult(e.getKey());
+            var child = ctx.engine().getComplexityResult(e.getKey());
             if (child != null && child.isValid()) {
                 estimated += child.getComplexity() * e.getDoubleValue();
             } else {
@@ -272,7 +269,7 @@ public final class ItemSectionBuilder {
         try {
             return item.getDescription().getString();
         } catch (Throwable t) {
-            ResourceLocation id = GameRegistryManager.getItemId(item);
+            var id = GameRegistryManager.getItemId(item);
             return id != null ? id.toString() : "unknown";
         }
     }

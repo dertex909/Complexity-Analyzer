@@ -188,20 +188,20 @@ public class RecipeGraph {
 
         RecipeNode best = null;
 
-        for (RecipeNode r : recipes) {
+        for (var r : recipes) {
             if (r.getCategory() == RecipeCategory.PRIMARY) if (best == null || r.getPriority() > best.getPriority())
                 best = r;
         }
         if (best != null) return best;
 
-        for (RecipeNode r : recipes) {
+        for (var r : recipes) {
             var cat = r.getCategory();
             if (cat != RecipeCategory.STORAGE_DECOMPRESSION && cat != RecipeCategory.RECYCLING && cat !=
                     RecipeCategory.UNPROCESSABLE) if (best == null || r.getPriority() > best.getPriority()) best = r;
         }
         if (best != null) return best;
 
-        for (RecipeNode r : recipes) if (best == null || r.getPriority() > best.getPriority()) best = r;
+        for (var r : recipes) if (best == null || r.getPriority() > best.getPriority()) best = r;
 
         return best != null ? best : recipes.getFirst();
     }

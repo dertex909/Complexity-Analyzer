@@ -19,7 +19,6 @@
 package org.complexityanalyzer.geoscan.data;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
@@ -45,7 +44,7 @@ public class BiomeScanData {
 
     public void addScannedChunk(int chunkX, int chunkZ) {
         long coord = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
-        LongOpenHashSet set = this.scannedChunksSet;
+        var set = this.scannedChunksSet;
         if (set == null) {
             set = new LongOpenHashSet();
             this.scannedChunksSet = set;
@@ -54,13 +53,13 @@ public class BiomeScanData {
     }
 
     public int getChunksScanned() {
-        LongOpenHashSet set = this.scannedChunksSet;
+        var set = this.scannedChunksSet;
         return set != null ? set.size() : 0;
     }
 
     public long getTotalBlocks() {
         long sum = 0;
-        LongIterator it = blockCounts.values().iterator();
+        var it = blockCounts.values().iterator();
         while (it.hasNext()) sum += it.nextLong();
         return sum;
     }

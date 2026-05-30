@@ -163,10 +163,10 @@ public final class RegistryHarvestService {
         if (element instanceof Fluid f) return f;
         if (TerminalTypeRegistry.isTerminalType(element.getClass())) return null;
 
-        Class<?> clazz = element.getClass();
+        var clazz = element.getClass();
         for (var method : clazz.getMethods()) {
             if (method.getParameterCount() == 0 && !method.getName().equals("toString") && !method.getName().equals("hashCode")) {
-                Class<?> returnType = method.getReturnType();
+                var returnType = method.getReturnType();
                 if (Fluid.class.isAssignableFrom(returnType)) {
                     try {
                         var f = (Fluid) method.invoke(element);

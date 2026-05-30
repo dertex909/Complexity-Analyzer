@@ -65,14 +65,14 @@ public class DepthAnalyzer {
 
         cache.put(item, IN_PROGRESS);
 
-        RecipeNode recipeToFollow = getRecipeToFollow(item);
+        var recipeToFollow = getRecipeToFollow(item);
         if (recipeToFollow == null) {
-            BaseResourceData source = sourceManager != null ? sourceManager.analyze(item) : null;
+            var source = sourceManager != null ? sourceManager.analyze(item) : null;
             if (source != null && !source.getSourceItems().isEmpty()) {
                 int maxSourceDepth = 0;
                 boolean hasValidDeps = false;
                 for (var entry : source.getSourceItems().reference2DoubleEntrySet()) {
-                    Item dep = entry.getKey();
+                    var dep = entry.getKey();
                     if (dep != item) {
                         int depDepth = getDepth(dep);
                         if (depDepth > maxSourceDepth) maxSourceDepth = depDepth;

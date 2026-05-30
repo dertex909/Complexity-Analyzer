@@ -327,7 +327,7 @@ public final class FastHarvester {
                 var h = meta.allHandles[i];
                 if (h == null) continue;
                 try {
-                    Class<?> rt = m.getReturnType();
+                    var rt = m.getReturnType();
                     String rtName = rt.getName();
 
                     if (FluidStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
@@ -470,7 +470,7 @@ public final class FastHarvester {
                 var h = meta.allHandles[i];
                 if (h == null) continue;
                 try {
-                    Class<?> rt = m.getReturnType();
+                    var rt = m.getReturnType();
                     String rtName = rt.getName();
 
                     if (ItemStack.class.isAssignableFrom(rt)
@@ -526,7 +526,7 @@ public final class FastHarvester {
 
     private static boolean isTerminal(Object obj) {
         if (obj == null) return true;
-        Class<?> c = obj.getClass();
+        var c = obj.getClass();
         String name = c.getName();
         if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.")
                 || name.startsWith("com.sun.") || name.startsWith("jdk.")) return true;

@@ -59,7 +59,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         int found = 0;
 
         ObjectList<Block> candidates = new ObjectArrayList<>();
-        for (Block block : GameRegistryManager.getAllBlocks()) if (!simulator.isNotPlant(block)) candidates.add(block);
+        for (var block : GameRegistryManager.getAllBlocks()) if (!simulator.isNotPlant(block)) candidates.add(block);
 
         int plantCount = candidates.size();
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Found {} plant candidates to analyze", plantCount);
@@ -74,11 +74,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         if (results == null) return;
 
         for (var entry : results.object2ObjectEntrySet()) {
-            Block block = entry.getKey();
-            PlantSimulator.SimulationResult simResult = entry.getValue();
+            var block = entry.getKey();
+            var simResult = entry.getValue();
 
             Item plantItem = null;
-            for (Item drop : simResult.drops().keySet()) {
+            for (var drop : simResult.drops().keySet()) {
                 if (itemPlacesBlock(drop, block)) {
                     plantItem = drop;
                     break;
@@ -93,7 +93,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
             String dropsSummary = formatDrops(simResult.drops());
 
             for (var dropEntry : simResult.drops().reference2DoubleEntrySet()) {
-                Item drop = dropEntry.getKey();
+                var drop = dropEntry.getKey();
                 double outputAmount = dropEntry.getDoubleValue();
                 if (outputAmount > 0.0) {
                     String plantItemId = itemId(plantItem);
@@ -120,10 +120,10 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     @Nullable
     private Item findPlantItem(Block targetBlock) {
-        Item direct = targetBlock.asItem();
+        var direct = targetBlock.asItem();
         if (direct != Items.AIR) return direct;
 
-        for (Item candidate : GameRegistryManager.getAllItems()) {
+        for (var candidate : GameRegistryManager.getAllItems()) {
             if (candidate instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock) return candidate;
         }
         return null;
@@ -148,7 +148,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     private String formatDrops(Reference2DoubleMap<Item> drops) {
         if (drops.isEmpty()) return "[]";
-        StringBuilder sb = new StringBuilder("[");
+        var sb = new StringBuilder("[");
         boolean first = true;
         for (var entry : drops.reference2DoubleEntrySet()) {
             if (!first) sb.append(", ");

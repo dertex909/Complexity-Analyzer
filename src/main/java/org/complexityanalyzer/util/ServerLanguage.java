@@ -31,7 +31,6 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -53,7 +52,7 @@ public class ServerLanguage {
         if (LANGUAGES.containsKey(locale)) return;
 
         String path = "/assets/complexityanalyzer/lang/" + locale + ".json";
-        try (InputStream is = ComplexityAnalyzer.class.getResourceAsStream(path)) {
+        try (var is = ComplexityAnalyzer.class.getResourceAsStream(path)) {
             if (is != null) {
                 Object2ObjectOpenHashMap<String, String> map = GSON.fromJson(
                         new InputStreamReader(is, StandardCharsets.UTF_8),
@@ -75,12 +74,12 @@ public class ServerLanguage {
         String cleanLocale = locale != null ? locale.toLowerCase() : DEFAULT_LOCALE;
         loadLanguage(cleanLocale);
 
-        Object2ObjectMap<String, String> map = LANGUAGES.get(cleanLocale);
+        var map = LANGUAGES.get(cleanLocale);
         String val = map != null ? map.get(key) : null;
 
         if (val == null && !cleanLocale.equals(DEFAULT_LOCALE)) {
             loadLanguage(DEFAULT_LOCALE);
-            Object2ObjectMap<String, String> defaultMap = LANGUAGES.get(DEFAULT_LOCALE);
+            var defaultMap = LANGUAGES.get(DEFAULT_LOCALE);
             val = defaultMap != null ? defaultMap.get(key) : null;
         }
         return val;
@@ -121,15 +120,15 @@ public class ServerLanguage {
 
         Style style = component.getStyle();
         if (style.getHoverEvent() != null && style.getHoverEvent().getAction() == HoverEvent.Action.SHOW_TEXT) {
-            Component hoverContent = style.getHoverEvent().getValue(HoverEvent.Action.SHOW_TEXT);
+            var hoverContent = style.getHoverEvent().getValue(HoverEvent.Action.SHOW_TEXT);
             if (hoverContent != null) {
-                Component translatedHover = translate(hoverContent, locale);
+                var translatedHover = translate(hoverContent, locale);
                 style = style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, translatedHover));
             }
         }
         result.withStyle(style);
 
-        for (Component sibling : component.getSiblings()) result.append(translate(sibling, locale));
+        for (var sibling : component.getSiblings()) result.append(translate(sibling, locale));
 
         return result;
     }

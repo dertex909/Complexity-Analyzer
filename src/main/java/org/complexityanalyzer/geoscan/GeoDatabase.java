@@ -19,13 +19,7 @@
 package org.complexityanalyzer.geoscan;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
-import it.unimi.dsi.fastutil.objects.Reference2LongMap;
-import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Block;
@@ -107,20 +101,17 @@ public class GeoDatabase {
         ComplexityAnalyzer.LOGGER.info("Loading all final geo-data from disk...");
 
         this.inMemoryData.clear();
-        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadedData = storage.loadAllFinalData(mapper);
+        var loadedData = storage.loadAllFinalData(mapper);
         this.inMemoryData.putAll(loadedData);
-
         rebuildGlobalCache();
         ComplexityAnalyzer.LOGGER.info("Finished loading geo-data. Found data for {} dimensions.", inMemoryData.size());
     }
 
     public void saveBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data) {
         if (data == null || data.getChunksScanned() == 0) return;
-
         storage.saveFinalBiomeData(dimension, biome, data, mapper);
-
-        Object2ObjectMap<ResourceLocation, BiomeScanData> dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
-        BiomeScanData oldData = dimData.put(biome, data);
+        var dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
+        var oldData = dimData.put(biome, data);
         updateGlobalCache(oldData, data);
     }
 
@@ -147,7 +138,7 @@ public class GeoDatabase {
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> getAllDimensionData() {
-        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> copy = new Object2ObjectOpenHashMap<>(inMemoryData);
+        var copy = new Object2ObjectOpenHashMap<>(inMemoryData);
         return Object2ObjectMaps.unmodifiable(copy);
     }
 
@@ -157,11 +148,11 @@ public class GeoDatabase {
 
     private void updateGlobalCache(BiomeScanData oldData, BiomeScanData newData) {
         if (oldData != null) {
-            Reference2LongOpenHashMap<Block> counts = oldData.getInternalBlockCounts();
-            ObjectIterator<Reference2LongMap.Entry<Block>> it = counts.reference2LongEntrySet().fastIterator();
+            var counts = oldData.getInternalBlockCounts();
+            var it = counts.reference2LongEntrySet().fastIterator();
             while (it.hasNext()) {
-                Reference2LongMap.Entry<Block> entry = it.next();
-                Block block = entry.getKey();
+                var entry = it.next();
+                var block = entry.getKey();
                 long value = entry.getLongValue();
                 globalBlockCountsCache.computeIfPresent(block, (k, v) -> {
                     long newCount = v.addAndGet(-value);
@@ -171,11 +162,11 @@ public class GeoDatabase {
             }
         }
         if (newData != null) {
-            Reference2LongOpenHashMap<Block> counts = newData.getInternalBlockCounts();
-            ObjectIterator<Reference2LongMap.Entry<Block>> it = counts.reference2LongEntrySet().fastIterator();
+            var counts = newData.getInternalBlockCounts();
+            var it = counts.reference2LongEntrySet().fastIterator();
             while (it.hasNext()) {
-                Reference2LongMap.Entry<Block> entry = it.next();
-                Block block = entry.getKey();
+                var entry = it.next();
+                var block = entry.getKey();
                 long value = entry.getLongValue();
                 globalBlockCountsCache.computeIfAbsent(block, k -> new AtomicLong(0)).addAndGet(value);
                 totalBlocksInCache.addAndGet(value);
@@ -188,7 +179,7 @@ public class GeoDatabase {
         totalBlocksInCache.set(0);
 
         long totalItems = 0;
-        for (Object2ObjectMap<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values())
+        for (var dimMap : inMemoryData.values())
             totalItems += dimMap.size();
 
         if (totalItems == 0) {
@@ -201,8 +192,8 @@ public class GeoDatabase {
         long processedItems = 0;
         int nextLogPercentage = 10;
 
-        for (Object2ObjectMap<ResourceLocation, BiomeScanData> dimMap : inMemoryData.values()) {
-            for (BiomeScanData data : dimMap.values()) {
+        for (var dimMap : inMemoryData.values()) {
+            for (var data : dimMap.values()) {
                 updateGlobalCache(null, data);
                 processedItems++;
 

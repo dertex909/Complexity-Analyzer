@@ -36,21 +36,21 @@ public class FastBiomeFinder {
     }
 
     private static CachedSamplers getSamplers(ServerLevel level) {
-        CachedSamplers cached = SAMPLER_CACHE.get();
+        var cached = SAMPLER_CACHE.get();
         if (cached != null && cached.level == level) return cached;
-        BiomeSource biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
-        Climate.Sampler sampler = level.getChunkSource().randomState().sampler();
-        CachedSamplers newCache = new CachedSamplers(level, biomeSource, sampler);
+        var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
+        var sampler = level.getChunkSource().randomState().sampler();
+        var newCache = new CachedSamplers(level, biomeSource, sampler);
         SAMPLER_CACHE.set(newCache);
         return newCache;
     }
 
     public static BlockPos findBiome(ServerLevel level, Predicate<Holder<Biome>> biomePredicate,
                                      BlockPos origin, int maxRadius) {
-        CachedSamplers samplers = getSamplers(level);
+        var samplers = getSamplers(level);
         int searchY = level.getSeaLevel();
         int coarseStep = Math.max(256, maxRadius / 25);
-        BlockPos coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(),
+        var coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(),
                 searchY, maxRadius, coarseStep);
         if (coarseMatch == null) {
             coarseMatch = fastRandomSearch(samplers, biomePredicate, origin, maxRadius, searchY);
@@ -88,7 +88,7 @@ public class FastBiomeFinder {
 
     private static BlockPos fastRandomSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
                                              BlockPos origin, int maxRadius, int y) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
+        var random = ThreadLocalRandom.current();
 
         for (int i = 0; i < 500; i++) {
             double angle = random.nextDouble() * Math.PI * 2;
@@ -133,7 +133,7 @@ public class FastBiomeFinder {
 
     private static boolean checkBiomeFast(CachedSamplers samplers, Predicate<Holder<Biome>> predicate, int x, int y, int z) {
         try {
-            Holder<Biome> biome = samplers.biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, samplers.sampler);
+            var biome = samplers.biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, samplers.sampler);
             return predicate.test(biome);
         } catch (Exception e) {
             return false;

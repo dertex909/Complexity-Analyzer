@@ -19,7 +19,6 @@
 package org.complexityanalyzer.export.cabin.io;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
@@ -35,6 +34,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
 public final class CabinBackgroundService {
 
@@ -74,7 +75,7 @@ public final class CabinBackgroundService {
     }
 
     public CompletableFuture<Snapshot> regenerateAsync(MinecraftServer server, AnalysisEngine engine, String modVersion) {
-        CompletableFuture<Snapshot> existing = inflight.get();
+        var existing = inflight.get();
         if (existing != null && !existing.isDone()) {
             rebuildPending = true;
             return existing;
@@ -96,7 +97,7 @@ public final class CabinBackgroundService {
 
         pool.execute(() -> {
             try {
-                Snapshot snap = doBuild(server, engine, modVersion);
+                var snap = doBuild(server, engine, modVersion);
                 current.set(snap);
                 status.set(Status.READY);
                 lastError.set(null);
@@ -123,7 +124,7 @@ public final class CabinBackgroundService {
         String motd = server.getMotd();
         String name = !motd.isEmpty() ? motd : serverName;
 
-        CabinBuilder builder = new CabinBuilder(engine, name, modVersion);
+        var builder = new CabinBuilder(engine, name, modVersion);
         var sections = builder.build();
         byte[] bytes = CabinWriter.writeToBytes(sections);
         long hash = LeBuf.readI64(bytes, 24);
@@ -131,17 +132,17 @@ public final class CabinBackgroundService {
         persistToFile(server, bytes);
 
         long elapsed = System.currentTimeMillis() - t0;
-        Snapshot snap = parseHeader(bytes, hash);
+        var snap = parseHeader(bytes, hash);
         ComplexityAnalyzer.LOGGER.info("[Cabin] Wrote {} bytes (hash={}) in {} ms",
                 bytes.length, Long.toHexString(hash), elapsed);
         return snap;
     }
 
     private void persistToFile(MinecraftServer server, byte[] bytes) throws IOException {
-        Path dir = getCabinDirectory(server);
+        var dir = getCabinDirectory(server);
         Files.createDirectories(dir);
-        Path tmp = dir.resolve("latest.cabin.tmp");
-        Path target = dir.resolve("latest.cabin");
+        var tmp = dir.resolve("latest.cabin.tmp");
+        var target = dir.resolve("latest.cabin");
         Files.write(tmp, bytes);
         try {
             Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
@@ -155,7 +156,7 @@ public final class CabinBackgroundService {
         int mobCount = 0;
         int recipeCount = 0;
         try {
-            CabinReader reader = new CabinReader(bytes);
+            var reader = new CabinReader(bytes);
             byte[] meta = reader.readSection(CabinFormat.SEC_META);
             int offset = 24;
             itemCount = LeBuf.readI32(meta, offset);
@@ -167,7 +168,7 @@ public final class CabinBackgroundService {
     }
 
     public static Path getCabinDirectory(MinecraftServer server) {
-        return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer")
+        return server.getWorldPath(ROOT).resolve("data").resolve("complexityanalyzer")
                 .resolve("cabin").toAbsolutePath().normalize();
     }
 
@@ -176,7 +177,7 @@ public final class CabinBackgroundService {
         status.set(Status.IDLE);
         lastError.set(null);
         rebuildPending = false;
-        CompletableFuture<Snapshot> f = inflight.getAndSet(null);
+        var f = inflight.getAndSet(null);
         if (f != null && !f.isDone()) f.cancel(false);
     }
 }

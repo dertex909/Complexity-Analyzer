@@ -23,17 +23,16 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
-import io.netty.util.CharsetUtil;
-import net.minecraft.server.MinecraftServer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.io.InputStream;
-import java.util.Base64;
-import java.security.SecureRandom;
+
+import static io.netty.util.CharsetUtil.UTF_8;
 
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -47,7 +46,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     @SuppressWarnings("ConstantValue")
     public static String getUrl() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return null;
 
         int port = server.getPort();
@@ -102,11 +101,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void handleMeta(ChannelHandlerContext ctx) {
-        CabinBackgroundService.Snapshot snap = CabinBackgroundService.getInstance().getSnapshot();
+        var snap = CabinBackgroundService.getInstance().getSnapshot();
         boolean hasCabin = snap != null;
 
         String serverName = "Minecraft Server";
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        var server = ServerLifecycleHooks.getCurrentServer();
         if (server != null) serverName = server.getMotd();
 
         String json = String.format(
@@ -125,13 +124,13 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void handleCabin(ChannelHandlerContext ctx) {
-        CabinBackgroundService.Snapshot snap = CabinBackgroundService.getInstance().getSnapshot();
+        var snap = CabinBackgroundService.getInstance().getSnapshot();
         if (snap == null) {
             sendError(ctx, HttpResponseStatus.NOT_FOUND);
             return;
         }
 
-        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(snap.bytes()));
+        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(snap.bytes()));
 
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
@@ -141,14 +140,14 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void serveResource(ChannelHandlerContext ctx, String path, String mimeType) {
-        try (InputStream in = getClass().getResourceAsStream(VIEWER_BASE + path)) {
+        try (var in = getClass().getResourceAsStream(VIEWER_BASE + path)) {
             if (in == null) {
                 sendError(ctx, HttpResponseStatus.NOT_FOUND);
                 return;
             }
 
             byte[] data = in.readAllBytes();
-            FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
+            var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
 
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
             response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
@@ -170,7 +169,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void sendResponse(ChannelHandlerContext ctx, String content) {
-        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(content, CharsetUtil.UTF_8));
+        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(content, UTF_8));
 
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
@@ -180,7 +179,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status) {
-        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", CharsetUtil.UTF_8));
+        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
 
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);

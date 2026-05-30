@@ -18,19 +18,13 @@
 
 package org.complexityanalyzer.export.cabin.builder;
 
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ReferenceSet;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.material.Fluid;
-import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
-import org.complexityanalyzer.graph.FluidIngredientSlot;
-import org.complexityanalyzer.graph.IngredientSlot;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.Arrays;
+
+import static org.complexityanalyzer.export.cabin.api.CabinFormat.NULL_OFFSET;
 
 public final class RecipeSectionBuilder {
 
@@ -56,28 +50,28 @@ public final class RecipeSectionBuilder {
         int n = ctx.orderedItems().size();
         int[] firstOffset = new int[n];
         int[] count = new int[n];
-        Arrays.fill(firstOffset, CabinFormat.NULL_OFFSET);
+        Arrays.fill(firstOffset, NULL_OFFSET);
 
         if (graph == null)
             return new RecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
 
-        LeBuf out = new LeBuf(256 * 1024);
+        var out = new LeBuf(256 * 1024);
         out.i32(0);
         int totalRecipes = 0;
 
         var registry = ctx.engine().getMachineRegistry();
 
         for (int i = 0; i < n; i++) {
-            Item item = ctx.orderedItems().get(i);
-            ObjectList<RecipeNode> recipes = graph.getRecipes(item);
+            var item = ctx.orderedItems().get(i);
+            var recipes = graph.getRecipes(item);
             if (recipes.isEmpty()) continue;
             firstOffset[i] = out.position();
             int written = 0;
-            for (RecipeNode r : recipes) {
+            for (var r : recipes) {
                 var recipeType = r.getRecipeType();
-                ObjectList<Item> machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
+                var machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
                 if (machineItems != null && !machineItems.isEmpty()) {
-                    for (Item machineItem : machineItems) {
+                    for (var machineItem : machineItems) {
                         int machineItemIdx = ctx.itemIndex().getInt(machineItem);
                         if (machineItemIdx >= 0) {
                             writeRecipe(out, ctx, i, r, machineItemIdx);
@@ -105,7 +99,7 @@ public final class RecipeSectionBuilder {
         var rt = r.getRecipeType();
         String rtStr = rt != null ? rt.toString() : "minecraft:custom";
         buf.i32(ctx.strings().intern(rtStr));
-        RecipeCategory cat = r.getCategory();
+        var cat = r.getCategory();
         buf.u8(cat != null ? cat.ordinal() : 0);
         buf.i32(r.getPriority());
         buf.i32(r.getResultCount());
@@ -122,7 +116,7 @@ public final class RecipeSectionBuilder {
         var ings = r.getIngredients();
         buf.u8(Math.min(ings.size(), 0xFF));
         for (int s = 0; s < Math.min(ings.size(), 0xFF); s++) {
-            IngredientSlot slot = ings.get(s);
+            var slot = ings.get(s);
             var variants = slot.getVariants();
             int vc = Math.min(variants.size(), 0xFF);
             buf.u8(vc);
@@ -136,13 +130,13 @@ public final class RecipeSectionBuilder {
         var fings = r.getFluidIngredients();
         buf.u8(Math.min(fings.size(), 0xFF));
         for (int s = 0; s < Math.min(fings.size(), 0xFF); s++) {
-            FluidIngredientSlot slot = fings.get(s);
+            var slot = fings.get(s);
             var variants = slot.getFluidVariants();
             int vc = Math.min(variants.size(), 0xFF);
             buf.u8(vc);
             buf.i32(slot.getAmount());
             for (int v = 0; v < vc; v++) {
-                Fluid fluid = variants.get(v);
+                var fluid = variants.get(v);
                 int fi = ctx.fluidIndex().getInt(fluid);
                 buf.i32(fi);
             }
@@ -186,7 +180,7 @@ public final class RecipeSectionBuilder {
 
     private byte[] encodeRecipeOutputIndex(int[] firstOffset, int[] count) {
         int n = firstOffset.length;
-        LeBuf buf = new LeBuf(4 + n * 6);
+        var buf = new LeBuf(4 + n * 6);
         buf.i32(n);
         for (int i = 0; i < n; i++) {
             buf.i32(firstOffset[i]);
@@ -198,24 +192,24 @@ public final class RecipeSectionBuilder {
     public byte[] buildUsage(RecipeGraph graph) {
         int n = ctx.orderedItems().size();
         if (graph == null) {
-            LeBuf empty = new LeBuf(8);
+            var empty = new LeBuf(8);
             empty.i32(n);
             empty.i32(0);
             return empty.toByteArray();
         }
         int[] firstOffset = new int[n];
         int[] count = new int[n];
-        LeBuf flat = new LeBuf(64 * 1024);
+        var flat = new LeBuf(64 * 1024);
         for (int i = 0; i < n; i++) {
-            Item item = ctx.orderedItems().get(i);
-            ReferenceSet<Item> users = graph.getItemsUsingIngredient(item);
+            var item = ctx.orderedItems().get(i);
+            var users = graph.getItemsUsingIngredient(item);
             if (users.isEmpty()) {
-                firstOffset[i] = CabinFormat.NULL_OFFSET;
+                firstOffset[i] = NULL_OFFSET;
                 continue;
             }
             firstOffset[i] = flat.position();
             int written = 0;
-            for (Item u : users) {
+            for (var u : users) {
                 int ui = ctx.itemIndex().getInt(u);
                 if (ui < 0) continue;
                 flat.i32(ui);
@@ -223,7 +217,7 @@ public final class RecipeSectionBuilder {
             }
             count[i] = written;
         }
-        LeBuf out = new LeBuf(8 + n * 8 + flat.size());
+        var out = new LeBuf(8 + n * 8 + flat.size());
         out.i32(n);
         out.i32(flat.size());
         for (int i = 0; i < n; i++) {

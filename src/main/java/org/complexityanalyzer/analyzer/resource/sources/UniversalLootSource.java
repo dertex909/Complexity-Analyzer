@@ -19,29 +19,23 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.storage.loot.LootContext;
-import org.complexityanalyzer.mixin.LootContextAccessor;
-
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
@@ -49,10 +43,14 @@ import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 import static org.apache.logging.log4j.Level.WARN;
 
@@ -123,15 +121,15 @@ public class UniversalLootSource implements IResourceSource {
     }
 
     private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys) {
-        MinecraftServer server = serverLevel.getServer();
+        var server = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
         long startTime = System.currentTimeMillis();
         int tablesProcessed = 0;
         int tablesSkipped = 0;
 
-        LootFunctionFilter filter = new LootFunctionFilter();
-        Logger rootLogger = (Logger) LogManager.getRootLogger();
+        var filter = new LootFunctionFilter();
+        var rootLogger = (Logger) LogManager.getRootLogger();
         filter.start();
         rootLogger.addFilter(filter);
 
@@ -148,8 +146,8 @@ public class UniversalLootSource implements IResourceSource {
                 }
 
                 try {
-                    java.util.function.Supplier<Reference2IntOpenHashMap<Item>> countsSupplier = () -> {
-                        LootTable lootTable = reloadableRegistries.getLootTable(lootTableKey);
+                    Supplier<Reference2IntOpenHashMap<Item>> countsSupplier = () -> {
+                        var lootTable = reloadableRegistries.getLootTable(lootTableKey);
                         if (lootTable == LootTable.EMPTY) return null;
 
                         var lootParams = contextDef.createLootParams(serverLevel);
@@ -269,43 +267,13 @@ public class UniversalLootSource implements IResourceSource {
         try {
             var registries = server.reloadableRegistries().get();
             var lootRegistry = registries.registry(Registries.LOOT_TABLE).orElseThrow();
-
             var keys = new ObjectOpenHashSet<>(lootRegistry.registryKeySet());
-
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} loot tables via reloadableRegistries.", keys.size());
             return keys;
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[ULS] Failed to access loot table registry:", e);
-            return getFallbackLootTables();
+            return new ObjectOpenHashSet<>();
         }
-    }
-
-    private ObjectSet<ResourceKey<LootTable>> getFallbackLootTables() {
-        var keys = new ObjectOpenHashSet<ResourceKey<LootTable>>();
-
-        String[] knownTables = {
-                "gameplay/fishing", "gameplay/fishing/fish", "gameplay/fishing/treasure", "gameplay/fishing/junk",
-                "gameplay/piglin_bartering",
-                "chests/abandoned_mineshaft", "chests/ancient_city", "chests/bastion_treasure",
-                "chests/bastion_bridge", "chests/buried_treasure", "chests/desert_pyramid",
-                "chests/end_city_treasure", "chests/igloo_chest", "chests/jungle_temple",
-                "chests/nether_bridge", "chests/pillager_outpost", "chests/shipwreck_treasure",
-                "chests/simple_dungeon", "chests/stronghold_corridor", "chests/stronghold_library",
-                "chests/village/village_armorer", "chests/village/village_weaponsmith",
-                "chests/woodland_mansion",
-                "archaeology/desert_pyramid", "archaeology/desert_well",
-                "archaeology/ocean_ruin_cold", "archaeology/ocean_ruin_warm",
-                "archaeology/trail_ruins_common", "archaeology/trail_ruins_rare",
-                "shearing/beehive", "shearing/bee_nest"
-        };
-
-        for (var path : knownTables) {
-            var id = ResourceLocation.withDefaultNamespace(path);
-            keys.add(ResourceKey.create(Registries.LOOT_TABLE, id));
-        }
-
-        ComplexityAnalyzer.LOGGER.debug("[ULS] Loaded {} fallback loot tables.", keys.size());
-        return keys;
     }
 
     @Override
@@ -326,8 +294,8 @@ public class UniversalLootSource implements IResourceSource {
 
     private record LootContextDefinition(BaseResourceData.ResourceSourceType sourceType, double baseActionCost) {
         public LootParams createLootParams(ServerLevel level) {
-            BlockPos spawnPos = level.getSharedSpawnPos();
-            Vec3 originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+            var spawnPos = level.getSharedSpawnPos();
+            var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
             var builder = new LootParams.Builder(level)
                     .withParameter(LootContextParams.ORIGIN, originVec);
 

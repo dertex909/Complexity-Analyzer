@@ -18,11 +18,7 @@
 
 package org.complexityanalyzer.export.cabin.builder;
 
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -51,19 +47,19 @@ public final class MobSectionBuilder {
 
     public MobsResult buildMobs(MobPropertyProvider mobProvider, MobDropSource mobDropSource) {
         int n = ctx.orderedMobs().size();
-        LeBuf mobsBuf = new LeBuf(CabinFormat.MOB_RECORD_SIZE * n + 4);
-        LeBuf dropsBuf = new LeBuf(64 * 1024);
+        var mobsBuf = new LeBuf(CabinFormat.MOB_RECORD_SIZE * n + 4);
+        var dropsBuf = new LeBuf(64 * 1024);
         dropsBuf.i32(0);
         int totalDrops = 0;
         mobsBuf.i32(n);
         for (int i = 0; i < n; i++) {
-            EntityType<?> type = ctx.orderedMobs().get(i);
-            ResourceLocation id = GameRegistryManager.getEntityTypeId(type);
+            var type = ctx.orderedMobs().get(i);
+            var id = GameRegistryManager.getEntityTypeId(type);
             String idStr = id != null ? id.toString() : "minecraft:unknown";
             String displayName = type.getDescription().getString();
             String catName = type.getCategory().getName();
 
-            MobPropertyProvider.MobProperties props = (mobProvider != null) ? mobProvider.getProperties(type) : null;
+            var props = (mobProvider != null) ? mobProvider.getProperties(type) : null;
             double health = props != null ? props.maxHealth() : 0.0;
             double damage = props != null ? props.attackDamage() : 0.0;
             double armor = props != null ? props.armor() : 0.0;
@@ -77,15 +73,15 @@ public final class MobSectionBuilder {
             int dropOffset = CabinFormat.NULL_OFFSET;
             int dropCount = 0;
             if (mobDropSource != null) {
-                ObjectList<MobDropData> drops = mobDropSource.getDropsForEntity(type);
+                var drops = mobDropSource.getDropsForEntity(type);
                 if (!drops.isEmpty()) {
                     dropOffset = dropsBuf.position();
                     int written = 0;
-                    for (MobDropData drop : drops) {
+                    for (var drop : drops) {
                         if (written == 0xFFFF) break;
-                        Item it = drop.item();
+                        var it = drop.item();
                         int itIdx = ctx.itemIndex().getInt(it);
-                        ResourceLocation itId = it != null ? GameRegistryManager.getItemId(it) : null;
+                        var itId = it != null ? GameRegistryManager.getItemId(it) : null;
                         String itIdStr = itId != null ? itId.toString() : "minecraft:air";
                         String itName = it != null ? safeDisplayName(it) : "";
                         dropsBuf.i32(itIdx);
@@ -131,7 +127,7 @@ public final class MobSectionBuilder {
         try {
             return item.getDescription().getString();
         } catch (Throwable t) {
-            ResourceLocation id = GameRegistryManager.getItemId(item);
+            var id = GameRegistryManager.getItemId(item);
             return id != null ? id.toString() : "unknown";
         }
     }

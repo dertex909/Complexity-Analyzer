@@ -92,7 +92,7 @@ public class ComplexityCalculator {
         if (optimalRecipe != null) {
             builder.optimalRecipe(optimalRecipe);
         } else if (baseData != null) {
-            builder.baseData(baseData);
+            builder.baseData();
         }
 
         return builder.build();

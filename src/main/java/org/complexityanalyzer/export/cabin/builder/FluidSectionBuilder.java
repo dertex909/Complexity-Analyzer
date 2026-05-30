@@ -18,13 +18,8 @@
 
 package org.complexityanalyzer.export.cabin.builder;
 
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ReferenceSet;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
@@ -55,18 +50,18 @@ public final class FluidSectionBuilder {
     }
 
     public byte[] buildFluidsSection() {
-        SolverResult solverResult = ctx.engine().getSolverResult();
+        var solverResult = ctx.engine().getSolverResult();
         int n = ctx.orderedFluids().size();
-        LeBuf buf = new LeBuf(4 + n * CabinFormat.FLUID_RECORD_SIZE);
+        var buf = new LeBuf(4 + n * CabinFormat.FLUID_RECORD_SIZE);
         buf.i32(n);
         for (int i = 0; i < n; i++) {
-            Fluid fluid = ctx.orderedFluids().get(i);
-            ResourceLocation id = GameRegistryManager.getFluidId(fluid);
+            var fluid = ctx.orderedFluids().get(i);
+            var id = GameRegistryManager.getFluidId(fluid);
             String idStr = id != null ? id.toString() : "minecraft:empty";
             String displayName = safeFluidDisplayName(fluid);
 
             double complexity = -1.0;
-            ComplexityCategory category = ComplexityCategory.UNCALCULABLE;
+            var category = ComplexityCategory.UNCALCULABLE;
             int flags = 0;
             int errorRef = ctx.strings().intern("not analyzed");
 
@@ -74,32 +69,23 @@ public final class FluidSectionBuilder {
                 Double compObj = solverResult.getFluidComplexity(fluid);
                 if (compObj != null) {
                     complexity = compObj;
-                    if (Double.isInfinite(complexity) || complexity < 0) {
-                        complexity = -1.0;
-                    }
+                    if (Double.isInfinite(complexity) || complexity < 0) complexity = -1.0;
 
                     category = ComplexityCategory.fromComplexity(complexity);
-
                     flags |= CabinFormat.FLUID_FLAG_IS_VALID;
-                    if (Double.isInfinite(compObj)) {
-                        flags |= CabinFormat.FLUID_FLAG_IS_INFINITE;
-                    }
+                    if (Double.isInfinite(compObj)) flags |= CabinFormat.FLUID_FLAG_IS_INFINITE;
 
                     errorRef = ctx.strings().intern("");
                 }
             }
 
-            if (ctx.engine().getGraph() != null) {
-                if (ctx.engine().getGraph().hasFluidRecipe(fluid)) {
-                    flags |= CabinFormat.FLUID_FLAG_HAS_RECIPE;
-                } else {
-                    flags |= CabinFormat.FLUID_FLAG_NO_RECIPE_RESULT;
-                }
+            if (ctx.engine().getGraph() != null) if (ctx.engine().getGraph().hasFluidRecipe(fluid)) {
+                flags |= CabinFormat.FLUID_FLAG_HAS_RECIPE;
+            } else {
+                flags |= CabinFormat.FLUID_FLAG_NO_RECIPE_RESULT;
             }
 
-            if (fluid == Fluids.WATER || fluid == Fluids.LAVA) {
-                flags |= CabinFormat.FLUID_FLAG_IS_PROTECTED;
-            }
+            if (fluid == Fluids.WATER || fluid == Fluids.LAVA) flags |= CabinFormat.FLUID_FLAG_IS_PROTECTED;
 
             int usageCount = ctx.engine().getGraph() != null ? ctx.engine().getGraph().getFluidUsageCount(fluid) : 0;
             int idRef = ctx.strings().intern(idStr);
@@ -133,24 +119,24 @@ public final class FluidSectionBuilder {
         if (graph == null)
             return new FluidRecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
 
-        LeBuf out = new LeBuf(64 * 1024);
+        var out = new LeBuf(64 * 1024);
         out.i32(0);
         int totalRecipes = 0;
 
         var registry = ctx.engine().getMachineRegistry();
 
         for (int i = 0; i < n; i++) {
-            Fluid fluid = ctx.orderedFluids().get(i);
-            ObjectList<RecipeNode> recipes = graph.getFluidRecipes(fluid);
+            var fluid = ctx.orderedFluids().get(i);
+            var recipes = graph.getFluidRecipes(fluid);
             if (recipes.isEmpty()) continue;
             firstOffset[i] = out.position();
             int written = 0;
-            for (RecipeNode r : recipes) {
+            for (var r : recipes) {
                 var recipeType = r.getRecipeType();
-                ObjectList<Item> machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
+                var machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
                 if (machineItems != null && !machineItems.isEmpty()) {
-                    for (Item machineItem : machineItems) {
-                        int machineItemIdx = ctx.itemIndex().getInt(machineItem);
+                    for (var m : machineItems) {
+                        int machineItemIdx = ctx.itemIndex().getInt(m);
                         if (machineItemIdx >= 0) {
                             RecipeSectionBuilder.writeRecipe(out, ctx, i, r, machineItemIdx);
                             written++;
@@ -174,7 +160,7 @@ public final class FluidSectionBuilder {
 
     private byte[] encodeRecipeOutputIndex(int[] firstOffset, int[] count) {
         int n = firstOffset.length;
-        LeBuf buf = new LeBuf(4 + n * 6);
+        var buf = new LeBuf(4 + n * 6);
         buf.i32(n);
         for (int i = 0; i < n; i++) {
             buf.i32(firstOffset[i]);
@@ -186,24 +172,24 @@ public final class FluidSectionBuilder {
     public byte[] buildFluidUsage(RecipeGraph graph) {
         int n = ctx.orderedFluids().size();
         if (graph == null) {
-            LeBuf empty = new LeBuf(8);
+            var empty = new LeBuf(8);
             empty.i32(n);
             empty.i32(0);
             return empty.toByteArray();
         }
         int[] firstOffset = new int[n];
         int[] count = new int[n];
-        LeBuf flat = new LeBuf(16 * 1024);
+        var flat = new LeBuf(16 * 1024);
         for (int i = 0; i < n; i++) {
-            Fluid fluid = ctx.orderedFluids().get(i);
-            ReferenceSet<Item> users = graph.getItemsUsingFluid(fluid);
+            var fluid = ctx.orderedFluids().get(i);
+            var users = graph.getItemsUsingFluid(fluid);
             if (users.isEmpty()) {
                 firstOffset[i] = CabinFormat.NULL_OFFSET;
                 continue;
             }
             firstOffset[i] = flat.position();
             int written = 0;
-            for (Item u : users) {
+            for (var u : users) {
                 int ui = ctx.itemIndex().getInt(u);
                 if (ui < 0) continue;
                 flat.i32(ui);
@@ -211,7 +197,7 @@ public final class FluidSectionBuilder {
             }
             count[i] = written;
         }
-        LeBuf out = new LeBuf(8 + n * 8 + flat.size());
+        var out = new LeBuf(8 + n * 8 + flat.size());
         out.i32(n);
         out.i32(flat.size());
         for (int i = 0; i < n; i++) {
@@ -226,14 +212,14 @@ public final class FluidSectionBuilder {
         int n = ctx.orderedFluids().size();
         long[] hashes = new long[n];
         for (int i = 0; i < n; i++) {
-            ResourceLocation id = GameRegistryManager.getFluidId(ctx.orderedFluids().get(i));
+            var id = GameRegistryManager.getFluidId(ctx.orderedFluids().get(i));
             String s = id != null ? id.toString() : "";
             hashes[i] = XxHash64.hashString(s, CabinFormat.XXH64_SEED);
         }
         Integer[] order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
         Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
-        LeBuf out = new LeBuf(4 + n * 12);
+        var out = new LeBuf(4 + n * 12);
         out.i32(n);
         for (int i = 0; i < n; i++) {
             int idx = order[i];
@@ -247,7 +233,7 @@ public final class FluidSectionBuilder {
         try {
             return fluid.getFluidType().getDescription().getString();
         } catch (Throwable t) {
-            ResourceLocation id = GameRegistryManager.getFluidId(fluid);
+            var id = GameRegistryManager.getFluidId(fluid);
             return id != null ? id.toString() : "unknown";
         }
     }

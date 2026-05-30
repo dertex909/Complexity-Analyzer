@@ -234,7 +234,7 @@ public class GeoAnalysisManager {
         return switch (phase) {
             case IDLE -> Component.translatable("complexityanalyzer.geoscan.status.idle").getString();
             case RECONNAISSANCE -> {
-                ScanSession session = coordinator.getCurrentSession();
+                var session = coordinator.getCurrentSession();
                 if (session != null && session.isValid()) {
                     String status = Component.translatable("complexityanalyzer.geoscan.status.phase1", session.getStatusString()).getString();
                     if (scanExecutor.isThrottled()) {
@@ -252,9 +252,9 @@ public class GeoAnalysisManager {
     }
 
     public boolean isScanning() {
-        ScanMetadata.ScanPhase phase = database.getScanPhase();
+        var phase = database.getScanPhase();
         if (phase == ScanMetadata.ScanPhase.REFINING) return true;
-        ScanSession session = coordinator.getCurrentSession();
+        var session = coordinator.getCurrentSession();
         return phase == ScanMetadata.ScanPhase.RECONNAISSANCE && session != null && session.isValid();
     }
 
@@ -266,10 +266,10 @@ public class GeoAnalysisManager {
         if (isShutdown.get()) return;
 
         countdownTicks.set(-1);
-        ScanSession session = coordinator.createSession(chunksPerBiome, profile);
+        var session = coordinator.createSession(chunksPerBiome, profile);
         notifyScanStarting(chunksPerBiome, initiatorName, profile);
 
-        Executor executor = analysisEngine.getBackgroundExecutor();
+        var executor = analysisEngine.getBackgroundExecutor();
         if (executor == null) {
             ComplexityAnalyzer.LOGGER.error("Cannot start scan, background executor not available!");
             return;
@@ -292,7 +292,7 @@ public class GeoAnalysisManager {
     private void runBackgroundScanSetup(ScanSession session) {
         if (!session.isValid() || isShutdown.get()) return;
 
-        ObjectArrayList<ScanTask> tasks = coordinator.prepareTasks(session);
+        var tasks = coordinator.prepareTasks(session);
         if (!session.isValid() || isShutdown.get()) return;
 
         if (tasks.isEmpty()) {
@@ -300,7 +300,7 @@ public class GeoAnalysisManager {
             return;
         }
 
-        Object2ObjectMap<ResourceLocation, LongOpenHashSet> existingCoordinates = database.loadAllReconChunkCoordinates();
+        var existingCoordinates = database.loadAllReconChunkCoordinates();
         initializeAndExecuteSession(session, tasks, existingCoordinates);
     }
 

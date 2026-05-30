@@ -50,7 +50,7 @@ public class VanillaChunkGeneratorService {
 
     public ChunkAccess generateChunkForAnalysis(int chunkX, int chunkZ) {
         try {
-            ChunkAccess chunk = level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FEATURES, true);
+            var chunk = level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FEATURES, true);
             if (chunk != null) chunk.setUnsaved(false);
             return chunk;
         } catch (IllegalStateException e) {

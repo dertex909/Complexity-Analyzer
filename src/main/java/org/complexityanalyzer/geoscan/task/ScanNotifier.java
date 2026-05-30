@@ -51,7 +51,7 @@ public class ScanNotifier {
     }
 
     public void sendSuccess(@Nullable CommandSourceStack source, Component message) {
-        Component component = Component.literal("§a[CA] §f").append(message);
+        var component = Component.literal("§a[CA] §f").append(message);
         if (source != null) {
             source.sendSuccess(() -> component, false);
         } else {
@@ -60,7 +60,7 @@ public class ScanNotifier {
     }
 
     public void sendFailure(@Nullable CommandSourceStack source, Component message) {
-        Component component = Component.literal("§c[CA] ").append(
+        var component = Component.literal("§c[CA] ").append(
                 Component.translatable("complexityanalyzer.notifier.error_tag")).append(": ").append(message);
         if (source != null) source.sendFailure(component);
         else logError(message.getString());

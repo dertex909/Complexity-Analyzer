@@ -18,40 +18,35 @@
 
 package org.complexityanalyzer.analyzer.resource.providers;
 
+import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import com.mojang.authlib.GameProfile;
-import net.minecraft.util.RandomSource;
-import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.BonemealableBlock;
-import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.server.level.TicketType;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraft.world.level.block.LightBlock;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -96,7 +91,7 @@ public class PlantSimulator {
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
         if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
-        SimulationResult result = runSimulation(plantBlock, level);
+        var result = runSimulation(plantBlock, level);
         cache.put(plantBlock, result);
         return result;
     }
@@ -106,8 +101,8 @@ public class PlantSimulator {
         ensurePlatform(level);
         fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
         Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
-        for (Block block : blocks) {
-            SimulationResult result = simulate(block, level);
+        for (var block : blocks) {
+            var result = simulate(block, level);
             if (result != null) results.put(block, result);
         }
         collectAndClear(level, null, null);
@@ -118,7 +113,7 @@ public class PlantSimulator {
     }
 
     public boolean isNotPlant(Block block) {
-        BlockState state = block.defaultBlockState();
+        var state = block.defaultBlockState();
         if (state.isAir() || block == Blocks.AIR || block == Blocks.FIRE || block == Blocks.SNOW
                 || block == Blocks.TURTLE_EGG) return true;
         if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return false;
@@ -133,23 +128,23 @@ public class PlantSimulator {
                 simOriginZ - BARRIER_RADIUS, simOriginX + BARRIER_RADIUS,
                 simOriginY + HEIGHT_ABOVE, simOriginZ + BARRIER_RADIUS);
 
-        for (Entity entity : level.getEntities(null, interiorBox)) {
+        for (var entity : level.getEntities(null, interiorBox)) {
             if (entity instanceof ItemEntity) entity.discard();
         }
     }
 
     private SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
         Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
-        RandomSource random = RandomSource.create(12345);
+        var random = RandomSource.create(12345);
 
         collectAndKillEntities(level, null);
         collectAndClear(level, null, null);
-        GroundResult ground = findSuitableGround(plantBlock, level);
+        var ground = findSuitableGround(plantBlock, level);
         if (ground == null) return null;
         collectAndKillEntities(level, null);
 
-        BlockPos plantPos = SIM_ORIGIN;
-        BlockPos groundPos = plantPos.relative(ground.side());
+        var plantPos = SIM_ORIGIN;
+        var groundPos = plantPos.relative(ground.side());
 
         level.setBlock(groundPos, ground.block().defaultBlockState(), FLAG_NO_UPDATE);
         level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
@@ -168,8 +163,8 @@ public class PlantSimulator {
 
     private Reference2DoubleMap<Item> simulateMatureLoot(Block block, ServerLevel level, @Nullable GroundResult ground) {
         Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
-        BlockPos lootPos = SIM_ORIGIN;
-        BlockState oldState = level.getBlockState(lootPos);
+        var lootPos = SIM_ORIGIN;
+        var oldState = level.getBlockState(lootPos);
         BlockPos groundPos = null;
         BlockState oldGroundState = null;
         if (ground != null) {
@@ -179,8 +174,8 @@ public class PlantSimulator {
         }
 
         try {
-            BlockState state = block.defaultBlockState();
-            IntegerProperty ageProp = findAgeProperty(block);
+            var state = block.defaultBlockState();
+            var ageProp = findAgeProperty(block);
             if (ageProp != null) {
                 int max = ageMaxCache.getInt(block);
                 if (max == 0) {
@@ -192,22 +187,22 @@ public class PlantSimulator {
 
             level.setBlock(lootPos, state, FLAG_NO_UPDATE);
 
-            LootTable lootTable = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
+            var lootTable = level.getServer().reloadableRegistries().getLootTable(block.getLootTable());
 
             int samples = 50;
             double sampleMultiplier = 1.0 / samples;
             boolean injectionWorked = false;
 
             for (int i = 0; i < samples; i++) {
-                RandomSource deterministicRandom = RandomSource.create(676767 + i);
-                LootParams params = new LootParams.Builder(level)
+                var deterministicRandom = RandomSource.create(676767 + i);
+                var params = new LootParams.Builder(level)
                         .withParameter(LootContextParams.BLOCK_STATE, state)
                         .withParameter(LootContextParams.ORIGIN, Vec3.atLowerCornerOf(lootPos))
                         .withParameter(LootContextParams.THIS_ENTITY, PlantSimulator.this.fakePlayer)
                         .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
                         .create(LootContextParamSets.BLOCK);
 
-                LootContext context = new LootContext.Builder(params).create(Optional.empty());
+                var context = new LootContext.Builder(params).create(Optional.empty());
                 if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
                 PlantSimulator.this.fakePlayer.setPos(lootPos.getX() + 0.5, lootPos.getY() + 0.5, lootPos.getZ() + 0.5);
 
@@ -217,7 +212,7 @@ public class PlantSimulator {
                 if (lootDrops.isEmpty()) lootDrops.addAll(Block.getDrops(state, level, lootPos,
                         level.getBlockEntity(lootPos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY));
 
-                for (ItemStack stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
+                for (var stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
             }
         } catch (Throwable e) {
             ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
@@ -242,9 +237,9 @@ public class PlantSimulator {
     private GroundResult findSuitableGround(Block plantBlock, ServerLevel level) {
         if (groundCache.containsKey(plantBlock)) return groundCache.get(plantBlock);
 
-        BlockPos plantPos = SIM_ORIGIN;
-        BlockState plantState = plantBlock.defaultBlockState();
-        GroundResult result = tryFindGround(plantPos, plantState, level, PRIORITY_GROUNDS);
+        var plantPos = SIM_ORIGIN;
+        var plantState = plantBlock.defaultBlockState();
+        var result = tryFindGround(plantPos, plantState, level, PRIORITY_GROUNDS);
         if (result != null) {
             groundCache.put(plantBlock, result);
             return result;
@@ -257,9 +252,9 @@ public class PlantSimulator {
 
     @Nullable
     private GroundResult tryFindGround(BlockPos plantPos, BlockState plantState, ServerLevel level, Iterable<Block> blocks) {
-        for (Direction dir : Direction.values()) {
+        for (var dir : Direction.values()) {
             mutablePos.setWithOffset(plantPos, dir);
-            for (Block b : blocks) {
+            for (var b : blocks) {
                 if (b instanceof EntityBlock || b.defaultBlockState().hasBlockEntity()) continue;
                 if (tryGroundQuickly(b, plantState, level, mutablePos, plantPos)) return new GroundResult(b, dir);
             }
@@ -270,9 +265,9 @@ public class PlantSimulator {
     private boolean tryGroundQuickly(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
         if (candidate instanceof EntityBlock || candidate.defaultBlockState().hasBlockEntity()) return false;
         try {
-            BlockState candidateState = candidate.defaultBlockState();
+            var candidateState = candidate.defaultBlockState();
             if (candidateState.isAir() && candidate != Blocks.WATER) return false;
-            BlockState oldGround = level.getBlockState(groundPos);
+            var oldGround = level.getBlockState(groundPos);
             level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
             boolean survives = plantState.canSurvive(level, plantPos);
             level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
@@ -284,15 +279,14 @@ public class PlantSimulator {
 
     private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random) {
         int bonemealUses = 0;
-        BlockState startState = level.getBlockState(plantPos);
+        var startState = level.getBlockState(plantPos);
         int stageCount = estimateGrowthStages(plantBlock);
         long simStart = System.currentTimeMillis();
-        BonemealableBlock bm = (plantBlock instanceof BonemealableBlock b) ? b : null;
+        var bm = (plantBlock instanceof BonemealableBlock b) ? b : null;
 
         for (int tick = 0; tick < MAX_TICKS; tick++) {
             if ((tick & 7) == 0 && System.currentTimeMillis() - simStart > MAX_SIMULATION_MS) break;
-
-            BlockState current = level.getBlockState(plantPos);
+            var current = level.getBlockState(plantPos);
 
             boolean canUseBonemeal = bm != null && current.getBlock() == plantBlock && bonemealUses < MAX_BONEMEAL;
             if (canUseBonemeal && bm.isValidBonemealTarget(level, plantPos, current)) try {
@@ -307,10 +301,10 @@ public class PlantSimulator {
             } catch (Throwable ignored) {
             }
 
-            BlockState after = level.getBlockState(plantPos);
+            var after = level.getBlockState(plantPos);
             if (after.isAir()) break;
 
-            IntegerProperty ageProp = findAgeProperty(after.getBlock());
+            var ageProp = findAgeProperty(after.getBlock());
             if (ageProp != null) {
                 int val = after.getValue(ageProp);
                 int max = ageMaxCache.getInt(after.getBlock());
@@ -321,12 +315,12 @@ public class PlantSimulator {
                 if (val >= max) break;
             }
         }
-        BlockState endState = level.getBlockState(plantPos);
+        var endState = level.getBlockState(plantPos);
         return endState.equals(startState) ? 1 : stageCount;
     }
 
     private int estimateGrowthStages(Block block) {
-        IntegerProperty ageProp = findAgeProperty(block);
+        var ageProp = findAgeProperty(block);
         if (ageProp == null) return 2;
         if (ageMaxCache.containsKey(block)) return Math.max(2, ageMaxCache.getInt(block) + 1);
 
@@ -366,7 +360,7 @@ public class PlantSimulator {
                     mutablePos.set(worldX, y, simOriginZ + z);
 
                     try {
-                        BlockState current = level.getBlockState(mutablePos);
+                        var current = level.getBlockState(mutablePos);
                         if (isBaseLayer | isXBoundary | isZBoundary) {
                             if (!current.is(Blocks.BARRIER)) {
                                 level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
@@ -401,7 +395,7 @@ public class PlantSimulator {
 
     private void collectAndKillEntities(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops) {
         int r = SEARCH_RADIUS + 2;
-        AABB box = new AABB(simOriginX - r, simOriginY - DEPTH_BELOW - 1, simOriginZ - r,
+        var box = new AABB(simOriginX - r, simOriginY - DEPTH_BELOW - 1, simOriginZ - r,
                 simOriginX + r, simOriginY + HEIGHT_ABOVE + 1, simOriginZ + r);
         boolean drop = drops != null;
         for (Entity entity : level.getEntities(null, box)) {
@@ -420,7 +414,7 @@ public class PlantSimulator {
         if (shouldCollectDrops) {
             for (int y = minY; y <= maxY; y++) {
                 mutablePos.set(simOriginX, y, simOriginZ);
-                BlockState state = level.getBlockState(mutablePos);
+                var state = level.getBlockState(mutablePos);
                 if (state.isAir() || isManagedPlatformBlock(state) || mutablePos.asLong() == groundPosLong) continue;
                 collectDropsAt(level, mutablePos, state, drops);
                 level.removeBlock(mutablePos, false);
@@ -437,10 +431,10 @@ public class PlantSimulator {
                             boolean isOnBoundary = Math.abs(x) == radius || Math.abs(z) == radius || Math.abs(y - simOriginY) == radius;
                             if (prevRadius > 0 && !isOnBoundary) continue;
                             mutablePos.set(worldX, y, simOriginZ + z);
-                            BlockState state = level.getBlockState(mutablePos);
+                            var state = level.getBlockState(mutablePos);
                             if (state.isAir() || isManagedPlatformBlock(state)) continue;
 
-                            BlockPos pos = mutablePos.immutable();
+                            var pos = mutablePos.immutable();
                             if (pos.asLong() != groundPosLong) {
                                 foundBlocks = true;
                                 collectDropsAt(level, pos, state, drops);
@@ -459,7 +453,7 @@ public class PlantSimulator {
                     int worldX = simOriginX + x;
                     for (int z = -range; z <= range; z++) {
                         mutablePos.set(worldX, y, simOriginZ + z);
-                        BlockState state = level.getBlockState(mutablePos);
+                        var state = level.getBlockState(mutablePos);
                         if (state.isAir() || isManagedPlatformBlock(state)) continue;
                         level.removeBlock(mutablePos.immutable(), false);
                     }
@@ -472,7 +466,7 @@ public class PlantSimulator {
         try {
             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
             fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            for (ItemStack stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
+            for (var stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
                 addDrop(drops, stack, 1.0);
             }
         } catch (Throwable ignored) {
@@ -501,7 +495,7 @@ public class PlantSimulator {
     }
 
     private IntegerProperty findAgeProperty(Block b) {
-        for (Property<?> prop : b.defaultBlockState().getProperties()) {
+        for (var prop : b.defaultBlockState().getProperties()) {
             if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth"))) {
                 return ip;
             }

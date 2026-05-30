@@ -68,15 +68,15 @@ public class ComplexityCache {
 
     @Nullable
     public ComplexityCategory getCategory(Item item) {
-        SoftReference<ComplexityCategory> ref = categoryCache.get(item);
-        ComplexityCategory result = (ref != null) ? ref.get() : null;
+        var ref = categoryCache.get(item);
+        var result = (ref != null) ? ref.get() : null;
 
         if (result == null && ref != null) categoryCache.remove(item);
         return result;
     }
 
     public boolean contains(Item item) {
-        SoftReference<ItemComplexity> ref = cache.get(item);
+        var ref = cache.get(item);
         return ref != null && ref.get() != null;
     }
 

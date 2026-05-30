@@ -25,7 +25,6 @@ import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -86,13 +85,13 @@ public final class CabinReader {
     }
 
     public Section getSection(byte id) {
-        Section s = sectionsById.get(id);
+        var s = sectionsById.get(id);
         if (s == null) throw new IllegalArgumentException("Section not found: 0x" + Integer.toHexString(id & 0xFF));
         return s;
     }
 
     public byte[] readSection(byte id) throws IOException {
-        Section s = getSection(id);
+        var s = getSection(id);
         if (s.codec == CabinFormat.CODEC_RAW) {
             byte[] out = new byte[(int) s.length];
             System.arraycopy(data, (int) s.offset, out, 0, out.length);
@@ -105,7 +104,7 @@ public final class CabinReader {
     }
 
     private static byte[] inflateRaw(byte[] src, int off, int len, int uncompressed) throws IOException {
-        Inflater inf = new Inflater(true);
+        var inf = new Inflater(true);
         try {
             inf.setInput(src, off, len);
             byte[] out = new byte[uncompressed];

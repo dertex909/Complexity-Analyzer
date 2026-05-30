@@ -25,7 +25,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
@@ -48,8 +47,8 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     }
 
     private void setupHttpPipeline(ChannelHandlerContext ctx) {
-        ObjectList<String> names = new ObjectArrayList<>(ctx.pipeline().names());
-        for (String name : names) {
+        var names = new ObjectArrayList<>(ctx.pipeline().names());
+        for (var name : names) {
             if (!name.equals(ctx.name()) && !PRESERVED_HANDLERS.contains(name.toLowerCase())) try {
                 ctx.pipeline().remove(name);
             } catch (Throwable ignored) {

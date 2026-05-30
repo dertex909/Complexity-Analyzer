@@ -31,7 +31,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeSource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 
@@ -92,7 +91,7 @@ public class WorldScanner {
             boolean allowCachedLocation
     ) {
         if (shouldStop()) return Optional.empty();
-        ServerLevel level = server.getLevel(dimension);
+        var level = server.getLevel(dimension);
         if (level == null) return Optional.empty();
         if (!level.registryAccess().registryOrThrow(Registries.BIOME).containsKey(biomeKey)) return Optional.empty();
 
@@ -105,7 +104,7 @@ public class WorldScanner {
         String cacheKey = dimension.location() + "|" + biomeKey.location();
 
         if (allowCachedLocation) {
-            BlockPos cachedPos = getCachedLocation(cacheKey, isRelocation);
+            var cachedPos = getCachedLocation(cacheKey, isRelocation);
             if (cachedPos != null) {
                 ComplexityAnalyzer.LOGGER.trace("Using cached location for {}: [{}, {}]",
                         biomeKey.location().getPath(), cachedPos.getX(), cachedPos.getZ());
@@ -120,9 +119,9 @@ public class WorldScanner {
         String dimensionId = level.dimension().location().toString();
         String biomeId = biomeKey.location().toString();
 
-        ObjectSet<String> possibleBiomes = dimensionBiomeCache.computeIfAbsent(dimensionId, key -> {
+        var possibleBiomes = dimensionBiomeCache.computeIfAbsent(dimensionId, key -> {
             try {
-                BiomeSource biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
+                var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
                 ObjectOpenHashSet<String> biomes = new ObjectOpenHashSet<>();
                 for (var holder : biomeSource.possibleBiomes()) {
@@ -130,15 +129,9 @@ public class WorldScanner {
                     unwrapped.ifPresent(biomeResourceKey -> biomes.add(biomeResourceKey.location().toString()));
                 }
 
-                if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                    ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Dimension {} has {} possible biomes",
-                            dimensionId, biomes.size());
-                }
-
                 return biomes;
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Failed to get biomes for {}: {}",
-                        dimensionId, e.getMessage());
+                ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Failed to get biomes for {}: {}", dimensionId, e.getMessage());
                 return ObjectSets.emptySet();
             }
         });
@@ -149,48 +142,46 @@ public class WorldScanner {
     public void recordDiscoveredBiomeChunk(ResourceKey<Level> dimension, ResourceLocation biome, ChunkPos pos) {
         if (shouldStop()) return;
         String cacheKey = dimension.location() + "|" + biome;
-        BlockPos center = new BlockPos(pos.getMiddleBlockX(), 64, pos.getMiddleBlockZ());
+        var center = new BlockPos(pos.getMiddleBlockX(), 64, pos.getMiddleBlockZ());
         cacheLocation(cacheKey, center);
     }
 
     private Optional<ChunkPos> findNewLocation(ServerLevel level, ResourceKey<Biome> biomeKey, String cacheKey) {
         if (shouldStop()) return Optional.empty();
 
-        ThreadLocalRandom random = ThreadLocalRandom.current();
+        var random = ThreadLocalRandom.current();
         int range = fullWorldMode ? 50000 : 20000;
-        BlockPos origin = new BlockPos(random.nextInt(-range, range), 64, random.nextInt(-range, range));
+        var origin = new BlockPos(random.nextInt(-range, range), 64, random.nextInt(-range, range));
         int radius = fullWorldMode ? ScanConfig.RADIUS_FULL_WORLD : ScanConfig.RADIUS_MAX;
 
         ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Searching for {} from [{}, {}], radius={}",
                 biomeKey.location(), origin.getX(), origin.getZ(), radius);
 
-        BlockPos result = FastBiomeFinder.findBiome(level, holder -> holder.is(biomeKey), origin, radius);
+        var result = FastBiomeFinder.findBiome(level, holder -> holder.is(biomeKey), origin, radius);
 
         if (shouldStop()) return Optional.empty();
 
         if (result != null) {
-            ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Found {} at [{}, {}]",
-                    biomeKey.location(), result.getX(), result.getZ());
+            ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Found {} at [{}, {}]", biomeKey.location(), result.getX(), result.getZ());
             cacheLocation(cacheKey, result);
             return Optional.of(new ChunkPos(result));
         }
 
-        ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Could not find {} within {} blocks",
-                biomeKey.location(), radius);
+        ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Could not find {} within {} blocks", biomeKey.location(), radius);
         return Optional.empty();
     }
 
     private BlockPos getCachedLocation(String cacheKey, boolean isRelocation) {
-        AtomicReference<ObjectArrayList<BlockPos>> ref = biomeLocationCache.get(cacheKey);
+        var ref = biomeLocationCache.get(cacheKey);
         if (ref == null) return null;
-        ObjectArrayList<BlockPos> snapshot = ref.get();
+        var snapshot = ref.get();
         if (snapshot == null) return null;
 
         int size = snapshot.size();
         if (size == 0) return null;
         if (isRelocation && size < 2) return null;
 
-        ThreadLocalRandom random = ThreadLocalRandom.current();
+        var random = ThreadLocalRandom.current();
         if (isRelocation) {
             int window = Math.min(size, RELOCATION_CACHE_WINDOW);
             int index = size - 1 - random.nextInt(window);
@@ -201,15 +192,15 @@ public class WorldScanner {
 
     private void cacheLocation(String cacheKey, BlockPos pos) {
         if (shouldStop()) return;
-        AtomicReference<ObjectArrayList<BlockPos>> ref = biomeLocationCache.computeIfAbsent(
+        var ref = biomeLocationCache.computeIfAbsent(
                 cacheKey, k -> new AtomicReference<>(new ObjectArrayList<>())
         );
 
         while (true) {
-            ObjectArrayList<BlockPos> current = ref.get();
+            var current = ref.get();
 
             for (int i = 0, n = current.size(); i < n; i++) {
-                BlockPos existing = current.get(i);
+                var existing = current.get(i);
                 if (isNear(existing, pos)) return;
                 if (existing.getX() == pos.getX() && existing.getZ() == pos.getZ()) return;
             }
@@ -226,7 +217,7 @@ public class WorldScanner {
     }
 
     private BlockPos applyRelocationJitter(BlockPos pos) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
+        var random = ThreadLocalRandom.current();
         int jitterX = random.nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
         int jitterZ = random.nextInt(-RELOCATION_JITTER_CHUNKS, RELOCATION_JITTER_CHUNKS + 1) << 4;
         return new BlockPos(pos.getX() + jitterX, pos.getY(), pos.getZ() + jitterZ);

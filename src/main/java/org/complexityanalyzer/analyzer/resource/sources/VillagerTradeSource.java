@@ -74,11 +74,11 @@ public class VillagerTradeSource implements IResourceSource {
         var skippedByType = new Object2IntOpenHashMap<String>();
 
         int tradeIndex = 0;
-        for (Int2ObjectMap<VillagerTrades.ItemListing[]> professionTrades : VillagerTrades.TRADES.values()) {
-            for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> levelEntry : professionTrades.int2ObjectEntrySet()) {
+        for (var professionTrades : VillagerTrades.TRADES.values()) {
+            for (var levelEntry : professionTrades.int2ObjectEntrySet()) {
                 int tradeLevel = levelEntry.getIntKey();
 
-                for (VillagerTrades.ItemListing listing : levelEntry.getValue()) {
+                for (var listing : levelEntry.getValue()) {
                     totalTrades++;
                     String tradeType = listing.getClass().getSimpleName();
 
@@ -116,7 +116,7 @@ public class VillagerTradeSource implements IResourceSource {
             long phase2Start = System.currentTimeMillis();
             ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...", pendingTrades.size());
 
-            Villager villager = new Villager(EntityType.VILLAGER, level) {
+            var villager = new Villager(EntityType.VILLAGER, level) {
                 @Override
                 protected void registerGoals() {
                 }
@@ -129,7 +129,7 @@ public class VillagerTradeSource implements IResourceSource {
             int logInterval = Math.max(1, pendingTrades.size() / 10);
 
             for (int i = 0; i < pendingTrades.size(); i++) {
-                PendingTrade pending = pendingTrades.get(i);
+                var pending = pendingTrades.get(i);
 
                 if ((i + 1) % logInterval == 0 || (i + 1) == pendingTrades.size()) {
                     ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 progress: {}/{}", i + 1, pendingTrades.size());

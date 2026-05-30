@@ -22,7 +22,6 @@ import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -79,8 +78,8 @@ public class MobDropSource implements IResourceSource {
 
     public MobDropSource(MobPropertyProvider mobProvider, Level level) {
         this.mobProvider = mobProvider;
-        DimensionRarityAnalyzer dimensionAnalyzer = new DimensionRarityAnalyzer(level);
-        MobRarityCalculator rarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
+        var dimensionAnalyzer = new DimensionRarityAnalyzer(level);
+        var rarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
         mobProvider.setRarityCalculator(rarityCalculator);
     }
 
@@ -105,7 +104,7 @@ public class MobDropSource implements IResourceSource {
             return;
         }
 
-        MinecraftServer server = serverLevel.getServer();
+        var server = serverLevel.getServer();
 
         ObjectList<EntityType<?>> entityTypes;
         try {
@@ -129,7 +128,7 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes) {
-        MinecraftServer server = serverLevel.getServer();
+        var server = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();

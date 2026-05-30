@@ -18,16 +18,7 @@
 
 package org.complexityanalyzer.geoscan.storage;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -42,7 +33,6 @@ import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 
-import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -52,7 +42,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -104,8 +93,8 @@ public class GeoDataStorage {
 
     public ScanMetadata loadMetadata() {
         if (!Files.exists(metadataFile)) return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
-        try (FileReader reader = new FileReader(metadataFile.toFile())) {
-            ScanMetadata meta = PRETTY_GSON.fromJson(reader, ScanMetadata.class);
+        try (var reader = new FileReader(metadataFile.toFile())) {
+            var meta = PRETTY_GSON.fromJson(reader, ScanMetadata.class);
             return meta != null ? meta : new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to read metadata file! Assuming IDLE state.", e);
@@ -114,7 +103,7 @@ public class GeoDataStorage {
     }
 
     public void saveMetadata(ScanMetadata metadata) {
-        try (FileWriter writer = new FileWriter(metadataFile.toFile())) {
+        try (var writer = new FileWriter(metadataFile.toFile())) {
             PRETTY_GSON.toJson(metadata, writer);
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to write metadata file!", e);
@@ -123,12 +112,12 @@ public class GeoDataStorage {
 
     public void appendReconData(ResourceLocation dimension, ResourceLocation biome, ObjectArrayList<ChunkSnapshot> newSnapshots) {
         if (newSnapshots.isEmpty()) return;
-        Path file = getReconFilePath(dimension, biome);
+        var file = getReconFilePath(dimension, biome);
 
         fileLockMarkers.compute(file, (k, v) -> {
             try {
                 Files.createDirectories(file.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                try (var writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                     for (int i = 0, n = newSnapshots.size(); i < n; i++) {
                         writer.write(GSON.toJson(newSnapshots.get(i)));
                         writer.newLine();
@@ -145,26 +134,26 @@ public class GeoDataStorage {
         Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> allPaths = new Object2ObjectOpenHashMap<>();
         if (!Files.exists(reconDir)) return allPaths;
 
-        try (Stream<Path> dimNamespaces = Files.list(reconDir)) {
-            Iterator<Path> dimNsIt = dimNamespaces.filter(Files::isDirectory).iterator();
+        try (var dimNamespaces = Files.list(reconDir)) {
+            var dimNsIt = dimNamespaces.filter(Files::isDirectory).iterator();
             while (dimNsIt.hasNext()) {
-                Path dimNamespaceDir = dimNsIt.next();
-                try (Stream<Path> dimPaths = Files.list(dimNamespaceDir)) {
-                    Iterator<Path> dimPathIt = dimPaths.filter(Files::isDirectory).iterator();
+                var dimNamespaceDir = dimNsIt.next();
+                try (var dimPaths = Files.list(dimNamespaceDir)) {
+                    var dimPathIt = dimPaths.filter(Files::isDirectory).iterator();
                     while (dimPathIt.hasNext()) {
-                        Path dimPathDir = dimPathIt.next();
-                        ResourceLocation dimensionId = ResourceLocation.fromNamespaceAndPath(
+                        var dimPathDir = dimPathIt.next();
+                        var dimensionId = ResourceLocation.fromNamespaceAndPath(
                                 dimNamespaceDir.getFileName().toString(),
                                 dimPathDir.getFileName().toString()
                         );
                         Object2ObjectOpenHashMap<ResourceLocation, Path> biomeFiles = new Object2ObjectOpenHashMap<>();
-                        try (Stream<Path> files = Files.list(dimPathDir)) {
-                            Iterator<Path> fileIt = files.filter(f -> f.toString().endsWith(".jsonl")).iterator();
+                        try (var files = Files.list(dimPathDir)) {
+                            var fileIt = files.filter(f -> f.toString().endsWith(".jsonl")).iterator();
                             while (fileIt.hasNext()) {
-                                Path filePath = fileIt.next();
+                                var filePath = fileIt.next();
                                 String fileName = filePath.getFileName().toString();
                                 String encodedName = fileName.substring(0, fileName.length() - 6);
-                                ResourceLocation biomeId = decodeLocation(encodedName);
+                                var biomeId = decodeLocation(encodedName);
                                 biomeFiles.put(biomeId, filePath);
                             }
                         } catch (IOException e) {
@@ -185,13 +174,13 @@ public class GeoDataStorage {
 
     public Stream<ChunkSnapshot> streamReconFile(Path path) {
         if (!Files.exists(path)) return Stream.empty();
-        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
+        try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
             ObjectArrayList<ChunkSnapshot> snapshots = new ObjectArrayList<>();
-            Iterator<String> it = lines.iterator();
+            var it = lines.iterator();
             while (it.hasNext()) {
                 String line = it.next();
                 try {
-                    ChunkSnapshot snapshot = GSON.fromJson(line, ChunkSnapshot.class);
+                    var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
                     if (snapshot != null) snapshots.add(snapshot);
                 } catch (JsonSyntaxException e) {
                     ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
@@ -205,14 +194,14 @@ public class GeoDataStorage {
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
-        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadedData = loadDataFromDirectory(finalDir, (reader) -> {
-            BiomeScanData data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
+        var loadedData = loadDataFromDirectory(finalDir, (reader) -> {
+            var data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
             if (data != null) mapper.afterLoad(data);
             return data;
         });
 
         Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> result = new Object2ObjectOpenHashMap<>();
-        for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> entry : loadedData.object2ObjectEntrySet()) {
+        for (var entry : loadedData.object2ObjectEntrySet()) {
             result.put(entry.getKey(), new Object2ObjectOpenHashMap<>(entry.getValue()));
         }
         return result;
@@ -221,13 +210,13 @@ public class GeoDataStorage {
     public void saveFinalBiomeData(ResourceLocation dimension, ResourceLocation biome,
                                    BiomeScanData data, BiomeDataMapper mapper) {
         mapper.prepareForSave(data);
-        Path file = getFinalFilePath(dimension, biome);
+        var file = getFinalFilePath(dimension, biome);
         saveJson(file, data);
     }
 
     public void deleteAllData() {
         try {
-            if (Files.exists(dataDir)) try (Stream<Path> walk = Files.walk(dataDir)) {
+            if (Files.exists(dataDir)) try (var walk = Files.walk(dataDir)) {
                 walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
             }
         } catch (IOException e) {
@@ -242,7 +231,7 @@ public class GeoDataStorage {
     }
 
     private void deleteDirectory(Path dir) throws IOException {
-        if (Files.exists(dir)) try (Stream<Path> walk = Files.walk(dir)) {
+        if (Files.exists(dir)) try (var walk = Files.walk(dir)) {
             walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
         }
         Files.createDirectories(dir);
@@ -259,7 +248,7 @@ public class GeoDataStorage {
     private void saveJson(Path file, Object data) {
         try {
             Files.createDirectories(file.getParent());
-            try (FileWriter writer = new FileWriter(file.toFile())) {
+            try (var writer = new FileWriter(file.toFile())) {
                 GeoDataStorage.PRETTY_GSON.toJson(data, writer);
             }
         } catch (IOException e) {
@@ -271,30 +260,30 @@ public class GeoDataStorage {
         Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> allData = new Object2ObjectOpenHashMap<>();
         if (!Files.exists(rootDir)) return allData;
 
-        try (Stream<Path> dimNamespaces = Files.list(rootDir)) {
-            Iterator<Path> dimNsIt = dimNamespaces.filter(Files::isDirectory).iterator();
+        try (var dimNamespaces = Files.list(rootDir)) {
+            var dimNsIt = dimNamespaces.filter(Files::isDirectory).iterator();
             while (dimNsIt.hasNext()) {
-                Path dimNamespaceDir = dimNsIt.next();
-                try (Stream<Path> dimPaths = Files.list(dimNamespaceDir)) {
-                    Iterator<Path> dimPathIt = dimPaths.filter(Files::isDirectory).iterator();
+                var dimNamespaceDir = dimNsIt.next();
+                try (var dimPaths = Files.list(dimNamespaceDir)) {
+                    var dimPathIt = dimPaths.filter(Files::isDirectory).iterator();
                     while (dimPathIt.hasNext()) {
-                        Path dimPathDir = dimPathIt.next();
-                        ResourceLocation dimensionId = ResourceLocation.fromNamespaceAndPath(
+                        var dimPathDir = dimPathIt.next();
+                        var dimensionId = ResourceLocation.fromNamespaceAndPath(
                                 dimNamespaceDir.getFileName().toString(),
                                 dimPathDir.getFileName().toString()
                         );
 
                         Object2ObjectOpenHashMap<ResourceLocation, T> biomeData = new Object2ObjectOpenHashMap<>();
-                        try (Stream<Path> biomeFiles = Files.list(dimPathDir)) {
-                            Iterator<Path> fileIt = biomeFiles.filter(f -> f.toString().endsWith(".json")).iterator();
+                        try (var biomeFiles = Files.list(dimPathDir)) {
+                            var fileIt = biomeFiles.filter(f -> f.toString().endsWith(".json")).iterator();
                             while (fileIt.hasNext()) {
-                                Path biomeFile = fileIt.next();
-                                try (FileReader reader = new FileReader(biomeFile.toFile())) {
-                                    T data = fromJson.apply(reader);
+                                var biomeFile = fileIt.next();
+                                try (var reader = new FileReader(biomeFile.toFile())) {
+                                    var data = fromJson.apply(reader);
                                     if (data != null) {
                                         String fileName = biomeFile.getFileName().toString();
                                         String encodedName = fileName.substring(0, fileName.length() - 5);
-                                        ResourceLocation biomeId = decodeLocation(encodedName);
+                                        var biomeId = decodeLocation(encodedName);
                                         biomeData.put(biomeId, data);
                                     }
                                 } catch (Exception e) {
@@ -335,9 +324,9 @@ public class GeoDataStorage {
     }
 
     public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
-        Path path = getReconFilePath(dimension, biome);
+        var path = getReconFilePath(dimension, biome);
         if (!Files.exists(path)) return 0;
-        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
+        try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
             return (int) lines.count();
         } catch (IOException e) {
             return 0;
@@ -346,17 +335,17 @@ public class GeoDataStorage {
 
     public Object2ObjectMap<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
         Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet> allCoordinates = new Object2ObjectOpenHashMap<>();
-        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> allPaths = getAllReconFilePaths();
+        var allPaths = getAllReconFilePaths();
 
-        for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> dimEntry : allPaths.object2ObjectEntrySet()) {
-            ResourceLocation dim = dimEntry.getKey();
-            LongOpenHashSet coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
-            for (Path path : dimEntry.getValue().values()) {
-                try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
-                    Iterator<String> it = lines.iterator();
+        for (var dimEntry : allPaths.object2ObjectEntrySet()) {
+            var dim = dimEntry.getKey();
+            var coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
+            for (var path : dimEntry.getValue().values()) {
+                try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
+                    var it = lines.iterator();
                     while (it.hasNext()) {
                         try {
-                            ChunkSnapshot snapshot = GSON.fromJson(it.next(), ChunkSnapshot.class);
+                            var snapshot = GSON.fromJson(it.next(), ChunkSnapshot.class);
                             if (snapshot != null) {
                                 coordinatesForDimension.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
                             }

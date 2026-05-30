@@ -18,8 +18,6 @@
 
 package org.complexityanalyzer.event;
 
-import net.minecraft.server.MinecraftServer;
-
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -37,9 +35,9 @@ public class AnalysisBootstrap {
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         ServerLanguage.init();
-        MinecraftServer server = event.getServer();
+        var server = event.getServer();
         GameRegistryManager.initialize();
-        AnalysisEngine engine = AnalysisEngine.getInstance();
+        var engine = AnalysisEngine.getInstance();
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () -> {

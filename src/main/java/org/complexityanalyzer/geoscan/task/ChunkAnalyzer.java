@@ -19,8 +19,6 @@
 package org.complexityanalyzer.geoscan.task;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
-import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -40,11 +38,11 @@ public class ChunkAnalyzer {
         blockCounts.defaultReturnValue(0);
         LevelChunkSection[] sections = chunk.getSections();
 
-        for (LevelChunkSection section : sections) {
+        for (var section : sections) {
             if (section == null || section.hasOnlyAir()) continue;
 
             section.getStates().count((state, count) -> {
-                Block block = state.getBlock();
+                var block = state.getBlock();
                 if (block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR) {
                     blockCounts.addTo(block, count);
                 }
@@ -54,9 +52,9 @@ public class ChunkAnalyzer {
         Object2IntOpenHashMap<String> finalCounts = new Object2IntOpenHashMap<>(blockCounts.size());
         finalCounts.defaultReturnValue(0);
 
-        ObjectIterator<Reference2IntMap.Entry<Block>> it = blockCounts.reference2IntEntrySet().fastIterator();
+        var it = blockCounts.reference2IntEntrySet().fastIterator();
         while (it.hasNext()) {
-            Reference2IntMap.Entry<Block> entry = it.next();
+            var entry = it.next();
             String blockId = blockIdCache.computeIfAbsent(
                     entry.getKey(), block -> GameRegistryManager.getBlockId(block).toString()
             );

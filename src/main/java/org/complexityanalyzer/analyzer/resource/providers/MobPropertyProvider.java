@@ -72,7 +72,7 @@ public class MobPropertyProvider {
                         ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
 
                 attackDamage = Math.max(attackDamage, 0.1);
-                MobCategory classification = type.getCategory();
+                var classification = type.getCategory();
 
                 propertiesCache.put(type, new MobProperties(
                         maxHealth,

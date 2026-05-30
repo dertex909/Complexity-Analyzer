@@ -19,7 +19,6 @@
 package org.complexityanalyzer.data;
 
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,20 +32,17 @@ public class ItemComplexity {
     private final boolean hasRecipe;
     private final String errorMessage;
     private final RecipeNode optimalRecipe;
-    private final BaseResourceData baseData;
 
     private ItemComplexity(Builder builder) {
         this.item = builder.item;
         this.complexity = builder.complexity;
         this.depth = builder.depth;
         this.totalIngredients = builder.totalIngredients;
-        this.category = builder.category != null
-                ? builder.category : ComplexityCategory.fromComplexity(builder.complexity);
+        this.category = builder.category != null ? builder.category : ComplexityCategory.fromComplexity(builder.complexity);
         this.hasCycle = builder.hasCycle;
         this.hasRecipe = builder.hasRecipe;
         this.errorMessage = builder.errorMessage;
         this.optimalRecipe = builder.optimalRecipe;
-        this.baseData = builder.baseData;
     }
 
     public Item getItem() {
@@ -86,11 +82,6 @@ public class ItemComplexity {
         return optimalRecipe;
     }
 
-    @Nullable
-    public BaseResourceData getBaseData() {
-        return baseData;
-    }
-
     public boolean isValid() {
         return errorMessage == null && !hasCycle && complexity >= 0;
     }
@@ -101,11 +92,10 @@ public class ItemComplexity {
         private int depth = 0;
         private int totalIngredients = 0;
         private ComplexityCategory category;
-        private boolean hasCycle = false;
+        private final boolean hasCycle = false;
         private boolean hasRecipe = true;
         private String errorMessage;
         private RecipeNode optimalRecipe;
-        private BaseResourceData baseData;
 
         public Builder(Item item) {
             this.item = item;
@@ -131,11 +121,6 @@ public class ItemComplexity {
             return this;
         }
 
-        public Builder hasCycle(boolean hasCycle) {
-            this.hasCycle = hasCycle;
-            return this;
-        }
-
         public Builder hasRecipe(boolean hasRecipe) {
             this.hasRecipe = hasRecipe;
             return this;
@@ -146,14 +131,11 @@ public class ItemComplexity {
             return this;
         }
 
-        public Builder optimalRecipe(RecipeNode recipe) {
+        public void optimalRecipe(RecipeNode recipe) {
             this.optimalRecipe = recipe;
-            return this;
         }
 
-        public Builder baseData(BaseResourceData data) {
-            this.baseData = data;
-            return this;
+        public void baseData() {
         }
 
         public ItemComplexity build() {
@@ -166,30 +148,6 @@ public class ItemComplexity {
                 .complexity(-1)
                 .category(ComplexityCategory.UNCALCULABLE)
                 .errorMessage(error)
-                .build();
-    }
-
-    public static ItemComplexity cycle(Item item) {
-        return new Builder(item)
-                .complexity(-1)
-                .category(ComplexityCategory.UNCALCULABLE)
-                .hasCycle(true)
-                .errorMessage("Cyclic dependency detected")
-                .build();
-    }
-
-    public static ItemComplexity noRecipe(Item item) {
-        return new Builder(item)
-                .complexity(1.0)
-                .category(ComplexityCategory.TRIVIAL)
-                .hasRecipe(false)
-                .build();
-    }
-
-    public static ItemComplexity infinite(Item item) {
-        return new Builder(item)
-                .complexity(Double.POSITIVE_INFINITY)
-                .category(ComplexityCategory.UNOBTAINABLE)
                 .build();
     }
 

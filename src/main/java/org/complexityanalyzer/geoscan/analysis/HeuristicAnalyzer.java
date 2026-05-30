@@ -55,14 +55,14 @@ public class HeuristicAnalyzer {
         dimensionalHeuristics.clear();
 
         Object2ObjectOpenHashMap<ResourceLocation, ObjectArrayList<Path>> pathsByDimension = new Object2ObjectOpenHashMap<>();
-        for (Object2ObjectMap.Entry<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> dimEntry : reconFilePaths.object2ObjectEntrySet()) {
-            ObjectArrayList<Path> list = pathsByDimension.computeIfAbsent(dimEntry.getKey(), k -> new ObjectArrayList<>());
+        for (var dimEntry : reconFilePaths.object2ObjectEntrySet()) {
+            var list = pathsByDimension.computeIfAbsent(dimEntry.getKey(), k -> new ObjectArrayList<>());
             list.addAll(dimEntry.getValue().values());
         }
 
-        for (Object2ObjectMap.Entry<ResourceLocation, ObjectArrayList<Path>> entry : pathsByDimension.object2ObjectEntrySet()) {
-            ResourceLocation dimId = entry.getKey();
-            ObjectArrayList<Path> paths = entry.getValue();
+        for (var entry : pathsByDimension.object2ObjectEntrySet()) {
+            var dimId = entry.getKey();
+            var paths = entry.getValue();
             ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);
 
             Object2LongOpenHashMap<Block> totalCounts = new Object2LongOpenHashMap<>();
@@ -70,15 +70,15 @@ public class HeuristicAnalyzer {
 
             long totalBlocksInDim = 0;
             for (int i = 0, n = paths.size(); i < n; i++) {
-                Path path = paths.get(i);
-                try (Stream<ChunkSnapshot> snapshots = storage.streamReconFile(path)) {
-                    Iterator<ChunkSnapshot> snapIt = snapshots.iterator();
+                var path = paths.get(i);
+                try (var snapshots = storage.streamReconFile(path)) {
+                    var snapIt = snapshots.iterator();
                     while (snapIt.hasNext()) {
-                        ChunkSnapshot snapshot = snapIt.next();
-                        ObjectIterator<Object2IntMap.Entry<String>> entryIt = snapshot.blockCounts().object2IntEntrySet().fastIterator();
+                        var snapshot = snapIt.next();
+                        var entryIt = snapshot.blockCounts().object2IntEntrySet().fastIterator();
                         while (entryIt.hasNext()) {
-                            Object2IntMap.Entry<String> bcEntry = entryIt.next();
-                            Block block = GameRegistryManager.getBlock(ResourceLocation.parse(bcEntry.getKey()));
+                            var bcEntry = entryIt.next();
+                            var block = GameRegistryManager.getBlock(ResourceLocation.parse(bcEntry.getKey()));
                             if (block == null) continue;
                             int count = bcEntry.getIntValue();
                             totalCounts.addTo(block, count);
@@ -90,10 +90,10 @@ public class HeuristicAnalyzer {
 
             ReferenceOpenHashSet<Block> dimensionHeuristic = new ReferenceOpenHashSet<>();
             if (totalBlocksInDim > 0) {
-                ObjectIterator<Object2LongMap.Entry<Block>> it = totalCounts.object2LongEntrySet().fastIterator();
+                var it = totalCounts.object2LongEntrySet().fastIterator();
                 while (it.hasNext()) {
-                    Object2LongMap.Entry<Block> tcEntry = it.next();
-                    Block block = tcEntry.getKey();
+                    var tcEntry = it.next();
+                    var block = tcEntry.getKey();
                     long count = tcEntry.getLongValue();
                     if (block != Blocks.AIR && (double) count / totalBlocksInDim > NATURAL_BLOCK_RARITY_THRESHOLD) {
                         dimensionHeuristic.add(block);
@@ -108,20 +108,18 @@ public class HeuristicAnalyzer {
     }
 
     public BiomeScanData refineRawData(Stream<ChunkSnapshot> snapshotStream, ResourceLocation dimensionId) {
-        BiomeScanData finalCleanData = new BiomeScanData();
+        var finalCleanData = new BiomeScanData();
         Iterator<ChunkSnapshot> it = snapshotStream.iterator();
         while (it.hasNext()) {
-            ChunkSnapshot snapshot = it.next();
+            var snapshot = it.next();
             if (!isChunkCleanByHeuristic(snapshot, dimensionId)) continue;
             finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
 
-            ObjectIterator<Object2IntMap.Entry<String>> bcIt = snapshot.blockCounts().object2IntEntrySet().fastIterator();
+            var bcIt = snapshot.blockCounts().object2IntEntrySet().fastIterator();
             while (bcIt.hasNext()) {
-                Object2IntMap.Entry<String> entry = bcIt.next();
-                Block block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
-                if (block != Blocks.AIR && block != Blocks.BEDROCK) {
-                    finalCleanData.addBlock(block, entry.getIntValue());
-                }
+                var entry = bcIt.next();
+                var block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
+                if (block != Blocks.AIR && block != Blocks.BEDROCK) finalCleanData.addBlock(block, entry.getIntValue());
             }
         }
         return finalCleanData;
@@ -134,7 +132,7 @@ public class HeuristicAnalyzer {
     private boolean isChunkCleanByHeuristic(ChunkSnapshot snapshot, ResourceLocation dimensionId) {
         if (dimensionalHeuristics.isEmpty()) return true;
 
-        ReferenceSet<Block> heuristic = dimensionalHeuristics.get(dimensionId);
+        var heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {
             ComplexityAnalyzer.LOGGER.warn("No heuristic found for dimension {}. Accepting chunk at [{}, {}] " +
                     "without filtering.", dimensionId, snapshot.chunkX(), snapshot.chunkZ());
@@ -142,10 +140,10 @@ public class HeuristicAnalyzer {
         }
 
         int unnaturalBlockCount = 0;
-        ObjectIterator<Object2IntMap.Entry<String>> it = snapshot.blockCounts().object2IntEntrySet().fastIterator();
+        var it = snapshot.blockCounts().object2IntEntrySet().fastIterator();
         while (it.hasNext()) {
-            Object2IntMap.Entry<String> entry = it.next();
-            Block block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
+            var entry = it.next();
+            var block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
             if (block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getIntValue();
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }

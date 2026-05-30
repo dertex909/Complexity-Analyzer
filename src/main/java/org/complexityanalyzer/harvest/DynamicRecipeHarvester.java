@@ -85,7 +85,25 @@ public final class DynamicRecipeHarvester {
                 var creator = resolveCreator(inputClass);
                 if (creator == null) continue;
 
-                for (var item : candidates) {
+                var candidateList = new java.util.ArrayList<>(candidates);
+                int n = candidateList.size();
+
+                int preProbeSize = Math.min(n, 15);
+                var preProbeSample = new java.util.ArrayList<Item>();
+                boolean[] sampled = new boolean[n];
+                for (int i = 0; i < preProbeSize; i++) {
+                    int index = (int) ((long) i * n / preProbeSize);
+                    if (!sampled[index]) {
+                        sampled[index] = true;
+                        preProbeSample.add(candidateList.get(index));
+                    }
+                }
+
+                int matchedStatic = 0;
+                int matchedDynamic = 0;
+                var discoveredInPreProbe = new java.util.ArrayList<RecipeHolder<?>>();
+
+                for (var item : preProbeSample) {
                     try {
                         var stack = new ItemStack(item);
                         if (stack.isEmpty()) continue;
@@ -97,20 +115,103 @@ public final class DynamicRecipeHarvester {
 
                         for (var rh : recipes) {
                             var holder = (RecipeHolder<?>) rh;
-                            if (safeKnown.contains(holder.id()) || !discovered.add(holder.id())) continue;
-
-                            try {
-                                var items = harvester.harvest(holder.value(), level);
-                                var node = HarvestedRecipeConverter.convert(items, level);
-                                if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
-                                        || !node.getChemicalIngredients().isEmpty())) {
-                                    graph.addRecipe(node);
-                                    addedCount.incrementAndGet();
-                                }
-                            } catch (Throwable ignored) {
+                            if (safeKnown.contains(holder.id())) {
+                                matchedStatic++;
+                            } else {
+                                matchedDynamic++;
+                                discoveredInPreProbe.add(holder);
                             }
                         }
                     } catch (Throwable ignored) {
+                    }
+                }
+
+                if (matchedStatic == 0 && matchedDynamic == 0 && n > preProbeSize) {
+                    int mediumProbeSize = Math.min(n, 100);
+                    var mediumProbeSample = new java.util.ArrayList<Item>();
+                    for (int i = 0; i < mediumProbeSize; i++) {
+                        int index = (int) ((long) i * n / mediumProbeSize);
+                        if (!sampled[index]) {
+                            sampled[index] = true;
+                            mediumProbeSample.add(candidateList.get(index));
+                        }
+                    }
+
+                    for (var item : mediumProbeSample) {
+                        try {
+                            var stack = new ItemStack(item);
+                            if (stack.isEmpty()) continue;
+
+                            var inputObj = creator.create(stack);
+                            if (inputObj == null) continue;
+
+                            var recipes = recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
+
+                            for (var rh : recipes) {
+                                var holder = (RecipeHolder<?>) rh;
+                                if (safeKnown.contains(holder.id())) {
+                                    matchedStatic++;
+                                } else {
+                                    matchedDynamic++;
+                                    discoveredInPreProbe.add(holder);
+                                }
+                            }
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+
+                boolean isDynamic = (matchedDynamic > 0);
+
+                if (isDynamic) {
+                    for (var holder : discoveredInPreProbe) {
+                        if (!discovered.add(holder.id())) continue;
+                        try {
+                            var items = harvester.harvest(holder.value(), level);
+                            var node = HarvestedRecipeConverter.convert(items, level);
+
+                            if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
+                                    || !node.getChemicalIngredients().isEmpty())) {
+                                graph.addRecipe(node);
+                                addedCount.incrementAndGet();
+                            }
+                        } catch (Throwable t) {
+                            ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
+                        }
+                    }
+
+                    for (int i = 0; i < n; i++) {
+                        if (sampled[i]) continue;
+                        var item = candidateList.get(i);
+                        try {
+                            var stack = new ItemStack(item);
+                            if (stack.isEmpty()) continue;
+
+                            var inputObj = creator.create(stack);
+                            if (inputObj == null) continue;
+
+                            var recipes = recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
+
+                            for (var rh : recipes) {
+                                var holder = (RecipeHolder<?>) rh;
+                                if (safeKnown.contains(holder.id()) || !discovered.add(holder.id())) continue;
+
+                                try {
+                                    var items = harvester.harvest(holder.value(), level);
+                                    var node = HarvestedRecipeConverter.convert(items, level);
+
+                                    if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
+                                            || !node.getChemicalIngredients().isEmpty())) {
+                                        graph.addRecipe(node);
+                                        addedCount.incrementAndGet();
+                                    }
+
+                                } catch (Throwable t) {
+                                    ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
+                                }
+                            }
+                        } catch (Throwable ignored) {
+                        }
                     }
                 }
             }

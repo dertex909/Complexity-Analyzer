@@ -35,6 +35,21 @@ public final class DynamicRecipeHarvester {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
+    private static List<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> recipeType,
+                                                       RecipeManager recipeManager, Level level) {
+        try {
+            var stack = new ItemStack(item);
+            if (stack.isEmpty()) return List.of();
+
+            var inputObj = creator.create(stack);
+            if (inputObj == null) return List.of();
+
+            return recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
+        } catch (Throwable ignored) {
+            return List.of();
+        }
+    }
+
     public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
         ComplexityAnalyzer.LOGGER.info("[Harvest] Starting autonomous dynamic recipe probe...");
         var recipeManager = level.getRecipeManager();
@@ -104,25 +119,14 @@ public final class DynamicRecipeHarvester {
                 var discoveredInPreProbe = new java.util.ArrayList<RecipeHolder<?>>();
 
                 for (var item : preProbeSample) {
-                    try {
-                        var stack = new ItemStack(item);
-                        if (stack.isEmpty()) continue;
-
-                        var inputObj = creator.create(stack);
-                        if (inputObj == null) continue;
-
-                        var recipes = recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
-
-                        for (var rh : recipes) {
-                            var holder = (RecipeHolder<?>) rh;
-                            if (safeKnown.contains(holder.id())) {
-                                matchedStatic++;
-                            } else {
-                                matchedDynamic++;
-                                discoveredInPreProbe.add(holder);
-                            }
+                    for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
+                        var holder = (RecipeHolder<?>) rh;
+                        if (safeKnown.contains(holder.id())) {
+                            matchedStatic++;
+                        } else {
+                            matchedDynamic++;
+                            discoveredInPreProbe.add(holder);
                         }
-                    } catch (Throwable ignored) {
                     }
                 }
 
@@ -138,25 +142,14 @@ public final class DynamicRecipeHarvester {
                     }
 
                     for (var item : mediumProbeSample) {
-                        try {
-                            var stack = new ItemStack(item);
-                            if (stack.isEmpty()) continue;
-
-                            var inputObj = creator.create(stack);
-                            if (inputObj == null) continue;
-
-                            var recipes = recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
-
-                            for (var rh : recipes) {
-                                var holder = (RecipeHolder<?>) rh;
-                                if (safeKnown.contains(holder.id())) {
-                                    matchedStatic++;
-                                } else {
-                                    matchedDynamic++;
-                                    discoveredInPreProbe.add(holder);
-                                }
+                        for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
+                            var holder = (RecipeHolder<?>) rh;
+                            if (safeKnown.contains(holder.id())) {
+                                matchedStatic++;
+                            } else {
+                                matchedDynamic++;
+                                discoveredInPreProbe.add(holder);
                             }
-                        } catch (Throwable ignored) {
                         }
                     }
                 }
@@ -183,34 +176,24 @@ public final class DynamicRecipeHarvester {
                     for (int i = 0; i < n; i++) {
                         if (sampled[i]) continue;
                         var item = candidateList.get(i);
-                        try {
-                            var stack = new ItemStack(item);
-                            if (stack.isEmpty()) continue;
 
-                            var inputObj = creator.create(stack);
-                            if (inputObj == null) continue;
+                        for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
+                            var holder = (RecipeHolder<?>) rh;
+                            if (safeKnown.contains(holder.id()) || !discovered.add(holder.id())) continue;
 
-                            var recipes = recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
+                            try {
+                                var items = harvester.harvest(holder.value(), level);
+                                var node = HarvestedRecipeConverter.convert(items, level);
 
-                            for (var rh : recipes) {
-                                var holder = (RecipeHolder<?>) rh;
-                                if (safeKnown.contains(holder.id()) || !discovered.add(holder.id())) continue;
-
-                                try {
-                                    var items = harvester.harvest(holder.value(), level);
-                                    var node = HarvestedRecipeConverter.convert(items, level);
-
-                                    if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
-                                            || !node.getChemicalIngredients().isEmpty())) {
-                                        graph.addRecipe(node);
-                                        addedCount.incrementAndGet();
-                                    }
-
-                                } catch (Throwable t) {
-                                    ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
+                                if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
+                                        || !node.getChemicalIngredients().isEmpty())) {
+                                    graph.addRecipe(node);
+                                    addedCount.incrementAndGet();
                                 }
+
+                            } catch (Throwable t) {
+                                ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
                             }
-                        } catch (Throwable ignored) {
                         }
                     }
                 }

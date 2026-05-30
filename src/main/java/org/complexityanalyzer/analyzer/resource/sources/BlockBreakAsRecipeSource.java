@@ -87,6 +87,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         ConcurrentHashMap<Item, ConcurrentLinkedQueue<BaseResourceData>> localPaths = new ConcurrentHashMap<>();
         ObjectList<CompletableFuture<Void>> futures = new ObjectArrayList<>();
 
+        ObjectList<Block> blocksToProcess = new ObjectArrayList<>();
         for (var blockToMine : GameRegistryManager.getAllBlocks()) {
             if (blockToMine == Blocks.AIR || blockToMine == Blocks.CAVE_AIR || blockToMine == Blocks.VOID_AIR) {
                 continue;
@@ -97,89 +98,104 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 blocksSkipped.incrementAndGet();
                 continue;
             }
+            blocksToProcess.add(blockToMine);
+        }
 
+        int threadCount = Math.max(1, ThreadPoolManager.getInstance().getParallelism());
+        int numBatches = threadCount * 4;
+        int totalBlocks = blocksToProcess.size();
+        int batchSize = (int) Math.ceil((double) totalBlocks / numBatches);
+        if (batchSize <= 0) batchSize = 1;
+
+        for (int i = 0; i < totalBlocks; i += batchSize) {
+            final int start = i;
+            final int end = Math.min(totalBlocks, i + batchSize);
             futures.add(CompletableFuture.runAsync(() -> {
-                try {
-                    var defaultState = blockToMine.defaultBlockState();
-                    ObjectList<ItemStack> candidates = new ObjectArrayList<>();
-                    boolean requiresTool = defaultState.requiresCorrectToolForDrops();
+                for (int j = start; j < end; j++) {
+                    var blockToMine = blocksToProcess.get(j);
+                    float hardness = blockToMine.defaultDestroyTime();
+                    try {
+                        var defaultState = blockToMine.defaultBlockState();
+                        ObjectList<ItemStack> candidates = new ObjectArrayList<>();
+                        boolean requiresTool = defaultState.requiresCorrectToolForDrops();
 
-                    if (!requiresTool) candidates.add(ItemStack.EMPTY);
+                        if (!requiresTool) candidates.add(ItemStack.EMPTY);
 
-                    for (var tool : toolsToTest) {
-                        if (tool.isEmpty()) continue;
-                        boolean isCorrect = tool.isCorrectToolForDrops(defaultState);
-                        if (requiresTool && !isCorrect) continue;
-                        float speed = tool.getDestroySpeed(defaultState);
-                        if (!requiresTool && speed <= 1.0f) continue;
+                        for (var tool : toolsToTest) {
+                            if (tool.isEmpty()) continue;
+                            boolean isCorrect = tool.isCorrectToolForDrops(defaultState);
+                            if (requiresTool && !isCorrect) continue;
+                            float speed = tool.getDestroySpeed(defaultState);
+                            if (!requiresTool && speed <= 1.0f) continue;
 
-                        candidates.add(tool);
-                    }
-
-                    for (var toolStack : candidates) {
-                        try {
-                            var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
-                            if (lootTable == LootTable.EMPTY) continue;
-
-                            long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
-                            var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, stableSeed);
-                            if (averageDrop.isEmpty()) continue;
-
-                            float speed = toolStack.getDestroySpeed(defaultState);
-                            boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
-
-                            double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
-                            var rarityInfo = calculateRarityFactor(blockToMine);
-                            double rarityFactor = rarityInfo.factor();
-
-                            double enchantCost = 0;
-                            var enchants = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-                            if (!enchants.isEmpty()) enchantCost = enchants.size() * 20.0;
-
-                            double miningBaseFactor = rarityFactor + (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
-                            if (miningBaseFactor >= Double.POSITIVE_INFINITY) continue;
-
-                            for (var entry : averageDrop.reference2DoubleEntrySet()) {
-                                var droppedItem = entry.getKey();
-                                var itemsPerAction = entry.getDoubleValue();
-                                if (itemsPerAction <= 0) continue;
-
-                                var sourceItems = calculateSourceItems(toolStack, itemsPerAction);
-
-                                StringBuilder details = new StringBuilder();
-                                details.append("Mined from ").append(blockToMine.getName().getString());
-                                if (!rarityInfo.location().isEmpty()) details.append(" ").append(rarityInfo.location());
-                                if (toolStack.isEmpty()) {
-                                    details.append(" with Hand");
-                                } else {
-                                    details.append(" with ").append(toolStack.getHoverName().getString());
-                                    var enchs = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-                                    if (!enchs.isEmpty()) details.append(" (Enchanted)");
-                                }
-                                details.append(String.format(" (avg: %s)", formatAverage(itemsPerAction)));
-
-                                double actionCost = (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
-                                if (rarityFactor < Double.POSITIVE_INFINITY) {
-                                    details.append(String.format(" | Cost: Rarity ≈ %s, Action ≈ %s", formatAverage(rarityFactor), formatAverage(actionCost)));
-                                }
-
-                                boolean isSelfDrop = droppedItem == blockToMine.asItem();
-
-                                var data = new BaseResourceData.Builder(droppedItem, this)
-                                        .sourceType(getSourceType())
-                                        .sourceSpecifier(blockToMine.getName().getString())
-                                        .details(details.toString())
-                                        .baseFactor(miningBaseFactor)
-                                        .sourceItems(isSelfDrop ? new Reference2DoubleOpenHashMap<>() : sourceItems)
-                                        .build();
-
-                                localPaths.computeIfAbsent(droppedItem, k -> new ConcurrentLinkedQueue<>()).add(data);
-                                pathsFound.incrementAndGet();
-                            }
-                        } catch (Exception ignored) {
+                            candidates.add(tool);
                         }
+
+                        for (var toolStack : candidates) {
+                            try {
+                                var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
+                                if (lootTable == LootTable.EMPTY) continue;
+
+                                long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
+                                var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, stableSeed);
+                                if (averageDrop.isEmpty()) continue;
+
+                                float speed = toolStack.getDestroySpeed(defaultState);
+                                boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
+
+                                double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
+                                var rInfo = calculateRarityFactor(blockToMine);
+                                double rarityFactor = rInfo.factor();
+
+                                double enchantCost = 0;
+                                var enchants = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+                                if (!enchants.isEmpty()) enchantCost = enchants.size() * 20.0;
+
+                                double miningBaseFactor = rarityFactor + (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
+                                if (miningBaseFactor >= Double.POSITIVE_INFINITY) continue;
+
+                                for (var entry : averageDrop.reference2DoubleEntrySet()) {
+                                    var droppedItem = entry.getKey();
+                                    var itemsPerAction = entry.getDoubleValue();
+                                    if (itemsPerAction <= 0) continue;
+
+                                    var sourceItems = calculateSourceItems(toolStack, itemsPerAction);
+
+                                    var details = new StringBuilder();
+                                    details.append("Mined from ").append(blockToMine.getName().getString());
+                                    if (!rInfo.location().isEmpty()) details.append(" ").append(rInfo.location());
+                                    if (toolStack.isEmpty()) {
+                                        details.append(" with Hand");
+                                    } else {
+                                        details.append(" with ").append(toolStack.getHoverName().getString());
+                                        var enchs = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+                                        if (!enchs.isEmpty()) details.append(" (Enchanted)");
+                                    }
+                                    details.append(String.format(" (avg: %s)", formatAverage(itemsPerAction)));
+
+                                    double actionCost = (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
+                                    if (rarityFactor < Double.POSITIVE_INFINITY) {
+                                        details.append(String.format(" | Cost: Rarity ≈ %s, Action ≈ %s", formatAverage(rarityFactor), formatAverage(actionCost)));
+                                    }
+
+                                    boolean isSelfDrop = droppedItem == blockToMine.asItem();
+
+                                    var data = new BaseResourceData.Builder(droppedItem, this)
+                                            .sourceType(getSourceType())
+                                            .sourceSpecifier(blockToMine.getName().getString())
+                                            .details(details.toString())
+                                            .baseFactor(miningBaseFactor)
+                                            .sourceItems(isSelfDrop ? new Reference2DoubleOpenHashMap<>() : sourceItems)
+                                            .build();
+
+                                    localPaths.computeIfAbsent(droppedItem, k -> new ConcurrentLinkedQueue<>()).add(data);
+                                    pathsFound.incrementAndGet();
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    } catch (Exception ignored) {
                     }
-                } catch (Exception ignored) {
                 }
             }, computePool));
         }

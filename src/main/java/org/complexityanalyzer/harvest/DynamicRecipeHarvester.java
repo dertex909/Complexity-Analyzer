@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
@@ -17,7 +18,11 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicRecipeHarvester {
 
@@ -38,17 +43,49 @@ public final class DynamicRecipeHarvester {
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
-        ObjectSet<ResourceLocation> discovered = new ObjectOpenHashSet<>();
-        var harvester = new FastHarvester();
-        int addedCount = 0;
+        final Set<ResourceLocation> safeKnown = ConcurrentHashMap.newKeySet();
+        safeKnown.addAll(knownRecipeIds);
 
-        for (var entry : inputTypeMap.entrySet()) {
+        final Set<ResourceLocation> discovered = ConcurrentHashMap.newKeySet();
+        final var harvester = new FastHarvester();
+        final AtomicInteger addedCount = new AtomicInteger(0);
+
+        inputTypeMap.entrySet().parallelStream().forEach(entry -> {
             var recipeType = entry.getKey();
+
+            ObjectSet<Item> recipesIngredients = new ObjectOpenHashSet<>();
+            int recipeCount = 0;
+            for (var holder : recipeManager.getRecipes()) {
+                if (holder.value().getType() == recipeType) {
+                    recipeCount++;
+                    try {
+                        for (var ingredient : holder.value().getIngredients()) {
+                            if (ingredient != null) for (var stack : ingredient.getItems()) {
+                                if (stack != null && !stack.isEmpty()) recipesIngredients.add(stack.getItem());
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+
+            Collection<Item> candidates;
+            if (recipeCount <= 100) {
+                candidates = GameRegistryManager.getAllItems();
+            } else {
+                ObjectSet<Item> union = new ObjectOpenHashSet<>();
+                union.addAll(graph.getCorpus());
+                union.addAll(recipesIngredients);
+                candidates = union;
+            }
+
+            if (candidates.isEmpty()) return;
+
             for (var inputClass : entry.getValue()) {
                 var creator = resolveCreator(inputClass);
                 if (creator == null) continue;
 
-                for (var item : GameRegistryManager.getAllItems()) {
+                for (var item : candidates) {
                     try {
                         var stack = new ItemStack(item);
                         if (stack.isEmpty()) continue;
@@ -60,7 +97,7 @@ public final class DynamicRecipeHarvester {
 
                         for (var rh : recipes) {
                             var holder = (RecipeHolder<?>) rh;
-                            if (knownRecipeIds.contains(holder.id()) || !discovered.add(holder.id())) continue;
+                            if (safeKnown.contains(holder.id()) || !discovered.add(holder.id())) continue;
 
                             try {
                                 var items = harvester.harvest(holder.value(), level);
@@ -68,7 +105,7 @@ public final class DynamicRecipeHarvester {
                                 if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
                                         || !node.getChemicalIngredients().isEmpty())) {
                                     graph.addRecipe(node);
-                                    addedCount++;
+                                    addedCount.incrementAndGet();
                                 }
                             } catch (Throwable ignored) {
                             }
@@ -77,9 +114,9 @@ public final class DynamicRecipeHarvester {
                     }
                 }
             }
-        }
+        });
 
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes.", addedCount);
+        ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes.", addedCount.get());
     }
 
     private static Class<?> getRecipeInputClass(Class<?> recipeClass) {

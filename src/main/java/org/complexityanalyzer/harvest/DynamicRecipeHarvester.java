@@ -1,5 +1,7 @@
 package org.complexityanalyzer.harvest;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectCollection;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -18,9 +20,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
-import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -58,12 +58,12 @@ public final class DynamicRecipeHarvester {
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
-        final Set<ResourceLocation> safeKnown = ConcurrentHashMap.newKeySet();
+        final var safeKnown = ConcurrentHashMap.newKeySet();
         safeKnown.addAll(knownRecipeIds);
 
-        final Set<ResourceLocation> discovered = ConcurrentHashMap.newKeySet();
+        final var discovered = ConcurrentHashMap.newKeySet();
         final var harvester = new FastHarvester();
-        final AtomicInteger addedCount = new AtomicInteger(0);
+        final var addedCount = new AtomicInteger(0);
 
         inputTypeMap.entrySet().parallelStream().forEach(entry -> {
             var recipeType = entry.getKey();
@@ -84,7 +84,7 @@ public final class DynamicRecipeHarvester {
                 }
             }
 
-            Collection<Item> candidates;
+            ObjectCollection<Item> candidates;
             if (recipeCount <= 100) {
                 candidates = GameRegistryManager.getAllItems();
             } else {
@@ -100,11 +100,11 @@ public final class DynamicRecipeHarvester {
                 var creator = resolveCreator(inputClass);
                 if (creator == null) continue;
 
-                var candidateList = new java.util.ArrayList<>(candidates);
+                var candidateList = new ObjectArrayList<>(candidates);
                 int n = candidateList.size();
 
                 int preProbeSize = Math.min(n, 15);
-                var preProbeSample = new java.util.ArrayList<Item>();
+                var preProbeSample = new ObjectArrayList<Item>();
                 boolean[] sampled = new boolean[n];
                 for (int i = 0; i < preProbeSize; i++) {
                     int index = (int) ((long) i * n / preProbeSize);
@@ -116,7 +116,7 @@ public final class DynamicRecipeHarvester {
 
                 int matchedStatic = 0;
                 int matchedDynamic = 0;
-                var discoveredInPreProbe = new java.util.ArrayList<RecipeHolder<?>>();
+                var discoveredInPreProbe = new ObjectArrayList<RecipeHolder<?>>();
 
                 for (var item : preProbeSample) {
                     for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
@@ -132,7 +132,7 @@ public final class DynamicRecipeHarvester {
 
                 if (matchedStatic == 0 && matchedDynamic == 0 && n > preProbeSize) {
                     int mediumProbeSize = Math.min(n, 100);
-                    var mediumProbeSample = new java.util.ArrayList<Item>();
+                    var mediumProbeSample = new ObjectArrayList<Item>();
                     for (int i = 0; i < mediumProbeSize; i++) {
                         int index = (int) ((long) i * n / mediumProbeSize);
                         if (!sampled[index]) {

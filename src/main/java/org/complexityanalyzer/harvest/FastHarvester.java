@@ -100,9 +100,13 @@ public final class FastHarvester {
                 for (var acc : accessors.ingredientAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw instanceof Ingredient ing && !ing.isEmpty())
-                            inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                        else if (raw != null) collectIngredientsDeep(raw, inputIngredients, 0, visited);
+                        if (raw instanceof Ingredient ing && !ing.isEmpty()) {
+                            if (isNotDuplicateIngredient(inputIngredients, ing)) {
+                                inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                            }
+                        } else if (raw != null) {
+                            collectIngredientsDeep(raw, inputIngredients, 0, visited);
+                        }
                     } catch (Throwable ignored) {
                     }
                 }
@@ -194,15 +198,17 @@ public final class FastHarvester {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case Optional<?> opt -> {
-                opt.ifPresent(o -> collectItemsDeep(o, acc, depth + 1, visited));
+                if (visited.add(opt)) opt.ifPresent(o -> collectItemsDeep(o, acc, depth + 1, visited));
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
-                ItemStack[] stacks = si.ingredient().getItems();
-                if (stacks.length > 0) {
-                    ItemStack stack = stacks[0].copy();
-                    stack.setCount(si.count());
-                    acc.add(stack);
+                if (visited.add(si)) {
+                    ItemStack[] stacks = si.ingredient().getItems();
+                    if (stacks.length > 0) {
+                        var stack = stacks[0].copy();
+                        stack.setCount(si.count());
+                        acc.add(stack);
+                    }
                 }
                 return;
             }
@@ -220,22 +226,22 @@ public final class FastHarvester {
                 return;
             }
             case Holder<?> holder -> {
-                collectItemsDeep(holder.value(), acc, depth + 1, visited);
+                if (visited.add(holder)) collectItemsDeep(holder.value(), acc, depth + 1, visited);
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
-                for (var item : coll) collectItemsDeep(item, acc, depth + 1, visited);
+                if (visited.add(coll)) for (var item : coll) collectItemsDeep(item, acc, depth + 1, visited);
                 return;
             }
             case Map<?, ?> map when isTooSmall(map) -> {
-                for (var e : map.entrySet()) {
+                if (visited.add(map)) for (var e : map.entrySet()) {
                     collectItemsDeep(e.getKey(), acc, depth + 1, visited);
                     collectItemsDeep(e.getValue(), acc, depth + 1, visited);
                 }
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
-                for (var item : arr) collectItemsDeep(item, acc, depth + 1, visited);
+                if (visited.add(arr)) for (var item : arr) collectItemsDeep(item, acc, depth + 1, visited);
                 return;
             }
             default -> {
@@ -288,31 +294,32 @@ public final class FastHarvester {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case Optional<?> opt -> {
-                opt.ifPresent(o -> collectIngredientsDeep(o, acc, depth + 1, visited));
+                if (visited.add(opt)) opt.ifPresent(o -> collectIngredientsDeep(o, acc, depth + 1, visited));
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
                 var ing = si.ingredient();
-                if (!ing.isEmpty()) acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
+                if (!ing.isEmpty()) if (isNotDuplicateIngredient(acc, ing))
+                    acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {
-                acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                if (isNotDuplicateIngredient(acc, ing)) acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
-                for (var item : coll) collectIngredientsDeep(item, acc, depth + 1, visited);
+                if (visited.add(coll)) for (var item : coll) collectIngredientsDeep(item, acc, depth + 1, visited);
                 return;
             }
             case Map<?, ?> map when isTooSmall(map) -> {
-                for (var e : map.entrySet()) {
+                if (visited.add(map)) for (var e : map.entrySet()) {
                     collectIngredientsDeep(e.getKey(), acc, depth + 1, visited);
                     collectIngredientsDeep(e.getValue(), acc, depth + 1, visited);
                 }
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
-                for (var item : arr) collectIngredientsDeep(item, acc, depth + 1, visited);
+                if (visited.add(arr)) for (var item : arr) collectIngredientsDeep(item, acc, depth + 1, visited);
                 return;
             }
             default -> {
@@ -339,12 +346,10 @@ public final class FastHarvester {
                         if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")) continue;
 
                         var val = h.invoke(obj);
-                        if (val != null && val != obj) {
-                            if (val instanceof Stream<?> stream) {
-                                stream.limit(100).forEach(element -> collectIngredientsDeep(element, acc, depth + 1, visited));
-                            } else {
-                                collectIngredientsDeep(val, acc, depth + 1, visited);
-                            }
+                        if (val != null && val != obj) if (val instanceof Stream<?> stream) {
+                            stream.limit(100).forEach(element -> collectIngredientsDeep(element, acc, depth + 1, visited));
+                        } else {
+                            collectIngredientsDeep(val, acc, depth + 1, visited);
                         }
                     }
                 } catch (Throwable ignored) {
@@ -364,7 +369,7 @@ public final class FastHarvester {
         if (obj == null || depth > 8) return;
         switch (obj) {
             case Optional<?> opt -> {
-                opt.ifPresent(o -> collectFluidsDeep(o, acc, depth + 1, visited));
+                if (visited.add(opt)) opt.ifPresent(o -> collectFluidsDeep(o, acc, depth + 1, visited));
                 return;
             }
             case SizedFluidIngredient sfi -> {
@@ -376,18 +381,18 @@ public final class FastHarvester {
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
-                for (var item : coll) collectFluidsDeep(item, acc, depth + 1, visited);
+                if (visited.add(coll)) for (var item : coll) collectFluidsDeep(item, acc, depth + 1, visited);
                 return;
             }
             case Map<?, ?> map when isTooSmall(map) -> {
-                for (var e : map.entrySet()) {
+                if (visited.add(map)) for (var e : map.entrySet()) {
                     collectFluidsDeep(e.getKey(), acc, depth + 1, visited);
                     collectFluidsDeep(e.getValue(), acc, depth + 1, visited);
                 }
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
-                for (var item : arr) collectFluidsDeep(item, acc, depth + 1, visited);
+                if (visited.add(arr)) for (var item : arr) collectFluidsDeep(item, acc, depth + 1, visited);
                 return;
             }
             default -> {
@@ -449,7 +454,7 @@ public final class FastHarvester {
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
                     var toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty()) if (visited.add(toolIng))
+                    if (!toolIng.isEmpty()) if (isNotDuplicateIngredient(inputIngredients, toolIng))
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
                 }
 
@@ -461,7 +466,8 @@ public final class FastHarvester {
 
         switch (obj) {
             case Optional<?> opt -> {
-                opt.ifPresent(o -> collectAllDeep(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
+                if (visited.add(opt)) opt.ifPresent(o ->
+                        collectAllDeep(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
                 return;
             }
             case ItemStack stack when !stack.isEmpty() -> {
@@ -477,7 +483,7 @@ public final class FastHarvester {
                 }
                 return;
             }
-            case Block block -> {//в мире ставять вроде?
+            case Block block -> {
                 var item = block.asItem();
                 if (item != AIR) {
                     var stack = new ItemStack(item);
@@ -487,12 +493,13 @@ public final class FastHarvester {
                 return;
             }
             case Holder<?> holder -> {
-                collectAllDeep(holder.value(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
+                if (visited.add(holder)) collectAllDeep(holder.value(), inputItems, outputItems, inputIngredients,
+                        inputFluids, depth + 1, visited, apiResult, level);
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
                 var ing = si.ingredient();
-                if (!ing.isEmpty()) if (visited.add(ing))
+                if (!ing.isEmpty()) if (isNotDuplicateIngredient(inputIngredients, ing))
                     inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
             }
@@ -501,34 +508,8 @@ public final class FastHarvester {
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {
-                if (visited.add(ing)) {
-                    boolean alreadyExists = false;
-                    ItemStack[] ingItems = ing.getItems();
-                    for (var existingHi : inputIngredients) {
-                        var existing = existingHi.ingredient();
-                        ItemStack[] existingItems = existing.getItems();
-                        if (ingItems.length == existingItems.length) {
-                            boolean allMatch = true;
-                            for (var stackA : ingItems) {
-                                boolean found = false;
-                                for (var stackB : existingItems) {
-                                    if (stackA.getItem() == stackB.getItem()) {
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                                if (!found) {
-                                    allMatch = false;
-                                    break;
-                                }
-                            }
-                            if (allMatch) {
-                                alreadyExists = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!alreadyExists) inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                if (isNotDuplicateIngredient(inputIngredients, ing)) {
+                    inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 }
                 return;
             }
@@ -537,12 +518,12 @@ public final class FastHarvester {
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
-                for (var item : coll)
+                if (visited.add(coll)) for (var item : coll)
                     collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 return;
             }
             case Map<?, ?> map when isTooSmall(map) -> {
-                for (var e : map.entrySet()) {
+                if (visited.add(map)) for (var e : map.entrySet()) {
                     var key = e.getKey();
                     if (key != null && !isTerminal(key)) collectAllDeep(key, inputItems, outputItems, inputIngredients,
                             inputFluids, depth + 1, visited, apiResult, level);
@@ -551,7 +532,7 @@ public final class FastHarvester {
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
-                for (var item : arr)
+                if (visited.add(arr)) for (var item : arr)
                     collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 return;
             }
@@ -629,6 +610,33 @@ public final class FastHarvester {
         if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.")
                 || name.startsWith("com.sun.") || name.startsWith("jdk.")) return true;
         return TerminalTypeRegistry.isTerminalType(c);
+    }
+
+    private static boolean isNotDuplicateIngredient(Collection<HarvestedItems.HarvestedIngredient> list, Ingredient ing) {
+        if (ing == null || ing.isEmpty()) return false;
+        ItemStack[] ingItems = ing.getItems();
+        for (var existingHi : list) {
+            var existing = existingHi.ingredient();
+            ItemStack[] existingItems = existing.getItems();
+            if (ingItems.length == existingItems.length) {
+                boolean allMatch = true;
+                for (var stackA : ingItems) {
+                    boolean found = false;
+                    for (var stackB : existingItems) {
+                        if (stackA.getItem() == stackB.getItem()) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        allMatch = false;
+                        break;
+                    }
+                }
+                if (allMatch) return false;
+            }
+        }
+        return true;
     }
 
     private static void clearThreadLocals() {

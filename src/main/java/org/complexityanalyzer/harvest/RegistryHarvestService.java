@@ -80,7 +80,7 @@ public final class RegistryHarvestService {
                 if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty() || !node.getChemicalIngredients().isEmpty())) {
                     nodes.add(node);
                     harvested++;
-                    debugTrace.traceHarvested(holder.id().toString(), recipe.getClass().getName(), items);
+                    debugTrace.traceHarvested(holder.id().toString(), recipe, level, items);
                 } else {
                     rejected++;
                     String reason = buildRejectReason(items);

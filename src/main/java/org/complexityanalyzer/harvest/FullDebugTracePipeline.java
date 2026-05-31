@@ -31,8 +31,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class FullDebugTracePipeline {
-    private static final boolean debugClaimed = true;
-
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 
@@ -50,49 +48,13 @@ public final class FullDebugTracePipeline {
         this.buffer = new StringBuilder(256 * 1024);
     }
 
-    public void traceHarvested(String recipeId, String className, HarvestedItems items) {
-        synchronized (this) {
-            totalRecipes++;
-            harvestedCount++;
-            buffer.append("HARVESTED ").append(recipeId)
-                    .append("  class=").append(className)
-                    .append("  raw[items=").append(items.inputItems().size())
-                    .append(" out=").append(items.outputItems().size())
-                    .append(" ingr=").append(items.inputIngredients().size())
-                    .append(" fluids=").append(items.inputFluids().size())
-                    .append(" outFluids=").append(items.outputFluids().size())
-                    .append("]\n");
-
-            if (debugClaimed) {
-                if (!items.inputItems().isEmpty()) {
-                    buffer.append("  Input items: ");
-                    for (var stack : items.inputItems()) buffer.append(formatItemStack(stack)).append(", ");
-                    buffer.setLength(buffer.length() - 2);
-                    buffer.append('\n');
-                }
-
-                if (!items.outputItems().isEmpty()) {
-                    buffer.append("  Output items: ");
-                    for (var stack : items.outputItems()) buffer.append(formatItemStack(stack)).append(", ");
-                    buffer.setLength(buffer.length() - 2);
-                    buffer.append('\n');
-                }
-
-                if (!items.inputFluids().isEmpty()) {
-                    buffer.append("  Input fluids: ");
-                    for (var fs : items.inputFluids()) buffer.append(formatValue(fs)).append(", ");
-                    buffer.setLength(buffer.length() - 2);
-                    buffer.append('\n');
-                }
-
-                if (!items.outputFluids().isEmpty()) {
-                    buffer.append("  Output fluids: ");
-                    for (var fs : items.outputFluids()) buffer.append(formatValue(fs)).append(", ");
-                    buffer.setLength(buffer.length() - 2);
-                    buffer.append('\n');
-                }
-            }
-        }
+    public void traceHarvested(String recipeId, Object recipe, Level level, HarvestedItems items) {
+        var tb = new TraceBuilder(this, recipe, recipeId);
+        tb.classInfo();
+        tb.fields();
+        tb.methods();
+        tb.accessors(level);
+        tb.harvested(items);
     }
 
     public void traceRejected(String recipeId, Object recipe, Level level, String reason) {
@@ -277,6 +239,54 @@ public final class FullDebugTracePipeline {
             }
         }
 
+        public void harvested(HarvestedItems items) {
+            sb.append(MINOR_SEP).append('\n');
+            sb.append("STATUS: HARVESTED\n");
+            sb.append("Harvested detail:\n");
+            if (!items.inputItems().isEmpty()) {
+                sb.append("  Input items: ");
+                for (var stack : items.inputItems()) sb.append(formatItemStack(stack)).append(", ");
+                sb.setLength(sb.length() - 2);
+                sb.append('\n');
+            }
+            if (!items.outputItems().isEmpty()) {
+                sb.append("  Output items: ");
+                for (var stack : items.outputItems()) sb.append(formatItemStack(stack)).append(", ");
+                sb.setLength(sb.length() - 2);
+                sb.append('\n');
+            }
+            if (!items.inputIngredients().isEmpty()) {
+                sb.append("  Input ingredients (size=").append(items.inputIngredients().size()).append("):\n");
+                for (var hi : items.inputIngredients()) {
+                    sb.append("    - Ingredient[x").append(hi.count()).append(", items=");
+                    var subItems = hi.ingredient().getItems();
+                    for (var stack : subItems) {
+                        sb.append(formatItemStack(stack)).append("; ");
+                    }
+                    if (subItems.length > 0) sb.setLength(sb.length() - 2);
+                    sb.append("]\n");
+                }
+            }
+            if (!items.inputFluids().isEmpty()) {
+                sb.append("  Input fluids: ");
+                for (var fs : items.inputFluids()) sb.append(formatValue(fs)).append(", ");
+                sb.setLength(sb.length() - 2);
+                sb.append('\n');
+            }
+            if (!items.outputFluids().isEmpty()) {
+                sb.append("  Output fluids: ");
+                for (var fs : items.outputFluids()) sb.append(formatValue(fs)).append(", ");
+                sb.setLength(sb.length() - 2);
+                sb.append('\n');
+            }
+            sb.append(SEP).append('\n');
+
+            synchronized (pipeline) {
+                pipeline.harvestedCount++;
+            }
+            finalizeTrace(true);
+        }
+
         public void rejected(String reason) {
             sb.append(MINOR_SEP).append('\n');
             sb.append("STATUS: REJECTED\n");
@@ -286,7 +296,7 @@ public final class FullDebugTracePipeline {
             synchronized (pipeline) {
                 pipeline.rejectReasons.merge(reason, 1, Integer::sum);
             }
-            finalizeTrace();
+            finalizeTrace(false);
         }
 
         public void failed(Throwable t) {
@@ -295,16 +305,16 @@ public final class FullDebugTracePipeline {
             sb.append("ERROR:  ").append(t.getClass().getSimpleName())
                     .append(": ").append(t.getMessage()).append('\n');
             sb.append(SEP).append('\n');
-            finalizeTrace();
+            finalizeTrace(false);
         }
 
-        private void finalizeTrace() {
+        private void finalizeTrace(boolean harvested) {
             if (finalized) return;
             finalized = true;
 
             synchronized (pipeline) {
                 pipeline.totalRecipes++;
-                pipeline.rejectedCount++;
+                if (!harvested) pipeline.rejectedCount++;
 
                 if (recipe instanceof Recipe<?> r) {
                     pipeline.recipeTypeStats.merge(r.getType().toString(), 1, Integer::sum);

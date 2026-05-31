@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {escapeHtml, fmt} from "../../core/utils.js";
+import {escapeHtml, fmt, formatComplexity} from "../../core/utils.js";
 import {state, setState} from "../../core/state.js";
 
 function saveScrollPositions(elem) {
@@ -386,9 +386,16 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
         const mRecipes = machineToRecipes.get(mi);
         const isRaw = !mItem;
 
-        const nameHtml = mItem
-            ? `<strong style="color:var(--accent); cursor:pointer;" class="machine-link" data-index="${mi}">${escapeHtml(mItem.name)}</strong>`
-            : `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;
+        let nameHtml = "";
+        if (mItem) {
+            const isMUncalc = (mItem.flags & 0x10) || mItem.categoryName === "Uncalculable";
+            const mComp = mItem.complexity;
+            const mTooltip = `Complexity: ${isMUncalc || mComp === -1 || !isFinite(mComp) ? 'Uncalculable' : formatComplexity(mComp)}`;
+            const mStyle = isMUncalc ? "color: #fca5a5 !important;" : "color:var(--accent);";
+            nameHtml = `<strong style="${mStyle} cursor:pointer;" class="machine-link" data-index="${mi}" title="${mTooltip}">${escapeHtml(mItem.name)}</strong>`;
+        } else {
+            nameHtml = `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;
+        }
 
         const idHtml = mItem
             ? `<span class="mono-code" style="font-size:11px;">${escapeHtml(mItem.id)}</span>` : ``;
@@ -593,7 +600,11 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
 
             if (slotVariants.length === 1) {
                 const v = slotVariants[0];
-                inputsHtml.push(`<span class="ingredient item-link" data-index="${v.index}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.count}</span>`);
+                const comp = v.item.complexity;
+                const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
+                const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+                const glowClass = isUncalc ? "uncalculable-highlight" : "";
+                inputsHtml.push(`<span class="ingredient item-link ${glowClass}" data-index="${v.index}" title="${tooltip}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.count}</span>`);
             } else {
                 const ingKey = `${recipeKey}_ing_${slotIdx}`;
                 let activeVariantIdx = (body && body._customState && body._customState.selectedIngredients.has(ingKey))
@@ -603,29 +614,43 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
                 const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
+                const headComp = head.item.complexity;
+                const isHeadUncalc = (head.item.flags & 0x10) || head.item.categoryName === "Uncalculable";
+                const headTooltip = `Complexity: ${isHeadUncalc || headComp === -1 || !isFinite(headComp) ? 'Uncalculable' : formatComplexity(headComp)}`;
+
+                const themeColor = isHeadUncalc ? "#ef4444" : "#f59e0b";
+                const hoverColor = isHeadUncalc ? "#fca5a5" : "#fbbf24";
+                const bgColor = isHeadUncalc ? "rgba(239, 68, 68, 0.08)" : "rgba(245, 158, 11, 0.05)";
+                const borderRightColor = isHeadUncalc ? "rgba(239, 68, 68, 0.25)" : "rgba(245, 158, 11, 0.2)";
+                const hoverBg = isHeadUncalc ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.1)";
+                const glowShadowStyle = isHeadUncalc ? "box-shadow: 0 0 5px rgba(239, 68, 68, 0.45);" : "";
 
                 const variantItemsHtml = slotVariants.map(v => {
                     const isHead = v.index === head.index;
+                    const comp = v.item.complexity;
+                    const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
+                    const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+                    const uncalcStyle = isUncalc ? 'color: #f87171; background: rgba(239, 68, 68, 0.08);' : '';
                     return `
-                        <div class="variant-item variant-item-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}">
-                            <span class="name" style="${isHead ? 'font-weight: 600; color: #fbbf24;' : ''}">${escapeHtml(v.item.name || "#" + v.index)}</span>
-                            <span class="count">× ${slot.count}</span>
+                        <div class="variant-item variant-item-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" title="${tooltip}" style="${uncalcStyle}">
+                            <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #fbbf24;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(v.item.name || "#" + v.index)}</span>
+                            <span class="count" style="color: ${isUncalc ? '#f87171' : ''};">× ${slot.count}</span>
                         </div>
                     `;
                 }).join("");
 
                 inputsHtml.push(`
                     <div class="variant-group">
-                        <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); font-family: var(--mono), monospace; font-size: 11px;">
-                            <span class="item-link" data-index="${head.index}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #f59e0b; border-right: 1px solid rgba(245, 158, 11, 0.2);" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
-                                ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.count}
+                        <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid ${themeColor}; background: ${bgColor}; font-family: var(--mono), monospace; font-size: 11px; ${glowShadowStyle}">
+                            <span class="item-link" data-index="${head.index}" title="${headTooltip}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: ${themeColor}; border-right: 1px solid ${borderRightColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
+                                    ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.count}
                             </span>
-                            <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #f59e0b;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+                            <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: ${themeColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
                                 <span class="arrow">▼</span>
                             </span>
                         </div>
-                        <div class="variant-dropdown" style="border-color: #f59e0b; text-align: left;">
-                            <div class="variant-dropdown-header">
+                        <div class="variant-dropdown" style="border-color: ${themeColor}; text-align: left;">
+                            <div class="variant-dropdown-header" style="${isHeadUncalc ? 'color: #f87171;' : ''}">
                                 <span>ALTERNATIVE VARIANTS</span>
                                 <span>(Lowest cost first)</span>
                             </div>
@@ -648,7 +673,15 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
 
             if (slotVariants.length === 1) {
                 const v = slotVariants[0];
-                inputsHtml.push(`<span class="ingredient fluid-link" data-index="${v.index}" style="color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08);">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.amount} mB</span>`);
+                const comp = v.item.complexity;
+                const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
+                const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+
+                if (isUncalc) {
+                    inputsHtml.push(`<span class="ingredient fluid-link uncalculable-highlight" data-index="${v.index}" title="${tooltip}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.amount} mB</span>`);
+                } else {
+                    inputsHtml.push(`<span class="ingredient fluid-link" data-index="${v.index}" title="${tooltip}" style="color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08);">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.amount} mB</span>`);
+                }
             } else {
                 const fluidKey = `${recipeKey}_fluid_${slotIdx}`;
                 let activeVariantIdx = (body && body._customState && body._customState.selectedIngredients.has(fluidKey))
@@ -658,29 +691,43 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
                 const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
+                const headComp = head.item.complexity;
+                const isHeadUncalc = (head.item.flags & 0x10) || head.item.categoryName === "Uncalculable";
+                const headTooltip = `Complexity: ${isHeadUncalc || headComp === -1 || !isFinite(headComp) ? 'Uncalculable' : formatComplexity(headComp)}`;
+
+                const themeColor = isHeadUncalc ? "#ef4444" : "#5ec7ff";
+                const hoverColor = isHeadUncalc ? "#fca5a5" : "#8dd5ff";
+                const bgColor = isHeadUncalc ? "rgba(239, 68, 68, 0.08)" : "rgba(94, 199, 255, 0.05)";
+                const borderRightColor = isHeadUncalc ? "rgba(239, 68, 68, 0.25)" : "rgba(94, 199, 255, 0.2)";
+                const hoverBg = isHeadUncalc ? "rgba(239, 68, 68, 0.15)" : "rgba(94, 199, 255, 0.1)";
+                const glowShadowStyle = isHeadUncalc ? "box-shadow: 0 0 5px rgba(239, 68, 68, 0.45);" : "";
 
                 const variantItemsHtml = slotVariants.map(v => {
                     const isHead = v.index === head.index;
+                    const comp = v.item.complexity;
+                    const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
+                    const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+                    const uncalcStyle = isUncalc ? 'color: #f87171; background: rgba(239, 68, 68, 0.08);' : '';
                     return `
-                        <div class="variant-item variant-fluid-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" style="border-left: 2px solid rgba(94, 199, 255, 0.4);">
-                            <span class="name" style="${isHead ? 'font-weight: 600; color: #5ec7ff;' : ''}">${escapeHtml(v.item.name || "#" + v.index)}</span>
-                            <span class="count" style="color: #5ec7ff;">× ${slot.amount} mB</span>
+                        <div class="variant-item variant-fluid-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" title="${tooltip}" style="border-left: 2px solid ${isUncalc ? '#ef4444' : 'rgba(94, 199, 255, 0.4)'}; ${uncalcStyle}">
+                            <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #5ec7ff;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(v.item.name || "#" + v.index)}</span>
+                            <span class="count" style="color: ${isUncalc ? '#f87171' : '#5ec7ff'};">× ${slot.amount} mB</span>
                         </div>
                     `;
                 }).join("");
 
                 inputsHtml.push(`
                     <div class="variant-group">
-                        <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #5ec7ff; background: rgba(94, 199, 255, 0.05); font-family: var(--mono), monospace; font-size: 11px;">
-                            <span class="fluid-link" data-index="${head.index}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #5ec7ff; border-right: 1px solid rgba(94, 199, 255, 0.2);" onmouseover="this.style.color='#8dd5ff'; this.style.background='rgba(94, 199, 255, 0.1)';" onmouseout="this.style.color='#5ec7ff'; this.style.background='transparent';">
+                        <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid ${themeColor}; background: ${bgColor}; font-family: var(--mono), monospace; font-size: 11px; ${glowShadowStyle}">
+                            <span class="fluid-link" data-index="${head.index}" title="${headTooltip}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: ${themeColor}; border-right: 1px solid ${borderRightColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
                                 ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.amount} mB
                             </span>
-                            <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #5ec7ff;" onmouseover="this.style.color='#8dd5ff'; this.style.background='rgba(94, 199, 255, 0.1)';" onmouseout="this.style.color='#5ec7ff'; this.style.background='transparent';">
-                                <span class="arrow" style="color: #5ec7ff;">▼</span>
+                            <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: ${themeColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
+                                <span class="arrow" style="color: ${themeColor};">▼</span>
                             </span>
                         </div>
-                        <div class="variant-dropdown" style="border-color: rgba(94, 199, 255, 0.6); text-align: left;">
-                            <div class="variant-dropdown-header" style="color: #5ec7ff; border-bottom: 1px solid rgba(94, 199, 255, 0.2); background: rgba(94, 199, 255, 0.1);">
+                        <div class="variant-dropdown" style="border-color: ${isHeadUncalc ? '#ef4444' : 'rgba(94, 199, 255, 0.6)'}; text-align: left;">
+                            <div class="variant-dropdown-header" style="color: ${themeColor}; border-bottom: 1px solid ${borderRightColor}; background: ${bgColor};">
                                 <span>ALTERNATIVE FLUIDS</span>
                                 <span>(Lowest cost first)</span>
                             </div>
@@ -698,24 +745,55 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         const outItem = db.items.get(out.itemIndex);
         if (outItem) {
             const isCurrent = out.itemIndex === state.selectedItem && state.tab.startsWith("item");
-            const style = isCurrent ? "font-weight: 600; border-color: var(--accent); color: var(--accent);" : "";
-            outputsHtml.push(`<span class="ingredient item-link" data-index="${out.itemIndex}" style="${style}">${escapeHtml(outItem.name)} × ${out.count}</span>`);
+            const isUncalc = (outItem.flags & 0x10) || outItem.categoryName === "Uncalculable";
+            const comp = outItem.complexity;
+            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+
+            let style = "";
+            let classes = "ingredient item-link";
+            if (isUncalc) {
+                classes += " uncalculable-highlight";
+            } else if (isCurrent) {
+                style = "font-weight: 600; border-color: var(--accent); color: var(--accent);";
+            }
+            outputsHtml.push(`<span class="${classes}" data-index="${out.itemIndex}" title="${tooltip}" style="${style}">${escapeHtml(outItem.name)} × ${out.count}</span>`);
         }
     }
     if (r.fluidOutputs && r.fluidOutputs.length > 0) for (const out of r.fluidOutputs) {
         const outFluid = db.fluids.get(out.fluidIndex);
         if (outFluid) {
             const isCurrent = out.fluidIndex === state.selectedItem && state.tab.startsWith("fluid");
-            const boldStyle = isCurrent ? "font-weight: 600; border-width: 2px;" : "";
-            outputsHtml.push(`<span class="ingredient fluid-link" data-index="${out.fluidIndex}" style="color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08); ${boldStyle}">${escapeHtml(outFluid.name)} × ${out.amount} mB</span>`);
+            const isUncalc = (outFluid.flags & 0x10) || outFluid.categoryName === "Uncalculable";
+            const comp = outFluid.complexity;
+            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+
+            let classes = "ingredient fluid-link";
+            let style = "";
+            if (isUncalc) {
+                classes += " uncalculable-highlight";
+            } else {
+                const boldStyle = isCurrent ? "font-weight: 600; border-width: 2px;" : "";
+                style = `color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08); ${boldStyle}`;
+            }
+            outputsHtml.push(`<span class="${classes}" data-index="${out.fluidIndex}" title="${tooltip}" style="${style}">${escapeHtml(outFluid.name)} × ${out.amount} mB</span>`);
         }
     }
     if (outputsHtml.length === 0) if (r.outputItemIndex >= 0) {
         const outItem = db.items.get(r.outputItemIndex);
         if (outItem) {
             const isCurrent = r.outputItemIndex === state.selectedItem && state.tab.startsWith("item");
-            const style = isCurrent ? "font-weight: 600; border-color: var(--accent); color: var(--accent);" : "";
-            outputsHtml.push(`<span class="ingredient item-link" data-index="${r.outputItemIndex}" style="${style}">${escapeHtml(outItem.name)} × ${r.resultCount}</span>`);
+            const isUncalc = (outItem.flags & 0x10) || outItem.categoryName === "Uncalculable";
+            const comp = outItem.complexity;
+            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+
+            let style = "";
+            let classes = "ingredient item-link";
+            if (isUncalc) {
+                classes += " uncalculable-highlight";
+            } else if (isCurrent) {
+                style = "font-weight: 600; border-color: var(--accent); color: var(--accent);";
+            }
+            outputsHtml.push(`<span class="${classes}" data-index="${r.outputItemIndex}" title="${tooltip}" style="${style}">${escapeHtml(outItem.name)} × ${r.resultCount}</span>`);
         }
     }
 
@@ -746,25 +824,40 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
 
         const machineItemsHtml = sortedMachines.map(mOpt => {
             const isHead = mOpt.index === activeMachineIdx;
+            const isUncalc = (mOpt.item.flags & 0x10) || mOpt.item.categoryName === "Uncalculable";
+            const comp = mOpt.item.complexity;
+            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
             return `
-                <div class="variant-item variant-machine-substitute" data-recipe-key="${recipeKey}" data-machine-key="${machineKey}" data-machine-index="${mOpt.index}">
-                    <span class="name" style="${isHead ? 'font-weight: 600; color: #fbbf24;' : ''}">${escapeHtml(mOpt.item.name)}</span>
+                <div class="variant-item variant-machine-substitute" data-recipe-key="${recipeKey}" data-machine-key="${machineKey}" data-machine-index="${mOpt.index}" title="${tooltip}">
+                    <span class="name" style="${isHead ? (isUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #fbbf24;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(mOpt.item.name)}</span>
                 </div>
             `;
         }).join("");
 
+        const activeMItem = db.items.get(activeMachineIdx);
+        const isActiveMUncalc = activeMItem ? ((activeMItem.flags & 0x10) || activeMItem.categoryName === "Uncalculable") : false;
+        const activeMComp = activeMItem ? activeMItem.complexity : -1;
+        const activeMTooltip = activeMItem ? `Complexity: ${isActiveMUncalc || activeMComp === -1 || !isFinite(activeMComp) ? 'Uncalculable' : formatComplexity(activeMComp)}` : "";
+
+        const themeColor = isActiveMUncalc ? "#ef4444" : "#f59e0b";
+        const hoverColor = isActiveMUncalc ? "#fca5a5" : "#fbbf24";
+        const bgColor = isActiveMUncalc ? "rgba(239, 68, 68, 0.08)" : "rgba(245, 158, 11, 0.05)";
+        const borderRightColor = isActiveMUncalc ? "rgba(239, 68, 68, 0.25)" : "rgba(245, 158, 11, 0.2)";
+        const hoverBg = isActiveMUncalc ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.1)";
+        const glowShadowStyle = isActiveMUncalc ? "box-shadow: 0 0 5px rgba(239, 68, 68, 0.45);" : "";
+
         machineHtml = `
             <div class="variant-group" style="margin-bottom: 4px; white-space: nowrap;">
-                <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.05); font-family: var(--mono), monospace; font-size: 11px; white-space: nowrap;">
-                    <strong class="machine-link" data-index="${activeMachineIdx}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: #f59e0b; border-right: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
+                <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid ${themeColor}; background: ${bgColor}; font-family: var(--mono), monospace; font-size: 11px; white-space: nowrap; ${glowShadowStyle}">
+                    <strong class="machine-link" data-index="${activeMachineIdx}" title="${activeMTooltip}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: ${themeColor}; border-right: 1px solid ${borderRightColor}; font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
                         ${escapeHtml(machineName)}
                     </strong>
-                    <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: #f59e0b;" onmouseover="this.style.color='#fbbf24'; this.style.background='rgba(245, 158, 11, 0.1)';" onmouseout="this.style.color='#f59e0b'; this.style.background='transparent';">
-                        <span class="arrow">▼</span>
+                    <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: ${themeColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
+                        <span class="arrow" style="color: ${themeColor};">▼</span>
                     </span>
                 </div>
-                <div class="variant-dropdown" style="text-align: left; border-color: #f59e0b;">
-                    <div class="variant-dropdown-header">
+                <div class="variant-dropdown" style="text-align: left; border-color: ${themeColor};">
+                    <div class="variant-dropdown-header" style="${isActiveMUncalc ? 'color: #f87171;' : ''}">
                         <span>COMPATIBLE MACHINES</span>
                         <span>(Lowest cost first)</span>
                     </div>
@@ -773,8 +866,14 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
             </div>
         `;
     } else {
+        let mIsUncalc = false;
+        let mTooltip = "";
+        if (machineItem) {
+            mIsUncalc = (machineItem.flags & 0x10) || machineItem.categoryName === "Uncalculable";
+            mTooltip = `Complexity: ${mIsUncalc || machineItem.complexity === -1 || !isFinite(machineItem.complexity) ? 'Uncalculable' : formatComplexity(machineItem.complexity)}`;
+        }
         machineHtml = machineItem
-            ? `<strong style="cursor:pointer; color: var(--accent); font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" class="machine-link" data-index="${activeMachineIdx}">${escapeHtml(machineName)}</strong>`
+            ? `<strong style="cursor:pointer; color: ${mIsUncalc ? '#fca5a5' : 'var(--accent)'}; font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" class="machine-link" data-index="${activeMachineIdx}" title="${mTooltip}">${escapeHtml(machineName)}</strong>`
             : `<strong style="font-size: 11px; font-weight: 600; color: var(--accent); line-height: 1.3; white-space: nowrap;">${escapeHtml(machineName)}</strong>`;
     }
 

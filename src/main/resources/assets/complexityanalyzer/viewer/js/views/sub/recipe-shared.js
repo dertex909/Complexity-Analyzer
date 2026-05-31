@@ -386,7 +386,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
         const mRecipes = machineToRecipes.get(mi);
         const isRaw = !mItem;
 
-        let nameHtml = "";
+        let nameHtml;
         if (mItem) {
             const isMUncalc = (mItem.flags & 0x10) || mItem.categoryName === "Uncalculable";
             const mComp = mItem.complexity;
@@ -585,6 +585,32 @@ export function resolveBestMachine(r, db, body) {
     return r.machineItemIndex !== undefined ? r.machineItemIndex : -1;
 }
 
+
+function getItemDisplayProperties(item, isCurrent, isFluid = false) {
+    const isUncalc = (item.flags & 0x10) || item.categoryName === "Uncalculable";
+    const comp = item.complexity;
+    const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+
+    let style = "";
+    let classes = `ingredient ${isFluid ? 'fluid-link' : 'item-link'}`;
+
+    if (isUncalc) {
+        classes += " uncalculable-highlight";
+    } else {
+        if (isCurrent) if (isFluid) {
+            style = "font-weight: 600; border-width: 2px;";
+        } else {
+            style = "font-weight: 600; border-color: var(--accent); color: var(--accent);";
+        }
+
+        if (isFluid) {
+            style += " color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08);";
+        }
+    }
+
+    return {tooltip, style, classes};
+}
+
 export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     const inputsHtml = [];
     const recipeKey = getRecipeIdentityKey(r);
@@ -727,7 +753,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                             </span>
                         </div>
                         <div class="variant-dropdown" style="border-color: ${isHeadUncalc ? '#ef4444' : 'rgba(94, 199, 255, 0.6)'}; text-align: left;">
-                            <div class="variant-dropdown-header" style="color: ${themeColor}; border-bottom: 1px solid ${borderRightColor}; background: ${bgColor};">
+                            <div class="variant-dropdown-header" style="color: ${themeColor}; border-bottom: 1px solid; border-bottom-color: ${borderRightColor}; background: ${bgColor};">
                                 <span>ALTERNATIVE FLUIDS</span>
                                 <span>(Lowest cost first)</span>
                             </div>
@@ -745,55 +771,24 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         const outItem = db.items.get(out.itemIndex);
         if (outItem) {
             const isCurrent = out.itemIndex === state.selectedItem && state.tab.startsWith("item");
-            const isUncalc = (outItem.flags & 0x10) || outItem.categoryName === "Uncalculable";
-            const comp = outItem.complexity;
-            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
-
-            let style = "";
-            let classes = "ingredient item-link";
-            if (isUncalc) {
-                classes += " uncalculable-highlight";
-            } else if (isCurrent) {
-                style = "font-weight: 600; border-color: var(--accent); color: var(--accent);";
-            }
-            outputsHtml.push(`<span class="${classes}" data-index="${out.itemIndex}" title="${tooltip}" style="${style}">${escapeHtml(outItem.name)} × ${out.count}</span>`);
+            const props = getItemDisplayProperties(outItem, isCurrent, false);
+            outputsHtml.push(`<span class="${props.classes}" data-index="${out.itemIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(outItem.name)} × ${out.count}</span>`);
         }
     }
     if (r.fluidOutputs && r.fluidOutputs.length > 0) for (const out of r.fluidOutputs) {
         const outFluid = db.fluids.get(out.fluidIndex);
         if (outFluid) {
             const isCurrent = out.fluidIndex === state.selectedItem && state.tab.startsWith("fluid");
-            const isUncalc = (outFluid.flags & 0x10) || outFluid.categoryName === "Uncalculable";
-            const comp = outFluid.complexity;
-            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
-
-            let classes = "ingredient fluid-link";
-            let style = "";
-            if (isUncalc) {
-                classes += " uncalculable-highlight";
-            } else {
-                const boldStyle = isCurrent ? "font-weight: 600; border-width: 2px;" : "";
-                style = `color: #5ec7ff; border-color: rgba(94, 199, 255, 0.4); background: rgba(94, 199, 255, 0.08); ${boldStyle}`;
-            }
-            outputsHtml.push(`<span class="${classes}" data-index="${out.fluidIndex}" title="${tooltip}" style="${style}">${escapeHtml(outFluid.name)} × ${out.amount} mB</span>`);
+            const props = getItemDisplayProperties(outFluid, isCurrent, true);
+            outputsHtml.push(`<span class="${props.classes}" data-index="${out.fluidIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(outFluid.name)} × ${out.amount} mB</span>`);
         }
     }
     if (outputsHtml.length === 0) if (r.outputItemIndex >= 0) {
         const outItem = db.items.get(r.outputItemIndex);
         if (outItem) {
             const isCurrent = r.outputItemIndex === state.selectedItem && state.tab.startsWith("item");
-            const isUncalc = (outItem.flags & 0x10) || outItem.categoryName === "Uncalculable";
-            const comp = outItem.complexity;
-            const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
-
-            let style = "";
-            let classes = "ingredient item-link";
-            if (isUncalc) {
-                classes += " uncalculable-highlight";
-            } else if (isCurrent) {
-                style = "font-weight: 600; border-color: var(--accent); color: var(--accent);";
-            }
-            outputsHtml.push(`<span class="${classes}" data-index="${r.outputItemIndex}" title="${tooltip}" style="${style}">${escapeHtml(outItem.name)} × ${r.resultCount}</span>`);
+            const props = getItemDisplayProperties(outItem, isCurrent, false);
+            outputsHtml.push(`<span class="${props.classes}" data-index="${r.outputItemIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(outItem.name)} × ${r.resultCount}</span>`);
         }
     }
 

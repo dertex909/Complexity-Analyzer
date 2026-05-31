@@ -28,6 +28,8 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.harvest.modules.*;
 
+import static java.util.Locale.ROOT;
+
 public final class FastHarvester {
 
     private static final ThreadLocal<ObjectArrayList<ItemStack>> TL_INPUT_ITEMS =
@@ -119,7 +121,7 @@ public final class FastHarvester {
                     try {
                         var raw = acc.extract(recipe, level);
                         if (raw != null && !HarvestUtility.isEmptyContainer(raw)) {
-                            String nameLower = acc.name().toLowerCase(java.util.Locale.ROOT);
+                            String nameLower = acc.name().toLowerCase(ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);
                                 DeepItemCollector.collect(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));

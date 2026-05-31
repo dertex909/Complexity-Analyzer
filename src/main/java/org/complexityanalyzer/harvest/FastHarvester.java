@@ -19,24 +19,14 @@
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static net.minecraft.world.item.Items.AIR;
+import org.complexityanalyzer.harvest.modules.*;
 
 public final class FastHarvester {
 
@@ -93,7 +83,7 @@ public final class FastHarvester {
                 for (var acc : accessors.itemAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw != null) collectItemsDeep(raw, inputItems, 0, visited);
+                        if (raw != null) DeepItemCollector.collect(raw, inputItems, 0, visited);
                     } catch (Throwable ignored) {
                     }
                 }
@@ -101,11 +91,11 @@ public final class FastHarvester {
                     try {
                         var raw = acc.extract(recipe, level);
                         if (raw instanceof Ingredient ing && !ing.isEmpty()) {
-                            if (isNotDuplicateIngredient(inputIngredients, ing)) {
+                            if (HarvestUtility.isNotDuplicateIngredient(inputIngredients, ing)) {
                                 inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                             }
                         } else if (raw != null) {
-                            collectIngredientsDeep(raw, inputIngredients, 0, visited);
+                            DeepIngredientCollector.collect(raw, inputIngredients, 0, visited);
                         }
                     } catch (Throwable ignored) {
                     }
@@ -116,10 +106,10 @@ public final class FastHarvester {
                         if (raw == null) continue;
 
                         if (acc.name().contains("output")) {
-                            collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
+                            DeepFluidCollector.collect(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
                         } else {
                             if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs.copy());
-                            else collectFluidsDeep(raw, inputFluids, 0, visited);
+                            else DeepFluidCollector.collect(raw, inputFluids, 0, visited);
                         }
                     } catch (Throwable ignored) {
                     }
@@ -128,15 +118,15 @@ public final class FastHarvester {
                 for (var acc : accessors.probeAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw != null && !isEmptyContainer(raw)) {
+                        if (raw != null && !HarvestUtility.isEmptyContainer(raw)) {
                             String nameLower = acc.name().toLowerCase(java.util.Locale.ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);
-                                collectItemsDeep(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
+                                DeepItemCollector.collect(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
                                 outputItems.addAll(tempItems);
-                                collectFluidsDeep(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
+                                DeepFluidCollector.collect(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
                             } else {
-                                collectAllDeep(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
+                                DeepUniversalCollector.collect(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level, transitional);
                             }
                         }
                     } catch (Throwable ignored) {
@@ -145,7 +135,7 @@ public final class FastHarvester {
 
                 if (inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty() && inputFluids.isEmpty() && outputFluids.isEmpty()) {
                     visited.clear();
-                    collectAllDeep(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level);
+                    DeepUniversalCollector.collect(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level, transitional);
                 }
             }
 
@@ -192,451 +182,6 @@ public final class FastHarvester {
         } finally {
             clearThreadLocals();
         }
-    }
-
-    private static void collectItemsDeep(Object obj, ObjectList<ItemStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
-        if (obj == null || depth > 8) return;
-        switch (obj) {
-            case Optional<?> opt -> {
-                if (visited.add(opt)) opt.ifPresent(o -> collectItemsDeep(o, acc, depth + 1, visited));
-                return;
-            }
-            case SizedIngredient si when si.count() > 0 -> {
-                if (visited.add(si)) {
-                    ItemStack[] stacks = si.ingredient().getItems();
-                    if (stacks.length > 0) {
-                        var stack = stacks[0].copy();
-                        stack.setCount(si.count());
-                        acc.add(stack);
-                    }
-                }
-                return;
-            }
-            case ItemStack stack when !stack.isEmpty() -> {
-                acc.add(stack.copy());
-                return;
-            }
-            case Item item -> {
-                if (item != AIR) acc.add(new ItemStack(item));
-                return;
-            }
-            case Block block -> {
-                var item = block.asItem();
-                if (item != AIR) acc.add(new ItemStack(item));
-                return;
-            }
-            case Holder<?> holder -> {
-                if (visited.add(holder)) collectItemsDeep(holder.value(), acc, depth + 1, visited);
-                return;
-            }
-            case Iterable<?> coll when isTooSmall(coll) -> {
-                if (visited.add(coll)) for (var item : coll) collectItemsDeep(item, acc, depth + 1, visited);
-                return;
-            }
-            case Map<?, ?> map when isTooSmall(map) -> {
-                if (visited.add(map)) for (var e : map.entrySet()) {
-                    collectItemsDeep(e.getKey(), acc, depth + 1, visited);
-                    collectItemsDeep(e.getValue(), acc, depth + 1, visited);
-                }
-                return;
-            }
-            case Object[] arr when arr.length <= 50 -> {
-                if (visited.add(arr)) for (var item : arr) collectItemsDeep(item, acc, depth + 1, visited);
-                return;
-            }
-            default -> {
-            }
-        }
-        if (obj instanceof FluidStack || obj instanceof Ingredient) return;
-        if (isTerminal(obj)) return;
-        if (!visited.add(obj)) return;
-        var meta = RecipeReflection.getMeta(obj.getClass());
-
-        if (depth <= 5) {
-            for (int i = 0; i < meta.allMethods.length; i++) {
-                var m = meta.allMethods[i];
-                var h = meta.allHandles[i];
-                if (h == null) continue;
-                try {
-                    var rt = m.getReturnType();
-                    String rtName = rt.getName();
-
-                    if (ItemStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
-                            || Stream.class.isAssignableFrom(rt) || rtName.contains("Item") || rtName.contains("Stack")) {
-
-                        String mName = m.getName();
-                        if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
-                                || mName.equals("getItem")) continue;
-
-                        var val = h.invoke(obj);
-                        if (val != null && val != obj) {
-                            if (val instanceof Stream<?> stream) {
-                                stream.limit(100).forEach(element -> collectItemsDeep(element, acc, depth + 1, visited));
-                            } else {
-                                collectItemsDeep(val, acc, depth + 1, visited);
-                            }
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        for (var f : meta.scanFields) {
-            try {
-                collectItemsDeep(f.get(obj), acc, depth + 1, visited);
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private static void collectIngredientsDeep(Object obj, ObjectList<HarvestedItems.HarvestedIngredient> acc, int depth, ReferenceOpenHashSet<Object> visited) {
-        if (obj == null || depth > 8) return;
-        switch (obj) {
-            case Optional<?> opt -> {
-                if (visited.add(opt)) opt.ifPresent(o -> collectIngredientsDeep(o, acc, depth + 1, visited));
-                return;
-            }
-            case SizedIngredient si when si.count() > 0 -> {
-                var ing = si.ingredient();
-                if (!ing.isEmpty()) if (isNotDuplicateIngredient(acc, ing))
-                    acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
-                return;
-            }
-            case Ingredient ing when !ing.isEmpty() -> {
-                if (isNotDuplicateIngredient(acc, ing)) acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                return;
-            }
-            case Iterable<?> coll when isTooSmall(coll) -> {
-                if (visited.add(coll)) for (var item : coll) collectIngredientsDeep(item, acc, depth + 1, visited);
-                return;
-            }
-            case Map<?, ?> map when isTooSmall(map) -> {
-                if (visited.add(map)) for (var e : map.entrySet()) {
-                    collectIngredientsDeep(e.getKey(), acc, depth + 1, visited);
-                    collectIngredientsDeep(e.getValue(), acc, depth + 1, visited);
-                }
-                return;
-            }
-            case Object[] arr when arr.length <= 50 -> {
-                if (visited.add(arr)) for (var item : arr) collectIngredientsDeep(item, acc, depth + 1, visited);
-                return;
-            }
-            default -> {
-            }
-        }
-        if (obj instanceof ItemStack || obj instanceof FluidStack) return;
-        if (isTerminal(obj)) return;
-        if (!visited.add(obj)) return;
-        var meta = RecipeReflection.getMeta(obj.getClass());
-
-        if (depth <= 5) {
-            for (int i = 0; i < meta.allMethods.length; i++) {
-                var m = meta.allMethods[i];
-                var h = meta.allHandles[i];
-                if (h == null) continue;
-                try {
-                    var rt = m.getReturnType();
-                    String rtName = rt.getName();
-
-                    if (Ingredient.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
-                            || Stream.class.isAssignableFrom(rt) || rtName.contains("Ingredient")) {
-
-                        String mName = m.getName();
-                        if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")) continue;
-
-                        var val = h.invoke(obj);
-                        if (val != null && val != obj) if (val instanceof Stream<?> stream) {
-                            stream.limit(100).forEach(element -> collectIngredientsDeep(element, acc, depth + 1, visited));
-                        } else {
-                            collectIngredientsDeep(val, acc, depth + 1, visited);
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        for (var f : meta.scanFields) {
-            try {
-                collectIngredientsDeep(f.get(obj), acc, depth + 1, visited);
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private static void collectFluidsDeep(Object obj, ObjectList<FluidStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
-        if (obj == null || depth > 8) return;
-        switch (obj) {
-            case Optional<?> opt -> {
-                if (visited.add(opt)) opt.ifPresent(o -> collectFluidsDeep(o, acc, depth + 1, visited));
-                return;
-            }
-            case SizedFluidIngredient sfi -> {
-                for (var fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs.copy());
-                return;
-            }
-            case FluidStack fs when !fs.isEmpty() -> {
-                acc.add(fs.copy());
-                return;
-            }
-            case Iterable<?> coll when isTooSmall(coll) -> {
-                if (visited.add(coll)) for (var item : coll) collectFluidsDeep(item, acc, depth + 1, visited);
-                return;
-            }
-            case Map<?, ?> map when isTooSmall(map) -> {
-                if (visited.add(map)) for (var e : map.entrySet()) {
-                    collectFluidsDeep(e.getKey(), acc, depth + 1, visited);
-                    collectFluidsDeep(e.getValue(), acc, depth + 1, visited);
-                }
-                return;
-            }
-            case Object[] arr when arr.length <= 50 -> {
-                if (visited.add(arr)) for (var item : arr) collectFluidsDeep(item, acc, depth + 1, visited);
-                return;
-            }
-            default -> {
-            }
-        }
-        if (obj instanceof ItemStack || obj instanceof Ingredient) return;
-        if (isTerminal(obj)) return;
-        if (!visited.add(obj)) return;
-
-        var meta = RecipeReflection.getMeta(obj.getClass());
-        if (depth <= 5) {
-            for (int i = 0; i < meta.allMethods.length; i++) {
-                var m = meta.allMethods[i];
-                var h = meta.allHandles[i];
-                if (h == null) continue;
-                try {
-                    var rt = m.getReturnType();
-                    String rtName = rt.getName();
-
-                    if (FluidStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
-                            || Stream.class.isAssignableFrom(rt) || rtName.contains("Fluid")) {
-
-                        String mName = m.getName();
-                        if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
-                                || mName.equals("getFluid")) continue;
-
-                        var val = h.invoke(obj);
-                        if (val != null && val != obj) if (val instanceof Stream<?> stream) {
-                            stream.limit(100).forEach(element -> collectFluidsDeep(element, acc, depth + 1, visited));
-                        } else {
-                            collectFluidsDeep(val, acc, depth + 1, visited);
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        for (var f : meta.scanFields) {
-            try {
-                collectFluidsDeep(f.get(obj), acc, depth + 1, visited);
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private static void collectAllDeep(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
-                                       ObjectList<HarvestedItems.HarvestedIngredient> inputIngredients, ObjectList<FluidStack> inputFluids,
-                                       int depth, ReferenceOpenHashSet<Object> visited, ItemStack apiResult, Level level) {
-        if (obj == null || depth > 8) return;
-
-        if (depth > 0 && obj instanceof Recipe<?> subRecipe && level != null) {
-            try {
-                var subOutput = subRecipe.getResultItem(level.registryAccess());
-                if (!subOutput.isEmpty() && !apiResult.isEmpty() && subOutput.getItem() != apiResult.getItem()) {
-                    TL_TRANSITIONAL_ITEMS.get().add(subOutput.getItem());
-                }
-
-                var subIngs = subRecipe.getIngredients();
-                if (subIngs.size() > 1) {
-                    var toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty()) if (isNotDuplicateIngredient(inputIngredients, toolIng))
-                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
-                }
-
-                collectFluidsDeep(subRecipe, inputFluids, 0, visited);
-            } catch (Throwable ignored) {
-            }
-            return;
-        }
-
-        switch (obj) {
-            case Optional<?> opt -> {
-                if (visited.add(opt)) opt.ifPresent(o ->
-                        collectAllDeep(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
-                return;
-            }
-            case ItemStack stack when !stack.isEmpty() -> {
-                if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack.copy());
-                else inputItems.add(stack.copy());
-                return;
-            }
-            case Item item -> {
-                if (item != AIR) {
-                    var stack = new ItemStack(item);
-                    if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
-                    else inputItems.add(stack);
-                }
-                return;
-            }
-            case Block block -> {
-                var item = block.asItem();
-                if (item != AIR) {
-                    var stack = new ItemStack(item);
-                    if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
-                    else inputItems.add(stack);
-                }
-                return;
-            }
-            case Holder<?> holder -> {
-                if (visited.add(holder)) collectAllDeep(holder.value(), inputItems, outputItems, inputIngredients,
-                        inputFluids, depth + 1, visited, apiResult, level);
-                return;
-            }
-            case SizedIngredient si when si.count() > 0 -> {
-                var ing = si.ingredient();
-                if (!ing.isEmpty()) if (isNotDuplicateIngredient(inputIngredients, ing))
-                    inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
-                return;
-            }
-            case SizedFluidIngredient sfi -> {
-                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
-                return;
-            }
-            case Ingredient ing when !ing.isEmpty() -> {
-                if (isNotDuplicateIngredient(inputIngredients, ing)) {
-                    inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                }
-                return;
-            }
-            case FluidStack fs when !fs.isEmpty() -> {
-                inputFluids.add(fs.copy());
-                return;
-            }
-            case Iterable<?> coll when isTooSmall(coll) -> {
-                if (visited.add(coll)) for (var item : coll)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
-                return;
-            }
-            case Map<?, ?> map when isTooSmall(map) -> {
-                if (visited.add(map)) for (var e : map.entrySet()) {
-                    var key = e.getKey();
-                    if (key != null && !isTerminal(key)) collectAllDeep(key, inputItems, outputItems, inputIngredients,
-                            inputFluids, depth + 1, visited, apiResult, level);
-                    collectAllDeep(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
-                }
-                return;
-            }
-            case Object[] arr when arr.length <= 50 -> {
-                if (visited.add(arr)) for (var item : arr)
-                    collectAllDeep(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
-                return;
-            }
-            default -> {
-            }
-        }
-        if (isTerminal(obj)) return;
-        if (!visited.add(obj)) return;
-
-        var meta = RecipeReflection.getMeta(obj.getClass());
-        if (depth <= 5) {
-            for (int i = 0; i < meta.allMethods.length; i++) {
-                var m = meta.allMethods[i];
-                var h = meta.allHandles[i];
-                if (h == null) continue;
-                try {
-                    var rt = m.getReturnType();
-                    String rtName = rt.getName();
-
-                    if (ItemStack.class.isAssignableFrom(rt)
-                            || Ingredient.class.isAssignableFrom(rt)
-                            || FluidStack.class.isAssignableFrom(rt)
-                            || rt.isArray()
-                            || Iterable.class.isAssignableFrom(rt)
-                            || Stream.class.isAssignableFrom(rt)
-                            || rtName.contains("Fluid")
-                            || rtName.contains("Ingredient")
-                            || rtName.contains("Item")
-                            || rtName.contains("Stack")) {
-
-                        String mName = m.getName();
-                        if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
-                                || mName.equals("getFluid") || mName.equals("getItem")) continue;
-
-                        var val = h.invoke(obj);
-                        if (val != null && val != obj) if (val instanceof Stream<?> stream) {
-                            stream.limit(100).forEach(element -> collectAllDeep(element, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level));
-                        } else {
-                            collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        for (var f : meta.scanFields) {
-            try {
-                var val = f.get(obj);
-                if (val != null) collectAllDeep(val, inputItems, outputItems, inputIngredients, inputFluids,
-                        depth + 1, visited, apiResult, level);
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private static boolean isTooSmall(Object obj) {
-        if (obj instanceof Collection<?> c) return c.size() <= 50;
-        if (obj instanceof Map<?, ?> m) return m.size() <= 50;
-        if (obj instanceof Object[] arr) return arr.length <= 50;
-        return true;
-    }
-
-    private static boolean isEmptyContainer(Object obj) {
-        if (obj instanceof Collection<?> c) return c.isEmpty();
-        if (obj instanceof Map<?, ?> m) return m.isEmpty();
-        if (obj instanceof Object[] arr) return arr.length == 0;
-        return false;
-    }
-
-    private static boolean isTerminal(Object obj) {
-        if (obj == null) return true;
-        var c = obj.getClass();
-        String name = c.getName();
-        if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.")
-                || name.startsWith("com.sun.") || name.startsWith("jdk.")) return true;
-        return TerminalTypeRegistry.isTerminalType(c);
-    }
-
-    private static boolean isNotDuplicateIngredient(Collection<HarvestedItems.HarvestedIngredient> list, Ingredient ing) {
-        if (ing == null || ing.isEmpty()) return false;
-        ItemStack[] ingItems = ing.getItems();
-        for (var existingHi : list) {
-            var existing = existingHi.ingredient();
-            ItemStack[] existingItems = existing.getItems();
-            if (ingItems.length == existingItems.length) {
-                boolean allMatch = true;
-                for (var stackA : ingItems) {
-                    boolean found = false;
-                    for (var stackB : existingItems) {
-                        if (stackA.getItem() == stackB.getItem()) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        allMatch = false;
-                        break;
-                    }
-                }
-                if (allMatch) return false;
-            }
-        }
-        return true;
     }
 
     private static void clearThreadLocals() {

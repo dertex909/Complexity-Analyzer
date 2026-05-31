@@ -172,7 +172,6 @@ public final class FastHarvester {
                 return false;
             });
 
-
             return new HarvestedItems(
                     inputItems.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputItems),
                     outputItems.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(outputItems),

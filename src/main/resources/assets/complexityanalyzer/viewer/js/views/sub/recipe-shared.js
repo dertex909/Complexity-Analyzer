@@ -585,11 +585,16 @@ export function resolveBestMachine(r, db, body) {
     return r.machineItemIndex !== undefined ? r.machineItemIndex : -1;
 }
 
-
-function getItemDisplayProperties(item, isCurrent, isFluid = false) {
+export function getComplexityInfo(item) {
     const isUncalc = (item.flags & 0x10) || item.categoryName === "Uncalculable";
     const comp = item.complexity;
     const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+    const uncalcStyle = isUncalc ? 'color: #f87171; background: rgba(239, 68, 68, 0.08);' : '';
+    return {isUncalc, tooltip, uncalcStyle};
+}
+
+function getItemDisplayProperties(item, isCurrent, isFluid = false) {
+    const {isUncalc, tooltip} = getComplexityInfo(item);
 
     let style = "";
     let classes = `ingredient ${isFluid ? 'fluid-link' : 'item-link'}`;
@@ -626,9 +631,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
 
             if (slotVariants.length === 1) {
                 const v = slotVariants[0];
-                const comp = v.item.complexity;
-                const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
-                const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
+                const {isUncalc, tooltip} = getComplexityInfo(v.item);
                 const glowClass = isUncalc ? "uncalculable-highlight" : "";
                 inputsHtml.push(`<span class="ingredient item-link ${glowClass}" data-index="${v.index}" title="${tooltip}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.count}</span>`);
             } else {
@@ -640,9 +643,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
                 const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
-                const headComp = head.item.complexity;
-                const isHeadUncalc = (head.item.flags & 0x10) || head.item.categoryName === "Uncalculable";
-                const headTooltip = `Complexity: ${isHeadUncalc || headComp === -1 || !isFinite(headComp) ? 'Uncalculable' : formatComplexity(headComp)}`;
+                const {isUncalc: isHeadUncalc, tooltip: headTooltip} = getComplexityInfo(head.item);
 
                 const themeColor = isHeadUncalc ? "#ef4444" : "#f59e0b";
                 const hoverColor = isHeadUncalc ? "#fca5a5" : "#fbbf24";
@@ -653,10 +654,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
 
                 const variantItemsHtml = slotVariants.map(v => {
                     const isHead = v.index === head.index;
-                    const comp = v.item.complexity;
-                    const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
-                    const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
-                    const uncalcStyle = isUncalc ? 'color: #f87171; background: rgba(239, 68, 68, 0.08);' : '';
+                    const {isUncalc, tooltip, uncalcStyle} = getComplexityInfo(v.item);
                     return `
                         <div class="variant-item variant-item-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" title="${tooltip}" style="${uncalcStyle}">
                             <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #fbbf24;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(v.item.name || "#" + v.index)}</span>
@@ -717,9 +715,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
                 const head = slotVariants.find(v => v.index === activeVariantIdx) || slotVariants[0];
-                const headComp = head.item.complexity;
-                const isHeadUncalc = (head.item.flags & 0x10) || head.item.categoryName === "Uncalculable";
-                const headTooltip = `Complexity: ${isHeadUncalc || headComp === -1 || !isFinite(headComp) ? 'Uncalculable' : formatComplexity(headComp)}`;
+                const {isUncalc: isHeadUncalc, tooltip: headTooltip} = getComplexityInfo(head.item);
 
                 const themeColor = isHeadUncalc ? "#ef4444" : "#5ec7ff";
                 const hoverColor = isHeadUncalc ? "#fca5a5" : "#8dd5ff";
@@ -730,10 +726,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
 
                 const variantItemsHtml = slotVariants.map(v => {
                     const isHead = v.index === head.index;
-                    const comp = v.item.complexity;
-                    const isUncalc = (v.item.flags & 0x10) || v.item.categoryName === "Uncalculable";
-                    const tooltip = `Complexity: ${isUncalc || comp === -1 || !isFinite(comp) ? 'Uncalculable' : formatComplexity(comp)}`;
-                    const uncalcStyle = isUncalc ? 'color: #f87171; background: rgba(239, 68, 68, 0.08);' : '';
+                    const {isUncalc, tooltip, uncalcStyle} = getComplexityInfo(v.item);
                     return `
                         <div class="variant-item variant-fluid-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" title="${tooltip}" style="border-left: 2px solid ${isUncalc ? '#ef4444' : 'rgba(94, 199, 255, 0.4)'}; ${uncalcStyle}">
                             <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #5ec7ff;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(v.item.name || "#" + v.index)}</span>

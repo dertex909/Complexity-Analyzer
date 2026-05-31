@@ -19,12 +19,14 @@
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
@@ -33,6 +35,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
+
+import static net.minecraft.world.item.Items.AIR;
 
 public final class FastHarvester {
 
@@ -204,6 +208,19 @@ public final class FastHarvester {
             }
             case ItemStack stack when !stack.isEmpty() -> {
                 acc.add(stack.copy());
+                return;
+            }
+            case Item item -> {
+                if (item != AIR) acc.add(new ItemStack(item));
+                return;
+            }
+            case Block block -> {
+                var item = block.asItem();
+                if (item != AIR) acc.add(new ItemStack(item));
+                return;
+            }
+            case Holder<?> holder -> {
+                collectItemsDeep(holder.value(), acc, depth + 1, visited);
                 return;
             }
             case Iterable<?> coll when isTooSmall(coll) -> {
@@ -389,6 +406,27 @@ public final class FastHarvester {
             case ItemStack stack when !stack.isEmpty() -> {
                 if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack.copy());
                 else inputItems.add(stack.copy());
+                return;
+            }
+            case Item item -> {
+                if (item != AIR) {
+                    var stack = new ItemStack(item);
+                    if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
+                    else inputItems.add(stack);
+                }
+                return;
+            }
+            case Block block -> {//в мире ставять вроде?
+                var item = block.asItem();
+                if (item != AIR) {
+                    var stack = new ItemStack(item);
+                    if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
+                    else inputItems.add(stack);
+                }
+                return;
+            }
+            case Holder<?> holder -> {
+                collectAllDeep(holder.value(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level);
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {

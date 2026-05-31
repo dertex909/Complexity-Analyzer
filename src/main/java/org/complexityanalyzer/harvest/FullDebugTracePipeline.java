@@ -31,6 +31,16 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class FullDebugTracePipeline {
+    private static final boolean ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");
+
+    static {
+        if (ENABLED) {
+            ComplexityAnalyzer.LOGGER.info("[Complexity Analyzer] FullDebugTracePipeline is ENABLED via JVM option (-Dcomplexityanalyzer.FullDebugTracePipeline=true)");
+        } else {
+            ComplexityAnalyzer.LOGGER.info("[Complexity Analyzer] FullDebugTracePipeline is DISABLED (To enable, use JVM option: -Dcomplexityanalyzer.FullDebugTracePipeline=true)");
+        }
+    }
+
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 
@@ -45,10 +55,15 @@ public final class FullDebugTracePipeline {
 
     public FullDebugTracePipeline(Path worldDir) {
         this.worldDir = worldDir;
-        this.buffer = new StringBuilder(256 * 1024);
+        if (ENABLED) {
+            this.buffer = new StringBuilder(256 * 1024);
+        } else {
+            this.buffer = null;
+        }
     }
 
     public void traceHarvested(String recipeId, Object recipe, Level level, HarvestedItems items) {
+        if (!ENABLED) return;
         var tb = new TraceBuilder(this, recipe, recipeId);
         tb.classInfo();
         tb.fields();
@@ -58,6 +73,7 @@ public final class FullDebugTracePipeline {
     }
 
     public void traceRejected(String recipeId, Object recipe, Level level, String reason) {
+        if (!ENABLED) return;
         var tb = new TraceBuilder(this, recipe, recipeId);
         tb.classInfo();
         tb.fields();
@@ -67,6 +83,7 @@ public final class FullDebugTracePipeline {
     }
 
     public void traceFailed(String recipeId, String className, Throwable t) {
+        if (!ENABLED) return;
         synchronized (this) {
             totalRecipes++;
             failedCount++;
@@ -78,6 +95,7 @@ public final class FullDebugTracePipeline {
     }
 
     public void flush() {
+        if (!ENABLED) return;
         buffer.append('\n').append(SEP).append('\n');
         buffer.append("FINAL STATISTICS\n");
         buffer.append(SEP).append('\n');

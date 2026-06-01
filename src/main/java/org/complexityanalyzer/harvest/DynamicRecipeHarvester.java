@@ -67,6 +67,8 @@ public final class DynamicRecipeHarvester {
 
         inputTypeMap.entrySet().parallelStream().forEach(entry -> {
             var recipeType = entry.getKey();
+            var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+            String typeName = typeId != null ? typeId.toString() : recipeType.toString();
 
             ObjectSet<Item> recipesIngredients = new ObjectOpenHashSet<>();
             int recipeCount = 0;
@@ -94,11 +96,17 @@ public final class DynamicRecipeHarvester {
                 candidates = union;
             }
 
-            if (candidates.isEmpty()) return;
+            if (candidates.isEmpty()) {
+                ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}] Candidates are empty, skipping.", typeName);
+                return;
+            }
 
             for (var inputClass : entry.getValue()) {
                 var creator = resolveCreator(inputClass);
-                if (creator == null) continue;
+                if (creator == null) {
+                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}] Skipping input class {} because creator is null.", typeName, inputClass.getSimpleName());
+                    continue;
+                }
 
                 var candidateList = new ObjectArrayList<>(candidates);
                 int n = candidateList.size();
@@ -155,8 +163,11 @@ public final class DynamicRecipeHarvester {
                 }
 
                 boolean isDynamic = (matchedDynamic > 0);
+                ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}] Probe for {} - candidates: {}, matchedStatic: {}, matchedDynamic: {}, isDynamic: {}",
+                        typeName, inputClass.getSimpleName(), n, matchedStatic, matchedDynamic, isDynamic);
 
                 if (isDynamic) {
+                    int preProbeAdded = 0;
                     for (var holder : discoveredInPreProbe) {
                         if (!discovered.add(holder.id())) continue;
                         try {
@@ -167,12 +178,19 @@ public final class DynamicRecipeHarvester {
                                     || !node.getChemicalIngredients().isEmpty())) {
                                 graph.addRecipe(node);
                                 addedCount.incrementAndGet();
+                                preProbeAdded++;
+                            } else {
+                                ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Dropped during conversion pre-probe: {}", typeName, holder.id());
                             }
                         } catch (Throwable t) {
                             ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
                         }
                     }
+                    if (preProbeAdded > 0) {
+                        ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Added {} recipes from sample pre-probe.", typeName, preProbeAdded);
+                    }
 
+                    int fullScanAdded = 0;
                     for (int i = 0; i < n; i++) {
                         if (sampled[i]) continue;
                         var item = candidateList.get(i);
@@ -189,6 +207,9 @@ public final class DynamicRecipeHarvester {
                                         || !node.getChemicalIngredients().isEmpty())) {
                                     graph.addRecipe(node);
                                     addedCount.incrementAndGet();
+                                    fullScanAdded++;
+                                } else {
+                                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Dropped during conversion full scan: {}", typeName, holder.id());
                                 }
 
                             } catch (Throwable t) {
@@ -196,6 +217,7 @@ public final class DynamicRecipeHarvester {
                             }
                         }
                     }
+                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Full scan added {} new recipes.", typeName, fullScanAdded);
                 }
             }
         });

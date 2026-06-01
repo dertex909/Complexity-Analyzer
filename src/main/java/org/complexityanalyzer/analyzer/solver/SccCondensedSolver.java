@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -542,7 +543,8 @@ public final class SccCondensedSolver {
                 if (resultItem != null) allocateItemNode(resultItem);
 
                 for (var slot : recipe.getIngredients()) {
-                    for (var variant : slot.getVariants()) if (variant != null) allocateItemNode(variant);
+                    for (var variant : slot.getVariants())
+                        if (variant != null && !variant.isEmpty()) allocateItemNode(variant.getItem());
                 }
                 for (var slot : recipe.getFluidIngredients()) {
                     for (var variant : slot.getFluidVariants()) {
@@ -874,17 +876,18 @@ public final class SccCondensedSolver {
             return formulaId;
         }
 
-        private boolean appendItemSlot(ObjectList<Item> variants, double amount) {
+        private boolean appendItemSlot(ObjectList<ItemStack> variants, double amount) {
             if (variants.isEmpty()) return true;
             int variantStart = itemVariantNode.size();
             int added = 0;
             ReferenceOpenHashSet<Item> seen = null;
             for (var v : variants) {
-                if (v == null) continue;
+                if (v == null || v.isEmpty()) continue;
+                var item = v.getItem();
                 if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
-                if (!seen.add(v)) continue;
-                int node = itemToNode.getInt(v);
-                if (node == -1) node = allocateItemNode(v);
+                if (!seen.add(item)) continue;
+                int node = itemToNode.getInt(item);
+                if (node == -1) node = allocateItemNode(item);
                 itemVariantNode.add(node);
                 added++;
             }

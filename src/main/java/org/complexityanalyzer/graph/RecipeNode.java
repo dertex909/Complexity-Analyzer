@@ -28,6 +28,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 import java.util.Objects;
 
@@ -159,7 +160,7 @@ public class RecipeNode {
             var s2 = list2.get(i);
             if (s1 == s2) continue;
             if (s1 == null || s2 == null) return false;
-            if (s1.getItem() != s2.getItem() || s1.getCount() != s2.getCount()) return false;
+            if (!ItemStackIdentity.sameItemDataAndCount(s1, s2)) return false;
         }
         return true;
     }
@@ -210,7 +211,7 @@ public class RecipeNode {
 
         int outputsHash = 1;
         for (var stack : itemOutputs) {
-            int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getItem().hashCode() * 31 + stack.getCount());
+            int stackHash = ItemStackIdentity.hashItemDataAndCount(stack);
             outputsHash = 31 * outputsHash + stackHash;
         }
         result = 31 * result + outputsHash;
@@ -250,7 +251,7 @@ public class RecipeNode {
             this.resultItem = resultItem;
         }
 
-        public void addIngredient(ObjectList<Item> variants, int count) {
+        public void addIngredient(ObjectList<ItemStack> variants, int count) {
             this.ingredients.add(new IngredientSlot(variants, count));
         }
 

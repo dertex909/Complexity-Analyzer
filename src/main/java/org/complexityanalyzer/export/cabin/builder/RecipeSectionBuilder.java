@@ -21,6 +21,7 @@ package org.complexityanalyzer.export.cabin.builder;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 import java.util.Arrays;
 
@@ -115,6 +116,7 @@ public final class RecipeSectionBuilder {
 
         var ings = r.getIngredients();
         buf.u8(Math.min(ings.size(), 0xFF));
+        var registryAccess = ctx.engine().getRegistryAccess();
         for (int s = 0; s < Math.min(ings.size(), 0xFF); s++) {
             var slot = ings.get(s);
             var variants = slot.getVariants();
@@ -122,8 +124,11 @@ public final class RecipeSectionBuilder {
             buf.u8(vc);
             buf.i32(slot.getCount());
             for (int v = 0; v < vc; v++) {
-                int vi = ctx.itemIndex().getInt(variants.get(v));
+                var variant = variants.get(v);
+                int vi = ctx.itemIndex().getInt(variant.getItem());
                 buf.i32(vi);
+                buf.i32(ctx.strings().intern(variant.getHoverName().getString()));
+                buf.i32(ctx.strings().intern(ItemStackIdentity.dataKey(variant, registryAccess)));
             }
         }
 
@@ -157,6 +162,8 @@ public final class RecipeSectionBuilder {
             int idx = ctx.itemIndex().getInt(stack.getItem());
             buf.i32(idx);
             buf.i32(stack.getCount());
+            buf.i32(ctx.strings().intern(stack.getHoverName().getString()));
+            buf.i32(ctx.strings().intern(ItemStackIdentity.dataKey(stack, registryAccess)));
         }
 
         var fouts = r.getFluidOutputs();

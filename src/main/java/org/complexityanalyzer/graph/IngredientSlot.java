@@ -21,20 +21,25 @@ package org.complexityanalyzer.graph;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 import java.util.Objects;
 
 public class IngredientSlot {
-    private final ObjectList<Item> variants;
+    private final ObjectList<ItemStack> variants;
     private final int count;
 
-    public IngredientSlot(ObjectList<Item> variants, int count) {
-        this.variants = new ObjectArrayList<>(variants);
+    public IngredientSlot(ObjectList<ItemStack> variants, int count) {
+        this.variants = new ObjectArrayList<>(variants.size());
+        for (var variant : variants) {
+            if (variant == null || variant.isEmpty()) continue;
+            this.variants.add(variant.copyWithCount(1));
+        }
         this.count = Math.max(1, count);
     }
 
-    public ObjectList<Item> getVariants() {
+    public ObjectList<ItemStack> getVariants() {
         return ObjectLists.unmodifiable(variants);
     }
 
@@ -42,16 +47,27 @@ public class IngredientSlot {
         return count;
     }
 
+    public boolean hasStackSpecificVariants() {
+        for (var stack : variants) if (ItemStackIdentity.hasStackData(stack)) return true;
+        return false;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof IngredientSlot that)) return false;
-        return count == that.count && Objects.equals(variants, that.variants);
+        if (count != that.count || variants.size() != that.variants.size()) return false;
+        for (int i = 0; i < variants.size(); i++) {
+            if (!ItemStackIdentity.sameItemData(variants.get(i), that.variants.get(i))) return false;
+        }
+        return true;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(variants, count);
+        int result = Objects.hash(count);
+        for (var stack : variants) result = 31 * result + ItemStackIdentity.hashItemData(stack);
+        return result;
     }
 
     @Override

@@ -108,7 +108,7 @@ public class DepthAnalyzer {
 
         int minDepth = Integer.MAX_VALUE;
         for (var variant : variants) {
-            int variantDepth = getDepth(variant);
+            int variantDepth = getDepth(variant.getItem());
             if (variantDepth < minDepth) minDepth = variantDepth;
         }
 

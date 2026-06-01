@@ -356,14 +356,28 @@ function readOneRecipe(b, strings) {
     };
     res.ingredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), count = b.i32();
-        return {count, variants: Array.from({length: vc}, () => b.i32())};
+        const variants = [];
+        const variantNames = [];
+        const variantDataKeys = [];
+        for (let v = 0; v < vc; v++) {
+            variants.push(b.i32());
+            variantNames.push(strings.get(b.i32()));
+            variantDataKeys.push(strings.get(b.i32()));
+        }
+        return {count, variants, variantNames, variantDataKeys};
     });
     res.fluidIngredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), amount = b.i32();
         return {amount, variants: Array.from({length: vc}, () => b.i32())};
     });
     res.chemicalIngredients = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: b.i32()}));
-    res.itemOutputs = Array.from({length: b.u8()}, () => ({itemIndex: b.i32(), count: b.i32()}));
+    res.itemOutputs = Array.from({length: b.u8()}, () => {
+        const itemIndex = b.i32();
+        const count = b.i32();
+        const hoverName = strings.get(b.i32());
+        const dataKey = strings.get(b.i32());
+        return {itemIndex, count, hoverName, dataKey};
+    });
     res.fluidOutputs = Array.from({length: b.u8()}, () => ({fluidIndex: b.i32(), amount: b.i32()}));
     res.chemicalOutputs = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: Number(b.i64())}));
     return res;

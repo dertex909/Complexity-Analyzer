@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
@@ -396,6 +397,12 @@ public class AnalysisEngine {
 
     public RecipeGraph getGraph() {
         return this.graph;
+    }
+
+    @Nullable
+    public HolderLookup.Provider getRegistryAccess() {
+        var srv = this.server;
+        return srv != null ? srv.registryAccess() : null;
     }
 
     @Nullable

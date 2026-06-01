@@ -163,10 +163,11 @@ public final class FastHarvester {
                 });
             }
 
+            var registryAccess = level != null ? level.registryAccess() : null;
             if (!inputIngredients.isEmpty()) inputItems.removeIf(stack -> {
                 for (var hi : inputIngredients) {
                     for (ItemStack ingStack : hi.ingredient().getItems()) {
-                        if (ingStack.getItem() == stack.getItem()) return true;
+                        if (ItemStackIdentity.sameItemData(ingStack, stack, registryAccess)) return true;
                     }
                 }
                 return false;

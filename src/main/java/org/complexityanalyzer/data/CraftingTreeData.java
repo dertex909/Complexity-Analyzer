@@ -21,6 +21,7 @@ package org.complexityanalyzer.data;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.complexityanalyzer.graph.RecipeNode;
 
 public class CraftingTreeData {
@@ -82,6 +83,7 @@ public class CraftingTreeData {
     public static class TreeNode {
         private final NodeType type;
         private final Item item;
+        private final ItemStack itemStack;
         private final Component itemName;
         private final double neededAmount;
         private final double complexity;
@@ -94,6 +96,7 @@ public class CraftingTreeData {
         private TreeNode(Builder builder) {
             this.type = builder.type;
             this.item = builder.item;
+            this.itemStack = builder.itemStack.copy();
             this.itemName = builder.itemName;
             this.neededAmount = builder.neededAmount;
             this.complexity = builder.complexity;
@@ -110,6 +113,10 @@ public class CraftingTreeData {
 
         public Item getItem() {
             return item;
+        }
+
+        public ItemStack getItemStack() {
+            return itemStack.copy();
         }
 
         public Component getItemName() {
@@ -151,6 +158,7 @@ public class CraftingTreeData {
         public static class Builder {
             private NodeType type;
             private Item item;
+            private ItemStack itemStack = ItemStack.EMPTY;
             private Component itemName = Component.empty();
             private double neededAmount;
             private double complexity;
@@ -168,6 +176,14 @@ public class CraftingTreeData {
             public Builder item(Item item) {
                 this.item = item;
                 if (item != null && itemName.getString().isEmpty()) this.itemName = item.getDescription();
+                return this;
+            }
+
+            public Builder itemStack(ItemStack stack) {
+                if (stack == null || stack.isEmpty()) return this;
+                this.itemStack = stack.copy();
+                this.item = stack.getItem();
+                this.itemName = stack.getHoverName();
                 return this;
             }
 

@@ -22,19 +22,20 @@ import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
+
+import static net.minecraft.world.item.Items.AIR;
+import static net.minecraft.world.level.material.Fluids.EMPTY;
 
 public final class HarvestedRecipeConverter {
 
@@ -43,6 +44,7 @@ public final class HarvestedRecipeConverter {
 
     public static RecipeNode convert(HarvestedItems harvested, Level level) {
         if (harvested == null || harvested.isEmpty()) return null;
+        var registryAccess = level != null ? level.registryAccess() : null;
 
         var declaredResult = declaredRecipeResult(harvested.root(), level);
         var inputIngredients = harvested.inputIngredients();
@@ -56,11 +58,11 @@ public final class HarvestedRecipeConverter {
         String placeholderId = "";
 
         if (declaredResult.isEmpty() && outputStacks.isEmpty() && !outputFluids.isEmpty()) {
-            output = new ItemStack(Items.AIR);
+            output = new ItemStack(AIR);
             isPlaceholder = true;
             placeholderId = GameRegistryManager.getFluidId(outputFluids.getFirst().getFluid()).toString();
         } else {
-            output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks);
+            output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks, registryAccess);
         }
 
         if (output.isEmpty() && !isPlaceholder && !inputIngredients.isEmpty()) {
@@ -83,12 +85,12 @@ public final class HarvestedRecipeConverter {
         var transitionalItems = harvested.transitionalItems();
         boolean isSeqAss = !transitionalItems.isEmpty();
 
-        var mergedIngredients = new Object2IntLinkedOpenHashMap<ObjectList<Item>>();
+        var mergedIngredients = new Object2IntLinkedOpenHashMap<ObjectList<ItemStack>>();
 
         for (var hi : inputIngredients) {
             var ingredient = hi.ingredient();
             int ingredientCount = hi.count();
-            var variants = new ObjectArrayList<Item>();
+            var variants = new ObjectArrayList<ItemStack>();
             ItemStack[] stacks = ingredient.getItems();
             int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
             for (int i = 0; i < Math.min(stacks.length, limit); i++) {
@@ -96,14 +98,16 @@ public final class HarvestedRecipeConverter {
                 if (stack.isEmpty()) continue;
                 var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
-                if (!variants.contains(item)) variants.add(item);
+                if (!containsSameStackData(variants, stack)) variants.add(stack.copyWithCount(1));
             }
 
             if (!variants.isEmpty()) {
                 variants.sort((a, b) -> {
-                    var idA = GameRegistryManager.getItemId(a);
-                    var idB = GameRegistryManager.getItemId(b);
-                    return idA.compareTo(idB);
+                    var idA = GameRegistryManager.getItemId(a.getItem());
+                    var idB = GameRegistryManager.getItemId(b.getItem());
+                    int byId = idA.compareTo(idB);
+                    if (byId != 0) return byId;
+                    return ItemStackIdentity.dataKey(a, registryAccess).compareTo(ItemStackIdentity.dataKey(b, registryAccess));
                 });
                 if (isSeqAss) {
                     mergedIngredients.put(variants, ingredientCount);
@@ -115,19 +119,24 @@ public final class HarvestedRecipeConverter {
 
         if (isSeqAss && !transitionalItems.isEmpty() && !mergedIngredients.isEmpty()) {
             var firstKey = mergedIngredients.keySet().getFirst();
-            for (Item transItem : transitionalItems) if (!firstKey.contains(transItem)) firstKey.add(transItem);
+            for (var transItem : transitionalItems) {
+                var transStack = new ItemStack(transItem);
+                if (!containsSameStackData(firstKey, transStack)) firstKey.add(transStack);
+            }
             firstKey.sort((a, b) -> {
-                var idA = GameRegistryManager.getItemId(a);
-                var idB = GameRegistryManager.getItemId(b);
-                return idA.compareTo(idB);
+                var idA = GameRegistryManager.getItemId(a.getItem());
+                var idB = GameRegistryManager.getItemId(b.getItem());
+                int byId = idA.compareTo(idB);
+                if (byId != 0) return byId;
+                return ItemStackIdentity.dataKey(a, registryAccess).compareTo(ItemStackIdentity.dataKey(b, registryAccess));
             });
         }
 
         for (ItemStack stack : inputStacks) {
             if (!transitionalItems.isEmpty() && transitionalItems.contains(stack.getItem())) continue;
-            if (!sameStackIdentity(stack, output)) {
-                var variants = new ObjectArrayList<Item>();
-                variants.add(stack.getItem());
+            if (!sameStackIdentity(stack, output, registryAccess)) {
+                var variants = new ObjectArrayList<ItemStack>();
+                variants.add(stack.copyWithCount(1));
                 int count = Math.max(1, stack.getCount());
                 mergedIngredients.addTo(variants, count);
             }
@@ -141,7 +150,7 @@ public final class HarvestedRecipeConverter {
             var seenFluids = new Reference2IntOpenHashMap<Fluid>();
             for (var fluid : inputFluids) {
                 var f = normalizeFluid(fluid.getFluid());
-                if (f == Fluids.EMPTY) continue;
+                if (f == EMPTY) continue;
                 int amt = fluid.getAmount();
                 int existing = seenFluids.getInt(f);
                 if (amt > existing) seenFluids.put(f, amt);
@@ -159,7 +168,7 @@ public final class HarvestedRecipeConverter {
                 if (stack.isEmpty()) continue;
                 boolean alreadyAdded = false;
                 for (var existing : deduplicatedOutputs) {
-                    if (existing.getItem() == stack.getItem() && existing.getCount() == stack.getCount()) {
+                    if (ItemStackIdentity.sameItemDataAndCount(existing, stack, registryAccess)) {
                         alreadyAdded = true;
                         break;
                     }
@@ -173,7 +182,7 @@ public final class HarvestedRecipeConverter {
             var mergedOutputs = new Reference2IntOpenHashMap<Fluid>();
             for (var fluid : outputFluids) {
                 var f = normalizeFluid(fluid.getFluid());
-                if (f == Fluids.EMPTY) continue;
+                if (f == EMPTY) continue;
                 int amt = fluid.getAmount();
                 int existing = mergedOutputs.getInt(f);
                 if (amt > existing) mergedOutputs.put(f, amt);
@@ -210,8 +219,17 @@ public final class HarvestedRecipeConverter {
         return ItemStack.EMPTY;
     }
 
-    private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks) {
-        if (!declaredResult.isEmpty()) return declaredResult.copy();
+    private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks,
+                                          HolderLookup.Provider provider) {
+        if (!declaredResult.isEmpty()) {
+            for (var stack : stacks) {
+                if (stack.isEmpty() || stack.getItem() != declaredResult.getItem()) continue;
+                if (!ItemStackIdentity.hasStackData(declaredResult, provider) && ItemStackIdentity.hasStackData(stack, provider)) {
+                    return stack.copy();
+                }
+            }
+            return declaredResult.copy();
+        }
         var best = ItemStack.EMPTY;
         int bestScore = Integer.MAX_VALUE;
         for (var stack : stacks) {
@@ -225,7 +243,14 @@ public final class HarvestedRecipeConverter {
         return best.copy();
     }
 
-    private static boolean sameStackIdentity(ItemStack a, ItemStack b) {
-        return !a.isEmpty() && !b.isEmpty() && a.getItem() == b.getItem() && a.getCount() == b.getCount();
+    private static boolean sameStackIdentity(ItemStack a, ItemStack b, HolderLookup.Provider provider) {
+        return ItemStackIdentity.sameItemDataAndCount(a, b, provider);
+    }
+
+    private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
+        for (var stack : stacks) {
+            if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
+        }
+        return false;
     }
 }

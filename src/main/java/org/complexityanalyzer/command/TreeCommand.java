@@ -32,7 +32,10 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.tree.CraftingTreeBuilder;
 import org.complexityanalyzer.command.util.OutputManager;
@@ -40,6 +43,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 
@@ -305,6 +309,8 @@ public final class TreeCommand {
         }
 
         if (node.getItem() != null) {
+            appendStackDetails(hover, node, engine);
+
             var complexity = engine.getComplexityResult(node.getItem());
             if (complexity != null) {
                 hover.append(Component.literal("\n\n📊 ").append(Component.translatable("complexityanalyzer.command.tree.complexity_label")).append(": ").withStyle(ChatFormatting.GRAY))
@@ -316,6 +322,44 @@ public final class TreeCommand {
         }
 
         return hover;
+    }
+
+    private static void appendStackDetails(MutableComponent hover, TreeNode node, AnalysisEngine engine) {
+        var stack = node.getItemStack();
+        if (stack.isEmpty() || !ItemStackIdentity.hasStackData(stack, engine.getRegistryAccess())) return;
+
+        hover.append(Component.literal("\n\nItem(need translate): ").withStyle(ChatFormatting.GRAY))
+                .append(stack.getHoverName().copy().withStyle(ChatFormatting.WHITE));
+
+        try {
+            var tooltipContext = Item.TooltipContext.of(engine.getRegistryAccess());
+            var lines = stack.getTooltipLines(tooltipContext, null, TooltipFlag.NORMAL);
+            int shown = 0;
+            for (var line : lines) {
+                if (shown == 0) {
+                    shown++;
+                    continue;
+                }
+                var text = line.getString();
+                if (text.isBlank()) continue;
+                hover.append(Component.literal("\n  ").withStyle(ChatFormatting.DARK_GRAY))
+                        .append(line.copy().withStyle(ChatFormatting.GRAY));
+                shown++;
+                if (shown >= 6) break;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        var dataKey = ItemStackIdentity.dataKey(stack, engine.getRegistryAccess());
+        if (!dataKey.isBlank()) {
+            hover.append(Component.literal("\nStack data(need translate): ").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(truncate(dataKey)).withStyle(ChatFormatting.DARK_GRAY));
+        }
+    }
+
+    private static String truncate(String value) {
+        if (value == null || value.length() <= 180) return value;
+        return value.substring(0, Math.max(0, 180 - 3)) + "...";
     }
 
     private static void renderFooter(CommandSourceStack source, CraftingTreeData data,

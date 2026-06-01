@@ -623,7 +623,11 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     if (r.ingredients && r.ingredients.length > 0) {
         for (let slotIdx = 0; slotIdx < r.ingredients.length; slotIdx++) {
             const slot = r.ingredients[slotIdx];
-            const slotVariants = [...slot.variants].map(v => ({index: v, item: db.items.get(v)}))
+            const slotVariants = [...slot.variants].map((v, idx) => ({
+                index: v,
+                item: db.items.get(v),
+                originalIdx: idx
+            }))
                 .filter(x => x.item)
                 .sort(compareByComplexity);
 
@@ -633,12 +637,12 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 const v = slotVariants[0];
                 const {isUncalc, tooltip} = getComplexityInfo(v.item);
                 const glowClass = isUncalc ? "uncalculable-highlight" : "";
-                inputsHtml.push(`<span class="ingredient item-link ${glowClass}" data-index="${v.index}" title="${tooltip}">${escapeHtml(v.item.name || "#" + v.index)} × ${slot.count}</span>`);
+                const displayName = (slot.variantNames && slot.variantNames[v.originalIdx]) || v.item.name || "#" + v.index;
+                inputsHtml.push(`<span class="ingredient item-link ${glowClass}" data-index="${v.index}" title="${tooltip}">${escapeHtml(displayName)} × ${slot.count}</span>`);
             } else {
                 const ingKey = `${recipeKey}_ing_${slotIdx}`;
                 let activeVariantIdx = (body && body._customState && body._customState.selectedIngredients.has(ingKey))
-                    ? body._customState.selectedIngredients.get(ingKey)
-                    : -1;
+                    ? body._customState.selectedIngredients.get(ingKey) : -1;
 
                 activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
 
@@ -655,19 +659,22 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 const variantItemsHtml = slotVariants.map(v => {
                     const isHead = v.index === head.index;
                     const {isUncalc, tooltip, uncalcStyle} = getComplexityInfo(v.item);
+                    const displayName = (slot.variantNames && slot.variantNames[v.originalIdx]) || v.item.name || "#" + v.index;
                     return `
                         <div class="variant-item variant-item-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" title="${tooltip}" style="${uncalcStyle}">
-                            <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #fbbf24;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(v.item.name || "#" + v.index)}</span>
+                            <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #fbbf24;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(displayName)}</span>
                             <span class="count" style="color: ${isUncalc ? '#f87171' : ''};">× ${slot.count}</span>
                         </div>
                     `;
                 }).join("");
 
+                const headDisplayName = (slot.variantNames && slot.variantNames[head.originalIdx]) || head.item.name || "#" + head.index;
+
                 inputsHtml.push(`
                     <div class="variant-group">
                         <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid ${themeColor}; background: ${bgColor}; font-family: var(--mono), monospace; font-size: 11px; ${glowShadowStyle}">
                             <span class="item-link" data-index="${head.index}" title="${headTooltip}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: ${themeColor}; border-right: 1px solid ${borderRightColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
-                                    ${escapeHtml(head.item.name || "#" + head.index)} × ${slot.count}
+                                    ${escapeHtml(headDisplayName)} × ${slot.count}
                             </span>
                             <span class="variant-trigger cursor-pointer" style="padding: 2px 6px; cursor: pointer; display: flex; align-items: center; color: ${themeColor};" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
                                 <span class="arrow">▼</span>
@@ -765,7 +772,8 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         if (outItem) {
             const isCurrent = out.itemIndex === state.selectedItem && state.tab.startsWith("item");
             const props = getItemDisplayProperties(outItem, isCurrent, false);
-            outputsHtml.push(`<span class="${props.classes}" data-index="${out.itemIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(outItem.name)} × ${out.count}</span>`);
+            const displayName = out.hoverName || outItem.name;
+            outputsHtml.push(`<span class="${props.classes}" data-index="${out.itemIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(displayName)} × ${out.count}</span>`);
         }
     }
     if (r.fluidOutputs && r.fluidOutputs.length > 0) for (const out of r.fluidOutputs) {

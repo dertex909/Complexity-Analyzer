@@ -21,6 +21,7 @@ package org.complexityanalyzer.analyzer.tree;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
@@ -51,6 +52,7 @@ public class CraftingTreeBuilder {
 
         var root = buildNode(
                 item,
+                ItemStack.EMPTY,
                 1.0,
                 0,
                 new ReferenceOpenHashSet<>(),
@@ -68,6 +70,7 @@ public class CraftingTreeBuilder {
 
     private TreeNode buildNode(
             Item item,
+            ItemStack requestedStack,
             double neededAmount,
             int depth,
             ReferenceSet<Item> visitedOnPath,
@@ -84,6 +87,7 @@ public class CraftingTreeBuilder {
         if (complexityResult == null) return TreeNode.builder()
                 .type(NodeType.NO_DATA)
                 .item(item)
+                .itemStack(requestedStack)
                 .neededAmount(neededAmount)
                 .complexity(0)
                 .build();
@@ -95,6 +99,7 @@ public class CraftingTreeBuilder {
             return TreeNode.builder()
                     .type(NodeType.MAX_DEPTH_REACHED)
                     .item(item)
+                    .itemStack(requestedStack)
                     .neededAmount(neededAmount)
                     .complexity(complexity)
                     .build();
@@ -110,6 +115,7 @@ public class CraftingTreeBuilder {
             return TreeNode.builder()
                     .type(NodeType.CYCLE)
                     .item(item)
+                    .itemStack(requestedStack)
                     .neededAmount(neededAmount)
                     .complexity(complexity)
                     .build();
@@ -133,6 +139,7 @@ public class CraftingTreeBuilder {
             var builder = TreeNode.builder()
                     .type(NodeType.BASE_RESOURCE)
                     .item(item)
+                    .itemStack(requestedStack)
                     .neededAmount(neededAmount)
                     .complexity(complexity)
                     .addMetadata("sourceTypeName", sourceData.getSourceType().getDisplayName())
@@ -161,7 +168,7 @@ public class CraftingTreeBuilder {
         boolean wouldCreateCycle = false;
         if (recipe != null && !recipe.isBaseRecipe()) for (var slot : recipe.getIngredients()) {
             for (var variant : slot.getVariants()) {
-                if (visitedOnPath.contains(variant)) {
+                if (visitedOnPath.contains(variant.getItem())) {
                     wouldCreateCycle = true;
                     break;
                 }
@@ -176,6 +183,7 @@ public class CraftingTreeBuilder {
             var builder = TreeNode.builder()
                     .type(NodeType.BASE_RESOURCE)
                     .item(item)
+                    .itemStack(requestedStack)
                     .neededAmount(neededAmount)
                     .complexity(complexity)
                     .addMetadata("wouldCreateCycle", wouldCreateCycle);
@@ -202,31 +210,42 @@ public class CraftingTreeBuilder {
         var nodeBuilder = TreeNode.builder()
                 .type(NodeType.CRAFTING)
                 .item(item)
+                .itemStack(requestedStack)
                 .neededAmount(neededAmount)
                 .complexity(complexity)
                 .recipe(recipe)
                 .machineType(machineName);
 
-        var ingredientsForOneCraft = new Reference2IntOpenHashMap<Item>();
+        var ingredientsForOneCraft = new Reference2ObjectOpenHashMap<Item, IngredientChoice>();
         for (var slot : recipe.getIngredients()) {
             Item bestVariant = null;
+            ItemStack bestVariantStack = ItemStack.EMPTY;
             double minComplexity = Double.POSITIVE_INFINITY;
             for (var v : slot.getVariants()) {
-                double c = engine.getComplexity(v);
+                double c = engine.getComplexity(v.getItem());
                 if (c < minComplexity) {
                     minComplexity = c;
-                    bestVariant = v;
+                    bestVariant = v.getItem();
+                    bestVariantStack = v.copyWithCount(slot.getCount());
                 }
             }
-            if (bestVariant != null) ingredientsForOneCraft.addTo(bestVariant, slot.getCount());
+            if (bestVariant != null) {
+                var existing = ingredientsForOneCraft.get(bestVariant);
+                if (existing == null) {
+                    ingredientsForOneCraft.put(bestVariant, new IngredientChoice(bestVariantStack, slot.getCount()));
+                } else {
+                    existing.count += slot.getCount();
+                }
+            }
         }
 
-        for (var entry : Reference2IntMaps.fastIterable(ingredientsForOneCraft)) {
+        for (var entry : Reference2ObjectMaps.fastIterable(ingredientsForOneCraft)) {
             var ingredientItem = entry.getKey();
-            int countForOneCraft = entry.getIntValue();
+            var choice = entry.getValue();
+            int countForOneCraft = choice.count;
             double totalIngredientNeeded = craftOperations * countForOneCraft;
 
-            var childNode = buildNode(ingredientItem, totalIngredientNeeded, depth + 1,
+            var childNode = buildNode(ingredientItem, choice.stack, totalIngredientNeeded, depth + 1,
                     visitedOnPath, baseResources, displayMode, maxDepth, uniqueItems, stats);
             nodeBuilder.addItemChild(childNode);
         }
@@ -248,6 +267,16 @@ public class CraftingTreeBuilder {
         if (data == null) return true;
         if (Double.isInfinite(data.getBaseFactor())) return true;
         return data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
+    }
+
+    private static class IngredientChoice {
+        private final ItemStack stack;
+        private int count;
+
+        private IngredientChoice(ItemStack stack, int count) {
+            this.stack = stack != null ? stack.copy() : ItemStack.EMPTY;
+            this.count = count;
+        }
     }
 
     private void calculateBaseResourcesFor(
@@ -280,10 +309,10 @@ public class CraftingTreeBuilder {
             Item bestVariant = null;
             double minComp = Double.POSITIVE_INFINITY;
             for (var v : slot.getVariants()) {
-                double c = engine.getComplexity(v);
+                double c = engine.getComplexity(v.getItem());
                 if (c < minComp) {
                     minComp = c;
-                    bestVariant = v;
+                    bestVariant = v.getItem();
                 }
             }
 

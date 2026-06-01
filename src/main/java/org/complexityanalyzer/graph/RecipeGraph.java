@@ -146,7 +146,8 @@ public class RecipeGraph {
         allRecipesList.add(node);
 
         for (var slot : node.getIngredients()) {
-            for (var ingredient : slot.getVariants()) {
+            for (var ingredientStack : slot.getVariants()) {
+                var ingredient = ingredientStack.getItem();
                 if (result != AIR) {
                     usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
                 }
@@ -235,8 +236,8 @@ public class RecipeGraph {
                 var hasRawMaterial = false;
 
                 for (var slot : recipe.getIngredients()) {
-                    for (var ingredient : slot.getVariants()) {
-                        var ingredientStack = new ItemStack(ingredient);
+                    for (var ingredientStack : slot.getVariants()) {
+                        var ingredient = ingredientStack.getItem();
 
                         if (ingredientStack.is(oresTag) || ingredientStack.is(rawMaterialsTag)
                                 || ingredientStack.is(dusts) || ingredientStack.is(crushed)

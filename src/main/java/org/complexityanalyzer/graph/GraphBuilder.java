@@ -31,6 +31,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.harvest.ItemStackIdentity;
 import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -85,7 +86,8 @@ public class GraphBuilder {
         return graph;
     }
 
-    private static RecipeNode buildSmithingNode(SmithingTransformRecipe recipe, Item resultItem) {
+    private static RecipeNode buildSmithingNode(SmithingTransformRecipe recipe, ItemStack resultStack) {
+        var resultItem = resultStack.getItem();
         var accessor = (SmithingTransformRecipeAccessor) recipe;
         var template = accessor.getTemplate();
         var base = accessor.getBase();
@@ -98,6 +100,7 @@ public class GraphBuilder {
                 .category(RecipeCategory.PRIMARY)
                 .resultCount(1)
                 .rawRecipe();
+        builder.itemOutputs(new ObjectArrayList<>(List.of(resultStack.copy())));
 
         if (!template.isEmpty()) {
             var variants = extractVariants(template);
@@ -117,12 +120,13 @@ public class GraphBuilder {
         return builder.build();
     }
 
-    private static ObjectList<Item> extractVariants(Ingredient ingredient) {
-        var items = new ObjectArrayList<Item>();
+    private static ObjectList<ItemStack> extractVariants(Ingredient ingredient) {
+        var items = new ObjectArrayList<ItemStack>();
         var stacks = ingredient.getItems();
         for (var stack : stacks) {
-            var item = stack.getItem();
-            if (!items.contains(item)) items.add(item);
+            if (stack.isEmpty()) continue;
+            if (containsSameStackData(items, stack)) continue;
+            items.add(stack.copyWithCount(1));
         }
         return items;
     }
@@ -134,7 +138,7 @@ public class GraphBuilder {
         var resultItem = resultStack.getItem();
         var ingredients = new ObjectArrayList<>(recipe.getIngredients());
 
-        if (recipe instanceof SmithingTransformRecipe smithing) return buildSmithingNode(smithing, resultItem);
+        if (recipe instanceof SmithingTransformRecipe smithing) return buildSmithingNode(smithing, resultStack);
         if (ingredients.isEmpty()) return null;
 
         var category = classifyRecipe(recipe, resultItem, ingredients);
@@ -145,22 +149,27 @@ public class GraphBuilder {
                 .category(category)
                 .resultCount(resultStack.getCount())
                 .rawRecipe();
+        builder.itemOutputs(new ObjectArrayList<>(List.of(resultStack.copy())));
 
-        var merged = new LinkedHashMap<List<Item>, Integer>();
+        var merged = new LinkedHashMap<List<ItemStack>, Integer>();
         for (var ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
-            var variants = new ObjectArrayList<Item>();
+            var variants = new ObjectArrayList<ItemStack>();
             var stacks = ingredient.getItems();
             int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
             for (int i = 0; i < Math.min(stacks.length, limit); i++) {
-                var item = stacks[i].getItem();
-                if (!variants.contains(item)) variants.add(item);
+                var stack = stacks[i];
+                if (stack.isEmpty()) continue;
+                if (!containsSameStackData(variants, stack)) variants.add(stack.copyWithCount(1));
             }
             if (!variants.isEmpty()) {
                 variants.sort((a, b) -> {
-                    var idA = GameRegistryManager.getItemId(a);
-                    var idB = GameRegistryManager.getItemId(b);
-                    return idA.compareTo(idB);
+                    var idA = GameRegistryManager.getItemId(a.getItem());
+                    var idB = GameRegistryManager.getItemId(b.getItem());
+                    int byId = idA.compareTo(idB);
+                    if (byId != 0) return byId;
+                    return ItemStackIdentity.dataKey(a, level.registryAccess())
+                            .compareTo(ItemStackIdentity.dataKey(b, level.registryAccess()));
                 });
                 var key = new ArrayList<>(variants);
                 merged.put(key, merged.getOrDefault(key, 0) + 1);
@@ -170,6 +179,11 @@ public class GraphBuilder {
             builder.addIngredient(new ObjectArrayList<>(entry.getKey()), entry.getValue());
         }
         return builder.build();
+    }
+
+    private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
+        for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
+        return false;
     }
 
     public static RecipeCategory classifyRecipe(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {

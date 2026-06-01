@@ -616,6 +616,53 @@ function getItemDisplayProperties(item, isCurrent, isFluid = false) {
     return {tooltip, style, classes};
 }
 
+export function getItemSpecificDetails(dataKey) {
+    if (!dataKey) return "";
+
+    const splitBracketAware = (str, char) => {
+        const result = [];
+        let current = "";
+        let depth = 0;
+        for (let i = 0; i < str.length; i++) {
+            const c = str[i];
+            if (c === "{" || c === "[" || c === "(") depth++;
+            else if (c === "}" || c === "]" || c === ")") depth--;
+
+            if (c === char && depth === 0) {
+                result.push(current);
+                current = "";
+            } else {
+                current += c;
+            }
+        }
+        if (current) result.push(current);
+        return result;
+    };
+
+    const compMatch = dataKey.match(/components=\{([^}]+)}/);
+    if (compMatch) {
+        const compStr = compMatch[1].trim();
+        if (compStr && compStr !== "{}" && compStr !== "empty") {
+            const pairs = splitBracketAware(compStr, ",");
+            const details = [];
+            for (const pair of pairs) {
+                const kv = pair.split("=>");
+                if (kv.length === 2) {
+                    let key = kv[0].trim();
+                    const val = kv[1].trim();
+                    if (key.includes(":")) key = key.split(":")[1];
+                    details.push(`${key}: ${val}`);
+                } else if (pair.trim()) {
+                    details.push(pair.trim());
+                }
+            }
+            if (details.length > 0) return ` [${details.join(", ")}]`;
+        }
+    }
+
+    return "";
+}
+
 export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     const inputsHtml = [];
     const recipeKey = getRecipeIdentityKey(r);
@@ -637,7 +684,9 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 const v = slotVariants[0];
                 const {isUncalc, tooltip} = getComplexityInfo(v.item);
                 const glowClass = isUncalc ? "uncalculable-highlight" : "";
-                const displayName = (slot.variantNames && slot.variantNames[v.originalIdx]) || v.item.name || "#" + v.index;
+                const dataKey = (slot.variantDataKeys && slot.variantDataKeys[v.originalIdx]) || "";
+                const specificDetail = getItemSpecificDetails(dataKey);
+                const displayName = ((slot.variantNames && slot.variantNames[v.originalIdx]) || v.item.name || "#" + v.index) + specificDetail;
                 inputsHtml.push(`<span class="ingredient item-link ${glowClass}" data-index="${v.index}" title="${tooltip}">${escapeHtml(displayName)} × ${slot.count}</span>`);
             } else {
                 const ingKey = `${recipeKey}_ing_${slotIdx}`;
@@ -659,7 +708,9 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                 const variantItemsHtml = slotVariants.map(v => {
                     const isHead = v.index === head.index;
                     const {isUncalc, tooltip, uncalcStyle} = getComplexityInfo(v.item);
-                    const displayName = (slot.variantNames && slot.variantNames[v.originalIdx]) || v.item.name || "#" + v.index;
+                    const dataKey = (slot.variantDataKeys && slot.variantDataKeys[v.originalIdx]) || "";
+                    const specificDetail = getItemSpecificDetails(dataKey);
+                    const displayName = ((slot.variantNames && slot.variantNames[v.originalIdx]) || v.item.name || "#" + v.index) + specificDetail;
                     return `
                         <div class="variant-item variant-item-substitute" data-recipe-key="${recipeKey}" data-slot-index="${slotIdx}" data-variant-index="${v.index}" title="${tooltip}" style="${uncalcStyle}">
                             <span class="name" style="${isHead ? (isHeadUncalc ? 'font-weight: 600; color: #fca5a5;' : 'font-weight: 600; color: #fbbf24;') : (isUncalc ? 'color: #f87171;' : '')}">${escapeHtml(displayName)}</span>
@@ -668,7 +719,9 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
                     `;
                 }).join("");
 
-                const headDisplayName = (slot.variantNames && slot.variantNames[head.originalIdx]) || head.item.name || "#" + head.index;
+                const headDataKey = (slot.variantDataKeys && slot.variantDataKeys[head.originalIdx]) || "";
+                const headSpecificDetail = getItemSpecificDetails(headDataKey);
+                const headDisplayName = ((slot.variantNames && slot.variantNames[head.originalIdx]) || head.item.name || "#" + head.index) + headSpecificDetail;
 
                 inputsHtml.push(`
                     <div class="variant-group">
@@ -772,7 +825,8 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         if (outItem) {
             const isCurrent = out.itemIndex === state.selectedItem && state.tab.startsWith("item");
             const props = getItemDisplayProperties(outItem, isCurrent, false);
-            const displayName = out.hoverName || outItem.name;
+            const specificDetail = getItemSpecificDetails(out.dataKey);
+            const displayName = (out.hoverName || outItem.name) + specificDetail;
             outputsHtml.push(`<span class="${props.classes}" data-index="${out.itemIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(displayName)} × ${out.count}</span>`);
         }
     }

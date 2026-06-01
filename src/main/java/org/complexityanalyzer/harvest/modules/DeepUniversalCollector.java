@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
+import org.complexityanalyzer.harvest.FastHarvester;
 import org.complexityanalyzer.harvest.HarvestedItems;
 import org.complexityanalyzer.harvest.RecipeReflection;
 
@@ -42,7 +43,7 @@ public final class DeepUniversalCollector {
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
                     var toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty()) if (HarvestUtility.isNotDuplicateIngredient(inputIngredients, toolIng))
+                    if (!toolIng.isEmpty() && org.complexityanalyzer.harvest.FastHarvester.visitIngredient(toolIng))
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
                 }
 
@@ -87,7 +88,7 @@ public final class DeepUniversalCollector {
             }
             case SizedIngredient si when si.count() > 0 -> {
                 var ing = si.ingredient();
-                if (!ing.isEmpty()) if (HarvestUtility.isNotDuplicateIngredient(inputIngredients, ing))
+                if (!ing.isEmpty() && FastHarvester.visitIngredient(ing))
                     inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
             }
@@ -96,7 +97,7 @@ public final class DeepUniversalCollector {
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {
-                if (HarvestUtility.isNotDuplicateIngredient(inputIngredients, ing)) {
+                if (FastHarvester.visitIngredient(ing)) {
                     inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 }
                 return;

@@ -46,10 +46,18 @@ public final class FastHarvester {
             ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(128));
     private static final ThreadLocal<ReferenceOpenHashSet<Item>> TL_TRANSITIONAL_ITEMS =
             ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(8));
+    private static final ThreadLocal<ReferenceOpenHashSet<Ingredient>> TL_VISITED_INGREDIENTS =
+            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(64));
+
+    public static boolean visitIngredient(Ingredient ing) {
+        if (ing == null || ing.isEmpty()) return false;
+        return TL_VISITED_INGREDIENTS.get().add(ing);
+    }
 
     public HarvestedItems harvest(Object recipe, Level level) {
         if (recipe == null) return HarvestedItems.EMPTY;
 
+        TL_VISITED_INGREDIENTS.get().clear();
         var inputItems = borrowList(TL_INPUT_ITEMS);
         var outputItems = borrowList(TL_OUTPUT_ITEMS);
         var inputIngredients = borrowList(TL_INPUT_INGREDIENTS);
@@ -70,8 +78,10 @@ public final class FastHarvester {
                         || type == RecipeType.STONECUTTING || type == RecipeType.SMITHING) isVanillaRecipe = true;
 
                 for (var ing : r.getIngredients())
-                    if (ing != null && !ing.isEmpty())
+                    if (ing != null && !ing.isEmpty()) {
+                        visitIngredient(ing);
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                    }
 
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
@@ -93,7 +103,7 @@ public final class FastHarvester {
                     try {
                         var raw = acc.extract(recipe, level);
                         if (raw instanceof Ingredient ing && !ing.isEmpty()) {
-                            if (HarvestUtility.isNotDuplicateIngredient(inputIngredients, ing)) {
+                            if (visitIngredient(ing)) {
                                 inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                             }
                         } else if (raw != null) {
@@ -164,6 +174,24 @@ public final class FastHarvester {
             }
 
             var registryAccess = level != null ? level.registryAccess() : null;
+            if (!inputItems.isEmpty()) {
+                var uniqueInputItems = new ObjectArrayList<ItemStack>();
+                for (var stack : inputItems) {
+                    boolean isDup = false;
+                    for (var existing : uniqueInputItems) {
+                        if (ItemStackIdentity.sameItemData(stack, existing, registryAccess)) {
+                            isDup = true;
+                            break;
+                        }
+                    }
+                    if (!isDup) {
+                        uniqueInputItems.add(stack);
+                    }
+                }
+                inputItems.clear();
+                inputItems.addAll(uniqueInputItems);
+            }
+
             if (!inputIngredients.isEmpty()) inputItems.removeIf(stack -> {
                 for (var hi : inputIngredients) {
                     for (ItemStack ingStack : hi.ingredient().getItems()) {
@@ -195,6 +223,7 @@ public final class FastHarvester {
         TL_INPUT_INGREDIENTS.get().clear();
         TL_VISITED.get().clear();
         TL_TRANSITIONAL_ITEMS.get().clear();
+        TL_VISITED_INGREDIENTS.get().clear();
     }
 
     private static <T> ObjectArrayList<T> borrowList(ThreadLocal<ObjectArrayList<T>> tl) {

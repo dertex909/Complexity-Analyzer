@@ -18,11 +18,13 @@
 
 package org.complexityanalyzer.harvest;
 
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.Hash;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
@@ -33,6 +35,7 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.jetbrains.annotations.NotNull;
 
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
@@ -85,7 +88,7 @@ public final class HarvestedRecipeConverter {
         var transitionalItems = harvested.transitionalItems();
         boolean isSeqAss = !transitionalItems.isEmpty();
 
-        var mergedIngredients = new Object2IntLinkedOpenHashMap<ObjectList<ItemStack>>();
+        final var mergedIngredients = getMergedIngredients(registryAccess);
 
         for (var hi : inputIngredients) {
             var ingredient = hi.ingredient();
@@ -195,6 +198,33 @@ public final class HarvestedRecipeConverter {
         }
 
         return builder.build();
+    }
+
+    private static @NotNull Object2IntLinkedOpenCustomHashMap<ObjectList<ItemStack>> getMergedIngredients(RegistryAccess registryAccess) {
+        var strategy = new Hash.Strategy<ObjectList<ItemStack>>() {
+            @Override
+            public int hashCode(ObjectList<ItemStack> o) {
+                if (o == null) return 0;
+                int h = 1;
+                for (var stack : o) {
+                    h = 31 * h + (stack == null || stack.isEmpty() ? 0 : ItemStackIdentity.hashItemData(stack, registryAccess));
+                }
+                return h;
+            }
+
+            @Override
+            public boolean equals(ObjectList<ItemStack> a, ObjectList<ItemStack> b) {
+                if (a == b) return true;
+                if (a == null || b == null) return false;
+                if (a.size() != b.size()) return false;
+                for (int i = 0; i < a.size(); i++) {
+                    if (!ItemStackIdentity.sameItemData(a.get(i), b.get(i), registryAccess)) return false;
+                }
+                return true;
+            }
+        };
+
+        return new Object2IntLinkedOpenCustomHashMap<>(strategy);
     }
 
     private static Fluid normalizeFluid(Fluid fluid) {

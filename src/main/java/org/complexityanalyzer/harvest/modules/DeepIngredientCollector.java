@@ -6,6 +6,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.complexityanalyzer.harvest.FastHarvester;
 import org.complexityanalyzer.harvest.HarvestedItems;
 import org.complexityanalyzer.harvest.RecipeReflection;
 
@@ -27,12 +28,12 @@ public final class DeepIngredientCollector {
             }
             case SizedIngredient si when si.count() > 0 -> {
                 var ing = si.ingredient();
-                if (!ing.isEmpty()) if (HarvestUtility.isNotDuplicateIngredient(acc, ing))
+                if (!ing.isEmpty() && FastHarvester.visitIngredient(ing))
                     acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                 return;
             }
             case Ingredient ing when !ing.isEmpty() -> {
-                if (HarvestUtility.isNotDuplicateIngredient(acc, ing))
+                if (FastHarvester.visitIngredient(ing))
                     acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 return;
             }

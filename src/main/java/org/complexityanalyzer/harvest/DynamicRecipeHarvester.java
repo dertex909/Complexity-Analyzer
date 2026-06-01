@@ -58,6 +58,8 @@ public final class DynamicRecipeHarvester {
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
+        final var staticCorpus = new ObjectOpenHashSet<>(graph.getCorpus());
+
         final var safeKnown = ConcurrentHashMap.newKeySet();
         safeKnown.addAll(knownRecipeIds);
 
@@ -89,7 +91,7 @@ public final class DynamicRecipeHarvester {
                 candidates = GameRegistryManager.getAllItems();
             } else {
                 ObjectSet<Item> union = new ObjectOpenHashSet<>();
-                union.addAll(graph.getCorpus());
+                union.addAll(staticCorpus);
                 union.addAll(recipesIngredients);
                 candidates = union;
             }
@@ -101,6 +103,13 @@ public final class DynamicRecipeHarvester {
                 if (creator == null) continue;
 
                 var candidateList = new ObjectArrayList<>(candidates);
+                candidateList.sort((a, b) -> {
+                    var idA = GameRegistryManager.getItemId(a);
+                    var idB = GameRegistryManager.getItemId(b);
+                    String sA = idA != null ? idA.toString() : "";
+                    String sB = idB != null ? idB.toString() : "";
+                    return sA.compareTo(sB);
+                });
                 int n = candidateList.size();
 
                 int preProbeSize = Math.min(n, 15);

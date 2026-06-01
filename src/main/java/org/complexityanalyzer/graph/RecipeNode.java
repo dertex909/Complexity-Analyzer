@@ -53,6 +53,7 @@ public class RecipeNode {
     private final double recipeMultiplier;
     private final boolean isPlaceholder;
     private RecipeCategory category;
+    private volatile int listIndex = -1;
 
     private RecipeNode(Builder builder) {
         this.ingredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.ingredients));
@@ -69,6 +70,14 @@ public class RecipeNode {
         this.priority = builder.priority;
         this.isPlaceholder = builder.isPlaceholder;
         this.placeholderId = builder.placeholderId;
+    }
+
+    public int getListIndex() {
+        return listIndex;
+    }
+
+    public void setListIndex(int listIndex) {
+        this.listIndex = listIndex;
     }
 
     public static RecipeNode empty(Item item) {

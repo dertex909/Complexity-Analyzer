@@ -28,31 +28,56 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import static net.minecraft.core.registries.Registries.ITEM;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
 
 public class RecipeGraph {
-    private final Reference2ObjectMap<Item, ObjectList<RecipeNode>> recipesByItem;
-    private final Reference2ObjectMap<Item, ReferenceSet<Item>> usageMap;
-    private final Reference2ObjectMap<Item, RecipeNode> bestRecipeCache;
-    private final Object2ObjectMap<ResourceLocation, ObjectList<RecipeNode>> recipesByFluid;
-    private final Reference2ObjectMap<Fluid, ObjectList<RecipeNode>> recipesByFluidOutput;
-    private final Reference2ObjectMap<Fluid, ReferenceSet<Item>> fluidUsageMap;
+    private final ConcurrentHashMap<Item, ObjectList<RecipeNode>> recipesByItem;
+    private final ConcurrentHashMap<Item, Set<Item>> usageMap;
+    private final ConcurrentHashMap<Item, RecipeNode> bestRecipeCache;
+    private final ConcurrentHashMap<ResourceLocation, ObjectList<RecipeNode>> recipesByFluid;
+    private final ConcurrentHashMap<Fluid, ObjectList<RecipeNode>> recipesByFluidOutput;
+    private final ConcurrentHashMap<Fluid, Set<Item>> fluidUsageMap;
     private final ObjectList<RecipeNode> allRecipesList;
 
     public RecipeGraph() {
-        this.recipesByItem = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        this.usageMap = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        this.bestRecipeCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        this.recipesByFluid = Object2ObjectMaps.synchronize(new Object2ObjectOpenHashMap<>());
-        this.recipesByFluidOutput = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        this.fluidUsageMap = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.recipesByItem = new ConcurrentHashMap<>(16384);
+        this.usageMap = new ConcurrentHashMap<>(16384);
+        this.bestRecipeCache = new ConcurrentHashMap<>(16384);
+        this.recipesByFluid = new ConcurrentHashMap<>(1024);
+        this.recipesByFluidOutput = new ConcurrentHashMap<>(1024);
+        this.fluidUsageMap = new ConcurrentHashMap<>(1024);
         this.allRecipesList = ObjectLists.synchronize(new ObjectArrayList<>());
     }
 
     public ObjectList<RecipeNode> getAllRecipes() {
-        return new ObjectArrayList<>(allRecipesList);
+        synchronized (allRecipesList) {
+            return new ObjectArrayList<>(allRecipesList);
+        }
+    }
+
+    private void appendToAllRecipes(RecipeNode node) {
+        synchronized (allRecipesList) {
+            node.setListIndex(allRecipesList.size());
+            allRecipesList.add(node);
+        }
+    }
+
+    private void replaceOrAddInAllRecipes(RecipeNode existing, RecipeNode node) {
+        synchronized (allRecipesList) {
+            int allIdx = existing.getListIndex();
+            if (allIdx != -1 && allIdx < allRecipesList.size() && allRecipesList.get(allIdx) == existing) {
+                node.setListIndex(allIdx);
+                allRecipesList.set(allIdx, node);
+            } else {
+                node.setListIndex(allRecipesList.size());
+                allRecipesList.add(node);
+            }
+        }
     }
 
     public void addRecipe(RecipeNode node) {
@@ -62,94 +87,96 @@ public class RecipeGraph {
         }
 
         if (result != AIR) {
-            var list = recipesByItem.computeIfAbsent(result, k -> new ObjectArrayList<>());
-            int dupIdx = -1;
-            for (int i = 0; i < list.size(); i++) {
-                if (list.get(i).equals(node)) {
-                    dupIdx = i;
-                    break;
-                }
-            }
-            if (dupIdx != -1) {
-                var existing = list.get(dupIdx);
-                boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
-                        || node.getItemOutputs().size() > existing.getItemOutputs().size()
-                        || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
-                if (nodeIsBetter) {
-                    list.set(dupIdx, node);
-                    int allIdx = allRecipesList.indexOf(existing);
-                    if (allIdx != -1) {
-                        allRecipesList.set(allIdx, node);
-                    } else {
-                        allRecipesList.add(node);
+            synchronized (result) {
+                var list = recipesByItem.computeIfAbsent(result, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+                int dupIdx = -1;
+                synchronized (list) {
+                    for (int i = 0; i < list.size(); i++) {
+                        if (list.get(i).equals(node)) {
+                            dupIdx = i;
+                            break;
+                        }
                     }
-                    for (var slot : node.getFluidIngredients()) {
-                        for (var variant : slot.getFluidVariants()) {
-                            var normalized = normalizeFluid(variant);
-                            if (normalized != EMPTY) {
-                                fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                    if (dupIdx != -1) {
+                        var existing = list.get(dupIdx);
+                        boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
+                                || node.getItemOutputs().size() > existing.getItemOutputs().size()
+                                || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                        if (nodeIsBetter) {
+                            list.set(dupIdx, node);
+                            replaceOrAddInAllRecipes(existing, node);
+                            for (var slot : node.getFluidIngredients()) {
+                                for (var variant : slot.getFluidVariants()) {
+                                    var normalized = normalizeFluid(variant);
+                                    if (normalized != EMPTY) {
+                                        fluidUsageMap.computeIfAbsent(normalized, k -> ConcurrentHashMap.newKeySet()).add(result);
+                                    }
+                                }
                             }
+                            for (var stack : node.getFluidOutputs()) {
+                                var normalized = normalizeFluid(stack.getFluid());
+                                if (normalized != EMPTY) {
+                                    var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+                                    synchronized (foList) {
+                                        if (!foList.contains(node)) foList.add(node);
+                                    }
+                                }
+                            }
+                            bestRecipeCache.remove(result);
                         }
+                        return;
+                    } else {
+                        list.add(node);
                     }
-                    for (var stack : node.getFluidOutputs()) {
-                        var normalized = normalizeFluid(stack.getFluid());
-                        if (normalized != EMPTY) {
-                            var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
-                            if (!foList.contains(node)) foList.add(node);
-                        }
-                    }
-                    bestRecipeCache.remove(result);
                 }
-                return;
-            } else {
-                list.add(node);
             }
         }
 
         if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) try {
             var fluidId = ResourceLocation.parse(node.getPlaceholderId());
-            var list = recipesByFluid.computeIfAbsent(fluidId, k -> new ObjectArrayList<>());
-            int dupIdx = -1;
-            for (int i = 0; i < list.size(); i++) {
-                if (list.get(i).equals(node)) {
-                    dupIdx = i;
-                    break;
-                }
-            }
-            if (dupIdx != -1) {
-                var existing = list.get(dupIdx);
-                boolean nodeIsBetter = node.getFluidOutputs().size() > existing.getFluidOutputs().size();
-                if (nodeIsBetter) {
-                    list.set(dupIdx, node);
-                    int allIdx = allRecipesList.indexOf(existing);
-                    if (allIdx != -1) {
-                        allRecipesList.set(allIdx, node);
-                    } else {
-                        allRecipesList.add(node);
-                    }
-                    for (var stack : node.getFluidOutputs()) {
-                        var normalized = normalizeFluid(stack.getFluid());
-                        if (normalized != EMPTY) {
-                            var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
-                            if (!foList.contains(node)) foList.add(node);
+            synchronized (node.getPlaceholderId().intern()) {
+                var list = recipesByFluid.computeIfAbsent(fluidId, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+                int dupIdx = -1;
+                synchronized (list) {
+                    for (int i = 0; i < list.size(); i++) {
+                        if (list.get(i).equals(node)) {
+                            dupIdx = i;
+                            break;
                         }
                     }
+                    if (dupIdx != -1) {
+                        var existing = list.get(dupIdx);
+                        boolean nodeIsBetter = node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                        if (nodeIsBetter) {
+                            list.set(dupIdx, node);
+                            replaceOrAddInAllRecipes(existing, node);
+                            for (var stack : node.getFluidOutputs()) {
+                                var normalized = normalizeFluid(stack.getFluid());
+                                if (normalized != EMPTY) {
+                                    var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+                                    synchronized (foList) {
+                                        if (!foList.contains(node)) foList.add(node);
+                                    }
+                                }
+                            }
+                        }
+                        return;
+                    } else {
+                        list.add(node);
+                    }
                 }
-                return;
-            } else {
-                list.add(node);
             }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.warn("Invalid placeholder ID: {}", node.getPlaceholderId());
         }
 
-        allRecipesList.add(node);
+        appendToAllRecipes(node);
 
         for (var slot : node.getIngredients()) {
             for (var ingredientStack : slot.getVariants()) {
                 var ingredient = ingredientStack.getItem();
                 if (result != AIR) {
-                    usageMap.computeIfAbsent(ingredient, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                    usageMap.computeIfAbsent(ingredient, k -> ConcurrentHashMap.newKeySet()).add(result);
                 }
             }
         }
@@ -158,7 +185,7 @@ public class RecipeGraph {
             for (var variant : slot.getFluidVariants()) {
                 var normalized = normalizeFluid(variant);
                 if (normalized != EMPTY) if (result != AIR) {
-                    fluidUsageMap.computeIfAbsent(normalized, k -> ReferenceSets.synchronize(new ReferenceOpenHashSet<>())).add(result);
+                    fluidUsageMap.computeIfAbsent(normalized, k -> ConcurrentHashMap.newKeySet()).add(result);
                 }
             }
         }
@@ -166,8 +193,10 @@ public class RecipeGraph {
         for (var stack : node.getFluidOutputs()) {
             var normalized = normalizeFluid(stack.getFluid());
             if (normalized != EMPTY) {
-                var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> new ObjectArrayList<>());
-                if (!foList.contains(node)) foList.add(node);
+                var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+                synchronized (foList) {
+                    if (!foList.contains(node)) foList.add(node);
+                }
             }
         }
 
@@ -302,7 +331,8 @@ public class RecipeGraph {
     }
 
     public ReferenceSet<Item> getItemsUsingFluid(Fluid fluid) {
-        return fluidUsageMap.getOrDefault(normalizeFluid(fluid), ReferenceSets.emptySet());
+        var users = fluidUsageMap.get(normalizeFluid(fluid));
+        return users != null ? new ReferenceOpenHashSet<>(users) : ReferenceSets.emptySet();
     }
 
     public int getUsageCount(Item item) {
@@ -311,15 +341,18 @@ public class RecipeGraph {
     }
 
     public ReferenceSet<Item> getItemsUsingIngredient(Item ingredient) {
-        return usageMap.getOrDefault(ingredient, ReferenceSets.emptySet());
+        var users = usageMap.get(ingredient);
+        return users != null ? new ReferenceOpenHashSet<>(users) : ReferenceSets.emptySet();
     }
 
     public ReferenceSet<Item> getAllItems() {
-        return recipesByItem.keySet();
+        return new ReferenceOpenHashSet<>(recipesByItem.keySet());
     }
 
     public int getTotalRecipeCount() {
-        return allRecipesList.size();
+        synchronized (allRecipesList) {
+            return allRecipesList.size();
+        }
     }
 
     private static Fluid normalizeFluid(Fluid fluid) {
@@ -341,9 +374,12 @@ public class RecipeGraph {
         recipesByItem.clear();
         usageMap.clear();
         bestRecipeCache.clear();
+        recipesByFluid.clear();
         recipesByFluidOutput.clear();
         fluidUsageMap.clear();
-        allRecipesList.clear();
+        synchronized (allRecipesList) {
+            allRecipesList.clear();
+        }
         ComplexityAnalyzer.LOGGER.info("Recipe graph cleared");
     }
 

@@ -127,8 +127,20 @@ public final class RecipeSectionBuilder {
                 var variant = variants.get(v);
                 int vi = ctx.itemIndex().getInt(variant.getItem());
                 buf.i32(vi);
-                buf.i32(ctx.strings().intern(variant.getHoverName().getString()));
-                buf.i32(ctx.strings().intern(ItemStackIdentity.dataKey(variant, registryAccess)));
+
+                int hoverRef = ctx.hoverNameIdCache().getInt(variant);
+                if (hoverRef < 0) {
+                    hoverRef = ctx.strings().intern(variant.getHoverName().getString());
+                    ctx.hoverNameIdCache().put(variant, hoverRef);
+                }
+                buf.i32(hoverRef);
+
+                int keyRef = ctx.dataKeyIdCache().getInt(variant);
+                if (keyRef < 0) {
+                    keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(variant, registryAccess));
+                    ctx.dataKeyIdCache().put(variant, keyRef);
+                }
+                buf.i32(keyRef);
             }
         }
 
@@ -162,8 +174,20 @@ public final class RecipeSectionBuilder {
             int idx = ctx.itemIndex().getInt(stack.getItem());
             buf.i32(idx);
             buf.i32(stack.getCount());
-            buf.i32(ctx.strings().intern(stack.getHoverName().getString()));
-            buf.i32(ctx.strings().intern(ItemStackIdentity.dataKey(stack, registryAccess)));
+
+            int hoverRef = ctx.hoverNameIdCache().getInt(stack);
+            if (hoverRef < 0) {
+                hoverRef = ctx.strings().intern(stack.getHoverName().getString());
+                ctx.hoverNameIdCache().put(stack, hoverRef);
+            }
+            buf.i32(hoverRef);
+
+            int keyRef = ctx.dataKeyIdCache().getInt(stack);
+            if (keyRef < 0) {
+                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(stack, registryAccess));
+                ctx.dataKeyIdCache().put(stack, keyRef);
+            }
+            buf.i32(keyRef);
         }
 
         var fouts = r.getFluidOutputs();

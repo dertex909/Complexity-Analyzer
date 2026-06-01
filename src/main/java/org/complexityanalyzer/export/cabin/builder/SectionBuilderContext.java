@@ -18,23 +18,90 @@
 
 package org.complexityanalyzer.export.cabin.builder;
 
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.api.StringPool;
 
-import java.util.List;
+public final class SectionBuilderContext {
+    private final AnalysisEngine engine;
+    private final StringPool strings;
+    private final ObjectList<Item> orderedItems;
+    private final Reference2IntOpenHashMap<Item> itemIndex;
+    private final ObjectList<EntityType<?>> orderedMobs;
+    private final Reference2IntOpenHashMap<EntityType<?>> mobIndex;
+    private final ObjectList<Fluid> orderedFluids;
+    private final Reference2IntOpenHashMap<Fluid> fluidIndex;
 
-public record SectionBuilderContext(
-        AnalysisEngine engine,
-        StringPool strings,
-        List<Item> orderedItems,
-        Reference2IntOpenHashMap<Item> itemIndex,
-        List<EntityType<?>> orderedMobs,
-        Reference2IntOpenHashMap<EntityType<?>> mobIndex,
-        List<Fluid> orderedFluids,
-        Reference2IntOpenHashMap<Fluid> fluidIndex
-) {
+    private final Reference2IntOpenHashMap<ItemStack> hoverNameIdCache;
+    private final Reference2IntOpenHashMap<ItemStack> dataKeyIdCache;
+
+    public SectionBuilderContext(
+            AnalysisEngine engine,
+            StringPool strings,
+            ObjectList<Item> orderedItems,
+            Reference2IntOpenHashMap<Item> itemIndex,
+            ObjectList<EntityType<?>> orderedMobs,
+            Reference2IntOpenHashMap<EntityType<?>> mobIndex,
+            ObjectList<Fluid> orderedFluids,
+            Reference2IntOpenHashMap<Fluid> fluidIndex
+    ) {
+        this.engine = engine;
+        this.strings = strings;
+        this.orderedItems = orderedItems;
+        this.itemIndex = itemIndex;
+        this.orderedMobs = orderedMobs;
+        this.mobIndex = mobIndex;
+        this.orderedFluids = orderedFluids;
+        this.fluidIndex = fluidIndex;
+
+        this.hoverNameIdCache = new Reference2IntOpenHashMap<>(32768);
+        this.hoverNameIdCache.defaultReturnValue(-1);
+        this.dataKeyIdCache = new Reference2IntOpenHashMap<>(32768);
+        this.dataKeyIdCache.defaultReturnValue(-1);
+    }
+
+    public AnalysisEngine engine() {
+        return engine;
+    }
+
+    public StringPool strings() {
+        return strings;
+    }
+
+    public ObjectList<Item> orderedItems() {
+        return orderedItems;
+    }
+
+    public Reference2IntOpenHashMap<Item> itemIndex() {
+        return itemIndex;
+    }
+
+    public ObjectList<EntityType<?>> orderedMobs() {
+        return orderedMobs;
+    }
+
+    public Reference2IntOpenHashMap<EntityType<?>> mobIndex() {
+        return mobIndex;
+    }
+
+    public ObjectList<Fluid> orderedFluids() {
+        return orderedFluids;
+    }
+
+    public Reference2IntOpenHashMap<Fluid> fluidIndex() {
+        return fluidIndex;
+    }
+
+    public Reference2IntOpenHashMap<ItemStack> hoverNameIdCache() {
+        return hoverNameIdCache;
+    }
+
+    public Reference2IntOpenHashMap<ItemStack> dataKeyIdCache() {
+        return dataKeyIdCache;
+    }
 }

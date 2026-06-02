@@ -51,6 +51,9 @@ public class ComplexityConfig {
 
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
 
+    public static final ModConfigSpec.BooleanValue HARVEST_ENABLE_CACHE;
+    public static final ModConfigSpec.IntValue HARVEST_DETECTION_SAMPLE_SIZE;
+
     private static volatile int resolvedMaxThreads = -1;
 
     static {
@@ -139,6 +142,21 @@ public class ComplexityConfig {
                 " IP address or domain of the server for the web dashboard.",
                 " If set to 127.0.0.1, players will see a tip suggesting to change it to a public IP for remote connections."
         ).define("ip", "127.0.0.1");
+        builder.pop();
+
+        builder.push("harvest");
+        HARVEST_ENABLE_CACHE = builder.comment(
+                " Cache the harvested recipe graph to disk (per-world).",
+                " When enabled, the recipe scan and dynamic probe run only once per recipe set;",
+                " later loads restore the graph instantly. The cache auto-invalidates when recipes,",
+                " mods, or graph-affecting config change. Disable to always rebuild from scratch."
+        ).define("enableCache", true);
+
+        HARVEST_DETECTION_SAMPLE_SIZE = builder.comment(
+                " Items probed per recipe type when detecting dynamically generated recipes,",
+                " spread evenly across the item registry. Higher = better chance to catch generators",
+                " that fire on only a few items, at slightly more startup cost."
+        ).defineInRange("detectionSampleSize", 1024, 16, 1048576);
         builder.pop();
 
         SPEC = builder.build();

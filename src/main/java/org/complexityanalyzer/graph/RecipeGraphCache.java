@@ -1,0 +1,305 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package org.complexityanalyzer.graph;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.network.connection.ConnectionType;
+import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.GameRegistryManager;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+public final class RecipeGraphCache {
+
+    private static final int MAGIC = 0x43414331;
+    private static final int VERSION = 3;
+
+    public record Fingerprint(long recipes, long mods, long config) {
+    }
+
+    private static final ResourceLocation AIR_ID = ResourceLocation.withDefaultNamespace("air");
+    private static final ResourceLocation EMPTY_FLUID_ID = ResourceLocation.withDefaultNamespace("empty");
+
+    private RecipeGraphCache() {
+    }
+
+    public static Path cacheFile(MinecraftServer server) {
+        if (server == null) return null;
+        try {
+            return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("recipe_graph.bin");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public static boolean delete(Path file) {
+        if (file == null) return false;
+        try {
+            return Files.deleteIfExists(file);
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to delete recipe graph cache: {}", t.toString());
+            return false;
+        }
+    }
+
+    public static Fingerprint computeFingerprint(RecipeManager recipeManager) {
+        var countsByType = new Object2IntOpenHashMap<String>();
+        for (var holder : recipeManager.getRecipes()) {
+            var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
+            countsByType.addTo(typeId != null ? typeId.toString() : "?", 1);
+        }
+        var typeIds = new ObjectArrayList<>(countsByType.keySet());
+        typeIds.sort(null);
+        long hRecipes = 0xcbf29ce484222325L;
+        for (var typeId : typeIds) hRecipes = fnv(hRecipes, typeId + "=" + countsByType.getInt(typeId));
+
+        var modKeys = new ObjectArrayList<String>();
+        for (var mod : ModList.get().getMods()) modKeys.add(mod.getModId() + "@" + mod.getVersion());
+        modKeys.sort(null);
+        long hMods = 0xcbf29ce484222325L;
+        for (var key : modKeys) hMods = fnv(hMods, key);
+
+        long hConfig = 0xcbf29ce484222325L;
+        hConfig = fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
+        hConfig = fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.HARVEST_DETECTION_SAMPLE_SIZE.get());
+
+        return new Fingerprint(hRecipes, hMods, hConfig);
+    }
+
+    private static long fnv(long h, String s) {
+        for (int i = 0; i < s.length(); i++) {
+            h ^= s.charAt(i);
+            h *= 0x100000001b3L;
+        }
+        return h;
+    }
+
+    public static void save(RecipeGraph graph, Path file, Fingerprint fingerprint, Level level) {
+        var nodes = graph.getAllRecipes();
+        var raw = Unpooled.buffer();
+        try {
+            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
+            buf.writeInt(MAGIC);
+            buf.writeInt(VERSION);
+            buf.writeLong(fingerprint.recipes());
+            buf.writeLong(fingerprint.mods());
+            buf.writeLong(fingerprint.config());
+            buf.writeVarInt(nodes.size());
+            for (var node : nodes) writeNode(buf, node);
+
+            byte[] bytes = new byte[buf.readableBytes()];
+            buf.readBytes(bytes);
+
+            Files.createDirectories(file.getParent());
+            var tmp = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.write(tmp, bytes);
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            ComplexityAnalyzer.LOGGER.info("[Harvest] Saved recipe graph cache: {} recipes -> {}", nodes.size(), file);
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
+        } finally {
+            raw.release();
+        }
+    }
+
+    public static RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
+        if (!Files.isRegularFile(file)) return null;
+
+        ByteBuf raw = null;
+        try {
+            byte[] bytes = Files.readAllBytes(file);
+            raw = Unpooled.wrappedBuffer(bytes);
+            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
+
+            if (buf.readInt() != MAGIC) {
+                ComplexityAnalyzer.LOGGER.warn("[Harvest] Recipe graph cache has bad header, rebuilding.");
+                return null;
+            }
+            if (buf.readInt() != VERSION) {
+                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe graph cache format outdated, rebuilding.");
+                return null;
+            }
+
+            var stored = new Fingerprint(buf.readLong(), buf.readLong(), buf.readLong());
+            if (!stored.equals(expected)) {
+                String diff = (stored.recipes() != expected.recipes() ? "recipes " : "")
+                        + (stored.mods() != expected.mods() ? "mods " : "")
+                        + (stored.config() != expected.config() ? "config" : "");
+                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe set changed since last run ({}), cache invalidated.", diff.trim());
+                return null;
+            }
+
+            int count = buf.readVarInt();
+            var graph = new RecipeGraph();
+            for (int i = 0; i < count; i++) graph.addRecipe(readNode(buf));
+            return graph;
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to load recipe graph cache (rebuilding): {}", t.toString());
+            return null;
+        } finally {
+            if (raw != null) raw.release();
+        }
+    }
+
+    private static void writeNode(RegistryFriendlyByteBuf buf, RecipeNode node) {
+        buf.writeResourceLocation(itemId(node.getResultItem()));
+
+        var typeId = node.getRecipeType() != null ? GameRegistryManager.getRecipeTypeId(node.getRecipeType()) : null;
+        buf.writeBoolean(typeId != null);
+        if (typeId != null) buf.writeResourceLocation(typeId);
+
+        buf.writeEnum(node.getCategory());
+        buf.writeVarInt(node.getResultCount());
+        buf.writeVarInt(node.getPriority());
+        buf.writeBoolean(node.isPlaceholder());
+        buf.writeUtf(node.getPlaceholderId() != null ? node.getPlaceholderId() : "");
+
+        var ingredients = node.getIngredients();
+        buf.writeVarInt(ingredients.size());
+        for (var slot : ingredients) {
+            buf.writeVarInt(slot.getCount());
+            var variants = slot.getVariants();
+            buf.writeVarInt(variants.size());
+            for (var stack : variants) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+        }
+
+        var fluidIngredients = node.getFluidIngredients();
+        buf.writeVarInt(fluidIngredients.size());
+        for (var slot : fluidIngredients) {
+            buf.writeVarInt(slot.getAmount());
+            var variants = slot.getFluidVariants();
+            buf.writeVarInt(variants.size());
+            for (var fluid : variants) buf.writeResourceLocation(fluidId(fluid));
+        }
+
+        var chemicalIngredients = node.getChemicalIngredients();
+        buf.writeVarInt(chemicalIngredients.size());
+        for (var ci : chemicalIngredients) {
+            buf.writeResourceLocation(ci.id());
+            buf.writeVarInt(ci.amount());
+        }
+
+        var chemicalOutputs = node.getChemicalOutputs();
+        buf.writeVarInt(chemicalOutputs.size());
+        for (var co : chemicalOutputs) {
+            buf.writeResourceLocation(co.id());
+            buf.writeVarLong(co.amount());
+        }
+
+        var itemOutputs = node.getItemOutputs();
+        buf.writeVarInt(itemOutputs.size());
+        for (var stack : itemOutputs) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+
+        var fluidOutputs = node.getFluidOutputs();
+        buf.writeVarInt(fluidOutputs.size());
+        for (var fluidStack : fluidOutputs) FluidStack.OPTIONAL_STREAM_CODEC.encode(buf, fluidStack);
+    }
+
+    private static RecipeNode readNode(RegistryFriendlyByteBuf buf) {
+        var result = GameRegistryManager.getItem(buf.readResourceLocation());
+        if (result == null) result = Items.AIR;
+
+        var builder = new RecipeNode.Builder(result);
+
+        if (buf.readBoolean()) builder.recipeType(GameRegistryManager.getRecipeType(buf.readResourceLocation()));
+
+        builder.category(buf.readEnum(RecipeCategory.class));
+        builder.resultCount(buf.readVarInt());
+        builder.priority(buf.readVarInt());
+        builder.isPlaceholder(buf.readBoolean());
+        builder.placeholderId(buf.readUtf());
+
+        int ingredientCount = buf.readVarInt();
+        for (int i = 0; i < ingredientCount; i++) {
+            int count = buf.readVarInt();
+            int variantCount = buf.readVarInt();
+            var variants = new ObjectArrayList<ItemStack>(variantCount);
+            for (int v = 0; v < variantCount; v++) variants.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            builder.addIngredient(variants, count);
+        }
+
+        int fluidIngredientCount = buf.readVarInt();
+        for (int i = 0; i < fluidIngredientCount; i++) {
+            int amount = buf.readVarInt();
+            int variantCount = buf.readVarInt();
+            var variants = new ObjectArrayList<Fluid>(variantCount);
+            for (int v = 0; v < variantCount; v++) {
+                var fluid = GameRegistryManager.getFluid(buf.readResourceLocation());
+                if (fluid != null) variants.add(fluid);
+            }
+            builder.addFluidIngredient(variants, amount);
+        }
+
+        int chemicalIngredientCount = buf.readVarInt();
+        for (int i = 0; i < chemicalIngredientCount; i++) {
+            var id = buf.readResourceLocation();
+            builder.addChemicalIngredient(new RecipeNode.ChemicalIngredient(id, buf.readVarInt()));
+        }
+
+        int chemicalOutputCount = buf.readVarInt();
+        for (int i = 0; i < chemicalOutputCount; i++) {
+            var id = buf.readResourceLocation();
+            builder.addChemicalOutput(new RecipeNode.ChemicalOutput(id, buf.readVarLong()));
+        }
+
+        int itemOutputCount = buf.readVarInt();
+        if (itemOutputCount > 0) {
+            var outputs = new ObjectArrayList<ItemStack>(itemOutputCount);
+            for (int i = 0; i < itemOutputCount; i++) outputs.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            builder.itemOutputs(outputs);
+        }
+
+        int fluidOutputCount = buf.readVarInt();
+        if (fluidOutputCount > 0) {
+            var outputs = new ObjectArrayList<FluidStack>(fluidOutputCount);
+            for (int i = 0; i < fluidOutputCount; i++) outputs.add(FluidStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            builder.fluidOutputs(outputs);
+        }
+
+        return builder.build();
+    }
+
+    private static ResourceLocation itemId(Item item) {
+        var id = GameRegistryManager.getItemId(item);
+        return id != null ? id : AIR_ID;
+    }
+
+    private static ResourceLocation fluidId(Fluid fluid) {
+        var id = GameRegistryManager.getFluidId(fluid);
+        return id != null ? id : EMPTY_FLUID_ID;
+    }
+}

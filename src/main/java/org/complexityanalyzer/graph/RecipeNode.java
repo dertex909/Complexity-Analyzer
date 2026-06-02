@@ -264,6 +264,14 @@ public class RecipeNode {
             this.ingredients.add(new IngredientSlot(variants, count));
         }
 
+        public void addChemicalIngredient(ChemicalIngredient ingredient) {
+            this.chemicalIngredients.add(ingredient);
+        }
+
+        public void addChemicalOutput(ChemicalOutput output) {
+            this.chemicalOutputs.add(output);
+        }
+
         public void addFluidIngredient(ObjectList<Fluid> variants, int amount) {
             this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
         }

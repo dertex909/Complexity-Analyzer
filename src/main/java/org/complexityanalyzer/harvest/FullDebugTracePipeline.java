@@ -121,7 +121,7 @@ public final class FullDebugTracePipeline {
         }
 
         try {
-            var dir = worldDir.resolve("complexityanalyzer");
+            var dir = worldDir.resolve("data").resolve("complexityanalyzer");
             Files.createDirectories(dir);
             var file = dir.resolve("runtime_harvest.txt");
             Files.writeString(file, buffer.toString(), StandardCharsets.UTF_8);

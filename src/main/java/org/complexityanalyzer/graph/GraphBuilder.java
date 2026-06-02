@@ -36,6 +36,7 @@ import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,11 +51,24 @@ public class GraphBuilder {
     private static final TagKey<Item> RAW_MATERIALS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
 
     public static RecipeGraph buildFromWorld(Level level) {
+        var recipeManager = level.getRecipeManager();
+        var cacheFile = RecipeGraphCache.cacheFile(level.getServer());
+        boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+        RecipeGraphCache.Fingerprint fingerprint = null;
+        if (cacheEnabled && cacheFile != null) {
+            fingerprint = RecipeGraphCache.computeFingerprint(recipeManager);
+            var cached = RecipeGraphCache.tryLoad(cacheFile, fingerprint, level);
+            if (cached != null) {
+                ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).",
+                        cached.getTotalRecipeCount());
+                return cached;
+            }
+        }
+
         ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification ({} threads)...",
                 ThreadPoolManager.getInstance().getParallelism());
 
         var graph = new RecipeGraph();
-        var recipeManager = level.getRecipeManager();
         var allRecipes = new ObjectArrayList<>(recipeManager.getRecipes());
 
         var processedCount = new AtomicInteger(0);
@@ -82,6 +96,8 @@ public class GraphBuilder {
                 processedCount.get(), skippedCount.get());
 
         new RegistryHarvestService().harvestInto(graph, level, level.getServer().getWorldPath(LevelResource.ROOT));
+
+        if (cacheEnabled && cacheFile != null) RecipeGraphCache.save(graph, cacheFile, fingerprint, level);
 
         return graph;
     }

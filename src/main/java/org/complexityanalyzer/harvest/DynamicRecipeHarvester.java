@@ -14,6 +14,7 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.jetbrains.annotations.NotNull;
@@ -25,8 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicRecipeHarvester {
-
-    private static final int DETECTION_SAMPLE_SIZE = 1024;
 
     private DynamicRecipeHarvester() {
     }
@@ -52,8 +51,10 @@ public final class DynamicRecipeHarvester {
         Set<ResourceLocation> known = ConcurrentHashMap.newKeySet();
         known.addAll(knownRecipeIds);
 
+        int detectionSampleSize = ComplexityConfig.HARVEST_DETECTION_SAMPLE_SIZE.get();
+
         var ctx = new ProbeContext(recipeManager, level, graph, new FastHarvester(), allItems,
-                known, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger());
+                known, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize);
 
         inputTypeMap.entrySet().parallelStream().forEach(e -> probeType(e.getKey(), e.getValue(), ctx));
 
@@ -78,7 +79,7 @@ public final class DynamicRecipeHarvester {
 
     private static int detectDynamic(RecipeType<?> type, InputCreator creator, ProbeContext ctx) {
         int n = ctx.allItems().size();
-        int detectLimit = Math.min(n, DETECTION_SAMPLE_SIZE);
+        int detectLimit = Math.min(n, ctx.detectionSampleSize());
         for (int d = 0; d < detectLimit; d++) {
             int idx = (int) ((long) d * n / detectLimit);
             for (var holder : getRecipesFor(ctx.allItems().get(idx), creator, type, ctx)) {
@@ -198,6 +199,7 @@ public final class DynamicRecipeHarvester {
             Set<ResourceLocation> known,
             Set<ResourceLocation> discovered,
             AtomicInteger addedCount,
-            AtomicInteger dynamicTypes) {
+            AtomicInteger dynamicTypes,
+            int detectionSampleSize) {
     }
 }

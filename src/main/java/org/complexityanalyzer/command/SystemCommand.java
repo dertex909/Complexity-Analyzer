@@ -25,9 +25,16 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.command.util.OutputManager;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.event.AnalysisBootstrap;
+import org.complexityanalyzer.graph.RecipeGraphCache;
+
+import java.nio.file.Files;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Locale;
 
 public final class SystemCommand {
     private SystemCommand() {
@@ -39,7 +46,10 @@ public final class SystemCommand {
                 .then(Commands.literal("tps").executes(SystemCommand::executeTps))
                 .then(Commands.literal("stats").executes(SystemCommand::executeStats))
                 .then(Commands.literal("threads").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeThreads))
-                .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeReload));
+                .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeReload))
+                .then(Commands.literal("cache")
+                        .then(Commands.literal("info").executes(SystemCommand::executeCacheInfo))
+                        .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeCacheClear)));
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
@@ -175,6 +185,74 @@ public final class SystemCommand {
         output.sendEmptyLine(source);
         output.sendFooter(source);
         return 1;
+    }
+
+    private static int executeCacheInfo(CommandContext<CommandSourceStack> context) {
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var file = RecipeGraphCache.cacheFile(source.getServer());
+        boolean enabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+
+        var enabledColor = enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW;
+        var enabledText = Component.literal(enabled ? "enabled" : "disabled (config)").withStyle(enabledColor);
+
+        output.sendInfo(source, Component.literal("§6=== Recipe graph cache ===").withStyle(ChatFormatting.GOLD));
+        output.sendInfo(source, Component.literal("§7• Config: ").append(enabledText));
+
+        if (file == null) {
+            output.sendInfo(source, Component.literal("§7• File:   §c<no world>"));
+            return 0;
+        }
+
+        output.sendInfo(source, Component.literal("§7• File:   §f" + file));
+
+        if (!Files.isRegularFile(file)) {
+            output.sendInfo(source, Component.literal("§7• Status: §enot built yet (will be created on next analysis)").withStyle(ChatFormatting.YELLOW));
+            return 0;
+        }
+
+        try {
+            long size = Files.size(file);
+            var modified = Files.getLastModifiedTime(file).toInstant();
+            String age = formatAge(Duration.between(modified, Instant.now()));
+            output.sendInfo(source, Component.literal(String.format(Locale.US, "§7• Status: §apresent §7(%s, %s old)", humanSize(size), age)));
+            return 1;
+        } catch (Throwable t) {
+            output.sendInfo(source, Component.literal("§7• Status: §cunreadable: " + t.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int executeCacheClear(CommandContext<CommandSourceStack> context) {
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var file = RecipeGraphCache.cacheFile(source.getServer());
+
+        if (file == null) {
+            output.sendFailure(source, Component.literal("No world loaded."));
+            return 0;
+        }
+        boolean removed = RecipeGraphCache.delete(file);
+        if (removed) {
+            output.sendSuccess(source, Component.literal("§aRecipe graph cache deleted. Run §f/complexity system reload§a to rebuild now, or it will rebuild on next server start."));
+        } else {
+            output.sendInfo(source, Component.literal("§eNo cache file to delete (already absent)."));
+        }
+        return removed ? 1 : 0;
+    }
+
+    private static String humanSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024L * 1024) return String.format(Locale.US, "%.1f KB", bytes / 1024.0);
+        return String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024));
+    }
+
+    private static String formatAge(Duration d) {
+        long s = Math.max(0, d.getSeconds());
+        if (s < 60) return s + "s";
+        if (s < 3600) return (s / 60) + "m " + (s % 60) + "s";
+        if (s < 86400) return (s / 3600) + "h " + ((s % 3600) / 60) + "m";
+        return (s / 86400) + "d " + ((s % 86400) / 3600) + "h";
     }
 
     private static int executeThreads(CommandContext<CommandSourceStack> context) {

@@ -20,9 +20,11 @@ package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +34,9 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class VillagerTradeSource implements IResourceSource {
 
@@ -55,7 +60,7 @@ public class VillagerTradeSource implements IResourceSource {
     private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {
     }
 
-    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type) {
+    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type, long seed) {
     }
 
     @Override
@@ -73,12 +78,20 @@ public class VillagerTradeSource implements IResourceSource {
         var pendingTrades = new ObjectArrayList<PendingTrade>();
         var skippedByType = new Object2IntOpenHashMap<String>();
 
-        int tradeIndex = 0;
-        for (var professionTrades : VillagerTrades.TRADES.values()) {
-            for (var levelEntry : professionTrades.int2ObjectEntrySet()) {
-                int tradeLevel = levelEntry.getIntKey();
+        var professions = new ObjectArrayList<>(VillagerTrades.TRADES.entrySet());
+        professions.sort(Comparator.comparing(e -> professionId(e.getKey())));
 
-                for (var listing : levelEntry.getValue()) {
+        for (var professionEntry : professions) {
+            String profId = professionId(professionEntry.getKey());
+            var professionTrades = professionEntry.getValue();
+
+            int[] levels = professionTrades.keySet().toIntArray();
+            Arrays.sort(levels);
+
+            for (int tradeLevel : levels) {
+                var listings = professionTrades.get(tradeLevel);
+                for (int index = 0; index < listings.length; index++) {
+                    var listing = listings[index];
                     totalTrades++;
                     String tradeType = listing.getClass().getSimpleName();
 
@@ -88,9 +101,9 @@ public class VillagerTradeSource implements IResourceSource {
                         continue;
                     }
 
+                    long seed = stableSeed(profId, tradeLevel, index);
                     try {
-                        var randomSource = RandomSource.create(42L + tradeIndex++);
-                        var offer = listing.getOffer(null, randomSource);
+                        var offer = listing.getOffer(null, RandomSource.create(seed));
 
                         if (offer != null && !offer.getResult().isEmpty()) {
                             fastParsed++;
@@ -100,7 +113,7 @@ public class VillagerTradeSource implements IResourceSource {
                         }
 
                     } catch (NullPointerException e) {
-                        pendingTrades.add(new PendingTrade(listing, tradeLevel, tradeType));
+                        pendingTrades.add(new PendingTrade(listing, tradeLevel, tradeType, seed));
                     } catch (Exception e) {
                         failedTrades++;
                     }
@@ -136,8 +149,7 @@ public class VillagerTradeSource implements IResourceSource {
                 }
 
                 try {
-                    var randomSource = RandomSource.create(987654321L + i);
-                    var offer = pending.listing.getOffer(villager, randomSource);
+                    var offer = pending.listing.getOffer(villager, RandomSource.create(pending.seed()));
 
                     if (offer != null && !offer.getResult().isEmpty()) {
                         entityParsed++;
@@ -173,6 +185,19 @@ public class VillagerTradeSource implements IResourceSource {
             skippedByType.forEach((type, count) ->
                     ComplexityAnalyzer.LOGGER.info("[VTS]   {} - {} times", type, count));
         }
+    }
+
+    private static String professionId(VillagerProfession profession) {
+        var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        return id.toString();
+    }
+
+    private static long stableSeed(String professionId, int level, int index) {
+        long h = 0xcbf29ce484222325L;
+        for (int i = 0; i < professionId.length(); i++) h = (h ^ professionId.charAt(i)) * 0x100000001b3L;
+        h = (h ^ level) * 0x100000001b3L;
+        h = (h ^ index) * 0x100000001b3L;
+        return h;
     }
 
     private void addTrade(MerchantOffer offer, int level) {

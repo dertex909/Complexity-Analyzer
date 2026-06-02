@@ -24,6 +24,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import org.complexityanalyzer.analyzer.MachineRegistryCache;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
@@ -32,6 +33,7 @@ import org.complexityanalyzer.event.AnalysisBootstrap;
 import org.complexityanalyzer.graph.RecipeGraphCache;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -190,35 +192,38 @@ public final class SystemCommand {
     private static int executeCacheInfo(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
-        var file = RecipeGraphCache.cacheFile(source.getServer());
         boolean enabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
 
         var enabledColor = enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW;
         var enabledText = Component.literal(enabled ? "enabled" : "disabled (config)").withStyle(enabledColor);
 
-        output.sendInfo(source, Component.literal("§6=== Recipe graph cache ===").withStyle(ChatFormatting.GOLD));
-        output.sendInfo(source, Component.literal("§7• Config: ").append(enabledText));
+        output.sendInfo(source, Component.literal("§6=== Analysis caches ===").withStyle(ChatFormatting.GOLD));
+        output.sendInfo(source, Component.literal("§7Config: ").append(enabledText));
 
+        int present = 0;
+        present += reportCacheFile(source, output, "Recipe graph", RecipeGraphCache.cacheFile(source.getServer()));
+        present += reportCacheFile(source, output, "Machine registry", MachineRegistryCache.cacheFile(source.getServer()));
+        return present;
+    }
+
+    private static int reportCacheFile(CommandSourceStack source, OutputManager output, String label, Path file) {
         if (file == null) {
-            output.sendInfo(source, Component.literal("§7• File:   §c<no world>"));
+            output.sendInfo(source, Component.literal("§7• " + label + ": §c<no world>"));
             return 0;
         }
-
-        output.sendInfo(source, Component.literal("§7• File:   §f" + file));
-
         if (!Files.isRegularFile(file)) {
-            output.sendInfo(source, Component.literal("§7• Status: §enot built yet (will be created on next analysis)").withStyle(ChatFormatting.YELLOW));
+            output.sendInfo(source, Component.literal("§7• " + label + ": §enot built yet").withStyle(ChatFormatting.YELLOW));
             return 0;
         }
-
         try {
             long size = Files.size(file);
             var modified = Files.getLastModifiedTime(file).toInstant();
             String age = formatAge(Duration.between(modified, Instant.now()));
-            output.sendInfo(source, Component.literal(String.format(Locale.US, "§7• Status: §apresent §7(%s, %s old)", humanSize(size), age)));
+            output.sendInfo(source, Component.literal(String.format(Locale.US,
+                    "§7• %s: §apresent §7(%s, %s old) §8%s", label, humanSize(size), age, file)));
             return 1;
         } catch (Throwable t) {
-            output.sendInfo(source, Component.literal("§7• Status: §cunreadable: " + t.getMessage()));
+            output.sendInfo(source, Component.literal("§7• " + label + ": §cunreadable: " + t.getMessage()));
             return 0;
         }
     }
@@ -226,19 +231,26 @@ public final class SystemCommand {
     private static int executeCacheClear(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
-        var file = RecipeGraphCache.cacheFile(source.getServer());
+        var server = source.getServer();
 
-        if (file == null) {
+        var recipeFile = RecipeGraphCache.cacheFile(server);
+        var machineFile = MachineRegistryCache.cacheFile(server);
+        if (recipeFile == null && machineFile == null) {
             output.sendFailure(source, Component.literal("No world loaded."));
             return 0;
         }
-        boolean removed = RecipeGraphCache.delete(file);
-        if (removed) {
-            output.sendSuccess(source, Component.literal("§aRecipe graph cache deleted. Run §f/complexity system reload§a to rebuild now, or it will rebuild on next server start."));
+
+        int removed = 0;
+        if (RecipeGraphCache.delete(recipeFile)) removed++;
+        if (MachineRegistryCache.delete(machineFile)) removed++;
+
+        if (removed > 0) {
+            output.sendSuccess(source, Component.literal(String.format(Locale.US,
+                    "§aDeleted %d cache file(s). Run §f/complexity system reload§a to rebuild now, or it will rebuild on next server start.", removed)));
         } else {
-            output.sendInfo(source, Component.literal("§eNo cache file to delete (already absent)."));
+            output.sendInfo(source, Component.literal("§eNo cache files to delete (already absent)."));
         }
-        return removed ? 1 : 0;
+        return removed;
     }
 
     private static String humanSize(long bytes) {

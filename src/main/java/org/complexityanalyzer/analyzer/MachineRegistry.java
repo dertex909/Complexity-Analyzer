@@ -20,6 +20,7 @@ package org.complexityanalyzer.analyzer;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -27,6 +28,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,13 +39,28 @@ public class MachineRegistry {
     private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping = new Object2ObjectOpenHashMap<>();
     private boolean initialized = false;
 
-    public void initialize() {
+    public void initialize(MinecraftServer server) {
         if (initialized) return;
         int vanilla = registerVanilla();
         ComplexityAnalyzer.LOGGER.info("Registered {} vanilla machines", vanilla);
 
+        boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+        var cacheFile = cacheEnabled ? MachineRegistryCache.cacheFile(server) : null;
+        MachineRegistryCache.Fingerprint fingerprint = null;
+        if (cacheFile != null) {
+            fingerprint = MachineRegistryCache.computeFingerprint();
+            int restored = MachineRegistryCache.tryLoad(cacheFile, fingerprint, mapping);
+            if (restored >= 0) {
+                ComplexityAnalyzer.LOGGER.info("Loaded {} machine mappings from cache (block scan skipped)", restored);
+                initialized = true;
+                return;
+            }
+        }
+
         int dynamic = registerModdedMachines();
         ComplexityAnalyzer.LOGGER.info("Registered {} dynamic modded machines via BlockEntity scanning", dynamic);
+
+        if (cacheFile != null) MachineRegistryCache.save(cacheFile, fingerprint, mapping);
 
         initialized = true;
     }

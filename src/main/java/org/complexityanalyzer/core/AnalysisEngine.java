@@ -151,7 +151,7 @@ public class AnalysisEngine {
 
                 ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
                 this.machineRegistry = new MachineRegistry();
-                this.machineRegistry.initialize();
+                this.machineRegistry.initialize(serverLevel.getServer());
 
                 ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
                 this.graph = GraphBuilder.buildFromWorld(level);

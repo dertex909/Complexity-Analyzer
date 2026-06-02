@@ -146,10 +146,13 @@ public class ComplexityConfig {
 
         builder.push("harvest");
         HARVEST_ENABLE_CACHE = builder.comment(
-                " Cache the harvested recipe graph to disk (per-world).",
-                " When enabled, the recipe scan and dynamic probe run only once per recipe set;",
-                " later loads restore the graph instantly. The cache auto-invalidates when recipes,",
-                " mods, or graph-affecting config change. Disable to always rebuild from scratch."
+                " Cache expensive analysis results to disk (per-world). Covers:",
+                "   - the harvested recipe graph (static scan + dynamic probe + fluid scan)",
+                "   - the machine registry (block/BlockEntity reflective scan)",
+                " When enabled, those scans run only once per recipe/mod set; later loads restore",
+                " the data instantly. The caches auto-invalidate when recipes, blocks, mods, or",
+                " graph-affecting config change. Disable to always rebuild from scratch.",
+                " Manage with /complexity system cache info|clear."
         ).define("enableCache", true);
 
         HARVEST_DETECTION_SAMPLE_SIZE = builder.comment(

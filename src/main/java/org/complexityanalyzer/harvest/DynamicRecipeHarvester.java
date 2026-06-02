@@ -1,9 +1,8 @@
 package org.complexityanalyzer.harvest;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectCollection;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.resources.ResourceLocation;
@@ -21,10 +20,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicRecipeHarvester {
+
+    private static final int DETECTION_SAMPLE_SIZE = 1024;
 
     private DynamicRecipeHarvester() {
     }
@@ -34,195 +36,93 @@ public final class DynamicRecipeHarvester {
         Object create(ItemStack stack) throws Throwable;
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static List<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> recipeType,
-                                                       RecipeManager recipeManager, Level level) {
-        try {
-            var stack = new ItemStack(item);
-            if (stack.isEmpty()) return List.of();
+    public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
+        ComplexityAnalyzer.LOGGER.info("[Harvest] Starting autonomous dynamic recipe probe...");
 
-            var inputObj = creator.create(stack);
-            if (inputObj == null) return List.of();
+        var recipeManager = level.getRecipeManager();
+        var inputTypeMap = getTypeMap(recipeManager);
+        ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
-            return recipeManager.getRecipesFor((RecipeType) recipeType, (RecipeInput) inputObj, level);
-        } catch (Throwable ignored) {
-            return List.of();
+        ObjectList<Item> allItems = GameRegistryManager.getAllItems();
+        if (allItems.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.info("[Harvest] No registered items, skipping dynamic probe.");
+            return;
+        }
+
+        Set<ResourceLocation> known = ConcurrentHashMap.newKeySet();
+        known.addAll(knownRecipeIds);
+
+        var ctx = new ProbeContext(recipeManager, level, graph, new FastHarvester(), allItems,
+                known, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger());
+
+        inputTypeMap.entrySet().parallelStream().forEach(e -> probeType(e.getKey(), e.getValue(), ctx));
+
+        ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
+                ctx.addedCount().get(), ctx.dynamicTypes().get());
+    }
+
+    private static void probeType(RecipeType<?> type, ObjectSet<Class<?>> inputClasses, ProbeContext ctx) {
+        for (var inputClass : inputClasses) probeInputClass(type, inputClass, ctx);
+    }
+
+    private static void probeInputClass(RecipeType<?> type, Class<?> inputClass, ProbeContext ctx) {
+        var creator = resolveCreator(inputClass);
+        if (creator == null) return;
+
+        int detectedAt = detectDynamic(type, creator, ctx);
+        if (detectedAt < 0) return;
+
+        fullScan(type, creator, ctx);
+        ctx.dynamicTypes().incrementAndGet();
+    }
+
+    private static int detectDynamic(RecipeType<?> type, InputCreator creator, ProbeContext ctx) {
+        int n = ctx.allItems().size();
+        int detectLimit = Math.min(n, DETECTION_SAMPLE_SIZE);
+        for (int d = 0; d < detectLimit; d++) {
+            int idx = (int) ((long) d * n / detectLimit);
+            for (var holder : getRecipesFor(ctx.allItems().get(idx), creator, type, ctx)) {
+                if (!ctx.known().contains(holder.id())) return idx;
+            }
+        }
+        return -1;
+    }
+
+    private static void fullScan(RecipeType<?> type, InputCreator creator, ProbeContext ctx) {
+        var allItems = ctx.allItems();
+        for (int i = 0, n = allItems.size(); i < n; i++) {
+            for (var holder : getRecipesFor(allItems.get(i), creator, type, ctx)) {
+                if (!ctx.known().contains(holder.id())) harvestAndAdd(holder, ctx);
+            }
         }
     }
 
-    public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Starting autonomous dynamic recipe probe...");
-        var recipeManager = level.getRecipeManager();
-
-        final var inputTypeMap = getTypeMap(recipeManager);
-
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
-
-        final var safeKnown = ConcurrentHashMap.newKeySet();
-        safeKnown.addAll(knownRecipeIds);
-
-        final var discovered = ConcurrentHashMap.newKeySet();
-        final var harvester = new FastHarvester();
-        final var addedCount = new AtomicInteger(0);
-
-        inputTypeMap.entrySet().parallelStream().forEach(entry -> {
-            var recipeType = entry.getKey();
-            var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
-            String typeName = typeId != null ? typeId.toString() : recipeType.toString();
-
-            ObjectSet<Item> recipesIngredients = new ObjectOpenHashSet<>();
-            int recipeCount = 0;
-            for (var holder : recipeManager.getRecipes()) {
-                if (holder.value().getType() == recipeType) {
-                    recipeCount++;
-                    try {
-                        for (var ingredient : holder.value().getIngredients()) {
-                            if (ingredient != null) for (var stack : ingredient.getItems()) {
-                                if (stack != null && !stack.isEmpty()) recipesIngredients.add(stack.getItem());
-                            }
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
+    private static void harvestAndAdd(RecipeHolder<?> holder, ProbeContext ctx) {
+        if (!ctx.discovered().add(holder.id())) return;
+        try {
+            var items = ctx.harvester().harvest(holder.value(), ctx.level());
+            var node = HarvestedRecipeConverter.convert(items, ctx.level());
+            if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
+                    || !node.getChemicalIngredients().isEmpty())) {
+                ctx.graph().addRecipe(node);
+                ctx.addedCount().incrementAndGet();
             }
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.error("[Harvest:Dynamic] Error harvesting recipe ID={}", holder.id(), t);
+        }
+    }
 
-            ObjectCollection<Item> candidates;
-            if (recipeCount <= 100) {
-                candidates = GameRegistryManager.getAllItems();
-            } else {
-                ObjectSet<Item> union = new ObjectOpenHashSet<>();
-                union.addAll(graph.getCorpus());
-                union.addAll(recipesIngredients);
-                candidates = union;
-            }
-
-            if (candidates.isEmpty()) {
-                ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}] Candidates are empty, skipping.", typeName);
-                return;
-            }
-
-            for (var inputClass : entry.getValue()) {
-                var creator = resolveCreator(inputClass);
-                if (creator == null) {
-                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}] Skipping input class {} because creator is null.", typeName, inputClass.getSimpleName());
-                    continue;
-                }
-
-                var candidateList = new ObjectArrayList<>(candidates);
-                int n = candidateList.size();
-
-                int preProbeSize = Math.min(n, 15);
-                var preProbeSample = new ObjectArrayList<Item>();
-                boolean[] sampled = new boolean[n];
-                for (int i = 0; i < preProbeSize; i++) {
-                    int index = (int) ((long) i * n / preProbeSize);
-                    if (!sampled[index]) {
-                        sampled[index] = true;
-                        preProbeSample.add(candidateList.get(index));
-                    }
-                }
-
-                int matchedStatic = 0;
-                int matchedDynamic = 0;
-                var discoveredInPreProbe = new ObjectArrayList<RecipeHolder<?>>();
-
-                for (var item : preProbeSample) {
-                    for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
-                        var holder = (RecipeHolder<?>) rh;
-                        if (safeKnown.contains(holder.id())) {
-                            matchedStatic++;
-                        } else {
-                            matchedDynamic++;
-                            discoveredInPreProbe.add(holder);
-                        }
-                    }
-                }
-
-                if (matchedStatic == 0 && matchedDynamic == 0 && n > preProbeSize) {
-                    int mediumProbeSize = Math.min(n, 100);
-                    var mediumProbeSample = new ObjectArrayList<Item>();
-                    for (int i = 0; i < mediumProbeSize; i++) {
-                        int index = (int) ((long) i * n / mediumProbeSize);
-                        if (!sampled[index]) {
-                            sampled[index] = true;
-                            mediumProbeSample.add(candidateList.get(index));
-                        }
-                    }
-
-                    for (var item : mediumProbeSample) {
-                        for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
-                            var holder = (RecipeHolder<?>) rh;
-                            if (safeKnown.contains(holder.id())) {
-                                matchedStatic++;
-                            } else {
-                                matchedDynamic++;
-                                discoveredInPreProbe.add(holder);
-                            }
-                        }
-                    }
-                }
-
-                boolean isDynamic = (matchedDynamic > 0);
-                ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}] Probe for {} - candidates: {}, matchedStatic: {}, matchedDynamic: {}, isDynamic: {}",
-                        typeName, inputClass.getSimpleName(), n, matchedStatic, matchedDynamic, isDynamic);
-
-                if (isDynamic) {
-                    int preProbeAdded = 0;
-                    for (var holder : discoveredInPreProbe) {
-                        if (!discovered.add(holder.id())) continue;
-                        try {
-                            var items = harvester.harvest(holder.value(), level);
-                            var node = HarvestedRecipeConverter.convert(items, level);
-
-                            if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
-                                    || !node.getChemicalIngredients().isEmpty())) {
-                                graph.addRecipe(node);
-                                addedCount.incrementAndGet();
-                                preProbeAdded++;
-                            } else {
-                                ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Dropped during conversion pre-probe: {}", typeName, holder.id());
-                            }
-                        } catch (Throwable t) {
-                            ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
-                        }
-                    }
-                    if (preProbeAdded > 0) {
-                        ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Added {} recipes from sample pre-probe.", typeName, preProbeAdded);
-                    }
-
-                    int fullScanAdded = 0;
-                    for (int i = 0; i < n; i++) {
-                        if (sampled[i]) continue;
-                        var item = candidateList.get(i);
-
-                        for (var rh : getRecipesFor(item, creator, recipeType, recipeManager, level)) {
-                            var holder = (RecipeHolder<?>) rh;
-                            if (safeKnown.contains(holder.id()) || !discovered.add(holder.id())) continue;
-
-                            try {
-                                var items = harvester.harvest(holder.value(), level);
-                                var node = HarvestedRecipeConverter.convert(items, level);
-
-                                if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
-                                        || !node.getChemicalIngredients().isEmpty())) {
-                                    graph.addRecipe(node);
-                                    addedCount.incrementAndGet();
-                                    fullScanAdded++;
-                                } else {
-                                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Dropped during conversion full scan: {}", typeName, holder.id());
-                                }
-
-                            } catch (Throwable t) {
-                                ComplexityAnalyzer.LOGGER.error("[Harvest:Debug] Error harvesting matched recipe: ID={}", holder.id(), t);
-                            }
-                        }
-                    }
-                    ComplexityAnalyzer.LOGGER.info("[Harvest:Debug][{}]   Full scan added {} new recipes.", typeName, fullScanAdded);
-                }
-            }
-        });
-
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes.", addedCount.get());
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static List<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> type, ProbeContext ctx) {
+        try {
+            var stack = new ItemStack(item);
+            if (stack.isEmpty()) return List.of();
+            var input = creator.create(stack);
+            if (input == null) return List.of();
+            return ctx.recipeManager().getRecipesFor((RecipeType) type, (RecipeInput) input, ctx.level());
+        } catch (Throwable ignored) {
+            return List.of();
+        }
     }
 
     private static Class<?> getRecipeInputClass(Class<?> recipeClass) {
@@ -287,5 +187,17 @@ public final class DynamicRecipeHarvester {
             }
         }
         return null;
+    }
+
+    private record ProbeContext(
+            RecipeManager recipeManager,
+            Level level,
+            RecipeGraph graph,
+            FastHarvester harvester,
+            ObjectList<Item> allItems,
+            Set<ResourceLocation> known,
+            Set<ResourceLocation> discovered,
+            AtomicInteger addedCount,
+            AtomicInteger dynamicTypes) {
     }
 }

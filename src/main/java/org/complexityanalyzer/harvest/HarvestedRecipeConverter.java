@@ -94,10 +94,8 @@ public final class HarvestedRecipeConverter {
             var ingredient = hi.ingredient();
             int ingredientCount = hi.count();
             var variants = new ObjectArrayList<ItemStack>();
-            ItemStack[] stacks = ingredient.getItems();
             int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
-            for (int i = 0; i < Math.min(stacks.length, limit); i++) {
-                var stack = stacks[i];
+            for (var stack : ingredient.getItems()) {
                 if (stack.isEmpty()) continue;
                 var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
@@ -112,6 +110,7 @@ public final class HarvestedRecipeConverter {
                     if (byId != 0) return byId;
                     return ItemStackIdentity.dataKey(a, registryAccess).compareTo(ItemStackIdentity.dataKey(b, registryAccess));
                 });
+                if (variants.size() > limit) variants.removeElements(limit, variants.size());
                 if (isSeqAss) {
                     mergedIngredients.put(variants, ingredientCount);
                 } else {

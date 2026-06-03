@@ -45,7 +45,6 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
-import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -282,8 +281,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     private Reference2DoubleMap<Item> getStableDrop(LootTable lootTable, ServerLevel level,
                                                     BlockState blockState, ItemStack tool, long baseSeed) {
         Reference2LongMap<Item> totalCounts = new Reference2LongOpenHashMap<>();
-        boolean injectionWorked = false;
-
         Reference2LongMap<Item> firstSample = null;
 
         for (int i = 0; i < SAMPLE_COUNT; i++) {
@@ -299,8 +296,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                     .withParameter(LootContextParams.ORIGIN, originVec)
                     .create(LootContextParamSets.BLOCK);
 
-            var context = new LootContext.Builder(params).create(Optional.empty());
-            if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
+            var context = new LootContext.Builder(params)
+                    .withOptionalRandomSource(deterministicRandom)
+                    .create(Optional.empty());
 
             lootTable.getRandomItems(context, drops::add);
 
@@ -342,16 +340,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
         for (var entry : sample.reference2LongEntrySet()) averages.put(entry.getKey(), (double) entry.getLongValue());
         return averages;
-    }
-
-    private boolean injectRandomIntoContext(LootContext context, RandomSource random) {
-        try {
-            ((LootContextAccessor) context).setRandom(random);
-            return true;
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[{}] Failed to inject random into LootContext: {}", getName(), e.getMessage());
-            return false;
-        }
     }
 
     private Reference2DoubleMap<Item> calculateSourceItems(ItemStack toolStack, double itemsPerAction) {

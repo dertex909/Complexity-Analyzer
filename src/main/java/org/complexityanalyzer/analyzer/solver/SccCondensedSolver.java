@@ -20,6 +20,8 @@ package org.complexityanalyzer.analyzer.solver;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrays;
+import it.unimi.dsi.fastutil.ints.IntComparator;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -36,6 +38,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
 import java.util.Arrays;
+import java.util.Comparator;
 
 public final class SccCondensedSolver {
 
@@ -142,6 +145,15 @@ public final class SccCondensedSolver {
                 int c = componentOf[m.formulaTarget[f]];
                 componentFormulas[cursor[c]++] = f;
             }
+        }
+
+        IntComparator formulaOrder = (a, b) -> {
+            int ta = m.formulaTarget[a], tb = m.formulaTarget[b];
+            if (ta != tb) return Integer.compare(ta, tb);
+            return Integer.compare(m.formulaType[a], m.formulaType[b]);
+        };
+        for (int c = 0; c < componentCount; c++) {
+            IntArrays.quickSort(componentFormulas, componentFormulasStart[c], componentFormulasStart[c + 1], formulaOrder);
         }
 
         var sol = new Solution(m.nodeCount, m.itemCount, m.fluidCount);
@@ -528,12 +540,17 @@ public final class SccCondensedSolver {
 
         private void allocateNodes() {
             var corpus = graph.getCorpus();
-            for (var item : corpus) {
-                int node = allocateItemNode(item);
-                itemInCorpus.setTrue(node);
+            for (var item : GameRegistryManager.getAllItems()) {
+                if (corpus.contains(item)) {
+                    int node = allocateItemNode(item);
+                    itemInCorpus.setTrue(node);
+                }
             }
 
-            for (var fluid : graph.getAllUsedFluids()) allocateFluidNode(fluid);
+            var usedFluids = graph.getAllUsedFluids();
+            for (var fluid : GameRegistryManager.getAllFluids()) {
+                if (usedFluids.contains(fluid)) allocateFluidNode(fluid);
+            }
 
             allocateFluidNode(Fluids.WATER);
             allocateFluidNode(Fluids.LAVA);
@@ -581,10 +598,7 @@ public final class SccCondensedSolver {
                     if (data == null) continue;
                     var sourceItems = data.getSourceItems();
                     if (sourceItems.isEmpty()) continue;
-                    for (var entry : sourceItems.reference2DoubleEntrySet()) {
-                        var dep = entry.getKey();
-                        if (dep != null) allocateItemNode(dep);
-                    }
+                    for (var dep : sortedByItemId(sourceItems.keySet())) if (dep != null) allocateItemNode(dep);
                 }
             }
 
@@ -613,9 +627,8 @@ public final class SccCondensedSolver {
                     boolean depsOk = true;
 
                     var sourceItems = data.getSourceItems();
-                    for (var entry : sourceItems.reference2DoubleEntrySet()) {
-                        var dep = entry.getKey();
-                        double amount = entry.getDoubleValue();
+                    for (var dep : sortedByItemId(sourceItems.keySet())) {
+                        double amount = sourceItems.getDouble(dep);
                         if (dep == null || amount == 0.0) continue;
                         if (dep == item) continue;
                         int depNode = itemToNode.getInt(dep);
@@ -904,6 +917,17 @@ public final class SccCondensedSolver {
             itemSlotVariantStart.add(variantStart);
             itemSlotVariantCount.add(1);
             itemSlotAmount.add(amount);
+        }
+
+        private static ObjectList<Item> sortedByItemId(ReferenceSet<Item> items) {
+            var list = new ObjectArrayList<>(items);
+            list.sort(Comparator.comparing(CompileBuilder::itemIdString));
+            return list;
+        }
+
+        private static String itemIdString(Item item) {
+            var id = GameRegistryManager.getItemId(item);
+            return id != null ? id.toString() : "";
         }
 
         private boolean appendFluidSlot(ObjectList<Fluid> variants, double amount) {

@@ -56,7 +56,6 @@ import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -284,13 +283,9 @@ public class MobDropSource implements IResourceSource {
                     }
                 }
                 var lootParams = builder.create(LootContextParamSets.ENTITY);
-                var context = new LootContext.Builder(lootParams).create(Optional.empty());
-                var deterministicRandom = RandomSource.create(baseSeed + i);
-                try {
-                    ((LootContextAccessor) context).setRandom(deterministicRandom);
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.warn("[MobDropSource] Failed to inject random into LootContext: {}", e.getMessage());
-                }
+                var context = new LootContext.Builder(lootParams)
+                        .withOptionalRandomSource(RandomSource.create(baseSeed + i))
+                        .create(Optional.empty());
 
                 if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
                 ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();

@@ -46,7 +46,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -191,10 +190,8 @@ public class PlantSimulator {
 
             int samples = 50;
             double sampleMultiplier = 1.0 / samples;
-            boolean injectionWorked = false;
 
             for (int i = 0; i < samples; i++) {
-                var deterministicRandom = RandomSource.create(676767 + i);
                 var params = new LootParams.Builder(level)
                         .withParameter(LootContextParams.BLOCK_STATE, state)
                         .withParameter(LootContextParams.ORIGIN, Vec3.atLowerCornerOf(lootPos))
@@ -202,15 +199,13 @@ public class PlantSimulator {
                         .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
                         .create(LootContextParamSets.BLOCK);
 
-                var context = new LootContext.Builder(params).create(Optional.empty());
-                if (i == 0 || injectionWorked) injectionWorked = injectRandomIntoContext(context, deterministicRandom);
+                var context = new LootContext.Builder(params)
+                        .withOptionalRandomSource(RandomSource.create(676767 + i))
+                        .create(Optional.empty());
                 PlantSimulator.this.fakePlayer.setPos(lootPos.getX() + 0.5, lootPos.getY() + 0.5, lootPos.getZ() + 0.5);
 
                 ObjectArrayList<ItemStack> lootDrops = new ObjectArrayList<>();
                 if (lootTable != LootTable.EMPTY) lootTable.getRandomItems(context, lootDrops::add);
-
-                if (lootDrops.isEmpty()) lootDrops.addAll(Block.getDrops(state, level, lootPos,
-                        level.getBlockEntity(lootPos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY));
 
                 for (var stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
             }
@@ -223,14 +218,26 @@ public class PlantSimulator {
         return drops;
     }
 
-    private boolean injectRandomIntoContext(LootContext context, RandomSource random) {
+    private ObjectList<ItemStack> getSeededDrops(ServerLevel level, BlockState state, BlockPos pos) {
+        var out = new ObjectArrayList<ItemStack>();
         try {
-            ((LootContextAccessor) context).setRandom(random);
-            return true;
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[PlantSim] Failed to inject random into LootContext: {}", e.getMessage());
-            return false;
+            var lootTable = level.getServer().reloadableRegistries().getLootTable(state.getBlock().getLootTable());
+            if (lootTable == LootTable.EMPTY) return out;
+            long seed = GameRegistryManager.getBlockId(state.getBlock()).toString().hashCode();
+            var params = new LootParams.Builder(level)
+                    .withParameter(LootContextParams.BLOCK_STATE, state)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(pos))
+                    .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
+                    .withOptionalParameter(LootContextParams.THIS_ENTITY, fakePlayer)
+                    .withOptionalParameter(LootContextParams.BLOCK_ENTITY, level.getBlockEntity(pos))
+                    .create(LootContextParamSets.BLOCK);
+            var context = new LootContext.Builder(params)
+                    .withOptionalRandomSource(RandomSource.create(seed))
+                    .create(Optional.empty());
+            lootTable.getRandomItems(context, out::add);
+        } catch (Throwable ignored) {
         }
+        return out;
     }
 
     @Nullable
@@ -466,9 +473,7 @@ public class PlantSimulator {
         try {
             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
             fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            for (var stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
-                addDrop(drops, stack, 1.0);
-            }
+            for (var stack : getSeededDrops(level, state, pos)) addDrop(drops, stack, 1.0);
         } catch (Throwable ignored) {
         }
     }

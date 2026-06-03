@@ -71,7 +71,10 @@ public class ComplexityConfig {
         builder.pop();
 
         builder.push("limits");
-        MAX_INGREDIENT_VARIANTS = builder.defineInRange("maxIngredientVariants", 20, 1, 100);
+        MAX_INGREDIENT_VARIANTS = builder.comment(
+                " Max item variants kept per ingredient slot (e.g. for tag ingredients like 'any plank').",
+                " Higher = more accurate cost for broad tags, at a bit more solver work."
+        ).defineInRange("maxIngredientVariants", 100, 1, 1000);
         MAX_ITERATIONS = builder.defineInRange("maxIterations", 1000, 10, 10000);
         builder.pop();
 

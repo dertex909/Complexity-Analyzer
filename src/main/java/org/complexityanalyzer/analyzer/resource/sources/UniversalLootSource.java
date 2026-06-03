@@ -41,12 +41,13 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.mixin.LootContextAccessor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -54,10 +55,9 @@ import java.util.function.Supplier;
 
 import static org.apache.logging.log4j.Level.WARN;
 
-public class UniversalLootSource implements IResourceSource {
+public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
 
     private static final int SIMULATION_COUNT = 500;
-    private static final int SIMULATION_TIMEOUT_MS = 1000;
 
     private final Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
@@ -137,7 +137,10 @@ public class UniversalLootSource implements IResourceSource {
             var reloadableRegistries = server.reloadableRegistries();
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
 
-            for (var lootTableKey : allLootTableKeys) {
+            var sortedKeys = new ObjectArrayList<>(allLootTableKeys);
+            sortedKeys.sort(Comparator.comparing(k -> k.location().toString()));
+
+            for (var lootTableKey : sortedKeys) {
                 var lootTableId = lootTableKey.location();
                 var contextDef = inferContextFromId(lootTableId);
                 if (contextDef == null) {
@@ -157,27 +160,14 @@ public class UniversalLootSource implements IResourceSource {
                         }
 
                         var counts = new Reference2IntOpenHashMap<Item>();
-                        long simulationStart = System.currentTimeMillis();
                         boolean hasLoggedError = false;
                         long baseSeed = lootTableId.hashCode();
 
                         for (int i = 0; i < SIMULATION_COUNT; i++) {
-                            if (System.currentTimeMillis() - simulationStart > SIMULATION_TIMEOUT_MS) {
-                                ComplexityAnalyzer.LOGGER.warn("[ULS] Simulation timeout for '{}' after {} iterations. Skipping.", lootTableId, i);
-                                counts.clear();
-                                break;
-                            }
-
                             try {
-                                var context = new LootContext.Builder(lootParams).create(Optional.empty());
-                                var deterministicRandom = RandomSource.create(baseSeed + i);
-                                try {
-                                    ((LootContextAccessor) context).setRandom(deterministicRandom);
-                                } catch (Exception e) {
-                                    if (!hasLoggedError) {
-                                        ComplexityAnalyzer.LOGGER.warn("[ULS] Failed to inject random: {}", e.getMessage());
-                                    }
-                                }
+                                var context = new LootContext.Builder(lootParams)
+                                        .withOptionalRandomSource(RandomSource.create(baseSeed + i))
+                                        .create(Optional.empty());
 
                                 var items = new ObjectArrayList<ItemStack>();
                                 lootTable.getRandomItems(context, items::add);
@@ -233,7 +223,10 @@ public class UniversalLootSource implements IResourceSource {
 
                         var data = builder.build();
 
-                        allLootData.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>()).put(item, data);
+                        var typeMap = allLootData.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>());
+                        var existing = typeMap.get(item);
+                        if (existing == null || data.getBaseFactor() < existing.getBaseFactor())
+                            typeMap.put(item, data);
                     }
 
                 } catch (Exception e) {
@@ -285,11 +278,27 @@ public class UniversalLootSource implements IResourceSource {
     @Override
     @Nullable
     public BaseResourceData analyze(Item item) {
-        for (var map : allLootData.values()) {
+        BaseResourceData best = null;
+        for (var sourceType : BaseResourceData.ResourceSourceType.values()) {
+            var map = allLootData.get(sourceType);
+            if (map == null) continue;
             var data = map.get(item);
-            if (data != null) return data;
+            if (data != null && (best == null || data.getBaseFactor() < best.getBaseFactor())) best = data;
         }
-        return null;
+        return best;
+    }
+
+    @Override
+    public ObjectList<BaseResourceData> findAllSources(Item item) {
+        var results = new ObjectArrayList<BaseResourceData>();
+        for (var sourceType : BaseResourceData.ResourceSourceType.values()) {
+            var map = allLootData.get(sourceType);
+            if (map == null) continue;
+            var data = map.get(item);
+            if (data != null) results.add(data);
+        }
+        results.sort(Comparator.comparingDouble(BaseResourceData::getBaseFactor).thenComparing(BaseResourceData::getSourceType));
+        return results;
     }
 
     private record LootContextDefinition(BaseResourceData.ResourceSourceType sourceType, double baseActionCost) {

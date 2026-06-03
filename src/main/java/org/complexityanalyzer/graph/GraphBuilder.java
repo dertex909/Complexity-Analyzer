@@ -36,7 +36,6 @@ import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -168,13 +167,11 @@ public class GraphBuilder {
         builder.itemOutputs(new ObjectArrayList<>(List.of(resultStack.copy())));
 
         var merged = new LinkedHashMap<List<ItemStack>, Integer>();
+        int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
         for (var ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
             var variants = new ObjectArrayList<ItemStack>();
-            var stacks = ingredient.getItems();
-            int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
-            for (int i = 0; i < Math.min(stacks.length, limit); i++) {
-                var stack = stacks[i];
+            for (var stack : ingredient.getItems()) {
                 if (stack.isEmpty()) continue;
                 if (!containsSameStackData(variants, stack)) variants.add(stack.copyWithCount(1));
             }
@@ -187,6 +184,7 @@ public class GraphBuilder {
                     return ItemStackIdentity.dataKey(a, level.registryAccess())
                             .compareTo(ItemStackIdentity.dataKey(b, level.registryAccess()));
                 });
+                if (variants.size() > limit) variants.removeElements(limit, variants.size());
                 var key = new ArrayList<>(variants);
                 merged.put(key, merged.getOrDefault(key, 0) + 1);
             }

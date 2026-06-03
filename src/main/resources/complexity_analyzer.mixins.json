@@ -5,7 +5,6 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "complexity_analyzer.refmap.json",
   "mixins": [
-    "LootContextAccessor",
     "SmithingTransformRecipeAccessor",
     "ServerConnectionListenerMixin",
     "ChunkGeneratorMixin",

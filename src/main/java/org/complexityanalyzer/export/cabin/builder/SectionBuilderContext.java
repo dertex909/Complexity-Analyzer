@@ -39,6 +39,8 @@ public final class SectionBuilderContext {
 
     private final Reference2IntOpenHashMap<ItemStack> hoverNameIdCache;
     private final Reference2IntOpenHashMap<ItemStack> dataKeyIdCache;
+    private final Reference2IntOpenHashMap<Item> plainHoverByItem;
+    private final Reference2IntOpenHashMap<Item> plainDataKeyByItem;
 
     public SectionBuilderContext(
             AnalysisEngine engine,
@@ -63,6 +65,11 @@ public final class SectionBuilderContext {
         this.hoverNameIdCache.defaultReturnValue(-1);
         this.dataKeyIdCache = new Reference2IntOpenHashMap<>(32768);
         this.dataKeyIdCache.defaultReturnValue(-1);
+
+        this.plainHoverByItem = new Reference2IntOpenHashMap<>(orderedItems.size());
+        this.plainHoverByItem.defaultReturnValue(-1);
+        this.plainDataKeyByItem = new Reference2IntOpenHashMap<>(orderedItems.size());
+        this.plainDataKeyByItem.defaultReturnValue(-1);
     }
 
     public AnalysisEngine engine() {
@@ -103,5 +110,13 @@ public final class SectionBuilderContext {
 
     public Reference2IntOpenHashMap<ItemStack> dataKeyIdCache() {
         return dataKeyIdCache;
+    }
+
+    public Reference2IntOpenHashMap<Item> plainHoverByItem() {
+        return plainHoverByItem;
+    }
+
+    public Reference2IntOpenHashMap<Item> plainDataKeyByItem() {
+        return plainDataKeyByItem;
     }
 }

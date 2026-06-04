@@ -94,27 +94,29 @@ public final class CabinBuilder {
         var solverResult = engine.getSolverResult();
         var graph = engine.getGraph();
 
-        var baseAcc = itemBuilder.buildBaseData(sourceManager);
-        var sourcesAcc = itemBuilder.buildSources(sourceManager);
-        var itemResult = itemBuilder.buildItemsSection(hardcodedRegistry, baseAcc, sourcesAcc);
+        var tw = new TimingLog();
+        var baseAcc = tw.run("baseData", () -> itemBuilder.buildBaseData(sourceManager));
+        var sourcesAcc = tw.run("sources", () -> itemBuilder.buildSources(sourceManager));
+        var itemResult = tw.run("items", () -> itemBuilder.buildItemsSection(hardcodedRegistry, baseAcc, sourcesAcc));
 
-        var recipes = recipeBuilder.buildRecipes(graph);
-        byte[] usageBytes = recipeBuilder.buildUsage(graph);
-        var mobsResult = mobBuilder.buildMobs(mobProvider, mobDropSource);
+        var recipes = tw.run("recipes", () -> recipeBuilder.buildRecipes(graph));
+        byte[] usageBytes = tw.run("usage", () -> recipeBuilder.buildUsage(graph));
+        var mobsResult = tw.run("mobs", () -> mobBuilder.buildMobs(mobProvider, mobDropSource));
         byte[] dropsBytes = mobsResult.drops;
-        byte[] sccBytes = buildScc(solverResult);
-        byte[] categoriesBytes = buildCategories();
-        byte[] fluidsBytes = fluidBuilder.buildFluidsSection();
-        var fluidRecipes = fluidBuilder.buildFluidRecipes(graph);
-        byte[] fluidUsageBytes = fluidBuilder.buildFluidUsage(graph);
-        byte[] idxItemHash = buildItemHashIndex();
-        byte[] idxMobHash = buildMobHashIndex();
-        byte[] idxFluidHash = fluidBuilder.buildFluidHashIndex();
-        byte[] machineIndexBytes = buildMachineIndex(graph);
-        byte[] sourceTypeIndexBytes = buildSourceTypeIndex(sourceManager);
-        byte[] modSummaryBytes = buildModSummary(graph);
+        byte[] sccBytes = tw.run("scc", () -> buildScc(solverResult));
+        byte[] categoriesBytes = tw.run("categories", this::buildCategories);
+        byte[] fluidsBytes = tw.run("fluids", fluidBuilder::buildFluidsSection);
+        var fluidRecipes = tw.run("fluidRecipes", () -> fluidBuilder.buildFluidRecipes(graph));
+        byte[] fluidUsageBytes = tw.run("fluidUsage", () -> fluidBuilder.buildFluidUsage(graph));
+        byte[] idxItemHash = tw.run("idxItemHash", this::buildItemHashIndex);
+        byte[] idxMobHash = tw.run("idxMobHash", this::buildMobHashIndex);
+        byte[] idxFluidHash = tw.run("idxFluidHash", fluidBuilder::buildFluidHashIndex);
+        byte[] machineIndexBytes = tw.run("machineIndex", () -> buildMachineIndex(graph));
+        byte[] sourceTypeIndexBytes = tw.run("sourceTypeIndex", () -> buildSourceTypeIndex(sourceManager));
+        byte[] modSummaryBytes = tw.run("modSummary", () -> buildModSummary(graph));
         byte[] meta = buildMeta(itemResult, mobsResult, recipes, machineIndexBytes, modSummaryBytes);
-        byte[] stringsBytes = encodeStrings();
+        byte[] stringsBytes = tw.run("encodeStrings", this::encodeStrings);
+        tw.log();
 
         ObjectList<CabinSection> out = new ObjectArrayList<>(20);
         out.add(CabinSection.compressed(CabinFormat.SEC_META, meta));
@@ -145,6 +147,22 @@ public final class CabinBuilder {
                 out.size(), orderedItems.size(), recipes.recipeCount, orderedMobs.size(), strings.size(), elapsed);
 
         return out;
+    }
+
+    private static final class TimingLog {
+        private final StringBuilder sb = new StringBuilder();
+
+        <T> T run(String name, java.util.function.Supplier<T> step) {
+            long s = System.nanoTime();
+            T result = step.get();
+            long ms = (System.nanoTime() - s) / 1_000_000L;
+            sb.append(name).append('=').append(ms).append("ms ");
+            return result;
+        }
+
+        void log() {
+            ComplexityAnalyzer.LOGGER.debug("[Cabin] section timings: {}", sb.toString().trim());
+        }
     }
 
     private void prepareIndices() {

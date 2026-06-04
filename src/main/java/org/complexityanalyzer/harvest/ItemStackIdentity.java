@@ -8,8 +8,26 @@ import net.neoforged.neoforge.attachment.AttachmentHolder;
 
 import java.lang.reflect.Method;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class ItemStackIdentity {
+
+    private static final Method NO_METHOD;
+
+    static {
+        Method m;
+        try {
+            m = ItemStackIdentity.class.getDeclaredMethod("noMethodSentinel");
+        } catch (NoSuchMethodException e) {
+            m = null;
+        }
+        NO_METHOD = m;
+    }
+
+    private static final ConcurrentHashMap<Class<?>, Method> ATTACHMENT_METHOD_CACHE = new ConcurrentHashMap<>();
+
+    private static void noMethodSentinel() {
+    }
 
     private ItemStackIdentity() {
     }
@@ -89,17 +107,23 @@ public final class ItemStackIdentity {
     }
 
     private static CompoundTag serializedAttachments(Object holder, HolderLookup.Provider provider) {
-        if (holder instanceof AttachmentHolder attachmentHolder) {
-            try {
-                return attachmentHolder.serializeAttachments(provider);
-            } catch (Throwable ignored) {
-                return null;
-            }
+        if (holder instanceof AttachmentHolder attachmentHolder) try {
+            return attachmentHolder.serializeAttachments(provider);
+        } catch (Throwable ignored) {
+            return null;
         }
 
+        var method = ATTACHMENT_METHOD_CACHE.computeIfAbsent(holder.getClass(), cls -> {
+            try {
+                var m = cls.getMethod("serializeAttachments", HolderLookup.Provider.class);
+                if (!CompoundTag.class.isAssignableFrom(m.getReturnType())) return NO_METHOD;
+                return m;
+            } catch (Throwable ignored) {
+                return NO_METHOD;
+            }
+        });
+        if (method == NO_METHOD) return null;
         try {
-            Method method = holder.getClass().getMethod("serializeAttachments", HolderLookup.Provider.class);
-            if (!CompoundTag.class.isAssignableFrom(method.getReturnType())) return null;
             return (CompoundTag) method.invoke(holder, provider);
         } catch (Throwable ignored) {
             return null;

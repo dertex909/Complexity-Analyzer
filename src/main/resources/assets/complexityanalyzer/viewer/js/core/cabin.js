@@ -352,8 +352,11 @@ function readOneRecipe(b, strings) {
     const res = {
         outputItemIndex: b.i32(), recipeType: strings.get(b.i32()), category: b.u8(),
         priority: b.i32(), resultCount: b.i32(), recipeMultiplier: b.f64(),
-        flags: b.u8(), placeholderId: strings.get(b.i32()), machineItemIndex: b.i32()
+        flags: b.u8(), placeholderId: strings.get(b.i32())
     };
+    const machineCount = b.u8();
+    res.allMachineIndexes = Array.from({length: machineCount}, () => b.i32());
+    res.machineItemIndex = res.allMachineIndexes.length ? res.allMachineIndexes[0] : -1;
     res.ingredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), count = b.i32();
         const variants = [];

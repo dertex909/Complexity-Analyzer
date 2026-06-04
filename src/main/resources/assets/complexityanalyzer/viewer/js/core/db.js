@@ -235,7 +235,7 @@ export class CabinDatabase {
         for (let i = 0; i < this.fluids.count; i++) {
             try {
                 const fluidRecipes = await this.getFluidRecipes(i);
-                for (const r of fluidRecipes) if (r.machineItemIndex === machineItemIndex) rawRecipes.push(r);
+                for (const r of fluidRecipes) if ((r.allMachineIndexes && r.allMachineIndexes.includes(machineItemIndex)) || r.machineItemIndex === machineItemIndex) rawRecipes.push(r);
             } catch (e) {
             }
         }

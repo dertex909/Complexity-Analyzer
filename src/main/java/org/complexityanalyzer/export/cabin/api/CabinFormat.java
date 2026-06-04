@@ -20,7 +20,7 @@ package org.complexityanalyzer.export.cabin.api;
 
 public final class CabinFormat {
     public static final int MAGIC = 0x4E424143;
-    public static final short VERSION = 0x0103;
+    public static final short VERSION = 0x0104;
     public static final int HEADER_SIZE = 32;
     public static final byte CODEC_RAW = 0;
     public static final byte CODEC_DEFLATE_RAW = 1;

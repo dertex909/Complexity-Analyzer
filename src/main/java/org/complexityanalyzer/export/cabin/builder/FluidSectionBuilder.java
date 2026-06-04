@@ -132,22 +132,9 @@ public final class FluidSectionBuilder {
             firstOffset[i] = out.position();
             int written = 0;
             for (var r : recipes) {
-                var recipeType = r.getRecipeType();
-                var machineItems = (registry != null && recipeType != null) ? registry.getMachinesForRecipe(recipeType) : null;
-                if (machineItems != null && !machineItems.isEmpty()) {
-                    for (var m : machineItems) {
-                        int machineItemIdx = ctx.itemIndex().getInt(m);
-                        if (machineItemIdx >= 0) {
-                            RecipeSectionBuilder.writeRecipe(out, ctx, i, r, machineItemIdx);
-                            written++;
-                            if (written == 0xFFFF) break;
-                        }
-                    }
-                } else {
-                    RecipeSectionBuilder.writeRecipe(out, ctx, i, r, -1);
-                    written++;
-                }
                 if (written == 0xFFFF) break;
+                RecipeSectionBuilder.writeRecipe(out, ctx, i, r, RecipeSectionBuilder.machineIndices(ctx, registry, r));
+                written++;
             }
             count[i] = written;
             totalRecipes += written;

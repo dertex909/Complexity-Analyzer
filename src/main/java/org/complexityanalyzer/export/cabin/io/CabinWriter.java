@@ -24,6 +24,7 @@ import org.complexityanalyzer.export.cabin.api.CabinSection;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 
+import java.util.stream.IntStream;
 import java.util.zip.Deflater;
 
 public final class CabinWriter {
@@ -55,29 +56,31 @@ public final class CabinWriter {
         long[] sizes = new long[sectionCount];
         long[] uncompressed = new long[sectionCount];
         byte[] codecs = new byte[sectionCount];
+        byte[][] toWrites = new byte[sectionCount][];
 
-        for (int i = 0; i < sectionCount; i++) {
+        IntStream.range(0, sectionCount).parallel().forEach(i -> {
             var s = sections.get(i);
             byte[] data = s.payload();
-            byte[] toWrite;
-            byte codec;
             if (s.compress() && data.length >= 64) {
                 byte[] compressed = deflateRaw(data);
                 if (compressed.length < data.length) {
-                    toWrite = compressed;
-                    codec = CabinFormat.CODEC_DEFLATE_RAW;
+                    toWrites[i] = compressed;
+                    codecs[i] = CabinFormat.CODEC_DEFLATE_RAW;
                 } else {
-                    toWrite = data;
-                    codec = CabinFormat.CODEC_RAW;
+                    toWrites[i] = data;
+                    codecs[i] = CabinFormat.CODEC_RAW;
                 }
             } else {
-                toWrite = data;
-                codec = CabinFormat.CODEC_RAW;
+                toWrites[i] = data;
+                codecs[i] = CabinFormat.CODEC_RAW;
             }
+        });
+
+        for (int i = 0; i < sectionCount; i++) {
+            byte[] toWrite = toWrites[i];
             offsets[i] = out.position();
             sizes[i] = toWrite.length;
-            uncompressed[i] = s.uncompressedSize();
-            codecs[i] = codec;
+            uncompressed[i] = sections.get(i).uncompressedSize();
             out.bytes(toWrite);
         }
 

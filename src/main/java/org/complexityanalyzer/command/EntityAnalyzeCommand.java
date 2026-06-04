@@ -57,7 +57,7 @@ public class EntityAnalyzeCommand {
         var mobDropSource = engine.getMobDropSource();
 
         if (mobProvider == null) {
-            output.sendFailure(source, Component.literal("⚠ MobPropertyProvider is not initialized!"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.provider_not_initialized"));
             return 0;
         }
 

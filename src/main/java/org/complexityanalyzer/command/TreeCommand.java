@@ -328,8 +328,8 @@ public final class TreeCommand {
         var stack = node.getItemStack();
         if (stack.isEmpty() || !ItemStackIdentity.hasStackData(stack, engine.getRegistryAccess())) return;
 
-        hover.append(Component.literal("\n\nItem(need translate): ").withStyle(ChatFormatting.GRAY))
-                .append(stack.getHoverName().copy().withStyle(ChatFormatting.WHITE));
+        hover.append(Component.literal("\n\n").append(Component.translatable("complexityanalyzer.command.tree.item_detail_label"))
+                .append(": ").withStyle(ChatFormatting.GRAY)).append(stack.getHoverName().copy().withStyle(ChatFormatting.WHITE));
 
         try {
             var tooltipContext = Item.TooltipContext.of(engine.getRegistryAccess());
@@ -351,10 +351,10 @@ public final class TreeCommand {
         }
 
         var dataKey = ItemStackIdentity.dataKey(stack, engine.getRegistryAccess());
-        if (!dataKey.isBlank()) {
-            hover.append(Component.literal("\nStack data(need translate): ").withStyle(ChatFormatting.DARK_GRAY))
-                    .append(Component.literal(truncate(dataKey)).withStyle(ChatFormatting.DARK_GRAY));
-        }
+        if (!dataKey.isBlank()) hover.append(Component.literal("\n")
+                        .append(Component.translatable("complexityanalyzer.command.tree.stack_data_label"))
+                        .append(": ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal(truncate(dataKey)).withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private static String truncate(String value) {
@@ -456,14 +456,12 @@ public final class TreeCommand {
             output.sendTip(source, "complexityanalyzer.command.tree.mod_conflicts");
         }
 
-        if (stats.getTotalNodes() > 50) {
-            output.sendClickableTip(source,
-                    Component.translatable("complexityanalyzer.command.tree.complex_tree_prefix"),
-                    Component.translatable("complexityanalyzer.command.tree.complex_tree_link"),
-                    Component.translatable("complexityanalyzer.command.tree.complex_tree_suffix"),
-                    "/complexity tree " + itemId + " depth 5",
-                    Component.translatable("complexityanalyzer.command.tree.complex_tree_hover"));
-        }
+        if (stats.getTotalNodes() > 50) output.sendClickableTip(source,
+                Component.translatable("complexityanalyzer.command.tree.complex_tree_prefix"),
+                Component.translatable("complexityanalyzer.command.tree.complex_tree_link"),
+                Component.translatable("complexityanalyzer.command.tree.complex_tree_suffix"),
+                "/complexity tree " + itemId + " depth 5",
+                Component.translatable("complexityanalyzer.command.tree.complex_tree_hover"));
 
         output.sendEmptyLine(source);
     }

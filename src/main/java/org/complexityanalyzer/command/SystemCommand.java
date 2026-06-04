@@ -195,35 +195,37 @@ public final class SystemCommand {
         boolean enabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
 
         var enabledColor = enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW;
-        var enabledText = Component.literal(enabled ? "enabled" : "disabled (config)").withStyle(enabledColor);
+        var enabledText = Component.translatable(enabled
+                ? "complexityanalyzer.command.system.cache.enabled"
+                : "complexityanalyzer.command.system.cache.disabled").withStyle(enabledColor);
 
-        output.sendInfo(source, Component.literal("§6=== Analysis caches ===").withStyle(ChatFormatting.GOLD));
-        output.sendInfo(source, Component.literal("§7Config: ").append(enabledText));
+        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.header"));
+        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.config").append(enabledText));
 
         int present = 0;
-        present += reportCacheFile(source, output, "Recipe graph", RecipeGraphCache.cacheFile(source.getServer()));
-        present += reportCacheFile(source, output, "Machine registry", MachineRegistryCache.cacheFile(source.getServer()));
+        present += reportCacheFile(source, output, "complexityanalyzer.command.system.cache.label.recipe_graph", RecipeGraphCache.cacheFile(source.getServer()));
+        present += reportCacheFile(source, output, "complexityanalyzer.command.system.cache.label.machine_registry", MachineRegistryCache.cacheFile(source.getServer()));
         return present;
     }
 
-    private static int reportCacheFile(CommandSourceStack source, OutputManager output, String label, Path file) {
+    private static int reportCacheFile(CommandSourceStack source, OutputManager output, String labelKey, Path file) {
+        var label = Component.translatable(labelKey);
         if (file == null) {
-            output.sendInfo(source, Component.literal("§7• " + label + ": §c<no world>"));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.no_world", label));
             return 0;
         }
         if (!Files.isRegularFile(file)) {
-            output.sendInfo(source, Component.literal("§7• " + label + ": §enot built yet").withStyle(ChatFormatting.YELLOW));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.not_built", label));
             return 0;
         }
         try {
             long size = Files.size(file);
             var modified = Files.getLastModifiedTime(file).toInstant();
             String age = formatAge(Duration.between(modified, Instant.now()));
-            output.sendInfo(source, Component.literal(String.format(Locale.US,
-                    "§7• %s: §apresent §7(%s, %s old) §8%s", label, humanSize(size), age, file)));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.present", label, humanSize(size), age, file.toString()));
             return 1;
         } catch (Throwable t) {
-            output.sendInfo(source, Component.literal("§7• " + label + ": §cunreadable: " + t.getMessage()));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.unreadable", label, t.getMessage()));
             return 0;
         }
     }
@@ -236,7 +238,7 @@ public final class SystemCommand {
         var recipeFile = RecipeGraphCache.cacheFile(server);
         var machineFile = MachineRegistryCache.cacheFile(server);
         if (recipeFile == null && machineFile == null) {
-            output.sendFailure(source, Component.literal("No world loaded."));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.cache.no_world_loaded"));
             return 0;
         }
 
@@ -245,10 +247,9 @@ public final class SystemCommand {
         if (MachineRegistryCache.delete(machineFile)) removed++;
 
         if (removed > 0) {
-            output.sendSuccess(source, Component.literal(String.format(Locale.US,
-                    "§aDeleted %d cache file(s). Run §f/complexity system reload§a to rebuild now, or it will rebuild on next server start.", removed)));
+            output.sendSuccess(source, Component.translatable("complexityanalyzer.command.system.cache.deleted", removed));
         } else {
-            output.sendInfo(source, Component.literal("§eNo cache files to delete (already absent)."));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
         }
         return removed;
     }

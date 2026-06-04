@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "ವಿಶೇಷ ಕ್ರಮ",
   "complexityanalyzer.source_type.generic_loot": "ಜೆನೆರಿಕ್ ಲೂಟ್",
   "complexityanalyzer.source_type.unknown": "ಅಜ್ಞಾತ",
-  "complexityanalyzer.source_type.unobtainable": "ಪಡೆಯಲಾಗದು"
+  "complexityanalyzer.source_type.unobtainable": "ಪಡೆಯಲಾಗದು",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ಅನ್ನು ಪ್ರಾರಂಭಿಸಲಾಗಿಲ್ಲ!",
+  "complexityanalyzer.command.tree.item_detail_label": "ಐಟಂ",
+  "complexityanalyzer.command.tree.stack_data_label": "ಸ್ಟಾಕ್ ಡೇಟಾ",
+  "complexityanalyzer.command.system.cache.enabled": "ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ",
+  "complexityanalyzer.command.system.cache.disabled": "ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ (ಸಂರಚನೆ)",
+  "complexityanalyzer.command.system.cache.header": "§6=== ವಿಶ್ಲೇಷಣೆ ಸಂಗ್ರಹಗಳು ===",
+  "complexityanalyzer.command.system.cache.config": "§7ಸಂರಚನೆ: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "ಪಾಕವಿಧಾನ ಗ್ರಾಫ್",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "ಯಂತ್ರ ನೋಂದಾವಣೆ",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ಜಗತ್ತಿಲ್ಲ>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eಇನ್ನೂ ನಿರ್ಮಿಸಲಾಗಿಲ್ಲ",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aಪ್ರಸ್ತುತ §7(%s, %s ಹಳೆಯದು) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cಓದಲಾಗದು: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ಜಗತ್ತು ಲೋಡ್ ಆಗಿಲ್ಲ.",
+  "complexityanalyzer.command.system.cache.deleted": "§aಅಳಿಸಲಾಗಿದೆ %d ಕ್ಯಾಷ್ ಫೈಲ್(ಗಳು). ಇದೀಗ ಮರುನಿರ್ಮಾಣ ಮಾಡಲು §f/ಸಂಕೀರ್ಣತೆಯ ಸಿಸ್ಟಂ ಮರುಲೋಡ್§a ಅನ್ನು ರನ್ ಮಾಡಿ, ಅಥವಾ ಮುಂದಿನ ಸರ್ವರ್ ಪ್ರಾರಂಭದಲ್ಲಿ ಅದನ್ನು ಮರುನಿರ್ಮಾಣ ಮಾಡಲಾಗುತ್ತದೆ.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eಅಳಿಸಲು ಯಾವುದೇ ಕ್ಯಾಷ್ ಫೈಲ್‌ಗಳಿಲ್ಲ (ಈಗಾಗಲೇ ಇಲ್ಲ)."
 }

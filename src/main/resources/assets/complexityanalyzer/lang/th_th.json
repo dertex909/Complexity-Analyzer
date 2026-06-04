@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "ปฏิบัติการพิเศษ",
   "complexityanalyzer.source_type.generic_loot": "ยกเค้าทั่วไป",
   "complexityanalyzer.source_type.unknown": "ไม่ทราบ",
-  "complexityanalyzer.source_type.unobtainable": "หาไม่ได้"
+  "complexityanalyzer.source_type.unobtainable": "หาไม่ได้",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ไม่ได้เริ่มต้น!",
+  "complexityanalyzer.command.tree.item_detail_label": "รายการ",
+  "complexityanalyzer.command.tree.stack_data_label": "สแต็กข้อมูล",
+  "complexityanalyzer.command.system.cache.enabled": "เปิดใช้งาน",
+  "complexityanalyzer.command.system.cache.disabled": "ปิดการใช้งาน (กำหนดค่า)",
+  "complexityanalyzer.command.system.cache.header": "§6=== แคชการวิเคราะห์ ===",
+  "complexityanalyzer.command.system.cache.config": "§7กำหนดค่า: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "กราฟสูตร",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "ทะเบียนเครื่อง",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ไม่มีโลก>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eยังไม่ได้สร้าง",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aปัจจุบัน §7(%s, %s เก่า) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cไม่สามารถอ่านได้: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ไม่มีโลกโหลด",
+  "complexityanalyzer.command.system.cache.deleted": "§aDeleted %d ไฟล์แคช รัน §f/complexity system reload§a เพื่อสร้างใหม่ทันที ไม่เช่นนั้นจะสร้างใหม่เมื่อเซิร์ฟเวอร์เริ่มครั้งถัดไป",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eไม่มีไฟล์แคชที่จะลบ (ไม่มีอยู่แล้ว)"
 }

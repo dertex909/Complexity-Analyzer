@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Acțiune specială",
   "complexityanalyzer.source_type.generic_loot": "Pradă generică",
   "complexityanalyzer.source_type.unknown": "Necunoscut",
-  "complexityanalyzer.source_type.unobtainable": "De neobținut"
+  "complexityanalyzer.source_type.unobtainable": "De neobținut",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider nu este inițializat!",
+  "complexityanalyzer.command.tree.item_detail_label": "Articol",
+  "complexityanalyzer.command.tree.stack_data_label": "Stiva de date",
+  "complexityanalyzer.command.system.cache.enabled": "activat",
+  "complexityanalyzer.command.system.cache.disabled": "dezactivat (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Cache de analiză ===",
+  "complexityanalyzer.command.system.cache.config": "§7Config: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Graficul rețetei",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Registrul mașinii",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<fără lume>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §enu este încă construit",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aprezent §7(%s, %s vechi) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cizibil: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Nicio lume încărcată.",
+  "complexityanalyzer.command.system.cache.deleted": "§aȘters %d fișier(e) cache. Rulați §f/reîncărcarea sistemului complex§a pentru a reconstrui acum, sau se va reconstrui la următoarea pornire a serverului.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eFără fișiere cache de șters (deja absent)."
 }

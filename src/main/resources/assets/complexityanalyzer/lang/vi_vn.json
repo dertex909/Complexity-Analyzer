@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Hành động đặc biệt",
   "complexityanalyzer.source_type.generic_loot": "Chiến lợi phẩm chung",
   "complexityanalyzer.source_type.unknown": "Không xác định",
-  "complexityanalyzer.source_type.unobtainable": "Không thể đạt được"
+  "complexityanalyzer.source_type.unobtainable": "Không thể đạt được",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider chưa được khởi tạo!",
+  "complexityanalyzer.command.tree.item_detail_label": "Mục",
+  "complexityanalyzer.command.tree.stack_data_label": "Ngăn xếp dữ liệu",
+  "complexityanalyzer.command.system.cache.enabled": "đã bật",
+  "complexityanalyzer.command.system.cache.disabled": "bị vô hiệu hóa (cấu hình)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Bộ đệm phân tích ===",
+  "complexityanalyzer.command.system.cache.config": "§7Cấu hình: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "biểu đồ công thức",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Đăng ký máy",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<không có thế giới>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §echưa được xây dựng",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §ahiện tại §7(%s, %s cũ) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §ckhông thể đọc được: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Không có thế giới được tải.",
+  "complexityanalyzer.command.system.cache.deleted": "§aĐã xóa %d tệp bộ đệm. Chạy §f/complexity system loading§a để xây dựng lại ngay bây giờ, nếu không nó sẽ xây dựng lại vào lần khởi động máy chủ tiếp theo.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eKhông có tệp bộ nhớ đệm nào để xóa (đã không có)."
 }

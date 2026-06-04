@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Xüsusi Fəaliyyət",
   "complexityanalyzer.source_type.generic_loot": "Ümumi qənimət",
   "complexityanalyzer.source_type.unknown": "Naməlum",
-  "complexityanalyzer.source_type.unobtainable": "Əldə olunmaz"
+  "complexityanalyzer.source_type.unobtainable": "Əldə olunmaz",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider işə salınmayıb!",
+  "complexityanalyzer.command.tree.item_detail_label": "Maddə",
+  "complexityanalyzer.command.tree.stack_data_label": "Stack data",
+  "complexityanalyzer.command.system.cache.enabled": "aktivləşdirildi",
+  "complexityanalyzer.command.system.cache.disabled": "əlil (konfiqurasiya)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Analiz keşləri ===",
+  "complexityanalyzer.command.system.cache.config": "§7Konfiqurasiya: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Resept qrafiki",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Maşın reyestri",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<dünya yoxdur>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehələ tikilməyib",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aindiki §7(%s, %s köhnə) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §coxunmaz: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Heç bir dünya yüklənmir.",
+  "complexityanalyzer.command.system.cache.deleted": "§aSilinmiş %d keş fayl(lar). İndi yenidən qurmaq üçün §f/mürəkkəblik sistemini yenidən yükləmə§a yerinə yetirin, əks halda o, növbəti server başlanğıcında yenidən qurulacaq.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eSilinəcək keş faylları yoxdur (artıq yoxdur)."
 }

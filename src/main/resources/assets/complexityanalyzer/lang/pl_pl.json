@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Akcja Specjalna",
   "complexityanalyzer.source_type.generic_loot": "Ogólny łup",
   "complexityanalyzer.source_type.unknown": "Nieznany",
-  "complexityanalyzer.source_type.unobtainable": "Nieosiągalny"
+  "complexityanalyzer.source_type.unobtainable": "Nieosiągalny",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider nie został zainicjowany!",
+  "complexityanalyzer.command.tree.item_detail_label": "Przedmiot",
+  "complexityanalyzer.command.tree.stack_data_label": "Stos danych",
+  "complexityanalyzer.command.system.cache.enabled": "włączony",
+  "complexityanalyzer.command.system.cache.disabled": "wyłączone (konfiguracja)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Pamięci podręczne analizy ===",
+  "complexityanalyzer.command.system.cache.config": "§7Konfiguracja: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Wykres przepisu",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Rejestr maszyn",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<brak świata>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ejeszcze nie zbudowano",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aobecny §7(%s, %s stary) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cnieczytelne: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Żaden świat nie jest załadowany.",
+  "complexityanalyzer.command.system.cache.deleted": "§aUsunięto %d pliki pamięci podręcznej. Uruchom §f/complexity system reload§a, aby odbudować teraz lub zostanie odbudowany przy następnym uruchomieniu serwera.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eBrak plików pamięci podręcznej do usunięcia (już nieobecny)."
 }

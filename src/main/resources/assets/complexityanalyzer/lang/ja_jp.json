@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "特殊アクション",
   "complexityanalyzer.source_type.generic_loot": "一般的な戦利品",
   "complexityanalyzer.source_type.unknown": "不明",
-  "complexityanalyzer.source_type.unobtainable": "入手不可"
+  "complexityanalyzer.source_type.unobtainable": "入手不可",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider が初期化されていません!",
+  "complexityanalyzer.command.tree.item_detail_label": "アイテム",
+  "complexityanalyzer.command.tree.stack_data_label": "スタックデータ",
+  "complexityanalyzer.command.system.cache.enabled": "有効",
+  "complexityanalyzer.command.system.cache.disabled": "無効化 (構成)",
+  "complexityanalyzer.command.system.cache.header": "§6=== 分析キャッシュ ===",
+  "complexityanalyzer.command.system.cache.config": "§7構成: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "レシピグラフ",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "マシンレジストリ",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<世界なし>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eまだ構築されていません",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §a現在 §7(%s、%s古い) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §c判読不能: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ワールドがロードされていません。",
+  "complexityanalyzer.command.system.cache.deleted": "§a%d 個のキャッシュ ファイルが削除されました。 §f/complexity system reload§a を実行して今すぐ再構築しないと、次回のサーバー起動時に再構築されます。",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§e削除するキャッシュ ファイルがありません (すでに存在しません)。"
 }

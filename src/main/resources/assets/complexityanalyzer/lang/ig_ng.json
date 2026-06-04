@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Omume Pụrụ Iche",
   "complexityanalyzer.source_type.generic_loot": "Nkịtị Loot",
   "complexityanalyzer.source_type.unknown": "Amaghi ama",
-  "complexityanalyzer.source_type.unobtainable": "Enweghị ike inweta"
+  "complexityanalyzer.source_type.unobtainable": "Enweghị ike inweta",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ebidobeghị!",
+  "complexityanalyzer.command.tree.item_detail_label": "Ihe",
+  "complexityanalyzer.command.tree.stack_data_label": "Stack data",
+  "complexityanalyzer.command.system.cache.enabled": "enyere",
+  "complexityanalyzer.command.system.cache.disabled": "nkwarụ (nhazi)",
+  "complexityanalyzer.command.system.cache.header": "§6=== cache nyocha ===",
+  "complexityanalyzer.command.system.cache.config": "§7Hazie: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Eserese nri",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Ndekọ igwe",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ọ dịghị ụwa>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eewubeghị",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §augbu a §7(%s, %s ochie) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7•%s: §cagaghị agụ: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Ọ dịghị ụwa kwajuru.",
+  "complexityanalyzer.command.system.cache.deleted": "§aehichapụ %d cache faịlụ (s). Gbaa ọsọ §f/complexity system reload§a iji wughachi ugbu a, ma ọ bụ ọ ga-ewughachi na mmalite nkesa ọzọ.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eEnweghị faịlụ cache ka ihichapụ (ọ dị adị)."
 }

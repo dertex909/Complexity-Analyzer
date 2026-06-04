@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "خصوصی ایکشن",
   "complexityanalyzer.source_type.generic_loot": "عام لوٹ",
   "complexityanalyzer.source_type.unknown": "نامعلوم",
-  "complexityanalyzer.source_type.unobtainable": "ناقابل حصول"
+  "complexityanalyzer.source_type.unobtainable": "ناقابل حصول",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider شروع نہیں کیا گیا ہے!",
+  "complexityanalyzer.command.tree.item_detail_label": "آئٹم",
+  "complexityanalyzer.command.tree.stack_data_label": "اسٹیک ڈیٹا",
+  "complexityanalyzer.command.system.cache.enabled": "فعال",
+  "complexityanalyzer.command.system.cache.disabled": "غیر فعال (تشکیل)",
+  "complexityanalyzer.command.system.cache.header": "§6=== تجزیہ کیچ ===",
+  "complexityanalyzer.command.system.cache.config": "§7تشکیل: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "نسخہ گراف",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "مشین رجسٹری",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<کوئی دنیا نہیں>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eابھی تک نہیں بنایا گیا۔",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aموجودہ §7(%s، %s پرانا) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cنا پڑھا جا سکتا ہے: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "کوئی دنیا بھری ہوئی نہیں۔",
+  "complexityanalyzer.command.system.cache.deleted": "§aحذف کردہ %d کیشے فائل(ز)۔ ابھی دوبارہ تعمیر کرنے کے لیے §f/complexity system reload§a چلائیں، یا یہ اگلے سرور کے آغاز پر دوبارہ تعمیر ہوگا۔",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§e حذف کرنے کے لیے کوئی کیش فائلیں نہیں ہیں (پہلے سے موجود نہیں)۔"
 }

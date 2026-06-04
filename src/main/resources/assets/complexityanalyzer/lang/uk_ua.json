@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Спеціальна дія",
   "complexityanalyzer.source_type.generic_loot": "Загальний лут",
   "complexityanalyzer.source_type.unknown": "Невідомий",
-  "complexityanalyzer.source_type.unobtainable": "Недосяжний"
+  "complexityanalyzer.source_type.unobtainable": "Недосяжний",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider не ініціалізовано!",
+  "complexityanalyzer.command.tree.item_detail_label": "Пункт",
+  "complexityanalyzer.command.tree.stack_data_label": "Стек даних",
+  "complexityanalyzer.command.system.cache.enabled": "включено",
+  "complexityanalyzer.command.system.cache.disabled": "вимкнено (конфігурація)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Кеші аналізу ===",
+  "complexityanalyzer.command.system.cache.config": "§7Конфігурація: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Графік рецептів",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Машинний реєстр",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<немає світу>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eще не побудовано",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aтепер §7(%s, %s старий) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cнечитабельно: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Світ не завантажено.",
+  "complexityanalyzer.command.system.cache.deleted": "§aВидалено %d файл(и) кешу. Запустіть §f/complexity system reload§a, щоб перебудувати зараз, або він буде перебудований під час наступного запуску сервера.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eНемає файлів кешу для видалення (вже відсутні)."
 }

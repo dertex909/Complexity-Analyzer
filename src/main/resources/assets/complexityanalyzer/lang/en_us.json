@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Special Action",
   "complexityanalyzer.source_type.generic_loot": "Generic Loot",
   "complexityanalyzer.source_type.unknown": "Unknown",
-  "complexityanalyzer.source_type.unobtainable": "Unobtainable"
+  "complexityanalyzer.source_type.unobtainable": "Unobtainable",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider is not initialized!",
+  "complexityanalyzer.command.tree.item_detail_label": "Item",
+  "complexityanalyzer.command.tree.stack_data_label": "Stack data",
+  "complexityanalyzer.command.system.cache.enabled": "enabled",
+  "complexityanalyzer.command.system.cache.disabled": "disabled (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Analysis caches ===",
+  "complexityanalyzer.command.system.cache.config": "§7Config: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Recipe graph",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Machine registry",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<no world>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §enot built yet",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §apresent §7(%s, %s old) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cunreadable: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "No world loaded.",
+  "complexityanalyzer.command.system.cache.deleted": "§aDeleted %d cache file(s). Run §f/complexity system reload§a to rebuild now, or it will rebuild on next server start.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eNo cache files to delete (already absent)."
 }

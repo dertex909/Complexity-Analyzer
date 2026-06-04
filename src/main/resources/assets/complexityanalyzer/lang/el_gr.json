@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Ειδική Δράση",
   "complexityanalyzer.source_type.generic_loot": "Generic Loot",
   "complexityanalyzer.source_type.unknown": "Άγνωστο",
-  "complexityanalyzer.source_type.unobtainable": "Αδύνατη"
+  "complexityanalyzer.source_type.unobtainable": "Αδύνατη",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ Το MobPropertyProvider δεν έχει αρχικοποιηθεί!",
+  "complexityanalyzer.command.tree.item_detail_label": "Είδος",
+  "complexityanalyzer.command.tree.stack_data_label": "Στοίβα δεδομένων",
+  "complexityanalyzer.command.system.cache.enabled": "ενεργοποιημένη",
+  "complexityanalyzer.command.system.cache.disabled": "απενεργοποιημένο (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Κρυφές μνήμες ανάλυσης ===",
+  "complexityanalyzer.command.system.cache.config": "§7Διαμόρφωση: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Γράφημα συνταγής",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Μητρώο μηχανημάτων",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<δεν υπάρχει κόσμος>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eδεν έχει κατασκευαστεί ακόμα",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aπαρόν §7(%s, %s παλιό) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cμη αναγνώσιμο: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Δεν έχει φορτωθεί κόσμος.",
+  "complexityanalyzer.command.system.cache.deleted": "§aΔιαγράφηκαν %d αρχεία κρυφής μνήμης. Εκτελέστε το §f/επαναφόρτωση του συστήματος πολυπλοκότητας§a για ανακατασκευή τώρα, διαφορετικά θα αναδημιουργηθεί στην επόμενη εκκίνηση του διακομιστή.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eΔεν υπάρχουν αρχεία κρυφής μνήμης για διαγραφή (ήδη απουσιάζει)."
 }

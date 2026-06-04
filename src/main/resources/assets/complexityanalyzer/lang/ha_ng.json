@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Aiki Na Musamman",
   "complexityanalyzer.source_type.generic_loot": "Generic Loot",
   "complexityanalyzer.source_type.unknown": "Ba a sani ba",
-  "complexityanalyzer.source_type.unobtainable": "Ba za a iya samu ba"
+  "complexityanalyzer.source_type.unobtainable": "Ba za a iya samu ba",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ba a fara ba!",
+  "complexityanalyzer.command.tree.item_detail_label": "Abu",
+  "complexityanalyzer.command.tree.stack_data_label": "Tari bayanai",
+  "complexityanalyzer.command.system.cache.enabled": "kunna",
+  "complexityanalyzer.command.system.cache.disabled": "naƙasasshe (tsari)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Cache na nazari ===",
+  "complexityanalyzer.command.system.cache.config": "§7Tsarin: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "jadawali girke-girke",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Injin rajista",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<babu duniya>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eba a gina shi ba tukuna",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §apresent §7(%s, %s old) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7•%s: §cmara karatu: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Babu duniya lodi.",
+  "complexityanalyzer.command.system.cache.deleted": "§aAn goge %d fayil(s) cache. Run §f/complexity system reload§a don sake ginawa yanzu, ko kuma zai sake ginawa a farkon sabar na gaba.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eBabu fayilolin cache da za'a goge ( tuni ba ya nan)."
 }

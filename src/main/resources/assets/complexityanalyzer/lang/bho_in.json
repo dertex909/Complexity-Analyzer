@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "विशेष कार्रवाई के बारे में बतावल गईल",
   "complexityanalyzer.source_type.generic_loot": "जेनेरिक लूट के बा",
   "complexityanalyzer.source_type.unknown": "अज्ञात बा",
-  "complexityanalyzer.source_type.unobtainable": "अप्राप्य होखे के चाहीं"
+  "complexityanalyzer.source_type.unobtainable": "अप्राप्य होखे के चाहीं",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider के आरंभ नइखे कइल गइल!",
+  "complexityanalyzer.command.tree.item_detail_label": "सामान",
+  "complexityanalyzer.command.tree.stack_data_label": "डेटा के ढेर लगावल जाला",
+  "complexityanalyzer.command.system.cache.enabled": "सक्षम कइल गइल बा",
+  "complexityanalyzer.command.system.cache.disabled": "अक्षम (कॉन्फिग) हो गइल बा।",
+  "complexityanalyzer.command.system.cache.header": "§6=== विश्लेषण कैश === के बा",
+  "complexityanalyzer.command.system.cache.config": "§7कॉन्फ़िगरेशन के बा: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "रेसिपी के ग्राफ के बारे में बतावल गइल बा",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "मशीन के रजिस्ट्री के काम होला",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<कोई दुनिया नइखे>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eअभी तक नइखे बनल",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aवर्तमान §7(%s, %s पुराना) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cअपठनीय: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "कवनो दुनिया लोड ना भइल.",
+  "complexityanalyzer.command.system.cache.deleted": "§aहटा दिहल गइल %d कैश फाइल (फाइल)। अब दोबारा बनावे खातिर §f/complexity system reload§a चलाईं, ना त अगिला सर्वर शुरू होखे पर एकरा के दोबारा बनावल जाई।",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eहटावे खातिर कवनो कैश फाइल नइखे (पहिले से अनुपस्थित बा)।"
 }

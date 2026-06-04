@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Tindakan Khusus",
   "complexityanalyzer.source_type.generic_loot": "Penjarahan Generik",
   "complexityanalyzer.source_type.unknown": "Tidak diketahui",
-  "complexityanalyzer.source_type.unobtainable": "Tidak dapat diperoleh"
+  "complexityanalyzer.source_type.unobtainable": "Tidak dapat diperoleh",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider tidak diinisialisasi!",
+  "complexityanalyzer.command.tree.item_detail_label": "Barang",
+  "complexityanalyzer.command.tree.stack_data_label": "Tumpukan data",
+  "complexityanalyzer.command.system.cache.enabled": "diaktifkan",
+  "complexityanalyzer.command.system.cache.disabled": "dinonaktifkan (konfigurasi)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Analisis cache ===",
+  "complexityanalyzer.command.system.cache.config": "§7Konfigurasi: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafik resep",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Registri mesin",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<tidak ada dunia>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ebelum dibuat",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §asekarang §7(%s, %s lama) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §ctidak terbaca: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Tidak ada dunia yang dimuat.",
+  "complexityanalyzer.command.system.cache.deleted": "§aMenghapus %d file cache. Jalankan §f/complexity system reload§a untuk membangun kembali sekarang, atau sistem akan membangun kembali pada permulaan server berikutnya.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eTidak ada file cache yang perlu dihapus (sudah tidak ada)."
 }

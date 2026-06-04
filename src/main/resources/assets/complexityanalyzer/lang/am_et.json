@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "ልዩ እርምጃ",
   "complexityanalyzer.source_type.generic_loot": "አጠቃላይ Loot",
   "complexityanalyzer.source_type.unknown": "ያልታወቀ",
-  "complexityanalyzer.source_type.unobtainable": "የማይገኝ"
+  "complexityanalyzer.source_type.unobtainable": "የማይገኝ",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobProperty Provider አልተጀመረም!",
+  "complexityanalyzer.command.tree.item_detail_label": "ንጥል",
+  "complexityanalyzer.command.tree.stack_data_label": "የቁልል ውሂብ",
+  "complexityanalyzer.command.system.cache.enabled": "ነቅቷል",
+  "complexityanalyzer.command.system.cache.disabled": "ተሰናክሏል (ውቅር)",
+  "complexityanalyzer.command.system.cache.header": "§6=== የትንታኔ መሸጎጫዎች ===",
+  "complexityanalyzer.command.system.cache.config": "§7ማዋቀር፡ ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "የምግብ አዘገጃጀት ግራፍ",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "የማሽን መዝገብ ቤት",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s፡ §c<አለም የለም>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s፡ §eገና አልተገነባም።",
+  "complexityanalyzer.command.system.cache.present": "§7• %s፡ §aአሁን §7(%s፣ %s የድሮ) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s፡ §cየማይነበብ፡ %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "አለም አልተጫነም።",
+  "complexityanalyzer.command.system.cache.deleted": "§aተሰርዟል %d የመሸጎጫ ፋይል(ዎች)። አሁን እንደገና ለመገንባት §f/complexity system reload§a ያሂዱ አለበለዚያ በሚቀጥለው የአገልጋይ ጅምር ይገነባል።",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eየሚሰርዙት መሸጎጫ ፋይሎች የሉም (ቀድሞውኑ የለም)።"
 }

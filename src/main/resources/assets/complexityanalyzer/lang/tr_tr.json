@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Özel Eylem",
   "complexityanalyzer.source_type.generic_loot": "Genel Ganimet",
   "complexityanalyzer.source_type.unknown": "Bilinmiyor",
-  "complexityanalyzer.source_type.unobtainable": "Elde Edilemez"
+  "complexityanalyzer.source_type.unobtainable": "Elde Edilemez",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider başlatılmadı!",
+  "complexityanalyzer.command.tree.item_detail_label": "Öğe",
+  "complexityanalyzer.command.tree.stack_data_label": "Veri yığını",
+  "complexityanalyzer.command.system.cache.enabled": "etkinleştirilmiş",
+  "complexityanalyzer.command.system.cache.disabled": "devre dışı (yapılandırma)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Analiz önbellekleri ===",
+  "complexityanalyzer.command.system.cache.config": "§7Yapılandırma: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Tarif grafiği",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Makine kaydı",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<dünya yok>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehenüz oluşturulmadı",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aşimdiki §7(%s, %s eski) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cokunamıyor: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Hiçbir dünya yüklenmedi.",
+  "complexityanalyzer.command.system.cache.deleted": "§a%d önbellek dosyası/dosyaları silindi. Şimdi yeniden oluşturmak için §f/complexity system reload§a komutunu çalıştırın, yoksa bir sonraki sunucu başlangıcında yeniden oluşturulacaktır.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eSilinecek önbellek dosyası yok (zaten yok)."
 }

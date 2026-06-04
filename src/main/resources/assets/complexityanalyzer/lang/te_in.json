@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "ప్రత్యేక చర్య",
   "complexityanalyzer.source_type.generic_loot": "సాధారణ దోపిడీ",
   "complexityanalyzer.source_type.unknown": "తెలియదు",
-  "complexityanalyzer.source_type.unobtainable": "పొందలేనిది"
+  "complexityanalyzer.source_type.unobtainable": "పొందలేనిది",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ప్రారంభించబడలేదు!",
+  "complexityanalyzer.command.tree.item_detail_label": "అంశం",
+  "complexityanalyzer.command.tree.stack_data_label": "స్టాక్ డేటా",
+  "complexityanalyzer.command.system.cache.enabled": "ప్రారంభించబడింది",
+  "complexityanalyzer.command.system.cache.disabled": "డిసేబుల్ (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== విశ్లేషణ కాష్ ===",
+  "complexityanalyzer.command.system.cache.config": "§7కాన్ఫిగర్: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "రెసిపీ గ్రాఫ్",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "మెషిన్ రిజిస్ట్రీ",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ప్రపంచం లేదు>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eఇంకా నిర్మించబడలేదు",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aప్రస్తుతం §7(%s, %s పాతది) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cచదవలేనిది: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ప్రపంచం లోడ్ చేయబడలేదు.",
+  "complexityanalyzer.command.system.cache.deleted": "§aతొలగించబడింది %d కాష్ ఫైల్(లు). ఇప్పుడు పునర్నిర్మించడానికి §f/సంక్లిష్టత సిస్టమ్ రీలోడ్§aని అమలు చేయండి లేదా తదుపరి సర్వర్ ప్రారంభంలో ఇది పునర్నిర్మించబడుతుంది.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eతొలగించడానికి కాష్ ఫైల్‌లు లేవు (ఇప్పటికే లేవు)."
 }

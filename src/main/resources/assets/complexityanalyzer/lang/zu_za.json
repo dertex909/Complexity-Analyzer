@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Isenzo Esikhethekile",
   "complexityanalyzer.source_type.generic_loot": "I-Generic Loot",
   "complexityanalyzer.source_type.unknown": "Akwaziwa",
-  "complexityanalyzer.source_type.unobtainable": "Akutholakali"
+  "complexityanalyzer.source_type.unobtainable": "Akutholakali",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ I-MobPropertyProvider ayiqaliswanga!",
+  "complexityanalyzer.command.tree.item_detail_label": "Into",
+  "complexityanalyzer.command.tree.stack_data_label": "Idatha yesitaki",
+  "complexityanalyzer.command.system.cache.enabled": "inikwe amandla",
+  "complexityanalyzer.command.system.cache.disabled": "kukhutshaziwe (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Ukuhlaziya izinqolobane ===",
+  "complexityanalyzer.command.system.cache.config": "§7Lungisa: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Igrafu yeresiphi",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Ukubhaliswa komshini",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<awukho umhlaba>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eayikakhiwe okwamanje",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §apresent §7(%s, %s endala) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cakufundeki: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Awukho umhlaba olayishiwe.",
+  "complexityanalyzer.command.system.cache.deleted": "§aKususwe %d ifayela lenqolobane. Qalisa §f/ukulayisha kabusha kwesistimu§a ukuze wakhe kabusha manje, noma izokwakha kabusha ekuqaleni kweseva elandelayo.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eAwekho amafayela enqolobane azosuswa (asevele engekho)."
 }

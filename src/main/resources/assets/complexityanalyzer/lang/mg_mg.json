@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Hetsika manokana",
   "complexityanalyzer.source_type.generic_loot": "Generic Loot",
   "complexityanalyzer.source_type.unknown": "Tsy fantatra",
-  "complexityanalyzer.source_type.unobtainable": "Tsy azo"
+  "complexityanalyzer.source_type.unobtainable": "Tsy azo",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider dia tsy natomboka!",
+  "complexityanalyzer.command.tree.item_detail_label": "zavatra",
+  "complexityanalyzer.command.tree.stack_data_label": "Stack data",
+  "complexityanalyzer.command.system.cache.enabled": "afaka",
+  "complexityanalyzer.command.system.cache.disabled": "kilemaina (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Famakafakana cache ===",
+  "complexityanalyzer.command.system.cache.config": "§7Config: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grapika momba ny fomba fahandro",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Rejistra milina",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<tsy misy tontolo>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §embola tsy vita",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aankehitriny §7(%s, %s taloha) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §ctsy azo vakina: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Tsy misy tontolo feno entana.",
+  "complexityanalyzer.command.system.cache.deleted": "§aNofafa %d rakitra cache. Alefaso ny §f/complexity system reload§a mba hanorina indray izao, na hanorina indray amin'ny fanombohan'ny mpizara manaraka.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eTsy misy rakitra cache hofafana (efa tsy eo)."
 }

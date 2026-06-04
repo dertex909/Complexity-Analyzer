@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Kitendo Maalum",
   "complexityanalyzer.source_type.generic_loot": "Uporaji wa kawaida",
   "complexityanalyzer.source_type.unknown": "Haijulikani",
-  "complexityanalyzer.source_type.unobtainable": "Haipatikani"
+  "complexityanalyzer.source_type.unobtainable": "Haipatikani",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider haijaanzishwa!",
+  "complexityanalyzer.command.tree.item_detail_label": "Kipengee",
+  "complexityanalyzer.command.tree.stack_data_label": "Hifadhi data",
+  "complexityanalyzer.command.system.cache.enabled": "kuwezeshwa",
+  "complexityanalyzer.command.system.cache.disabled": "imezimwa (config)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Akiba za uchanganuzi ===",
+  "complexityanalyzer.command.system.cache.config": "§7Mipangilio: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafu ya mapishi",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Usajili wa mashine",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<hakuna ulimwengu>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehaijajengwa bado",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §asasa §7(%s, %s zamani) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cisiyosomeka: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Hakuna dunia iliyopakiwa.",
+  "complexityanalyzer.command.system.cache.deleted": "§aImefutwa %d faili za akiba. Endesha §f/uchangamano wa upakiaji upya§a ili uunde upya sasa, au utaunda upya kwenye kuanza kwa seva inayofuata.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eHakuna faili za kache za kufuta (tayari hazipo)."
 }

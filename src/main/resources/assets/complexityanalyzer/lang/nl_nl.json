@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Speciale actie",
   "complexityanalyzer.source_type.generic_loot": "Generieke buit",
   "complexityanalyzer.source_type.unknown": "Onbekend",
-  "complexityanalyzer.source_type.unobtainable": "Onbereikbaar"
+  "complexityanalyzer.source_type.unobtainable": "Onbereikbaar",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider is niet geïnitialiseerd!",
+  "complexityanalyzer.command.tree.item_detail_label": "Item",
+  "complexityanalyzer.command.tree.stack_data_label": "Stapel gegevens",
+  "complexityanalyzer.command.system.cache.enabled": "ingeschakeld",
+  "complexityanalyzer.command.system.cache.disabled": "uitgeschakeld (configuratie)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Analysecaches ===",
+  "complexityanalyzer.command.system.cache.config": "§7Configuratie: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Receptgrafiek",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Machineregister",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<geen wereld>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §enog niet gebouwd",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aheden §7(%s, %s oud) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §conleesbaar: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Geen wereld geladen.",
+  "complexityanalyzer.command.system.cache.deleted": "§a%d cachebestand(en) verwijderd. Voer §f/complexity system reload§a uit om nu opnieuw op te bouwen, anders wordt het opnieuw opgebouwd bij de volgende start van de server.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eGeen cachebestanden om te verwijderen (reeds afwezig)."
 }

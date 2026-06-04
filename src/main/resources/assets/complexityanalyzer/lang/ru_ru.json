@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Особое действие",
   "complexityanalyzer.source_type.generic_loot": "Общий лут",
   "complexityanalyzer.source_type.unknown": "Неизвестно",
-  "complexityanalyzer.source_type.unobtainable": "Недостижимо"
+  "complexityanalyzer.source_type.unobtainable": "Недостижимо",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider не инициализирован!",
+  "complexityanalyzer.command.tree.item_detail_label": "Элемент",
+  "complexityanalyzer.command.tree.stack_data_label": "Данные стека",
+  "complexityanalyzer.command.system.cache.enabled": "включено",
+  "complexityanalyzer.command.system.cache.disabled": "отключено (конфигурация)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Кэши анализа ===",
+  "complexityanalyzer.command.system.cache.config": "§7Конфигурация: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "График рецептов",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Реестр машин",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<нет мира>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eеще не построено",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aнастоящее §7 (%s, %s старое) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cнечитаемо: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Ни один мир не загружен.",
+  "complexityanalyzer.command.system.cache.deleted": "§aУдалены %d файлы кэша. Запустите §f/complexity system reload§a, чтобы перестроить сейчас, или она будет перестроена при следующем запуске сервера.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eНет файлов кэша для удаления (уже отсутствует)."
 }

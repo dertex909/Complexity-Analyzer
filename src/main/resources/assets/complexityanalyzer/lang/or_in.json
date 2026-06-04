@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "ବିଶେଷ କାର୍ଯ୍ୟ",
   "complexityanalyzer.source_type.generic_loot": "ଜେନେରିକ୍ ଲୁଟ୍ |",
   "complexityanalyzer.source_type.unknown": "ଅଜ୍ଞାତ",
-  "complexityanalyzer.source_type.unobtainable": "ଅପହଞ୍ଚ |"
+  "complexityanalyzer.source_type.unobtainable": "ଅପହଞ୍ଚ |",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ପ୍ରାରମ୍ଭ ହୋଇନାହିଁ!",
+  "complexityanalyzer.command.tree.item_detail_label": "ଆଇଟମ୍ |",
+  "complexityanalyzer.command.tree.stack_data_label": "ଷ୍ଟାକ୍ ଡାଟା |",
+  "complexityanalyzer.command.system.cache.enabled": "ସକ୍ଷମ",
+  "complexityanalyzer.command.system.cache.disabled": "ଅକ୍ଷମ (ବିନ୍ୟାସ)",
+  "complexityanalyzer.command.system.cache.header": "§6=== ବିଶ୍ଳେଷଣ କ୍ୟାଚ୍ ===",
+  "complexityanalyzer.command.system.cache.config": "§7ବିନ୍ୟାସ କରନ୍ତୁ: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "ରେସିପି ଗ୍ରାଫ୍ |",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "ମେସିନ୍ ରେଜିଷ୍ଟ୍ରି |",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<no world>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eଏପର୍ଯ୍ୟନ୍ତ ନିର୍ମାଣ ହୋଇନାହିଁ |",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aଉପସ୍ଥିତ §7(%s, %s ପୁରୁଣା) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cପଠନୀୟ ନୁହେଁ: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "କ world ଣସି ଦୁନିଆ ଲୋଡ୍ ହୋଇନାହିଁ |",
+  "complexityanalyzer.command.system.cache.deleted": "§aବିଲୋପ ହୋଇଛି %d କ୍ୟାଚ୍ ଫାଇଲ୍ (ଗୁଡିକ) | ଚଲାନ୍ତୁ | §f/complexity system reload§a ବର୍ତ୍ତମାନ ପୁନ build ନିର୍ମାଣ କରିବାକୁ, କିମ୍ବା ଏହା ପରବର୍ତ୍ତୀ ସର୍ଭର ଆରମ୍ଭରେ ପୁନ build ନିର୍ମାଣ ହେବ |",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eଡିଲିଟ୍ କରିବାକୁ କ c ଣସି କ୍ୟାଚ୍ ଫାଇଲ୍ ନାହିଁ (ପୂର୍ବରୁ ଅନୁପସ୍ଥିତ) |"
 }

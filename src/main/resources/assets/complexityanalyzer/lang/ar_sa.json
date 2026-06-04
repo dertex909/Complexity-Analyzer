@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "عمل خاص",
   "complexityanalyzer.source_type.generic_loot": "نهب عام",
   "complexityanalyzer.source_type.unknown": "غير معروف",
-  "complexityanalyzer.source_type.unobtainable": "لا يمكن الحصول عليه"
+  "complexityanalyzer.source_type.unobtainable": "لا يمكن الحصول عليه",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ لم تتم تهيئة MobPropertyProvider!",
+  "complexityanalyzer.command.tree.item_detail_label": "غرض",
+  "complexityanalyzer.command.tree.stack_data_label": "كومة البيانات",
+  "complexityanalyzer.command.system.cache.enabled": "ممكّن",
+  "complexityanalyzer.command.system.cache.disabled": "معطل (التكوين)",
+  "complexityanalyzer.command.system.cache.header": "§6=== ذاكرات التحليل المؤقتة ===",
+  "complexityanalyzer.command.system.cache.config": "§7التكوين: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "الرسم البياني وصفة",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "تسجيل الآلة",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<لا يوجد عالم>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §e لم يتم بناؤها بعد",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aالحاضر §7(%s, %s القديم) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cغير قابل للقراءة: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "لا يوجد عالم محملة.",
+  "complexityanalyzer.command.system.cache.deleted": "§aتم حذف %d ملف (ملفات) ذاكرة التخزين المؤقت. قم بتشغيل §f/إعادة تحميل نظام التعقيد§a لإعادة البناء الآن، أو سيتم إعادة البناء عند بدء تشغيل الخادم التالي.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eلا توجد ملفات ذاكرة تخزين مؤقت لحذفها (غير موجودة بالفعل)."
 }

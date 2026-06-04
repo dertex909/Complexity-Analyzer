@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Különleges akció",
   "complexityanalyzer.source_type.generic_loot": "Általános zsákmány",
   "complexityanalyzer.source_type.unknown": "Ismeretlen",
-  "complexityanalyzer.source_type.unobtainable": "Elérhetetlen"
+  "complexityanalyzer.source_type.unobtainable": "Elérhetetlen",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ A MobPropertyProvider nincs inicializálva!",
+  "complexityanalyzer.command.tree.item_detail_label": "Tétel",
+  "complexityanalyzer.command.tree.stack_data_label": "Stack adatok",
+  "complexityanalyzer.command.system.cache.enabled": "engedélyezve van",
+  "complexityanalyzer.command.system.cache.disabled": "letiltva (konfig)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Elemzési gyorsítótárak ===",
+  "complexityanalyzer.command.system.cache.config": "§7Konfig. ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Recept grafikon",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Gép nyilvántartás",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<nincs világ>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §emég nincs megépítve",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §ajelenleg §7(%s, %s régi) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §colvashatatlan: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Nincs világ betöltve.",
+  "complexityanalyzer.command.system.cache.deleted": "§aTörölve %d gyorsítótár fájl(ok). Futtassa a §f/complexity system reload§a parancsot az újjáépítéshez most, vagy a szerver következő indításakor újraépül.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eNincsenek törölhető gyorsítótár-fájlok (már nincsenek)."
 }

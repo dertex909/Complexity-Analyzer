@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Ação Especial",
   "complexityanalyzer.source_type.generic_loot": "Saque Genérico",
   "complexityanalyzer.source_type.unknown": "Desconhecido",
-  "complexityanalyzer.source_type.unobtainable": "Inalcançável"
+  "complexityanalyzer.source_type.unobtainable": "Inalcançável",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider não foi inicializado!",
+  "complexityanalyzer.command.tree.item_detail_label": "Item",
+  "complexityanalyzer.command.tree.stack_data_label": "Dados de pilha",
+  "complexityanalyzer.command.system.cache.enabled": "habilitado",
+  "complexityanalyzer.command.system.cache.disabled": "desativado (configuração)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Caches de análise ===",
+  "complexityanalyzer.command.system.cache.config": "§7Configuração: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Gráfico de receita",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Registro da máquina",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<sem mundo>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eainda não construído",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §apresente §7(%s, %s antigo) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cilegível: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Nenhum mundo carregado.",
+  "complexityanalyzer.command.system.cache.deleted": "§aExcluído %d arquivo(s) de cache. Execute §f/complexity system reload§a para reconstruir agora, ou ele será reconstruído na próxima inicialização do servidor.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eNenhum arquivo de cache para excluir (já ausente)."
 }

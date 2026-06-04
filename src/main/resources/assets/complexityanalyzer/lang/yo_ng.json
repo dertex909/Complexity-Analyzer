@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "Pataki Action",
   "complexityanalyzer.source_type.generic_loot": "Generic ìkógun",
   "complexityanalyzer.source_type.unknown": "Aimọ",
-  "complexityanalyzer.source_type.unobtainable": "Ti ko le gba"
+  "complexityanalyzer.source_type.unobtainable": "Ti ko le gba",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobProperty Olupese ko ni ipilẹṣẹ!",
+  "complexityanalyzer.command.tree.item_detail_label": "Nkan",
+  "complexityanalyzer.command.tree.stack_data_label": "data akopọ",
+  "complexityanalyzer.command.system.cache.enabled": "ṣiṣẹ",
+  "complexityanalyzer.command.system.cache.disabled": "alaabo (iṣeto)",
+  "complexityanalyzer.command.system.cache.header": "§6=== Awọn caches itupalẹ ===",
+  "complexityanalyzer.command.system.cache.config": "§7Iṣeto: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "Aworan ohunelo",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "Iforukọsilẹ ẹrọ",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ko si aye>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eko sibẹsibẹ",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §abayi §7(%s, %s atijọ) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §ckò ṣeé kà: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "Ko si aye ti kojọpọ.",
+  "complexityanalyzer.command.system.cache.deleted": "§aParẹ %d kaṣe faili (awọn). Ṣiṣe §f/complexity system reload§a lati tun ṣe ni bayi, tabi yoo tun kọ ni ibẹrẹ olupin ti nbọ.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eKo si awọn faili kaṣe lati paarẹ (ti ko si tẹlẹ)."
 }

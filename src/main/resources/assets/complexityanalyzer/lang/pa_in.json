@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "ਵਿਸ਼ੇਸ਼ ਕਾਰਵਾਈ",
   "complexityanalyzer.source_type.generic_loot": "ਆਮ ਲੁੱਟ",
   "complexityanalyzer.source_type.unknown": "ਅਗਿਆਤ",
-  "complexityanalyzer.source_type.unobtainable": "ਅਪ੍ਰਾਪਤ"
+  "complexityanalyzer.source_type.unobtainable": "ਅਪ੍ਰਾਪਤ",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ਸ਼ੁਰੂ ਨਹੀਂ ਕੀਤਾ ਗਿਆ ਹੈ!",
+  "complexityanalyzer.command.tree.item_detail_label": "ਆਈਟਮ",
+  "complexityanalyzer.command.tree.stack_data_label": "ਸਟੈਕ ਡੇਟਾ",
+  "complexityanalyzer.command.system.cache.enabled": "ਸਮਰੱਥ",
+  "complexityanalyzer.command.system.cache.disabled": "ਅਯੋਗ (ਸੰਰਚਨਾ)",
+  "complexityanalyzer.command.system.cache.header": "§6=== ਵਿਸ਼ਲੇਸ਼ਣ ਕੈਚ ===",
+  "complexityanalyzer.command.system.cache.config": "§7ਸੰਰਚਨਾ: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "ਵਿਅੰਜਨ ਗ੍ਰਾਫ",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "ਮਸ਼ੀਨ ਰਜਿਸਟਰੀ",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ਕੋਈ ਦੁਨੀਆ ਨਹੀਂ>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eਅਜੇ ਨਹੀਂ ਬਣਾਇਆ ਗਿਆ",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aਮੌਜੂਦਾ §7(%s, %s ਪੁਰਾਣਾ) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cਅਪੜ੍ਹਨਯੋਗ: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ਕੋਈ ਸੰਸਾਰ ਭਰਿਆ ਨਹੀਂ।",
+  "complexityanalyzer.command.system.cache.deleted": "§aਹਟਾਏ ਗਏ %d ਕੈਸ਼ ਫਾਈਲਾਂ। ਹੁਣੇ ਮੁੜ-ਨਿਰਮਾਣ ਲਈ §f/ਜਟਿਲਤਾ ਸਿਸਟਮ ਰੀਲੋਡ§a ਚਲਾਓ, ਜਾਂ ਇਹ ਅਗਲੇ ਸਰਵਰ ਸ਼ੁਰੂ ਹੋਣ 'ਤੇ ਮੁੜ-ਬਣਾਇਆ ਜਾਵੇਗਾ।",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eਮਿਟਾਉਣ ਲਈ ਕੋਈ ਕੈਸ਼ ਫਾਈਲਾਂ ਨਹੀਂ ਹਨ (ਪਹਿਲਾਂ ਹੀ ਗੈਰਹਾਜ਼ਰ)।"
 }

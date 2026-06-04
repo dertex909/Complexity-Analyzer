@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "اقدام ویژه",
   "complexityanalyzer.source_type.generic_loot": "غارت عمومی",
   "complexityanalyzer.source_type.unknown": "ناشناس",
-  "complexityanalyzer.source_type.unobtainable": "دست نیافتنی"
+  "complexityanalyzer.source_type.unobtainable": "دست نیافتنی",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider مقداردهی اولیه نشده است!",
+  "complexityanalyzer.command.tree.item_detail_label": "مورد",
+  "complexityanalyzer.command.tree.stack_data_label": "داده ها را پشته کنید",
+  "complexityanalyzer.command.system.cache.enabled": "فعال شد",
+  "complexityanalyzer.command.system.cache.disabled": "غیرفعال (پیکربندی)",
+  "complexityanalyzer.command.system.cache.header": "§6=== کش های آنالیز ===",
+  "complexityanalyzer.command.system.cache.config": "§7پیکربندی: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "نمودار دستور غذا",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "رجیستری ماشین",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<بدون دنیا>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eهنوز ساخته نشده است",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aحال §7(%s، %s قدیمی) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cغیرقابل خواندن: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "هیچ جهانی بارگذاری نشده است.",
+  "complexityanalyzer.command.system.cache.deleted": "§a فایل(های) کش %d حذف شد. §f/complexity system reload§a را اجرا کنید تا اکنون دوباره بسازید، در غیر این صورت در شروع بعدی سرور بازسازی خواهد شد.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eفایل کش برای حذف وجود ندارد (در حال حاضر وجود ندارد)."
 }

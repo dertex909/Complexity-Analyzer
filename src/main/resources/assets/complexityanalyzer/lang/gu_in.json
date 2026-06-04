@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "વિશેષ કાર્યવાહી",
   "complexityanalyzer.source_type.generic_loot": "સામાન્ય લૂંટ",
   "complexityanalyzer.source_type.unknown": "અજ્ઞાત",
-  "complexityanalyzer.source_type.unobtainable": "અપ્રાપ્ય"
+  "complexityanalyzer.source_type.unobtainable": "અપ્રાપ્ય",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider પ્રારંભ થયેલ નથી!",
+  "complexityanalyzer.command.tree.item_detail_label": "વસ્તુ",
+  "complexityanalyzer.command.tree.stack_data_label": "સ્ટેક ડેટા",
+  "complexityanalyzer.command.system.cache.enabled": "સક્ષમ",
+  "complexityanalyzer.command.system.cache.disabled": "અક્ષમ (રૂપરેખા)",
+  "complexityanalyzer.command.system.cache.header": "§6=== વિશ્લેષણ કેશ ===",
+  "complexityanalyzer.command.system.cache.config": "§7રૂપરેખા: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "રેસીપી ગ્રાફ",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "મશીન રજિસ્ટ્રી",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<કોઈ વર્લ્ડ>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eહજી સુધી બંધાયેલ નથી",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aહાલ §7(%s, %s જૂનું) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cવાંચી ન શકાય તેવું: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "કોઈ વિશ્વ લોડ નથી.",
+  "complexityanalyzer.command.system.cache.deleted": "§aડિલીટ કરેલ %d કેશ ફાઈલ(ઓ). હમણાં પુનઃનિર્માણ કરવા માટે §f/જટિલતા સિસ્ટમ રીલોડ§a ચલાવો, અથવા તે આગામી સર્વર પ્રારંભ પર પુનઃબીલ્ડ થશે.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eડીલીટ કરવા માટે કોઈ કેશ ફાઇલો નથી (પહેલેથી જ ગેરહાજર)."
 }

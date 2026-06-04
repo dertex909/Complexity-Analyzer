@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "특별 행동",
   "complexityanalyzer.source_type.generic_loot": "일반 전리품",
   "complexityanalyzer.source_type.unknown": "알 수 없음",
-  "complexityanalyzer.source_type.unobtainable": "구할 수 없음"
+  "complexityanalyzer.source_type.unobtainable": "구할 수 없음",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider가 초기화되지 않았습니다!",
+  "complexityanalyzer.command.tree.item_detail_label": "목",
+  "complexityanalyzer.command.tree.stack_data_label": "데이터 쌓기",
+  "complexityanalyzer.command.system.cache.enabled": "활성화됨",
+  "complexityanalyzer.command.system.cache.disabled": "비활성화됨(구성)",
+  "complexityanalyzer.command.system.cache.header": "§6=== 분석 캐시 ===",
+  "complexityanalyzer.command.system.cache.config": "§7구성: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "레시피 그래프",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "머신 레지스트리",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<세계 없음>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §e아직 구축되지 않음",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §a현재 §7(%s, %s 이전) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §c읽을 수 없음: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "로드된 세계가 없습니다.",
+  "complexityanalyzer.command.system.cache.deleted": "§a%d 캐시 파일이 삭제되었습니다. 지금 재구축하려면 §f/complexity system reload§a을 실행하세요. 그렇지 않으면 다음 서버 시작 시 재구축됩니다.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§e삭제할 캐시 파일이 없습니다(이미 없음)."
 }

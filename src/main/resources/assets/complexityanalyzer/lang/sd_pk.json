@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "خاص عمل",
   "complexityanalyzer.source_type.generic_loot": "عام ڦرلٽ",
   "complexityanalyzer.source_type.unknown": "اڻڄاتل",
-  "complexityanalyzer.source_type.unobtainable": "ناقابل حاصل"
+  "complexityanalyzer.source_type.unobtainable": "ناقابل حاصل",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider شروع نه ڪيو ويو آهي!",
+  "complexityanalyzer.command.tree.item_detail_label": "شيءِ",
+  "complexityanalyzer.command.tree.stack_data_label": "اسٽيڪ ڊيٽا",
+  "complexityanalyzer.command.system.cache.enabled": "فعال",
+  "complexityanalyzer.command.system.cache.disabled": "غير فعال (ترتيب)",
+  "complexityanalyzer.command.system.cache.header": "§6=== تجزيو ڪيش ===",
+  "complexityanalyzer.command.system.cache.config": "§7ترتيب: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "ترڪيب گراف",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "مشين جي رجسٽري",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<دنيا ناهي>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eاڃا تائين ٺهيل ناهي",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aموجوده §7(%s، %s پراڻو) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cاڻ پڙهيل: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ڪابه دنيا لوڊ نه آهي.",
+  "complexityanalyzer.command.system.cache.deleted": "§aخارج ٿيل %d ڪيش فائل(ز). ھاڻي تعمير ڪرڻ لاء §f/ پيچيدگي سسٽم ٻيهر لوڊ ڪريو §a ھاڻي، يا اھو ايندڙ سرور جي شروعات تي ٻيهر ٺاھيو ويندو.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§e حذف ڪرڻ لاءِ ڪيش فائلون نه آھن (اڳ ۾ ئي غير حاضر)."
 }

@@ -383,5 +383,21 @@
   "complexityanalyzer.source_type.special_action": "പ്രത്യേക പ്രവർത്തനം",
   "complexityanalyzer.source_type.generic_loot": "ജനറിക് കൊള്ള",
   "complexityanalyzer.source_type.unknown": "അജ്ഞാതം",
-  "complexityanalyzer.source_type.unobtainable": "ലഭ്യമല്ല"
+  "complexityanalyzer.source_type.unobtainable": "ലഭ്യമല്ല",
+  "complexityanalyzer.command.entity.provider_not_initialized": "⚠ MobPropertyProvider ആരംഭിച്ചിട്ടില്ല!",
+  "complexityanalyzer.command.tree.item_detail_label": "ഇനം",
+  "complexityanalyzer.command.tree.stack_data_label": "ഡാറ്റ സ്റ്റാക്ക് ചെയ്യുക",
+  "complexityanalyzer.command.system.cache.enabled": "പ്രവർത്തനക്ഷമമാക്കി",
+  "complexityanalyzer.command.system.cache.disabled": "അപ്രാപ്തമാക്കി (കോൺഫിഗർ)",
+  "complexityanalyzer.command.system.cache.header": "§6=== വിശകലന കാഷെകൾ ===",
+  "complexityanalyzer.command.system.cache.config": "§7കോൺഫിഗർ: ",
+  "complexityanalyzer.command.system.cache.label.recipe_graph": "പാചകക്കുറിപ്പ് ഗ്രാഫ്",
+  "complexityanalyzer.command.system.cache.label.machine_registry": "മെഷീൻ രജിസ്ട്രി",
+  "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ലോകമില്ല>",
+  "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eഇതുവരെ നിർമ്മിച്ചിട്ടില്ല",
+  "complexityanalyzer.command.system.cache.present": "§7• %s: §aനിലവിൽ §7(%s, %s പഴയത്) §8%s",
+  "complexityanalyzer.command.system.cache.unreadable": "§7• %s: §cവായിക്കാൻ പറ്റാത്തത്: %s",
+  "complexityanalyzer.command.system.cache.no_world_loaded": "ലോകം ലോഡ് ചെയ്തിട്ടില്ല.",
+  "complexityanalyzer.command.system.cache.deleted": "§aഇല്ലാതാക്കിയ %d കാഷെ ഫയൽ(കൾ). ഇപ്പോൾ പുനർനിർമ്മിക്കുന്നതിന് §f/സങ്കീർണ്ണത സിസ്റ്റം റീലോഡ്§a പ്രവർത്തിപ്പിക്കുക, അല്ലെങ്കിൽ അടുത്ത സെർവർ ആരംഭത്തിൽ ഇത് പുനർനിർമ്മിക്കും.",
+  "complexityanalyzer.command.system.cache.nothing_to_delete": "§eഇല്ലാതാക്കാൻ കാഷെ ഫയലുകളൊന്നുമില്ല (ഇതിനകം ലഭ്യമല്ല)."
 }

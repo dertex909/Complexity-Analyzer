@@ -130,47 +130,156 @@ store.addEventListener("selectMob", async () => {
 });
 
 async function main() {
-    setStatus("loading", "opening cabin…");
+    setStatus("loading", "connecting…");
+    showLoadingOverlay("Connecting…", "Contacting the server…", true);
+
     const url = new URL(location.href);
     let token = url.searchParams.get("token");
     if (!token) {
         const parts = url.pathname.split("/").filter(Boolean);
         if (parts.length > 0) token = parts[0];
     }
+
+    const db = await openWhenReady(token);
+
+    setState({db});
+    hideLoadingOverlay();
+
+    setStatus("ready", `${fmtInt.format(db.meta.itemCount)} items, ${fmtInt.format(db.meta.mobCount)} mobs`);
+    const fl = document.getElementById("footer-left");
+    if (fl) fl.textContent = `${db.meta.modId} ${db.meta.modVersion} · file 0x${db.file.fileHash.toString(16)}`;
+
+    initRouter();
+    initSidebarResizer();
+    initSidebarToggle();
+    renderTabs();
+    renderCurrentTab();
+    setupGlobalSearch();
+    startPolling(token);
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function openWhenReady(token) {
     const cabinUrl = `/${token}/api/cabin?token=${encodeURIComponent(token || "")}`;
+    const metaUrl = `/${token}/api/meta?token=${encodeURIComponent(token || "")}`;
+    let badTokenStreak = 0;
 
-    try {
-        const db = new CabinDatabase(cabinUrl);
-        await db.open({preferFullDownload: true});
-        setState({db});
-
-        setStatus("ready", `${fmtInt.format(db.meta.itemCount)} items, ${fmtInt.format(db.meta.mobCount)} mobs`);
-        const fl = document.getElementById("footer-left");
-        if (fl) fl.textContent = `${db.meta.modId} ${db.meta.modVersion} · file 0x${db.file.fileHash.toString(16)}`;
-
-        initRouter();
-        initSidebarResizer();
-        initSidebarToggle();
-        renderTabs();
-        renderCurrentTab();
-
-        setupGlobalSearch();
-
-        startPolling(token);
-    } catch (e) {
-        console.error(e);
-        setStatus("error", "failed to load cabin");
-        const mainEl = document.querySelector("main");
-        if (mainEl) {
-            mainEl.innerHTML = `<section class="panel active" style="justify-content:center;align-items:center">
-                <div class="card" style="color:var(--err);max-width:600px">
-                    <h3 style="color:var(--err)">Failed to load cabin</h3>
-                    <div>${escapeHtml(String(e))}</div>
-                    <div class="hint" style="margin-top:10px">Make sure you launched the viewer via <code>/cabin open</code> and have a valid token.</div>
-                </div>
-            </section>`;
+    for (; ;) {
+        let resp = null;
+        let networkError = false;
+        try {
+            resp = await fetch(metaUrl, {cache: "no-store"});
+        } catch (e) {
+            networkError = true;
         }
+
+        if (networkError) {
+            setStatus("error", "reconnecting…");
+            showLoadingOverlay(
+                "Waiting for the server…",
+                "Can’t reach the server right now. This page is retrying automatically — just keep it open and it will connect when the server is back.",
+                false
+            );
+            await sleep(4000);
+            continue;
+        }
+
+        if (!resp || !resp.ok) {
+            badTokenStreak++;
+            setStatus("error", "no data");
+            showLoadingOverlay(
+                "Connecting…",
+                badTokenStreak >= 3
+                    ? "The server responded but this link may be outdated. Try running /complexity web url again to get a fresh link."
+                    : "Reaching the server… retrying automatically.",
+                false
+            );
+            await sleep(4000);
+            continue;
+        }
+
+        badTokenStreak = 0;
+        let meta = null;
+        try {
+            meta = await resp.json();
+        } catch (e) {
+        }
+
+        if (meta && meta.hasCabin) {
+            try {
+                setStatus("loading", "opening cabin…");
+                showLoadingOverlay("Loading data…", "Almost ready — opening the analysis file.", true);
+                const db = new CabinDatabase(cabinUrl);
+                await db.open({preferFullDownload: true});
+                return db;
+            } catch (e) {
+                console.warn("cabin open failed, will retry:", e);
+                showLoadingOverlay(
+                    "Finishing up…",
+                    "The data file is being written. This page will open it automatically in a moment.",
+                    true
+                );
+                await sleep(2000);
+                continue;
+            }
+        }
+
+        setStatus("loading", "generating…");
+        showLoadingOverlay(
+            "Generating analysis data…",
+            "The server is still building the complexity database. On large modpacks this can take a little while. " +
+            "This page will load automatically as soon as it’s ready — no need to refresh.",
+            true
+        );
+        await sleep(2500);
     }
+}
+
+function ensureOverlayStyle() {
+    if (document.getElementById("ca-loading-style")) return;
+    const s = document.createElement("style");
+    s.id = "ca-loading-style";
+    s.textContent = `
+      #ca-loading-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+        background:color-mix(in srgb, var(--bg, #0e0f13) 92%, transparent);backdrop-filter:blur(3px);}
+      #ca-loading-overlay .ca-box{max-width:560px;text-align:center;padding:30px 34px;border-radius:14px;
+        background:var(--panel, #181a20);border:1px solid var(--border, #2a2d36);box-shadow:0 10px 50px rgba(0,0,0,.45);}
+      #ca-loading-overlay h3{margin:18px 0 8px;font-size:19px;color:var(--text,#e6e6e6);}
+      #ca-loading-overlay .ca-sub{color:var(--text-dim,#9aa0ac);font-size:13px;line-height:1.55;}
+      #ca-loading-overlay .ca-spinner{width:48px;height:48px;margin:0 auto;border-radius:50%;
+        border:4px solid var(--border,#2a2d36);border-top-color:var(--accent,#4ea1ff);animation:ca-spin .9s linear infinite;}
+      #ca-loading-overlay .ca-spinner.stopped{animation:none;border-top-color:var(--err,#ef4444);opacity:.75;}
+      @keyframes ca-spin{to{transform:rotate(360deg)}}
+    `;
+    document.head.appendChild(s);
+}
+
+let overlayTitle = null;
+
+function showLoadingOverlay(title, sub, spinning) {
+    ensureOverlayStyle();
+    let ov = document.getElementById("ca-loading-overlay");
+    if (!ov) {
+        ov = document.createElement("div");
+        ov.id = "ca-loading-overlay";
+        ov.innerHTML = `<div class="ca-box"><div class="ca-spinner"></div><h3></h3><div class="ca-sub"></div></div>`;
+        document.body.appendChild(ov);
+        overlayTitle = null;
+    }
+    const spin = ov.querySelector(".ca-spinner");
+    if (spin) spin.classList.toggle("stopped", !spinning);
+    if (overlayTitle !== title) {
+        ov.querySelector("h3").textContent = title;
+        overlayTitle = title;
+    }
+    ov.querySelector(".ca-sub").textContent = sub;
+}
+
+function hideLoadingOverlay() {
+    const ov = document.getElementById("ca-loading-overlay");
+    if (ov) ov.remove();
+    overlayTitle = null;
 }
 
 function startPolling(token) {

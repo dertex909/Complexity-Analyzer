@@ -73,8 +73,10 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         String ip = remoteAddress.split(":")[0];
         uniqueVisitors.add(ip);
 
+        boolean keepAlive = HttpUtil.isKeepAlive(request);
+
         if (!request.decoderResult().isSuccess()) {
-            sendError(ctx, HttpResponseStatus.BAD_REQUEST);
+            sendError(ctx, HttpResponseStatus.BAD_REQUEST, false);
             return;
         }
 
@@ -90,17 +92,22 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         if (path.isEmpty() || path.equals("/")) path = "/index.html";
 
         if (path.equals("/index.html")) {
-            serveResource(ctx, "/index.html", "text/html; charset=UTF-8");
+            serveResource(ctx, "/index.html", "text/html; charset=UTF-8", keepAlive);
         } else if (path.equals("/api/meta")) {
-            handleMeta(ctx);
+            handleMeta(ctx, keepAlive);
         } else if (path.equals("/api/cabin")) {
-            handleCabin(ctx);
+            handleCabin(ctx, keepAlive);
         } else {
-            serveResource(ctx, path, getMimeType(path));
+            serveResource(ctx, path, getMimeType(path), keepAlive);
         }
     }
 
-    private void handleMeta(ChannelHandlerContext ctx) {
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        if (ctx.channel().isActive()) ctx.close();
+    }
+
+    private void handleMeta(ChannelHandlerContext ctx, boolean keepAlive) {
         var snap = CabinBackgroundService.getInstance().getSnapshot();
         boolean hasCabin = snap != null;
 
@@ -120,41 +127,37 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
                 serverName.replace("\"", "\\\"")
         );
 
-        sendResponse(ctx, json);
+        sendResponse(ctx, json, keepAlive);
     }
 
-    private void handleCabin(ChannelHandlerContext ctx) {
+    private void handleCabin(ChannelHandlerContext ctx, boolean keepAlive) {
         var snap = CabinBackgroundService.getInstance().getSnapshot();
         if (snap == null) {
-            sendError(ctx, HttpResponseStatus.NOT_FOUND);
+            sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
             return;
         }
 
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(snap.bytes()));
 
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
-        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
         response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 
-        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        finish(ctx, response, keepAlive);
     }
 
-    private void serveResource(ChannelHandlerContext ctx, String path, String mimeType) {
+    private void serveResource(ChannelHandlerContext ctx, String path, String mimeType, boolean keepAlive) {
         try (var in = getClass().getResourceAsStream(VIEWER_BASE + path)) {
             if (in == null) {
-                sendError(ctx, HttpResponseStatus.NOT_FOUND);
+                sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
                 return;
             }
 
             byte[] data = in.readAllBytes();
             var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
-
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
-            response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
-
-            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+            finish(ctx, response, keepAlive);
         } catch (Exception e) {
-            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
         }
     }
 
@@ -168,20 +171,30 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return "application/octet-stream";
     }
 
-    private void sendResponse(ChannelHandlerContext ctx, String content) {
+    private void sendResponse(ChannelHandlerContext ctx, String content, boolean keepAlive) {
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(content, UTF_8));
 
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
-        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
         response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 
-        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        finish(ctx, response, keepAlive);
     }
 
-    private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status) {
+    private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status, boolean keepAlive) {
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
 
-        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        finish(ctx, response, keepAlive);
+    }
+
+    private void finish(ChannelHandlerContext ctx, FullHttpResponse response, boolean keepAlive) {
+        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+        if (keepAlive) {
+            response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+            ctx.writeAndFlush(response);
+        } else {
+            response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        }
     }
 }

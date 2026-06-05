@@ -1,123 +1,172 @@
-# Complexity Analyzer - Command Reference
+# Complexity Analyzer — Command Reference
 
-Welcome to the command reference for Complexity Analyzer. This document provides a detailed overview of all available commands, their arguments, and expected output.
+Every command is a sub-command of `/complexity`. There is no bare `/complexity`
+action — always pick a sub-command below.
 
-All commands start with `/complexity`. Most analytical commands can be used by any player, while administrative commands require operator permissions (default: Level 2).
+## Permissions
 
----
+| Badge | Meaning |
+|-------|---------|
+| 👤 **Player** | Usable by anyone. Read-only analysis/inspection. |
+| 🛡 **OP (level 2)** | Requires operator permission. Changes state, writes files, or can lag the server. |
 
-## 🔬 Analysis Commands (`/complexity analyze ...`)
-
-This group of commands is the core of the mod, allowing you to perform a deep-dive analysis on various game elements.
-
-### Analyze an Item
-- **Command:** `/complexity analyze item <item_id>`
-- **Description:** Generates a comprehensive report for a specific item. This is the main command for understanding an item's economic standing in your world.
-- **Arguments:**
-    - `item_id`: The resource location of the item (e.g., `minecraft:netherite_ingot`). Supports tab-completion.
-- **Output:** A detailed, multi-section report including:
-    - **Complexity Score & Category:** The final calculated "cost" and its human-readable rank (e.g., `Simple`, `Complex`, `Mythical`) with icons and a visual bar.
-    - **Source Information:** Shows if the item is crafted or a base resource, its crafting depth, and how many other recipes use it.
-    - **Alternative Sources:** Lists all other ways to obtain the item (mob drops, loot, etc.) with their estimated costs.
-    - **Status:** Shows if the calculation is valid and provides a clickable link to view the full crafting tree.
-
-### Analyze an Entity (Mob)
-- **Command:** `/complexity analyze entity <entity_id>`
-- **Description:** Provides a detailed combat analysis of any mob, evaluating its stats, threat level, and overall difficulty.
-- **Arguments:**
-    - `entity_id`: The resource location of the entity (e.g., `minecraft:warden`). Supports tab-completion.
-- **Output:** A full combat profile including:
-    - **Base Stats:** Health, Attack Damage, and Armor, with visual progress bars.
-    - **Combat Analysis:** Calculated factors like `Survivability`, `Threat Level`, and a final `Combat Power` score.
-    - **Difficulty Rating:** A final, human-readable rating (from `Trivial` to `BOSS`) with a gameplay recommendation.
-    - **Notable Drops:** A list of significant items dropped by the mob, sorted by their average yield.
-
-### Analyze a Loot Table
-- **Command:** `/complexity analyze loot <loot_table_id>`
-- **Description:** Inspects the contents of any loot table, showing all possible drops, their chances, and grouping them by rarity.
-- **Arguments:**
-    - `loot_table_id`: The resource location of the loot table (e.g., `minecraft:chests/end_city_treasure`). Supports tab-completion.
-- **Output:** A report on the loot table's contents, including:
-    - **Header & Statistics:** The table's name, inferred type (Chest, Entity, etc.), and a summary of drop chances.
-    - **Drops by Rarity:** All items are grouped into intuitive categories (`Common`, `Uncommon`, `Rare`, `Legendary`) for easy evaluation.
+All command output is **translated to each player's own client language** server-side
+(53 locales shipped). Numbers, item names and icons stay as-is.
 
 ---
 
-## 🌳 Crafting Tree Command (`/complexity tree ...`)
+## Command Index
 
-This is one of the most powerful visualization tools in the mod.
-
-- **Command:** `/complexity tree <item_id> [depth <value>] [mode <player|economic>]`
-- **Description:** Renders a full, recursive crafting tree for an item right in your chat.
-- **Arguments:**
-    - `item_id`: The target item to build the tree for.
-    - `depth <value>` (Optional, default: 100): The maximum depth of the tree to display.
-    - `mode <type>` (Optional, default: `player`):
-        - `player`: **"Shopping List" view.** Shows rounded-up quantities needed for gameplay.
-        - `economic`: **"Engineer's View."** Shows precise, fractional amounts for deep analysis.
-- **Output:** A beautifully formatted, multi-part report:
-    1.  **Crafting Tree:** A visual tree with icons (🔨 for crafting, ⛏ for base resources, 🔄 for cycles).
-    2.  **Tree Statistics:** A summary of total nodes, unique items, crafting steps, and detected cycles.
-    3.  **Base Resources List:** A final "shopping list" of all raw materials required, including a visualization of how many stacks you'll need.
-    4.  **Interactive Tips:** Provides clickable links in chat to switch modes or limit depth.
-
----
-
-## ⛏ Base Resource Command (`/complexity resource ...`)
-
-Use this command to analyze how to obtain raw, non-craftable items.
-
-- **Command:** `/complexity resource <item_id>`
-- **Description:** Shows the primary, most efficient way to obtain a "base resource" (e.g., ores, mob drops).
-- **Arguments:**
-    - `item_id`: The base resource to analyze.
-- **Output:** A focused report on the item's origin:
-    - **Source Information:** The type of source (e.g., `MINING`, `MOB_DROP`) with a descriptive icon.
-    - **Base Factor:** A score representing the "difficulty" of obtaining this resource, with a visual bar and a rating.
-    - **Required Items:** If obtaining this resource requires other items, they will be listed.
-
----
-
-## 📤 Export Commands (`/complexity export ...`)
-
-This suite of commands is for power users who want to work with the data outside of Minecraft. Requires operator permissions.
-
-### Exporting Items
-- **`/complexity export items all`**: Exports a full JSON report of every analyzed item.
-- **`/complexity export items top <count>`**: Exports the top N most complex items.
-- **`/complexity export items category <name>`**: Exports all items of a specific complexity category (e.g., `Mythical`).
-- **`/complexity export items single <item_id>`**: Exports a detailed JSON for one specific item.
-- **`/complexity export items csv`**: Exports a summary of all items into a single CSV file.
-
-### Exporting Mobs
-- **`/complexity export mobs all [format]`**: Exports all analyzed mobs in `json` (default) or `csv`.
-- **`/complexity export mobs csv`**: Shortcut for exporting all mobs in CSV format.
-- **`/complexity export mobs top <count>`**: Exports the top N most powerful mobs.
-- **`/complexity export mobs category <name>`**: Exports all mobs of a specific category (e.g., `monster`).
-- **`/complexity export mobs single <mob_id>`**: Exports a detailed JSON for one specific mob.
+```
+/complexity
+├── system                                    (engine & server diagnostics)
+│   ├── status                                👤  engine state + data overview
+│   ├── stats                                 👤  detailed data/thread stats
+│   ├── tps                                   👤  TPS / MSPT / memory
+│   ├── threads                               🛡  thread-pool statistics
+│   ├── reload                                🛡  full re-analysis (laggy)
+│   └── cache
+│       ├── info                              👤  on-disk cache report
+│       └── clear                             🛡  delete cache files
+├── analyze
+│   ├── item   <item_id>                      👤  full item complexity report
+│   ├── entity <entity_id>                    👤  mob combat/difficulty report
+│   └── loot   <loot_table_id>                👤  loot-table breakdown
+├── tree <item_id> [depth <n>] [mode <m>]     👤  recursive crafting tree
+├── resource <item_id>                        👤  base-resource origin report
+├── web
+│   ├── url [link]                            👤  show web dashboard URL
+│   ├── status                                👤  web backend status
+│   └── reload                                🛡  rebuild web data
+├── export                                    🛡  (whole group is OP-only)
+│   ├── items  all | csv | top <n> | category <name> | single <item_id>
+│   └── mobs   all [format] | csv | top <n> | category <name> | single <mob_id>
+└── geoscan
+    ├── start <profile> [chunks] [force]      🛡  schedule/force a world scan
+    ├── stop                                  🛡  stop the running scan
+    ├── status                                👤  scan progress
+    └── clear                                 🛡  wipe collected geo-data
+```
 
 ---
 
-## 🌍 Geo-Scan Commands (`/complexity geoscan ...`)
+## 🔬 `/complexity analyze …` 👤
 
-This is the control panel for the `GeoAnalysisManager`, the powerful world-scanning engine. Requires operator permissions.
+Deep-dive analysis of game elements. All three sub-commands are available to any player.
 
-- **`/complexity geoscan start <profile> [chunks] [force]`**: Schedules or force-starts a world scan.
-    - `profile`: Scan speed vs. server impact. Options: `normal`, `fast`, `ultra_fast`, `maximum`.
-    - `chunks` (Optional, default: 32): How many pristine chunks to find per biome.
-    - `force` (Optional, default: `false`): Set to `true` to skip the countdown and start immediately.
-- **`/complexity geoscan stop`**: Requests a graceful shutdown of the current scan.
-- **`/complexity geoscan status`**: Shows the current status of the geo-scanner (e.g., IDLE, SCANNING, progress %).
-- **`/complexity geoscan clear`**: **DANGEROUS.** Deletes all collected geo-data, forcing a full rescan on the next run. Cannot be used during an active scan.
+### `analyze item <item_id>`
+Full complexity report for an item — the core command of the mod.
+- **`item_id`** — item resource location, e.g. `minecraft:netherite_ingot`. Tab-completes.
+- **Output:**
+  - **Complexity score & category** — final cost and human rank (`Trivial` → `Transcendent`, plus `Unobtainable`/`Uncalculable`) with icon and a visual bar.
+  - **Source information** — crafted vs. base resource, crafting depth, and how many recipes use it.
+  - **Alternative sources** — other ways to obtain it (mob drop, loot, etc.) with estimated cost.
+  - **Status** — whether the result is valid, plus a clickable link to the full crafting tree.
+
+### `analyze entity <entity_id>`
+Combat/difficulty analysis of a mob.
+- **`entity_id`** — entity resource location, e.g. `minecraft:warden`. Tab-completes.
+- **Output:** base stats (health/attack/armor with bars), combat analysis (survivability, threat, combat power), a difficulty rating (`Trivial` → `BOSS`) with a recommendation, and notable drops by average yield.
+
+### `analyze loot <loot_table_id>`
+Inspect any loot table.
+- **`loot_table_id`** — loot-table resource location, e.g. `minecraft:chests/end_city_treasure`. Tab-completes.
+- **Output:** table name and inferred type (Chest, Entity, Fishing, Block, Archaeology…), drop-chance statistics, and all drops grouped by rarity (`Common` → `Legendary`).
 
 ---
 
-## ⚙️ Administrative Commands
+## 🌳 `/complexity tree <item_id> [depth <n>] [mode <player|economic>]` 👤
 
-General-purpose commands for server management. Require operator permissions.
+Renders a full recursive crafting tree in chat.
+- **`item_id`** — target item. Tab-completes.
+- **`depth <n>`** *(optional, default 100)* — maximum tree depth to display.
+- **`mode <player|economic>`** *(optional, default `player`)*:
+  - **`player`** — "shopping list" view; quantities rounded up for real gameplay.
+  - **`economic`** — "engineer's" view; exact fractional amounts.
+- `depth` and `mode` may be given in either order.
+- **Output:** the visual tree (icons: 🔨 craft, ⛏ base resource, 🔁 cycle, 💧 fluid), tree statistics (total nodes, unique items, steps, detected cycles), a base-resource "shopping list" with stack counts, and clickable tips to switch mode / limit depth. Hovering a node shows its item name, data and producing machine.
 
-- **`/complexity status`**: Shows the current state of the main analysis engine.
-- **`/complexity stats`**: Displays detailed statistics about the loaded data (number of items, recipes, etc.).
-- **`/complexity tps`**: An advanced server performance overview (TPS, MSPT, Memory).
-- **`/complexity reload`**: Forces a full reload of the analysis engine. **Warning: This will cause significant server lag.**
-- **`/complexity threads`**: Displays detailed statistics about the internal thread pools (active threads, task queue, etc.).
+---
+
+## ⛏ `/complexity resource <item_id>` 👤
+
+Shows the primary, most efficient way to obtain a base (non-craftable) resource.
+- **`item_id`** — the base resource. Tab-completes.
+- **Output:** source type with icon (e.g. Ore/Mining, Mob Drop, Farming), a "base factor" difficulty score with a bar and rating, any required source items, and a clickable link to the full analysis.
+
+---
+
+## 🌐 `/complexity web …`
+
+Controls the in-game web dashboard (served over your open-to-LAN / server port).
+
+- **`web url`** 👤 — prints the dashboard URL and connection tips. In singleplayer it reminds you to *Open to LAN* first.
+- **`web url link`** 👤 — same, as a clickable `[Open in Browser]` link.
+- **`web status`** 👤 — backend status: active/inactive, visitor count, data file age, and item/mob/recipe counts in the exported file.
+- **`web reload`** 🛡 — rebuilds the web data file in the background from the current analysis.
+
+---
+
+## ⚙️ `/complexity system …`
+
+Engine and server diagnostics.
+
+- **`system status`** 👤 — engine state (READY / LOADING / ERROR…) and a data overview (items with recipes, total recipes, base resources).
+- **`system stats`** 👤 — detailed statistics: items, recipes, cached items, and thread-pool figures.
+- **`system tps`** 👤 — server performance: TPS, MSPT, and memory usage with colour-coded bars.
+- **`system threads`** 🛡 — thread-pool internals: parallelism target, active compute threads, queued tasks.
+- **`system reload`** 🛡 — forces a full re-analysis of the world. **Warning: causes significant lag** while it runs; broadcasts a warning to players.
+- **`system cache info`** 👤 — reports the on-disk analysis caches (recipe graph, machine registry): whether caching is enabled in config, and for each cache whether it is present, its size and age, or "not built yet".
+- **`system cache clear`** 🛡 — deletes the cached files so the next load rebuilds from scratch. Hint: run `system reload` afterwards to rebuild immediately.
+
+> **About the cache:** when `enableCache` is on (config), the harvested recipe graph
+> and machine registry are saved per-world under `<world>/data/complexityanalyzer/`.
+> They auto-invalidate when recipes, blocks, mods or graph-affecting config change, so
+> manual `cache clear` is rarely needed.
+
+---
+
+## 📤 `/complexity export …` 🛡
+
+Bulk-export analysis data to files for use outside Minecraft. **The entire group requires OP.**
+
+### Items
+| Command | Description |
+|---------|-------------|
+| `export items all` | Full JSON report of every analyzed item. |
+| `export items csv` | Summary of all items as a single CSV. |
+| `export items top <count>` | Top N most complex items (`count` 1–1000). |
+| `export items category <name>` | All items of one complexity category (e.g. `Mythical`). Tab-completes. |
+| `export items single <item_id>` | Detailed JSON for one item. Tab-completes. |
+
+### Mobs
+| Command | Description |
+|---------|-------------|
+| `export mobs all [format]` | All mobs; `format` is `json` (default) or `csv`. |
+| `export mobs csv` | Shortcut for all mobs as CSV. |
+| `export mobs top <count>` | Top N most powerful mobs (`count` 1–1000). |
+| `export mobs category <name>` | All mobs of a vanilla `MobCategory` (e.g. `monster`). Tab-completes. |
+| `export mobs single <mob_id>` | Detailed JSON for one mob. Tab-completes. |
+
+Each export prints the output file path on success.
+
+---
+
+## 🌍 `/complexity geoscan …`
+
+Control panel for the world-scanning engine (`GeoAnalysisManager`), used to learn where
+resources actually generate.
+
+- **`geoscan start <profile> [chunks] [force]`** 🛡
+  - **`profile`** — scan speed vs. server impact: `normal`, `fast`, `ultra_fast`, `maximum`. Running `start` with no profile lists them with their MSPT limits.
+  - **`chunks`** *(optional, default 32)* — pristine chunks to find per biome.
+  - **`force`** *(optional, default `false`)* — `true` skips the countdown and starts immediately (broadcasts a lag warning).
+- **`geoscan stop`** 🛡 — gracefully stops the running or scheduled scan; progress is saved.
+- **`geoscan status`** 👤 — current scanner state and progress (idle / scanning %, per-biome details on hover, MSPT throttle info).
+- **`geoscan clear`** 🛡 — **destructive.** Deletes all collected geo-data, forcing a full rescan. Cannot run during an active scan (`stop` first).
+
+---
+
+### Notes
+- Tab-completion is available for every item, entity and loot-table id argument.
+- Anything that can lag the server or change/delete data is OP-gated (🛡); pure inspection is open to all players (👤).

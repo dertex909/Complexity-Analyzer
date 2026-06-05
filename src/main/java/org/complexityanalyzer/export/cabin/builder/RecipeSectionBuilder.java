@@ -20,12 +20,16 @@ package org.complexityanalyzer.export.cabin.builder;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
@@ -120,6 +124,45 @@ public final class RecipeSectionBuilder {
         return list;
     }
 
+    /** An ingredient slot plus its (possibly merged) required count. */
+    private record MergedSlot(IngredientSlot slot, int count) {
+    }
+
+    /**
+     * Collapses ingredient slots that serialize identically (same item variants, same data) into a
+     * single slot whose count is the sum — so repeated ingredients are written once with a number
+     * instead of N duplicated entries. Order of first appearance is preserved.
+     */
+    private static ObjectList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots,
+                                                               HolderLookup.Provider ra) {
+        var order = new ObjectArrayList<MergedSlot>(slots.size());
+        var sigToPos = new Object2IntOpenHashMap<String>(slots.size());
+        sigToPos.defaultReturnValue(-1);
+        for (var slot : slots) {
+            String sig = slotSignature(ctx, slot, ra);
+            int pos = sigToPos.getInt(sig);
+            if (pos < 0) {
+                sigToPos.put(sig, order.size());
+                order.add(new MergedSlot(slot, slot.getCount()));
+            } else {
+                var existing = order.get(pos);
+                order.set(pos, new MergedSlot(existing.slot(), existing.count() + slot.getCount()));
+            }
+        }
+        return order;
+    }
+
+    /** Signature matching the bytes writeVariantStrings produces: item index (+ data key if any). */
+    private static String slotSignature(SectionBuilderContext ctx, IngredientSlot slot, HolderLookup.Provider ra) {
+        var sb = new StringBuilder(24);
+        for (var v : slot.getVariants()) {
+            sb.append(ctx.itemIndex().getInt(v.getItem()));
+            if (!v.isComponentsPatchEmpty()) sb.append('#').append(ItemStackIdentity.dataKey(v, ra));
+            sb.append(',');
+        }
+        return sb.toString();
+    }
+
     public static void writeRecipe(LeBuf buf, SectionBuilderContext ctx, int outputItemIndex, RecipeNode r, IntList machineIdxs) {
         buf.i32(outputItemIndex);
         var rt = r.getRecipeType();
@@ -141,15 +184,19 @@ public final class RecipeSectionBuilder {
         buf.u8(mc);
         for (int k = 0; k < mc; k++) buf.i32(machineIdxs.getInt(k));
 
-        var ings = r.getIngredients();
-        buf.u8(Math.min(ings.size(), 0xFF));
         var registryAccess = ctx.engine().getRegistryAccess();
-        for (int s = 0; s < Math.min(ings.size(), 0xFF); s++) {
-            var slot = ings.get(s);
-            var variants = slot.getVariants();
+        // Collapse ingredient slots that are identical (same variants) into one slot with the
+        // summed count — e.g. three separate iron-ingot cells become a single "iron x3" instead of
+        // three "x1" entries. Smaller file, cleaner display; cost is unaffected (the solver reads
+        // the graph's slots directly, not this export).
+        var mergedSlots = mergeIngredientSlots(ctx, r.getIngredients(), registryAccess);
+        buf.u8(Math.min(mergedSlots.size(), 0xFF));
+        for (int s = 0; s < Math.min(mergedSlots.size(), 0xFF); s++) {
+            var slot = mergedSlots.get(s);
+            var variants = slot.slot().getVariants();
             int vc = Math.min(variants.size(), 0xFF);
             buf.u8(vc);
-            buf.i32(slot.getCount());
+            buf.i32(slot.count());
             for (int v = 0; v < vc; v++) {
                 var variant = variants.get(v);
                 buf.i32(ctx.itemIndex().getInt(variant.getItem()));

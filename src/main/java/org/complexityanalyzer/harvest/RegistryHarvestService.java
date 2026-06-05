@@ -22,26 +22,15 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
-import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.fluids.FluidStack;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
 import java.util.Locale;
-
-import static net.minecraft.core.registries.Registries.FLUID;
-import static net.minecraft.world.item.Items.AIR;
-import static net.minecraft.world.item.crafting.RecipeType.CRAFTING;
-import static org.complexityanalyzer.graph.RecipeCategory.PRIMARY;
-import static net.minecraft.world.level.material.Fluids.EMPTY;
 
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
@@ -106,13 +95,6 @@ public final class RegistryHarvestService {
         debugTrace.flush();
         DynamicRecipeHarvester.harvest(graph, level, knownRecipeIds);
 
-        try {
-            var fluidRegistry = level.registryAccess().registry(FLUID);
-            fluidRegistry.ifPresent(fluids -> scanRegistryForFluids(graph, fluids));
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed dynamic registry fluid scan: {}", t.getMessage());
-        }
-
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
                 scanned, harvested, rejected, failed);
     }
@@ -129,69 +111,6 @@ public final class RegistryHarvestService {
             remainingStr = String.format(Locale.US, "%ds", estimatedRemaining / 1000);
         }
         return remainingStr;
-    }
-
-    private void scanRegistryForFluids(RecipeGraph graph, Registry<?> registry) {
-        for (var element : registry) {
-            if (element == null) continue;
-            try {
-                var fluid = findFluidFromElement(element);
-                if (fluid == null || fluid == EMPTY) continue;
-                int yield = 1000;
-
-                var builder = new RecipeNode.Builder(AIR)
-                        .category(PRIMARY)
-                        .resultCount(1)
-                        .recipeType(CRAFTING)
-                        .isPlaceholder(true);
-
-                builder.priority(100);
-                builder.placeholderId(GameRegistryManager.getFluidId(fluid).toString());
-
-                var fluidOutputs = new ObjectArrayList<FluidStack>();
-                fluidOutputs.add(new FluidStack(fluid, yield));
-                builder.fluidOutputs(fluidOutputs);
-
-                graph.addRecipe(builder.build());
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private Fluid findFluidFromElement(Object element) {
-        if (element == null) return null;
-        if (element instanceof Fluid f) return f;
-        if (TerminalTypeRegistry.isTerminalType(element.getClass())) return null;
-
-        var clazz = element.getClass();
-        for (var method : clazz.getMethods()) {
-            if (method.getParameterCount() == 0 && !method.getName().equals("toString") && !method.getName().equals("hashCode")) {
-                var returnType = method.getReturnType();
-                if (Fluid.class.isAssignableFrom(returnType)) {
-                    try {
-                        var f = (Fluid) method.invoke(element);
-                        if (f != null && f != EMPTY) return f;
-                    } catch (Throwable ignored) {
-                    }
-                } else if (Holder.class.isAssignableFrom(returnType)) {
-                    try {
-                        Holder<?> holder = (Holder<?>) method.invoke(element);
-                        if (holder != null && holder.value() instanceof Fluid f) if (f != EMPTY) return f;
-                    } catch (Throwable ignored) {
-                    }
-                }
-            }
-        }
-
-        for (var field : clazz.getDeclaredFields()) {
-            if (Fluid.class.isAssignableFrom(field.getType())) try {
-                field.setAccessible(true);
-                var f = (Fluid) field.get(element);
-                if (f != null && f != EMPTY) return f;
-            } catch (Throwable ignored) {
-            }
-        }
-        return null;
     }
 
     private static String buildRejectReason(HarvestedItems items) {

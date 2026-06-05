@@ -35,7 +35,6 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.graph.RecipeNode;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -48,6 +47,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static net.minecraft.world.entity.MobCategory.MISC;
+import static net.minecraft.world.item.Items.AIR;
 
 public final class CabinBuilder {
 
@@ -295,23 +295,37 @@ public final class CabinBuilder {
         }
         var registry = engine.getMachineRegistry();
         Int2ObjectMap<IntArrayList> machineToOutputs = new Int2ObjectOpenHashMap<>();
-        int n = orderedItems.size();
-        for (int i = 0; i < n; i++) {
-            var item = orderedItems.get(i);
-            var recipes = graph.getRecipes(item);
-            if (recipes.isEmpty()) continue;
-            for (RecipeNode r : recipes) {
-                var rt = r.getRecipeType();
-                if (rt == null || registry == null) continue;
-                var machines = registry.getMachinesForRecipe(rt);
-                if (machines == null) continue;
-                for (var machineItem : machines) {
-                    int mi = itemIndex.getInt(machineItem);
-                    if (mi < 0) continue;
-                    machineToOutputs.computeIfAbsent(mi, k -> new IntArrayList()).add(i);
+        if (registry != null) for (var r : graph.getAllRecipes()) {
+            var rt = r.getRecipeType();
+            if (rt == null) continue;
+            var machines = registry.getMachinesForRecipe(rt);
+            if (machines == null || machines.isEmpty()) continue;
+
+            IntArrayList outIdx = null;
+            var primary = r.getResultItem();
+            if (primary != null && primary != AIR) {
+                int pi = itemIndex.getInt(primary);
+                if (pi >= 0) {
+                    outIdx = new IntArrayList(2);
+                    outIdx.add(pi);
                 }
             }
+            for (var stack : r.getItemOutputs()) {
+                if (stack == null || stack.isEmpty()) continue;
+                int oi = itemIndex.getInt(stack.getItem());
+                if (oi < 0) continue;
+                if (outIdx == null) outIdx = new IntArrayList(2);
+                outIdx.add(oi);
+            }
+
+            for (var machineItem : machines) {
+                int mi = itemIndex.getInt(machineItem);
+                if (mi < 0) continue;
+                var list = machineToOutputs.computeIfAbsent(mi, k -> new IntArrayList());
+                if (outIdx != null) list.addAll(outIdx);
+            }
         }
+
         for (var list : machineToOutputs.values()) {
             var seen = new IntOpenHashSet(list);
             list.clear();

@@ -685,36 +685,16 @@ public final class SccCondensedSolver {
                 int itemTarget = (resultItem != null) ? itemToNode.getInt(resultItem) : -1;
                 int resultCount = recipe.getResultCount();
                 boolean validItemRecipe = itemTarget != -1 && resultCount > 0;
-                int itemSlotsStart = itemSlotVariantStart.size();
-                int fluidSlotsStart = fluidSlotVariantStart.size();
-                int itemSlotsCount = 0;
-                int fluidSlotsCount = 0;
-                boolean inputsValid = true;
+                var primary = appendSharedInputs(recipe, fluidNorm);
 
-                for (var slot : recipe.getIngredients()) {
-                    if (appendItemSlot(slot.getVariants(), slot.getCount())) {
-                        inputsValid = false;
-                        break;
-                    }
-                    itemSlotsCount++;
-                }
-                if (inputsValid) for (var slot : recipe.getFluidIngredients()) {
-                    double amount = (slot.getAmount() / 1000.0) * fluidNorm;
-                    if (appendFluidSlot(slot.getFluidVariants(), amount)) {
-                        inputsValid = false;
-                        break;
-                    }
-                    fluidSlotsCount++;
-                }
-
-                if (validItemRecipe && inputsValid) {
+                if (validItemRecipe && primary.valid()) {
                     int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, resultCount,
-                            itemSlotsStart, itemSlotsCount, fluidSlotsStart, fluidSlotsCount, chemInputNode.size(), 0,
+                            primary.itemStart(), primary.itemCount(), primary.fluidStart(), primary.fluidCount(), chemInputNode.size(), 0,
                             machineNode, machineCount, machineMul, -1.0, recipe);
                     addEdgesForFormula(formulaId);
                 } else {
-                    truncateItemSlots(itemSlotsStart);
-                    truncateFluidSlots(fluidSlotsStart);
+                    truncateItemSlots(primary.itemStart());
+                    truncateFluidSlots(primary.fluidStart());
                 }
 
                 if (!recipe.getFluidOutputs().isEmpty()) {
@@ -726,29 +706,8 @@ public final class SccCondensedSolver {
                     }
 
                     if (!grouped.isEmpty()) {
-                        int sharedItemSlotStart = itemSlotVariantStart.size();
-                        int sharedItemSlotCount = 0;
-                        int sharedFluidSlotStart = fluidSlotVariantStart.size();
-                        int sharedFluidSlotCount = 0;
-                        boolean sharedValid = true;
-
-                        for (var slot : recipe.getIngredients()) {
-                            if (appendItemSlot(slot.getVariants(), slot.getCount())) {
-                                sharedValid = false;
-                                break;
-                            }
-                            sharedItemSlotCount++;
-                        }
-                        if (sharedValid) for (var slot : recipe.getFluidIngredients()) {
-                            double amount = (slot.getAmount() / 1000.0) * fluidNorm;
-                            if (appendFluidSlot(slot.getFluidVariants(), amount)) {
-                                sharedValid = false;
-                                break;
-                            }
-                            sharedFluidSlotCount++;
-                        }
-
-                        if (sharedValid) {
+                        var shared = appendSharedInputs(recipe, fluidNorm);
+                        if (shared.valid()) {
                             for (var entry : grouped.reference2DoubleEntrySet()) {
                                 var fluid = entry.getKey();
                                 int fluidNode = fluidToNode.getInt(fluid);
@@ -757,16 +716,49 @@ public final class SccCondensedSolver {
                                 if (outputAmount <= 0) outputAmount = 1000.0;
                                 double outputBuckets = outputAmount / 1000.0;
                                 int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outputBuckets,
-                                        sharedItemSlotStart, sharedItemSlotCount,
-                                        sharedFluidSlotStart, sharedFluidSlotCount,
+                                        shared.itemStart(), shared.itemCount(),
+                                        shared.fluidStart(), shared.fluidCount(),
                                         chemInputNode.size(), 0,
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         null);
                                 addEdgesForFormula(formulaId);
                             }
                         } else {
-                            truncateItemSlots(sharedItemSlotStart);
-                            truncateFluidSlots(sharedFluidSlotStart);
+                            truncateItemSlots(shared.itemStart());
+                            truncateFluidSlots(shared.fluidStart());
+                        }
+                    }
+                }
+
+                if (!recipe.getItemOutputs().isEmpty()) {
+                    Reference2DoubleOpenHashMap<Item> groupedItems = new Reference2DoubleOpenHashMap<>();
+                    for (var stack : recipe.getItemOutputs()) {
+                        if (stack == null || stack.isEmpty()) continue;
+                        var outItem = stack.getItem();
+                        if (outItem == resultItem) continue;
+                        groupedItems.addTo(outItem, Math.max(1, stack.getCount()));
+                    }
+
+                    if (!groupedItems.isEmpty()) {
+                        var shared = appendSharedInputs(recipe, fluidNorm);
+                        if (shared.valid()) {
+                            for (var entry : groupedItems.reference2DoubleEntrySet()) {
+                                var outItem = entry.getKey();
+                                int outNode = itemToNode.getInt(outItem);
+                                if (outNode == -1) outNode = allocateItemNode(outItem);
+                                double outCount = entry.getDoubleValue();
+                                if (outCount <= 0) outCount = 1.0;
+                                int formulaId = emitFormulaShell(F_ITEM_RECIPE, outNode, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outCount,
+                                        shared.itemStart(), shared.itemCount(),
+                                        shared.fluidStart(), shared.fluidCount(),
+                                        chemInputNode.size(), 0,
+                                        machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
+                                        recipe);
+                                addEdgesForFormula(formulaId);
+                            }
+                        } else {
+                            truncateItemSlots(shared.itemStart());
+                            truncateFluidSlots(shared.fluidStart());
                         }
                     }
                 }
@@ -887,6 +879,34 @@ public final class SccCondensedSolver {
             formulaMachineFallback.add(machineFallback);
             formulaRecipe.add(recipe);
             return formulaId;
+        }
+
+        private record SharedInputs(int itemStart, int itemCount, int fluidStart, int fluidCount, boolean valid) {
+        }
+
+        private SharedInputs appendSharedInputs(RecipeNode recipe, double fluidNorm) {
+            int itemStart = itemSlotVariantStart.size();
+            int fluidStart = fluidSlotVariantStart.size();
+            int itemCount = 0;
+            int fluidCount = 0;
+            boolean valid = true;
+
+            for (var slot : recipe.getIngredients()) {
+                if (appendItemSlot(slot.getVariants(), slot.getCount())) {
+                    valid = false;
+                    break;
+                }
+                itemCount++;
+            }
+            if (valid) for (var slot : recipe.getFluidIngredients()) {
+                double amount = (slot.getAmount() / 1000.0) * fluidNorm;
+                if (appendFluidSlot(slot.getFluidVariants(), amount)) {
+                    valid = false;
+                    break;
+                }
+                fluidCount++;
+            }
+            return new SharedInputs(itemStart, itemCount, fluidStart, fluidCount, valid);
         }
 
         private boolean appendItemSlot(ObjectList<ItemStack> variants, double amount) {

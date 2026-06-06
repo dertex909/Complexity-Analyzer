@@ -37,12 +37,44 @@ import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.regex.Pattern;
+
+import static net.minecraft.core.component.DataComponents.CUSTOM_NAME;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
 
 public final class HarvestedRecipeConverter {
 
+    private static final Pattern UNBOUND_KEY = Pattern.compile("cannot be bound[^']*key='([^']+)'");
+
     private HarvestedRecipeConverter() {
+    }
+
+    private static ItemStack recoverUnbound(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return stack;
+        var name = stack.get(CUSTOM_NAME);
+        if (name == null) return stack;
+        var matcher = UNBOUND_KEY.matcher(name.getString());
+        if (!matcher.find()) return stack;
+        var id = descriptionIdToItemId(matcher.group(1));
+        if (id == null) return stack;
+        var item = GameRegistryManager.getItem(id);
+        return (item != null && item != AIR) ? new ItemStack(item) : stack;
+    }
+
+    private static ResourceLocation descriptionIdToItemId(String descriptionId) {
+        int firstDot = descriptionId.indexOf('.');
+        if (firstDot < 0) return null;
+        String rest = descriptionId.substring(firstDot + 1);
+        int nsDot = rest.indexOf('.');
+        if (nsDot < 0) return null;
+        String namespace = rest.substring(0, nsDot);
+        String path = rest.substring(nsDot + 1).replace('.', '/');
+        try {
+            return ResourceLocation.fromNamespaceAndPath(namespace, path);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     public static RecipeNode convert(HarvestedItems harvested, Level level) {
@@ -95,8 +127,9 @@ public final class HarvestedRecipeConverter {
             int ingredientCount = hi.count();
             var variants = new ObjectArrayList<ItemStack>();
             int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
-            for (var stack : ingredient.getItems()) {
-                if (stack.isEmpty()) continue;
+            for (var raw : ingredient.getItems()) {
+                if (raw.isEmpty()) continue;
+                var stack = recoverUnbound(raw);
                 var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
                 if (!containsSameStackData(variants, stack)) variants.add(stack.copyWithCount(1));
@@ -134,7 +167,8 @@ public final class HarvestedRecipeConverter {
             });
         }
 
-        for (ItemStack stack : inputStacks) {
+        for (var raw : inputStacks) {
+            var stack = recoverUnbound(raw);
             if (!transitionalItems.isEmpty() && transitionalItems.contains(stack.getItem())) continue;
             if (!sameStackIdentity(stack, output, registryAccess)) {
                 var variants = new ObjectArrayList<ItemStack>();
@@ -277,9 +311,7 @@ public final class HarvestedRecipeConverter {
     }
 
     private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
-        for (var stack : stacks) {
-            if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
-        }
+        for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
         return false;
     }
 }

@@ -27,6 +27,7 @@ import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.graph.IngredientSlot;
@@ -124,15 +125,9 @@ public final class RecipeSectionBuilder {
         return list;
     }
 
-    /** An ingredient slot plus its (possibly merged) required count. */
     private record MergedSlot(IngredientSlot slot, int count) {
     }
 
-    /**
-     * Collapses ingredient slots that serialize identically (same item variants, same data) into a
-     * single slot whose count is the sum — so repeated ingredients are written once with a number
-     * instead of N duplicated entries. Order of first appearance is preserved.
-     */
     private static ObjectList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots,
                                                                HolderLookup.Provider ra) {
         var order = new ObjectArrayList<MergedSlot>(slots.size());
@@ -152,7 +147,6 @@ public final class RecipeSectionBuilder {
         return order;
     }
 
-    /** Signature matching the bytes writeVariantStrings produces: item index (+ data key if any). */
     private static String slotSignature(SectionBuilderContext ctx, IngredientSlot slot, HolderLookup.Provider ra) {
         var sb = new StringBuilder(24);
         for (var v : slot.getVariants()) {
@@ -185,10 +179,6 @@ public final class RecipeSectionBuilder {
         for (int k = 0; k < mc; k++) buf.i32(machineIdxs.getInt(k));
 
         var registryAccess = ctx.engine().getRegistryAccess();
-        // Collapse ingredient slots that are identical (same variants) into one slot with the
-        // summed count — e.g. three separate iron-ingot cells become a single "iron x3" instead of
-        // three "x1" entries. Smaller file, cleaner display; cost is unaffected (the solver reads
-        // the graph's slots directly, not this export).
         var mergedSlots = mergeIngredientSlots(ctx, r.getIngredients(), registryAccess);
         buf.u8(Math.min(mergedSlots.size(), 0xFF));
         for (int s = 0; s < Math.min(mergedSlots.size(), 0xFF); s++) {
@@ -237,7 +227,7 @@ public final class RecipeSectionBuilder {
 
             int hoverRef = ctx.hoverNameIdCache().getInt(stack);
             if (hoverRef < 0) {
-                hoverRef = ctx.strings().intern(stack.getHoverName().getString());
+                hoverRef = ctx.strings().intern(safeHoverName(stack));
                 ctx.hoverNameIdCache().put(stack, hoverRef);
             }
             buf.i32(hoverRef);
@@ -269,14 +259,23 @@ public final class RecipeSectionBuilder {
         }
     }
 
-    private static void writeVariantStrings(LeBuf buf, SectionBuilderContext ctx, net.minecraft.world.item.ItemStack variant,
-                                            net.minecraft.core.HolderLookup.Provider registryAccess) {
+    private static String safeHoverName(ItemStack stack) {
+        try {
+            String n = stack.getHoverName().getString();
+            if (!n.isBlank() && !n.contains("cannot be bound")) return n;
+        } catch (Throwable ignored) {
+        }
+        return stack.getItem().getDescription().getString();
+    }
+
+    private static void writeVariantStrings(LeBuf buf, SectionBuilderContext ctx, ItemStack variant,
+                                            HolderLookup.Provider registryAccess) {
         int hoverRef, keyRef;
         if (variant.isComponentsPatchEmpty()) {
             var item = variant.getItem();
             hoverRef = ctx.plainHoverByItem().getInt(item);
             if (hoverRef < 0) {
-                hoverRef = ctx.strings().intern(variant.getHoverName().getString());
+                hoverRef = ctx.strings().intern(safeHoverName(variant));
                 ctx.plainHoverByItem().put(item, hoverRef);
             }
             keyRef = ctx.plainDataKeyByItem().getInt(item);
@@ -287,7 +286,7 @@ public final class RecipeSectionBuilder {
         } else {
             hoverRef = ctx.hoverNameIdCache().getInt(variant);
             if (hoverRef < 0) {
-                hoverRef = ctx.strings().intern(variant.getHoverName().getString());
+                hoverRef = ctx.strings().intern(safeHoverName(variant));
                 ctx.hoverNameIdCache().put(variant, hoverRef);
             }
             keyRef = ctx.dataKeyIdCache().getInt(variant);

@@ -46,7 +46,6 @@ public class GameRegistryManager {
     private static final ObjectList<RecipeType<?>> ALL_RECIPE_TYPES = new ObjectArrayList<>();
     private static final ObjectList<EntityType<?>> ALL_ENTITY_TYPES = new ObjectArrayList<>();
     private static final ObjectList<ResourceLocation> ALL_ITEM_IDS = new ObjectArrayList<>();
-    private static final ObjectList<ResourceLocation> ALL_ENTITY_IDS = new ObjectArrayList<>();
     private static boolean initialized = false;
 
     private GameRegistryManager() {
@@ -94,13 +93,33 @@ public class GameRegistryManager {
             ENTITY_TYPE_MAP.put(id, entityType);
             ENTITY_TYPE_ID_MAP.put(entityType, id);
             ALL_ENTITY_TYPES.add(entityType);
-            ALL_ENTITY_IDS.add(id);
         }
 
         initialized = true;
         long duration = System.currentTimeMillis() - startTime;
         ComplexityAnalyzer.LOGGER.info("[GameRegistryManager] Initialized in {}ms. Blocks: {}, Items: {}, Fluids: {}, RecipeTypes: {}, EntityTypes: {}",
                 duration, ALL_BLOCKS.size(), ALL_ITEMS.size(), ALL_FLUIDS.size(), ALL_RECIPE_TYPES.size(), ALL_ENTITY_TYPES.size());
+    }
+
+    public static void clear() {
+        BLOCK_MAP.clear();
+        ITEM_MAP.clear();
+        FLUID_MAP.clear();
+        RECIPE_TYPE_MAP.clear();
+        ENTITY_TYPE_MAP.clear();
+        BLOCK_ID_MAP.clear();
+        ITEM_ID_MAP.clear();
+        FLUID_ID_MAP.clear();
+        RECIPE_TYPE_ID_MAP.clear();
+        ENTITY_TYPE_ID_MAP.clear();
+        ALL_BLOCKS.clear();
+        ALL_ITEMS.clear();
+        ALL_FLUIDS.clear();
+        ALL_RECIPE_TYPES.clear();
+        ALL_ENTITY_TYPES.clear();
+        ALL_ITEM_IDS.clear();
+        initialized = false;
+        ComplexityAnalyzer.LOGGER.info("[GameRegistryManager] Registry cache cleared.");
     }
 
     public static Block getBlock(ResourceLocation id) {
@@ -147,10 +166,6 @@ public class GameRegistryManager {
         return ALL_ITEM_IDS;
     }
 
-    public static ObjectList<ResourceLocation> getEntityIds() {
-        return ALL_ENTITY_IDS;
-    }
-
     public static ObjectList<Block> getAllBlocks() {
         return ALL_BLOCKS;
     }
@@ -163,32 +178,8 @@ public class GameRegistryManager {
         return ALL_FLUIDS;
     }
 
-    public static ObjectList<RecipeType<?>> getAllRecipeTypes() {
-        return ALL_RECIPE_TYPES;
-    }
-
     public static ObjectList<EntityType<?>> getAllEntityTypes() {
         return ALL_ENTITY_TYPES;
-    }
-
-    public static boolean isValidBlock(Block block) {
-        return BLOCK_MAP.containsValue(block);
-    }
-
-    public static boolean isValidItem(Item item) {
-        return ITEM_MAP.containsValue(item);
-    }
-
-    public static boolean isValidFluid(Fluid fluid) {
-        return FLUID_MAP.containsValue(fluid);
-    }
-
-    public static boolean isValidRecipeType(RecipeType<?> recipeType) {
-        return RECIPE_TYPE_MAP.containsValue(recipeType);
-    }
-
-    public static boolean isValidEntityType(EntityType<?> entityType) {
-        return ENTITY_TYPE_MAP.containsValue(entityType);
     }
 
     public static boolean isInitialized() {

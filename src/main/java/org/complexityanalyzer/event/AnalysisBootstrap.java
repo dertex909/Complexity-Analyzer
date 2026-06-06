@@ -60,6 +60,7 @@ public class AnalysisBootstrap {
         } catch (Throwable ignored) {
         }
         AnalysisEngine.getInstance().shutdownCompletely();
+        GameRegistryManager.clear();
     }
 
     public static AnalysisEngine getEngine() {

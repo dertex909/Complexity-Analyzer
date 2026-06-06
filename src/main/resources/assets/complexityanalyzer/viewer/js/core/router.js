@@ -18,6 +18,8 @@
 
 import {state, setState, store, switchTab} from "./state.js";
 
+let suppressHistory = false;
+
 export function initRouter() {
     const tabs = document.querySelectorAll("#main-tabs .tab");
     tabs.forEach(t => t.addEventListener("click", () => {
@@ -25,11 +27,39 @@ export function initRouter() {
         renderTabs();
         updateUrl();
     }));
-    window.addEventListener("hashchange", syncFromUrl);
+    window.addEventListener("popstate", onHistoryNav);
 
     store.addEventListener("change", updateUrl);
 
-    syncFromUrl();
+    if (!history.state || typeof history.state.idx !== "number") history.replaceState({idx: 0}, "");
+
+    suppressHistory = true;
+    try {
+        syncFromUrl();
+    } finally {
+        suppressHistory = false;
+    }
+}
+
+function currentHistoryIdx() {
+    return (history.state && typeof history.state.idx === "number") ? history.state.idx : 0;
+}
+
+export function appBack() {
+    if (currentHistoryIdx() > 0) {
+        history.back();
+        return true;
+    }
+    return false;
+}
+
+function onHistoryNav() {
+    suppressHistory = true;
+    try {
+        syncFromUrl();
+    } finally {
+        suppressHistory = false;
+    }
 }
 
 function renderTabs() {
@@ -227,7 +257,13 @@ function updateUrl() {
     if (state.selectedMob >= 0) params.set("mob", String(state.selectedMob));
     if (state.subTab) params.set("sub", state.subTab);
     const hash = "#" + params.toString();
-    if (location.hash !== hash) history.replaceState(null, "", hash);
+    if (location.hash === hash) return;
+    const idx = currentHistoryIdx();
+    if (suppressHistory) {
+        history.replaceState({idx}, "", hash);
+    } else {
+        history.pushState({idx: idx + 1}, "", hash);
+    }
 }
 
 function syncFromUrl() {

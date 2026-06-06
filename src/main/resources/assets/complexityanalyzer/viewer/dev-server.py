@@ -16,10 +16,24 @@ from pathlib import Path
 
 PORT = 8080
 VIEWER_DIR = Path(__file__).parent.resolve()
-CABIN_PATH = Path(
-    r"C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer"
-    r"\run\saves\Новый мир (1)\data\complexityanalyzer\cabin\latest.cabin"
+
+SAVES_DIR = Path(
+    r"C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\saves"
 )
+
+
+def find_cabin_path():
+    """Locate the newest latest.cabin across all world saves.
+
+    Auto-discovery means the dev server keeps working when the world is renamed
+    or a new world is created, without editing this file.
+    """
+    if not SAVES_DIR.is_dir():
+        return None
+    candidates = list(SAVES_DIR.glob("*/data/complexityanalyzer/cabin/latest.cabin"))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
 def read_cabin_file_hash(path):
@@ -38,11 +52,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(VIEWER_DIR), **kwargs)
 
     def log_message(self, fmt, *args):
-        # suppress default logging; keep output clean
         pass
 
     def do_GET(self):
-        # Match both /api/... and /{token}/api/...
         raw = self.path
         if "api/cabin" in raw:
             self._serve_cabin()
@@ -52,10 +64,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def _serve_cabin(self):
-        if not CABIN_PATH.exists():
-            self.send_error(404, f"Cabin file not found: {CABIN_PATH}")
+        cabin_path = find_cabin_path()
+        if cabin_path is None or not cabin_path.exists():
+            self.send_error(404, f"No latest.cabin found under {SAVES_DIR}")
             return
-        data = CABIN_PATH.read_bytes()
+        data = cabin_path.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", "application/octet-stream")
         self.send_header("Content-Length", str(len(data)))
@@ -63,11 +76,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
     def _serve_meta(self):
-        if not CABIN_PATH.exists():
+        cabin_path = find_cabin_path()
+        if cabin_path is None or not cabin_path.exists():
             body = json.dumps({"hasCabin": False}).encode()
         else:
-            st = CABIN_PATH.stat()
-            h = read_cabin_file_hash(CABIN_PATH)
+            st = cabin_path.stat()
+            h = read_cabin_file_hash(cabin_path)
             body = json.dumps({
                 "hasCabin": True,
                 "size": st.st_size,
@@ -87,10 +101,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    import socketserver
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    import sys
+    from http.server import ThreadingHTTPServer
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+    cabin = find_cabin_path()
+    with ThreadingHTTPServer(("", PORT), Handler) as httpd:
         print(f"→ http://localhost:{PORT}/")
-        print(f"→ Serving cabin: {CABIN_PATH}")
+        if cabin is not None:
+            print(f"→ Serving cabin: {cabin}")
+        else:
+            print(f"→ No latest.cabin found yet under {SAVES_DIR} (run the game / scan first)")
         print("  Press Ctrl+C to stop")
         try:
             httpd.serve_forever()

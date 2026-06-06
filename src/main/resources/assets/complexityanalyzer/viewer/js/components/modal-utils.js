@@ -16,18 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {setState, goBack} from "../core/state.js";
+import {setState} from "../core/state.js";
+import {appBack} from "../core/router.js";
 
 export function setupModalClose(overlay, closeEl, onClose) {
     const closeModal = () => {
         overlay.hidden = true;
-        if (onClose) {
-            const wentBack = goBack();
-            if (!wentBack) onClose();
-        } else {
-            const wentBack = goBack();
-            if (!wentBack) setState({selectedItem: -1});
-        }
+        if (appBack()) return;
+        if (onClose) onClose();
+        else setState({selectedItem: -1});
     };
 
     if (closeEl) {

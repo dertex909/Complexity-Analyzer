@@ -54,6 +54,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
+    def send_head(self):
+        self.headers.replace_header("If-Modified-Since", "") if "If-Modified-Since" in self.headers else None
+        if "If-None-Match" in self.headers:
+            del self.headers["If-None-Match"]
+        return super().send_head()
+
     def do_GET(self):
         raw = self.path
         if "api/cabin" in raw:

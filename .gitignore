@@ -14,3 +14,4 @@ todo.md
 .aider*
 /plans
 /tools/translate_lang.py
+/.claude/

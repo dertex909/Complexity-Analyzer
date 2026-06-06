@@ -23,6 +23,7 @@ let suppressHistory = false;
 export function initRouter() {
     const tabs = document.querySelectorAll("#main-tabs .tab");
     tabs.forEach(t => t.addEventListener("click", () => {
+        document.querySelectorAll(".modal-overlay").forEach(m => m.hidden = true);
         switchTab(t.dataset.tab);
         renderTabs();
         updateUrl();

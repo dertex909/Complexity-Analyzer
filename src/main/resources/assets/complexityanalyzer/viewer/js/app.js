@@ -27,6 +27,7 @@ import {renderGraph} from "./views/graph.js";
 import {renderSources} from "./views/sources.js";
 import {renderItemDetail} from "./views/details/item-detail.js";
 import {renderFluidDetail} from "./views/details/fluid-detail.js";
+import {renderMobDetail} from "./views/details/mob-detail.js";
 import {renderMobDropsView} from "./views/sub/mob-sub-views.js";
 import {
     renderItemRecipesView,
@@ -103,19 +104,30 @@ function renderCurrentTab(force = false) {
 }
 
 store.addEventListener("change", () => {
-    if (state.selectedItem === -1) {
-        const itemModal = document.getElementById("item-modal");
-        if (itemModal) itemModal.hidden = true;
-        const fluidModal = document.getElementById("fluid-modal");
-        if (fluidModal) fluidModal.hidden = true;
-    }
-    if (state.selectedMob === -1) {
-        const mobModal = document.getElementById("mob-modal");
-        if (mobModal) mobModal.hidden = true;
-    }
     renderTabs();
     renderCurrentTab();
+    syncDetailModals();
 });
+
+function syncDetailModals() {
+    const itemModal = document.getElementById("item-modal");
+    if (itemModal) {
+        if (state.tab === "items" && state.selectedItem >= 0 && state.db) renderItemDetail(null, state.selectedItem);
+        else itemModal.hidden = true;
+    }
+
+    const fluidModal = document.getElementById("fluid-modal");
+    if (fluidModal) {
+        if (state.tab === "fluids" && state.selectedItem >= 0 && state.db) renderFluidDetail(null, state.selectedItem);
+        else fluidModal.hidden = true;
+    }
+
+    const mobModal = document.getElementById("mob-modal");
+    if (mobModal) {
+        if (state.tab === "mobs" && state.selectedMob >= 0 && state.db) void renderMobDetail(null, state.selectedMob);
+        else mobModal.hidden = true;
+    }
+}
 
 store.addEventListener("selectItem", () => {
     if (state.selectedItem >= 0) if (["fluids", "fluid-recipes", "fluid-uses"].includes(state.tab)) {

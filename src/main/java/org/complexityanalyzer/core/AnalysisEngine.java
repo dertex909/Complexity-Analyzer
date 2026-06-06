@@ -55,6 +55,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -63,6 +64,7 @@ public class AnalysisEngine {
 
     private final AtomicReference<State> currentState = new AtomicReference<>(State.IDLE);
     private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
+    private final AtomicLong analysisGeneration = new AtomicLong(0);
     private final AtomicBoolean analysisCancelled = new AtomicBoolean(false);
     private final AtomicBoolean isReloading = new AtomicBoolean(false);
     private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
@@ -142,10 +144,11 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("Starting background analysis with {} threads...",
                 ThreadPoolManager.getInstance().getParallelism());
 
+        final long myGen = analysisGeneration.incrementAndGet();
         var task = executor.submit(() -> {
             try {
                 if (isInterrupted()) {
-                    restoreIdleState();
+                    restoreIdleState(myGen);
                     return;
                 }
 
@@ -159,42 +162,42 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] ===");
 
                 if (isInterrupted()) {
-                    restoreIdleState();
+                    restoreIdleState(myGen);
                     return;
                 }
 
                 initializeCoreProviders(serverLevel);
 
                 if (isInterrupted()) {
-                    restoreIdleState();
+                    restoreIdleState(myGen);
                     return;
                 }
 
                 initializeResourceSources(serverLevel);
 
                 if (isInterrupted()) {
-                    restoreIdleState();
+                    restoreIdleState(myGen);
                     return;
                 }
 
                 performComplexityCalculation();
 
                 if (isInterrupted()) {
-                    restoreIdleState();
+                    restoreIdleState(myGen);
                     return;
                 }
 
-                ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
-                currentState.set(State.READY);
-
-                safeRunCallback(onComplete);
+                if (setTerminalStateIfCurrent(myGen, State.READY, false)) {
+                    ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
+                    safeRunCallback(onComplete);
+                }
 
             } catch (Exception e) {
                 if (!isInterrupted()) {
                     ComplexityAnalyzer.LOGGER.error("Critical error during analysis initialization", e);
-                    currentState.set(State.FAILED);
+                    setTerminalStateIfCurrent(myGen, State.FAILED, false);
                 } else {
-                    restoreIdleState();
+                    restoreIdleState(myGen);
                 }
             }
         });
@@ -239,11 +242,22 @@ public class AnalysisEngine {
         }
     }
 
-    private void restoreIdleState() {
+    private void restoreIdleState(long generation) {
+        setTerminalStateIfCurrent(generation, State.IDLE, true);
+    }
+
+    private boolean setTerminalStateIfCurrent(long generation, State state, boolean clearData) {
         stateLock.lock();
         try {
-            clearDataInternal();
-            currentState.set(State.IDLE);
+            long active = analysisGeneration.get();
+            if (active != generation) {
+                ComplexityAnalyzer.LOGGER.warn("Discarding superseded analysis task (gen {}, active {}); not transitioning to {}.",
+                        generation, active, state);
+                return false;
+            }
+            if (clearData) clearDataInternal();
+            currentState.set(state);
+            return true;
         } finally {
             stateLock.unlock();
         }
@@ -482,6 +496,7 @@ public class AnalysisEngine {
     private void performReloadOnServerThread(ServerLevel serverLevel) {
         ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 1: Shutdown ===");
         analysisCancelled.set(true);
+        analysisGeneration.incrementAndGet();
         var currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) currentTask.cancel(true);
 
@@ -536,6 +551,7 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("Shutdown requested for AnalysisEngine.");
 
         analysisCancelled.set(true);
+        analysisGeneration.incrementAndGet();
 
         var currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) {

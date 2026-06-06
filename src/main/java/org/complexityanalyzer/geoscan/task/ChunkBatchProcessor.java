@@ -32,7 +32,7 @@ import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
-import org.complexityanalyzer.geoscan.worldgen.VanillaChunkGeneratorService;
+import org.complexityanalyzer.geoscan.worldgen.ChunkGeneratorService;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +42,7 @@ public class ChunkBatchProcessor {
     private final ChunkAnalyzer analyzer;
 
     private final ConcurrentHashMap<ResourceKey<Level>, BiomeContext> biomeContexts = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<ResourceKey<Level>, VanillaChunkGeneratorService> generators = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResourceKey<Level>, ChunkGeneratorService> generators = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<Long, ResourceLocation> biomeCache = new ConcurrentHashMap<>();
     private static final int BIOME_CACHE_MAX_SIZE = 100_000;
@@ -73,11 +73,11 @@ public class ChunkBatchProcessor {
         });
     }
 
-    private VanillaChunkGeneratorService getGenerator(ResourceKey<Level> dimension) {
+    private ChunkGeneratorService getGenerator(ResourceKey<Level> dimension) {
         return generators.computeIfAbsent(dimension, dim -> {
             var level = server.getLevel(dim);
             if (level == null) throw new IllegalStateException("Level not found: " + dim);
-            return new VanillaChunkGeneratorService(level);
+            return new ChunkGeneratorService(level);
         });
     }
 

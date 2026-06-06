@@ -26,11 +26,11 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
-public class VanillaChunkGeneratorService {
+public class ChunkGeneratorService {
 
     private final ServerLevel level;
 
-    public VanillaChunkGeneratorService(ServerLevel level) {
+    public ChunkGeneratorService(ServerLevel level) {
         this.level = level;
     }
 

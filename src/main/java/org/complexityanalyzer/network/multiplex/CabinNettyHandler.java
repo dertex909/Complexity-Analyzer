@@ -205,6 +205,8 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     private void finish(ChannelHandlerContext ctx, FullHttpResponse response, boolean keepAlive) {
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+        response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-store, no-cache, must-revalidate");
+        response.headers().set(HttpHeaderNames.PRAGMA, "no-cache");
         if (keepAlive) {
             response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
             ctx.writeAndFlush(response);

@@ -31,6 +31,8 @@ export class CabinDatabase {
     }
 
     async open(opt = {}) {
+        this._sB = this._bB = this._rB = this._frB = this._dB = null;
+        this._u = this._fu = null;
         await this.file.open(opt);
         const [sB, iB, mB, meB, cB, rIB, flB, miB, stiB, msB, flRIB, rB] = await Promise.all([
             SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES, SEC.FLUIDS,

@@ -128,6 +128,8 @@ export class CabinFile {
     }
 
     async open({preferFullDownload = false} = {}) {
+        this.cache.clear();
+        this.sections.clear();
         if (preferFullDownload) {
             const resp = await fetch(this.url, {cache: "no-store"});
             if (!resp.ok) throw new Error("Failed to fetch: " + resp.status);

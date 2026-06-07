@@ -74,6 +74,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         this.allPaths.clear();
 
+        if (this.geoDatabase == null || !this.geoDatabase.isLoaded()) {
+            ComplexityAnalyzer.LOGGER.info("[{}] No geo-data loaded yet — skipping block-drop analysis (will run after a geo-scan).", getName());
+            return;
+        }
+
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes concurrently.", getName());
         long startTime = System.currentTimeMillis();
         var pathsFound = new AtomicInteger(0);

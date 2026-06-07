@@ -139,14 +139,8 @@ public class VillagerTradeSource implements IResourceSource {
                 }
             };
 
-            int logInterval = Math.max(1, pendingTrades.size() / 10);
-
             for (int i = 0; i < pendingTrades.size(); i++) {
                 var pending = pendingTrades.get(i);
-
-                if ((i + 1) % logInterval == 0 || (i + 1) == pendingTrades.size()) {
-                    ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 progress: {}/{}", i + 1, pendingTrades.size());
-                }
 
                 try {
                     var offer = pending.listing.getOffer(villager, RandomSource.create(pending.seed()));

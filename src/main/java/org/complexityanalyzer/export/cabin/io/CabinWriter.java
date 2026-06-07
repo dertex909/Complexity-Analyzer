@@ -19,6 +19,7 @@
 package org.complexityanalyzer.export.cabin.io;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.CabinSection;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
@@ -58,7 +59,7 @@ public final class CabinWriter {
         byte[] codecs = new byte[sectionCount];
         byte[][] toWrites = new byte[sectionCount][];
 
-        IntStream.range(0, sectionCount).parallel().forEach(i -> {
+        ThreadPoolManager.getInstance().invokeParallel(() -> IntStream.range(0, sectionCount).parallel().forEach(i -> {
             var s = sections.get(i);
             byte[] data = s.payload();
             if (s.compress() && data.length >= 64) {
@@ -74,7 +75,7 @@ public final class CabinWriter {
                 toWrites[i] = data;
                 codecs[i] = CabinFormat.CODEC_RAW;
             }
-        });
+        }));
 
         for (int i = 0; i < sectionCount; i++) {
             byte[] toWrite = toWrites[i];

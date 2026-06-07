@@ -34,6 +34,7 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.jetbrains.annotations.NotNull;
 
@@ -74,7 +75,8 @@ public final class DynamicRecipeHarvester {
         var ctx = new ProbeContext(recipeManager, level, graph, new FastHarvester(), allItems,
                 known, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize);
 
-        inputTypeMap.entrySet().parallelStream().forEach(e -> probeType(e.getKey(), e.getValue(), ctx));
+        ThreadPoolManager.getInstance().invokeParallel(() ->
+                inputTypeMap.entrySet().parallelStream().forEach(e -> probeType(e.getKey(), e.getValue(), ctx)));
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
                 ctx.addedCount().get(), ctx.dynamicTypes().get());

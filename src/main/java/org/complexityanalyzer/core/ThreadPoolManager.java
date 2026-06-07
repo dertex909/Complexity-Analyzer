@@ -196,6 +196,30 @@ public class ThreadPoolManager {
         return pool;
     }
 
+    public ForkJoinPool getForkJoinPool() {
+        ensureNotShutdown();
+        var pool = forkJoinPool;
+        if (pool == null || pool.isShutdown()) synchronized (LOCK) {
+            pool = forkJoinPool;
+            if (pool == null || pool.isShutdown()) {
+                initialize();
+                pool = forkJoinPool;
+            }
+        }
+        return pool;
+    }
+
+    public void invokeParallel(Runnable action) {
+        try {
+            getForkJoinPool().submit(action).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted during parallel execution", e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException("Parallel execution failed", e.getCause());
+        }
+    }
+
     public int getParallelism() {
         return parallelism;
     }

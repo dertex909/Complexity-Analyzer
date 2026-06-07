@@ -74,7 +74,7 @@ public class GraphBuilder {
         var skippedCount = new AtomicInteger(0);
         var processedNodes = new ConcurrentLinkedQueue<RecipeNode>();
 
-        allRecipes.parallelStream().forEach(holder -> {
+        ThreadPoolManager.getInstance().invokeParallel(() -> allRecipes.parallelStream().forEach(holder -> {
             try {
                 var node = buildNode(holder.value(), level);
                 if (node != null) {
@@ -87,7 +87,7 @@ public class GraphBuilder {
                 ComplexityAnalyzer.LOGGER.warn("Failed to process recipe {}: {}", holder.id(), e.getMessage());
                 skippedCount.incrementAndGet();
             }
-        });
+        }));
 
         for (var node : processedNodes) graph.addRecipe(node);
 

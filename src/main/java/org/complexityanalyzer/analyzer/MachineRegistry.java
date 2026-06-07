@@ -32,17 +32,21 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import static net.minecraft.core.BlockPos.ZERO;
 
 public class MachineRegistry {
 
     private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<Class<?>, ClassInfo> classInfoCache = new Object2ObjectOpenHashMap<>();
     private boolean initialized = false;
 
     public void initialize(MinecraftServer server) {
         if (initialized) return;
         int vanilla = registerVanilla();
-        ComplexityAnalyzer.LOGGER.info("Registered {} vanilla machines", vanilla);
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} vanilla machines", vanilla);
 
         boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
         var cacheFile = cacheEnabled ? MachineRegistryCache.cacheFile(server) : null;
@@ -51,14 +55,14 @@ public class MachineRegistry {
             fingerprint = MachineRegistryCache.computeFingerprint();
             int restored = MachineRegistryCache.tryLoad(cacheFile, fingerprint, mapping);
             if (restored >= 0) {
-                ComplexityAnalyzer.LOGGER.info("Loaded {} machine mappings from cache (block scan skipped)", restored);
+                ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
                 initialized = true;
                 return;
             }
         }
 
         int dynamic = registerModdedMachines();
-        ComplexityAnalyzer.LOGGER.info("Registered {} dynamic modded machines via BlockEntity scanning", dynamic);
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} dynamic modded machines via BlockEntity scanning", dynamic);
 
         if (cacheFile != null) MachineRegistryCache.save(cacheFile, fingerprint, mapping);
 
@@ -91,15 +95,15 @@ public class MachineRegistry {
 
     private int registerModdedMachines() {
         int registeredCount = 0;
-        int totalBlocks = 0;
         int entityBlocks = 0;
         int errors = 0;
 
-        for (var block : GameRegistryManager.getAllBlocks()) {
-            totalBlocks++;
+        var blocks = GameRegistryManager.getAllBlocks();
+        int totalBlocks = blocks.size();
+
+        for (var block : blocks) {
             try {
-                ReferenceSet<Object> blockVisited = new ReferenceOpenHashSet<>();
-                var rt = findRecipeTypeDeep(block, 0, blockVisited);
+                var rt = findRecipeTypeDeep(block, 0, new ReferenceOpenHashSet<>());
                 if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
             } catch (Throwable ignored) {
             }
@@ -112,8 +116,7 @@ public class MachineRegistry {
                         var beClass = be.getClass();
                         int scanned = scanBlockEntityClass(beClass, be, block);
                         if (scanned == 0) {
-                            ReferenceSet<Object> visited = new ReferenceOpenHashSet<>();
-                            var rt = findRecipeTypeDeep(be, 0, visited);
+                            var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>());
                             if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
                         } else {
                             registeredCount += scanned;
@@ -124,7 +127,7 @@ public class MachineRegistry {
                 }
             }
         }
-        ComplexityAnalyzer.LOGGER.info("Dynamic machine scan results: totalBlocks={}, entityBlocks={}, registered={}, errors={}",
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Dynamic machine scan results: totalBlocks={}, entityBlocks={}, registered={}, errors={}",
                 totalBlocks, entityBlocks, registeredCount, errors);
         return registeredCount;
     }
@@ -157,35 +160,71 @@ public class MachineRegistry {
         return count;
     }
 
-    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited) {
-        if (obj == null || depth > 3 || !visited.add(obj)) return null;
-        var clazz = obj.getClass();
-        if (clazz.getName().startsWith("java.") || clazz.getName().startsWith("net.minecraft.")) return null;
+    private record ClassInfo(Method[] recipeMethods, Field[] fields) {
+    }
 
+    private static final ClassInfo EMPTY_INFO = new ClassInfo(new Method[0], new Field[0]);
+
+    private ClassInfo classInfo(Class<?> clazz) {
+        var info = classInfoCache.get(clazz);
+        if (info != null) return info;
+        info = buildClassInfo(clazz);
+        classInfoCache.put(clazz, info);
+        return info;
+    }
+
+    private ClassInfo buildClassInfo(Class<?> clazz) {
+        var name = clazz.getName();
+        if (name.startsWith("java.") || name.startsWith("net.minecraft.")) return EMPTY_INFO;
+
+        var methods = new ObjectArrayList<Method>();
         for (var method : clazz.getMethods()) {
             if (method.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(method.getReturnType())) try {
                 method.setAccessible(true);
+                methods.add(method);
+            } catch (Throwable ignored) {
+            }
+        }
+
+        var fields = new ObjectArrayList<Field>();
+        var current = clazz;
+        while (current != null && current != Object.class) {
+            for (var field : current.getDeclaredFields()) {
+                if (field.getType().isPrimitive()) continue;
+                try {
+                    field.setAccessible(true);
+                    fields.add(field);
+                } catch (Throwable ignored) {
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return new ClassInfo(methods.toArray(new Method[0]), fields.toArray(new Field[0]));
+    }
+
+    @Nullable
+    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited) {
+        if (obj == null || depth > 3 || !visited.add(obj)) return null;
+        var info = classInfo(obj.getClass());
+
+        for (var method : info.recipeMethods()) {
+            try {
                 var recipeType = (RecipeType<?>) method.invoke(obj);
                 if (recipeType != null) return recipeType;
             } catch (Throwable ignored) {
             }
         }
 
-        var current = clazz;
-        while (current != null && current != Object.class) {
-            for (var field : current.getDeclaredFields()) {
-                try {
-                    field.setAccessible(true);
-                    var val = field.get(obj);
-                    if (val != null) {
-                        if (val instanceof RecipeType<?> rt) return rt;
-                        var deep = findRecipeTypeDeep(val, depth + 1, visited);
-                        if (deep != null) return deep;
-                    }
-                } catch (Throwable ignored) {
+        for (var field : info.fields()) {
+            try {
+                var val = field.get(obj);
+                if (val != null) {
+                    if (val instanceof RecipeType<?> rt) return rt;
+                    var deep = findRecipeTypeDeep(val, depth + 1, visited);
+                    if (deep != null) return deep;
                 }
+            } catch (Throwable ignored) {
             }
-            current = current.getSuperclass();
         }
         return null;
     }
@@ -209,7 +248,7 @@ public class MachineRegistry {
         var item = GameRegistryManager.getItem(itemRL);
 
         if (item == null || item == Items.AIR) {
-            ComplexityAnalyzer.LOGGER.warn("Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
+            ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
             return;
         }
 

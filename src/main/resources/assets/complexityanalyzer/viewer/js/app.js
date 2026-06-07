@@ -167,7 +167,7 @@ async function main() {
     renderTabs();
     renderCurrentTab();
     setupGlobalSearch();
-    startPolling(token);
+    startLiveUpdates(token);
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -294,38 +294,45 @@ function hideLoadingOverlay() {
     overlayTitle = null;
 }
 
-function startPolling(token) {
-    let countdown = 5;
-    let failCount = 0;
-    setInterval(async () => {
-        countdown--;
-        if (countdown > 0) return;
-        countdown = 5;
-        try {
-            const metaUrl = `/${token}/api/meta?token=${encodeURIComponent(token || "")}`;
-            const resp = await fetch(metaUrl);
-            if (!resp.ok) {
-                failCount++;
-                if (failCount >= 2) setStatus("error", "Offline");
-                return;
-            }
-            failCount = 0;
-            const meta = await resp.json();
-            const serverHash = meta.hash.toLowerCase();
-            const localHash = state.db?.file?.fileHash?.toString(16)?.toLowerCase();
-            if (serverHash && localHash && serverHash !== localHash) {
-                await state.db.open({preferFullDownload: true});
-                setStatus("ready", `Updated! ${fmtInt.format(state.db.meta.itemCount)} items`);
-                renderCurrentTab(true);
-                countdown = 3;
-            } else {
-                setStatus("ready", "ready");
-            }
-        } catch (e) {
-            failCount++;
-            if (failCount >= 2) setStatus("error", "offline");
+function startLiveUpdates(token) {
+    async function applyServerHash(serverHashHex) {
+        const serverHash = (serverHashHex || "").trim().toLowerCase();
+        const localHash = state.db?.file?.fileHash?.toString(16)?.toLowerCase();
+        if (serverHash && localHash && serverHash !== localHash) {
+            await state.db.open({preferFullDownload: true});
+            setStatus("ready", `Updated! ${fmtInt.format(state.db.meta.itemCount)} items`);
+            renderCurrentTab(true);
         }
-    }, 1000);
+    }
+
+    function connect() {
+        let ws;
+        try {
+            const proto = location.protocol === "https:" ? "wss" : "ws";
+            ws = new WebSocket(`${proto}://${location.host}/${token}/ws`);
+        } catch (e) {
+            setStatus("error", "offline");
+            setTimeout(connect, 5000);
+            return;
+        }
+
+        ws.onopen = () => setStatus("ready", "ready");
+        ws.onmessage = (ev) => {
+            void applyServerHash(String(ev.data));
+        };
+        ws.onclose = () => {
+            setStatus("error", "offline");
+            setTimeout(connect, 5000);
+        };
+        ws.onerror = () => {
+            try {
+                ws.close();
+            } catch (e) {
+            }
+        };
+    }
+
+    connect();
 }
 
 function setupGlobalSearch() {

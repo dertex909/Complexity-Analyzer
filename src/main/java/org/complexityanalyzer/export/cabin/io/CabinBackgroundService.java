@@ -25,6 +25,7 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
+import org.complexityanalyzer.network.multiplex.CabinWsHub;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -101,6 +102,7 @@ public final class CabinBackgroundService {
                 current.set(snap);
                 status.set(Status.READY);
                 lastError.set(null);
+                CabinWsHub.broadcast(Long.toHexString(snap.fileHash()));
                 future.complete(snap);
             } catch (Throwable t) {
                 status.set(Status.FAILED);

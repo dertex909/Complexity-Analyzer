@@ -23,6 +23,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
@@ -42,6 +44,10 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     public static long getVisitorCount() {
         return uniqueVisitors.size();
+    }
+
+    public static String getToken() {
+        return TOKEN;
     }
 
     @SuppressWarnings("ConstantValue")
@@ -100,6 +106,16 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         } else {
             serveResource(ctx, path, getMimeType(path), keepAlive);
         }
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof WebSocketServerProtocolHandler.HandshakeComplete) {
+            CabinWsHub.register(ctx.channel());
+            var snap = CabinBackgroundService.getInstance().getSnapshot();
+            if (snap != null) ctx.channel().writeAndFlush(new TextWebSocketFrame(Long.toHexString(snap.fileHash())));
+        }
+        ctx.fireUserEventTriggered(evt);
     }
 
     @Override

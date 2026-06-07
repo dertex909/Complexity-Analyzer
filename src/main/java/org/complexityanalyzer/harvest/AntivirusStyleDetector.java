@@ -77,6 +77,7 @@ public final class AntivirusStyleDetector {
     private static CompositeDetection performDetection(Class<?> clazz) {
         ObjectList<String> allEvidence = new ObjectArrayList<>();
         int sigConfidence = 0;
+        int behavioralConf = 0;
         var highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;
         if (Recipe.class.isAssignableFrom(clazz)) {
             sigConfidence = 100;
@@ -92,6 +93,10 @@ public final class AntivirusStyleDetector {
                 }
                 allEvidence.add("SIGNATURE[L1]: implements " + iface.getName());
             }
+            if (name.contains("Input") || name.contains("Output")) {
+                behavioralConf += 5;
+                allEvidence.add("BEHAVIORAL[L3]: implements " + name);
+            }
         }
         var profile = PatternSignatureEngine.profile(clazz);
         int heuristicConf = profile.heuristicScore();
@@ -104,7 +109,6 @@ public final class AntivirusStyleDetector {
             highestLevel = PatternSignatureEngine.DetectionLevel.HEURISTIC;
         }
         allEvidence.addAll(profile.evidence());
-        int behavioralConf = 0;
         String pkgName = clazz.getPackage() != null ? clazz.getPackage().getName() : "";
         if (pkgName.contains("recipe") || pkgName.contains("crafting")) {
             behavioralConf += 10;
@@ -114,13 +118,6 @@ public final class AntivirusStyleDetector {
         if (simpleName.contains("Recipe")) {
             behavioralConf += 10;
             allEvidence.add("BEHAVIORAL[L3]: class name contains 'Recipe'");
-        }
-        for (var iface : clazz.getInterfaces()) {
-            String iname = iface.getSimpleName();
-            if (iname.contains("Input") || iname.contains("Output")) {
-                behavioralConf += 5;
-                allEvidence.add("BEHAVIORAL[L3]: implements " + iname);
-            }
         }
         int totalConf = Math.min(sigConfidence + heuristicConf + behavioralConf, 100);
         boolean isRecipe;

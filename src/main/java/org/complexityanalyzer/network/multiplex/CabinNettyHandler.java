@@ -28,6 +28,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
+import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Collections;
@@ -74,10 +75,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
-        String remoteAddress = ctx.channel().remoteAddress().toString();
-        if (remoteAddress.startsWith("/")) remoteAddress = remoteAddress.substring(1);
-        String ip = remoteAddress.split(":")[0];
-        uniqueVisitors.add(ip);
+        uniqueVisitors.add(extractIp(ctx));
 
         boolean keepAlive = HttpUtil.isKeepAlive(request);
 
@@ -106,6 +104,12 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         } else {
             serveResource(ctx, path, getMimeType(path), keepAlive);
         }
+    }
+
+    private static String extractIp(ChannelHandlerContext ctx) {
+        if (ctx.channel().remoteAddress() instanceof InetSocketAddress addr && addr.getAddress() != null)
+            return addr.getAddress().getHostAddress();
+        return String.valueOf(ctx.channel().remoteAddress());
     }
 
     @Override

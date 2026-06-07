@@ -59,10 +59,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         int found = 0;
 
         ObjectList<Block> candidates = new ObjectArrayList<>();
-        for (var block : GameRegistryManager.getAllBlocks()) if (!simulator.isNotPlant(block)) candidates.add(block);
-
-        int plantCount = candidates.size();
-        ComplexityAnalyzer.LOGGER.info("[FarmingSource] Found {} plant candidates to analyze", plantCount);
+        for (var block : GameRegistryManager.getAllBlocks()) if (simulator.isPlant(block)) candidates.add(block);
 
         Object2ObjectMap<Block, PlantSimulator.SimulationResult> results;
         var server = serverLevel.getServer();

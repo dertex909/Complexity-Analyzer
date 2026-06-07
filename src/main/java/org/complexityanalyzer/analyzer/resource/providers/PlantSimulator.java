@@ -33,6 +33,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
@@ -48,6 +49,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Proxy;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -59,6 +61,11 @@ public class PlantSimulator {
     private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
     private Player fakePlayer;
     private boolean platformReady = false;
+    private LevelReader survivalView;
+    private ServerLevel viewLevel;
+    private BlockPos viewGroundPos;
+    private BlockState viewGroundState;
+    private BlockPos viewPlantPos;
 
     private final int simOriginX = SIM_ORIGIN.getX();
     private final int simOriginY = SIM_ORIGIN.getY();
@@ -69,6 +76,7 @@ public class PlantSimulator {
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
     private static final int BARRIER_RADIUS = 16;
     private static final int SEARCH_RADIUS = 32;
+    private static final int CLEAR_EMPTY_SHELL_GAP = 8;
     private static final int DEPTH_BELOW = 30;
     private static final int HEIGHT_ABOVE = 30;
     private static final int MAX_TICKS = 50;
@@ -100,10 +108,16 @@ public class PlantSimulator {
         ensurePlatform(level);
         fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
         Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
+
         for (var block : blocks) {
-            var result = simulate(block, level);
-            if (result != null) results.put(block, result);
+            try {
+                var result = simulate(block, level);
+                if (result != null) results.put(block, result);
+            } catch (Throwable t) {
+                ComplexityAnalyzer.LOGGER.warn("[PlantSim] Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
+            }
         }
+
         collectAndClear(level, null, null);
         clearEntitiesInsideBox(level);
         releasePlatform(level);
@@ -111,15 +125,17 @@ public class PlantSimulator {
         return results.isEmpty() ? null : results;
     }
 
-    public boolean isNotPlant(Block block) {
+    public boolean isPlant(Block block) {
         var state = block.defaultBlockState();
-        if (state.isAir() || block == Blocks.AIR || block == Blocks.FIRE || block == Blocks.SNOW
-                || block == Blocks.TURTLE_EGG) return true;
-        if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return false;
+        if (state.isAir() || block == Blocks.AIR) return false;
+        if (block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) return false;
+        if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return true;
         float hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-        if (hardness > 0.5f || hardness < 0.0f || (!(block instanceof BonemealableBlock)
-                && !state.isRandomlyTicking() && findAgeProperty(block) == null)) return true;
-        return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        if (hardness > 0.5f || hardness < 0.0f) return false;
+        if (!(block instanceof BonemealableBlock) && !state.isRandomlyTicking() && findAgeProperty(block) == null)
+            return false;
+
+        return !state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 
     private void clearEntitiesInsideBox(ServerLevel level) {
@@ -127,9 +143,7 @@ public class PlantSimulator {
                 simOriginZ - BARRIER_RADIUS, simOriginX + BARRIER_RADIUS,
                 simOriginY + HEIGHT_ABOVE, simOriginZ + BARRIER_RADIUS);
 
-        for (var entity : level.getEntities(null, interiorBox)) {
-            if (entity instanceof ItemEntity) entity.discard();
-        }
+        for (var entity : level.getEntities(null, interiorBox)) if (entity instanceof ItemEntity) entity.discard();
     }
 
     private SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
@@ -138,6 +152,7 @@ public class PlantSimulator {
 
         collectAndKillEntities(level, null);
         collectAndClear(level, null, null);
+
         var ground = findSuitableGround(plantBlock, level);
         if (ground == null) return null;
         collectAndKillEntities(level, null);
@@ -154,7 +169,8 @@ public class PlantSimulator {
         collectAndKillEntities(level, currentDrops);
         addDrops(drops, currentDrops);
 
-        mergeDropEstimates(drops, simulateMatureLoot(plantBlock, level, ground));
+        var matureLoot = simulateMatureLoot(plantBlock, level, ground);
+        mergeDropEstimates(drops, matureLoot);
         if (drops.isEmpty()) return null;
         if (stages <= 1) stages = 2;
         return new SimulationResult(drops, stages);
@@ -207,6 +223,9 @@ public class PlantSimulator {
                 ObjectArrayList<ItemStack> lootDrops = new ObjectArrayList<>();
                 if (lootTable != LootTable.EMPTY) lootTable.getRandomItems(context, lootDrops::add);
 
+                if (lootDrops.isEmpty()) lootDrops.addAll(Block.getDrops(state, level, lootPos,
+                        level.getBlockEntity(lootPos), PlantSimulator.this.fakePlayer, ItemStack.EMPTY));
+
                 for (var stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
             }
         } catch (Throwable e) {
@@ -216,28 +235,6 @@ public class PlantSimulator {
             if (groundPos != null) level.setBlock(groundPos, oldGroundState, FLAG_NO_UPDATE);
         }
         return drops;
-    }
-
-    private ObjectList<ItemStack> getSeededDrops(ServerLevel level, BlockState state, BlockPos pos) {
-        var out = new ObjectArrayList<ItemStack>();
-        try {
-            var lootTable = level.getServer().reloadableRegistries().getLootTable(state.getBlock().getLootTable());
-            if (lootTable == LootTable.EMPTY) return out;
-            long seed = GameRegistryManager.getBlockId(state.getBlock()).toString().hashCode();
-            var params = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.BLOCK_STATE, state)
-                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(pos))
-                    .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
-                    .withOptionalParameter(LootContextParams.THIS_ENTITY, fakePlayer)
-                    .withOptionalParameter(LootContextParams.BLOCK_ENTITY, level.getBlockEntity(pos))
-                    .create(LootContextParamSets.BLOCK);
-            var context = new LootContext.Builder(params)
-                    .withOptionalRandomSource(RandomSource.create(seed))
-                    .create(Optional.empty());
-            lootTable.getRandomItems(context, out::add);
-        } catch (Throwable ignored) {
-        }
-        return out;
     }
 
     @Nullable
@@ -271,9 +268,22 @@ public class PlantSimulator {
 
     private boolean tryGroundQuickly(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
         if (candidate instanceof EntityBlock || candidate.defaultBlockState().hasBlockEntity()) return false;
+        var candidateState = candidate.defaultBlockState();
+        if (candidateState.isAir() && candidate != Blocks.WATER) return false;
+
         try {
-            var candidateState = candidate.defaultBlockState();
-            if (candidateState.isAir() && candidate != Blocks.WATER) return false;
+            viewLevel = level;
+            viewGroundPos = groundPos;
+            viewGroundState = candidateState;
+            viewPlantPos = plantPos;
+            return plantState.canSurvive(survivalView(), plantPos);
+        } catch (Throwable t) {
+            return tryGroundWithSetBlock(candidateState, plantState, level, groundPos, plantPos);
+        }
+    }
+
+    private boolean tryGroundWithSetBlock(BlockState candidateState, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
+        try {
             var oldGround = level.getBlockState(groundPos);
             level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
             boolean survives = plantState.canSurvive(level, plantPos);
@@ -282,6 +292,20 @@ public class PlantSimulator {
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private LevelReader survivalView() {
+        if (survivalView == null) survivalView = (LevelReader) Proxy.newProxyInstance(
+                LevelReader.class.getClassLoader(),
+                new Class[]{LevelReader.class},
+                (proxy, method, args) -> {
+                    if (args != null && args.length == 1 && args[0] instanceof BlockPos p && "getBlockState".equals(method.getName())) {
+                        if (p.equals(viewGroundPos)) return viewGroundState;
+                        if (p.equals(viewPlantPos)) return Blocks.AIR.defaultBlockState();
+                    }
+                    return method.invoke(viewLevel, args);
+                });
+        return survivalView;
     }
 
     private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random) {
@@ -417,55 +441,49 @@ public class PlantSimulator {
         int minY = simOriginY - DEPTH_BELOW;
         int maxY = Math.min(level.getMaxBuildHeight() - 1, simOriginY + HEIGHT_ABOVE);
         boolean shouldCollectDrops = drops != null;
+        var air = Blocks.AIR.defaultBlockState();
 
-        if (shouldCollectDrops) {
-            for (int y = minY; y <= maxY; y++) {
-                mutablePos.set(simOriginX, y, simOriginZ);
+        for (int y = minY; y <= maxY; y++) {
+            mutablePos.set(simOriginX, y, simOriginZ);
+            try {
                 var state = level.getBlockState(mutablePos);
                 if (state.isAir() || isManagedPlatformBlock(state) || mutablePos.asLong() == groundPosLong) continue;
-                collectDropsAt(level, mutablePos, state, drops);
-                level.removeBlock(mutablePos, false);
+                if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops);
+                level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
+            } catch (Throwable ignored) {
             }
+        }
 
-            int radius = 1;
-            while (radius <= SEARCH_RADIUS) {
-                boolean foundBlocks = false;
-                int prevRadius = radius - 2;
-                for (int y = minY; y <= maxY; y++) {
-                    for (int x = -radius; x <= radius; x++) {
-                        int worldX = simOriginX + x;
-                        for (int z = -radius; z <= radius; z++) {
-                            boolean isOnBoundary = Math.abs(x) == radius || Math.abs(z) == radius || Math.abs(y - simOriginY) == radius;
-                            if (prevRadius > 0 && !isOnBoundary) continue;
-                            mutablePos.set(worldX, y, simOriginZ + z);
+        int radius = 1;
+        int lastFoundRadius = 1;
+        while (radius <= SEARCH_RADIUS) {
+            boolean foundBlocks = false;
+            int prevRadius = radius - 2;
+            for (int y = minY; y <= maxY; y++) {
+                for (int x = -radius; x <= radius; x++) {
+                    int worldX = simOriginX + x;
+                    for (int z = -radius; z <= radius; z++) {
+                        boolean isOnBoundary = Math.abs(x) == radius || Math.abs(z) == radius || Math.abs(y - simOriginY) == radius;
+                        if (prevRadius > 0 && !isOnBoundary) continue;
+                        mutablePos.set(worldX, y, simOriginZ + z);
+                        try {
                             var state = level.getBlockState(mutablePos);
                             if (state.isAir() || isManagedPlatformBlock(state)) continue;
 
                             var pos = mutablePos.immutable();
                             if (pos.asLong() != groundPosLong) {
                                 foundBlocks = true;
-                                collectDropsAt(level, pos, state, drops);
+                                if (shouldCollectDrops) collectDropsAt(level, pos, state, drops);
                             }
-                            level.removeBlock(pos, false);
+                            level.setBlock(pos, air, FLAG_NO_UPDATE);
+                        } catch (Throwable ignored) {
                         }
                     }
                 }
-                if (!foundBlocks && radius > 1) break;
-                radius += 2;
             }
-        } else {
-            int range = BARRIER_RADIUS + 1;
-            for (int y = minY; y <= maxY; y++) {
-                for (int x = -range; x <= range; x++) {
-                    int worldX = simOriginX + x;
-                    for (int z = -range; z <= range; z++) {
-                        mutablePos.set(worldX, y, simOriginZ + z);
-                        var state = level.getBlockState(mutablePos);
-                        if (state.isAir() || isManagedPlatformBlock(state)) continue;
-                        level.removeBlock(mutablePos.immutable(), false);
-                    }
-                }
-            }
+            if (foundBlocks) lastFoundRadius = radius;
+            else if (radius - lastFoundRadius >= CLEAR_EMPTY_SHELL_GAP) break;
+            radius += 2;
         }
     }
 
@@ -473,7 +491,9 @@ public class PlantSimulator {
         try {
             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
             fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            for (var stack : getSeededDrops(level, state, pos)) addDrop(drops, stack, 1.0);
+            for (var stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
+                addDrop(drops, stack, 1.0);
+            }
         } catch (Throwable ignored) {
         }
     }

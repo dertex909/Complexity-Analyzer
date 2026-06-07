@@ -39,17 +39,33 @@ public final class StringPool {
         intern("");
     }
 
+    private static final int MAX_LEN = 0xFFFF;
+
     public int intern(String s) {
         if (s == null) return EMPTY;
         int existing = index.getInt(s);
         if (existing >= 0) return existing;
+
         byte[] data = s.getBytes(StandardCharsets.UTF_8);
-        if (data.length > 0xFFFF) throw new IllegalArgumentException("String too long for pool: " + data.length);
+        if (data.length > MAX_LEN) {
+            String surrogate = oversizedSurrogate(data);
+            int surExisting = index.getInt(surrogate);
+            if (surExisting >= 0) return surExisting;
+            return add(surrogate, surrogate.getBytes(StandardCharsets.UTF_8));
+        }
+        return add(s, data);
+    }
+
+    private int add(String key, byte[] data) {
         int ref = entries.size();
         entries.add(data);
-        index.put(s, ref);
+        index.put(key, ref);
         bytesEstimate += data.length + 2L;
         return ref;
+    }
+
+    private static String oversizedSurrogate(byte[] data) {
+        return "[oversized:" + data.length + ":" + Long.toHexString(XxHash64.hash(data, 0L)) + "]";
     }
 
     public int size() {

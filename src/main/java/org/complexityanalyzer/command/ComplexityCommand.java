@@ -45,6 +45,6 @@ public final class ComplexityCommand {
                 .then(GeoScanCommands.register())
         );
 
-        ComplexityAnalyzer.LOGGER.info("Registered /complexity command with decentralized architecture");
+        ComplexityAnalyzer.LOGGER.info("Registered '/complexity command'");
     }
 }

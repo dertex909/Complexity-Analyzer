@@ -107,24 +107,12 @@ public class AnalysisEngine {
             return;
         }
 
-        var current = currentState.get();
-        if (current == State.FAILED) {
-            stateLock.lock();
-            try {
-                if (currentState.get() == State.FAILED) {
-                    currentState.set(State.IDLE);
-                    ComplexityAnalyzer.LOGGER.info("Reset from FAILED state to IDLE for retry");
-                }
-            } finally {
-                stateLock.unlock();
-            }
-        }
+        resetFailedToIdle();
 
         if (!currentState.compareAndSet(State.IDLE, State.ANALYZING)) {
-            current = currentState.get();
-            if (current == State.READY && isReady()) {
+            if (isReady()) {
                 safeRunCallback(onComplete);
-            } else if (current == State.ANALYZING) {
+            } else if (currentState.get() == State.ANALYZING) {
                 ComplexityAnalyzer.LOGGER.debug("Analysis already in progress, ignoring duplicate request");
             }
             return;
@@ -138,95 +126,93 @@ public class AnalysisEngine {
 
         this.server = serverLevel.getServer();
         analysisCancelled.set(false);
+        submitBuild(serverLevel, true, onComplete);
+    }
 
-        var executor = ThreadPoolManager.getInstance().getComputePool();
-
-        ComplexityAnalyzer.LOGGER.info("Starting background analysis with {} threads...",
-                ThreadPoolManager.getInstance().getParallelism());
-
-        final long myGen = analysisGeneration.incrementAndGet();
-        var task = executor.submit(() -> {
-            try {
-                if (isInterrupted()) {
-                    restoreIdleState(myGen);
-                    return;
-                }
-
-                ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
-                this.machineRegistry = new MachineRegistry();
-                this.machineRegistry.initialize(serverLevel.getServer());
-
-                ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
-                this.graph = GraphBuilder.buildFromWorld(level);
-
-                ComplexityAnalyzer.LOGGER.info("=== [State: ANALYZING] ===");
-
-                if (isInterrupted()) {
-                    restoreIdleState(myGen);
-                    return;
-                }
-
-                initializeCoreProviders(serverLevel);
-
-                if (isInterrupted()) {
-                    restoreIdleState(myGen);
-                    return;
-                }
-
-                initializeResourceSources(serverLevel);
-
-                if (isInterrupted()) {
-                    restoreIdleState(myGen);
-                    return;
-                }
-
-                performComplexityCalculation();
-
-                if (isInterrupted()) {
-                    restoreIdleState(myGen);
-                    return;
-                }
-
-                if (setTerminalStateIfCurrent(myGen, State.READY, false)) {
-                    ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
-                    safeRunCallback(onComplete);
-                }
-
-            } catch (Exception e) {
-                if (!isInterrupted()) {
-                    ComplexityAnalyzer.LOGGER.error("Critical error during analysis initialization", e);
-                    setTerminalStateIfCurrent(myGen, State.FAILED, false);
-                } else {
-                    restoreIdleState(myGen);
-                }
+    private void resetFailedToIdle() {
+        if (currentState.get() != State.FAILED) return;
+        stateLock.lock();
+        try {
+            if (currentState.get() == State.FAILED) {
+                currentState.set(State.IDLE);
+                ComplexityAnalyzer.LOGGER.info("Reset from FAILED state to IDLE for retry");
             }
-        });
+        } finally {
+            stateLock.unlock();
+        }
+    }
 
+    private void submitBuild(ServerLevel level, boolean fullRebuild, Runnable onComplete) {
+        final long gen = analysisGeneration.incrementAndGet();
+        ComplexityAnalyzer.LOGGER.info("Starting {} on {} threads...", fullRebuild ? "full build" : "geo refresh",
+                ThreadPoolManager.getInstance().getParallelism());
+        var task = ThreadPoolManager.getInstance().getComputePool().submit(() -> runBuild(level, fullRebuild, gen, onComplete));
         currentAnalysisTask.set(task);
     }
 
-    private void performComplexityCalculation() {
-        ComplexityAnalyzer.LOGGER.info("Starting complexity calculation...");
-
-        recalculateComplexity();
-
-        if (isInterrupted()) {
-            ComplexityAnalyzer.LOGGER.info("Analysis was cancelled during calculation.");
-            return;
-        }
-
+    private void runBuild(ServerLevel level, boolean fullRebuild, long gen, Runnable onComplete) {
         try {
-            var srv = this.server;
-            if (srv != null && !isInterrupted()) {
-                createGeoManager(srv);
-                var geoMgr = getGeoManager();
-                if (geoMgr != null && !isInterrupted()) geoMgr.startInitialScanIfNeeded();
+            if (!setStateIfCurrent(gen, State.ANALYZING, false)) return;
+
+            if (fullRebuild) {
+                buildGraph(level);
+                if (abort(gen)) return;
+                initializeCoreProviders(level);
+                if (abort(gen)) return;
             }
+
+            initializeResourceSources(level);
+            if (abort(gen)) return;
+
+            recalculateComplexity();
+            if (abort(gen)) return;
+
+            if (fullRebuild) startGeoScanIfNeeded();
+
+            if (setStateIfCurrent(gen, State.READY, false)) {
+                ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
+                safeRunCallback(onComplete);
+                regenerateCabin();
+            }
+        } catch (Exception e) {
+            if (isInterrupted() || isSuperseded(gen)) {
+                restoreIdleState(gen);
+            } else {
+                ComplexityAnalyzer.LOGGER.error("Critical error during analysis", e);
+                setStateIfCurrent(gen, State.FAILED, false);
+            }
+        }
+    }
+
+    private boolean abort(long gen) {
+        if (!isInterrupted() && !isSuperseded(gen)) return false;
+        restoreIdleState(gen);
+        return true;
+    }
+
+    private boolean isSuperseded(long gen) {
+        return analysisGeneration.get() != gen;
+    }
+
+    private void buildGraph(ServerLevel level) {
+        ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
+        this.machineRegistry = new MachineRegistry();
+        this.machineRegistry.initialize(level.getServer());
+
+        ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
+        this.graph = GraphBuilder.buildFromWorld(level);
+    }
+
+    private void startGeoScanIfNeeded() {
+        var srv = this.server;
+        if (srv == null || isInterrupted()) return;
+        try {
+            createGeoManager(srv);
+            var geoMgr = getGeoManager();
+            if (geoMgr != null && !isInterrupted()) geoMgr.startInitialScanIfNeeded();
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
         }
-
-        ComplexityAnalyzer.LOGGER.info("Complexity calculation complete.");
     }
 
     private boolean isInterrupted() {
@@ -243,10 +229,10 @@ public class AnalysisEngine {
     }
 
     private void restoreIdleState(long generation) {
-        setTerminalStateIfCurrent(generation, State.IDLE, true);
+        setStateIfCurrent(generation, State.IDLE, true);
     }
 
-    private boolean setTerminalStateIfCurrent(long generation, State state, boolean clearData) {
+    private boolean setStateIfCurrent(long generation, State state, boolean clearData) {
         stateLock.lock();
         try {
             long active = analysisGeneration.get();
@@ -328,23 +314,29 @@ public class AnalysisEngine {
     }
 
     public void onGeoScanFinished() {
-        if (!isReady()) {
-            ComplexityAnalyzer.LOGGER.warn("onGeoScanFinished called while engine not ready. Ignoring.");
+        refreshGeoData("Geo-scan finished.");
+    }
+
+    private void refreshGeoData(String reason) {
+        if (!isReady() || isShuttingDown.get()) {
+            ComplexityAnalyzer.LOGGER.warn("Ignoring geo refresh ({}): engine not ready.", reason);
             return;
         }
+        var srv = this.server;
+        if (srv == null) return;
+        ComplexityAnalyzer.LOGGER.info("{} Rebuilding geo-dependent data...", reason);
+        submitBuild(srv.overworld(), false, null);
+    }
 
-        if (isShuttingDown.get()) {
-            ComplexityAnalyzer.LOGGER.warn("onGeoScanFinished called during shutdown. Ignoring.");
-            return;
-        }
-
-        stateLock.lock();
+    private void regenerateCabin() {
+        var srv = this.server;
+        if (srv == null || isShuttingDown.get()) return;
         try {
-            if (!isReady() || isShuttingDown.get()) return;
-            ComplexityAnalyzer.LOGGER.info("Geo-scan finished. Recalculating complexity...");
-            recalculateComplexity();
-        } finally {
-            stateLock.unlock();
+            String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
+                    .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
+            CabinBackgroundService.getInstance().regenerateAsync(srv, this, modVersion);
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.error("[Cabin] Failed to regenerate after geo-scan", t);
         }
     }
 
@@ -383,26 +375,17 @@ public class AnalysisEngine {
     }
 
     public void clearGeoDatabase() {
-        if (!isReady()) {
+        var geoDB = this.geoDatabase;
+        if (geoDB == null) {
+            ComplexityAnalyzer.LOGGER.warn("Cannot clear GeoDatabase: not initialized.");
+            return;
+        }
+        if (!isReady() || isShuttingDown.get()) {
             ComplexityAnalyzer.LOGGER.warn("Cannot clear GeoDatabase: engine not ready. Current state: {}", currentState.get());
             return;
         }
-
-        if (isShuttingDown.get()) return;
-
-        stateLock.lock();
-        try {
-            if (!isReady() || isShuttingDown.get()) return;
-
-            var geoDB = this.geoDatabase;
-            if (geoDB != null) {
-                geoDB.clear();
-                ComplexityAnalyzer.LOGGER.info("GeoDatabase cleared. Recalculating complexity...");
-                recalculateComplexity();
-            }
-        } finally {
-            stateLock.unlock();
-        }
+        geoDB.clear();
+        refreshGeoData("GeoDatabase cleared.");
     }
 
     public boolean isReady() {
@@ -532,14 +515,7 @@ public class AnalysisEngine {
         isReloading.set(false);
 
         ComplexityAnalyzer.LOGGER.info("Starting fresh analysis...");
-        initializeAsync(serverLevel, () -> {
-            ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational.");
-            String modVersion = ModList.get()
-                    .getModContainerById(ComplexityAnalyzer.MODID)
-                    .map(c -> c.getModInfo().getVersion().toString())
-                    .orElse("unknown");
-            CabinBackgroundService.getInstance().regenerateAsync(serverLevel.getServer(), this, modVersion);
-        });
+        initializeAsync(serverLevel, () -> ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational."));
     }
 
     public void shutdown() {

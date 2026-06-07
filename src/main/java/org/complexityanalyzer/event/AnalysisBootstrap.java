@@ -19,7 +19,6 @@
 package org.complexityanalyzer.event;
 
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -40,16 +39,7 @@ public class AnalysisBootstrap {
         var engine = AnalysisEngine.getInstance();
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
-        engine.initializeAsync(server.overworld(), () -> {
-            ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete.");
-            try {
-                String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
-                        .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
-                CabinBackgroundService.getInstance().regenerateAsync(server, engine, modVersion);
-            } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.error("[Cabin] Failed to schedule auto-regenerate", t);
-            }
-        });
+        engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete."));
     }
 
     @SubscribeEvent

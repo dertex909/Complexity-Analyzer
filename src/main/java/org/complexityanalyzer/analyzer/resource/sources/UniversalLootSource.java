@@ -44,6 +44,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,7 +52,7 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
+import java.util.concurrent.Future;
 
 import static org.apache.logging.log4j.Level.WARN;
 
@@ -127,6 +128,9 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         long startTime = System.currentTimeMillis();
         int tablesProcessed = 0;
         int tablesSkipped = 0;
+        long sampleWallMs = 0L;
+        var pool = ThreadPoolManager.getInstance();
+        int threads = pool.getParallelism();
 
         var filter = new LootFunctionFilter();
         var rootLogger = (Logger) LogManager.getRootLogger();
@@ -134,103 +138,83 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         rootLogger.addFilter(filter);
 
         try {
-            var reloadableRegistries = server.reloadableRegistries();
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
 
             var sortedKeys = new ObjectArrayList<>(allLootTableKeys);
             sortedKeys.sort(Comparator.comparing(k -> k.location().toString()));
 
+            var parallelTasks = new ObjectArrayList<TableTask>();
+            var piglinTasks = new ObjectArrayList<TableTask>();
             for (var lootTableKey : sortedKeys) {
                 var lootTableId = lootTableKey.location();
-                var contextDef = inferContextFromId(lootTableId);
-                if (contextDef == null) {
+                var cDef = inferContextFromId(lootTableId);
+                if (cDef == null) {
                     tablesSkipped++;
                     continue;
                 }
+                var task = new TableTask(lootTableKey, lootTableId, cDef);
+                if (cDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) piglinTasks.add(task);
+                else parallelTasks.add(task);
+            }
 
+            long sampleStart = System.currentTimeMillis();
+            var results = new ObjectArrayList<TableResult>();
+            var computePool = pool.getComputePool();
+            var futures = new ObjectArrayList<Future<TableResult>>(parallelTasks.size());
+            for (var t : parallelTasks) {
+                futures.add(computePool.submit(() -> {
+                    var counts = sampleTable(serverLevel, server, t);
+                    return counts == null ? null : new TableResult(t.id(), t.def(), counts);
+                }));
+            }
+            for (var f : futures) {
                 try {
-                    Supplier<Reference2IntOpenHashMap<Item>> countsSupplier = () -> {
-                        var lootTable = reloadableRegistries.getLootTable(lootTableKey);
-                        if (lootTable == LootTable.EMPTY) return null;
-
-                        var lootParams = contextDef.createLootParams(serverLevel);
-                        if (lootParams == null) {
-                            ComplexityAnalyzer.LOGGER.debug("[ULS] Failed to create loot params for '{}', skipping.", lootTableId);
-                            return null;
-                        }
-
-                        var counts = new Reference2IntOpenHashMap<Item>();
-                        boolean hasLoggedError = false;
-                        long baseSeed = lootTableId.hashCode();
-
-                        for (int i = 0; i < SIMULATION_COUNT; i++) {
-                            try {
-                                var context = new LootContext.Builder(lootParams)
-                                        .withOptionalRandomSource(RandomSource.create(baseSeed + i))
-                                        .create(Optional.empty());
-
-                                var items = new ObjectArrayList<ItemStack>();
-                                lootTable.getRandomItems(context, items::add);
-                                if (items.isEmpty()) continue;
-
-                                for (var stack : items) {
-                                    if (!stack.isEmpty()) counts.addTo(stack.getItem(), stack.getCount());
-                                }
-                            } catch (Exception e) {
-                                if (!hasLoggedError) {
-                                    ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {} (suppressing further errors)", lootTableId, e.getMessage());
-                                    hasLoggedError = true;
-                                }
-                            }
-                        }
-                        return counts;
-                    };
-
-                    Reference2IntOpenHashMap<Item> catchCounts;
-                    if (server.isSameThread()) {
-                        catchCounts = countsSupplier.get();
-                    } else {
-                        catchCounts = CompletableFuture.supplyAsync(countsSupplier, server).join();
-                    }
-
-                    if (catchCounts == null || catchCounts.isEmpty()) {
-                        tablesSkipped++;
-                        continue;
-                    }
-                    tablesProcessed++;
-
-                    for (var itemEntry : catchCounts.reference2IntEntrySet()) {
-                        var item = itemEntry.getKey();
-                        var itemsPerAttempt = (double) itemEntry.getIntValue() / SIMULATION_COUNT;
-                        if (itemsPerAttempt <= 0) continue;
-
-                        var baseFactor = (contextDef.baseActionCost / itemsPerAttempt) * contextDef.sourceType.getBaseMultiplier();
-                        var details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, itemsPerAttempt * 100);
-
-                        var builder = new BaseResourceData.Builder(item, this)
-                                .sourceType(contextDef.sourceType)
-                                .baseFactor(baseFactor)
-                                .sourceSpecifier(lootTableId.toString())
-                                .details(details)
-                                .addMetadata("chance", String.format(Locale.ROOT, "%.6f", itemsPerAttempt * 100));
-
-                        if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
-                            builder.baseFactor(contextDef.baseActionCost);
-                            var piglinIng = new Reference2DoubleOpenHashMap<Item>();
-                            piglinIng.put(Items.GOLD_INGOT, 1.0 / itemsPerAttempt);
-                            builder.sourceItems(piglinIng);
-                        }
-
-                        var data = builder.build();
-
-                        var typeMap = allLootData.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>());
-                        var existing = typeMap.get(item);
-                        if (existing == null || data.getBaseFactor() < existing.getBaseFactor())
-                            typeMap.put(item, data);
-                    }
-
+                    var r = f.get();
+                    if (r != null) results.add(r);
                 } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {}", lootTableId, e.getMessage());
+                    ComplexityAnalyzer.LOGGER.warn("[ULS] Sampling task failed: {}", e.toString());
+                }
+            }
+            for (var t : piglinTasks) {
+                var counts = sampleTable(serverLevel, server, t);
+                if (counts != null) results.add(new TableResult(t.id(), t.def(), counts));
+            }
+            sampleWallMs = System.currentTimeMillis() - sampleStart;
+
+            int totalTasks = parallelTasks.size() + piglinTasks.size();
+            tablesProcessed = results.size();
+            tablesSkipped += totalTasks - results.size();
+
+            for (var r : results) {
+                var lootTableId = r.id();
+                var contextDef = r.def();
+                for (var itemEntry : r.counts().reference2IntEntrySet()) {
+                    var item = itemEntry.getKey();
+                    var itemsPerAttempt = (double) itemEntry.getIntValue() / SIMULATION_COUNT;
+                    if (itemsPerAttempt <= 0) continue;
+
+                    var baseFactor = (contextDef.baseActionCost / itemsPerAttempt) * contextDef.sourceType.getBaseMultiplier();
+                    var details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, itemsPerAttempt * 100);
+
+                    var builder = new BaseResourceData.Builder(item, this)
+                            .sourceType(contextDef.sourceType)
+                            .baseFactor(baseFactor)
+                            .sourceSpecifier(lootTableId.toString())
+                            .details(details)
+                            .addMetadata("chance", String.format(Locale.ROOT, "%.6f", itemsPerAttempt * 100));
+
+                    if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
+                        builder.baseFactor(contextDef.baseActionCost);
+                        var piglinIng = new Reference2DoubleOpenHashMap<Item>();
+                        piglinIng.put(Items.GOLD_INGOT, 1.0 / itemsPerAttempt);
+                        builder.sourceItems(piglinIng);
+                    }
+
+                    var data = builder.build();
+
+                    var typeMap = allLootData.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>());
+                    var existing = typeMap.get(item);
+                    if (existing == null || data.getBaseFactor() < existing.getBaseFactor()) typeMap.put(item, data);
                 }
             }
 
@@ -250,9 +234,52 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
         ComplexityAnalyzer.LOGGER.info("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
                 duration, tablesProcessed, tablesSkipped, totalItemsFound);
+        ComplexityAnalyzer.LOGGER.info("[ULS] PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
+                tablesProcessed, threads, SIMULATION_COUNT, (long) tablesProcessed * SIMULATION_COUNT, sampleWallMs, duration);
 
         for (var entry : allLootData.reference2ObjectEntrySet()) {
             ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
+        }
+    }
+
+    private record TableTask(ResourceKey<LootTable> key, ResourceLocation id, LootContextDefinition def) {
+    }
+
+    private record TableResult(ResourceLocation id, LootContextDefinition def, Reference2IntOpenHashMap<Item> counts) {
+    }
+
+    @Nullable
+    private Reference2IntOpenHashMap<Item> sampleTable(ServerLevel serverLevel, MinecraftServer server, TableTask task) {
+        try {
+            var lootTable = server.reloadableRegistries().getLootTable(task.key());
+            if (lootTable == LootTable.EMPTY) return null;
+
+            var lootParams = task.def().createLootParams(serverLevel);
+            if (lootParams == null) return null;
+
+            var counts = new Reference2IntOpenHashMap<Item>();
+            boolean hasLoggedError = false;
+            long baseSeed = task.id().hashCode();
+
+            for (int i = 0; i < SIMULATION_COUNT; i++) {
+                try {
+                    var context = new LootContext.Builder(lootParams)
+                            .withOptionalRandomSource(RandomSource.create(baseSeed + i)).create(Optional.empty());
+
+                    var items = new ObjectArrayList<ItemStack>();
+                    lootTable.getRandomItems(context, items::add);
+                    for (var stack : items) if (!stack.isEmpty()) counts.addTo(stack.getItem(), stack.getCount());
+                } catch (Exception e) {
+                    if (!hasLoggedError) {
+                        ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {} (suppressing further errors)", task.id(), e.getMessage());
+                        hasLoggedError = true;
+                    }
+                }
+            }
+            return counts.isEmpty() ? null : counts;
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[ULS] Sampling failed for '{}': {}", task.id(), e.toString());
+            return null;
         }
     }
 

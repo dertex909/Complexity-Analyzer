@@ -45,13 +45,11 @@ import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.ThreadPoolManager;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 import static org.apache.logging.log4j.Level.WARN;
@@ -88,37 +86,12 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         }
 
         var server = serverLevel.getServer();
-        if (server.isSameThread()) {
-            try {
-                var allLootTableKeys = getAllLootTableKeys(server);
-                processLootTables(serverLevel, allLootTableKeys);
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys on server thread. Aborting analysis.", e);
-            }
-        } else {
-            var lootKeysFuture = getCompletableFuture(serverLevel);
-            try {
-                var allLootTableKeys = lootKeysFuture.join();
-                processLootTables(serverLevel, allLootTableKeys);
-            } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys from server thread. Aborting analysis.", e);
-            }
+        try {
+            var allLootTableKeys = getAllLootTableKeys(server);
+            processLootTables(serverLevel, allLootTableKeys);
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys. Aborting analysis.", e);
         }
-    }
-
-    private @NotNull CompletableFuture<ObjectSet<ResourceKey<LootTable>>> getCompletableFuture(ServerLevel serverLevel) {
-        var server = serverLevel.getServer();
-        var lootKeysFuture = new CompletableFuture<ObjectSet<ResourceKey<LootTable>>>();
-
-        server.execute(() -> {
-            try {
-                var keys = getAllLootTableKeys(server);
-                lootKeysFuture.complete(keys);
-            } catch (Exception e) {
-                lootKeysFuture.completeExceptionally(e);
-            }
-        });
-        return lootKeysFuture;
     }
 
     private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys) {

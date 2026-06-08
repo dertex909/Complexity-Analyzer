@@ -207,6 +207,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     }
 
     @Override
+    public boolean requiresServerThread() {
+        return true;
+    }
+
+    @Override
     public int getPriority() {
         return 28;
     }

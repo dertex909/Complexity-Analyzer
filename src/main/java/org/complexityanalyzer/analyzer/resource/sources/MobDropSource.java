@@ -384,6 +384,11 @@ public class MobDropSource implements IResourceSource {
     }
 
     @Override
+    public boolean requiresServerThread() {
+        return true;
+    }
+
+    @Override
     public int getPriority() {
         return 20;
     }

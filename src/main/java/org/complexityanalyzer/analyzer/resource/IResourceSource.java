@@ -39,5 +39,9 @@ public interface IResourceSource {
         return 0;
     }
 
+    default boolean requiresServerThread() {
+        return false;
+    }
+
     String getName();
 }

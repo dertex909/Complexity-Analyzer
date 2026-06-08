@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer;
+package org.complexityanalyzer.cache;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -37,7 +37,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-public final class MachineRegistryCache {
+public final class MachineRegistryCache implements ManagedCache {
+
+    public static final MachineRegistryCache INSTANCE = new MachineRegistryCache();
 
     private static final int MAGIC = 0x43414332; // "CAC2"
     private static final int VERSION = 1;
@@ -48,7 +50,13 @@ public final class MachineRegistryCache {
     private MachineRegistryCache() {
     }
 
-    public static Path cacheFile(MinecraftServer server) {
+    @Override
+    public String id() {
+        return "machine_registry";
+    }
+
+    @Override
+    public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
             return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("machine_registry.bin");
@@ -57,17 +65,7 @@ public final class MachineRegistryCache {
         }
     }
 
-    public static boolean delete(Path file) {
-        if (file == null) return false;
-        try {
-            return Files.deleteIfExists(file);
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to delete cache: {}", t.toString());
-            return false;
-        }
-    }
-
-    public static Fingerprint computeFingerprint() {
+    public Fingerprint computeFingerprint() {
         var blockIds = new ObjectArrayList<String>();
         for (var block : GameRegistryManager.getAllBlocks()) {
             var id = GameRegistryManager.getBlockId(block);
@@ -86,7 +84,7 @@ public final class MachineRegistryCache {
         return new Fingerprint(hBlocks, hMods);
     }
 
-    public static int tryLoad(Path file, Fingerprint expected, Object2ObjectMap<ResourceLocation, ObjectList<Item>> target) {
+    public int tryLoad(Path file, Fingerprint expected, Object2ObjectMap<ResourceLocation, ObjectList<Item>> target) {
         if (file == null || !Files.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
@@ -137,7 +135,7 @@ public final class MachineRegistryCache {
         }
     }
 
-    public static void save(Path file, Fingerprint fingerprint, Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping) {
+    public void save(Path file, Fingerprint fingerprint, Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping) {
         if (file == null) return;
         ByteBuf raw = Unpooled.buffer();
         try {

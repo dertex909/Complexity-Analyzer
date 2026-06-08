@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "முடக்கப்பட்டது (கட்டமைப்பு)",
   "complexityanalyzer.command.system.cache.header": "§6=== பகுப்பாய்வு தேக்ககங்கள் ===",
   "complexityanalyzer.command.system.cache.config": "§7கட்டமைப்பு: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "செய்முறை வரைபடம்",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "இயந்திரப் பதிவு",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<உலகம் இல்லை>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eஇன்னும் கட்டப்படவில்லை",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aதற்போது §7(%s, %s பழையது) §8%s",

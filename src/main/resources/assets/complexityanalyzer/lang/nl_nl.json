@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "uitgeschakeld (configuratie)",
   "complexityanalyzer.command.system.cache.header": "§6=== Analysecaches ===",
   "complexityanalyzer.command.system.cache.config": "§7Configuratie: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Receptgrafiek",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Machineregister",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<geen wereld>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §enog niet gebouwd",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aheden §7(%s, %s oud) §8%s",

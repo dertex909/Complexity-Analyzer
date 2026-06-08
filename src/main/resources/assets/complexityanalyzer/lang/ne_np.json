@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "असक्षम (कन्फिग)",
   "complexityanalyzer.command.system.cache.header": "§6=== विश्लेषण क्यास ===",
   "complexityanalyzer.command.system.cache.config": "§7कन्फिग: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "रेसिपी ग्राफ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "मेसिन रजिस्ट्री",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<कोई संसार>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eअझै बनाइएको छैन",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aवर्तमान §7(%s, %s पुरानो) §8%s",

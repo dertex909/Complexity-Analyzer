@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "ปิดการใช้งาน (กำหนดค่า)",
   "complexityanalyzer.command.system.cache.header": "§6=== แคชการวิเคราะห์ ===",
   "complexityanalyzer.command.system.cache.config": "§7กำหนดค่า: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "กราฟสูตร",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "ทะเบียนเครื่อง",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ไม่มีโลก>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eยังไม่ได้สร้าง",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aปัจจุบัน §7(%s, %s เก่า) §8%s",

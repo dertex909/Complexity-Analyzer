@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "अक्षम (विन्यास) 1.1.",
   "complexityanalyzer.command.system.cache.header": "§6=== विश्लेषण कैश ===",
   "complexityanalyzer.command.system.cache.config": "§7विन्यास: 1। ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "नुस्खा ग्राफ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "मशीन रजिस्ट्री",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<कोनो दुनिया नहि>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eअखन धरि नहि बनल अछि",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aवर्तमान §7(%s, %s पुराना) §8%s",

@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ (ಸಂರಚನೆ)",
   "complexityanalyzer.command.system.cache.header": "§6=== ವಿಶ್ಲೇಷಣೆ ಸಂಗ್ರಹಗಳು ===",
   "complexityanalyzer.command.system.cache.config": "§7ಸಂರಚನೆ: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "ಪಾಕವಿಧಾನ ಗ್ರಾಫ್",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "ಯಂತ್ರ ನೋಂದಾವಣೆ",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ಜಗತ್ತಿಲ್ಲ>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eಇನ್ನೂ ನಿರ್ಮಿಸಲಾಗಿಲ್ಲ",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aಪ್ರಸ್ತುತ §7(%s, %s ಹಳೆಯದು) §8%s",

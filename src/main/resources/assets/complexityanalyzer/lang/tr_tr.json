@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "devre dışı (yapılandırma)",
   "complexityanalyzer.command.system.cache.header": "§6=== Analiz önbellekleri ===",
   "complexityanalyzer.command.system.cache.config": "§7Yapılandırma: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Tarif grafiği",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Makine kaydı",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<dünya yok>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehenüz oluşturulmadı",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aşimdiki §7(%s, %s eski) §8%s",

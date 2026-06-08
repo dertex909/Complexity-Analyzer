@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "dipatèni (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Cache analisis ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfigurasi: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafik resep",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Registry mesin",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ora ana donya>",
   "complexityanalyzer.command.system.cache.not_built": "§71#%s:§edurung dibangun",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §asaiki §7(%s, %s lawas) §88#",

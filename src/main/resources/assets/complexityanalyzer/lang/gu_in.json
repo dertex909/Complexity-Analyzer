@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "અક્ષમ (રૂપરેખા)",
   "complexityanalyzer.command.system.cache.header": "§6=== વિશ્લેષણ કેશ ===",
   "complexityanalyzer.command.system.cache.config": "§7રૂપરેખા: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "રેસીપી ગ્રાફ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "મશીન રજિસ્ટ્રી",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<કોઈ વર્લ્ડ>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eહજી સુધી બંધાયેલ નથી",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aહાલ §7(%s, %s જૂનું) §8%s",

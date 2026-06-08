@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "비활성화됨(구성)",
   "complexityanalyzer.command.system.cache.header": "§6=== 분석 캐시 ===",
   "complexityanalyzer.command.system.cache.config": "§7구성: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "레시피 그래프",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "머신 레지스트리",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<세계 없음>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §e아직 구축되지 않음",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §a현재 §7(%s, %s 이전) §8%s",

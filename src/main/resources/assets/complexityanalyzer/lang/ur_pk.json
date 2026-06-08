@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "غیر فعال (تشکیل)",
   "complexityanalyzer.command.system.cache.header": "§6=== تجزیہ کیچ ===",
   "complexityanalyzer.command.system.cache.config": "§7تشکیل: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "نسخہ گراف",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "مشین رجسٹری",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<کوئی دنیا نہیں>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eابھی تک نہیں بنایا گیا۔",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aموجودہ §7(%s، %s پرانا) §8%s",

@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "neçalak (mîheng)",
   "complexityanalyzer.command.system.cache.header": "§6=== Veşêrên analîzê ===",
   "complexityanalyzer.command.system.cache.config": "§7 Vesazkirin: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafika Reçeteyê",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Registry Machine",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<dinya tune>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehîn nehatiye çêkirin",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aniha §7(%s, %s kevn) §8%s",

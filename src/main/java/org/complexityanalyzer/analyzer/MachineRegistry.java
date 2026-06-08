@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.cache.MachineRegistryCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
@@ -49,11 +50,11 @@ public class MachineRegistry {
         ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} vanilla machines", vanilla);
 
         boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
-        var cacheFile = cacheEnabled ? MachineRegistryCache.cacheFile(server) : null;
+        var cacheFile = cacheEnabled ? MachineRegistryCache.INSTANCE.file(server) : null;
         MachineRegistryCache.Fingerprint fingerprint = null;
         if (cacheFile != null) {
-            fingerprint = MachineRegistryCache.computeFingerprint();
-            int restored = MachineRegistryCache.tryLoad(cacheFile, fingerprint, mapping);
+            fingerprint = MachineRegistryCache.INSTANCE.computeFingerprint();
+            int restored = MachineRegistryCache.INSTANCE.tryLoad(cacheFile, fingerprint, mapping);
             if (restored >= 0) {
                 ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
                 initialized = true;
@@ -64,7 +65,7 @@ public class MachineRegistry {
         int dynamic = registerModdedMachines();
         ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} dynamic modded machines via BlockEntity scanning", dynamic);
 
-        if (cacheFile != null) MachineRegistryCache.save(cacheFile, fingerprint, mapping);
+        if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, mapping);
 
         initialized = true;
     }

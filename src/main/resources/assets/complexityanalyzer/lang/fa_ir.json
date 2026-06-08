@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "غیرفعال (پیکربندی)",
   "complexityanalyzer.command.system.cache.header": "§6=== کش های آنالیز ===",
   "complexityanalyzer.command.system.cache.config": "§7پیکربندی: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "نمودار دستور غذا",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "رجیستری ماشین",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<بدون دنیا>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eهنوز ساخته نشده است",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aحال §7(%s، %s قدیمی) §8%s",

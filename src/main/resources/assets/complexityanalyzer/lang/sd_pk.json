@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "غير فعال (ترتيب)",
   "complexityanalyzer.command.system.cache.header": "§6=== تجزيو ڪيش ===",
   "complexityanalyzer.command.system.cache.config": "§7ترتيب: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "ترڪيب گراف",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "مشين جي رجسٽري",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<دنيا ناهي>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eاڃا تائين ٺهيل ناهي",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aموجوده §7(%s، %s پراڻو) §8%s",

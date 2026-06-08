@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "naƙasasshe (tsari)",
   "complexityanalyzer.command.system.cache.header": "§6=== Cache na nazari ===",
   "complexityanalyzer.command.system.cache.config": "§7Tsarin: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "jadawali girke-girke",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Injin rajista",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<babu duniya>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eba a gina shi ba tukuna",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §apresent §7(%s, %s old) §8%s",

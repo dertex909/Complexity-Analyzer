@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "inaktiverad (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Analyscacher ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfiguration: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Receptgraf",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Maskinregister",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ingen värld>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §einte byggt ännu",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §apresent §7(%s, %s gammal) §8%s",

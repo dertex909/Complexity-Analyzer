@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "kilemaina (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Famakafakana cache ===",
   "complexityanalyzer.command.system.cache.config": "§7Config: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grapika momba ny fomba fahandro",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Rejistra milina",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<tsy misy tontolo>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §embola tsy vita",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aankehitriny §7(%s, %s taloha) §8%s",

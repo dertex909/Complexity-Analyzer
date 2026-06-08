@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "bị vô hiệu hóa (cấu hình)",
   "complexityanalyzer.command.system.cache.header": "§6=== Bộ đệm phân tích ===",
   "complexityanalyzer.command.system.cache.config": "§7Cấu hình: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "biểu đồ công thức",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Đăng ký máy",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<không có thế giới>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §echưa được xây dựng",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §ahiện tại §7(%s, %s cũ) §8%s",

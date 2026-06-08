@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "letiltva (konfig)",
   "complexityanalyzer.command.system.cache.header": "§6=== Elemzési gyorsítótárak ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfig. ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Recept grafikon",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Gép nyilvántartás",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<nincs világ>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §emég nincs megépítve",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §ajelenleg §7(%s, %s régi) §8%s",

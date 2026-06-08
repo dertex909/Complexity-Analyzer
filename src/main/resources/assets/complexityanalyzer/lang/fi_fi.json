@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "pois käytöstä (asetus)",
   "complexityanalyzer.command.system.cache.header": "§6=== Analyysivälimuistit ===",
   "complexityanalyzer.command.system.cache.config": "§7Asetukset: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Reseptikaavio",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Konerekisteri",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ei maailmaa>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eei vielä rakennettu",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §anykyinen §7(%s, %s vanha) §8%s",

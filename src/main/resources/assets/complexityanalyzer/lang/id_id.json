@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "dinonaktifkan (konfigurasi)",
   "complexityanalyzer.command.system.cache.header": "§6=== Analisis cache ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfigurasi: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafik resep",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Registri mesin",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<tidak ada dunia>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ebelum dibuat",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §asekarang §7(%s, %s lama) §8%s",

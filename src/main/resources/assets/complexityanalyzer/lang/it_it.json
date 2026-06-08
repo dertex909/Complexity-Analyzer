@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "disabilitato (configurazione)",
   "complexityanalyzer.command.system.cache.header": "§6=== Cache di analisi ===",
   "complexityanalyzer.command.system.cache.config": "§7Configurazione: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafico della ricetta",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Registro della macchina",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<nessun mondo>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §enon ancora creato",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §apresente §7(%s, %s vecchio) §8%s",

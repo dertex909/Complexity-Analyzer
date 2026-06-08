@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "wyłączone (konfiguracja)",
   "complexityanalyzer.command.system.cache.header": "§6=== Pamięci podręczne analizy ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfiguracja: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Wykres przepisu",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Rejestr maszyn",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<brak świata>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ejeszcze nie zbudowano",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aobecny §7(%s, %s stary) §8%s",

@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "অক্ষম (কনফিগার)",
   "complexityanalyzer.command.system.cache.header": "§6=== বিশ্লেষণ ক্যাশে ===",
   "complexityanalyzer.command.system.cache.config": "§7কনফিগ: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "রেসিপি গ্রাফ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "মেশিন রেজিস্ট্রি",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<কোন দুনিয়া নেই>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eএখনও তৈরি হয়নি",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aবর্তমান §7(%s, %s পুরানো) §8%s",

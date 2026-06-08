@@ -18,19 +18,21 @@
 
 package org.complexityanalyzer.command;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
-import org.complexityanalyzer.analyzer.MachineRegistryCache;
+import org.complexityanalyzer.cache.ManagedCache;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.event.AnalysisBootstrap;
-import org.complexityanalyzer.graph.RecipeGraphCache;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +44,9 @@ public final class SystemCommand {
     private SystemCommand() {
     }
 
+    private static final SuggestionProvider<CommandSourceStack> CACHE_SUGGESTIONS =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(ManagedCache.ids(), builder);
+
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("system")
                 .then(Commands.literal("status").executes(SystemCommand::executeStatus))
@@ -51,7 +56,8 @@ public final class SystemCommand {
                 .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeReload))
                 .then(Commands.literal("cache")
                         .then(Commands.literal("info").executes(SystemCommand::executeCacheInfo))
-                        .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeCacheClear)));
+                        .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeCacheClearAll)
+                                .then(Commands.argument("cache", StringArgumentType.word()).suggests(CACHE_SUGGESTIONS).executes(SystemCommand::executeCacheClearOne))));
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
@@ -203,13 +209,13 @@ public final class SystemCommand {
         output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.config").append(enabledText));
 
         int present = 0;
-        present += reportCacheFile(source, output, "complexityanalyzer.command.system.cache.label.recipe_graph", RecipeGraphCache.cacheFile(source.getServer()));
-        present += reportCacheFile(source, output, "complexityanalyzer.command.system.cache.label.machine_registry", MachineRegistryCache.cacheFile(source.getServer()));
+        for (var cache : ManagedCache.all()) {
+            present += reportCacheFile(source, output, cache.id(), cache.file(source.getServer()));
+        }
         return present;
     }
 
-    private static int reportCacheFile(CommandSourceStack source, OutputManager output, String labelKey, Path file) {
-        var label = Component.translatable(labelKey);
+    private static int reportCacheFile(CommandSourceStack source, OutputManager output, String label, Path file) {
         if (file == null) {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.no_world", label));
             return 0;
@@ -230,28 +236,54 @@ public final class SystemCommand {
         }
     }
 
-    private static int executeCacheClear(CommandContext<CommandSourceStack> context) {
+    private static int executeCacheClearAll(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
         var server = source.getServer();
 
-        var recipeFile = RecipeGraphCache.cacheFile(server);
-        var machineFile = MachineRegistryCache.cacheFile(server);
-        if (recipeFile == null && machineFile == null) {
+        boolean anyWorld = false;
+        int removed = 0;
+        for (var cache : ManagedCache.all()) {
+            if (cache.file(server) == null) continue;
+            anyWorld = true;
+            if (cache.delete(server)) removed++;
+        }
+
+        if (!anyWorld) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.cache.no_world_loaded"));
             return 0;
         }
-
-        int removed = 0;
-        if (RecipeGraphCache.delete(recipeFile)) removed++;
-        if (MachineRegistryCache.delete(machineFile)) removed++;
-
         if (removed > 0) {
             output.sendSuccess(source, Component.translatable("complexityanalyzer.command.system.cache.deleted", removed));
         } else {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
         }
         return removed;
+    }
+
+    private static int executeCacheClearOne(CommandContext<CommandSourceStack> context) {
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var server = source.getServer();
+
+        String id = StringArgumentType.getString(context, "cache");
+        var cache = ManagedCache.get(id);
+        if (cache == null) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.cache.unknown",
+                    id, String.join(", ", ManagedCache.ids())));
+            return 0;
+        }
+        if (cache.file(server) == null) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.cache.no_world_loaded"));
+            return 0;
+        }
+
+        if (cache.delete(server)) {
+            output.sendSuccess(source, Component.translatable("complexityanalyzer.command.system.cache.deleted", id));
+            return 1;
+        }
+        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
+        return 0;
     }
 
     private static String humanSize(long bytes) {

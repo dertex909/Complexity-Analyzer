@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "dezactivat (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Cache de analiză ===",
   "complexityanalyzer.command.system.cache.config": "§7Config: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Graficul rețetei",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Registrul mașinii",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<fără lume>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §enu este încă construit",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aprezent §7(%s, %s vechi) §8%s",

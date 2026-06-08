@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "ተሰናክሏል (ውቅር)",
   "complexityanalyzer.command.system.cache.header": "§6=== የትንታኔ መሸጎጫዎች ===",
   "complexityanalyzer.command.system.cache.config": "§7ማዋቀር፡ ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "የምግብ አዘገጃጀት ግራፍ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "የማሽን መዝገብ ቤት",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s፡ §c<አለም የለም>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s፡ §eገና አልተገነባም።",
   "complexityanalyzer.command.system.cache.present": "§7• %s፡ §aአሁን §7(%s፣ %s የድሮ) §8%s",

@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "معطل (التكوين)",
   "complexityanalyzer.command.system.cache.header": "§6=== ذاكرات التحليل المؤقتة ===",
   "complexityanalyzer.command.system.cache.config": "§7التكوين: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "الرسم البياني وصفة",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "تسجيل الآلة",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<لا يوجد عالم>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §e لم يتم بناؤها بعد",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aالحاضر §7(%s, %s القديم) §8%s",

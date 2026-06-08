@@ -29,6 +29,7 @@ import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
@@ -51,12 +52,12 @@ public class GraphBuilder {
 
     public static RecipeGraph buildFromWorld(Level level) {
         var recipeManager = level.getRecipeManager();
-        var cacheFile = RecipeGraphCache.cacheFile(level.getServer());
+        var cacheFile = RecipeGraphCache.INSTANCE.file(level.getServer());
         boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
         RecipeGraphCache.Fingerprint fingerprint = null;
         if (cacheEnabled && cacheFile != null) {
-            fingerprint = RecipeGraphCache.computeFingerprint(recipeManager);
-            var cached = RecipeGraphCache.tryLoad(cacheFile, fingerprint, level);
+            fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager);
+            var cached = RecipeGraphCache.INSTANCE.tryLoad(cacheFile, fingerprint, level);
             if (cached != null) {
                 ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).",
                         cached.getTotalRecipeCount());
@@ -96,7 +97,7 @@ public class GraphBuilder {
 
         new RegistryHarvestService().harvestInto(graph, level, level.getServer().getWorldPath(LevelResource.ROOT));
 
-        if (cacheEnabled && cacheFile != null) RecipeGraphCache.save(graph, cacheFile, fingerprint, level);
+        if (cacheEnabled && cacheFile != null) RecipeGraphCache.INSTANCE.save(graph, cacheFile, fingerprint, level);
 
         return graph;
     }

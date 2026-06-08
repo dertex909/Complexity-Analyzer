@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "kukhutshaziwe (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Ukuhlaziya izinqolobane ===",
   "complexityanalyzer.command.system.cache.config": "§7Lungisa: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Igrafu yeresiphi",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Ukubhaliswa komshini",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<awukho umhlaba>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eayikakhiwe okwamanje",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §apresent §7(%s, %s endala) §8%s",

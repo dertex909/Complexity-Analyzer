@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "ਅਯੋਗ (ਸੰਰਚਨਾ)",
   "complexityanalyzer.command.system.cache.header": "§6=== ਵਿਸ਼ਲੇਸ਼ਣ ਕੈਚ ===",
   "complexityanalyzer.command.system.cache.config": "§7ਸੰਰਚਨਾ: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "ਵਿਅੰਜਨ ਗ੍ਰਾਫ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "ਮਸ਼ੀਨ ਰਜਿਸਟਰੀ",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ਕੋਈ ਦੁਨੀਆ ਨਹੀਂ>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eਅਜੇ ਨਹੀਂ ਬਣਾਇਆ ਗਿਆ",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aਮੌਜੂਦਾ §7(%s, %s ਪੁਰਾਣਾ) §8%s",

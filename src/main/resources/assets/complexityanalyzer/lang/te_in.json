@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "డిసేబుల్ (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== విశ్లేషణ కాష్ ===",
   "complexityanalyzer.command.system.cache.config": "§7కాన్ఫిగర్: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "రెసిపీ గ్రాఫ్",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "మెషిన్ రిజిస్ట్రీ",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ప్రపంచం లేదు>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eఇంకా నిర్మించబడలేదు",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aప్రస్తుతం §7(%s, %s పాతది) §8%s",

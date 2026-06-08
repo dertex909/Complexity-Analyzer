@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "əlil (konfiqurasiya)",
   "complexityanalyzer.command.system.cache.header": "§6=== Analiz keşləri ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfiqurasiya: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Resept qrafiki",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Maşın reyestri",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<dünya yoxdur>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehələ tikilməyib",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aindiki §7(%s, %s köhnə) §8%s",

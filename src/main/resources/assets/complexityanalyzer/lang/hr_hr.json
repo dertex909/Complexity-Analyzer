@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "onemogućeno (konfiguracija)",
   "complexityanalyzer.command.system.cache.header": "§6=== Predmemorije analize ===",
   "complexityanalyzer.command.system.cache.config": "§7Konfiguracija: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafikon recepta",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Registar stroja",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<nema svijeta>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ejoš nije izgrađeno",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §asadašnje §7(%s, %s staro) §8%s",

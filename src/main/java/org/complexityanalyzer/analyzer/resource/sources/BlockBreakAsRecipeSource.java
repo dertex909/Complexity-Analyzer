@@ -42,6 +42,8 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.cache.BlockBreakCache;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
@@ -77,6 +79,19 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         if (this.geoDatabase == null || !this.geoDatabase.isLoaded()) {
             ComplexityAnalyzer.LOGGER.info("[{}] No geo-data loaded yet — skipping block-drop analysis (will run after a geo-scan).", getName());
             return;
+        }
+
+        boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+        var cacheFile = cacheEnabled ? BlockBreakCache.INSTANCE.file(serverLevel.getServer()) : null;
+        BlockBreakCache.Fingerprint fingerprint = null;
+        if (cacheFile != null) {
+            fingerprint = BlockBreakCache.INSTANCE.computeFingerprint(geoDatabase, serverLevel.getSeed(), SAMPLE_COUNT, TIME_COST_MULTIPLIER);
+            int restored = BlockBreakCache.INSTANCE.tryLoad(cacheFile, fingerprint, this, allPaths);
+            if (restored >= 0) {
+                ComplexityAnalyzer.LOGGER.info("[{}] Loaded {} block-drop paths for {} items from cache (block scan skipped).",
+                        getName(), restored, allPaths.size());
+                return;
+            }
         }
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes concurrently.", getName());
@@ -135,11 +150,12 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                             candidates.add(tool);
                         }
 
+                        var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
+                        if (lootTable == LootTable.EMPTY) continue;
+                        RarityInfo rInfo = null;
+
                         for (var toolStack : candidates) {
                             try {
-                                var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
-                                if (lootTable == LootTable.EMPTY) continue;
-
                                 long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
                                 var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, stableSeed);
                                 if (averageDrop.isEmpty()) continue;
@@ -148,7 +164,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                 boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
 
                                 double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
-                                var rInfo = calculateRarityFactor(blockToMine);
+                                if (rInfo == null) rInfo = calculateRarityFactor(blockToMine);
                                 double rarityFactor = rInfo.factor();
 
                                 double enchantCost = 0;
@@ -232,6 +248,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
+        if (cacheFile != null) BlockBreakCache.INSTANCE.save(cacheFile, fingerprint, allPaths);
     }
 
     private ObjectList<ItemStack> createTestTools(ServerLevel serverLevel) {

@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "imezimwa (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Akiba za uchanganuzi ===",
   "complexityanalyzer.command.system.cache.config": "§7Mipangilio: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Grafu ya mapishi",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Usajili wa mashine",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<hakuna ulimwengu>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §ehaijajengwa bado",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §asasa §7(%s, %s zamani) §8%s",

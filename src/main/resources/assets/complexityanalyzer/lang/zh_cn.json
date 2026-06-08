@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "禁用（配置）",
   "complexityanalyzer.command.system.cache.header": "§6===分析缓存===",
   "complexityanalyzer.command.system.cache.config": "§7配置： ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "食谱图",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "机器注册表",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<无世界>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §e尚未建成",
   "complexityanalyzer.command.system.cache.present": "§7• %s：§a现在§7（%s，%s旧）§8%s",

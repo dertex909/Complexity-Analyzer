@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.graph;
+package org.complexityanalyzer.cache;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -38,12 +38,17 @@ import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.graph.RecipeCategory;
+import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeNode;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-public final class RecipeGraphCache {
+public final class RecipeGraphCache implements ManagedCache {
+
+    public static final RecipeGraphCache INSTANCE = new RecipeGraphCache();
 
     private static final int MAGIC = 0x43414331;
     private static final int VERSION = 3;
@@ -57,7 +62,13 @@ public final class RecipeGraphCache {
     private RecipeGraphCache() {
     }
 
-    public static Path cacheFile(MinecraftServer server) {
+    @Override
+    public String id() {
+        return "recipe_graph";
+    }
+
+    @Override
+    public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
             return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("recipe_graph.bin");
@@ -66,17 +77,7 @@ public final class RecipeGraphCache {
         }
     }
 
-    public static boolean delete(Path file) {
-        if (file == null) return false;
-        try {
-            return Files.deleteIfExists(file);
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to delete recipe graph cache: {}", t.toString());
-            return false;
-        }
-    }
-
-    public static Fingerprint computeFingerprint(RecipeManager recipeManager) {
+    public Fingerprint computeFingerprint(RecipeManager recipeManager) {
         var countsByType = new Object2IntOpenHashMap<String>();
         for (var holder : recipeManager.getRecipes()) {
             var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
@@ -108,7 +109,7 @@ public final class RecipeGraphCache {
         return h;
     }
 
-    public static void save(RecipeGraph graph, Path file, Fingerprint fingerprint, Level level) {
+    public void save(RecipeGraph graph, Path file, Fingerprint fingerprint, Level level) {
         var nodes = graph.getAllRecipes();
         var raw = Unpooled.buffer();
         try {
@@ -136,7 +137,7 @@ public final class RecipeGraphCache {
         }
     }
 
-    public static RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
+    public RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
         if (!Files.isRegularFile(file)) return null;
 
         ByteBuf raw = null;

@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "alaabo (iṣeto)",
   "complexityanalyzer.command.system.cache.header": "§6=== Awọn caches itupalẹ ===",
   "complexityanalyzer.command.system.cache.config": "§7Iṣeto: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Aworan ohunelo",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Iforukọsilẹ ẹrọ",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ko si aye>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eko sibẹsibẹ",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §abayi §7(%s, %s atijọ) §8%s",

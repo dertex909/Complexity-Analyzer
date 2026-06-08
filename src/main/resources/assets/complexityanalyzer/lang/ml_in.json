@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "അപ്രാപ്തമാക്കി (കോൺഫിഗർ)",
   "complexityanalyzer.command.system.cache.header": "§6=== വിശകലന കാഷെകൾ ===",
   "complexityanalyzer.command.system.cache.config": "§7കോൺഫിഗർ: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "പാചകക്കുറിപ്പ് ഗ്രാഫ്",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "മെഷീൻ രജിസ്ട്രി",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<ലോകമില്ല>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eഇതുവരെ നിർമ്മിച്ചിട്ടില്ല",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aനിലവിൽ §7(%s, %s പഴയത്) §8%s",

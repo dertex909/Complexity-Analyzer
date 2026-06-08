@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "ଅକ୍ଷମ (ବିନ୍ୟାସ)",
   "complexityanalyzer.command.system.cache.header": "§6=== ବିଶ୍ଳେଷଣ କ୍ୟାଚ୍ ===",
   "complexityanalyzer.command.system.cache.config": "§7ବିନ୍ୟାସ କରନ୍ତୁ: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "ରେସିପି ଗ୍ରାଫ୍ |",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "ମେସିନ୍ ରେଜିଷ୍ଟ୍ରି |",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<no world>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eଏପର୍ଯ୍ୟନ୍ତ ନିର୍ମାଣ ହୋଇନାହିଁ |",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aଉପସ୍ଥିତ §7(%s, %s ପୁରୁଣା) §8%s",

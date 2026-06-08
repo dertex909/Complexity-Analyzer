@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "無効化 (構成)",
   "complexityanalyzer.command.system.cache.header": "§6=== 分析キャッシュ ===",
   "complexityanalyzer.command.system.cache.config": "§7構成: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "レシピグラフ",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "マシンレジストリ",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<世界なし>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eまだ構築されていません",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §a現在 §7(%s、%s古い) §8%s",

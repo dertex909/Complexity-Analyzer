@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "απενεργοποιημένο (config)",
   "complexityanalyzer.command.system.cache.header": "§6=== Κρυφές μνήμες ανάλυσης ===",
   "complexityanalyzer.command.system.cache.config": "§7Διαμόρφωση: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Γράφημα συνταγής",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Μητρώο μηχανημάτων",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<δεν υπάρχει κόσμος>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eδεν έχει κατασκευαστεί ακόμα",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aπαρόν §7(%s, %s παλιό) §8%s",

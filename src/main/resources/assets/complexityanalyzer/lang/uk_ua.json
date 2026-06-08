@@ -391,8 +391,6 @@
   "complexityanalyzer.command.system.cache.disabled": "вимкнено (конфігурація)",
   "complexityanalyzer.command.system.cache.header": "§6=== Кеші аналізу ===",
   "complexityanalyzer.command.system.cache.config": "§7Конфігурація: ",
-  "complexityanalyzer.command.system.cache.label.recipe_graph": "Графік рецептів",
-  "complexityanalyzer.command.system.cache.label.machine_registry": "Машинний реєстр",
   "complexityanalyzer.command.system.cache.no_world": "§7• %s: §c<немає світу>",
   "complexityanalyzer.command.system.cache.not_built": "§7• %s: §eще не побудовано",
   "complexityanalyzer.command.system.cache.present": "§7• %s: §aтепер §7(%s, %s старий) §8%s",

@@ -177,22 +177,8 @@ public class MobDropSource implements IResourceSource {
                             continue;
                         }
 
-                        var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
-                        for (var config : finalConfigs) {
-                            if (config.methodName.equals("Skeleton Arrow") && entityType != EntityType.CREEPER)
-                                continue;
-                            simulateKillMethod(serverLevel, entityInstance, lootTable, config, combinedDrops);
-                        }
-
-                        synchronized (dropMap) {
-                            for (var entry : combinedDrops.reference2ObjectEntrySet()) {
-                                var stats = entry.getValue();
-                                if (stats.totalDropped > 0) {
-                                    dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
-                                            .add(new MobDropData(entry.getKey(), entityType, stats.getAverageYield(), stats.getBestMethod()));
-                                }
-                            }
-                        }
+                        var v = new Victim(entityType, entityInstance, lootTable);
+                        mergeDrops(entityType, sampleVictim(serverLevel, v, finalConfigs));
                         processedEntities++;
                         entityInstance.discard();
                     }
@@ -264,8 +250,7 @@ public class MobDropSource implements IResourceSource {
 
     private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable,
                                     DamageSourceConfig config, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
-        long baseSeed = GameRegistryManager.getEntityTypeId(entityInstance.getType()).toString().hashCode()
-                ^ ((long) config.methodName.hashCode() << 16);
+        long baseSeed = GameRegistryManager.getEntityTypeId(entityInstance.getType()).toString().hashCode() ^ ((long) config.methodName.hashCode() << 16);
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
                 var builder = new LootParams.Builder(level)
@@ -284,22 +269,43 @@ public class MobDropSource implements IResourceSource {
                 }
                 var lootParams = builder.create(LootContextParamSets.ENTITY);
                 var context = new LootContext.Builder(lootParams)
-                        .withOptionalRandomSource(RandomSource.create(baseSeed + i))
-                        .create(Optional.empty());
+                        .withOptionalRandomSource(RandomSource.create(baseSeed + i)).create(Optional.empty());
 
-                if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
                 ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
-                lootTable.getRandomItems(context, drops::add);
-                if (config.isOnFire) entityInstance.clearFire();
+                if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
+                try {
+                    lootTable.getRandomItems(context, drops::add);
+                } finally {
+                    if (config.isOnFire) entityInstance.clearFire();
+                }
                 for (var stack : drops) {
-                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics())
-                            .addDrop(config.methodName, stack.getCount());
+                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(config.methodName, stack.getCount());
                 }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Exception during loot simulation for {} with method {}",
                         entityInstance.getType().getDescriptionId(), config.methodName, e);
             }
         }
+    }
+
+    private Reference2ObjectMap<Item, DropStatistics> sampleVictim(ServerLevel level, Victim v, ObjectList<DamageSourceConfig> configs) {
+        var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
+        for (var config : configs) {
+            if (config.methodName.equals("Skeleton Arrow") && v.type() != EntityType.CREEPER) continue;
+            simulateKillMethod(level, v.entity(), v.lootTable(), config, combinedDrops);
+        }
+        return combinedDrops;
+    }
+
+    private void mergeDrops(EntityType<?> type, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
+        for (var entry : combinedDrops.reference2ObjectEntrySet()) {
+            var stats = entry.getValue();
+            if (stats.totalDropped > 0) dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>()).add(
+                    new MobDropData(entry.getKey(), type, stats.getAverageYield(), stats.getBestMethod()));
+        }
+    }
+
+    private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {
     }
 
     @Override

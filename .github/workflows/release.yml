@@ -31,8 +31,8 @@ jobs:
         run: |
           # Даем права на запуск скрипта Gradle в Linux-окружении гитхаба
           chmod +x gradlew
-          # Запускаем сборку и твои настроенные таски публикации
-          ./gradlew build publishMods publish
+          # Запускаем сборку без строгого кэша конфигурации Градла
+          ./gradlew build publishMods publish --no-configuration-cache
 
       # 5. Автоматически синхронизируем паблик под ОДНИМ коммитом
       - name: Sync and Push to Public Repository (Squashed Commit)

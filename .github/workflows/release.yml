@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -12,12 +15,17 @@ jobs:
     steps:
       - name: Checkout private repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
       - name: Build mod
         run: ./gradlew build
@@ -26,16 +34,16 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/OWNER/PUBLIC_REPO.git public
 
-      - name: Copy jar
+      - name: Copy jar to public repo
         run: |
           mkdir -p public/releases/${GITHUB_REF_NAME}
           cp build/libs/*.jar public/releases/${GITHUB_REF_NAME}/
 
-      - name: Commit and push
+      - name: Commit and push to public repo
         run: |
           cd public
           git config user.name "release-bot"
           git config user.email "bot@github.com"
           git add .
-          git commit -m "release ${GITHUB_REF_NAME}"
+          git commit -m "release ${GITHUB_REF_NAME}" || echo "no changes"
           git push

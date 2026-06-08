@@ -20,30 +20,39 @@ package org.complexityanalyzer.analyzer.resource.providers;
 
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMaps;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.api.IBossRegistry;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
-public class MobPropertyProvider {
+public class MobPropertyProvider implements IBossRegistry {
+    public static final double DEFAULT_MAX_HEALTH = 20.0;
+    public static final double ARMOR_COEFFICIENT = 0.05;
+
+    public static final double BASE_MIN_RARITY = 1.0;
+    public static final double MINI_BOSS_RARITY_SCALE = 10.0;
+
+    public static final double MONSTER_BASE_RARITY = 1.5;
+    public static final double CREATURE_BASE_RARITY = 1.0;
+    public static final double OTHER_BASE_RARITY = 1.0;
+    public static final double AMBIENT_BASE_RARITY = 0.8;
+    public static final double WATER_CREATURE_BASE_RARITY = 1.25;
+
+    public static final double POWER_TO_RARITY_COEFFICIENT = 0.05;
+
     private final Reference2ObjectMap<EntityType<?>, MobProperties> propertiesCache = new Reference2ObjectOpenHashMap<>();
-    private MobRarityCalculator rarityCalculator;
-
-    private static final Reference2ObjectMap<EntityType<?>, MobProperties> MANUAL_OVERRIDES = new Reference2ObjectOpenHashMap<>();
-
-    static {
-        MANUAL_OVERRIDES.put(EntityType.SHULKER, new MobProperties(30.0, 0.1, 20.0, MobCategory.MONSTER));
-        MANUAL_OVERRIDES.put(EntityType.WITHER, new MobProperties(300.0, 8.0, 4.0, MobCategory.MONSTER));
-        MANUAL_OVERRIDES.put(EntityType.ENDER_DRAGON, new MobProperties(200.0, 10.0, 0.0, MobCategory.MONSTER));
-        MANUAL_OVERRIDES.put(EntityType.WARDEN, new MobProperties(500.0, 30.0, 0.0, MobCategory.MONSTER));
-        MANUAL_OVERRIDES.put(EntityType.BLAZE, new MobProperties(20.0, 6.0, 0.0, MobCategory.MONSTER));
-        MANUAL_OVERRIDES.put(EntityType.GHAST, new MobProperties(10.0, 12.0, 0.0, MobCategory.MONSTER));
-        MANUAL_OVERRIDES.put(EntityType.CREEPER, new MobProperties(20.0, 0.1, 0.0, MobCategory.MONSTER));
-    }
+    private final ReferenceSet<EntityType<?>> renewableTypes = new ReferenceOpenHashSet<>();
+    private final Reference2ObjectMap<EntityType<?>, BossType> registeredBosses = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
     public void initialize() {
         ComplexityAnalyzer.LOGGER.info("Initializing MobPropertyProvider...");
@@ -51,7 +60,6 @@ public class MobPropertyProvider {
         int failedCount = 0;
 
         for (var type : GameRegistryManager.getAllEntityTypes()) {
-            if (MANUAL_OVERRIDES.containsKey(type)) continue;
             if (type.getCategory() == MobCategory.MISC) continue;
 
             try {
@@ -66,12 +74,9 @@ public class MobPropertyProvider {
                 var attributes = DefaultAttributes.getSupplier(livingType);
 
                 var maxHealth = attributes.getBaseValue(Attributes.MAX_HEALTH);
-                var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
-                        ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.0;
-                var armor = attributes.hasAttribute(Attributes.ARMOR)
-                        ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
+                var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE) ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0;
+                var armor = attributes.hasAttribute(Attributes.ARMOR) ? attributes.getBaseValue(Attributes.ARMOR) : 0;
 
-                attackDamage = Math.max(attackDamage, 0.1);
                 var classification = type.getCategory();
 
                 propertiesCache.put(type, new MobProperties(
@@ -91,15 +96,12 @@ public class MobPropertyProvider {
         }
 
         ComplexityAnalyzer.LOGGER.debug("MobPropertyProvider initialized:");
-        ComplexityAnalyzer.LOGGER.debug("  ✓ Manual overrides: {}", MANUAL_OVERRIDES.size());
         ComplexityAnalyzer.LOGGER.debug("  ✓ Total entities: {}", propertiesCache.size());
         ComplexityAnalyzer.LOGGER.debug("  ⚠ Failed/Skipped: {}", failedCount);
     }
 
     @Nullable
     public MobProperties getProperties(EntityType<?> type) {
-        if (MANUAL_OVERRIDES.containsKey(type)) return MANUAL_OVERRIDES.get(type);
-
         var cached = propertiesCache.get(type);
         if (cached != null) return cached;
 
@@ -113,14 +115,11 @@ public class MobPropertyProvider {
 
             var attributes = DefaultAttributes.getSupplier(livingType);
 
-            var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH)
-                    ? attributes.getBaseValue(Attributes.MAX_HEALTH) : 20.0;
+            var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH) ? attributes.getBaseValue(Attributes.MAX_HEALTH) : DEFAULT_MAX_HEALTH;
 
-            var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
-                    ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.1;
+            var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE) ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0;
 
-            var armor = attributes.hasAttribute(Attributes.ARMOR)
-                    ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
+            var armor = attributes.hasAttribute(Attributes.ARMOR) ? attributes.getBaseValue(Attributes.ARMOR) : 0;
 
             var classification = type.getCategory();
 
@@ -138,32 +137,72 @@ public class MobPropertyProvider {
         return null;
     }
 
-    public void setRarityCalculator(MobRarityCalculator calculator) {
-        this.rarityCalculator = calculator;
+    public void markRenewable(EntityType<?> type) {
+        renewableTypes.add(type);
+    }
+
+    public boolean isRenewable(EntityType<?> type) {
+        return renewableTypes.contains(type);
+    }
+
+    @Override
+    public void registerBoss(EntityType<?> entityType, BossType type) {
+        registeredBosses.put(entityType, type);
+    }
+
+    @Override
+    public void registerBoss(String entityId, BossType type) {
+        var id = ResourceLocation.tryParse(entityId);
+        if (id == null) {
+            ComplexityAnalyzer.LOGGER.warn("[BossRegistry] Invalid entity ID: {}", entityId);
+            return;
+        }
+        registerBoss(GameRegistryManager.getEntityType(id), type);
+    }
+
+    @Override
+    public boolean isBoss(EntityType<?> type) {
+        if (registeredBosses.get(type) == BossType.BOSS) return true;
+        return type == EntityType.WITHER || type == EntityType.ENDER_DRAGON;
+    }
+
+    @Override
+    public boolean isMiniBoss(EntityType<?> type) {
+        return registeredBosses.get(type) == BossType.MINI_BOSS;
     }
 
     public double getRarity(EntityType<?> type) {
-        if (rarityCalculator == null) {
-            ComplexityAnalyzer.LOGGER.warn("RarityCalculator not set! Returning default rarity.");
-            return 1.0;
+        if (isBoss(type)) return ComplexityConfig.BOSS_RARITY_MULTIPLIER.get();
+        if (isMiniBoss(type)) return MINI_BOSS_RARITY_SCALE;
+
+        double baseRarity;
+        var classification = type.getCategory();
+        if (classification == MobCategory.MONSTER) {
+            baseRarity = MONSTER_BASE_RARITY;
+        } else if (classification == MobCategory.CREATURE) {
+            baseRarity = CREATURE_BASE_RARITY;
+        } else if (classification == MobCategory.AMBIENT) {
+            baseRarity = AMBIENT_BASE_RARITY;
+        } else if (classification == MobCategory.WATER_CREATURE || classification == MobCategory.UNDERGROUND_WATER_CREATURE || classification == MobCategory.WATER_AMBIENT) {
+            baseRarity = WATER_CREATURE_BASE_RARITY;
+        } else {
+            baseRarity = OTHER_BASE_RARITY;
         }
-        return rarityCalculator.calculateRarity(type);
+
+        if (classification == MobCategory.MONSTER) {
+            var props = getProperties(type);
+            if (props != null) {
+                double combatPower = props.calculateCombatPower();
+                baseRarity += combatPower * POWER_TO_RARITY_COEFFICIENT;
+            }
+        }
+
+        return Math.max(BASE_MIN_RARITY, baseRarity);
     }
 
-    public boolean isBoss(EntityType<?> type) {
-        if (rarityCalculator == null) {
-            ComplexityAnalyzer.LOGGER.warn("RarityCalculator not set! Cannot determine boss status.");
-            return false;
-        }
-        return rarityCalculator.isBoss(type);
-    }
-
-    public boolean isMiniBoss(EntityType<?> type) {
-        if (rarityCalculator == null) {
-            ComplexityAnalyzer.LOGGER.warn("RarityCalculator not set! Cannot determine mini-boss status.");
-            return false;
-        }
-        return rarityCalculator.isMiniBoss(type);
+    public void clearCache() {
+        propertiesCache.clear();
+        ComplexityAnalyzer.LOGGER.info("MobPropertyProvider cache cleared");
     }
 
     public record MobProperties(
@@ -173,7 +212,7 @@ public class MobPropertyProvider {
             MobCategory classification
     ) {
         public double calculateSurvivability() {
-            return maxHealth * (1 + armor / 5.0);
+            return maxHealth * (1.0 + armor * ARMOR_COEFFICIENT);
         }
 
         public double calculateThreat() {

@@ -31,6 +31,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Skeleton;
 import net.minecraft.world.entity.projectile.Arrow;
@@ -51,9 +52,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.data.MobDropData;
-import org.complexityanalyzer.analyzer.resource.providers.DimensionRarityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
@@ -69,17 +68,19 @@ public class MobDropSource implements IResourceSource {
     private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
     private static final int SIMULATION_COUNT = 100;
 
+    private static String fmt(double v) {
+        if (Double.isInfinite(v)) return "∞";
+        return v >= 1000 ? String.format("%.0f", v) : String.format("%.2f", v);
+    }
+
     private static final ReferenceSet<EntityType<?>> SPECIAL_KILL_ENTITIES = new ReferenceOpenHashSet<>(new EntityType<?>[]{
             EntityType.WITHER,
             EntityType.ENDER_DRAGON,
             EntityType.SHULKER
     });
 
-    public MobDropSource(MobPropertyProvider mobProvider, Level level) {
+    public MobDropSource(MobPropertyProvider mobProvider) {
         this.mobProvider = mobProvider;
-        var dimensionAnalyzer = new DimensionRarityAnalyzer(level);
-        var rarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
-        mobProvider.setRarityCalculator(rarityCalculator);
     }
 
     private static class LootFunctionFilter extends AbstractFilter {
@@ -180,7 +181,18 @@ public class MobDropSource implements IResourceSource {
                         var v = new Victim(entityType, entityInstance, lootTable);
                         mergeDrops(entityType, sampleVictim(serverLevel, v, finalConfigs));
                         processedEntities++;
+
+                        if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
                         entityInstance.discard();
+
+                        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
+                            var p = mobProvider.getProperties(entityType);
+                            ComplexityAnalyzer.LOGGER.debug("[MobDrop:mob] {} | hp={} dmg={} armor={} → combat={} rarity={} renewable={}",
+                                    GameRegistryManager.getEntityTypeId(entityType),
+                                    p != null ? fmt(p.maxHealth()) : "?", p != null ? fmt(p.attackDamage()) : "?",
+                                    p != null ? fmt(p.armor()) : "?", p != null ? fmt(p.calculateCombatPower()) : "?",
+                                    fmt(mobProvider.getRarity(entityType)), mobProvider.isRenewable(entityType));
+                        }
                     }
 
                     long duration = System.currentTimeMillis() - startTime;
@@ -354,22 +366,30 @@ public class MobDropSource implements IResourceSource {
         double specialConditionCost = 0.0;
         if ("Killed by Charged Creeper".equals(data.killMethod())) {
             var creeperProps = mobProvider.getProperties(EntityType.CREEPER);
-
             if (creeperProps != null) {
-                double creeperCombatPower = creeperProps.calculateCombatPower();
-                double creeperRarity = mobProvider.getRarity(EntityType.CREEPER);
-                specialConditionCost = (creeperCombatPower * creeperRarity) * 200.0;
-            } else {
-                specialConditionCost = 50000.0;
+                specialConditionCost = creeperProps.calculateCombatPower() * mobProvider.getRarity(EntityType.CREEPER);
             }
         }
 
-        double baseKillComplexity = (victimCombatPower * victimRarityMultiplier) / data.averageYield();
-        double finalComplexity = (baseKillComplexity + specialConditionCost) * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
+        boolean renewable = mobProvider.isRenewable(victimMobType);
+        double effectiveRarity = renewable ? 1.0 : victimRarityMultiplier;
 
-        var details = String.format("From %s (Yield: %.2f/kill, Rarity: %.1fx, Method: %s)",
+        double baseKillComplexity = (victimCombatPower * effectiveRarity) / data.averageYield();
+        double finalComplexity = (baseKillComplexity + specialConditionCost)
+                * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
+
+        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
+            ComplexityAnalyzer.LOGGER.debug("[MobDrop:cost] {} ← {} | combat={} × {}rarity={} / yield={} → {}",
+                    GameRegistryManager.getItemId(item), GameRegistryManager.getEntityTypeId(victimMobType),
+                    fmt(victimCombatPower),
+                    renewable ? "[renewable→1.0] " : "",
+                    fmt(renewable ? 1.0 : victimRarityMultiplier), fmt(data.averageYield()),
+                    fmt(finalComplexity));
+        }
+
+        var details = String.format("From %s (Yield: %.2f/kill, Rarity: %.1fx%s, Method: %s)",
                 victimMobType.getDescription().getString(), data.averageYield(), victimRarityMultiplier,
-                data.killMethod() != null ? data.killMethod() : "Any");
+                renewable ? ", renewable" : "", data.killMethod() != null ? data.killMethod() : "Any");
 
         return new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.MOB_DROP)

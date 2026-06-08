@@ -61,7 +61,7 @@ public final class DeepUniversalCollector {
                 var subIngs = subRecipe.getIngredients();
                 if (subIngs.size() > 1) {
                     var toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty() && org.complexityanalyzer.harvest.FastHarvester.visitIngredient(toolIng))
+                    if (!toolIng.isEmpty() && FastHarvester.visitIngredient(toolIng))
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
                 }
 

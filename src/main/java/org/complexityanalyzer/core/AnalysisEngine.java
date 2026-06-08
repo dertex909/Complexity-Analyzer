@@ -35,7 +35,6 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.analyzer.resource.sources.*;
 import org.complexityanalyzer.analyzer.solver.SccCondensedSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
@@ -78,7 +77,6 @@ public class AnalysisEngine {
     private volatile GeoDatabase geoDatabase;
     private volatile MobPropertyProvider mobPropProvider;
     private volatile GeoAnalysisManager geoManager;
-    private volatile MobRarityCalculator mobRarityCalculator;
     private volatile MachineRegistry machineRegistry;
     private volatile MinecraftServer server;
 
@@ -251,9 +249,6 @@ public class AnalysisEngine {
     private void initializeCoreProviders(ServerLevel serverLevel) {
         this.mobPropProvider = new MobPropertyProvider();
         this.mobPropProvider.initialize();
-
-        this.mobRarityCalculator = new MobRarityCalculator(serverLevel);
-        this.mobPropProvider.setRarityCalculator(this.mobRarityCalculator);
 
         this.geoDatabase = new GeoDatabase(serverLevel.getServer());
         this.geoDatabase.loadAll();
@@ -570,9 +565,7 @@ public class AnalysisEngine {
 
         complexityCache.clear();
 
-        var calc = mobRarityCalculator;
-        if (calc != null) calc.clearCache();
-
+        if (mobPropProvider != null) mobPropProvider.clearCache();
         ComplexityAnalyzer.LOGGER.info("All caches cleared.");
     }
 

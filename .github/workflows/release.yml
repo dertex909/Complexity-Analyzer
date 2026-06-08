@@ -29,6 +29,8 @@ jobs:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
         run: |
+          # Даем права на запуск скрипта Gradle в Linux-окружении гитхаба
+          chmod +x gradlew
           # Запускаем сборку и твои настроенные таски публикации
           ./gradlew build publishMods publish
 

@@ -27,6 +27,10 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.common.NeoForge;
+import org.complexityanalyzer.api.ComplexityAnalyzerAPI;
+import org.complexityanalyzer.api.event.ComplexityAnalysisCompleteEvent;
+import org.complexityanalyzer.api.event.ComplexityRegistrationEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
@@ -169,6 +173,7 @@ public class AnalysisEngine {
             if (setStateIfCurrent(gen, State.READY, false)) {
                 ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
                 safeRunCallback(onComplete);
+                fireAnalysisComplete(!fullRebuild);
                 regenerateCabin();
             }
         } catch (Exception e) {
@@ -178,6 +183,16 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.error("Critical error during analysis", e);
                 setStateIfCurrent(gen, State.FAILED, false);
             }
+        }
+    }
+
+    private void fireAnalysisComplete(boolean reload) {
+        var api = ComplexityAnalyzerAPI.Holder.peek();
+        if (api == null) return;
+        try {
+            NeoForge.EVENT_BUS.post(new ComplexityAnalysisCompleteEvent(api, reload));
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.error("An addon threw during ComplexityAnalysisCompleteEvent.", t);
         }
     }
 
@@ -263,7 +278,20 @@ public class AnalysisEngine {
         initialSources.add(new FarmingSource());
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
-        initialSources.add(new HardcodedSourcesProvider());
+
+        var hardcoded = new HardcodedSourcesProvider();
+        initialSources.add(hardcoded);
+
+        var addonSources = new ObjectArrayList<IResourceSource>();
+        try {
+            NeoForge.EVENT_BUS.post(new ComplexityRegistrationEvent(this.mobPropProvider, hardcoded, this.mobPropProvider, addonSources::add));
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.error("An addon threw during ComplexityRegistrationEvent; continuing without it.", t);
+        }
+        if (!addonSources.isEmpty()) {
+            ComplexityAnalyzer.LOGGER.info("Registered {} custom resource source(s) from addons.", addonSources.size());
+            initialSources.addAll(addonSources);
+        }
 
         this.sourceManager = new SourceManager(initialSources);
 
@@ -589,6 +617,11 @@ public class AnalysisEngine {
     @Nullable
     public MachineRegistry getMachineRegistry() {
         return this.machineRegistry;
+    }
+
+    @Nullable
+    public GeoDatabase getGeoDatabase() {
+        return this.geoDatabase;
     }
 
     public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {

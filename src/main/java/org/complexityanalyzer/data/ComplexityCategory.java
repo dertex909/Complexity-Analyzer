@@ -20,6 +20,13 @@ package org.complexityanalyzer.data;
 
 import net.minecraft.ChatFormatting;
 
+/**
+ * Difficulty tier an item's complexity score falls into. Tiers grow by powers of ten — each constant's value
+ * is the exclusive upper bound of its bucket — and carry a display name and chat colour for UI. Two special
+ * tiers sit outside the scale: {@link #UNOBTAINABLE} (infinite score) and {@link #UNCALCULABLE} (score {@code -1}).
+ *
+ * <p>Use {@link #fromComplexity(double)} to bucket a raw score.
+ */
 public enum ComplexityCategory {
     ABSOLUTE(0, "Absolute", ChatFormatting.WHITE),
     TRIVIAL(10, "Trivial", ChatFormatting.GRAY),
@@ -65,6 +72,12 @@ public enum ComplexityCategory {
         this.color = color;
     }
 
+    /**
+     * Maps a raw complexity score onto its tier.
+     *
+     * @param complexity the score ({@code -1} = uncalculable, {@code 0} = absolute, {@code Infinity} = unobtainable)
+     * @return the matching category
+     */
     public static ComplexityCategory fromComplexity(double complexity) {
         if (complexity < 0) return UNCALCULABLE;
         if (complexity == 0) return ABSOLUTE;
@@ -87,14 +100,17 @@ public enum ComplexityCategory {
         return low;
     }
 
+    /** @return the English display name of the tier. */
     public String getDisplayName() {
         return displayName;
     }
 
+    /** @return the i18n key for the tier's localized name. */
     public String getTranslationKey() {
         return "complexityanalyzer.category." + name().toLowerCase();
     }
 
+    /** @return the chat colour associated with the tier. */
     public ChatFormatting getColor() {
         return color;
     }

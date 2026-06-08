@@ -23,7 +23,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.api.ComplexityAnalyzerAPI;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.core.ComplexityAnalyzerAPIImpl;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.util.ServerLanguage;
@@ -37,6 +39,7 @@ public class AnalysisBootstrap {
         var server = event.getServer();
         GameRegistryManager.initialize();
         var engine = AnalysisEngine.getInstance();
+        ComplexityAnalyzerAPI.Holder.install(new ComplexityAnalyzerAPIImpl(engine));
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete."));
@@ -51,6 +54,7 @@ public class AnalysisBootstrap {
         }
         AnalysisEngine.getInstance().shutdownCompletely();
         GameRegistryManager.clear();
+        ComplexityAnalyzerAPI.Holder.uninstall();
     }
 
     public static AnalysisEngine getEngine() {

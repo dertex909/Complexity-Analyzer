@@ -32,10 +32,22 @@ import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 import java.util.Objects;
 
+/**
+ * A single normalized recipe in the harvested graph: one way to produce {@link #getResultItem()} from a set of
+ * item, fluid and chemical ingredients. This is the analyzer's mod-agnostic representation of every recipe it
+ * discovered — vanilla crafting/smelting as well as modded machine recipes — so addons can inspect crafting
+ * relationships uniformly without depending on each mod's own recipe classes.
+ *
+ * <p>Instances are immutable (built via {@link Builder}); the returned ingredient/output lists are unmodifiable.
+ * A node with no ingredients is a {@link #isBaseRecipe() base recipe}; a {@link #isPlaceholder() placeholder}
+ * stands in for a virtual/synthetic product.
+ */
 public class RecipeNode {
+    /** A chemical/gas ingredient identified by registry id and amount (for mods with chemical systems). */
     public record ChemicalIngredient(ResourceLocation id, int amount) {
     }
 
+    /** A chemical/gas output identified by registry id and amount. */
     public record ChemicalOutput(ResourceLocation id, long amount) {
     }
 
@@ -80,62 +92,77 @@ public class RecipeNode {
         this.listIndex = listIndex;
     }
 
+    /** @return an empty/unprocessable node for the given item (no ingredients, no real recipe). */
     public static RecipeNode empty(Item item) {
         return new Builder(item).category(RecipeCategory.UNPROCESSABLE).build();
     }
 
+    /** Reclassifies this node (used internally during solving). */
     public void setCategory(RecipeCategory category) {
         this.category = category;
     }
 
+    /** @return chemical/gas outputs produced; unmodifiable, may be empty. */
     public ObjectList<ChemicalOutput> getChemicalOutputs() {
         return chemicalOutputs;
     }
 
+    /** @return chemical/gas ingredients consumed; unmodifiable, may be empty. */
     public ObjectList<ChemicalIngredient> getChemicalIngredients() {
         return chemicalIngredients;
     }
 
+    /** @return the item ingredient slots, each holding the accepted item variants and a count; unmodifiable. */
     public ObjectList<IngredientSlot> getIngredients() {
         return ingredients;
     }
 
+    /** @return the fluid ingredient slots; unmodifiable, may be empty. */
     public ObjectList<FluidIngredientSlot> getFluidIngredients() {
         return fluidIngredients;
     }
 
+    /** @return all item outputs of the recipe (the primary result plus any byproducts); unmodifiable. */
     public ObjectList<ItemStack> getItemOutputs() {
         return itemOutputs;
     }
 
+    /** @return fluid outputs of the recipe; unmodifiable, may be empty. */
     public ObjectList<FluidStack> getFluidOutputs() {
         return fluidOutputs;
     }
 
+    /** @return the primary produced item. */
     public Item getResultItem() {
         return resultItem;
     }
 
+    /** @return the synthetic id when this is a placeholder node, otherwise an empty/identifier string. */
     public String getPlaceholderId() {
         return placeholderId;
     }
 
+    /** @return the vanilla/modded recipe type this node was derived from, or {@code null} for synthetic nodes. */
     public RecipeType<?> getRecipeType() {
         return recipeType;
     }
 
+    /** @return the solver-assigned category of this node. */
     public RecipeCategory getCategory() {
         return category;
     }
 
+    /** @return how many of the primary item one craft yields. */
     public int getResultCount() {
         return resultCount;
     }
 
+    /** @return the selection priority among competing recipes for the same item; higher wins. */
     public int getPriority() {
         return priority;
     }
 
+    /** @return the summed count across all item, fluid and chemical ingredient slots. */
     public int getTotalIngredientCount() {
         int total = 0;
         for (var slot : ingredients) total += slot.getCount();
@@ -144,18 +171,22 @@ public class RecipeNode {
         return total;
     }
 
+    /** @return {@code true} if this recipe has no inputs at all (a leaf/raw producer). */
     public boolean isBaseRecipe() {
         return ingredients.isEmpty() && fluidIngredients.isEmpty() && chemicalIngredients.isEmpty();
     }
 
+    /** @return {@code true} if the recipe consumes at least one fluid. */
     public boolean hasFluidIngredients() {
         return !fluidIngredients.isEmpty();
     }
 
+    /** @return {@code true} if this is a synthetic placeholder node rather than a real recipe. */
     public boolean isPlaceholder() {
         return isPlaceholder;
     }
 
+    /** @return a cost scaling factor applied to this recipe (e.g. for output-count or efficiency normalization). */
     public double getRecipeMultiplier() {
         return recipeMultiplier;
     }

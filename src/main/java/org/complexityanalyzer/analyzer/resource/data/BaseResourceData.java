@@ -24,6 +24,15 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 
 import java.util.Map;
 
+/**
+ * Immutable description of one raw (non-crafted) way to obtain an item, produced by an
+ * {@link IResourceSource}. It pairs a base cost ({@link #getBaseFactor()}) with the items consumed to realize
+ * that path ({@link #getSourceItems()}, e.g. tool wear or trade inputs) plus human-readable details and
+ * free-form metadata.
+ *
+ * <p>Instances are built via {@link Builder} and are safe to share across threads. The collections returned by
+ * {@link #getSourceItems()} and {@link #getMetadata()} are unmodifiable.
+ */
 public class BaseResourceData {
     private final Item item;
     private final ResourceSourceType sourceType;
@@ -45,42 +54,72 @@ public class BaseResourceData {
         this.sourceSpecifier = builder.sourceSpecifier;
     }
 
+    /**
+     * @return the item this acquisition path produces.
+     */
     public Item getItem() {
         return item;
     }
 
+    /**
+     * @return how this path is classified (mining, loot, mob drop, …).
+     */
     public ResourceSourceType getSourceType() {
         return sourceType;
     }
 
+    /**
+     * @return the base cost of obtaining one unit via this path; lower is cheaper, {@code Infinity} = unobtainable.
+     */
     public double getBaseFactor() {
         return baseFactor;
     }
 
+    /**
+     * @return human-readable explanation of the path (shown in tooltips/details).
+     */
     public String getDetails() {
         return details;
     }
 
+    /**
+     * @return the name of the {@link IResourceSource} that produced this data.
+     */
     public String getSourceName() {
         return sourceName;
     }
 
+    /**
+     * @return items consumed per produced unit (e.g. tool durability, trade inputs); unmodifiable, may be empty.
+     */
     public Reference2DoubleMap<Item> getSourceItems() {
         return sourceItems;
     }
 
+    /**
+     * @return free-form key/value metadata attached by the source; unmodifiable.
+     */
     public Object2ObjectMap<String, String> getMetadata() {
         return metadata;
     }
 
+    /**
+     * @return a source-specific qualifier (e.g. the block mined, the loot table id) for display.
+     */
     public String getSourceSpecifier() {
         return sourceSpecifier;
     }
 
+    /**
+     * @return {@code true} if this data was registered as a forced override by a mod.
+     */
     public boolean isOverride() {
         return "true".equals(metadata.get("override"));
     }
 
+    /**
+     * @return the mod id that registered the override, or {@code "unknown"}.
+     */
     public String getOverrideModId() {
         return metadata.getOrDefault("override_by", "unknown");
     }
@@ -92,6 +131,11 @@ public class BaseResourceData {
         return base;
     }
 
+    /**
+     * Classification of a raw acquisition path. Each constant carries a translation key for display and a
+     * {@code baseMultiplier} that scales the path's cost, reflecting how "expensive" that method is conceptually
+     * (e.g. a villager trade weighs more than mining the same item).
+     */
     public enum ResourceSourceType {
         OVERRIDE("complexityanalyzer.source_type.override", 0.0),
         ORE("complexityanalyzer.source_type.ore", 1.0),
@@ -122,15 +166,24 @@ public class BaseResourceData {
             this.baseMultiplier = baseMultiplier;
         }
 
+        /**
+         * @return the translation key for this type's display name.
+         */
         public String getDisplayName() {
             return translationKey;
         }
 
+        /**
+         * @return the cost multiplier applied to paths of this type.
+         */
         public double getBaseMultiplier() {
             return baseMultiplier;
         }
     }
 
+    /**
+     * Fluent builder for {@link BaseResourceData}. Custom {@link IResourceSource}s use it to emit their results.
+     */
     public static class Builder {
         private final Item item;
         private final String sourceName;
@@ -141,55 +194,91 @@ public class BaseResourceData {
         private final Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
         private final Object2ObjectMap<String, String> metadata = new Object2ObjectOpenHashMap<>();
 
+        /**
+         * @param item   the produced item
+         * @param source the source emitting this data (its name is recorded for attribution)
+         */
         public Builder(Item item, IResourceSource source) {
             this.item = item;
             this.sourceName = source.getName();
         }
 
+        /**
+         * Creates a builder attributed to the system rather than a specific source.
+         *
+         * @param item the produced item
+         */
         public Builder(Item item) {
             this.item = item;
             this.sourceName = "System";
         }
 
+        /**
+         * Sets the classification of this path.
+         */
         public Builder sourceType(ResourceSourceType type) {
             this.sourceType = type;
             return this;
         }
 
+        /**
+         * Sets the base cost per produced unit.
+         */
         public Builder baseFactor(double factor) {
             this.baseFactor = factor;
             return this;
         }
 
+        /**
+         * Sets the human-readable details string.
+         */
         public Builder details(String details) {
             this.details = details;
             return this;
         }
 
+        /**
+         * Replaces the consumed-items map (per produced unit). {@code null} is ignored.
+         */
         public Builder sourceItems(Map<Item, Double> items) {
             if (items != null) this.sourceItems.putAll(items);
             return this;
         }
 
+        /**
+         * Adds a single consumed item with the given per-unit amount.
+         */
         public Builder addSourceItem(Item item, double amount) {
             this.sourceItems.put(item, amount);
             return this;
         }
 
+        /**
+         * Adds one metadata key/value pair.
+         */
         public Builder addMetadata(String key, String value) {
             this.metadata.put(key, value);
             return this;
         }
 
+        /**
+         * Merges the given metadata map. {@code null} is ignored.
+         */
         public Builder metadata(Map<String, String> meta) {
             if (meta != null) this.metadata.putAll(meta);
             return this;
         }
 
+        /**
+         * @return the finished, immutable resource data.
+         */
         public BaseResourceData build() {
             return new BaseResourceData(this);
         }
 
+        /**
+         * Sets the source-specific qualifier (e.g. block or loot-table id).
+         */
         public Builder sourceSpecifier(String specifier) {
             this.sourceSpecifier = specifier;
             return this;

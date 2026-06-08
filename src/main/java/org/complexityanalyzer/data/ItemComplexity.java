@@ -22,6 +22,14 @@ import net.minecraft.world.item.Item;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * The fully computed complexity result for a single item: its numeric score, the difficulty
+ * {@link ComplexityCategory category} it falls into, how deep its crafting tree is, the chosen optimal recipe,
+ * and status flags. Returned from the API via {@code items().getDetailed(item)}.
+ *
+ * <p>A score of {@code -1} together with {@link ComplexityCategory#UNCALCULABLE} indicates the item could not
+ * be evaluated (see {@link #getErrorMessage()}). Use {@link #isValid()} to test for a usable result.
+ */
 public class ItemComplexity {
     private final Item item;
     private final double complexity;
@@ -45,47 +53,58 @@ public class ItemComplexity {
         this.optimalRecipe = builder.optimalRecipe;
     }
 
+    /** @return the item this result describes. */
     public Item getItem() {
         return item;
     }
 
+    /** @return the numeric complexity score; higher is harder, {@code -1} if uncalculable, {@code Infinity} if unobtainable. */
     public double getComplexity() {
         return complexity;
     }
 
+    /** @return the depth of the optimal crafting tree (0 for raw/base items). */
     public int getDepth() {
         return depth;
     }
 
+    /** @return the total number of ingredient units across the resolved crafting tree. */
     public int getTotalIngredients() {
         return totalIngredients;
     }
 
+    /** @return the bucketed difficulty tier derived from the score. */
     public ComplexityCategory getCategory() {
         return category;
     }
 
+    /** @return {@code true} if a dependency cycle was detected while resolving this item. */
     public boolean hasCycle() {
         return hasCycle;
     }
 
+    /** @return {@code true} if the item is produced by at least one recipe (vs. only raw sources). */
     public boolean hasRecipe() {
         return hasRecipe;
     }
 
+    /** @return the failure reason if the item could not be evaluated, otherwise {@code null}. */
     public String getErrorMessage() {
         return errorMessage;
     }
 
+    /** @return the recipe the solver selected as cheapest, or {@code null} for raw/uncraftable items. */
     @Nullable
     public RecipeNode getOptimalRecipe() {
         return optimalRecipe;
     }
 
+    /** @return {@code true} if the result is usable (no error, no cycle, non-negative score). */
     public boolean isValid() {
         return errorMessage == null && !hasCycle && complexity >= 0;
     }
 
+    /** Fluent builder for {@link ItemComplexity} instances. */
     public static class Builder {
         private final Item item;
         private double complexity = 0;
@@ -143,6 +162,14 @@ public class ItemComplexity {
         }
     }
 
+    /**
+     * Creates an uncalculable result carrying an error message (score {@code -1},
+     * {@link ComplexityCategory#UNCALCULABLE}).
+     *
+     * @param item  the item that failed to evaluate
+     * @param error the failure reason
+     * @return the error result
+     */
     public static ItemComplexity error(Item item, String error) {
         return new Builder(item)
                 .complexity(-1)

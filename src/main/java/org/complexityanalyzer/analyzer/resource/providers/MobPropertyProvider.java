@@ -31,11 +31,12 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.api.IBossRegistry;
+import org.complexityanalyzer.api.IRenewableRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
-public class MobPropertyProvider implements IBossRegistry {
+public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     public static final double DEFAULT_MAX_HEALTH = 20.0;
     public static final double ARMOR_COEFFICIENT = 0.05;
 

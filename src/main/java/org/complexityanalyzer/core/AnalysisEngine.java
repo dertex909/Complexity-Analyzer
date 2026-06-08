@@ -34,7 +34,6 @@ import org.complexityanalyzer.analyzer.MachineRegistry;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.analyzer.resource.providers.DimensionRarityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.analyzer.resource.providers.MobRarityCalculator;
 import org.complexityanalyzer.analyzer.resource.sources.*;
@@ -253,8 +252,7 @@ public class AnalysisEngine {
         this.mobPropProvider = new MobPropertyProvider();
         this.mobPropProvider.initialize();
 
-        var dimensionAnalyzer = new DimensionRarityAnalyzer(serverLevel);
-        this.mobRarityCalculator = new MobRarityCalculator(dimensionAnalyzer);
+        this.mobRarityCalculator = new MobRarityCalculator(serverLevel);
         this.mobPropProvider.setRarityCalculator(this.mobRarityCalculator);
 
         this.geoDatabase = new GeoDatabase(serverLevel.getServer());
@@ -265,7 +263,7 @@ public class AnalysisEngine {
         ObjectList<IResourceSource> initialSources = new ObjectArrayList<>();
 
         initialSources.add(new UniversalLootSource());
-        initialSources.add(new MobDropSource(this.mobPropProvider, serverLevel));
+        initialSources.add(new MobDropSource(this.mobPropProvider));
         initialSources.add(new BlockBreakAsRecipeSource(this.geoDatabase));
         initialSources.add(new FarmingSource());
         initialSources.add(new VillagerTradeSource());

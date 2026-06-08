@@ -1,0 +1,41 @@
+name: Release to Public Repo
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build mod
+        run: ./gradlew build
+
+      - name: Clone public repo
+        run: |
+          git clone https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/OWNER/PUBLIC_REPO.git public
+
+      - name: Copy jar
+        run: |
+          mkdir -p public/releases/${GITHUB_REF_NAME}
+          cp build/libs/*.jar public/releases/${GITHUB_REF_NAME}/
+
+      - name: Commit and push
+        run: |
+          cd public
+          git config user.name "release-bot"
+          git config user.email "bot@github.com"
+          git add .
+          git commit -m "release ${GITHUB_REF_NAME}"
+          git push

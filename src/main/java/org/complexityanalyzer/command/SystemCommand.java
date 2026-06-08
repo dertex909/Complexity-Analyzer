@@ -198,7 +198,7 @@ public final class SystemCommand {
     private static int executeCacheInfo(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
-        boolean enabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+        boolean enabled = ComplexityConfig.ENABLE_CACHE.get();
 
         var enabledColor = enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW;
         var enabledText = Component.translatable(enabled

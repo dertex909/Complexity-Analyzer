@@ -49,7 +49,7 @@ public class MachineRegistry {
         int vanilla = registerVanilla();
         ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} vanilla machines", vanilla);
 
-        boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
         var cacheFile = cacheEnabled ? MachineRegistryCache.INSTANCE.file(server) : null;
         MachineRegistryCache.Fingerprint fingerprint = null;
         if (cacheFile != null) {

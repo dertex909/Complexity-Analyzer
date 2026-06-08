@@ -19,8 +19,10 @@
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import org.complexityanalyzer.core.GameRegistryManager;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -31,6 +33,8 @@ import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.providers.PlantSimulator;
+import org.complexityanalyzer.cache.Fingerprints;
+import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +42,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     private static final double RENEWABLE_DISCOUNT = 0.3;
     private static final double BASE_TICKS_PER_STAGE = 1200;
+    private static final int LOGIC_VERSION = 1;
 
     private final Reference2ObjectMap<Item, ObjectList<FarmingData>> productionMap = new Reference2ObjectOpenHashMap<>();
     private final PlantSimulator simulator = new PlantSimulator();
@@ -58,11 +63,22 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         long startTime = System.currentTimeMillis();
         int found = 0;
 
+        var server = serverLevel.getServer();
+        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
+        var cacheFile = cacheEnabled ? ResourceCache.FARMING.file(server) : null;
+        long[] fingerprint = cacheFile != null ? computeFingerprint(serverLevel.getSeed()) : null;
+        if (cacheFile != null) {
+            int restored = ResourceCache.FARMING.load(cacheFile, fingerprint, FarmingSource::readData, productionMap);
+            if (restored >= 0) {
+                ComplexityAnalyzer.LOGGER.info("[FarmingSource] Loaded {} products from cache (plant simulation skipped).", restored);
+                return;
+            }
+        }
+
         ObjectList<Block> candidates = new ObjectArrayList<>();
         for (var block : GameRegistryManager.getAllBlocks()) if (simulator.isPlant(block)) candidates.add(block);
 
         Object2ObjectMap<Block, PlantSimulator.SimulationResult> results;
-        var server = serverLevel.getServer();
         if (server.isSameThread()) {
             results = simulator.simulateAll(candidates, serverLevel);
         } else {
@@ -109,6 +125,40 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         }
 
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
+        if (cacheFile != null) ResourceCache.FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
+    }
+
+    private long[] computeFingerprint(long worldSeed) {
+        return new long[]{
+                Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION),
+                Fingerprints.hashAllBlocks(),
+                Fingerprints.hashAllItems(),
+                Fingerprints.hashMods(),
+                worldSeed
+        };
+    }
+
+    private static void writeData(FriendlyByteBuf buf, FarmingData data) {
+        var plantId = GameRegistryManager.getItemId(data.plantItem());
+        var blockIdRl = GameRegistryManager.getBlockId(data.plantBlock());
+        buf.writeResourceLocation(plantId != null ? plantId : ResourceLocation.withDefaultNamespace("air"));
+        buf.writeResourceLocation(blockIdRl != null ? blockIdRl : ResourceLocation.withDefaultNamespace("air"));
+        buf.writeDouble(data.avgGrowthTicks());
+        buf.writeDouble(data.outputAmount());
+        buf.writeUtf(data.dropsSummary());
+        buf.writeUtf(data.details());
+    }
+
+    @Nullable
+    private static FarmingData readData(FriendlyByteBuf buf, Item dropItem) {
+        var plantItem = GameRegistryManager.getItem(buf.readResourceLocation());
+        var plantBlock = GameRegistryManager.getBlock(buf.readResourceLocation());
+        double growthTicks = buf.readDouble();
+        double outputAmount = buf.readDouble();
+        String dropsSummary = buf.readUtf();
+        String details = buf.readUtf();
+        if (plantItem == null || plantItem == Items.AIR || plantBlock == null) return null;
+        return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, dropsSummary, details);
     }
 
     private boolean itemPlacesBlock(Item item, Block targetBlock) {

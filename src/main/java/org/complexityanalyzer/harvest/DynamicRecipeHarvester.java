@@ -70,7 +70,7 @@ public final class DynamicRecipeHarvester {
         Set<ResourceLocation> known = ConcurrentHashMap.newKeySet();
         known.addAll(knownRecipeIds);
 
-        int detectionSampleSize = ComplexityConfig.HARVEST_DETECTION_SAMPLE_SIZE.get();
+        int detectionSampleSize = ComplexityConfig.DETECTION_SAMPLE_SIZE.get();
 
         var ctx = new ProbeContext(recipeManager, level, graph, new FastHarvester(), allItems,
                 known, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize);

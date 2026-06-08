@@ -44,6 +44,9 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.cache.Fingerprints;
+import org.complexityanalyzer.cache.ResourceCache;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.jetbrains.annotations.Nullable;
 
@@ -88,10 +91,62 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         var server = serverLevel.getServer();
         try {
             var allLootTableKeys = getAllLootTableKeys(server);
+
+            boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
+            var cacheFile = cacheEnabled ? ResourceCache.UNIVERSAL_LOOT.file(server) : null;
+            long[] fingerprint = cacheFile != null ? computeFingerprint(allLootTableKeys) : null;
+            if (cacheFile != null && tryLoadCache(cacheFile, fingerprint)) return;
+
             processLootTables(serverLevel, allLootTableKeys);
+
+            if (cacheFile != null) ResourceCache.UNIVERSAL_LOOT.save(
+                    cacheFile, fingerprint, ResourceCache::writeResourceData, flattenLootData());
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys. Aborting analysis.", e);
         }
+    }
+
+    private long[] computeFingerprint(ObjectSet<ResourceKey<LootTable>> keys) {
+        var ids = new ObjectArrayList<String>(keys.size());
+        for (var k : keys) ids.add(k.location().toString());
+        ids.sort(null);
+        long tables = Fingerprints.FNV_OFFSET;
+        for (var id : ids) tables = Fingerprints.fnv(tables, id);
+        return new long[]{
+                Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, SIMULATION_COUNT),
+                Fingerprints.hashMods(),
+                Fingerprints.hashAllItems(),
+                tables
+        };
+    }
+
+    private boolean tryLoadCache(java.nio.file.Path cacheFile, long[] fingerprint) {
+        var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
+        int restored = ResourceCache.UNIVERSAL_LOOT.load(cacheFile, fingerprint, (buf, item) ->
+                ResourceCache.readResourceData(buf, item, this), flat);
+        if (restored < 0) return false;
+
+        allLootData.clear();
+        for (var entry : flat.reference2ObjectEntrySet()) {
+            for (var data : entry.getValue()) {
+                allLootData.computeIfAbsent(data.getSourceType(), k ->
+                        new Reference2ObjectOpenHashMap<>()).put(entry.getKey(), data);
+            }
+        }
+        int items = 0;
+        for (var map : allLootData.values()) items += map.size();
+        ComplexityAnalyzer.LOGGER.info("[ULS] Loaded {} loot paths for {} items from cache (loot-table scan skipped).", restored, items);
+        return true;
+    }
+
+    private Reference2ObjectMap<Item, ObjectList<BaseResourceData>> flattenLootData() {
+        var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
+        for (var typeMap : allLootData.values()) {
+            for (var e : typeMap.reference2ObjectEntrySet()) {
+                flat.computeIfAbsent(e.getKey(), k -> new ObjectArrayList<>()).add(e.getValue());
+            }
+        }
+        return flat;
     }
 
     private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys) {

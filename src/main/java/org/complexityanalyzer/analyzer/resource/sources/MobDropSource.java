@@ -22,6 +22,8 @@ import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,6 +55,8 @@ import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
+import org.complexityanalyzer.cache.Fingerprints;
+import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
@@ -67,6 +71,7 @@ public class MobDropSource implements IResourceSource {
     private final MobPropertyProvider mobProvider;
     private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
     private static final int SIMULATION_COUNT = 100;
+    private static final int LOGIC_VERSION = 1;
 
     private static String fmt(double v) {
         if (Double.isInfinite(v)) return "∞";
@@ -106,6 +111,21 @@ public class MobDropSource implements IResourceSource {
 
         var server = serverLevel.getServer();
 
+        synchronized (dropMap) {
+            dropMap.clear();
+        }
+
+        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
+        var cacheFile = cacheEnabled ? ResourceCache.MOB_DROP.file(server) : null;
+        long[] fingerprint = cacheFile != null ? computeFingerprint() : null;
+        if (cacheFile != null) {
+            int restored = ResourceCache.MOB_DROP.load(cacheFile, fingerprint, MobDropSource::readData, dropMap);
+            if (restored >= 0) {
+                ComplexityAnalyzer.LOGGER.info("[MobDropSource] Loaded {} drop entries from cache (loot simulation skipped).", restored);
+                return;
+            }
+        }
+
         ObjectList<EntityType<?>> entityTypes;
         try {
             if (server.isSameThread()) {
@@ -125,6 +145,36 @@ public class MobDropSource implements IResourceSource {
         }
 
         processMobDrops(serverLevel, entityTypes);
+
+        if (cacheFile != null) synchronized (dropMap) {
+            ResourceCache.MOB_DROP.save(cacheFile, fingerprint, MobDropSource::writeData, dropMap);
+        }
+    }
+
+    private long[] computeFingerprint() {
+        return new long[]{
+                Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION),
+                Fingerprints.hashMods(),
+                Fingerprints.hashAllEntities()
+        };
+    }
+
+    private static void writeData(FriendlyByteBuf buf, MobDropData data) {
+        var mobId = GameRegistryManager.getEntityTypeId(data.sourceMob());
+        buf.writeResourceLocation(mobId != null ? mobId : ResourceLocation.withDefaultNamespace("pig"));
+        buf.writeDouble(data.averageYield());
+        boolean hasMethod = data.killMethod() != null;
+        buf.writeBoolean(hasMethod);
+        if (hasMethod) buf.writeUtf(data.killMethod());
+    }
+
+    @Nullable
+    private static MobDropData readData(FriendlyByteBuf buf, Item item) {
+        var mob = GameRegistryManager.getEntityType(buf.readResourceLocation());
+        double yield = buf.readDouble();
+        String killMethod = buf.readBoolean() ? buf.readUtf() : null;
+        if (mob == null) return null;
+        return new MobDropData(item, mob, yield, killMethod);
     }
 
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes) {
@@ -184,15 +234,6 @@ public class MobDropSource implements IResourceSource {
 
                         if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
                         entityInstance.discard();
-
-                        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-                            var p = mobProvider.getProperties(entityType);
-                            ComplexityAnalyzer.LOGGER.debug("[MobDrop:mob] {} | hp={} dmg={} armor={} → combat={} rarity={} renewable={}",
-                                    GameRegistryManager.getEntityTypeId(entityType),
-                                    p != null ? fmt(p.maxHealth()) : "?", p != null ? fmt(p.attackDamage()) : "?",
-                                    p != null ? fmt(p.armor()) : "?", p != null ? fmt(p.calculateCombatPower()) : "?",
-                                    fmt(mobProvider.getRarity(entityType)), mobProvider.isRenewable(entityType));
-                        }
                     }
 
                     long duration = System.currentTimeMillis() - startTime;
@@ -375,17 +416,7 @@ public class MobDropSource implements IResourceSource {
         double effectiveRarity = renewable ? 1.0 : victimRarityMultiplier;
 
         double baseKillComplexity = (victimCombatPower * effectiveRarity) / data.averageYield();
-        double finalComplexity = (baseKillComplexity + specialConditionCost)
-                * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
-
-        if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) {
-            ComplexityAnalyzer.LOGGER.debug("[MobDrop:cost] {} ← {} | combat={} × {}rarity={} / yield={} → {}",
-                    GameRegistryManager.getItemId(item), GameRegistryManager.getEntityTypeId(victimMobType),
-                    fmt(victimCombatPower),
-                    renewable ? "[renewable→1.0] " : "",
-                    fmt(renewable ? 1.0 : victimRarityMultiplier), fmt(data.averageYield()),
-                    fmt(finalComplexity));
-        }
+        double finalComplexity = (baseKillComplexity + specialConditionCost) * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
 
         var details = String.format("From %s (Yield: %.2f/kill, Rarity: %.1fx%s, Method: %s)",
                 victimMobType.getDescription().getString(), data.averageYield(), victimRarityMultiplier,

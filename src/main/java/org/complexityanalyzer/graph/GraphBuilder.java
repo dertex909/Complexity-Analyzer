@@ -53,7 +53,7 @@ public class GraphBuilder {
     public static RecipeGraph buildFromWorld(Level level) {
         var recipeManager = level.getRecipeManager();
         var cacheFile = RecipeGraphCache.INSTANCE.file(level.getServer());
-        boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
+        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
         RecipeGraphCache.Fingerprint fingerprint = null;
         if (cacheEnabled && cacheFile != null) {
             fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager);

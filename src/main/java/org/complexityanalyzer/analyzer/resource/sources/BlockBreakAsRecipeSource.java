@@ -42,7 +42,8 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.analyzer.resource.IResourceSource;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.cache.BlockBreakCache;
+import org.complexityanalyzer.cache.Fingerprints;
+import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
@@ -59,6 +60,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
     private static final int SAMPLE_COUNT = 50;
     private static final double TIME_COST_MULTIPLIER = 1.0;
+    private static final int LOGIC_VERSION = 1;
 
     private final Reference2ObjectMap<Item, ObjectList<BaseResourceData>> allPaths = new Reference2ObjectOpenHashMap<>();
     private final GeoDatabase geoDatabase;
@@ -81,12 +83,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             return;
         }
 
-        boolean cacheEnabled = ComplexityConfig.HARVEST_ENABLE_CACHE.get();
-        var cacheFile = cacheEnabled ? BlockBreakCache.INSTANCE.file(serverLevel.getServer()) : null;
-        BlockBreakCache.Fingerprint fingerprint = null;
+        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
+        var cacheFile = cacheEnabled ? ResourceCache.BLOCK_BREAK.file(serverLevel.getServer()) : null;
+        long[] fingerprint = null;
         if (cacheFile != null) {
-            fingerprint = BlockBreakCache.INSTANCE.computeFingerprint(geoDatabase, serverLevel.getSeed(), SAMPLE_COUNT, TIME_COST_MULTIPLIER);
-            int restored = BlockBreakCache.INSTANCE.tryLoad(cacheFile, fingerprint, this, allPaths);
+            fingerprint = computeFingerprint(serverLevel.getSeed());
+            int restored = ResourceCache.BLOCK_BREAK.load(cacheFile, fingerprint, (buf, item) ->
+                    ResourceCache.readResourceData(buf, item, this), allPaths);
             if (restored >= 0) {
                 ComplexityAnalyzer.LOGGER.info("[{}] Loaded {} block-drop paths for {} items from cache (block scan skipped).",
                         getName(), restored, allPaths.size());
@@ -248,7 +251,22 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
-        if (cacheFile != null) BlockBreakCache.INSTANCE.save(cacheFile, fingerprint, allPaths);
+        if (cacheFile != null) ResourceCache.BLOCK_BREAK.save(cacheFile, fingerprint,
+                ResourceCache::writeResourceData, allPaths);
+    }
+
+    private long[] computeFingerprint(long worldSeed) {
+        long config = Fingerprints.FNV_OFFSET;
+        config = Fingerprints.fnvLong(config, LOGIC_VERSION);
+        config = Fingerprints.fnvLong(config, SAMPLE_COUNT);
+        config = Fingerprints.fnvLong(config, Double.doubleToLongBits(TIME_COST_MULTIPLIER));
+        return new long[]{
+                Fingerprints.hashAllBlocks(),
+                Fingerprints.hashMods(),
+                Fingerprints.hashGeo(geoDatabase),
+                worldSeed,
+                config
+        };
     }
 
     private ObjectList<ItemStack> createTestTools(ServerLevel serverLevel) {

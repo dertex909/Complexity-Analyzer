@@ -67,7 +67,10 @@ public interface ManagedCache {
         static {
             register(RecipeGraphCache.INSTANCE);
             register(MachineRegistryCache.INSTANCE);
-            register(BlockBreakCache.INSTANCE);
+            register(ResourceCache.BLOCK_BREAK);
+            register(ResourceCache.UNIVERSAL_LOOT);
+            register(ResourceCache.FARMING);
+            register(ResourceCache.MOB_DROP);
         }
 
         private Registry() {

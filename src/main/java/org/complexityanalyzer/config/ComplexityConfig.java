@@ -47,8 +47,8 @@ public class ComplexityConfig {
 
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
 
-    public static final ModConfigSpec.BooleanValue HARVEST_ENABLE_CACHE;
-    public static final ModConfigSpec.IntValue HARVEST_DETECTION_SAMPLE_SIZE;
+    public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
+    public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
 
     private static volatile int resolvedMaxThreads = -1;
 
@@ -128,17 +128,18 @@ public class ComplexityConfig {
         builder.pop();
 
         builder.push("harvest");
-        HARVEST_ENABLE_CACHE = builder.comment(
+        ENABLE_CACHE = builder.comment(
                 " Cache expensive analysis results to disk (per-world). Covers:",
                 "   - the harvested recipe graph (static scan + dynamic probe + fluid scan)",
                 "   - the machine registry (block/BlockEntity reflective scan)",
+                "   - block-break drops, loot tables, crop farming and mob drops",
                 " When enabled, those scans run only once per recipe/mod set; later loads restore",
-                " the data instantly. The caches auto-invalidate when recipes, blocks, mods, or",
-                " graph-affecting config change. Disable to always rebuild from scratch.",
+                " the data instantly. The caches auto-invalidate when recipes, blocks, items, mods,",
+                " entities, the geo-scan or graph-affecting config change. Disable to always rebuild.",
                 " Manage with /complexity system cache info|clear."
         ).define("enableCache", true);
 
-        HARVEST_DETECTION_SAMPLE_SIZE = builder.comment(
+        DETECTION_SAMPLE_SIZE = builder.comment(
                 " Items probed per recipe type when detecting dynamically generated recipes,",
                 " spread evenly across the item registry. Higher = better chance to catch generators",
                 " that fire on only a few items, at slightly more startup cost."

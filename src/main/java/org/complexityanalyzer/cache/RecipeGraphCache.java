@@ -96,7 +96,7 @@ public final class RecipeGraphCache implements ManagedCache {
 
         long hConfig = 0xcbf29ce484222325L;
         hConfig = fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
-        hConfig = fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.HARVEST_DETECTION_SAMPLE_SIZE.get());
+        hConfig = fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.DETECTION_SAMPLE_SIZE.get());
 
         return new Fingerprint(hRecipes, hMods, hConfig);
     }

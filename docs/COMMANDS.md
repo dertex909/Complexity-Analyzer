@@ -11,7 +11,7 @@ action — always pick a sub-command below.
 | 🛡 **OP (level 2)** | Requires operator permission. Changes state, writes files, or can lag the server. |
 
 All command output is **translated to each player's own client language** server-side
-(53 locales shipped). Numbers, item names and icons stay as-is.
+(52 locales shipped). Numbers, item names and icons stay as-is.
 
 ---
 
@@ -27,7 +27,7 @@ All command output is **translated to each player's own client language** server
 │   ├── reload                                🛡  full re-analysis (laggy)
 │   └── cache
 │       ├── info                              👤  on-disk cache report
-│       └── clear                             🛡  delete cache files
+│       └── clear [<cache_id>]                🛡  delete all or specific cache files
 ├── analyze
 │   ├── item   <item_id>                      👤  full item complexity report
 │   ├── entity <entity_id>                    👤  mob combat/difficulty report
@@ -117,7 +117,7 @@ Engine and server diagnostics.
 - **`system threads`** 🛡 — thread-pool internals: parallelism target, active compute threads, queued tasks.
 - **`system reload`** 🛡 — forces a full re-analysis of the world. **Warning: causes significant lag** while it runs; broadcasts a warning to players.
 - **`system cache info`** 👤 — reports the on-disk analysis caches (recipe graph, machine registry): whether caching is enabled in config, and for each cache whether it is present, its size and age, or "not built yet".
-- **`system cache clear`** 🛡 — deletes the cached files so the next load rebuilds from scratch. Hint: run `system reload` afterwards to rebuild immediately.
+- **`system cache clear [<cache_id>]`** 🛡 — deletes all cached files or a specific cache by ID (e.g., `recipe_graph`, `machine_registry`, `block_break`, `universal_loot`, `farming`, `mob_drop`) so the next load rebuilds from scratch. Hint: run `system reload` afterwards to rebuild immediately.
 
 > **About the cache:** when `enableCache` is on (config), the harvested recipe graph
 > and machine registry are saved per-world under `<world>/data/complexityanalyzer/`.

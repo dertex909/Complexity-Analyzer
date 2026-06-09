@@ -373,6 +373,8 @@ public class AnalysisEngine {
         this.machineRegistry = null;
         this.complexityCache.clear();
         this.server = null;
+        this.geoDatabase = null;
+        this.mobPropProvider = null;
     }
 
     public void createGeoManager(MinecraftServer server) {

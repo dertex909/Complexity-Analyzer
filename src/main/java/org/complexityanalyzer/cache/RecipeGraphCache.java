@@ -20,7 +20,6 @@ package org.complexityanalyzer.cache;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +29,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.fml.ModList;
@@ -45,6 +46,7 @@ import org.complexityanalyzer.graph.RecipeNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 
 public final class RecipeGraphCache implements ManagedCache {
 
@@ -77,16 +79,33 @@ public final class RecipeGraphCache implements ManagedCache {
         }
     }
 
-    public Fingerprint computeFingerprint(RecipeManager recipeManager) {
-        var countsByType = new Object2IntOpenHashMap<String>();
-        for (var holder : recipeManager.getRecipes()) {
-            var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
-            countsByType.addTo(typeId != null ? typeId.toString() : "?", 1);
-        }
-        var typeIds = new ObjectArrayList<>(countsByType.keySet());
-        typeIds.sort(null);
+    public Fingerprint computeFingerprint(RecipeManager recipeManager, RegistryAccess registryAccess) {
+        var holders = new ObjectArrayList<>(recipeManager.getRecipes());
+        holders.sort(Comparator.comparing(RecipeHolder::id));
+
         long hRecipes = 0xcbf29ce484222325L;
-        for (var typeId : typeIds) hRecipes = fnv(hRecipes, typeId + "=" + countsByType.getInt(typeId));
+        for (var holder : holders) {
+            hRecipes = fnv(hRecipes, holder.id().toString());
+            var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
+            hRecipes = fnv(hRecipes, typeId != null ? typeId.toString() : "?");
+            try {
+                var resultStack = holder.value().getResultItem(registryAccess);
+                if (!resultStack.isEmpty()) {
+                    hRecipes = fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
+                }
+                for (var ingredient : holder.value().getIngredients()) {
+                    if (ingredient.isEmpty()) continue;
+                    hRecipes = fnv(hRecipes, "[");
+                    for (var stack : ingredient.getItems()) {
+                        if (stack.isEmpty()) continue;
+                        hRecipes = fnv(hRecipes, itemId(stack.getItem()).toString() + "x" + stack.getCount());
+                    }
+                    hRecipes = fnv(hRecipes, "]");
+                }
+            } catch (Throwable t) {
+                hRecipes = fnv(hRecipes, "fail");
+            }
+        }
 
         var modKeys = new ObjectArrayList<String>();
         for (var mod : ModList.get().getMods()) modKeys.add(mod.getModId() + "@" + mod.getVersion());

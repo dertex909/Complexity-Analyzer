@@ -56,7 +56,7 @@ public class GraphBuilder {
         boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
         RecipeGraphCache.Fingerprint fingerprint = null;
         if (cacheEnabled && cacheFile != null) {
-            fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager);
+            fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager, level.registryAccess());
             var cached = RecipeGraphCache.INSTANCE.tryLoad(cacheFile, fingerprint, level);
             if (cached != null) {
                 ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).",

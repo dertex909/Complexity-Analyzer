@@ -68,7 +68,7 @@ public class EntityAnalyzeCommand {
             return 0;
         }
 
-        ObjectList<MobDropData> drops = (mobDropSource != null) ? mobDropSource.getDropsForEntity(entityType) : new ObjectArrayList<>();
+        var drops = (mobDropSource != null) ? mobDropSource.getDropsForEntity(entityType) : new ObjectArrayList<MobDropData>();
 
         displayAnalysis(source, entityType, props, drops, mobProvider, output);
         return 1;

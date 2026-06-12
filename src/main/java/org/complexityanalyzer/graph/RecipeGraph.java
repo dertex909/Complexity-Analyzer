@@ -86,48 +86,46 @@ public class RecipeGraph {
             return;
         }
 
-        if (result != AIR) {
-            synchronized (result) {
-                var list = recipesByItem.computeIfAbsent(result, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
-                int dupIdx = -1;
-                synchronized (list) {
-                    for (int i = 0; i < list.size(); i++) {
-                        if (list.get(i).equals(node)) {
-                            dupIdx = i;
-                            break;
-                        }
+        if (result != AIR) synchronized (result) {
+            var list = recipesByItem.computeIfAbsent(result, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+            int dupIdx = -1;
+            synchronized (list) {
+                for (int i = 0; i < list.size(); i++) {
+                    if (list.get(i).equals(node)) {
+                        dupIdx = i;
+                        break;
                     }
-                    if (dupIdx != -1) {
-                        var existing = list.get(dupIdx);
-                        boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
-                                || node.getItemOutputs().size() > existing.getItemOutputs().size()
-                                || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
-                        if (nodeIsBetter) {
-                            list.set(dupIdx, node);
-                            replaceOrAddInAllRecipes(existing, node);
-                            for (var slot : node.getFluidIngredients()) {
-                                for (var variant : slot.getFluidVariants()) {
-                                    var normalized = normalizeFluid(variant);
-                                    if (normalized != EMPTY) {
-                                        fluidUsageMap.computeIfAbsent(normalized, k -> ConcurrentHashMap.newKeySet()).add(result);
-                                    }
-                                }
-                            }
-                            for (var stack : node.getFluidOutputs()) {
-                                var normalized = normalizeFluid(stack.getFluid());
+                }
+                if (dupIdx != -1) {
+                    var existing = list.get(dupIdx);
+                    boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
+                            || node.getItemOutputs().size() > existing.getItemOutputs().size()
+                            || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                    if (nodeIsBetter) {
+                        list.set(dupIdx, node);
+                        replaceOrAddInAllRecipes(existing, node);
+                        for (var slot : node.getFluidIngredients()) {
+                            for (var variant : slot.getFluidVariants()) {
+                                var normalized = normalizeFluid(variant);
                                 if (normalized != EMPTY) {
-                                    var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
-                                    synchronized (foList) {
-                                        if (!foList.contains(node)) foList.add(node);
-                                    }
+                                    fluidUsageMap.computeIfAbsent(normalized, k -> ConcurrentHashMap.newKeySet()).add(result);
                                 }
                             }
-                            bestRecipeCache.remove(result);
                         }
-                        return;
-                    } else {
-                        list.add(node);
+                        for (var stack : node.getFluidOutputs()) {
+                            var normalized = normalizeFluid(stack.getFluid());
+                            if (normalized != EMPTY) {
+                                var foList = recipesByFluidOutput.computeIfAbsent(normalized, k -> ObjectLists.synchronize(new ObjectArrayList<>()));
+                                synchronized (foList) {
+                                    if (!foList.contains(node)) foList.add(node);
+                                }
+                            }
+                        }
+                        bestRecipeCache.remove(result);
                     }
+                    return;
+                } else {
+                    list.add(node);
                 }
             }
         }

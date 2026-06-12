@@ -219,7 +219,7 @@ public class CraftingTreeBuilder {
         var ingredientsForOneCraft = new Reference2ObjectOpenHashMap<Item, IngredientChoice>();
         for (var slot : recipe.getIngredients()) {
             Item bestVariant = null;
-            ItemStack bestVariantStack = ItemStack.EMPTY;
+            var bestVariantStack = ItemStack.EMPTY;
             double minComplexity = Double.POSITIVE_INFINITY;
             for (var v : slot.getVariants()) {
                 double c = engine.getComplexity(v.getItem());

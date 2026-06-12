@@ -47,11 +47,6 @@ public class IngredientSlot {
         return count;
     }
 
-    public boolean hasStackSpecificVariants() {
-        for (var stack : variants) if (ItemStackIdentity.hasStackData(stack)) return true;
-        return false;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

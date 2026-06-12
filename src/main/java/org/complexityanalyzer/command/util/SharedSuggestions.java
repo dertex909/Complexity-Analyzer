@@ -55,7 +55,7 @@ public final class SharedSuggestions {
         CACHED_ENTITIES.clear();
         GameRegistryManager.getAllEntityTypes().forEach(type -> {
             if (type.getCategory() != MobCategory.MISC) {
-                ResourceLocation id = GameRegistryManager.getEntityTypeId(type);
+                var id = GameRegistryManager.getEntityTypeId(type);
                 if (id != null) CACHED_ENTITIES.add(id);
             }
         });

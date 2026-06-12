@@ -123,7 +123,7 @@ public class WorldScanner {
             try {
                 var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
-                ObjectOpenHashSet<String> biomes = new ObjectOpenHashSet<>();
+                var biomes = new ObjectOpenHashSet<String>();
                 for (var holder : biomeSource.possibleBiomes()) {
                     var unwrapped = holder.unwrapKey();
                     unwrapped.ifPresent(biomeResourceKey -> biomes.add(biomeResourceKey.location().toString()));
@@ -153,16 +153,11 @@ public class WorldScanner {
         int range = fullWorldMode ? 50000 : 20000;
         var origin = new BlockPos(random.nextInt(-range, range), 64, random.nextInt(-range, range));
         int radius = fullWorldMode ? ScanConfig.RADIUS_FULL_WORLD : ScanConfig.RADIUS_MAX;
-
-        ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Searching for {} from [{}, {}], radius={}",
-                biomeKey.location(), origin.getX(), origin.getZ(), radius);
-
         var result = FastBiomeFinder.findBiome(level, holder -> holder.is(biomeKey), origin, radius);
 
         if (shouldStop()) return Optional.empty();
 
         if (result != null) {
-            ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Found {} at [{}, {}]", biomeKey.location(), result.getX(), result.getZ());
             cacheLocation(cacheKey, result);
             return Optional.of(new ChunkPos(result));
         }
@@ -192,9 +187,7 @@ public class WorldScanner {
 
     private void cacheLocation(String cacheKey, BlockPos pos) {
         if (shouldStop()) return;
-        var ref = biomeLocationCache.computeIfAbsent(
-                cacheKey, k -> new AtomicReference<>(new ObjectArrayList<>())
-        );
+        var ref = biomeLocationCache.computeIfAbsent(cacheKey, k -> new AtomicReference<>(new ObjectArrayList<>()));
 
         while (true) {
             var current = ref.get();
@@ -207,7 +200,7 @@ public class WorldScanner {
 
             int currentSize = current.size();
             int newSize = Math.min(currentSize + 1, MAX_CACHED_LOCATIONS_PER_BIOME);
-            ObjectArrayList<BlockPos> updated = new ObjectArrayList<>(newSize);
+            var updated = new ObjectArrayList<BlockPos>(newSize);
             int startIdx = currentSize >= MAX_CACHED_LOCATIONS_PER_BIOME ? 1 : 0;
             for (int i = startIdx; i < currentSize; i++) updated.add(current.get(i));
             updated.add(pos.immutable());

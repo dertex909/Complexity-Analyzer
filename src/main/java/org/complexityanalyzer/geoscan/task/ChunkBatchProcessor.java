@@ -131,7 +131,7 @@ public class ChunkBatchProcessor {
         var ctx = getBiomeContext(dimension);
 
         var toGenerate = new LongArrayList(size);
-        Long2ObjectOpenHashMap<ResourceLocation> biomeMap = new Long2ObjectOpenHashMap<>(size * 2);
+        var biomeMap = new Long2ObjectOpenHashMap<ResourceLocation>(size * 2);
 
         for (int i = 0; i < size; i++) {
             if (!session.isValid()) break;
@@ -149,7 +149,7 @@ public class ChunkBatchProcessor {
         var chunks = generator.generateBatch(toGenerate);
 
         int chunksSize = chunks.size();
-        ObjectArrayList<LoadedChunk> loadedChunks = new ObjectArrayList<>(chunksSize);
+        var loadedChunks = new ObjectArrayList<LoadedChunk>(chunksSize);
 
         for (int i = 0; i < chunksSize; i++) {
             var chunk = chunks.get(i);
@@ -167,7 +167,7 @@ public class ChunkBatchProcessor {
         int size = loadedChunks.size();
         if (size == 0 || !session.isValid()) return ObjectArrayList.of();
 
-        ObjectArrayList<ScanResult> results = new ObjectArrayList<>(size);
+        var results = new ObjectArrayList<ScanResult>(size);
 
         for (int i = 0; i < size; i++) {
             if (!session.isValid()) break;

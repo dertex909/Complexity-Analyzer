@@ -72,7 +72,7 @@ public class GeoScanCommands {
         output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.profile_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
-        for (ScanProfile profile : ScanProfile.values()) {
+        for (var profile : ScanProfile.values()) {
             String icon = getProfileIcon(profile);
             var msptInfo = profile.hasMsptLimit() ?
                     Component.translatable("complexityanalyzer.command.geoscan.profile.limit_mspt", (int) profile.msptLimit) :
@@ -271,7 +271,7 @@ public class GeoScanCommands {
 
         tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-        Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> progress = session.getBiomeProgress();
+        var progress = session.getBiomeProgress();
 
         int biomesShown = 0;
         int maxBiomes = 25;

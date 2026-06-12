@@ -36,7 +36,7 @@ public class ChunkGeneratorService {
 
     public ObjectArrayList<ChunkAccess> generateBatch(LongArrayList packedPositions) {
         int size = packedPositions.size();
-        ObjectArrayList<ChunkAccess> results = new ObjectArrayList<>(size);
+        var results = new ObjectArrayList<ChunkAccess>(size);
         for (int i = 0; i < size; i++) {
             if (Thread.currentThread().isInterrupted()) {
                 results.add(null);

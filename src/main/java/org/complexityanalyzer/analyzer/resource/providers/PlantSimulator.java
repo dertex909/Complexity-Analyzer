@@ -107,7 +107,7 @@ public class PlantSimulator {
         if (blocks == null || blocks.isEmpty()) return null;
         ensurePlatform(level);
         fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
-        Object2ObjectMap<Block, SimulationResult> results = new Object2ObjectOpenHashMap<>();
+        var results = new Object2ObjectOpenHashMap<Block, SimulationResult>();
 
         for (var block : blocks) {
             try {
@@ -147,7 +147,7 @@ public class PlantSimulator {
     }
 
     private SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
-        Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
+        var drops = new Reference2DoubleOpenHashMap<Item>();
         var random = RandomSource.create(12345);
 
         collectAndKillEntities(level, null);
@@ -164,7 +164,7 @@ public class PlantSimulator {
         level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
 
         int stages = growPlant(plantBlock, level, plantPos, random);
-        Reference2DoubleMap<Item> currentDrops = new Reference2DoubleOpenHashMap<>();
+        var currentDrops = new Reference2DoubleOpenHashMap<Item>();
         collectAndClear(level, currentDrops, groundPos);
         collectAndKillEntities(level, currentDrops);
         addDrops(drops, currentDrops);
@@ -177,7 +177,7 @@ public class PlantSimulator {
     }
 
     private Reference2DoubleMap<Item> simulateMatureLoot(Block block, ServerLevel level, @Nullable GroundResult ground) {
-        Reference2DoubleMap<Item> drops = new Reference2DoubleOpenHashMap<>();
+        var drops = new Reference2DoubleOpenHashMap<Item>();
         var lootPos = SIM_ORIGIN;
         var oldState = level.getBlockState(lootPos);
         BlockPos groundPos = null;
@@ -220,7 +220,7 @@ public class PlantSimulator {
                         .create(Optional.empty());
                 PlantSimulator.this.fakePlayer.setPos(lootPos.getX() + 0.5, lootPos.getY() + 0.5, lootPos.getZ() + 0.5);
 
-                ObjectArrayList<ItemStack> lootDrops = new ObjectArrayList<>();
+                var lootDrops = new ObjectArrayList<ItemStack>();
                 if (lootTable != LootTable.EMPTY) lootTable.getRandomItems(context, lootDrops::add);
 
                 if (lootDrops.isEmpty()) lootDrops.addAll(Block.getDrops(state, level, lootPos,
@@ -417,7 +417,7 @@ public class PlantSimulator {
         int chunkRadius = (SEARCH_RADIUS >> 4) + 1;
         for (int cx = -chunkRadius; cx <= chunkRadius; cx++) {
             for (int cz = -chunkRadius; cz <= chunkRadius; cz++) {
-                ChunkPos cp = new ChunkPos(originChunkX + cx, originChunkZ + cz);
+                var cp = new ChunkPos(originChunkX + cx, originChunkZ + cz);
                 level.getChunkSource().removeRegionTicket(TicketType.FORCED, cp, 2, cp);
             }
         }
@@ -429,7 +429,7 @@ public class PlantSimulator {
         var box = new AABB(simOriginX - r, simOriginY - DEPTH_BELOW - 1, simOriginZ - r,
                 simOriginX + r, simOriginY + HEIGHT_ABOVE + 1, simOriginZ + r);
         boolean drop = drops != null;
-        for (Entity entity : level.getEntities(null, box)) {
+        for (var entity : level.getEntities(null, box)) {
             if (entity instanceof Player) continue;
             if (entity instanceof ItemEntity itemEntity && drop) addDrop(drops, itemEntity.getItem(), 1.0);
             entity.discard();

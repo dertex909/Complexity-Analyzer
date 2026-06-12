@@ -75,7 +75,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
             }
         }
 
-        ObjectList<Block> candidates = new ObjectArrayList<>();
+        var candidates = new ObjectArrayList<Block>();
         for (var block : GameRegistryManager.getAllBlocks()) if (simulator.isPlant(block)) candidates.add(block);
 
         Object2ObjectMap<Block, PlantSimulator.SimulationResult> results;

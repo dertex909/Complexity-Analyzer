@@ -51,7 +51,7 @@ public class LootAnalyzeCommand {
             return 0;
         }
 
-        ObjectList<BaseResourceData> itemsFromTable = new ObjectArrayList<>();
+        var itemsFromTable = new ObjectArrayList<BaseResourceData>();
         for (var typeEntry : Reference2ObjectMaps.fastIterable(uls.getAllLootData())) {
             for (var data : typeEntry.getValue().values()) {
                 if (data.getDetails().contains(lootTableId.toString())) itemsFromTable.add(data);

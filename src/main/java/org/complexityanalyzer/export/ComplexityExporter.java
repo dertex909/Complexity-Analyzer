@@ -116,7 +116,7 @@ public class ComplexityExporter {
         var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         var exportFile = exportDir.resolve("items_all_" + timestamp + ".json");
-        ObjectList<ExportData.ItemData> allItems = new ObjectArrayList<>();
+        var allItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
             if (c != null) allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
@@ -132,7 +132,7 @@ public class ComplexityExporter {
         var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         var exportFile = exportDir.resolve("items_category_" + categoryName.toLowerCase() + "_" + timestamp + ".json");
-        ObjectList<ExportData.ItemData> filteredItems = new ObjectArrayList<>();
+        var filteredItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
             if (c != null) if (c.getCategory().getDisplayName().equalsIgnoreCase(categoryName)) {
@@ -149,7 +149,7 @@ public class ComplexityExporter {
         var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         var exportFile = exportDir.resolve("items_top" + count + "_" + timestamp + ".json");
-        ObjectList<ExportData.ItemData> allItems = new ObjectArrayList<>();
+        var allItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
             if (c != null && !Double.isInfinite(c.getComplexity())) {
@@ -168,7 +168,7 @@ public class ComplexityExporter {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         var exportFile = exportDir.resolve("items_all_" + timestamp + ".csv");
 
-        ObjectList<CsvRow> rows = new ObjectArrayList<>();
+        var rows = new ObjectArrayList<CsvRow>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
             if (c != null) rows.add(new CsvRow(
@@ -276,7 +276,7 @@ public class ComplexityExporter {
     private static ExportData.ItemData buildItemData(Item item, ResourceLocation itemId, ItemComplexity complexity,
                                                      AnalysisEngine engine) {
         var sourcesRaw = engine.findAllSourcesForItem(item);
-        ObjectList<ExportData.SourceData> sources = new ObjectArrayList<>();
+        var sources = new ObjectArrayList<ExportData.SourceData>();
         for (var data : sourcesRaw) sources.add(buildSourceData(data, engine));
         sources.sort(Comparator.comparingDouble(ExportData.SourceData::estimatedCost));
 
@@ -299,7 +299,7 @@ public class ComplexityExporter {
 
     private static ExportData.SourceData buildSourceData(BaseResourceData data, AnalysisEngine engine) {
         double fullCost = data.getBaseFactor();
-        Object2DoubleMap<String> ingredients = new Object2DoubleOpenHashMap<>();
+        var ingredients = new Object2DoubleOpenHashMap<String>();
         if (!data.getSourceItems().isEmpty()) {
             for (var entry : Reference2DoubleMaps.fastIterable(data.getSourceItems())) {
                 var sourceItem = entry.getKey();
@@ -320,7 +320,7 @@ public class ComplexityExporter {
 
     private static Path exportMobsAs(MinecraftServer server, AnalysisEngine engine, String format,
                                      String categoryFilter, int topN, String fileSuffix) throws IOException {
-        ObjectList<MobData> mobDataList = new ObjectArrayList<>();
+        var mobDataList = new ObjectArrayList<MobData>();
         for (var type : GameRegistryManager.getAllEntityTypes()) {
             if (type.getCategory() == MobCategory.MISC) continue;
             if (categoryFilter != null && !type.getCategory().getName().equalsIgnoreCase(categoryFilter)) continue;
@@ -365,7 +365,7 @@ public class ComplexityExporter {
         var props = mobProvider.getProperties(type);
         if (props == null) return null;
 
-        ObjectList<ExportData.MobDropData> drops = new ObjectArrayList<>();
+        var drops = new ObjectArrayList<ExportData.MobDropData>();
         var source = engine.getMobDropSource();
         if (source != null) for (var d : source.getDropsForEntity(type)) {
             drops.add(new ExportData.MobDropData(

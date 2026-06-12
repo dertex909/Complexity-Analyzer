@@ -75,7 +75,7 @@ public final class AntivirusStyleDetector {
     }
 
     private static CompositeDetection performDetection(Class<?> clazz) {
-        ObjectList<String> allEvidence = new ObjectArrayList<>();
+        var allEvidence = new ObjectArrayList<String>();
         int sigConfidence = 0;
         int behavioralConf = 0;
         var highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;

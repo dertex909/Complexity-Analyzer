@@ -61,7 +61,7 @@ public final class DynamicRecipeHarvester {
         var inputTypeMap = getTypeMap(recipeManager);
         ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
-        ObjectList<Item> allItems = GameRegistryManager.getAllItems();
+        var allItems = GameRegistryManager.getAllItems();
         if (allItems.isEmpty()) {
             ComplexityAnalyzer.LOGGER.info("[Harvest] No registered items, skipping dynamic probe.");
             return;
@@ -161,7 +161,7 @@ public final class DynamicRecipeHarvester {
     }
 
     private static @NotNull Object2ObjectMap<RecipeType<?>, ObjectSet<Class<?>>> getTypeMap(RecipeManager recipeManager) {
-        Object2ObjectMap<RecipeType<?>, ObjectSet<Class<?>>> inputTypeMap = new Object2ObjectLinkedOpenHashMap<>();
+        var inputTypeMap = new Object2ObjectLinkedOpenHashMap<RecipeType<?>, ObjectSet<Class<?>>>();
         for (var holder : recipeManager.getRecipes()) {
             var type = holder.value().getType();
             var inputClass = getRecipeInputClass(holder.value().getClass());

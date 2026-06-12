@@ -100,17 +100,23 @@ public enum ComplexityCategory {
         return low;
     }
 
-    /** @return the English display name of the tier. */
+    /**
+     * @return the English display name of the tier.
+     */
     public String getDisplayName() {
         return displayName;
     }
 
-    /** @return the i18n key for the tier's localized name. */
+    /**
+     * @return the i18n key for the tier's localized name.
+     */
     public String getTranslationKey() {
         return "complexityanalyzer.category." + name().toLowerCase();
     }
 
-    /** @return the chat colour associated with the tier. */
+    /**
+     * @return the chat colour associated with the tier.
+     */
     public ChatFormatting getColor() {
         return color;
     }

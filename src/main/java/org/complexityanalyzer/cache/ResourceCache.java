@@ -109,7 +109,7 @@ public final class ResourceCache implements ManagedCache {
                 var item = GameRegistryManager.getItem(itemId);
                 boolean keep = item != null && item != Items.AIR;
                 int n = buf.readVarInt();
-                ObjectList<T> list = keep ? new ObjectArrayList<>(n) : null;
+                var list = keep ? new ObjectArrayList<T>(n) : null;
                 for (int j = 0; j < n; j++) {
                     var element = reader.read(buf, item);
                     if (list != null && element != null) {
@@ -131,7 +131,7 @@ public final class ResourceCache implements ManagedCache {
 
     public <T> void save(Path file, long[] fingerprint, Writer<T> writer, Reference2ObjectMap<Item, ObjectList<T>> map) {
         if (file == null) return;
-        ByteBuf raw = Unpooled.buffer();
+        var raw = Unpooled.buffer();
         try {
             var buf = new FriendlyByteBuf(raw);
             buf.writeInt(MAGIC);

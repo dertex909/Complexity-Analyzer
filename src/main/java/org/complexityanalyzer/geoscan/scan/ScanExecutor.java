@@ -84,9 +84,9 @@ public class ScanExecutor {
         }
 
         ObjectArrayList<ChunkSnapshot> drainUpTo() {
-            ObjectArrayList<ChunkSnapshot> result = new ObjectArrayList<>(ScanConfig.BATCH_SAVE_THRESHOLD);
+            var result = new ObjectArrayList<ChunkSnapshot>(ScanConfig.BATCH_SAVE_THRESHOLD);
             for (int i = 0; i < ScanConfig.BATCH_SAVE_THRESHOLD; i++) {
-                ChunkSnapshot s = queue.poll();
+                var s = queue.poll();
                 if (s == null) break;
                 size.decrementAndGet();
                 result.add(s);
@@ -95,7 +95,7 @@ public class ScanExecutor {
         }
 
         ObjectArrayList<ChunkSnapshot> drainAll() {
-            ObjectArrayList<ChunkSnapshot> result = new ObjectArrayList<>();
+            var result = new ObjectArrayList<ChunkSnapshot>();
             ChunkSnapshot s;
             while ((s = queue.poll()) != null) {
                 size.decrementAndGet();
@@ -210,7 +210,7 @@ public class ScanExecutor {
         workerThreads.put(self, Boolean.TRUE);
         ComplexityAnalyzer.LOGGER.info("[SCAN] Worker started");
 
-        final ScanSession mySession = myCtx.session();
+        final var mySession = myCtx.session();
 
         try {
             while (!isShutdown.get() && !self.isInterrupted()) {

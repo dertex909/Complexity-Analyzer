@@ -79,9 +79,7 @@ public final class CabinBuilder {
         long t0 = System.currentTimeMillis();
         prepareIndices();
 
-        SectionBuilderContext ctx = new SectionBuilderContext(
-                engine, strings, orderedItems, itemIndex, orderedMobs, mobIndex, orderedFluids, fluidIndex
-        );
+        var ctx = new SectionBuilderContext(engine, strings, orderedItems, itemIndex, orderedMobs, mobIndex, orderedFluids, fluidIndex);
 
         var itemBuilder = new ItemSectionBuilder(ctx);
         var recipeBuilder = new RecipeSectionBuilder(ctx);
@@ -118,7 +116,7 @@ public final class CabinBuilder {
         byte[] stringsBytes = tw.run("encodeStrings", this::encodeStrings);
         tw.log();
 
-        ObjectList<CabinSection> out = new ObjectArrayList<>(20);
+        var out = new ObjectArrayList<CabinSection>(20);
         out.add(CabinSection.compressed(CabinFormat.SEC_META, meta));
         out.add(CabinSection.compressed(CabinFormat.SEC_STRINGS, stringsBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_ITEMS, itemResult.items));
@@ -154,7 +152,7 @@ public final class CabinBuilder {
 
         <T> T run(String name, java.util.function.Supplier<T> step) {
             long s = System.nanoTime();
-            T result = step.get();
+            var result = step.get();
             long ms = (System.nanoTime() - s) / 1_000_000L;
             sb.append(name).append('=').append(ms).append("ms ");
             return result;
@@ -172,7 +170,7 @@ public final class CabinBuilder {
         this.itemIndex.defaultReturnValue(-1);
         for (int i = 0; i < items.size(); i++) itemIndex.put(items.get(i), i);
 
-        ObjectList<EntityType<?>> mobs = new ObjectArrayList<>(GameRegistryManager.getAllEntityTypes().size());
+        var mobs = new ObjectArrayList<EntityType<?>>(GameRegistryManager.getAllEntityTypes().size());
         for (var t : GameRegistryManager.getAllEntityTypes()) {
             if (t.getCategory() == MISC) continue;
             mobs.add(t);
@@ -182,7 +180,7 @@ public final class CabinBuilder {
         this.mobIndex.defaultReturnValue(-1);
         for (int i = 0; i < mobs.size(); i++) mobIndex.put(mobs.get(i), i);
 
-        ObjectList<Fluid> fluids = new ObjectArrayList<>();
+        var fluids = new ObjectArrayList<Fluid>();
         for (var f : GameRegistryManager.getAllFluids()) {
             var id = GameRegistryManager.getFluidId(f);
             if (id != null && id.getPath().startsWith("flowing_")) continue;
@@ -225,7 +223,7 @@ public final class CabinBuilder {
         ComplexityCategory[] cats = ComplexityCategory.values();
         int catCount = cats.length;
         int n = orderedItems.size();
-        ObjectList<LongArrayList> buckets = new ObjectArrayList<>(catCount);
+        var buckets = new ObjectArrayList<LongArrayList>(catCount);
         for (int c = 0; c < catCount; c++) buckets.add(new LongArrayList());
         for (int i = 0; i < n; i++) {
             var item = orderedItems.get(i);
@@ -294,7 +292,7 @@ public final class CabinBuilder {
             return empty.toByteArray();
         }
         var registry = engine.getMachineRegistry();
-        Int2ObjectMap<IntArrayList> machineToOutputs = new Int2ObjectOpenHashMap<>();
+        var machineToOutputs = new Int2ObjectOpenHashMap<IntArrayList>();
         if (registry != null) for (var r : graph.getAllRecipes()) {
             var rt = r.getRecipeType();
             if (rt == null) continue;
@@ -392,7 +390,7 @@ public final class CabinBuilder {
     }
 
     private byte[] buildModSummary(RecipeGraph graph) {
-        Map<String, ModStats> stats = new HashMap<>();
+        var stats = new HashMap<String, ModStats>();
         int n = orderedItems.size();
         for (int i = 0; i < n; i++) {
             var item = orderedItems.get(i);
@@ -406,16 +404,14 @@ public final class CabinBuilder {
                 s.complexityItems++;
             }
         }
-        if (graph != null) {
-            for (int i = 0; i < n; i++) {
-                var item = orderedItems.get(i);
-                var recipes = graph.getRecipes(item);
-                if (recipes.isEmpty()) continue;
-                var id = GameRegistryManager.getItemId(item);
-                String modId = id != null ? id.getNamespace() : "unknown";
-                var s = stats.get(modId);
-                if (s != null) s.recipeCount += recipes.size();
-            }
+        if (graph != null) for (int i = 0; i < n; i++) {
+            var item = orderedItems.get(i);
+            var recipes = graph.getRecipes(item);
+            if (recipes.isEmpty()) continue;
+            var id = GameRegistryManager.getItemId(item);
+            String modId = id != null ? id.getNamespace() : "unknown";
+            var s = stats.get(modId);
+            if (s != null) s.recipeCount += recipes.size();
         }
         var out = new LeBuf(4 + stats.size() * 20);
         out.i32(stats.size());

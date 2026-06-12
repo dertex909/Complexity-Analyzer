@@ -20,6 +20,7 @@ package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
@@ -86,8 +87,7 @@ public final class PatternSignatureEngine {
                 0, 0, 0, 0,
                 0, 0, 0,
                 0, 0, 0,
-                it.unimi.dsi.fastutil.objects.ObjectLists.emptyList(),
-                it.unimi.dsi.fastutil.objects.ObjectLists.emptyList()
+                ObjectLists.emptyList(), ObjectLists.emptyList()
         );
         var existing = PROFILE_CACHE.get(clazz);
         if (existing != null) return existing;
@@ -102,8 +102,8 @@ public final class PatternSignatureEngine {
 
     private static ClassProfile buildProfile(Class<?> clazz) {
         String className = clazz.getName().replace('.', '/');
-        ObjectList<String> evidence = new ObjectArrayList<>();
-        ObjectList<String> interfaces = new ObjectArrayList<>();
+        var evidence = new ObjectArrayList<String>();
+        var interfaces = new ObjectArrayList<String>();
         int signatureScore = 0;
         if (Recipe.class.isAssignableFrom(clazz)) {
             signatureScore = 100;

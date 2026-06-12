@@ -46,8 +46,8 @@ public class ComplexityCache {
 
     @Nullable
     public ItemComplexity get(Item item) {
-        SoftReference<ItemComplexity> ref = cache.get(item);
-        ItemComplexity result = (ref != null) ? ref.get() : null;
+        var ref = cache.get(item);
+        var result = (ref != null) ? ref.get() : null;
 
         if (result != null) {
             hits.incrementAndGet();

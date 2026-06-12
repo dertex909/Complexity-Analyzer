@@ -63,7 +63,7 @@ public final class CabinReader {
         int sectionCount = LeBuf.readU16(data, p);
         p += 2;
         if (p + sectionCount * 26L > data.length) throw new IOException("Truncated TOC");
-        Byte2ObjectMap<Section> map = new Byte2ObjectOpenHashMap<>(sectionCount);
+        var map = new Byte2ObjectOpenHashMap<Section>(sectionCount);
         for (int i = 0; i < sectionCount; i++) {
             byte id = data[p++];
             byte codec = data[p++];

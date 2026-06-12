@@ -53,58 +53,80 @@ public class ItemComplexity {
         this.optimalRecipe = builder.optimalRecipe;
     }
 
-    /** @return the item this result describes. */
+    /**
+     * @return the item this result describes.
+     */
     public Item getItem() {
         return item;
     }
 
-    /** @return the numeric complexity score; higher is harder, {@code -1} if uncalculable, {@code Infinity} if unobtainable. */
+    /**
+     * @return the numeric complexity score; higher is harder, {@code -1} if uncalculable, {@code Infinity} if unobtainable.
+     */
     public double getComplexity() {
         return complexity;
     }
 
-    /** @return the depth of the optimal crafting tree (0 for raw/base items). */
+    /**
+     * @return the depth of the optimal crafting tree (0 for raw/base items).
+     */
     public int getDepth() {
         return depth;
     }
 
-    /** @return the total number of ingredient units across the resolved crafting tree. */
+    /**
+     * @return the total number of ingredient units across the resolved crafting tree.
+     */
     public int getTotalIngredients() {
         return totalIngredients;
     }
 
-    /** @return the bucketed difficulty tier derived from the score. */
+    /**
+     * @return the bucketed difficulty tier derived from the score.
+     */
     public ComplexityCategory getCategory() {
         return category;
     }
 
-    /** @return {@code true} if a dependency cycle was detected while resolving this item. */
+    /**
+     * @return {@code true} if a dependency cycle was detected while resolving this item.
+     */
     public boolean hasCycle() {
         return hasCycle;
     }
 
-    /** @return {@code true} if the item is produced by at least one recipe (vs. only raw sources). */
+    /**
+     * @return {@code true} if the item is produced by at least one recipe (vs. only raw sources).
+     */
     public boolean hasRecipe() {
         return hasRecipe;
     }
 
-    /** @return the failure reason if the item could not be evaluated, otherwise {@code null}. */
+    /**
+     * @return the failure reason if the item could not be evaluated, otherwise {@code null}.
+     */
     public String getErrorMessage() {
         return errorMessage;
     }
 
-    /** @return the recipe the solver selected as cheapest, or {@code null} for raw/uncraftable items. */
+    /**
+     * @return the recipe the solver selected as cheapest, or {@code null} for raw/uncraftable items.
+     */
     @Nullable
     public RecipeNode getOptimalRecipe() {
         return optimalRecipe;
     }
 
-    /** @return {@code true} if the result is usable (no error, no cycle, non-negative score). */
+    /**
+     * @return {@code true} if the result is usable (no error, no cycle, non-negative score).
+     */
     public boolean isValid() {
         return errorMessage == null && !hasCycle && complexity >= 0;
     }
 
-    /** Fluent builder for {@link ItemComplexity} instances. */
+    /**
+     * Fluent builder for {@link ItemComplexity} instances.
+     */
     public static class Builder {
         private final Item item;
         private double complexity = 0;

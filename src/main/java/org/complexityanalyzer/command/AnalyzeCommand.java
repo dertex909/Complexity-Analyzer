@@ -120,7 +120,7 @@ public final class AnalyzeCommand {
         double complexity = optimal.getComplexity();
         output.sendStatusLine(source, "⚙", "complexityanalyzer.command.analyze.complexity_section", ChatFormatting.YELLOW);
         output.sendSubEntry(source, getCategoryIcon(category), "complexityanalyzer.command.analyze.category_label", category.getTranslationKey(), ChatFormatting.GRAY, category.getColor());
-        ChatFormatting valueColor = getComplexityColor(complexity);
+        var valueColor = getComplexityColor(complexity);
         String valueString;
         if (complexity < 0) {
             valueString = "—";
@@ -156,12 +156,12 @@ public final class AnalyzeCommand {
         var allSources = engine.findAllSourcesForItem(item);
         if (!allSources.isEmpty()) {
             output.sendTip(source, "complexityanalyzer.command.analyze.alt_sources");
-            ObjectList<SourceWithCost> sortedSources = new ObjectArrayList<>(allSources.size());
+            var sortedSources = new ObjectArrayList<SourceWithCost>(allSources.size());
             for (var data : allSources) {
                 double fullEstimatedCost = data.getBaseFactor();
                 var sourceItems = data.getSourceItems();
                 if (!sourceItems.isEmpty()) for (var entry : Reference2DoubleMaps.fastIterable(sourceItems)) {
-                    Item sourceItem = entry.getKey();
+                    var sourceItem = entry.getKey();
                     double amount = entry.getDoubleValue();
                     var sourceComplexity = engine.getComplexityResult(sourceItem);
                     if (sourceComplexity != null && sourceComplexity.isValid()) {

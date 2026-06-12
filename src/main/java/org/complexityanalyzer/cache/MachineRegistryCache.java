@@ -41,7 +41,7 @@ public final class MachineRegistryCache implements ManagedCache {
 
     public static final MachineRegistryCache INSTANCE = new MachineRegistryCache();
 
-    private static final int MAGIC = 0x43414332; // "CAC2"
+    private static final int MAGIC = 0x43414332;
     private static final int VERSION = 1;
 
     public record Fingerprint(long blocks, long mods) {

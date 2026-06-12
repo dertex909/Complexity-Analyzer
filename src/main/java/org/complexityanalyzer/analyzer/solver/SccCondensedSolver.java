@@ -698,7 +698,7 @@ public final class SccCondensedSolver {
                 }
 
                 if (!recipe.getFluidOutputs().isEmpty()) {
-                    Reference2DoubleOpenHashMap<Fluid> grouped = new Reference2DoubleOpenHashMap<>();
+                    var grouped = new Reference2DoubleOpenHashMap<Fluid>();
                     for (var stack : recipe.getFluidOutputs()) {
                         var normalized = normalizeFluid(stack.getFluid());
                         if (normalized == Fluids.EMPTY || isProtectedFluid(normalized)) continue;
@@ -731,7 +731,7 @@ public final class SccCondensedSolver {
                 }
 
                 if (!recipe.getItemOutputs().isEmpty()) {
-                    Reference2DoubleOpenHashMap<Item> groupedItems = new Reference2DoubleOpenHashMap<>();
+                    var groupedItems = new Reference2DoubleOpenHashMap<Item>();
                     for (var stack : recipe.getItemOutputs()) {
                         if (stack == null || stack.isEmpty()) continue;
                         var outItem = stack.getItem();

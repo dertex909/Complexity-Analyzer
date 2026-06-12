@@ -102,8 +102,7 @@ public final class UniversalAccessorResolver {
 
     private static ResolvedAccessors empty() {
         return new ResolvedAccessors(
-                ObjectLists.emptyList(), ObjectLists.emptyList(),
-                ObjectLists.emptyList(), ObjectLists.emptyList()
+                ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList()
         );
     }
 
@@ -224,9 +223,8 @@ public final class UniversalAccessorResolver {
 
         @Override
         public String toString() {
-            return method.getDeclaringClass().getSimpleName() + "." + method.getName()
-                    + "() → " + method.getReturnType().getSimpleName()
-                    + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
+            return method.getDeclaringClass().getSimpleName() + "." + method.getName() + "() → " + method.getReturnType
+                    ().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
         public Object extract(Object recipe, Level level) throws Throwable {
@@ -269,9 +267,8 @@ public final class UniversalAccessorResolver {
 
         @Override
         public String toString() {
-            return field.getDeclaringClass().getSimpleName() + "." + field.getName()
-                    + " : " + field.getType().getSimpleName()
-                    + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
+            return field.getDeclaringClass().getSimpleName() + "." + field.getName() + " : " + field.getType()
+                    .getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
         @Override

@@ -37,7 +37,6 @@ import org.complexityanalyzer.geoscan.refinement.DataRefiner;
 import org.complexityanalyzer.geoscan.scan.*;
 import org.complexityanalyzer.geoscan.task.*;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +66,7 @@ public class GeoAnalysisManager {
         this.database = database;
         this.analysisEngine = engine;
 
-        WorldScanner worldScanner = new WorldScanner(server);
+        var worldScanner = new WorldScanner(server);
         this.batchProcessor = new ChunkBatchProcessor(server);
         this.notifier = new ScanNotifier(server);
         this.coordinator = new ScanCoordinator(server, database, worldScanner, notifier);
@@ -94,7 +93,7 @@ public class GeoAnalysisManager {
     public void startInitialScanIfNeeded() {
         if (isShutdown.get()) return;
 
-        Executor executor = analysisEngine.getBackgroundExecutor();
+        var executor = analysisEngine.getBackgroundExecutor();
         if (executor == null) {
             ComplexityAnalyzer.LOGGER.error("Cannot start initial scan, executor not ready!");
             return;
@@ -104,7 +103,7 @@ public class GeoAnalysisManager {
             executor.execute(() -> {
                 if (isShutdown.get()) return;
 
-                ScanMetadata.ScanPhase phase = database.getScanPhase();
+                var phase = database.getScanPhase();
 
                 if (phase == ScanMetadata.ScanPhase.COMPLETE) {
                     notifier.logInfo(Component.translatable("complexityanalyzer.notifier.complete").getString());
@@ -229,7 +228,7 @@ public class GeoAnalysisManager {
                 Component.translatable("complexityanalyzer.geoscan.profile." + scheduledProfile.commandName).getString(),
                 countdownTicks.get() / 20).getString();
 
-        ScanMetadata.ScanPhase phase = database.getScanPhase();
+        var phase = database.getScanPhase();
 
         return switch (phase) {
             case IDLE -> Component.translatable("complexityanalyzer.geoscan.status.idle").getString();

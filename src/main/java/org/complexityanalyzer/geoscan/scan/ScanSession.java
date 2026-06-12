@@ -93,7 +93,7 @@ public class ScanSession {
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> getBiomeProgress() {
-        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> result = new Object2ObjectOpenHashMap<>();
+        var result = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>>();
 
         for (var entry : remainingNeeds.entrySet()) {
             var key = entry.getKey();
@@ -165,7 +165,7 @@ public class ScanSession {
     }
 
     public ResourceLocation getRandomNeededBiome(ResourceLocation dim) {
-        ObjectArrayList<ResourceLocation> needed = new ObjectArrayList<>();
+        var needed = new ObjectArrayList<ResourceLocation>();
 
         for (var entry : remainingNeeds.entrySet()) {
             if (entry.getKey().dim().equals(dim) && entry.getValue().get() > 0) needed.add(entry.getKey().biome());
@@ -176,11 +176,11 @@ public class ScanSession {
     }
 
     public ObjectArrayList<ResourceLocation> getDimensionsWithNeeds() {
-        ObjectOpenHashSet<ResourceLocation> dims = new ObjectOpenHashSet<>();
+        var dims = new ObjectOpenHashSet<ResourceLocation>();
         for (var entry : remainingNeeds.entrySet()) {
             if (entry.getValue().get() > 0) dims.add(entry.getKey().dim());
         }
-        ObjectArrayList<ResourceLocation> result = new ObjectArrayList<>(dims.size());
+        var result = new ObjectArrayList<ResourceLocation>(dims.size());
         result.addAll(dims);
         return result;
     }

@@ -73,11 +73,6 @@ public class MobDropSource implements IResourceSource {
     private static final int SIMULATION_COUNT = 100;
     private static final int LOGIC_VERSION = 1;
 
-    private static String fmt(double v) {
-        if (Double.isInfinite(v)) return "∞";
-        return v >= 1000 ? String.format("%.0f", v) : String.format("%.2f", v);
-    }
-
     private static final ReferenceSet<EntityType<?>> SPECIAL_KILL_ENTITIES = new ReferenceOpenHashSet<>(new EntityType<?>[]{
             EntityType.WITHER,
             EntityType.ENDER_DRAGON,
@@ -324,7 +319,7 @@ public class MobDropSource implements IResourceSource {
                 var context = new LootContext.Builder(lootParams)
                         .withOptionalRandomSource(RandomSource.create(baseSeed + i)).create(Optional.empty());
 
-                ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
+                var drops = new ObjectArrayList<ItemStack>();
                 if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
                 try {
                     lootTable.getRandomItems(context, drops::add);

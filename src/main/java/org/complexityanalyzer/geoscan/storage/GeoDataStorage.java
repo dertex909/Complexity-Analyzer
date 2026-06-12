@@ -131,7 +131,7 @@ public class GeoDataStorage {
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> getAllReconFilePaths() {
-        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> allPaths = new Object2ObjectOpenHashMap<>();
+        var allPaths = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>>();
         if (!Files.exists(reconDir)) return allPaths;
 
         try (var dimNamespaces = Files.list(reconDir)) {
@@ -146,7 +146,7 @@ public class GeoDataStorage {
                                 dimNamespaceDir.getFileName().toString(),
                                 dimPathDir.getFileName().toString()
                         );
-                        Object2ObjectOpenHashMap<ResourceLocation, Path> biomeFiles = new Object2ObjectOpenHashMap<>();
+                        var biomeFiles = new Object2ObjectOpenHashMap<ResourceLocation, Path>();
                         try (var files = Files.list(dimPathDir)) {
                             var fileIt = files.filter(f -> f.toString().endsWith(".jsonl")).iterator();
                             while (fileIt.hasNext()) {
@@ -175,7 +175,7 @@ public class GeoDataStorage {
     public Stream<ChunkSnapshot> streamReconFile(Path path) {
         if (!Files.exists(path)) return Stream.empty();
         try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
-            ObjectArrayList<ChunkSnapshot> snapshots = new ObjectArrayList<>();
+            var snapshots = new ObjectArrayList<ChunkSnapshot>();
             var it = lines.iterator();
             while (it.hasNext()) {
                 String line = it.next();
@@ -200,7 +200,7 @@ public class GeoDataStorage {
             return data;
         });
 
-        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> result = new Object2ObjectOpenHashMap<>();
+        var result = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>>();
         for (var entry : loadedData.object2ObjectEntrySet()) {
             result.put(entry.getKey(), new Object2ObjectOpenHashMap<>(entry.getValue()));
         }
@@ -257,7 +257,7 @@ public class GeoDataStorage {
     }
 
     private <T> Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
-        Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> allData = new Object2ObjectOpenHashMap<>();
+        var allData = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>>();
         if (!Files.exists(rootDir)) return allData;
 
         try (var dimNamespaces = Files.list(rootDir)) {
@@ -273,7 +273,7 @@ public class GeoDataStorage {
                                 dimPathDir.getFileName().toString()
                         );
 
-                        Object2ObjectOpenHashMap<ResourceLocation, T> biomeData = new Object2ObjectOpenHashMap<>();
+                        var biomeData = new Object2ObjectOpenHashMap<ResourceLocation, T>();
                         try (var biomeFiles = Files.list(dimPathDir)) {
                             var fileIt = biomeFiles.filter(f -> f.toString().endsWith(".json")).iterator();
                             while (fileIt.hasNext()) {
@@ -334,7 +334,7 @@ public class GeoDataStorage {
     }
 
     public Object2ObjectMap<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
-        Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet> allCoordinates = new Object2ObjectOpenHashMap<>();
+        var allCoordinates = new Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet>();
         var allPaths = getAllReconFilePaths();
 
         for (var dimEntry : allPaths.object2ObjectEntrySet()) {

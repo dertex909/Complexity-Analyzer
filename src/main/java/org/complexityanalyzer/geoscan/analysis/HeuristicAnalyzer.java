@@ -29,7 +29,6 @@ import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 
 import java.nio.file.Path;
-import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -54,7 +53,7 @@ public class HeuristicAnalyzer {
     public void buildHeuristics(Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> reconFilePaths, GeoDataStorage storage) {
         dimensionalHeuristics.clear();
 
-        Object2ObjectOpenHashMap<ResourceLocation, ObjectArrayList<Path>> pathsByDimension = new Object2ObjectOpenHashMap<>();
+        var pathsByDimension = new Object2ObjectOpenHashMap<ResourceLocation, ObjectArrayList<Path>>();
         for (var dimEntry : reconFilePaths.object2ObjectEntrySet()) {
             var list = pathsByDimension.computeIfAbsent(dimEntry.getKey(), k -> new ObjectArrayList<>());
             list.addAll(dimEntry.getValue().values());
@@ -65,7 +64,7 @@ public class HeuristicAnalyzer {
             var paths = entry.getValue();
             ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);
 
-            Object2LongOpenHashMap<Block> totalCounts = new Object2LongOpenHashMap<>();
+            var totalCounts = new Object2LongOpenHashMap<Block>();
             totalCounts.defaultReturnValue(0L);
 
             long totalBlocksInDim = 0;
@@ -88,7 +87,7 @@ public class HeuristicAnalyzer {
                 }
             }
 
-            ReferenceOpenHashSet<Block> dimensionHeuristic = new ReferenceOpenHashSet<>();
+            var dimensionHeuristic = new ReferenceOpenHashSet<Block>();
             if (totalBlocksInDim > 0) {
                 var it = totalCounts.object2LongEntrySet().fastIterator();
                 while (it.hasNext()) {
@@ -109,7 +108,7 @@ public class HeuristicAnalyzer {
 
     public BiomeScanData refineRawData(Stream<ChunkSnapshot> snapshotStream, ResourceLocation dimensionId) {
         var finalCleanData = new BiomeScanData();
-        Iterator<ChunkSnapshot> it = snapshotStream.iterator();
+        var it = snapshotStream.iterator();
         while (it.hasNext()) {
             var snapshot = it.next();
             if (!isChunkCleanByHeuristic(snapshot, dimensionId)) continue;

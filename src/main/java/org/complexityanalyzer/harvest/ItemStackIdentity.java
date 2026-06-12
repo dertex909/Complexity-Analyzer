@@ -69,10 +69,6 @@ public final class ItemStackIdentity {
         return sameItemData(a, b, provider) && a.getCount() == b.getCount();
     }
 
-    public static boolean hasStackData(ItemStack stack) {
-        return hasStackData(stack, null);
-    }
-
     public static boolean hasStackData(ItemStack stack, HolderLookup.Provider provider) {
         if (stack == null || stack.isEmpty()) return false;
         if (!stack.isComponentsPatchEmpty()) return true;
@@ -104,7 +100,7 @@ public final class ItemStackIdentity {
 
     public static String dataKey(ItemStack stack, HolderLookup.Provider provider) {
         if (stack == null || stack.isEmpty()) return "";
-        StringBuilder key = new StringBuilder();
+        var key = new StringBuilder();
         key.append("item=").append(stack.getItem());
         key.append(";components=").append(stack.getComponentsPatch());
         var attachments = serializedAttachments(stack, provider);

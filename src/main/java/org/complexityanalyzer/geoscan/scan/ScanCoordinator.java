@@ -95,7 +95,7 @@ public class ScanCoordinator {
         if (!session.isValid()) return ObjectArrayList.of();
 
         database.loadAll();
-        ObjectArrayList<ScanTask> tasks = new ObjectArrayList<>();
+        var tasks = new ObjectArrayList<ScanTask>();
         int chunksPerBiome = session.getChunksPerBiome();
 
         ComplexityAnalyzer.LOGGER.debug("[Prepare] Building scan tasks for {} chunks/biome", chunksPerBiome);
@@ -125,7 +125,7 @@ public class ScanCoordinator {
     }
 
     private ObjectOpenHashSet<ResourceKey<Biome>> getBiomesForDimension(ServerLevel level) {
-        ObjectOpenHashSet<ResourceKey<Biome>> biomes = new ObjectOpenHashSet<>();
+        var biomes = new ObjectOpenHashSet<ResourceKey<Biome>>();
         var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
         ComplexityAnalyzer.LOGGER.info("[Prepare] Dimension {} biomeSource: {}",

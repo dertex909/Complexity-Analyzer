@@ -86,12 +86,12 @@ public final class CabinBackgroundService {
         try {
             pool = ThreadPoolManager.getInstance().getComputePool();
         } catch (Throwable t) {
-            CompletableFuture<Snapshot> failed = new CompletableFuture<>();
+            var failed = new CompletableFuture<Snapshot>();
             failed.completeExceptionally(t);
             return failed;
         }
 
-        CompletableFuture<Snapshot> future = new CompletableFuture<>();
+        var future = new CompletableFuture<Snapshot>();
         if (!inflight.compareAndSet(null, future)) return inflight.get();
         status.set(Status.BUILDING);
         rebuildPending = false;

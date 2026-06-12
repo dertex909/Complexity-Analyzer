@@ -34,7 +34,7 @@ public class ChunkAnalyzer {
     private final ConcurrentHashMap<Block, String> blockIdCache = new ConcurrentHashMap<>();
 
     public @Nullable ChunkSnapshot createSnapshot(ChunkAccess chunk) {
-        Reference2IntOpenHashMap<Block> blockCounts = new Reference2IntOpenHashMap<>();
+        var blockCounts = new Reference2IntOpenHashMap<Block>();
         blockCounts.defaultReturnValue(0);
         LevelChunkSection[] sections = chunk.getSections();
 
@@ -49,7 +49,7 @@ public class ChunkAnalyzer {
             });
         }
 
-        Object2IntOpenHashMap<String> finalCounts = new Object2IntOpenHashMap<>(blockCounts.size());
+        var finalCounts = new Object2IntOpenHashMap<String>(blockCounts.size());
         finalCounts.defaultReturnValue(0);
 
         var it = blockCounts.reference2IntEntrySet().fastIterator();

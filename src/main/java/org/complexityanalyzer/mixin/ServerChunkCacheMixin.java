@@ -33,8 +33,7 @@ public abstract class ServerChunkCacheMixin {
     private void onGetChunk(int chunkX, int chunkZ, ChunkStatus requiredStatus, boolean load,
                             CallbackInfoReturnable<ChunkAccess> cir) {
         String threadName = Thread.currentThread().getName();
-        if (threadName.startsWith("Complexity-Compute-") || threadName.startsWith("Complexity-ForkJoin-")) {
+        if (threadName.startsWith("Complexity-Compute-") || threadName.startsWith("Complexity-ForkJoin-"))
             cir.setReturnValue(null);
-        }
     }
 }

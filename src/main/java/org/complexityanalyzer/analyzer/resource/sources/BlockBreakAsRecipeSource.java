@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
+import com.google.errorprone.annotations.Var;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
@@ -106,10 +107,10 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         var toolsToTest = createTestTools(serverLevel);
         var computePool = ThreadPoolManager.getInstance().getComputePool();
 
-        ConcurrentHashMap<Item, ConcurrentLinkedQueue<BaseResourceData>> localPaths = new ConcurrentHashMap<>();
-        ObjectList<CompletableFuture<Void>> futures = new ObjectArrayList<>();
+        var localPaths = new ConcurrentHashMap<Item, ConcurrentLinkedQueue<BaseResourceData>>();
+        var futures = new ObjectArrayList<CompletableFuture<Void>>();
 
-        ObjectList<Block> blocksToProcess = new ObjectArrayList<>();
+        var blocksToProcess = new ObjectArrayList<Block>();
         for (var blockToMine : GameRegistryManager.getAllBlocks()) {
             if (blockToMine == Blocks.AIR || blockToMine == Blocks.CAVE_AIR || blockToMine == Blocks.VOID_AIR) {
                 continue;
@@ -138,7 +139,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                     float hardness = blockToMine.defaultDestroyTime();
                     try {
                         var defaultState = blockToMine.defaultBlockState();
-                        ObjectList<ItemStack> candidates = new ObjectArrayList<>();
+                        var candidates = new ObjectArrayList<ItemStack>();
                         boolean requiresTool = defaultState.requiresCorrectToolForDrops();
 
                         if (!requiresTool) candidates.add(ItemStack.EMPTY);
@@ -320,7 +321,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
     private Reference2DoubleMap<Item> getStableDrop(LootTable lootTable, ServerLevel level,
                                                     BlockState blockState, ItemStack tool, long baseSeed) {
-        Reference2LongMap<Item> totalCounts = new Reference2LongOpenHashMap<>();
+        var totalCounts = new Reference2LongOpenHashMap<Item>();
         Reference2LongMap<Item> firstSample = null;
 
         for (int i = 0; i < SAMPLE_COUNT; i++) {
@@ -342,7 +343,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
             lootTable.getRandomItems(context, drops::add);
 
-            Reference2LongMap<Item> currentSample = new Reference2LongOpenHashMap<>();
+            var currentSample = new Reference2LongOpenHashMap<Item>();
             for (var stack : drops) {
                 if (!stack.isEmpty()) {
                     currentSample.put(stack.getItem(), currentSample.getLong(stack.getItem()) + stack.getCount());
@@ -360,7 +361,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             }
         }
 
-        Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
+        var averages = new Reference2DoubleOpenHashMap<Item>();
         for (var entry : totalCounts.reference2LongEntrySet()) {
             averages.put(entry.getKey(), (double) entry.getLongValue() / SAMPLE_COUNT);
         }
@@ -377,13 +378,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     }
 
     private Reference2DoubleMap<Item> scaleAverages(Reference2LongMap<Item> sample) {
-        Reference2DoubleMap<Item> averages = new Reference2DoubleOpenHashMap<>();
+        var averages = new Reference2DoubleOpenHashMap<Item>();
         for (var entry : sample.reference2LongEntrySet()) averages.put(entry.getKey(), (double) entry.getLongValue());
         return averages;
     }
 
     private Reference2DoubleMap<Item> calculateSourceItems(ItemStack toolStack, double itemsPerAction) {
-        Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
+        var sourceItems = new Reference2DoubleOpenHashMap<Item>();
         if (itemsPerAction <= 0) return sourceItems;
 
         double invYield = 1.0 / itemsPerAction;

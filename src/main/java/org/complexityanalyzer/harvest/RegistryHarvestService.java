@@ -19,9 +19,7 @@
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.world.level.Level;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -50,8 +48,8 @@ public final class RegistryHarvestService {
         int harvested = 0;
         int rejected = 0;
         int failed = 0;
-        ObjectList<RecipeNode> nodes = new ObjectArrayList<>();
-        ObjectSet<ResourceLocation> knownRecipeIds = new ObjectOpenHashSet<>();
+        var nodes = new ObjectArrayList<RecipeNode>();
+        var knownRecipeIds = new ObjectOpenHashSet<ResourceLocation>();
 
         var debugTrace = new FullDebugTracePipeline(worldDir);
 

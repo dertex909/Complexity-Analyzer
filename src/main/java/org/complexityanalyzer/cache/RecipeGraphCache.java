@@ -214,7 +214,7 @@ public final class RecipeGraphCache implements ManagedCache {
             buf.writeVarInt(slot.getCount());
             var variants = slot.getVariants();
             buf.writeVarInt(variants.size());
-            for (var stack : variants) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+            for (var stack : variants) writeItemStack(buf, stack);
         }
 
         var fluidIngredients = node.getFluidIngredients();
@@ -242,11 +242,11 @@ public final class RecipeGraphCache implements ManagedCache {
 
         var itemOutputs = node.getItemOutputs();
         buf.writeVarInt(itemOutputs.size());
-        for (var stack : itemOutputs) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+        for (var stack : itemOutputs) writeItemStack(buf, stack);
 
         var fluidOutputs = node.getFluidOutputs();
         buf.writeVarInt(fluidOutputs.size());
-        for (var fluidStack : fluidOutputs) FluidStack.OPTIONAL_STREAM_CODEC.encode(buf, fluidStack);
+        for (var fluidStack : fluidOutputs) writeFluidStack(buf, fluidStack);
     }
 
     private static RecipeNode readNode(RegistryFriendlyByteBuf buf) {
@@ -268,7 +268,7 @@ public final class RecipeGraphCache implements ManagedCache {
             int count = buf.readVarInt();
             int variantCount = buf.readVarInt();
             var variants = new ObjectArrayList<ItemStack>(variantCount);
-            for (int v = 0; v < variantCount; v++) variants.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            for (int v = 0; v < variantCount; v++) variants.add(readItemStack(buf));
             builder.addIngredient(variants, count);
         }
 
@@ -299,18 +299,62 @@ public final class RecipeGraphCache implements ManagedCache {
         int itemOutputCount = buf.readVarInt();
         if (itemOutputCount > 0) {
             var outputs = new ObjectArrayList<ItemStack>(itemOutputCount);
-            for (int i = 0; i < itemOutputCount; i++) outputs.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            for (int i = 0; i < itemOutputCount; i++) outputs.add(readItemStack(buf));
             builder.itemOutputs(outputs);
         }
 
         int fluidOutputCount = buf.readVarInt();
         if (fluidOutputCount > 0) {
             var outputs = new ObjectArrayList<FluidStack>(fluidOutputCount);
-            for (int i = 0; i < fluidOutputCount; i++) outputs.add(FluidStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            for (int i = 0; i < fluidOutputCount; i++) outputs.add(readFluidStack(buf));
             builder.fluidOutputs(outputs);
         }
 
         return builder.build();
+    }
+
+    private static void writeItemStack(RegistryFriendlyByteBuf buf, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            buf.writeBoolean(false);
+        } else {
+            buf.writeBoolean(true);
+            try {
+                var tag = stack.save(buf.registryAccess());
+                buf.writeNbt(tag);
+            } catch (Throwable t) {
+                buf.writeNbt(null);
+            }
+        }
+    }
+
+    private static ItemStack readItemStack(RegistryFriendlyByteBuf buf) {
+        if (!buf.readBoolean()) return ItemStack.EMPTY;
+        try {
+            var tag = buf.readNbt();
+            if (tag != null) return ItemStack.parse(buf.registryAccess(), tag).orElse(ItemStack.EMPTY);
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("Failed to load item stack from cache!", t);
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static void writeFluidStack(RegistryFriendlyByteBuf buf, FluidStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            buf.writeBoolean(false);
+        } else {
+            buf.writeBoolean(true);
+            buf.writeResourceLocation(fluidId(stack.getFluid()));
+            buf.writeVarInt(stack.getAmount());
+        }
+    }
+
+    private static FluidStack readFluidStack(RegistryFriendlyByteBuf buf) {
+        if (!buf.readBoolean()) return FluidStack.EMPTY;
+        var id = buf.readResourceLocation();
+        int amount = buf.readVarInt();
+        var fluid = GameRegistryManager.getFluid(id);
+        if (fluid != null) return new FluidStack(fluid, amount);
+        return FluidStack.EMPTY;
     }
 
     private static ResourceLocation itemId(Item item) {

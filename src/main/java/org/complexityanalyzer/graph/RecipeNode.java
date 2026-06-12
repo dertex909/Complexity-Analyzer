@@ -30,6 +30,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 /**
@@ -74,10 +75,29 @@ public class RecipeNode {
     private RecipeNode(Builder builder) {
         this.ingredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.ingredients));
         this.fluidIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidIngredients));
-        this.chemicalIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.chemicalIngredients));
-        this.itemOutputs = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.itemOutputs));
-        this.fluidOutputs = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidOutputs));
-        this.chemicalOutputs = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.chemicalOutputs));
+
+        var sortedChemInputs = new ObjectArrayList<>(builder.chemicalIngredients);
+        sortedChemInputs.sort(Comparator.comparing(ci -> ci.id().toString() + "x" + ci.amount()));
+        this.chemicalIngredients = ObjectLists.unmodifiable(sortedChemInputs);
+
+        var sortedItemOutputs = new ObjectArrayList<>(builder.itemOutputs);
+        sortedItemOutputs.sort(Comparator.comparing(stack -> {
+            var id = GameRegistryManager.getItemId(stack.getItem());
+            return (id != null ? id.toString() : "") + "x" + stack.getCount();
+        }));
+        this.itemOutputs = ObjectLists.unmodifiable(sortedItemOutputs);
+
+        var sortedFluidOutputs = new ObjectArrayList<>(builder.fluidOutputs);
+        sortedFluidOutputs.sort(Comparator.comparing(stack -> {
+            var id = GameRegistryManager.getFluidId(stack.getFluid());
+            return (id != null ? id.toString() : "") + "x" + stack.getAmount();
+        }));
+        this.fluidOutputs = ObjectLists.unmodifiable(sortedFluidOutputs);
+
+        var sortedChemOutputs = new ObjectArrayList<>(builder.chemicalOutputs);
+        sortedChemOutputs.sort(Comparator.comparing(co -> co.id().toString() + "x" + co.amount()));
+        this.chemicalOutputs = ObjectLists.unmodifiable(sortedChemOutputs);
+
         this.recipeMultiplier = builder.recipeMultiplier;
         this.resultItem = builder.resultItem;
         this.resultCount = builder.resultCount;

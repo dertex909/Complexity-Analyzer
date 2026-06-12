@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.core.registries.Registries;
@@ -37,9 +38,6 @@ import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.core.GameRegistryManager;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -116,7 +114,7 @@ public class GraphBuilder {
                 .category(RecipeCategory.PRIMARY)
                 .resultCount(1)
                 .rawRecipe();
-        builder.itemOutputs(new ObjectArrayList<>(List.of(resultStack.copy())));
+        builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
 
         if (!template.isEmpty()) {
             var variants = extractVariants(template);
@@ -165,9 +163,9 @@ public class GraphBuilder {
                 .category(category)
                 .resultCount(resultStack.getCount())
                 .rawRecipe();
-        builder.itemOutputs(new ObjectArrayList<>(List.of(resultStack.copy())));
+        builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
 
-        var merged = new LinkedHashMap<List<ItemStack>, Integer>();
+        var merged = new Object2ObjectLinkedOpenHashMap<ObjectList<ItemStack>, Integer>();
         int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
         for (var ingredient : ingredients) {
             if (ingredient.isEmpty()) continue;
@@ -186,7 +184,7 @@ public class GraphBuilder {
                             .compareTo(ItemStackIdentity.dataKey(b, level.registryAccess()));
                 });
                 if (variants.size() > limit) variants.removeElements(limit, variants.size());
-                var key = new ArrayList<>(variants);
+                var key = new ObjectArrayList<>(variants);
                 merged.put(key, merged.getOrDefault(key, 0) + 1);
             }
         }

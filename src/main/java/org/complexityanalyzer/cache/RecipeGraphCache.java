@@ -96,10 +96,13 @@ public final class RecipeGraphCache implements ManagedCache {
                 for (var ingredient : holder.value().getIngredients()) {
                     if (ingredient.isEmpty()) continue;
                     hRecipes = fnv(hRecipes, "[");
+                    var itemKeys = new ObjectArrayList<String>();
                     for (var stack : ingredient.getItems()) {
                         if (stack.isEmpty()) continue;
-                        hRecipes = fnv(hRecipes, itemId(stack.getItem()).toString() + "x" + stack.getCount());
+                        itemKeys.add(itemId(stack.getItem()).toString() + "x" + stack.getCount());
                     }
+                    itemKeys.sort(null);
+                    for (var key : itemKeys) hRecipes = fnv(hRecipes, key);
                     hRecipes = fnv(hRecipes, "]");
                 }
             } catch (Throwable t) {

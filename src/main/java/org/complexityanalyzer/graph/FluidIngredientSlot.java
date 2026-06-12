@@ -18,11 +18,26 @@
 
 package org.complexityanalyzer.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.level.material.Fluid;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
+
 public record FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
+    public FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
+        var sorted = new ObjectArrayList<>(fluidVariants);
+        sorted.sort(Comparator.comparing(fluid -> {
+            var id = GameRegistryManager.getFluidId(fluid);
+            return id != null ? id.toString() : "";
+        }));
+        this.fluidVariants = ObjectLists.unmodifiable(sorted);
+        this.amount = amount;
+    }
+
     public ObjectList<Fluid> getFluidVariants() {
         return fluidVariants;
     }

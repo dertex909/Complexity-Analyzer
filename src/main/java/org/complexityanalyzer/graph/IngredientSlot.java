@@ -22,6 +22,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.ItemStack;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 import java.util.Objects;
@@ -36,6 +37,10 @@ public class IngredientSlot {
             if (variant == null || variant.isEmpty()) continue;
             this.variants.add(variant.copyWithCount(1));
         }
+        this.variants.sort(java.util.Comparator.comparing(stack -> {
+            var id = GameRegistryManager.getItemId(stack.getItem());
+            return id != null ? id.toString() : "";
+        }));
         this.count = Math.max(1, count);
     }
 

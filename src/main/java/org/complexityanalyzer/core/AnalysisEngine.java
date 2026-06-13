@@ -189,11 +189,13 @@ public class AnalysisEngine {
     private void fireAnalysisComplete(boolean reload) {
         var api = ComplexityAnalyzerAPI.Holder.peek();
         if (api == null) return;
-        try {
-            NeoForge.EVENT_BUS.post(new ComplexityAnalysisCompleteEvent(api, reload));
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("An addon threw during ComplexityAnalysisCompleteEvent.", t);
-        }
+        this.server.execute(() -> {
+            try {
+                NeoForge.EVENT_BUS.post(new ComplexityAnalysisCompleteEvent(api, reload));
+            } catch (Throwable t) {
+                ComplexityAnalyzer.LOGGER.error("An addon threw during ComplexityAnalysisCompleteEvent.", t);
+            }
+        });
     }
 
     private boolean abort(long gen) {

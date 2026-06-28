@@ -26,7 +26,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -126,16 +125,28 @@ public class PlantSimulator {
     }
 
     public boolean isPlant(Block block) {
-        var state = block.defaultBlockState();
-        if (state.isAir() || block == Blocks.AIR) return false;
-        if (block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) return false;
-        if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return true;
-        float hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-        if (hardness > 0.5f || hardness < 0.0f) return false;
-        if (!(block instanceof BonemealableBlock) && !state.isRandomlyTicking() && findAgeProperty(block) == null)
+        try {
+            var state = block.defaultBlockState();
+            if (state.isAir() || block == Blocks.AIR) return false;
+            if (block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) return false;
+            if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return true;
+            float hardness;
+            try {
+                hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+            } catch (Throwable t) {
+                return false;
+            }
+            if (hardness > 0.5f || hardness < 0.0f) return false;
+            if (!(block instanceof BonemealableBlock) && !state.isRandomlyTicking() && findAgeProperty(block) == null)
+                return false;
+            try {
+                return !state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+            } catch (Throwable t) {
+                return false;
+            }
+        } catch (Throwable t) {
             return false;
-
-        return !state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        }
     }
 
     private void clearEntitiesInsideBox(ServerLevel level) {

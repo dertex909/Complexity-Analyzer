@@ -98,33 +98,29 @@ public final class DeepItemCollector {
         if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
 
-        if (depth <= 5) {
-            for (int i = 0; i < meta.allMethods.length; i++) {
-                var m = meta.allMethods[i];
-                var h = meta.allHandles[i];
-                if (h == null) continue;
-                try {
-                    var rt = m.getReturnType();
-                    String rtName = rt.getName();
+        if (depth <= 5) for (int i = 0; i < meta.allMethods.length; i++) {
+            var m = meta.allMethods[i];
+            var h = meta.allHandles[i];
+            if (h == null) continue;
+            try {
+                var rt = m.getReturnType();
+                String rtName = rt.getName();
 
-                    if (ItemStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
-                            || Stream.class.isAssignableFrom(rt) || rtName.contains("Item") || rtName.contains("Stack")) {
+                if (ItemStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
+                        || Stream.class.isAssignableFrom(rt) || rtName.contains("Item") || rtName.contains("Stack")) {
 
-                        String mName = m.getName();
-                        if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
-                                || mName.equals("getItem")) continue;
+                    String mName = m.getName();
+                    if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
+                            || mName.equals("getItem")) continue;
 
-                        var val = h.invoke(obj);
-                        if (val != null && val != obj) {
-                            if (val instanceof Stream<?> stream) {
-                                stream.limit(100).forEach(element -> collect(element, acc, depth + 1, visited));
-                            } else {
-                                collect(val, acc, depth + 1, visited);
-                            }
-                        }
+                    var val = h.invoke(obj);
+                    if (val != null && val != obj) if (val instanceof Stream<?> stream) {
+                        stream.limit(100).forEach(element -> collect(element, acc, depth + 1, visited));
+                    } else {
+                        collect(val, acc, depth + 1, visited);
                     }
-                } catch (Throwable ignored) {
                 }
+            } catch (Throwable ignored) {
             }
         }
 

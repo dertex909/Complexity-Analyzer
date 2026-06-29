@@ -178,7 +178,7 @@ public final class RecipeSectionBuilder {
         buf.u8(mc);
         for (int k = 0; k < mc; k++) buf.i32(machineIdxs.getInt(k));
 
-        var registryAccess = ctx.engine().getRegistryAccess();
+        var registryAccess = ctx.registryAccess();
         var mergedSlots = mergeIngredientSlots(ctx, r.getIngredients(), registryAccess);
         buf.u8(Math.min(mergedSlots.size(), 0xFF));
         for (int s = 0; s < Math.min(mergedSlots.size(), 0xFF); s++) {

@@ -20,6 +20,7 @@ package org.complexityanalyzer.export.cabin.builder;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -42,6 +43,8 @@ public final class SectionBuilderContext {
     private final Reference2IntOpenHashMap<Item> plainHoverByItem;
     private final Reference2IntOpenHashMap<Item> plainDataKeyByItem;
 
+    private final HolderLookup.Provider registryAccess;
+
     public SectionBuilderContext(
             AnalysisEngine engine,
             StringPool strings,
@@ -50,7 +53,8 @@ public final class SectionBuilderContext {
             ObjectList<EntityType<?>> orderedMobs,
             Reference2IntOpenHashMap<EntityType<?>> mobIndex,
             ObjectList<Fluid> orderedFluids,
-            Reference2IntOpenHashMap<Fluid> fluidIndex
+            Reference2IntOpenHashMap<Fluid> fluidIndex,
+            HolderLookup.Provider registryAccess
     ) {
         this.engine = engine;
         this.strings = strings;
@@ -60,6 +64,7 @@ public final class SectionBuilderContext {
         this.mobIndex = mobIndex;
         this.orderedFluids = orderedFluids;
         this.fluidIndex = fluidIndex;
+        this.registryAccess = registryAccess;
 
         this.hoverNameIdCache = new Reference2IntOpenHashMap<>(32768);
         this.hoverNameIdCache.defaultReturnValue(-1);
@@ -118,5 +123,9 @@ public final class SectionBuilderContext {
 
     public Reference2IntOpenHashMap<Item> plainDataKeyByItem() {
         return plainDataKeyByItem;
+    }
+
+    public HolderLookup.Provider registryAccess() {
+        return registryAccess;
     }
 }

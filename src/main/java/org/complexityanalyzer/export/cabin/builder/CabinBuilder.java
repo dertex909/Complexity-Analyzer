@@ -20,6 +20,7 @@ package org.complexityanalyzer.export.cabin.builder;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
@@ -36,7 +37,6 @@ import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -44,7 +44,6 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 
 import static net.minecraft.world.entity.MobCategory.MISC;
 import static net.minecraft.world.item.Items.AIR;
@@ -55,6 +54,7 @@ public final class CabinBuilder {
     private final String serverName;
     private final String modVersion;
     private final long timestampEpochMs;
+    private final HolderLookup.Provider registryAccess;
 
     private final StringPool strings = new StringPool(8192);
 
@@ -65,11 +65,12 @@ public final class CabinBuilder {
     private ObjectList<Fluid> orderedFluids;
     private Reference2IntOpenHashMap<Fluid> fluidIndex;
 
-    public CabinBuilder(AnalysisEngine engine, String serverName, String modVersion) {
+    public CabinBuilder(AnalysisEngine engine, String serverName, String modVersion, HolderLookup.Provider registryAccess) {
         this.engine = engine;
         this.serverName = serverName != null ? serverName : "unknown";
         this.modVersion = modVersion != null ? modVersion : "unknown";
         this.timestampEpochMs = System.currentTimeMillis();
+        this.registryAccess = registryAccess;
     }
 
     public ObjectList<CabinSection> build() {
@@ -79,7 +80,7 @@ public final class CabinBuilder {
         long t0 = System.currentTimeMillis();
         prepareIndices();
 
-        var ctx = new SectionBuilderContext(engine, strings, orderedItems, itemIndex, orderedMobs, mobIndex, orderedFluids, fluidIndex);
+        var ctx = new SectionBuilderContext(engine, strings, orderedItems, itemIndex, orderedMobs, mobIndex, orderedFluids, fluidIndex, registryAccess);
 
         var itemBuilder = new ItemSectionBuilder(ctx);
         var recipeBuilder = new RecipeSectionBuilder(ctx);

@@ -126,7 +126,7 @@ public final class CabinBackgroundService {
         String motd = server.getMotd();
         String name = !motd.isEmpty() ? motd : serverName;
 
-        var builder = new CabinBuilder(engine, name, modVersion);
+        var builder = new CabinBuilder(engine, name, modVersion, server.registryAccess());
         var sections = builder.build();
         byte[] bytes = CabinWriter.writeToBytes(sections);
         long hash = LeBuf.readI64(bytes, 24);

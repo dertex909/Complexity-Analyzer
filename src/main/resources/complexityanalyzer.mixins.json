@@ -9,6 +9,7 @@
     "LevelMixin",
     "ServerChunkCacheMixin",
     "ServerConnectionListenerMixin",
+    "ServerLevelMixin",
     "SmithingTransformRecipeAccessor"
   ],
   "client": [],

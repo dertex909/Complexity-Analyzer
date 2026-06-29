@@ -5,10 +5,11 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "complexity_analyzer.refmap.json",
   "mixins": [
-    "SmithingTransformRecipeAccessor",
-    "ServerConnectionListenerMixin",
     "ChunkGeneratorMixin",
-    "ServerChunkCacheMixin"
+    "LevelMixin",
+    "ServerChunkCacheMixin",
+    "ServerConnectionListenerMixin",
+    "SmithingTransformRecipeAccessor"
   ],
   "client": [],
   "server": [],

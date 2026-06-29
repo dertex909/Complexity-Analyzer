@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.analyzer.resource.sources;
 
-import com.google.errorprone.annotations.Var;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;

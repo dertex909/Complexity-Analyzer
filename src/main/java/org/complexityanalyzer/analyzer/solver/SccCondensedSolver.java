@@ -114,9 +114,9 @@ public final class SccCondensedSolver {
         }
 
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS (single-pass DAG solver)");
+        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS");
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("⏱️  Time: {}ms", totalTime);
+        ComplexityAnalyzer.LOGGER.info("⏱️ Time: {}ms", totalTime);
         ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, m.itemCount);
         ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} finite", finiteFluids, m.fluidCount);
         ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChems, m.chemicalCount);

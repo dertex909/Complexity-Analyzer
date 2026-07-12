@@ -198,13 +198,43 @@ public final class HarvestedRecipeConverter {
             }
         }
 
-        if (!outputStacks.isEmpty()) {
+        var mutableOutputStacks = new ObjectArrayList<>(outputStacks);
+
+        for (var hi : inputIngredients) {
+            var ingredient = hi.ingredient();
+            int ingredientCount = hi.count();
+            ItemStack[] items = ingredient.getItems();
+            if (items.length > 0) {
+                var first = items[0];
+                if (!first.isEmpty() && first.hasCraftingRemainingItem()) {
+                    var remaining = first.getCraftingRemainingItem();
+                    if (!remaining.isEmpty()) {
+                        int count = remaining.getCount() * ingredientCount;
+                        mutableOutputStacks.add(remaining.copyWithCount(count));
+                    }
+                }
+            }
+        }
+
+        for (var raw : inputStacks) {
+            var stack = recoverUnbound(raw);
+            if (stack.hasCraftingRemainingItem()) {
+                var remaining = stack.getCraftingRemainingItem();
+                if (!remaining.isEmpty()) {
+                    int count = remaining.getCount() * Math.max(1, stack.getCount());
+                    mutableOutputStacks.add(remaining.copyWithCount(count));
+                }
+            }
+        }
+
+        if (!mutableOutputStacks.isEmpty()) {
             var deduplicatedOutputs = new ObjectArrayList<ItemStack>();
-            for (var stack : outputStacks) {
+            for (var stack : mutableOutputStacks) {
                 if (stack.isEmpty()) continue;
                 boolean alreadyAdded = false;
                 for (var existing : deduplicatedOutputs) {
-                    if (ItemStackIdentity.sameItemDataAndCount(existing, stack, registryAccess)) {
+                    if (ItemStackIdentity.sameItemData(existing, stack, registryAccess)) {
+                        existing.setCount(existing.getCount() + stack.getCount());
                         alreadyAdded = true;
                         break;
                     }

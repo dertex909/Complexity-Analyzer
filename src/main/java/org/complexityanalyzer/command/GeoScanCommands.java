@@ -19,6 +19,8 @@
 package org.complexityanalyzer.command;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -27,7 +29,6 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
@@ -39,6 +40,7 @@ import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.util.ServerLanguage;
 
+import static net.minecraft.commands.SharedSuggestionProvider.suggest;
 import static net.minecraft.network.chat.Style.EMPTY;
 
 public class GeoScanCommands {
@@ -49,7 +51,7 @@ public class GeoScanCommands {
                         .requires(source -> source.hasPermission(2))
                         .executes(GeoScanCommands::showProfileHelp)
                         .then(Commands.argument("profile", StringArgumentType.word())
-                                .suggests((c, b) -> SharedSuggestionProvider.suggest(new String[]{"normal", "fast", "ultra_fast", "maximum"}, b))
+                                .suggests((c, b) -> suggest(new String[]{"normal", "fast", "ultra_fast", "maximum"}, b))
                                 .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
                                 .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
                                         .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false))
@@ -254,39 +256,61 @@ public class GeoScanCommands {
             output.sendInfo(source, msptLine);
         }
 
-        output.sendEmptyLine(source);
-
-        var biomeStatus = Component.translatable("complexityanalyzer.command.geoscan.biome_details").withStyle(ChatFormatting.AQUA);
-        biomeStatus.append(Component.literal(" "));
-
         var tooltip = buildBiomeTooltip(session);
+        if (tooltip != null) {
+            output.sendEmptyLine(source);
 
-        biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details").withStyle(EMPTY
-                .withColor(ChatFormatting.DARK_AQUA).withItalic(true)
-                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
+            var biomeStatus = Component.translatable("complexityanalyzer.command.geoscan.biome_details").withStyle(ChatFormatting.AQUA);
+            biomeStatus.append(Component.literal(" "));
 
-        output.sendInfo(source, biomeStatus);
+            biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details")
+                    .withStyle(EMPTY.withColor(ChatFormatting.DARK_AQUA).withItalic(true)
+                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
+
+            output.sendInfo(source, biomeStatus);
+        }
     }
 
     private static MutableComponent buildBiomeTooltip(ScanSession session) {
+        var progress = session.getBiomeProgress();
+
+        var incompleteProgress = new Object2ObjectLinkedOpenHashMap<ResourceLocation, ObjectArrayList<Object2ObjectMap.Entry<ResourceLocation, int[]>>>();
+        int totalIncomplete = 0;
+
+        for (var dimEntry : progress.object2ObjectEntrySet()) {
+            var dimId = dimEntry.getKey();
+            var incompleteBiomes = new ObjectArrayList<Object2ObjectMap.Entry<ResourceLocation, int[]>>();
+
+            for (var biomeEntry : dimEntry.getValue().object2ObjectEntrySet()) {
+                int[] stats = biomeEntry.getValue();
+                int scanned = stats[0];
+                int needed = stats[1];
+                if (scanned < needed) {
+                    incompleteBiomes.add(biomeEntry);
+                    totalIncomplete++;
+                }
+            }
+            if (!incompleteBiomes.isEmpty()) incompleteProgress.put(dimId, incompleteBiomes);
+        }
+
+        if (totalIncomplete == 0) return null;
         var tooltip = Component.empty();
 
         tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
-        var progress = session.getBiomeProgress();
-
         int biomesShown = 0;
         int maxBiomes = 25;
 
-        for (var dimEntry : progress.entrySet()) {
+        for (var dimEntry : incompleteProgress.object2ObjectEntrySet()) {
             var dimId = dimEntry.getKey();
+            var biomes = dimEntry.getValue();
 
             tooltip.append(Component.literal("\n").append(Component.literal("▸ ")
                     .append(formatDimensionName(dimId)).append("\n").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
 
-            for (var biomeEntry : dimEntry.getValue().entrySet()) {
+            for (var biomeEntry : biomes) {
                 if (biomesShown >= maxBiomes) {
-                    int remaining = progress.values().stream().mapToInt(Object2ObjectMap::size).sum() - maxBiomes;
+                    int remaining = totalIncomplete - biomesShown;
                     if (remaining > 0) tooltip.append(Component
                             .translatable("complexityanalyzer.command.geoscan.more_biomes", remaining)
                             .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
@@ -297,22 +321,15 @@ public class GeoScanCommands {
                 int[] stats = biomeEntry.getValue();
                 int scanned = stats[0];
                 int needed = stats[1];
-                boolean complete = scanned >= needed;
 
                 var biomeLine = Component.literal("  ");
 
-                if (complete) {
-                    biomeLine.append(Component.literal("✓ ").withStyle(ChatFormatting.GREEN));
-                    biomeLine.append(Component.literal(biomeId.getPath()).withStyle(ChatFormatting.GREEN));
-                    biomeLine.append(Component.literal(" (" + scanned + "/" + needed + ")").withStyle(ChatFormatting.DARK_GREEN));
-                } else {
-                    int biomePercent = needed > 0 ? (scanned * 100 / needed) : 0;
-                    ChatFormatting biomeColor = biomePercent >= 75 ? ChatFormatting.YELLOW : biomePercent >= 50 ? ChatFormatting.GOLD : ChatFormatting.WHITE;
+                int biomePercent = needed > 0 ? (scanned * 100 / needed) : 0;
+                ChatFormatting biomeColor = biomePercent >= 75 ? ChatFormatting.YELLOW : biomePercent >= 50 ? ChatFormatting.GOLD : ChatFormatting.WHITE;
 
-                    biomeLine.append(Component.literal("○ ").withStyle(ChatFormatting.GRAY));
-                    biomeLine.append(Component.literal(biomeId.getPath()).withStyle(biomeColor));
-                    biomeLine.append(Component.literal(" (" + scanned + "/" + needed + ")").withStyle(ChatFormatting.GRAY));
-                }
+                biomeLine.append(Component.literal("○ ").withStyle(ChatFormatting.GRAY));
+                biomeLine.append(Component.literal(biomeId.getPath()).withStyle(biomeColor));
+                biomeLine.append(Component.literal(" (" + scanned + "/" + needed + ")").withStyle(ChatFormatting.GRAY));
 
                 tooltip.append(biomeLine);
                 tooltip.append(Component.literal("\n"));

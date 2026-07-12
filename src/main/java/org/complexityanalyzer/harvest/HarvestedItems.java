@@ -36,9 +36,6 @@ public record HarvestedItems(
         Object root,
         ReferenceSet<Item> transitionalItems
 ) {
-    public record HarvestedIngredient(Ingredient ingredient, int count) {
-    }
-
     public static final HarvestedItems EMPTY = new HarvestedItems(
             ObjectLists.emptyList(), ObjectLists.emptyList(),
             ObjectLists.emptyList(), ObjectLists.emptyList(),
@@ -49,5 +46,8 @@ public record HarvestedItems(
     public boolean isEmpty() {
         return inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty()
                 && inputFluids.isEmpty() && outputFluids.isEmpty();
+    }
+
+    public record HarvestedIngredient(Ingredient ingredient, int count) {
     }
 }

@@ -40,12 +40,73 @@ public final class RecipeReflection {
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
     private static final ConcurrentHashMap<Class<?>, ResolvedAccessors> ACCESSOR_CACHE = new ConcurrentHashMap<>(256);
 
-    public record ResolvedAccessors(
-            ObjectList<Accessor> itemAccessors,
-            ObjectList<Accessor> ingredientAccessors,
-            ObjectList<Accessor> fluidAccessors,
-            ObjectList<Accessor> probeAccessors
-    ) {
+    public static ClassMeta getMeta(Class<?> clazz) {
+        return META_CACHE.computeIfAbsent(clazz, ClassMeta::new);
+    }
+
+    public static ResolvedAccessors getAccessors(Class<?> clazz) {
+        return ACCESSOR_CACHE.computeIfAbsent(clazz, RecipeReflection::resolveAccessors);
+    }
+
+    private static ResolvedAccessors resolveAccessors(Class<?> clazz) {
+        var meta = getMeta(clazz);
+        var itemAcc = new ObjectArrayList<Accessor>(4);
+        var ingredientAcc = new ObjectArrayList<Accessor>(4);
+        var fluidAcc = new ObjectArrayList<Accessor>(4);
+        var probeAcc = new ObjectArrayList<Accessor>(4);
+        for (int i = 0; i < meta.allMethods.length; i++) {
+            var m = meta.allMethods[i];
+            var h = meta.allHandles[i];
+            if (h == null) continue;
+            if (m.getDeclaringClass() == Recipe.class) continue;
+            var kind = StructuralTypeClassifier.classifyDescriptor(descriptorOf(m));
+            if (kind != null) {
+                var acc = new MethodAccessor(h, m);
+                switch (kind) {
+                    case ITEM_STACK -> itemAcc.add(acc);
+                    case INGREDIENT -> ingredientAcc.add(acc);
+                    case FLUID_STACK -> fluidAcc.add(acc);
+                    default -> {
+                    }
+                }
+            } else if (isContainerReturnType(m.getReturnType())) {
+                probeAcc.add(new MethodAccessor(h, m));
+            }
+        }
+        for (int i = 0; i < meta.fields.length; i++) {
+            var f = meta.fields[i];
+            var type = f.getType();
+            var kind = StructuralTypeClassifier.classifyDescriptor(type.getName().replace('.', '/'));
+            if (kind != null) {
+                var acc = new FieldAccessor(f);
+                switch (kind) {
+                    case ITEM_STACK -> itemAcc.add(acc);
+                    case INGREDIENT -> ingredientAcc.add(acc);
+                    case FLUID_STACK -> fluidAcc.add(acc);
+                    default -> {
+                    }
+                }
+            } else if (isContainerReturnType(type)) {
+                probeAcc.add(new FieldAccessor(f));
+            }
+        }
+        return new ResolvedAccessors(itemAcc, ingredientAcc, fluidAcc, probeAcc);
+    }
+
+    private static String descriptorOf(Method m) {
+        var rt = m.getReturnType();
+        if (rt == void.class || rt == Void.class) return null;
+        return rt.getName().replace('.', '/');
+    }
+
+    private static boolean isContainerReturnType(Class<?> type) {
+        if (type == null || type == void.class) return false;
+        return type.isArray() || Iterable.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type);
+    }
+
+    public static void clearCaches() {
+        META_CACHE.clear();
+        ACCESSOR_CACHE.clear();
     }
 
     public interface Accessor {
@@ -58,6 +119,14 @@ public final class RecipeReflection {
         default String name() {
             return "unknown";
         }
+    }
+
+    public record ResolvedAccessors(
+            ObjectList<Accessor> itemAccessors,
+            ObjectList<Accessor> ingredientAccessors,
+            ObjectList<Accessor> fluidAccessors,
+            ObjectList<Accessor> probeAccessors
+    ) {
     }
 
     public static final class MethodAccessor implements Accessor {
@@ -227,74 +296,5 @@ public final class RecipeReflection {
                 return null;
             }
         }
-    }
-
-    public static ClassMeta getMeta(Class<?> clazz) {
-        return META_CACHE.computeIfAbsent(clazz, ClassMeta::new);
-    }
-
-    public static ResolvedAccessors getAccessors(Class<?> clazz) {
-        return ACCESSOR_CACHE.computeIfAbsent(clazz, RecipeReflection::resolveAccessors);
-    }
-
-    private static ResolvedAccessors resolveAccessors(Class<?> clazz) {
-        var meta = getMeta(clazz);
-        var itemAcc = new ObjectArrayList<Accessor>(4);
-        var ingredientAcc = new ObjectArrayList<Accessor>(4);
-        var fluidAcc = new ObjectArrayList<Accessor>(4);
-        var probeAcc = new ObjectArrayList<Accessor>(4);
-        for (int i = 0; i < meta.allMethods.length; i++) {
-            var m = meta.allMethods[i];
-            var h = meta.allHandles[i];
-            if (h == null) continue;
-            if (m.getDeclaringClass() == Recipe.class) continue;
-            var kind = StructuralTypeClassifier.classifyDescriptor(descriptorOf(m));
-            if (kind != null) {
-                var acc = new MethodAccessor(h, m);
-                switch (kind) {
-                    case ITEM_STACK -> itemAcc.add(acc);
-                    case INGREDIENT -> ingredientAcc.add(acc);
-                    case FLUID_STACK -> fluidAcc.add(acc);
-                    default -> {
-                    }
-                }
-            } else if (isContainerReturnType(m.getReturnType())) {
-                probeAcc.add(new MethodAccessor(h, m));
-            }
-        }
-        for (int i = 0; i < meta.fields.length; i++) {
-            var f = meta.fields[i];
-            var type = f.getType();
-            var kind = StructuralTypeClassifier.classifyDescriptor(type.getName().replace('.', '/'));
-            if (kind != null) {
-                var acc = new FieldAccessor(f);
-                switch (kind) {
-                    case ITEM_STACK -> itemAcc.add(acc);
-                    case INGREDIENT -> ingredientAcc.add(acc);
-                    case FLUID_STACK -> fluidAcc.add(acc);
-                    default -> {
-                    }
-                }
-            } else if (isContainerReturnType(type)) {
-                probeAcc.add(new FieldAccessor(f));
-            }
-        }
-        return new ResolvedAccessors(itemAcc, ingredientAcc, fluidAcc, probeAcc);
-    }
-
-    private static String descriptorOf(Method m) {
-        var rt = m.getReturnType();
-        if (rt == void.class || rt == Void.class) return null;
-        return rt.getName().replace('.', '/');
-    }
-
-    private static boolean isContainerReturnType(Class<?> type) {
-        if (type == null || type == void.class) return false;
-        return type.isArray() || Iterable.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type);
-    }
-
-    public static void clearCaches() {
-        META_CACHE.clear();
-        ACCESSOR_CACHE.clear();
     }
 }

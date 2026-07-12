@@ -54,6 +54,31 @@ public class RecipeGraph {
         this.allRecipesList = ObjectLists.synchronize(new ObjectArrayList<>());
     }
 
+    private static boolean isVanillaRecipeType(String recipeType) {
+        return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
+                recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
+                recipeType.equals("minecraft:blasting") || recipeType.equals("blasting") ||
+                recipeType.equals("minecraft:smoking") || recipeType.equals("smoking") ||
+                recipeType.equals("minecraft:campfire_cooking") || recipeType.equals("campfire_cooking") ||
+                recipeType.equals("minecraft:stonecutting") || recipeType.equals("stonecutting") ||
+                recipeType.equals("minecraft:smithing") || recipeType.equals("smithing");
+    }
+
+    private static Fluid normalizeFluid(Fluid fluid) {
+        var id = GameRegistryManager.getFluidId(fluid);
+        if (id == null) return fluid;
+        var fluidName = id.toString();
+
+        if (fluidName.contains("flowing_")) {
+            var staticName = fluidName.replace("flowing_", "");
+            var staticId = ResourceLocation.parse(staticName);
+            var staticFluid = GameRegistryManager.getFluid(staticId);
+            if (staticFluid != null) return staticFluid;
+        }
+
+        return fluid;
+    }
+
     public ObjectList<RecipeNode> getAllRecipes() {
         synchronized (allRecipesList) {
             return new ObjectArrayList<>(allRecipesList);
@@ -293,16 +318,6 @@ public class RecipeGraph {
         return reclassified;
     }
 
-    private static boolean isVanillaRecipeType(String recipeType) {
-        return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
-                recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
-                recipeType.equals("minecraft:blasting") || recipeType.equals("blasting") ||
-                recipeType.equals("minecraft:smoking") || recipeType.equals("smoking") ||
-                recipeType.equals("minecraft:campfire_cooking") || recipeType.equals("campfire_cooking") ||
-                recipeType.equals("minecraft:stonecutting") || recipeType.equals("stonecutting") ||
-                recipeType.equals("minecraft:smithing") || recipeType.equals("smithing");
-    }
-
     private boolean isRawStorageBlock(ItemStack stack, TagKey<Item> storageBlocksTag) {
         if (!stack.is(storageBlocksTag)) return false;
         var itemId = GameRegistryManager.getItemId(stack.getItem()).toString();
@@ -351,21 +366,6 @@ public class RecipeGraph {
         synchronized (allRecipesList) {
             return allRecipesList.size();
         }
-    }
-
-    private static Fluid normalizeFluid(Fluid fluid) {
-        var id = GameRegistryManager.getFluidId(fluid);
-        if (id == null) return fluid;
-        var fluidName = id.toString();
-
-        if (fluidName.contains("flowing_")) {
-            var staticName = fluidName.replace("flowing_", "");
-            var staticId = ResourceLocation.parse(staticName);
-            var staticFluid = GameRegistryManager.getFluid(staticId);
-            if (staticFluid != null) return staticFluid;
-        }
-
-        return fluid;
     }
 
     public void clear() {

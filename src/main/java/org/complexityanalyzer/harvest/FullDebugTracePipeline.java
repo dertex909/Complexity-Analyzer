@@ -35,6 +35,8 @@ import java.util.Map;
 
 public final class FullDebugTracePipeline {
     private static final boolean ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");
+    private static final String SEP = "═".repeat(60);
+    private static final String MINOR_SEP = "─".repeat(60);
 
     static {
         if (ENABLED) {
@@ -44,17 +46,14 @@ public final class FullDebugTracePipeline {
         }
     }
 
-    private static final String SEP = "═".repeat(60);
-    private static final String MINOR_SEP = "─".repeat(60);
-
     private final Path worldDir;
     private final StringBuilder buffer;
+    private final Map<String, Integer> recipeTypeStats = new LinkedHashMap<>();
+    private final Map<String, Integer> rejectReasons = new LinkedHashMap<>();
     private int totalRecipes;
     private int harvestedCount;
     private int rejectedCount;
     private int failedCount;
-    private final Map<String, Integer> recipeTypeStats = new LinkedHashMap<>();
-    private final Map<String, Integer> rejectReasons = new LinkedHashMap<>();
 
     public FullDebugTracePipeline(Path worldDir) {
         this.worldDir = worldDir;
@@ -63,6 +62,25 @@ public final class FullDebugTracePipeline {
         } else {
             this.buffer = null;
         }
+    }
+
+    private static String formatValue(Object val) {
+        return switch (val) {
+            case null -> "null";
+            case ItemStack stack -> formatItemStack(stack);
+            case Ingredient ing -> "Ingredient[" + ing.getItems().length + " variants]";
+            case FluidStack fs -> fs.getAmount() + "mb " + fs.getFluid();
+            case Collection<?> c -> c.getClass().getSimpleName() + "[" + c.size() + "]";
+            case Map<?, ?> m -> m.getClass().getSimpleName() + "[" + m.size() + "]";
+            case Object[] arr -> arr.getClass().getComponentType().getSimpleName() + "[" + arr.length + "]";
+            case String s -> "\"" + (s.length() > 50 ? s.substring(0, 47) + "..." : s) + "\"";
+            default -> val.getClass().getSimpleName();
+        };
+    }
+
+    private static String formatItemStack(ItemStack stack) {
+        if (stack.isEmpty()) return "EMPTY";
+        return stack.getCount() + "x " + stack.getItem();
     }
 
     public void traceHarvested(String recipeId, Object recipe, Level level, HarvestedItems items) {
@@ -345,24 +363,5 @@ public final class FullDebugTracePipeline {
                 pipeline.buffer.append(sb);
             }
         }
-    }
-
-    private static String formatValue(Object val) {
-        return switch (val) {
-            case null -> "null";
-            case ItemStack stack -> formatItemStack(stack);
-            case Ingredient ing -> "Ingredient[" + ing.getItems().length + " variants]";
-            case FluidStack fs -> fs.getAmount() + "mb " + fs.getFluid();
-            case Collection<?> c -> c.getClass().getSimpleName() + "[" + c.size() + "]";
-            case Map<?, ?> m -> m.getClass().getSimpleName() + "[" + m.size() + "]";
-            case Object[] arr -> arr.getClass().getComponentType().getSimpleName() + "[" + arr.length + "]";
-            case String s -> "\"" + (s.length() > 50 ? s.substring(0, 47) + "..." : s) + "\"";
-            default -> val.getClass().getSimpleName();
-        };
-    }
-
-    private static String formatItemStack(ItemStack stack) {
-        if (stack.isEmpty()) return "EMPTY";
-        return stack.getCount() + "x " + stack.getItem();
     }
 }

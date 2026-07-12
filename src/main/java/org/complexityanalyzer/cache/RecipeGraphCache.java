@@ -54,72 +54,9 @@ public final class RecipeGraphCache implements ManagedCache {
 
     private static final int MAGIC = 0x43414331;
     private static final int VERSION = 3;
-
-    public record Fingerprint(long recipes, long mods, long config) {
-    }
-
     private static final ResourceLocation AIR_ID = ResourceLocation.withDefaultNamespace("air");
     private static final ResourceLocation EMPTY_FLUID_ID = ResourceLocation.withDefaultNamespace("empty");
-
     private RecipeGraphCache() {
-    }
-
-    @Override
-    public String id() {
-        return "recipe_graph";
-    }
-
-    @Override
-    public Path file(MinecraftServer server) {
-        if (server == null) return null;
-        try {
-            return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("recipe_graph.bin");
-        } catch (Throwable t) {
-            return null;
-        }
-    }
-
-    public Fingerprint computeFingerprint(RecipeManager recipeManager, RegistryAccess registryAccess) {
-        var holders = new ObjectArrayList<>(recipeManager.getRecipes());
-        holders.sort(Comparator.comparing(RecipeHolder::id));
-
-        long hRecipes = 0xcbf29ce484222325L;
-        for (var holder : holders) {
-            try {
-                var resultStack = holder.value().getResultItem(registryAccess);
-                if (resultStack.isEmpty()) continue;
-                hRecipes = fnv(hRecipes, holder.id().toString());
-                var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
-                hRecipes = fnv(hRecipes, typeId != null ? typeId.toString() : "?");
-                hRecipes = fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
-                for (var ingredient : holder.value().getIngredients()) {
-                    if (ingredient.isEmpty()) continue;
-                    hRecipes = fnv(hRecipes, "[");
-                    var itemKeys = new ObjectArrayList<String>();
-                    for (var stack : ingredient.getItems()) {
-                        if (stack.isEmpty()) continue;
-                        itemKeys.add(itemId(stack.getItem()).toString() + "x" + stack.getCount());
-                    }
-                    itemKeys.sort(null);
-                    for (var key : itemKeys) hRecipes = fnv(hRecipes, key);
-                    hRecipes = fnv(hRecipes, "]");
-                }
-            } catch (Throwable t) {
-                hRecipes = fnv(hRecipes, "fail");
-            }
-        }
-
-        var modKeys = new ObjectArrayList<String>();
-        for (var mod : ModList.get().getMods()) modKeys.add(mod.getModId() + "@" + mod.getVersion());
-        modKeys.sort(null);
-        long hMods = 0xcbf29ce484222325L;
-        for (var key : modKeys) hMods = fnv(hMods, key);
-
-        long hConfig = 0xcbf29ce484222325L;
-        hConfig = fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
-        hConfig = fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.DETECTION_SAMPLE_SIZE.get());
-
-        return new Fingerprint(hRecipes, hMods, hConfig);
     }
 
     private static long fnv(long h, String s) {
@@ -128,73 +65,6 @@ public final class RecipeGraphCache implements ManagedCache {
             h *= 0x100000001b3L;
         }
         return h;
-    }
-
-    public void save(RecipeGraph graph, Path file, Fingerprint fingerprint, Level level) {
-        var nodes = graph.getAllRecipes();
-        var raw = Unpooled.buffer();
-        try {
-            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
-            buf.writeInt(MAGIC);
-            buf.writeInt(VERSION);
-            buf.writeLong(fingerprint.recipes());
-            buf.writeLong(fingerprint.mods());
-            buf.writeLong(fingerprint.config());
-            buf.writeVarInt(nodes.size());
-            for (var node : nodes) writeNode(buf, node);
-
-            byte[] bytes = new byte[buf.readableBytes()];
-            buf.readBytes(bytes);
-
-            Files.createDirectories(file.getParent());
-            var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            Files.write(tmp, bytes);
-            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            ComplexityAnalyzer.LOGGER.info("[Harvest] Saved recipe graph cache: {} recipes -> {}", nodes.size(), file);
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
-        } finally {
-            raw.release();
-        }
-    }
-
-    public RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
-        if (!Files.isRegularFile(file)) return null;
-
-        ByteBuf raw = null;
-        try {
-            byte[] bytes = Files.readAllBytes(file);
-            raw = Unpooled.wrappedBuffer(bytes);
-            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
-
-            if (buf.readInt() != MAGIC) {
-                ComplexityAnalyzer.LOGGER.warn("[Harvest] Recipe graph cache has bad header, rebuilding.");
-                return null;
-            }
-            if (buf.readInt() != VERSION) {
-                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe graph cache format outdated, rebuilding.");
-                return null;
-            }
-
-            var stored = new Fingerprint(buf.readLong(), buf.readLong(), buf.readLong());
-            if (!stored.equals(expected)) {
-                String diff = (stored.recipes() != expected.recipes() ? "recipes " : "")
-                        + (stored.mods() != expected.mods() ? "mods " : "")
-                        + (stored.config() != expected.config() ? "config" : "");
-                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe set changed since last run ({}), cache invalidated.", diff.trim());
-                return null;
-            }
-
-            int count = buf.readVarInt();
-            var graph = new RecipeGraph();
-            for (int i = 0; i < count; i++) graph.addRecipe(readNode(buf));
-            return graph;
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to load recipe graph cache (rebuilding): {}", t.toString());
-            return null;
-        } finally {
-            if (raw != null) raw.release();
-        }
     }
 
     private static void writeNode(RegistryFriendlyByteBuf buf, RecipeNode node) {
@@ -367,5 +237,133 @@ public final class RecipeGraphCache implements ManagedCache {
     private static ResourceLocation fluidId(Fluid fluid) {
         var id = GameRegistryManager.getFluidId(fluid);
         return id != null ? id : EMPTY_FLUID_ID;
+    }
+
+    @Override
+    public String id() {
+        return "recipe_graph";
+    }
+
+    @Override
+    public Path file(MinecraftServer server) {
+        if (server == null) return null;
+        try {
+            return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("recipe_graph.bin");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public Fingerprint computeFingerprint(RecipeManager recipeManager, RegistryAccess registryAccess) {
+        var holders = new ObjectArrayList<>(recipeManager.getRecipes());
+        holders.sort(Comparator.comparing(RecipeHolder::id));
+
+        long hRecipes = 0xcbf29ce484222325L;
+        for (var holder : holders) {
+            try {
+                var resultStack = holder.value().getResultItem(registryAccess);
+                if (resultStack.isEmpty()) continue;
+                hRecipes = fnv(hRecipes, holder.id().toString());
+                var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
+                hRecipes = fnv(hRecipes, typeId != null ? typeId.toString() : "?");
+                hRecipes = fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
+                for (var ingredient : holder.value().getIngredients()) {
+                    if (ingredient.isEmpty()) continue;
+                    hRecipes = fnv(hRecipes, "[");
+                    var itemKeys = new ObjectArrayList<String>();
+                    for (var stack : ingredient.getItems()) {
+                        if (stack.isEmpty()) continue;
+                        itemKeys.add(itemId(stack.getItem()).toString() + "x" + stack.getCount());
+                    }
+                    itemKeys.sort(null);
+                    for (var key : itemKeys) hRecipes = fnv(hRecipes, key);
+                    hRecipes = fnv(hRecipes, "]");
+                }
+            } catch (Throwable t) {
+                hRecipes = fnv(hRecipes, "fail");
+            }
+        }
+
+        var modKeys = new ObjectArrayList<String>();
+        for (var mod : ModList.get().getMods()) modKeys.add(mod.getModId() + "@" + mod.getVersion());
+        modKeys.sort(null);
+        long hMods = 0xcbf29ce484222325L;
+        for (var key : modKeys) hMods = fnv(hMods, key);
+
+        long hConfig = 0xcbf29ce484222325L;
+        hConfig = fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
+        hConfig = fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.DETECTION_SAMPLE_SIZE.get());
+
+        return new Fingerprint(hRecipes, hMods, hConfig);
+    }
+
+    public void save(RecipeGraph graph, Path file, Fingerprint fingerprint, Level level) {
+        var nodes = graph.getAllRecipes();
+        var raw = Unpooled.buffer();
+        try {
+            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
+            buf.writeInt(MAGIC);
+            buf.writeInt(VERSION);
+            buf.writeLong(fingerprint.recipes());
+            buf.writeLong(fingerprint.mods());
+            buf.writeLong(fingerprint.config());
+            buf.writeVarInt(nodes.size());
+            for (var node : nodes) writeNode(buf, node);
+
+            byte[] bytes = new byte[buf.readableBytes()];
+            buf.readBytes(bytes);
+
+            Files.createDirectories(file.getParent());
+            var tmp = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.write(tmp, bytes);
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            ComplexityAnalyzer.LOGGER.info("[Harvest] Saved recipe graph cache: {} recipes -> {}", nodes.size(), file);
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
+        } finally {
+            raw.release();
+        }
+    }
+
+    public RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
+        if (!Files.isRegularFile(file)) return null;
+
+        ByteBuf raw = null;
+        try {
+            byte[] bytes = Files.readAllBytes(file);
+            raw = Unpooled.wrappedBuffer(bytes);
+            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
+
+            if (buf.readInt() != MAGIC) {
+                ComplexityAnalyzer.LOGGER.warn("[Harvest] Recipe graph cache has bad header, rebuilding.");
+                return null;
+            }
+            if (buf.readInt() != VERSION) {
+                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe graph cache format outdated, rebuilding.");
+                return null;
+            }
+
+            var stored = new Fingerprint(buf.readLong(), buf.readLong(), buf.readLong());
+            if (!stored.equals(expected)) {
+                String diff = (stored.recipes() != expected.recipes() ? "recipes " : "")
+                        + (stored.mods() != expected.mods() ? "mods " : "")
+                        + (stored.config() != expected.config() ? "config" : "");
+                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe set changed since last run ({}), cache invalidated.", diff.trim());
+                return null;
+            }
+
+            int count = buf.readVarInt();
+            var graph = new RecipeGraph();
+            for (int i = 0; i < count; i++) graph.addRecipe(readNode(buf));
+            return graph;
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to load recipe graph cache (rebuilding): {}", t.toString());
+            return null;
+        } finally {
+            if (raw != null) raw.release();
+        }
+    }
+
+    public record Fingerprint(long recipes, long mods, long config) {
     }
 }

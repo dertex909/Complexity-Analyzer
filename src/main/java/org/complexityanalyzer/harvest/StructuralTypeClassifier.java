@@ -20,16 +20,6 @@ package org.complexityanalyzer.harvest;
 
 public final class StructuralTypeClassifier {
 
-    public enum Kind {
-        ITEM_STACK,
-        INGREDIENT,
-        FLUID_STACK,
-        RESOURCE_ID,
-        TAG,
-        DATA_COMPONENT,
-        NUMBER
-    }
-
     private StructuralTypeClassifier() {
     }
 
@@ -59,5 +49,15 @@ public final class StructuralTypeClassifier {
             case "net.minecraft.core.component.DataComponentType" -> Kind.DATA_COMPONENT;
             default -> null;
         };
+    }
+
+    public enum Kind {
+        ITEM_STACK,
+        INGREDIENT,
+        FLUID_STACK,
+        RESOURCE_ID,
+        TAG,
+        DATA_COMPONENT,
+        NUMBER
     }
 }

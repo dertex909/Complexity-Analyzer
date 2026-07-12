@@ -32,9 +32,6 @@ public class FastBiomeFinder {
 
     private static final ThreadLocal<CachedSamplers> SAMPLER_CACHE = new ThreadLocal<>();
 
-    private record CachedSamplers(ServerLevel level, BiomeSource biomeSource, Climate.Sampler sampler) {
-    }
-
     private static CachedSamplers getSamplers(ServerLevel level) {
         var cached = SAMPLER_CACHE.get();
         if (cached != null && cached.level == level) return cached;
@@ -138,5 +135,8 @@ public class FastBiomeFinder {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private record CachedSamplers(ServerLevel level, BiomeSource biomeSource, Climate.Sampler sampler) {
     }
 }

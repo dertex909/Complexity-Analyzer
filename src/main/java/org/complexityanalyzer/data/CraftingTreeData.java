@@ -26,26 +26,12 @@ import org.complexityanalyzer.graph.RecipeNode;
 
 public class CraftingTreeData {
 
-    public enum DisplayMode {
-        PLAYER_INSTRUCTION,
-        ECONOMIC_COST
-    }
-
-    public enum NodeType {
-        CRAFTING,
-        BASE_RESOURCE,
-        CYCLE,
-        MAX_DEPTH_REACHED,
-        NO_DATA
-    }
-
     private final Item rootItem;
     private final TreeNode root;
     private final Reference2DoubleMap<Item> baseResources;
     private final TreeStatistics statistics;
     private final DisplayMode displayMode;
     private final int maxDepth;
-
     public CraftingTreeData(Item rootItem, TreeNode root, Reference2DoubleMap<Item> baseResources,
                             TreeStatistics statistics, DisplayMode displayMode, int maxDepth) {
         this.rootItem = rootItem;
@@ -80,6 +66,19 @@ public class CraftingTreeData {
         return maxDepth;
     }
 
+    public enum DisplayMode {
+        PLAYER_INSTRUCTION,
+        ECONOMIC_COST
+    }
+
+    public enum NodeType {
+        CRAFTING,
+        BASE_RESOURCE,
+        CYCLE,
+        MAX_DEPTH_REACHED,
+        NO_DATA
+    }
+
     public static class TreeNode {
         private final NodeType type;
         private final Item item;
@@ -105,6 +104,10 @@ public class CraftingTreeData {
             this.itemChildren = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.itemChildren));
             this.fluidChildren = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidChildren));
             this.metadata = Object2ObjectMaps.unmodifiable(new Object2ObjectOpenHashMap<>(builder.metadata));
+        }
+
+        public static Builder builder() {
+            return new Builder();
         }
 
         public NodeType getType() {
@@ -151,11 +154,10 @@ public class CraftingTreeData {
             return metadata;
         }
 
-        public static Builder builder() {
-            return new Builder();
-        }
-
         public static class Builder {
+            private final ObjectList<TreeNode> itemChildren = new ObjectArrayList<>();
+            private final ObjectList<FluidNode> fluidChildren = new ObjectArrayList<>();
+            private final Object2ObjectMap<String, Object> metadata = new Object2ObjectOpenHashMap<>();
             private NodeType type;
             private Item item;
             private ItemStack itemStack = ItemStack.EMPTY;
@@ -164,9 +166,6 @@ public class CraftingTreeData {
             private double complexity;
             private RecipeNode recipe;
             private Component machineType = Component.empty();
-            private final ObjectList<TreeNode> itemChildren = new ObjectArrayList<>();
-            private final ObjectList<FluidNode> fluidChildren = new ObjectArrayList<>();
-            private final Object2ObjectMap<String, Object> metadata = new Object2ObjectOpenHashMap<>();
 
             public Builder type(NodeType type) {
                 this.type = type;
@@ -267,16 +266,16 @@ public class CraftingTreeData {
             cyclesDetected++;
         }
 
-        public void setUniqueItems(int count) {
-            uniqueItems = count;
-        }
-
         public int getTotalNodes() {
             return totalNodes;
         }
 
         public int getUniqueItems() {
             return uniqueItems;
+        }
+
+        public void setUniqueItems(int count) {
+            uniqueItems = count;
         }
 
         public int getCraftingSteps() {

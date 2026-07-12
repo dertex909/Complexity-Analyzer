@@ -41,11 +41,11 @@ import java.time.Instant;
 import java.util.Locale;
 
 public final class SystemCommand {
-    private SystemCommand() {
-    }
-
     private static final SuggestionProvider<CommandSourceStack> CACHE_SUGGESTIONS =
             (ctx, builder) -> SharedSuggestionProvider.suggest(ManagedCache.ids(), builder);
+
+    private SystemCommand() {
+    }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("system")

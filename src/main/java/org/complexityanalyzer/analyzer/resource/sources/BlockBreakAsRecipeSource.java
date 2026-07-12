@@ -401,9 +401,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         return sourceItems;
     }
 
-    private record RarityInfo(double factor, String location) {
-    }
-
     private RarityInfo calculateRarityFactor(Block block) {
         boolean isGeoLoaded = this.geoDatabase != null && this.geoDatabase.isLoaded();
         if (isGeoLoaded) {
@@ -482,5 +479,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {
         return BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION;
+    }
+
+    private record RarityInfo(double factor, String location) {
     }
 }

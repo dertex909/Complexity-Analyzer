@@ -35,10 +35,6 @@ public class ComplexityCalculator {
     private final SourceManager sourceManager;
     private final ComplexityCache cache;
 
-    public SolverResult getSolverResult() {
-        return this.solverResult;
-    }
-
     public ComplexityCalculator(
             RecipeGraph graph,
             DepthAnalyzer depthAnalyzer,
@@ -50,6 +46,10 @@ public class ComplexityCalculator {
         this.solverResult = solverResult;
         this.sourceManager = sourceManager;
         this.cache = AnalysisEngine.getInstance().getComplexityCache();
+    }
+
+    public SolverResult getSolverResult() {
+        return this.solverResult;
     }
 
     @Nullable

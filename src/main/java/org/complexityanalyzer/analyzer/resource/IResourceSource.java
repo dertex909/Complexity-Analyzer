@@ -44,7 +44,9 @@ public interface IResourceSource {
      */
     void initialize(Level level);
 
-    /** @return {@code true} if this source can supply the given item (cheap check used before {@link #analyze}). */
+    /**
+     * @return {@code true} if this source can supply the given item (cheap check used before {@link #analyze}).
+     */
     boolean canProvide(Item item);
 
     /**
@@ -56,7 +58,9 @@ public interface IResourceSource {
     @Nullable
     BaseResourceData analyze(Item item);
 
-    /** @return the category this source classifies its results as (used for display and base multipliers). */
+    /**
+     * @return the category this source classifies its results as (used for display and base multipliers).
+     */
     BaseResourceData.ResourceSourceType getSourceType();
 
     /**
@@ -74,6 +78,8 @@ public interface IResourceSource {
         return false;
     }
 
-    /** @return a short human-readable name for logging and source attribution. */
+    /**
+     * @return a short human-readable name for logging and source attribution.
+     */
     String getName();
 }

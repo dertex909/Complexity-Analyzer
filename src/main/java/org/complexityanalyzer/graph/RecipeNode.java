@@ -44,18 +44,6 @@ import java.util.Objects;
  * stands in for a virtual/synthetic product.
  */
 public class RecipeNode {
-    /**
-     * A chemical/gas ingredient identified by registry id and amount (for mods with chemical systems).
-     */
-    public record ChemicalIngredient(ResourceLocation id, int amount) {
-    }
-
-    /**
-     * A chemical/gas output identified by registry id and amount.
-     */
-    public record ChemicalOutput(ResourceLocation id, long amount) {
-    }
-
     private final ObjectList<IngredientSlot> ingredients;
     private final ObjectList<FluidIngredientSlot> fluidIngredients;
     private final ObjectList<ChemicalIngredient> chemicalIngredients;
@@ -71,7 +59,6 @@ public class RecipeNode {
     private final boolean isPlaceholder;
     private RecipeCategory category;
     private volatile int listIndex = -1;
-
     private RecipeNode(Builder builder) {
         this.ingredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.ingredients));
         this.fluidIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidIngredients));
@@ -108,14 +95,6 @@ public class RecipeNode {
         this.placeholderId = builder.placeholderId;
     }
 
-    public int getListIndex() {
-        return listIndex;
-    }
-
-    public void setListIndex(int listIndex) {
-        this.listIndex = listIndex;
-    }
-
     /**
      * @return an empty/unprocessable node for the given item (no ingredients, no real recipe).
      */
@@ -123,11 +102,40 @@ public class RecipeNode {
         return new Builder(item).category(RecipeCategory.UNPROCESSABLE).build();
     }
 
-    /**
-     * Reclassifies this node (used internally during solving).
-     */
-    public void setCategory(RecipeCategory category) {
-        this.category = category;
+    private static boolean equalItemStackLists(ObjectList<ItemStack> list1, ObjectList<ItemStack> list2) {
+        if (list1 == list2) return true;
+        if (list1 == null || list2 == null) return false;
+        if (list1.size() != list2.size()) return false;
+        for (int i = 0; i < list1.size(); i++) {
+            var s1 = list1.get(i);
+            var s2 = list2.get(i);
+            if (s1 == s2) continue;
+            if (s1 == null || s2 == null) return false;
+            if (!ItemStackIdentity.sameItemDataAndCount(s1, s2)) return false;
+        }
+        return true;
+    }
+
+    private static boolean equalFluidStackLists(ObjectList<FluidStack> list1, ObjectList<FluidStack> list2) {
+        if (list1 == list2) return true;
+        if (list1 == null || list2 == null) return false;
+        if (list1.size() != list2.size()) return false;
+        for (int i = 0; i < list1.size(); i++) {
+            var s1 = list1.get(i);
+            var s2 = list2.get(i);
+            if (s1 == s2) continue;
+            if (s1 == null || s2 == null) return false;
+            if (s1.getFluid() != s2.getFluid() || s1.getAmount() != s2.getAmount()) return false;
+        }
+        return true;
+    }
+
+    public int getListIndex() {
+        return listIndex;
+    }
+
+    public void setListIndex(int listIndex) {
+        this.listIndex = listIndex;
     }
 
     /**
@@ -201,6 +209,13 @@ public class RecipeNode {
     }
 
     /**
+     * Reclassifies this node (used internally during solving).
+     */
+    public void setCategory(RecipeCategory category) {
+        this.category = category;
+    }
+
+    /**
      * @return how many of the primary item one craft yields.
      */
     public int getResultCount() {
@@ -251,34 +266,6 @@ public class RecipeNode {
      */
     public double getRecipeMultiplier() {
         return recipeMultiplier;
-    }
-
-    private static boolean equalItemStackLists(ObjectList<ItemStack> list1, ObjectList<ItemStack> list2) {
-        if (list1 == list2) return true;
-        if (list1 == null || list2 == null) return false;
-        if (list1.size() != list2.size()) return false;
-        for (int i = 0; i < list1.size(); i++) {
-            var s1 = list1.get(i);
-            var s2 = list2.get(i);
-            if (s1 == s2) continue;
-            if (s1 == null || s2 == null) return false;
-            if (!ItemStackIdentity.sameItemDataAndCount(s1, s2)) return false;
-        }
-        return true;
-    }
-
-    private static boolean equalFluidStackLists(ObjectList<FluidStack> list1, ObjectList<FluidStack> list2) {
-        if (list1 == list2) return true;
-        if (list1 == null || list2 == null) return false;
-        if (list1.size() != list2.size()) return false;
-        for (int i = 0; i < list1.size(); i++) {
-            var s1 = list1.get(i);
-            var s2 = list2.get(i);
-            if (s1 == s2) continue;
-            if (s1 == null || s2 == null) return false;
-            if (s1.getFluid() != s2.getFluid() || s1.getAmount() != s2.getAmount()) return false;
-        }
-        return true;
     }
 
     @Override
@@ -333,17 +320,29 @@ public class RecipeNode {
         return "RecipeNode{" + "result=" + GameRegistryManager.getItemId(resultItem) + ", type=" + recipeType + '}';
     }
 
+    /**
+     * A chemical/gas ingredient identified by registry id and amount (for mods with chemical systems).
+     */
+    public record ChemicalIngredient(ResourceLocation id, int amount) {
+    }
+
+    /**
+     * A chemical/gas output identified by registry id and amount.
+     */
+    public record ChemicalOutput(ResourceLocation id, long amount) {
+    }
+
     public static class Builder {
         private final Item resultItem;
         private final ObjectList<ChemicalIngredient> chemicalIngredients = new ObjectArrayList<>();
         private final ObjectList<IngredientSlot> ingredients = new ObjectArrayList<>();
         private final ObjectList<FluidIngredientSlot> fluidIngredients = new ObjectArrayList<>();
+        private final ObjectList<ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
+        private final double recipeMultiplier = 1.0;
         private ObjectList<ItemStack> itemOutputs = new ObjectArrayList<>();
         private ObjectList<FluidStack> fluidOutputs = new ObjectArrayList<>();
-        private final ObjectList<ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
         private RecipeType<?> recipeType;
         private RecipeCategory category = RecipeCategory.PRIMARY;
-        private final double recipeMultiplier = 1.0;
         private int priority = 0;
         private int resultCount = 1;
         private boolean isPlaceholder = false;

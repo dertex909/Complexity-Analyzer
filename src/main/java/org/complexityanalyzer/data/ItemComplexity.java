@@ -54,6 +54,22 @@ public class ItemComplexity {
     }
 
     /**
+     * Creates an uncalculable result carrying an error message (score {@code -1},
+     * {@link ComplexityCategory#UNCALCULABLE}).
+     *
+     * @param item  the item that failed to evaluate
+     * @param error the failure reason
+     * @return the error result
+     */
+    public static ItemComplexity error(Item item, String error) {
+        return new Builder(item)
+                .complexity(-1)
+                .category(ComplexityCategory.UNCALCULABLE)
+                .errorMessage(error)
+                .build();
+    }
+
+    /**
      * @return the item this result describes.
      */
     public Item getItem() {
@@ -124,16 +140,22 @@ public class ItemComplexity {
         return errorMessage == null && !hasCycle && complexity >= 0;
     }
 
+    @Override
+    public String toString() {
+        return String.format("ItemComplexity{item=%s, complexity=%.2f, depth=%d, category=%s}",
+                item, complexity, depth, category);
+    }
+
     /**
      * Fluent builder for {@link ItemComplexity} instances.
      */
     public static class Builder {
         private final Item item;
+        private final boolean hasCycle = false;
         private double complexity = 0;
         private int depth = 0;
         private int totalIngredients = 0;
         private ComplexityCategory category;
-        private final boolean hasCycle = false;
         private boolean hasRecipe = true;
         private String errorMessage;
         private RecipeNode optimalRecipe;
@@ -182,27 +204,5 @@ public class ItemComplexity {
         public ItemComplexity build() {
             return new ItemComplexity(this);
         }
-    }
-
-    /**
-     * Creates an uncalculable result carrying an error message (score {@code -1},
-     * {@link ComplexityCategory#UNCALCULABLE}).
-     *
-     * @param item  the item that failed to evaluate
-     * @param error the failure reason
-     * @return the error result
-     */
-    public static ItemComplexity error(Item item, String error) {
-        return new Builder(item)
-                .complexity(-1)
-                .category(ComplexityCategory.UNCALCULABLE)
-                .errorMessage(error)
-                .build();
-    }
-
-    @Override
-    public String toString() {
-        return String.format("ItemComplexity{item=%s, complexity=%.2f, depth=%d, category=%s}",
-                item, complexity, depth, category);
     }
 }

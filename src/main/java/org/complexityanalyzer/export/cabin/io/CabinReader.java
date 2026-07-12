@@ -30,14 +30,10 @@ import java.util.zip.Inflater;
 
 public final class CabinReader {
 
-    public record Section(byte id, byte codec, long offset, long length, long uncompressed) {
-    }
-
     private final byte[] data;
     private final long fileHash;
     private final long tocOffset;
     private final Byte2ObjectMap<Section> sectionsById;
-
     public CabinReader(byte[] data) throws IOException {
         this.data = data;
         if (data.length < CabinFormat.HEADER_SIZE) throw new IOException("Cabin too small: " + data.length);
@@ -51,6 +47,38 @@ public final class CabinReader {
 
         long zeroedExpected = computeHashWithZeroedHashSlot(data);
         this.sectionsById = parseTocAndValidateHash(data, zeroedExpected);
+    }
+
+    private static long computeHashWithZeroedHashSlot(byte[] data) {
+        byte[] copy = data.clone();
+        for (int i = 24; i < 32; i++) copy[i] = 0;
+        return XxHash64.hash(copy, CabinFormat.XXH64_SEED);
+    }
+
+    private static byte[] inflateRaw(byte[] src, int off, int len, int uncompressed) throws IOException {
+        var inf = new Inflater(true);
+        try {
+            inf.setInput(src, off, len);
+            byte[] out = new byte[uncompressed];
+            int total = 0;
+            while (!inf.finished()) {
+                int n = inf.inflate(out, total, out.length - total);
+                if (n == 0) {
+                    if (inf.needsInput() || inf.needsDictionary()) throw new IOException("Truncated deflate stream");
+                    break;
+                }
+                total += n;
+                if (total > out.length) throw new IOException("Decompressed size exceeded declared " + uncompressed);
+            }
+            if (total != uncompressed)
+                throw new IOException("Decompressed size mismatch: " + total + " vs " + uncompressed);
+
+            return out;
+        } catch (DataFormatException e) {
+            throw new IOException(e);
+        } finally {
+            inf.end();
+        }
     }
 
     private Byte2ObjectMap<Section> parseTocAndValidateHash(byte[] data, long zeroedExpected) throws IOException {
@@ -78,12 +106,6 @@ public final class CabinReader {
         return map;
     }
 
-    private static long computeHashWithZeroedHashSlot(byte[] data) {
-        byte[] copy = data.clone();
-        for (int i = 24; i < 32; i++) copy[i] = 0;
-        return XxHash64.hash(copy, CabinFormat.XXH64_SEED);
-    }
-
     public Section getSection(byte id) {
         var s = sectionsById.get(id);
         if (s == null) throw new IllegalArgumentException("Section not found: 0x" + Integer.toHexString(id & 0xFF));
@@ -103,29 +125,6 @@ public final class CabinReader {
         throw new IOException("Unknown codec " + s.codec);
     }
 
-    private static byte[] inflateRaw(byte[] src, int off, int len, int uncompressed) throws IOException {
-        var inf = new Inflater(true);
-        try {
-            inf.setInput(src, off, len);
-            byte[] out = new byte[uncompressed];
-            int total = 0;
-            while (!inf.finished()) {
-                int n = inf.inflate(out, total, out.length - total);
-                if (n == 0) {
-                    if (inf.needsInput() || inf.needsDictionary()) throw new IOException("Truncated deflate stream");
-                    break;
-                }
-                total += n;
-                if (total > out.length) throw new IOException("Decompressed size exceeded declared " + uncompressed);
-            }
-            if (total != uncompressed)
-                throw new IOException("Decompressed size mismatch: " + total + " vs " + uncompressed);
-
-            return out;
-        } catch (DataFormatException e) {
-            throw new IOException(e);
-        } finally {
-            inf.end();
-        }
+    public record Section(byte id, byte codec, long offset, long length, long uncompressed) {
     }
 }

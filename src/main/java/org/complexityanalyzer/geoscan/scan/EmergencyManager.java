@@ -27,17 +27,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class EmergencyManager {
 
     public static class MsptTracker {
+        private static final long LOG_COOLDOWN_MS = 10_000;
         private final MinecraftServer server;
         private final float msptLimit;
         private final float resumeThreshold;
-
         private final AtomicBoolean isThrottled = new AtomicBoolean(false);
         private final float[] msptSamples = new float[ScanConfig.MSPT_SAMPLE_COUNT];
         private int sampleIndex = 0;
         private boolean samplesInitialized = false;
-
         private volatile long lastLogTime = 0;
-        private static final long LOG_COOLDOWN_MS = 10_000;
 
         public MsptTracker(MinecraftServer server, ScanConfig.ScanProfile profile) {
             this.server = server;

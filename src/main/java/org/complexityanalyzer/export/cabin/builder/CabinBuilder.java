@@ -74,6 +74,14 @@ public final class CabinBuilder {
         this.registryAccess = registryAccess;
     }
 
+    private static IHardcodedSourceRegistry tryGetHardcodedRegistry() {
+        try {
+            return HardcodedSourcesProvider.getRegistry();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     public ObjectList<CabinSection> build() {
         if (!engine.isReady())
             throw new IllegalStateException("AnalysisEngine is not READY (state=" + engine.getCurrentState() + ")");
@@ -149,22 +157,6 @@ public final class CabinBuilder {
         return out;
     }
 
-    private static final class TimingLog {
-        private final StringBuilder sb = new StringBuilder();
-
-        <T> T run(String name, java.util.function.Supplier<T> step) {
-            long s = System.nanoTime();
-            var result = step.get();
-            long ms = (System.nanoTime() - s) / 1_000_000L;
-            sb.append(name).append('=').append(ms).append("ms ");
-            return result;
-        }
-
-        void log() {
-            ComplexityAnalyzer.LOGGER.debug("[Cabin] section timings: {}", sb.toString().trim());
-        }
-    }
-
     private void prepareIndices() {
         var items = GameRegistryManager.getAllItems();
         this.orderedItems = items;
@@ -192,14 +184,6 @@ public final class CabinBuilder {
         this.fluidIndex = new Reference2IntOpenHashMap<>(fluids.size());
         this.fluidIndex.defaultReturnValue(-1);
         for (int i = 0; i < fluids.size(); i++) fluidIndex.put(fluids.get(i), i);
-    }
-
-    private static IHardcodedSourceRegistry tryGetHardcodedRegistry() {
-        try {
-            return HardcodedSourcesProvider.getRegistry();
-        } catch (Throwable ignored) {
-            return null;
-        }
     }
 
     private byte[] buildScc(SolverResult solverResult) {
@@ -428,13 +412,6 @@ public final class CabinBuilder {
         return out.toByteArray();
     }
 
-    private static class ModStats {
-        int itemCount;
-        int recipeCount;
-        double complexitySum;
-        int complexityItems;
-    }
-
     private byte[] buildMeta(ItemSectionBuilder.ItemSectionResult itemResult, MobSectionBuilder.MobsResult mobsResult,
                              RecipeSectionBuilder.RecipesResult recipes, byte[] machineIndexBytes, byte[] modSummaryBytes) {
         var buf = new LeBuf(512);
@@ -471,5 +448,28 @@ public final class CabinBuilder {
         var buf = new LeBuf(Math.toIntExact(Math.min(Integer.MAX_VALUE - 16, strings.bytesEstimate())));
         strings.writeTo(buf);
         return buf.toByteArray();
+    }
+
+    private static final class TimingLog {
+        private final StringBuilder sb = new StringBuilder();
+
+        <T> T run(String name, java.util.function.Supplier<T> step) {
+            long s = System.nanoTime();
+            var result = step.get();
+            long ms = (System.nanoTime() - s) / 1_000_000L;
+            sb.append(name).append('=').append(ms).append("ms ");
+            return result;
+        }
+
+        void log() {
+            ComplexityAnalyzer.LOGGER.debug("[Cabin] section timings: {}", sb.toString().trim());
+        }
+    }
+
+    private static class ModStats {
+        int itemCount;
+        int recipeCount;
+        double complexitySum;
+        int complexityItems;
     }
 }

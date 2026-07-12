@@ -28,6 +28,24 @@ public final class LeBuf {
         this.pos = 0;
     }
 
+    public static int readU16(byte[] b, int o) {
+        int res = 0;
+        for (int i = 0; i < 16; i += 8) res |= (b[o++] & 0xFF) << i;
+        return res;
+    }
+
+    public static int readI32(byte[] b, int o) {
+        int res = 0;
+        for (int i = 0; i < 32; i += 8) res |= (b[o++] & 0xFF) << i;
+        return res;
+    }
+
+    public static long readI64(byte[] b, int o) {
+        long res = 0;
+        for (int i = 0; i < 64; i += 8) res |= ((long) (b[o++] & 0xFF)) << i;
+        return res;
+    }
+
     public int position() {
         return pos;
     }
@@ -101,23 +119,5 @@ public final class LeBuf {
     public void putI64At(int offset, long v) {
         if (offset < 0 || offset + 8 > buf.length) throw new IndexOutOfBoundsException();
         for (int i = 0; i < 64; i += 8) buf[offset++] = (byte) (v >>> i);
-    }
-
-    public static int readU16(byte[] b, int o) {
-        int res = 0;
-        for (int i = 0; i < 16; i += 8) res |= (b[o++] & 0xFF) << i;
-        return res;
-    }
-
-    public static int readI32(byte[] b, int o) {
-        int res = 0;
-        for (int i = 0; i < 32; i += 8) res |= (b[o++] & 0xFF) << i;
-        return res;
-    }
-
-    public static long readI64(byte[] b, int o) {
-        long res = 0;
-        for (int i = 0; i < 64; i += 8) res |= ((long) (b[o++] & 0xFF)) << i;
-        return res;
     }
 }

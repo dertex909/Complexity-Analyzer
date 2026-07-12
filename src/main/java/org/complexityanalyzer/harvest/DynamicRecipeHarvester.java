@@ -45,11 +45,6 @@ public final class DynamicRecipeHarvester {
     private DynamicRecipeHarvester() {
     }
 
-    @FunctionalInterface
-    private interface InputCreator {
-        Object create(ItemStack stack) throws Throwable;
-    }
-
     public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
         ComplexityAnalyzer.LOGGER.info("[Harvest] Starting autonomous dynamic recipe probe...");
 
@@ -204,6 +199,11 @@ public final class DynamicRecipeHarvester {
             }
         }
         return null;
+    }
+
+    @FunctionalInterface
+    private interface InputCreator {
+        Object create(ItemStack stack) throws Throwable;
     }
 
     private record ProbeContext(

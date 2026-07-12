@@ -265,7 +265,7 @@ public class GeoScanCommands {
 
             biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details")
                     .withStyle(EMPTY.withColor(ChatFormatting.DARK_AQUA).withItalic(true)
-                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
 
             output.sendInfo(source, biomeStatus);
         }

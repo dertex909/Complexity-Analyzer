@@ -37,6 +37,35 @@ public final class RegistryHarvestService {
         this.harvester = new FastHarvester();
     }
 
+    private static @NotNull String getRemaining(long elapsed, int scanned, int totalRecipes) {
+        double avgTimePerRecipe = (double) elapsed / scanned;
+        long estimatedTotal = (long) (avgTimePerRecipe * totalRecipes);
+        long estimatedRemaining = estimatedTotal - elapsed;
+
+        String remainingStr;
+        if (estimatedRemaining > 60000) {
+            remainingStr = String.format(Locale.US, "%dm %ds", estimatedRemaining / 60000, (estimatedRemaining % 60000) / 1000);
+        } else {
+            remainingStr = String.format(Locale.US, "%ds", estimatedRemaining / 1000);
+        }
+        return remainingStr;
+    }
+
+    private static String buildRejectReason(HarvestedItems items) {
+        var sb = new StringBuilder("No structural recipe node: ");
+        sb.append("inputItems=").append(items.inputItems().size());
+        sb.append(" outputItems=").append(items.outputItems().size());
+        sb.append(" inputIngredients=").append(items.inputIngredients().size());
+        sb.append(" inputFluids=").append(items.inputFluids().size());
+        sb.append(" outputFluids=").append(items.outputFluids().size());
+        sb.append(" rootType=").append(items.root() != null ? items.root().getClass().getSimpleName() : "null");
+        if (items.root() != null) {
+            var detection = AntivirusStyleDetector.detect(items.root().getClass());
+            sb.append(" antivirus=").append(detection.verdict());
+        }
+        return sb.toString();
+    }
+
     public void harvestInto(RecipeGraph graph, Level level, Path worldDir) {
         if (graph == null || level == null) return;
 
@@ -95,34 +124,5 @@ public final class RegistryHarvestService {
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
                 scanned, harvested, rejected, failed);
-    }
-
-    private static @NotNull String getRemaining(long elapsed, int scanned, int totalRecipes) {
-        double avgTimePerRecipe = (double) elapsed / scanned;
-        long estimatedTotal = (long) (avgTimePerRecipe * totalRecipes);
-        long estimatedRemaining = estimatedTotal - elapsed;
-
-        String remainingStr;
-        if (estimatedRemaining > 60000) {
-            remainingStr = String.format(Locale.US, "%dm %ds", estimatedRemaining / 60000, (estimatedRemaining % 60000) / 1000);
-        } else {
-            remainingStr = String.format(Locale.US, "%ds", estimatedRemaining / 1000);
-        }
-        return remainingStr;
-    }
-
-    private static String buildRejectReason(HarvestedItems items) {
-        var sb = new StringBuilder("No structural recipe node: ");
-        sb.append("inputItems=").append(items.inputItems().size());
-        sb.append(" outputItems=").append(items.outputItems().size());
-        sb.append(" inputIngredients=").append(items.inputIngredients().size());
-        sb.append(" inputFluids=").append(items.inputFluids().size());
-        sb.append(" outputFluids=").append(items.outputFluids().size());
-        sb.append(" rootType=").append(items.root() != null ? items.root().getClass().getSimpleName() : "null");
-        if (items.root() != null) {
-            var detection = AntivirusStyleDetector.detect(items.root().getClass());
-            sb.append(" antivirus=").append(detection.verdict());
-        }
-        return sb.toString();
     }
 }

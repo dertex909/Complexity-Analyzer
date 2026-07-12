@@ -32,18 +32,10 @@ public class ThreadPoolManager {
     private static final int QUEUE_CAPACITY = 10000;
     private static final long GRACEFUL_TIMEOUT_MS = 500;
     private static final long FORCE_KILL_TIMEOUT_MS = 2000;
-
-    private static volatile ThreadPoolManager instance;
     private static final Object LOCK = new Object();
-
-    private volatile ExecutorService computePool;
-    private volatile ForkJoinPool forkJoinPool;
-    private volatile int parallelism;
-
-    private final AtomicInteger computeThreadCounter = new AtomicInteger(0);
-    private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-    private final AtomicBoolean isInitializing = new AtomicBoolean(false);
     private static final AtomicBoolean JVM_SHUTTING_DOWN = new AtomicBoolean(false);
+    private static final PoolStats EMPTY_STATS = new PoolStats(0, 0, 0, 0, 0, 0);
+    private static volatile ThreadPoolManager instance;
 
     static {
         try {
@@ -52,6 +44,12 @@ public class ThreadPoolManager {
         }
     }
 
+    private final AtomicInteger computeThreadCounter = new AtomicInteger(0);
+    private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+    private final AtomicBoolean isInitializing = new AtomicBoolean(false);
+    private volatile ExecutorService computePool;
+    private volatile ForkJoinPool forkJoinPool;
+    private volatile int parallelism;
     private volatile Thread shutdownWatchdog;
 
     private ThreadPoolManager() {
@@ -348,8 +346,6 @@ public class ThreadPoolManager {
             ComplexityAnalyzer.LOGGER.warn("{} daemon threads{} still running — will terminate with JVM", total, details);
         }
     }
-
-    private static final PoolStats EMPTY_STATS = new PoolStats(0, 0, 0, 0, 0, 0);
 
     public PoolStats getStats() {
         var compute = computePool;

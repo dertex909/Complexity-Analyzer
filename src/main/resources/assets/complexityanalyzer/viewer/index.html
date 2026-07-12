@@ -20,11 +20,11 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>Complexity Analyzer — Viewer</title>
-    <link rel="stylesheet" href="css/theme.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
+    <link href="css/theme.css" rel="stylesheet">
+    <link href="css/layout.css" rel="stylesheet">
+    <link href="css/components.css" rel="stylesheet">
 </head>
 <body>
 <div class="workspace">
@@ -32,26 +32,26 @@
         <div class="sidebar-header">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="sidebar-title">Categories</div>
-                <button id="sidebar-hide-btn" class="sidebar-toggle-btn" title="Hide Categories">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                         stroke-linecap="round" stroke-linejoin="round">
+                <button class="sidebar-toggle-btn" id="sidebar-hide-btn" title="Hide Categories">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                         viewBox="0 0 24 24" width="14">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
             </div>
             <div class="status">
-                <span id="status-dot" class="dot idle"></span>
+                <span class="dot idle" id="status-dot"></span>
                 <span id="status-text">initializing…</span>
             </div>
         </div>
-        <nav class="tabs" role="tablist" id="main-tabs">
+        <nav class="tabs" id="main-tabs" role="tablist">
             <button class="tab" data-tab="overview" role="tab">Overview</button>
             <button class="tab" data-tab="items" role="tab">Items</button>
-            <div id="item-sub-tabs" class="sub-tabs-container"></div>
+            <div class="sub-tabs-container" id="item-sub-tabs"></div>
             <button class="tab" data-tab="fluids" role="tab">Fluids</button>
-            <div id="fluid-sub-tabs" class="sub-tabs-container"></div>
+            <div class="sub-tabs-container" id="fluid-sub-tabs"></div>
             <button class="tab" data-tab="mobs" role="tab">Mobs</button>
-            <div id="mob-sub-tabs" class="sub-tabs-container"></div>
+            <div class="sub-tabs-container" id="mob-sub-tabs"></div>
             <button class="tab" data-tab="sources" role="tab">Base Sources</button>
             <button class="tab" data-tab="graph" role="tab">Graph</button>
         </nav>
@@ -60,24 +60,24 @@
     <div class="sidebar-resizer" id="sidebar-resizer"></div>
 
     <main id="main-content">
-        <section class="panel" id="tab-overview" hidden></section>
+        <section class="panel" hidden id="tab-overview"></section>
         <section class="panel active" id="tab-items"></section>
-        <section class="panel" id="tab-item-recipes" hidden></section>
-        <section class="panel" id="tab-item-machine-recipes" hidden></section>
-        <section class="panel" id="tab-item-uses" hidden></section>
-        <section class="panel" id="tab-item-base-sources" hidden></section>
-        <section class="panel" id="tab-fluids" hidden></section>
-        <section class="panel" id="tab-fluid-recipes" hidden></section>
-        <section class="panel" id="tab-fluid-uses" hidden></section>
-        <section class="panel" id="tab-mobs" hidden></section>
-        <section class="panel" id="tab-mob-drops" hidden></section>
-        <section class="panel" id="tab-sources" hidden></section>
-        <section class="panel" id="tab-graph" hidden>
+        <section class="panel" hidden id="tab-item-recipes"></section>
+        <section class="panel" hidden id="tab-item-machine-recipes"></section>
+        <section class="panel" hidden id="tab-item-uses"></section>
+        <section class="panel" hidden id="tab-item-base-sources"></section>
+        <section class="panel" hidden id="tab-fluids"></section>
+        <section class="panel" hidden id="tab-fluid-recipes"></section>
+        <section class="panel" hidden id="tab-fluid-uses"></section>
+        <section class="panel" hidden id="tab-mobs"></section>
+        <section class="panel" hidden id="tab-mob-drops"></section>
+        <section class="panel" hidden id="tab-sources"></section>
+        <section class="panel" hidden id="tab-graph">
             <canvas id="graph-canvas"></canvas>
-            <div id="graph-overlay" class="graph-overlay"></div>
+            <div class="graph-overlay" id="graph-overlay"></div>
         </section>
 
-        <div class="modal-overlay" id="item-modal" hidden>
+        <div class="modal-overlay" hidden id="item-modal">
             <div class="modal-container">
                 <div class="modal-header">
                     <h3 id="item-modal-title">Item Info</h3>
@@ -87,7 +87,7 @@
             </div>
         </div>
 
-        <div class="modal-overlay" id="fluid-modal" hidden>
+        <div class="modal-overlay" hidden id="fluid-modal">
             <div class="modal-container">
                 <div class="modal-header">
                     <h3 id="fluid-modal-title">Fluid Info</h3>
@@ -97,7 +97,7 @@
             </div>
         </div>
 
-        <div class="modal-overlay" id="mob-modal" hidden>
+        <div class="modal-overlay" hidden id="mob-modal">
             <div class="modal-container">
                 <div class="modal-header">
                     <h3 id="mob-modal-title">Mob Info</h3>
@@ -109,10 +109,10 @@
     </main>
 </div>
 
-<div class="search-overlay" id="search-overlay" hidden>
+<div class="search-overlay" hidden id="search-overlay">
     <div class="search-box">
-        <label for="global-search" class="visually-hidden">Search</label>
-        <input type="search" id="global-search" placeholder="Search items, mobs, fluids… (Ctrl+K)" autocomplete="off">
+        <label class="visually-hidden" for="global-search">Search</label>
+        <input autocomplete="off" id="global-search" placeholder="Search items, mobs, fluids… (Ctrl+K)" type="search">
         <div class="search-results-overlay" id="search-results-overlay"></div>
     </div>
 </div>
@@ -122,7 +122,7 @@
     <span id="footer-right">format 0x0102</span>
 </footer>
 
-<button id="sidebar-show-btn" class="sidebar-show-btn" title="Show Categories">
+<button class="sidebar-show-btn" id="sidebar-show-btn" title="Show Categories">
     <span class="bar"></span>
     <span class="bar"></span>
     <span class="bar"></span>

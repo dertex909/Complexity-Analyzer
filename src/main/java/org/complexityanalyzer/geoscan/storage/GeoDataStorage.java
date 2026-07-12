@@ -46,33 +46,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class GeoDataStorage {
-    private static class ResourceLocationAdapter implements JsonSerializer<ResourceLocation>, JsonDeserializer<ResourceLocation> {
-        @Override
-        public JsonElement serialize(ResourceLocation src, Type typeOfSrc, JsonSerializationContext context) {
-            return new JsonPrimitive(src.toString());
-        }
-
-        @Override
-        public ResourceLocation deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            if (json.isJsonNull()) return null;
-            return ResourceLocation.parse(json.getAsString());
-        }
-    }
-
     private static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter())
             .create();
-
     private static final Gson PRETTY_GSON = new GsonBuilder()
             .setPrettyPrinting()
             .registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter())
             .create();
-
     private final Path dataDir;
     private final Path reconDir;
     private final Path finalDir;
     private final Path metadataFile;
-
     private final ConcurrentHashMap<Path, Object> fileLockMarkers = new ConcurrentHashMap<>();
 
     public GeoDataStorage(MinecraftServer server) {
@@ -369,5 +353,18 @@ public class GeoDataStorage {
     @FunctionalInterface
     private interface ThrowingFunction<T, R> {
         R apply(T t) throws Exception;
+    }
+
+    private static class ResourceLocationAdapter implements JsonSerializer<ResourceLocation>, JsonDeserializer<ResourceLocation> {
+        @Override
+        public JsonElement serialize(ResourceLocation src, Type typeOfSrc, JsonSerializationContext context) {
+            return new JsonPrimitive(src.toString());
+        }
+
+        @Override
+        public ResourceLocation deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            if (json.isJsonNull()) return null;
+            return ResourceLocation.parse(json.getAsString());
+        }
     }
 }

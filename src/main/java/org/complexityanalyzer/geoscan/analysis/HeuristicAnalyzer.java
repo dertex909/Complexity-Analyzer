@@ -118,7 +118,8 @@ public class HeuristicAnalyzer {
             while (bcIt.hasNext()) {
                 var entry = bcIt.next();
                 var block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
-                if (block != null && block != Blocks.AIR && block != Blocks.BEDROCK) finalCleanData.addBlock(block, entry.getIntValue());
+                if (block != null && block != Blocks.AIR && block != Blocks.BEDROCK)
+                    finalCleanData.addBlock(block, entry.getIntValue());
             }
         }
         return finalCleanData;
@@ -143,7 +144,8 @@ public class HeuristicAnalyzer {
         while (it.hasNext()) {
             var entry = it.next();
             var block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
-            if (block != null && block != Blocks.AIR && !heuristic.contains(block)) unnaturalBlockCount += entry.getIntValue();
+            if (block != null && block != Blocks.AIR && !heuristic.contains(block))
+                unnaturalBlockCount += entry.getIntValue();
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }
         return true;

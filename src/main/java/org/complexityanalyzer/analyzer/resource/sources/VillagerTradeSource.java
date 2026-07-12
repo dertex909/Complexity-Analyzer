@@ -42,6 +42,10 @@ import java.util.Comparator;
 public class VillagerTradeSource implements IResourceSource {
 
     private static final Int2DoubleMap LEVEL_COST_MAP = new Int2DoubleOpenHashMap();
+    private static final ObjectSet<String> SKIP_TRADE_TYPES = new ObjectOpenHashSet<>(new String[]{
+            "TreasureMapForEmeralds",
+            "EnchantedItemForEmeralds"
+    });
 
     static {
         LEVEL_COST_MAP.put(1, 1.2);
@@ -51,17 +55,19 @@ public class VillagerTradeSource implements IResourceSource {
         LEVEL_COST_MAP.put(5, 5.0);
     }
 
-    private static final ObjectSet<String> SKIP_TRADE_TYPES = new ObjectOpenHashSet<>(new String[]{
-            "TreasureMapForEmeralds",
-            "EnchantedItemForEmeralds"
-    });
-
     private final Reference2ObjectMap<Item, ObjectList<TradeInfo>> tradesByResult = new Reference2ObjectOpenHashMap<>();
 
-    private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {
+    private static String professionId(VillagerProfession profession) {
+        var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        return id.toString();
     }
 
-    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type, long seed) {
+    private static long stableSeed(String professionId, int level, int index) {
+        long h = 0xcbf29ce484222325L;
+        for (int i = 0; i < professionId.length(); i++) h = (h ^ professionId.charAt(i)) * 0x100000001b3L;
+        h = (h ^ level) * 0x100000001b3L;
+        h = (h ^ index) * 0x100000001b3L;
+        return h;
     }
 
     @Override
@@ -182,19 +188,6 @@ public class VillagerTradeSource implements IResourceSource {
         }
     }
 
-    private static String professionId(VillagerProfession profession) {
-        var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
-        return id.toString();
-    }
-
-    private static long stableSeed(String professionId, int level, int index) {
-        long h = 0xcbf29ce484222325L;
-        for (int i = 0; i < professionId.length(); i++) h = (h ^ professionId.charAt(i)) * 0x100000001b3L;
-        h = (h ^ level) * 0x100000001b3L;
-        h = (h ^ index) * 0x100000001b3L;
-        return h;
-    }
-
     private void addTrade(MerchantOffer offer, int level) {
         var resultItem = offer.getResult().getItem();
 
@@ -248,5 +241,11 @@ public class VillagerTradeSource implements IResourceSource {
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {
         return BaseResourceData.ResourceSourceType.VILLAGER_TRADE;
+    }
+
+    private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {
+    }
+
+    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type, long seed) {
     }
 }

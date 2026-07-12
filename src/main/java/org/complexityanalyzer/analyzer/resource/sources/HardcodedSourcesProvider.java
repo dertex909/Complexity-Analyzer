@@ -33,20 +33,9 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
 
     private static final int NORMAL_PRIORITY = 35;
     private static final int OVERRIDE_PRIORITY = 1000;
-
+    private static HardcodedSourcesProvider INSTANCE;
     private final Reference2ObjectMap<Item, SourceRule> normalSources = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
     private final Reference2ObjectMap<Item, SourceRule> overrideSources = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-
-    private static HardcodedSourcesProvider INSTANCE;
-
-    private record SourceRule(
-            Reference2DoubleMap<Item> ingredients,
-            double baseCost,
-            BaseResourceData.ResourceSourceType type,
-            String description,
-            String modId
-    ) {
-    }
 
     public HardcodedSourcesProvider() {
         INSTANCE = this;
@@ -398,5 +387,14 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
     private void registerOxidation(Item from, Item to) {
         double timeCost = ComplexityConfig.TIME_COST_MULTIPLIER.get() * 40000.0;
         registerTransformation(to, from, null, timeCost, "Natural oxidation");
+    }
+
+    private record SourceRule(
+            Reference2DoubleMap<Item> ingredients,
+            double baseCost,
+            BaseResourceData.ResourceSourceType type,
+            String description,
+            String modId
+    ) {
     }
 }

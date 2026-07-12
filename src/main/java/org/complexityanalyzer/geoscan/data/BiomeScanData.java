@@ -26,10 +26,9 @@ import net.minecraft.world.level.block.Block;
 
 public class BiomeScanData {
     private final transient Reference2LongOpenHashMap<Block> blockCounts = new Reference2LongOpenHashMap<>();
-    private transient LongOpenHashSet scannedChunksSet;
-
     Object2LongOpenHashMap<String> serializableBlockCounts = new Object2LongOpenHashMap<>();
     LongArrayList scannedChunks;
+    private transient LongOpenHashSet scannedChunksSet;
 
     public BiomeScanData() {
         this.scannedChunks = new LongArrayList();

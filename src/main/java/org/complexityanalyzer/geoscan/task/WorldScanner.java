@@ -49,11 +49,9 @@ public class WorldScanner {
     private final MinecraftServer server;
     private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
     private final AtomicBoolean stopRequested = new AtomicBoolean(false);
-
-    private volatile boolean fullWorldMode = false;
-
     private final ConcurrentHashMap<String, AtomicReference<ObjectArrayList<BlockPos>>> biomeLocationCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ObjectSet<String>> dimensionBiomeCache = new ConcurrentHashMap<>();
+    private volatile boolean fullWorldMode = false;
 
     public WorldScanner(MinecraftServer server) {
         this.server = server;

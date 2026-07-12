@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ItemStackIdentity {
 
     private static final Method NO_METHOD;
+    private static final ConcurrentHashMap<Class<?>, Method> ATTACHMENT_METHOD_CACHE = new ConcurrentHashMap<>();
 
     static {
         Method m;
@@ -42,12 +43,10 @@ public final class ItemStackIdentity {
         NO_METHOD = m;
     }
 
-    private static final ConcurrentHashMap<Class<?>, Method> ATTACHMENT_METHOD_CACHE = new ConcurrentHashMap<>();
-
-    private static void noMethodSentinel() {
+    private ItemStackIdentity() {
     }
 
-    private ItemStackIdentity() {
+    private static void noMethodSentinel() {
     }
 
     public static boolean sameItemData(ItemStack a, ItemStack b) {

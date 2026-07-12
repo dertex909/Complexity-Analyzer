@@ -37,15 +37,12 @@ public final class FluidSectionBuilder {
         this.ctx = ctx;
     }
 
-    public static final class FluidRecipesResult {
-        public final byte[] payload;
-        public final byte[] outputIndex;
-        public final int recipeCount;
-
-        public FluidRecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
-            this.payload = payload;
-            this.outputIndex = outputIndex;
-            this.recipeCount = recipeCount;
+    private static String safeFluidDisplayName(Fluid fluid) {
+        try {
+            return fluid.getFluidType().getDescription().getString();
+        } catch (Throwable t) {
+            var id = GameRegistryManager.getFluidId(fluid);
+            return id != null ? id.toString() : "unknown";
         }
     }
 
@@ -216,12 +213,15 @@ public final class FluidSectionBuilder {
         return out.toByteArray();
     }
 
-    private static String safeFluidDisplayName(Fluid fluid) {
-        try {
-            return fluid.getFluidType().getDescription().getString();
-        } catch (Throwable t) {
-            var id = GameRegistryManager.getFluidId(fluid);
-            return id != null ? id.toString() : "unknown";
+    public static final class FluidRecipesResult {
+        public final byte[] payload;
+        public final byte[] outputIndex;
+        public final int recipeCount;
+
+        public FluidRecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
+            this.payload = payload;
+            this.outputIndex = outputIndex;
+            this.recipeCount = recipeCount;
         }
     }
 }

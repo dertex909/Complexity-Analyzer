@@ -38,23 +38,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkBatchProcessor {
+    private static final int BIOME_CACHE_MAX_SIZE = 100_000;
     private final MinecraftServer server;
     private final ChunkAnalyzer analyzer;
-
     private final ConcurrentHashMap<ResourceKey<Level>, BiomeContext> biomeContexts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<ResourceKey<Level>, ChunkGeneratorService> generators = new ConcurrentHashMap<>();
-
     private final ConcurrentHashMap<Long, ResourceLocation> biomeCache = new ConcurrentHashMap<>();
-    private static final int BIOME_CACHE_MAX_SIZE = 100_000;
-
-    private record BiomeContext(BiomeSource biomeSource, Climate.Sampler sampler, int seaLevel) {
-    }
-
-    public record ScanResult(ChunkSnapshot snapshot, ResourceLocation biome) {
-    }
-
-    public record LoadedChunk(ChunkAccess chunk, long packedPos, ResourceLocation biome) {
-    }
 
     public ChunkBatchProcessor(MinecraftServer server) {
         this.server = server;
@@ -188,5 +177,14 @@ public class ChunkBatchProcessor {
 
     public void resetForNewSession() {
         generators.clear();
+    }
+
+    private record BiomeContext(BiomeSource biomeSource, Climate.Sampler sampler, int seaLevel) {
+    }
+
+    public record ScanResult(ChunkSnapshot snapshot, ResourceLocation biome) {
+    }
+
+    public record LoadedChunk(ChunkAccess chunk, long packedPos, ResourceLocation biome) {
     }
 }

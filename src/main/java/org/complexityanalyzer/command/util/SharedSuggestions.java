@@ -31,20 +31,17 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 public final class SharedSuggestions {
+    public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) ->
+            SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
     private static final ObjectList<ResourceLocation> CACHED_ENTITIES = new ObjectArrayList<>();
+    public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) ->
+            SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
     private static final ObjectList<ResourceLocation> CACHED_LOOT_TABLES = new ObjectArrayList<>();
+    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) ->
+            SharedSuggestionProvider.suggestResource(CACHED_LOOT_TABLES, builder);
 
     private SharedSuggestions() {
     }
-
-    public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
-
-    public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
-
-    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(CACHED_LOOT_TABLES, builder);
 
     public static void refresh() {
         refreshEntities();

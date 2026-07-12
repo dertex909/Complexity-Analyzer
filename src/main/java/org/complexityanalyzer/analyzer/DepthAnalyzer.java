@@ -29,13 +29,12 @@ import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
 public class DepthAnalyzer {
+    private static final int IN_PROGRESS = -999;
     private final RecipeGraph graph;
     private final Reference2IntMap<Item> cache;
     private final Reference2ObjectMap<Item, RecipeNode> recipeCache;
-    private Reference2ObjectMap<Item, RecipeNode> optimalRecipes;
     private final SourceManager sourceManager;
-
-    private static final int IN_PROGRESS = -999;
+    private Reference2ObjectMap<Item, RecipeNode> optimalRecipes;
 
     public DepthAnalyzer(RecipeGraph graph, SourceManager sourceManager) {
         this.graph = graph;

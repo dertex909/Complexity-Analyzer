@@ -64,56 +64,6 @@ public class ComplexityExporter {
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
-    private static class DoubleSerializer extends TypeAdapter<Double> {
-        @Override
-        public void write(JsonWriter out, Double value) throws IOException {
-            if (value == null) {
-                out.nullValue();
-            } else if (Double.isInfinite(value)) {
-                out.value(value > 0 ? "Infinity" : "-Infinity");
-            } else if (Double.isNaN(value)) {
-                out.value("NaN");
-            } else {
-                out.value(value);
-            }
-        }
-
-        @Override
-        public Double read(JsonReader in) throws IOException {
-            return switch (in.peek()) {
-                case STRING -> {
-                    String str = in.nextString();
-                    yield switch (str) {
-                        case "Infinity" -> Double.POSITIVE_INFINITY;
-                        case "-Infinity" -> Double.NEGATIVE_INFINITY;
-                        case "NaN" -> Double.NaN;
-                        default -> Double.parseDouble(str);
-                    };
-                }
-                case NUMBER -> in.nextDouble();
-                case NULL -> {
-                    in.nextNull();
-                    yield null;
-                }
-                default -> throw new JsonSyntaxException("Expected number or string");
-            };
-        }
-    }
-
-    private record CsvRow(
-            String itemId,
-            String displayName,
-            double complexity,
-            String category,
-            boolean hasRecipe,
-            int craftingDepth,
-            int usedInRecipes,
-            boolean isValid,
-            boolean hasCycle,
-            boolean isHardcoded
-    ) {
-    }
-
     public static Path exportAllItems(MinecraftServer server, AnalysisEngine engine) throws IOException {
         var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
@@ -381,5 +331,55 @@ public class ComplexityExporter {
                 type.getCategory().getName(), props.maxHealth(), props.attackDamage(), props.armor(),
                 props.calculateSurvivability(), props.calculateThreat(), props.calculateCombatPower(),
                 mobProvider.getRarity(type), mobProvider.isBoss(type), mobProvider.isMiniBoss(type), drops);
+    }
+
+    private static class DoubleSerializer extends TypeAdapter<Double> {
+        @Override
+        public void write(JsonWriter out, Double value) throws IOException {
+            if (value == null) {
+                out.nullValue();
+            } else if (Double.isInfinite(value)) {
+                out.value(value > 0 ? "Infinity" : "-Infinity");
+            } else if (Double.isNaN(value)) {
+                out.value("NaN");
+            } else {
+                out.value(value);
+            }
+        }
+
+        @Override
+        public Double read(JsonReader in) throws IOException {
+            return switch (in.peek()) {
+                case STRING -> {
+                    String str = in.nextString();
+                    yield switch (str) {
+                        case "Infinity" -> Double.POSITIVE_INFINITY;
+                        case "-Infinity" -> Double.NEGATIVE_INFINITY;
+                        case "NaN" -> Double.NaN;
+                        default -> Double.parseDouble(str);
+                    };
+                }
+                case NUMBER -> in.nextDouble();
+                case NULL -> {
+                    in.nextNull();
+                    yield null;
+                }
+                default -> throw new JsonSyntaxException("Expected number or string");
+            };
+        }
+    }
+
+    private record CsvRow(
+            String itemId,
+            String displayName,
+            double complexity,
+            String category,
+            boolean hasRecipe,
+            int craftingDepth,
+            int usedInRecipes,
+            boolean isValid,
+            boolean hasCycle,
+            boolean isHardcoded
+    ) {
     }
 }

@@ -40,25 +40,38 @@ import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
 public final class CabinBackgroundService {
 
-    public record Snapshot(byte[] bytes, long fileHash, long generatedAtMs, int itemCount, int mobCount,
-                           int recipeCount) {
-    }
-
-    public enum Status {IDLE, BUILDING, READY, FAILED}
-
     private static final CabinBackgroundService INSTANCE = new CabinBackgroundService();
-
-    public static CabinBackgroundService getInstance() {
-        return INSTANCE;
-    }
-
     private final AtomicReference<Snapshot> current = new AtomicReference<>(null);
     private final AtomicReference<Status> status = new AtomicReference<>(Status.IDLE);
     private final AtomicReference<CompletableFuture<Snapshot>> inflight = new AtomicReference<>(null);
     private final AtomicReference<Throwable> lastError = new AtomicReference<>(null);
     private volatile boolean rebuildPending = false;
-
     private CabinBackgroundService() {
+    }
+
+    public static CabinBackgroundService getInstance() {
+        return INSTANCE;
+    }
+
+    private static Snapshot parseHeader(byte[] bytes, long hash) {
+        int itemCount = 0;
+        int mobCount = 0;
+        int recipeCount = 0;
+        try {
+            var reader = new CabinReader(bytes);
+            byte[] meta = reader.readSection(CabinFormat.SEC_META);
+            int offset = 24;
+            itemCount = LeBuf.readI32(meta, offset);
+            mobCount = LeBuf.readI32(meta, offset + 4);
+            recipeCount = LeBuf.readI32(meta, offset + 12);
+        } catch (Throwable ignored) {
+        }
+        return new Snapshot(bytes, hash, System.currentTimeMillis(), itemCount, mobCount, recipeCount);
+    }
+
+    public static Path getCabinDirectory(MinecraftServer server) {
+        return server.getWorldPath(ROOT).resolve("data").resolve("complexityanalyzer")
+                .resolve("cabin").toAbsolutePath().normalize();
     }
 
     @Nullable
@@ -153,27 +166,6 @@ public final class CabinBackgroundService {
         }
     }
 
-    private static Snapshot parseHeader(byte[] bytes, long hash) {
-        int itemCount = 0;
-        int mobCount = 0;
-        int recipeCount = 0;
-        try {
-            var reader = new CabinReader(bytes);
-            byte[] meta = reader.readSection(CabinFormat.SEC_META);
-            int offset = 24;
-            itemCount = LeBuf.readI32(meta, offset);
-            mobCount = LeBuf.readI32(meta, offset + 4);
-            recipeCount = LeBuf.readI32(meta, offset + 12);
-        } catch (Throwable ignored) {
-        }
-        return new Snapshot(bytes, hash, System.currentTimeMillis(), itemCount, mobCount, recipeCount);
-    }
-
-    public static Path getCabinDirectory(MinecraftServer server) {
-        return server.getWorldPath(ROOT).resolve("data").resolve("complexityanalyzer")
-                .resolve("cabin").toAbsolutePath().normalize();
-    }
-
     public void clear() {
         current.set(null);
         status.set(Status.IDLE);
@@ -181,5 +173,11 @@ public final class CabinBackgroundService {
         rebuildPending = false;
         var f = inflight.getAndSet(null);
         if (f != null && !f.isDone()) f.cancel(false);
+    }
+
+    public enum Status {IDLE, BUILDING, READY, FAILED}
+
+    public record Snapshot(byte[] bytes, long fileHash, long generatedAtMs, int itemCount, int mobCount,
+                           int recipeCount) {
     }
 }

@@ -69,42 +69,6 @@ public class ScanExecutor {
     private final ExecutorService analysisExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final ExecutorService workerExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    private record SessionContext(ScanSession session, Runnable onComplete, EmergencyManager.MsptTracker monitor) {
-    }
-
-    private static final class BufferedSnapshots {
-        private final ConcurrentLinkedQueue<ChunkSnapshot> queue = new ConcurrentLinkedQueue<>();
-        private final AtomicInteger size = new AtomicInteger(0);
-
-        ObjectArrayList<ChunkSnapshot> addAndDrainIfNeeded(ChunkSnapshot snapshot) {
-            queue.offer(snapshot);
-            int currentSize = size.incrementAndGet();
-            if (currentSize < ScanConfig.BATCH_SAVE_THRESHOLD) return null;
-            return drainUpTo();
-        }
-
-        ObjectArrayList<ChunkSnapshot> drainUpTo() {
-            var result = new ObjectArrayList<ChunkSnapshot>(ScanConfig.BATCH_SAVE_THRESHOLD);
-            for (int i = 0; i < ScanConfig.BATCH_SAVE_THRESHOLD; i++) {
-                var s = queue.poll();
-                if (s == null) break;
-                size.decrementAndGet();
-                result.add(s);
-            }
-            return result;
-        }
-
-        ObjectArrayList<ChunkSnapshot> drainAll() {
-            var result = new ObjectArrayList<ChunkSnapshot>();
-            ChunkSnapshot s;
-            while ((s = queue.poll()) != null) {
-                size.decrementAndGet();
-                result.add(s);
-            }
-            return result;
-        }
-    }
-
     public ScanExecutor(
             MinecraftServer server,
             GeoDatabase database,
@@ -309,58 +273,6 @@ public class ScanExecutor {
     private boolean waitAndCheckStop(SessionContext myCtx) {
         if (checkMemoryAndThrottling(myCtx)) return shouldStop(myCtx);
         return false;
-    }
-
-    private final class ScanContext {
-        record AnalysisBatchResult(ObjectArrayList<ChunkBatchProcessor.ScanResult> results, int claimed) {
-        }
-
-        final SessionContext myCtx;
-        final ScanSession mySession;
-        final ResourceKey<Level> dimension;
-        final ResourceKey<Biome> biomeKey;
-        final ResourceLocation dimId;
-        final ResourceLocation biomeId;
-        final SpiralChunkSearcher searcher = new SpiralChunkSearcher();
-        final Object2IntOpenHashMap<ResourceLocation> foundByBiome = new Object2IntOpenHashMap<>();
-        final int maxScannedBudget;
-        final int emptyBatchTolerance;
-        final int stagnantBatchTolerance;
-        final int maxPendingAnalysisBatches;
-        final ObjectArrayList<CompletableFuture<AnalysisBatchResult>> pendingAnalysis = new ObjectArrayList<>();
-        final Long2ObjectOpenHashMap<ResourceLocation> transientAreaBiomeCache = new Long2ObjectOpenHashMap<>();
-
-        int scanned = 0;
-        int found = 0;
-        int emptyBatches = 0;
-        int stagnantBatches = 0;
-        int relocations = 0;
-
-        ScanContext(SessionContext myCtx, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
-                    ResourceLocation dimId, ResourceLocation biomeId) {
-            this.myCtx = myCtx;
-            this.mySession = myCtx.session();
-            this.dimension = dimension;
-            this.biomeKey = biomeKey;
-            this.dimId = dimId;
-            this.biomeId = biomeId;
-            foundByBiome.defaultReturnValue(0);
-
-            var monitor = myCtx.monitor();
-            boolean limited = monitor.hasLimit();
-            float mspt = monitor.getCurrentMspt();
-
-            var policy = mySession.getProfile().policy(mySession.getChunksPerBiome(), mspt, limited);
-            this.maxScannedBudget = policy.maxScannedBudget();
-            this.emptyBatchTolerance = policy.emptyBatchTolerance();
-            this.stagnantBatchTolerance = policy.stagnantBatchTolerance();
-            this.maxPendingAnalysisBatches = policy.maxPendingAnalysisBatches();
-        }
-
-        boolean canContinue() {
-            return scanned < maxScannedBudget && mySession.isValid() && sessionRef.get() == myCtx && !isShutdown.get()
-                    && mySession.hasAnyNeeds();
-        }
     }
 
     private void performScan(ScanContext ctx) {
@@ -572,5 +484,91 @@ public class ScanExecutor {
         analysisExecutor.shutdownNow();
         workerExecutor.shutdownNow();
         flushAllBuffers();
+    }
+
+    private record SessionContext(ScanSession session, Runnable onComplete, EmergencyManager.MsptTracker monitor) {
+    }
+
+    private static final class BufferedSnapshots {
+        private final ConcurrentLinkedQueue<ChunkSnapshot> queue = new ConcurrentLinkedQueue<>();
+        private final AtomicInteger size = new AtomicInteger(0);
+
+        ObjectArrayList<ChunkSnapshot> addAndDrainIfNeeded(ChunkSnapshot snapshot) {
+            queue.offer(snapshot);
+            int currentSize = size.incrementAndGet();
+            if (currentSize < ScanConfig.BATCH_SAVE_THRESHOLD) return null;
+            return drainUpTo();
+        }
+
+        ObjectArrayList<ChunkSnapshot> drainUpTo() {
+            var result = new ObjectArrayList<ChunkSnapshot>(ScanConfig.BATCH_SAVE_THRESHOLD);
+            for (int i = 0; i < ScanConfig.BATCH_SAVE_THRESHOLD; i++) {
+                var s = queue.poll();
+                if (s == null) break;
+                size.decrementAndGet();
+                result.add(s);
+            }
+            return result;
+        }
+
+        ObjectArrayList<ChunkSnapshot> drainAll() {
+            var result = new ObjectArrayList<ChunkSnapshot>();
+            ChunkSnapshot s;
+            while ((s = queue.poll()) != null) {
+                size.decrementAndGet();
+                result.add(s);
+            }
+            return result;
+        }
+    }
+
+    private final class ScanContext {
+        final SessionContext myCtx;
+        final ScanSession mySession;
+        final ResourceKey<Level> dimension;
+        final ResourceKey<Biome> biomeKey;
+        final ResourceLocation dimId;
+        final ResourceLocation biomeId;
+        final SpiralChunkSearcher searcher = new SpiralChunkSearcher();
+        final Object2IntOpenHashMap<ResourceLocation> foundByBiome = new Object2IntOpenHashMap<>();
+        final int maxScannedBudget;
+        final int emptyBatchTolerance;
+        final int stagnantBatchTolerance;
+        final int maxPendingAnalysisBatches;
+        final ObjectArrayList<CompletableFuture<AnalysisBatchResult>> pendingAnalysis = new ObjectArrayList<>();
+        final Long2ObjectOpenHashMap<ResourceLocation> transientAreaBiomeCache = new Long2ObjectOpenHashMap<>();
+        int scanned = 0;
+        int found = 0;
+        int emptyBatches = 0;
+        int stagnantBatches = 0;
+        int relocations = 0;
+        ScanContext(SessionContext myCtx, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
+                    ResourceLocation dimId, ResourceLocation biomeId) {
+            this.myCtx = myCtx;
+            this.mySession = myCtx.session();
+            this.dimension = dimension;
+            this.biomeKey = biomeKey;
+            this.dimId = dimId;
+            this.biomeId = biomeId;
+            foundByBiome.defaultReturnValue(0);
+
+            var monitor = myCtx.monitor();
+            boolean limited = monitor.hasLimit();
+            float mspt = monitor.getCurrentMspt();
+
+            var policy = mySession.getProfile().policy(mySession.getChunksPerBiome(), mspt, limited);
+            this.maxScannedBudget = policy.maxScannedBudget();
+            this.emptyBatchTolerance = policy.emptyBatchTolerance();
+            this.stagnantBatchTolerance = policy.stagnantBatchTolerance();
+            this.maxPendingAnalysisBatches = policy.maxPendingAnalysisBatches();
+        }
+
+        boolean canContinue() {
+            return scanned < maxScannedBudget && mySession.isValid() && sessionRef.get() == myCtx && !isShutdown.get()
+                    && mySession.hasAnyNeeds();
+        }
+
+        record AnalysisBatchResult(ObjectArrayList<ChunkBatchProcessor.ScanResult> results, int claimed) {
+        }
     }
 }

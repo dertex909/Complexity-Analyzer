@@ -33,15 +33,12 @@ public final class MobSectionBuilder {
         this.ctx = ctx;
     }
 
-    public static final class MobsResult {
-        public final byte[] mobs;
-        public final byte[] drops;
-        public final int mobCount;
-
-        public MobsResult(byte[] mobs, byte[] drops, int mobCount) {
-            this.mobs = mobs;
-            this.drops = drops;
-            this.mobCount = mobCount;
+    private static String safeDisplayName(Item item) {
+        try {
+            return item.getDescription().getString();
+        } catch (Throwable t) {
+            var id = GameRegistryManager.getItemId(item);
+            return id != null ? id.toString() : "unknown";
         }
     }
 
@@ -123,12 +120,15 @@ public final class MobSectionBuilder {
         return new MobsResult(mobsBuf.toByteArray(), dropsBuf.toByteArray(), n);
     }
 
-    private static String safeDisplayName(Item item) {
-        try {
-            return item.getDescription().getString();
-        } catch (Throwable t) {
-            var id = GameRegistryManager.getItemId(item);
-            return id != null ? id.toString() : "unknown";
+    public static final class MobsResult {
+        public final byte[] mobs;
+        public final byte[] drops;
+        public final int mobCount;
+
+        public MobsResult(byte[] mobs, byte[] drops, int mobCount) {
+            this.mobs = mobs;
+            this.drops = drops;
+            this.mobCount = mobCount;
         }
     }
 }

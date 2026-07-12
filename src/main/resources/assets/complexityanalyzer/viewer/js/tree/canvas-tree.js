@@ -32,6 +32,7 @@ export async function renderCraftTree(container, db, itemIndex) {
         canvas.width = wrap.clientWidth;
         canvas.height = wrap.clientHeight;
     }
+
     resize();
     window.addEventListener("resize", resize);
 
@@ -42,7 +43,10 @@ export async function renderCraftTree(container, db, itemIndex) {
     const totalH = bounds.maxY - bounds.minY + NODE_H + LEVEL_GAP * 2;
 
     let zoom = Math.min(1, canvas.width / totalW, canvas.height / totalH);
-    let pan = { x: (canvas.width - totalW * zoom) / 2 - bounds.minX * zoom, y: (canvas.height - totalH * zoom) / 2 - bounds.minY * zoom };
+    let pan = {
+        x: (canvas.width - totalW * zoom) / 2 - bounds.minX * zoom,
+        y: (canvas.height - totalH * zoom) / 2 - bounds.minY * zoom
+    };
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -82,16 +86,21 @@ export async function renderCraftTree(container, db, itemIndex) {
         }
     }
 
-    let dragging = null, lastMouse = { x: 0, y: 0 };
-    canvas.addEventListener("mousedown", e => { dragging = true; lastMouse = { x: e.clientX, y: e.clientY }; });
+    let dragging = null, lastMouse = {x: 0, y: 0};
+    canvas.addEventListener("mousedown", e => {
+        dragging = true;
+        lastMouse = {x: e.clientX, y: e.clientY};
+    });
     window.addEventListener("mousemove", e => {
         if (!dragging) return;
         pan.x += e.clientX - lastMouse.x;
         pan.y += e.clientY - lastMouse.y;
-        lastMouse = { x: e.clientX, y: e.clientY };
+        lastMouse = {x: e.clientX, y: e.clientY};
         draw();
     });
-    window.addEventListener("mouseup", () => { dragging = false; });
+    window.addEventListener("mouseup", () => {
+        dragging = false;
+    });
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
         const factor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -105,7 +114,7 @@ export async function renderCraftTree(container, db, itemIndex) {
 }
 
 async function buildTree(db, itemIndex, depth) {
-    const node = { itemIndex, depth, children: [] };
+    const node = {itemIndex, depth, children: []};
     if (depth >= MAX_DEPTH) return node;
     try {
         const recipes = await db.getItemRecipes(itemIndex);
@@ -162,7 +171,7 @@ function computeLayout(node) {
     }
 }
 
-function getBounds(node, bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }) {
+function getBounds(node, bounds = {minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity}) {
     bounds.minX = Math.min(bounds.minX, node.x);
     bounds.maxX = Math.max(bounds.maxX, node.x + NODE_W);
     bounds.minY = Math.min(bounds.minY, node.y);

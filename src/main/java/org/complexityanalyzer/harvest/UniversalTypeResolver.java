@@ -34,33 +34,6 @@ public final class UniversalTypeResolver {
 
     private static final ConcurrentHashMap<Class<?>, ResolvedType> TYPE_CACHE = new ConcurrentHashMap<>(512);
 
-    public enum Kind {
-        ITEM_STACK, INGREDIENT, FLUID_STACK, RESOURCE_ID, TAG, DATA_COMPONENT, NUMBER, COLLECTION, UNKNOWN
-    }
-
-    public record ResolvedType(
-            Kind kind,
-            boolean isCollection,
-            boolean isWrapper,
-            Class<?> innerType,
-            int confidence,
-            ObjectList<String> evidence
-    ) {
-        public static final ResolvedType UNKNOWN_TYPE = new ResolvedType(
-                Kind.UNKNOWN, false, false, null, 0, ObjectLists.emptyList()
-        );
-
-        public static final ResolvedType NUMBER_TYPE = new ResolvedType(
-                Kind.NUMBER, false, false, null, 90, ObjectLists.singleton("Primitive or boxed number")
-        );
-
-        @Override
-        public @NotNull String toString() {
-            return kind + (isCollection ? "_LIST" : "") + (isWrapper ? "_WRAPPER" : "")
-                    + (innerType != null ? "<" + innerType.getSimpleName() + ">" : "") + " conf=" + confidence;
-        }
-    }
-
     private UniversalTypeResolver() {
     }
 
@@ -236,5 +209,32 @@ public final class UniversalTypeResolver {
         }
 
         return new ResolvedType(Kind.UNKNOWN, false, false, null, 0, evidence);
+    }
+
+    public enum Kind {
+        ITEM_STACK, INGREDIENT, FLUID_STACK, RESOURCE_ID, TAG, DATA_COMPONENT, NUMBER, COLLECTION, UNKNOWN
+    }
+
+    public record ResolvedType(
+            Kind kind,
+            boolean isCollection,
+            boolean isWrapper,
+            Class<?> innerType,
+            int confidence,
+            ObjectList<String> evidence
+    ) {
+        public static final ResolvedType UNKNOWN_TYPE = new ResolvedType(
+                Kind.UNKNOWN, false, false, null, 0, ObjectLists.emptyList()
+        );
+
+        public static final ResolvedType NUMBER_TYPE = new ResolvedType(
+                Kind.NUMBER, false, false, null, 90, ObjectLists.singleton("Primitive or boxed number")
+        );
+
+        @Override
+        public @NotNull String toString() {
+            return kind + (isCollection ? "_LIST" : "") + (isWrapper ? "_WRAPPER" : "")
+                    + (innerType != null ? "<" + innerType.getSimpleName() + ">" : "") + " conf=" + confidence;
+        }
     }
 }

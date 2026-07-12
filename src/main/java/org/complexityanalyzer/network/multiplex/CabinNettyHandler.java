@@ -73,6 +73,12 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return b;
     }
 
+    private static String extractIp(ChannelHandlerContext ctx) {
+        if (ctx.channel().remoteAddress() instanceof InetSocketAddress addr && addr.getAddress() != null)
+            return addr.getAddress().getHostAddress();
+        return String.valueOf(ctx.channel().remoteAddress());
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
         uniqueVisitors.add(extractIp(ctx));
@@ -104,12 +110,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         } else {
             serveResource(ctx, path, getMimeType(path), keepAlive);
         }
-    }
-
-    private static String extractIp(ChannelHandlerContext ctx) {
-        if (ctx.channel().remoteAddress() instanceof InetSocketAddress addr && addr.getAddress() != null)
-            return addr.getAddress().getHostAddress();
-        return String.valueOf(ctx.channel().remoteAddress());
     }
 
     @Override

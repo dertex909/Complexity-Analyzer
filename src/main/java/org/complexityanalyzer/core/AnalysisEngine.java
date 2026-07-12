@@ -62,8 +62,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class AnalysisEngine {
-    public enum State {IDLE, ANALYZING, READY, FAILED}
-
     private final AtomicReference<State> currentState = new AtomicReference<>(State.IDLE);
     private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
     private final AtomicLong analysisGeneration = new AtomicLong(0);
@@ -73,7 +71,6 @@ public class AnalysisEngine {
     private final ReentrantLock stateLock = new ReentrantLock();
     private final ReentrantLock geoManagerLock = new ReentrantLock();
     private final ComplexityCache complexityCache;
-
     private volatile RecipeGraph graph;
     private volatile SourceManager sourceManager;
     private volatile ComplexityCalculator calculator;
@@ -83,17 +80,12 @@ public class AnalysisEngine {
     private volatile GeoAnalysisManager geoManager;
     private volatile MachineRegistry machineRegistry;
     private volatile MinecraftServer server;
-
-    private static class InstanceHolder {
-        private static final AnalysisEngine INSTANCE = new AnalysisEngine();
+    private AnalysisEngine() {
+        this.complexityCache = new ComplexityCache();
     }
 
     public static AnalysisEngine getInstance() {
         return InstanceHolder.INSTANCE;
-    }
-
-    private AnalysisEngine() {
-        this.complexityCache = new ComplexityCache();
     }
 
     @Nullable
@@ -627,9 +619,6 @@ public class AnalysisEngine {
         return this.geoDatabase;
     }
 
-    public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {
-    }
-
     public EngineStats getStats() {
         if (!isReady()) return new EngineStats(currentState.get(), 0, 0, 0);
 
@@ -644,5 +633,14 @@ public class AnalysisEngine {
         var sm = this.sourceManager;
         if (sm == null) return null;
         return sm.getSourceByType(type);
+    }
+
+    public enum State {IDLE, ANALYZING, READY, FAILED}
+
+    private static class InstanceHolder {
+        private static final AnalysisEngine INSTANCE = new AnalysisEngine();
+    }
+
+    public record EngineStats(State state, int itemCount, int recipeCount, int baseResourceCount) {
     }
 }

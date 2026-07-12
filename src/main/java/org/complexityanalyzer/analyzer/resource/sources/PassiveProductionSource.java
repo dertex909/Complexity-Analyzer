@@ -33,9 +33,6 @@ public class PassiveProductionSource implements IResourceSource {
 
     private final Reference2ObjectMap<Item, ProductionInfo> productionMap = new Reference2ObjectOpenHashMap<>();
 
-    private record ProductionInfo(EntityType<?> sourceType, double ticksPerItem, String method) {
-    }
-
     @Override
     public void initialize(Level level) {
         productionMap.put(Items.EGG, new ProductionInfo(EntityType.CHICKEN, 9000.0, "Passive (lays egg)"));
@@ -93,5 +90,8 @@ public class PassiveProductionSource implements IResourceSource {
     @Override
     public String getName() {
         return "PassiveProductionSource";
+    }
+
+    private record ProductionInfo(EntityType<?> sourceType, double ticksPerItem, String method) {
     }
 }

@@ -46,6 +46,8 @@ import org.complexityanalyzer.data.CraftingTreeData.*;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 
 public final class TreeCommand {
+    public static final int DEFAULT_MAX_DEPTH = 100;
+
     private TreeCommand() {
     }
 
@@ -68,8 +70,6 @@ public final class TreeCommand {
                                                 .then(Commands.argument("max_depth", IntegerArgumentType.integer(1)).executes(ctx ->
                                                         TreeCommand.execute(ctx, ResourceLocationArgument.getId(ctx, "item"), StringArgumentType.getString(ctx, "mode_type"), IntegerArgumentType.getInteger(ctx, "max_depth"))))))));
     }
-
-    public static final int DEFAULT_MAX_DEPTH = 100;
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId, String mode, int maxDepth) {
         var source = context.getSource();

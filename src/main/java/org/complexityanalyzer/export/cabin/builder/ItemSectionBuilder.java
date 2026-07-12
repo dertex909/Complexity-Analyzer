@@ -36,15 +36,18 @@ public final class ItemSectionBuilder {
         this.ctx = ctx;
     }
 
-    public static final class ItemSectionResult {
-        public final byte[] items;
-        public final int validItems;
-        public final int infiniteItems;
+    private static Reference2ObjectMap<Item, Double> toRefMap(Reference2DoubleMap<Item> in) {
+        var out = new Reference2ObjectOpenHashMap<Item, Double>(in.size());
+        for (var e : Reference2DoubleMaps.fastIterable(in)) out.put(e.getKey(), e.getDoubleValue());
+        return out;
+    }
 
-        public ItemSectionResult(byte[] items, int validItems, int infiniteItems) {
-            this.items = items;
-            this.validItems = validItems;
-            this.infiniteItems = infiniteItems;
+    private static String safeDisplayName(Item item) {
+        try {
+            return item.getDescription().getString();
+        } catch (Throwable t) {
+            var id = GameRegistryManager.getItemId(item);
+            return id != null ? id.toString() : "unknown";
         }
     }
 
@@ -124,23 +127,6 @@ public final class ItemSectionBuilder {
         return new ItemSectionResult(buf.toByteArray(), validCount, infiniteCount);
     }
 
-    public static final class BaseDataAccumulator {
-        final LeBuf payload = new LeBuf(64 * 1024);
-        BaseDataEntry[] entries;
-
-        public byte[] bytes() {
-            return payload.toByteArray();
-        }
-    }
-
-    public static final class BaseDataEntry {
-        final int offset;
-
-        BaseDataEntry(int offset) {
-            this.offset = offset;
-        }
-    }
-
     public BaseDataAccumulator buildBaseData(SourceManager sourceManager) {
         var acc = new BaseDataAccumulator();
         int n = ctx.orderedItems().size();
@@ -185,31 +171,6 @@ public final class ItemSectionBuilder {
             buf.i32(ctx.strings().intern(entry.getKey()));
             buf.i32(ctx.strings().intern(String.valueOf(entry.getValue())));
             written++;
-        }
-    }
-
-    private static Reference2ObjectMap<Item, Double> toRefMap(Reference2DoubleMap<Item> in) {
-        var out = new Reference2ObjectOpenHashMap<Item, Double>(in.size());
-        for (var e : Reference2DoubleMaps.fastIterable(in)) out.put(e.getKey(), e.getDoubleValue());
-        return out;
-    }
-
-    public static final class SourcesAccumulator {
-        final LeBuf payload = new LeBuf(64 * 1024);
-        SourcesEntry[] entries;
-
-        public byte[] bytes() {
-            return payload.toByteArray();
-        }
-    }
-
-    public static final class SourcesEntry {
-        final int offset;
-        final int count;
-
-        SourcesEntry(int offset, int count) {
-            this.offset = offset;
-            this.count = count;
         }
     }
 
@@ -261,12 +222,51 @@ public final class ItemSectionBuilder {
         }
     }
 
-    private static String safeDisplayName(Item item) {
-        try {
-            return item.getDescription().getString();
-        } catch (Throwable t) {
-            var id = GameRegistryManager.getItemId(item);
-            return id != null ? id.toString() : "unknown";
+    public static final class ItemSectionResult {
+        public final byte[] items;
+        public final int validItems;
+        public final int infiniteItems;
+
+        public ItemSectionResult(byte[] items, int validItems, int infiniteItems) {
+            this.items = items;
+            this.validItems = validItems;
+            this.infiniteItems = infiniteItems;
+        }
+    }
+
+    public static final class BaseDataAccumulator {
+        final LeBuf payload = new LeBuf(64 * 1024);
+        BaseDataEntry[] entries;
+
+        public byte[] bytes() {
+            return payload.toByteArray();
+        }
+    }
+
+    public static final class BaseDataEntry {
+        final int offset;
+
+        BaseDataEntry(int offset) {
+            this.offset = offset;
+        }
+    }
+
+    public static final class SourcesAccumulator {
+        final LeBuf payload = new LeBuf(64 * 1024);
+        SourcesEntry[] entries;
+
+        public byte[] bytes() {
+            return payload.toByteArray();
+        }
+    }
+
+    public static final class SourcesEntry {
+        final int offset;
+        final int count;
+
+        SourcesEntry(int offset, int count) {
+            this.offset = offset;
+            this.count = count;
         }
     }
 }

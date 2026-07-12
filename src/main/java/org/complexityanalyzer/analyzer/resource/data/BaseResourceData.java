@@ -187,12 +187,12 @@ public class BaseResourceData {
     public static class Builder {
         private final Item item;
         private final String sourceName;
+        private final Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
+        private final Object2ObjectMap<String, String> metadata = new Object2ObjectOpenHashMap<>();
         private ResourceSourceType sourceType = ResourceSourceType.UNKNOWN;
         private double baseFactor = 1.0;
         private String details = "";
         private String sourceSpecifier = "";
-        private final Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
-        private final Object2ObjectMap<String, String> metadata = new Object2ObjectOpenHashMap<>();
 
         /**
          * @param item   the produced item

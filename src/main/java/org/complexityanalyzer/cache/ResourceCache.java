@@ -58,15 +58,71 @@ public final class ResourceCache implements ManagedCache {
         this.fileName = fileName;
     }
 
-    @FunctionalInterface
-    public interface Writer<T> {
-        void write(FriendlyByteBuf buf, T element);
+    private static boolean fingerprintMatches(FriendlyByteBuf buf, long[] expected) {
+        int n = buf.readVarInt();
+        if (n != expected.length) {
+            for (int i = 0; i < n; i++) buf.readLong();
+            return false;
+        }
+        boolean match = true;
+        for (int i = 0; i < n; i++) if (buf.readLong() != expected[i]) match = false;
+        return match;
     }
 
-    @FunctionalInterface
-    public interface Reader<T> {
-        @Nullable
-        T read(FriendlyByteBuf buf, Item item);
+    public static void writeResourceData(FriendlyByteBuf buf, BaseResourceData data) {
+        buf.writeUtf(data.getSourceType().name());
+        buf.writeDouble(data.getBaseFactor());
+        buf.writeUtf(data.getSourceSpecifier());
+        buf.writeUtf(data.getDetails());
+
+        var sourceItems = data.getSourceItems();
+        buf.writeVarInt(sourceItems.size());
+        for (var e : sourceItems.reference2DoubleEntrySet()) {
+            var id = GameRegistryManager.getItemId(e.getKey());
+            buf.writeResourceLocation(id != null ? id : ResourceLocation.withDefaultNamespace("air"));
+            buf.writeDouble(e.getDoubleValue());
+        }
+
+        var metadata = data.getMetadata();
+        buf.writeVarInt(metadata.size());
+        for (var e : metadata.object2ObjectEntrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
+    }
+
+    @Nullable
+    public static BaseResourceData readResourceData(FriendlyByteBuf buf, Item item, IResourceSource source) {
+        var typeName = buf.readUtf();
+        double baseFactor = buf.readDouble();
+        var specifier = buf.readUtf();
+        var details = buf.readUtf();
+
+        int siCount = buf.readVarInt();
+        var sourceItems = new Reference2DoubleOpenHashMap<Item>();
+        for (int k = 0; k < siCount; k++) {
+            var id = buf.readResourceLocation();
+            double amount = buf.readDouble();
+            var si = GameRegistryManager.getItem(id);
+            if (si != null && si != Items.AIR) sourceItems.put(si, amount);
+        }
+
+        var builder = item != null ? new BaseResourceData.Builder(item, source) : null;
+        int mdCount = buf.readVarInt();
+        for (int k = 0; k < mdCount; k++) {
+            var key = buf.readUtf();
+            var value = buf.readUtf();
+            if (builder != null) builder.addMetadata(key, value);
+        }
+
+        if (builder == null) return null;
+        BaseResourceData.ResourceSourceType type;
+        try {
+            type = BaseResourceData.ResourceSourceType.valueOf(typeName);
+        } catch (IllegalArgumentException e) {
+            type = BaseResourceData.ResourceSourceType.UNKNOWN;
+        }
+        return builder.sourceType(type).baseFactor(baseFactor).sourceSpecifier(specifier).details(details).sourceItems(sourceItems).build();
     }
 
     @Override
@@ -163,70 +219,14 @@ public final class ResourceCache implements ManagedCache {
         }
     }
 
-    private static boolean fingerprintMatches(FriendlyByteBuf buf, long[] expected) {
-        int n = buf.readVarInt();
-        if (n != expected.length) {
-            for (int i = 0; i < n; i++) buf.readLong();
-            return false;
-        }
-        boolean match = true;
-        for (int i = 0; i < n; i++) if (buf.readLong() != expected[i]) match = false;
-        return match;
+    @FunctionalInterface
+    public interface Writer<T> {
+        void write(FriendlyByteBuf buf, T element);
     }
 
-    public static void writeResourceData(FriendlyByteBuf buf, BaseResourceData data) {
-        buf.writeUtf(data.getSourceType().name());
-        buf.writeDouble(data.getBaseFactor());
-        buf.writeUtf(data.getSourceSpecifier());
-        buf.writeUtf(data.getDetails());
-
-        var sourceItems = data.getSourceItems();
-        buf.writeVarInt(sourceItems.size());
-        for (var e : sourceItems.reference2DoubleEntrySet()) {
-            var id = GameRegistryManager.getItemId(e.getKey());
-            buf.writeResourceLocation(id != null ? id : ResourceLocation.withDefaultNamespace("air"));
-            buf.writeDouble(e.getDoubleValue());
-        }
-
-        var metadata = data.getMetadata();
-        buf.writeVarInt(metadata.size());
-        for (var e : metadata.object2ObjectEntrySet()) {
-            buf.writeUtf(e.getKey());
-            buf.writeUtf(e.getValue());
-        }
-    }
-
-    @Nullable
-    public static BaseResourceData readResourceData(FriendlyByteBuf buf, Item item, IResourceSource source) {
-        var typeName = buf.readUtf();
-        double baseFactor = buf.readDouble();
-        var specifier = buf.readUtf();
-        var details = buf.readUtf();
-
-        int siCount = buf.readVarInt();
-        var sourceItems = new Reference2DoubleOpenHashMap<Item>();
-        for (int k = 0; k < siCount; k++) {
-            var id = buf.readResourceLocation();
-            double amount = buf.readDouble();
-            var si = GameRegistryManager.getItem(id);
-            if (si != null && si != Items.AIR) sourceItems.put(si, amount);
-        }
-
-        var builder = item != null ? new BaseResourceData.Builder(item, source) : null;
-        int mdCount = buf.readVarInt();
-        for (int k = 0; k < mdCount; k++) {
-            var key = buf.readUtf();
-            var value = buf.readUtf();
-            if (builder != null) builder.addMetadata(key, value);
-        }
-
-        if (builder == null) return null;
-        BaseResourceData.ResourceSourceType type;
-        try {
-            type = BaseResourceData.ResourceSourceType.valueOf(typeName);
-        } catch (IllegalArgumentException e) {
-            type = BaseResourceData.ResourceSourceType.UNKNOWN;
-        }
-        return builder.sourceType(type).baseFactor(baseFactor).sourceSpecifier(specifier).details(details).sourceItems(sourceItems).build();
+    @FunctionalInterface
+    public interface Reader<T> {
+        @Nullable
+        T read(FriendlyByteBuf buf, Item item);
     }
 }

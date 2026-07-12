@@ -30,51 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class PatternSignatureEngine {
     private static final ConcurrentHashMap<Class<?>, ClassProfile> PROFILE_CACHE = new ConcurrentHashMap<>(512);
-
-    public enum DetectionLevel {
-        SIGNATURE,
-        HEURISTIC,
-        BEHAVIORAL,
-        UNKNOWN
-    }
-
-    public record ClassProfile(
-            String className,
-            Class<?> clazz,
-            DetectionLevel level,
-            int signatureScore,
-            int heuristicScore,
-            int totalScore,
-            boolean isRecipe,
-            boolean isMachine,
-            boolean isCodec,
-            int itemStackFields,
-            int ingredientFields,
-            int fluidStackFields,
-            int collectionFields,
-            int itemStackMethods,
-            int ingredientMethods,
-            int fluidStackMethods,
-            int codecRefs,
-            int resourceIdFields,
-            int tagFields,
-            ObjectList<String> interfaces,
-            ObjectList<String> evidence
-    ) {
-        @Override
-        public @NotNull String toString() {
-            return String.format(Locale.ROOT,
-                    "%s score=%d recipe=%s machine=%s codec=%s level=%s itemF=%d ingrF=%d fluidF=%d itemM=%d ingrM=%d fluidM=%d codec=%d",
-                    className, totalScore, isRecipe, isMachine, isCodec, level,
-                    itemStackFields, ingredientFields, fluidStackFields,
-                    itemStackMethods, ingredientMethods, fluidStackMethods, codecRefs);
-        }
-    }
-
     private static final int RECIPE_THRESHOLD = 25;
     private static final int MACHINE_THRESHOLD = 30;
     private static final int CODEC_THRESHOLD = 10;
-
     private PatternSignatureEngine() {
     }
 
@@ -231,5 +189,45 @@ public final class PatternSignatureEngine {
                 codecRefs, resourceIdFields, tagFields,
                 interfaces, evidence
         );
+    }
+
+    public enum DetectionLevel {
+        SIGNATURE,
+        HEURISTIC,
+        BEHAVIORAL,
+        UNKNOWN
+    }
+
+    public record ClassProfile(
+            String className,
+            Class<?> clazz,
+            DetectionLevel level,
+            int signatureScore,
+            int heuristicScore,
+            int totalScore,
+            boolean isRecipe,
+            boolean isMachine,
+            boolean isCodec,
+            int itemStackFields,
+            int ingredientFields,
+            int fluidStackFields,
+            int collectionFields,
+            int itemStackMethods,
+            int ingredientMethods,
+            int fluidStackMethods,
+            int codecRefs,
+            int resourceIdFields,
+            int tagFields,
+            ObjectList<String> interfaces,
+            ObjectList<String> evidence
+    ) {
+        @Override
+        public @NotNull String toString() {
+            return String.format(Locale.ROOT,
+                    "%s score=%d recipe=%s machine=%s codec=%s level=%s itemF=%d ingrF=%d fluidF=%d itemM=%d ingrM=%d fluidM=%d codec=%d",
+                    className, totalScore, isRecipe, isMachine, isCodec, level,
+                    itemStackFields, ingredientFields, fluidStackFields,
+                    itemStackMethods, ingredientMethods, fluidStackMethods, codecRefs);
+        }
     }
 }

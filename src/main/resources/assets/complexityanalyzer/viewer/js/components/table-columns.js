@@ -27,7 +27,7 @@ export function generateTableHeader(columns, gridClass, headId) {
         const numClass = col.numeric ? "num" : "";
         const filterAttr = isClickable ? `data-filter="${col.filter}"` : "";
         const indicator = isClickable ? `<span class="filter-indicator">▼</span>` : "";
-        
+
         return `
             <div class="th-cell ${numClass} ${clickableClass}" data-index="${col.index}" ${filterAttr}>
                 <span class="th-text">${col.label} ${indicator}</span>

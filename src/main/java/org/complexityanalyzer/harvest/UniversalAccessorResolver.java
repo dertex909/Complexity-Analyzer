@@ -39,37 +39,6 @@ public final class UniversalAccessorResolver {
     private static final ConcurrentHashMap<Class<?>, ResolvedAccessors> ACCESSOR_CACHE = new ConcurrentHashMap<>(512);
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
 
-    public interface Accessor {
-
-        String type();
-
-        String name();
-
-        Object extract(Object recipe, Level level) throws Throwable;
-
-        @Override
-        String toString();
-    }
-
-    public record ResolvedAccessors(
-            ObjectList<Accessor> inputAccessors,
-            ObjectList<Accessor> outputAccessors,
-            ObjectList<Accessor> unknownAccessors,
-            ObjectList<Accessor> allAccessors
-    ) {
-        public boolean isEmpty() {
-            return allAccessors.isEmpty();
-        }
-    }
-
-    public record ClassMeta(
-            Field[] allFields,
-            Field[] scanFields,
-            Method[] allMethods,
-            MethodHandle[] allHandles
-    ) {
-    }
-
     public static ResolvedAccessors resolve(Object recipe, Level level) {
         if (recipe == null) return empty();
         var clazz = recipe.getClass();
@@ -180,6 +149,37 @@ public final class UniversalAccessorResolver {
         }
 
         return new ResolvedAccessors(inputAcc, outputAcc, unknownAcc, allAcc);
+    }
+
+    public interface Accessor {
+
+        String type();
+
+        String name();
+
+        Object extract(Object recipe, Level level) throws Throwable;
+
+        @Override
+        String toString();
+    }
+
+    public record ResolvedAccessors(
+            ObjectList<Accessor> inputAccessors,
+            ObjectList<Accessor> outputAccessors,
+            ObjectList<Accessor> unknownAccessors,
+            ObjectList<Accessor> allAccessors
+    ) {
+        public boolean isEmpty() {
+            return allAccessors.isEmpty();
+        }
+    }
+
+    public record ClassMeta(
+            Field[] allFields,
+            Field[] scanFields,
+            Method[] allMethods,
+            MethodHandle[] allHandles
+    ) {
     }
 
     public static final class MethodAccessor implements Accessor {

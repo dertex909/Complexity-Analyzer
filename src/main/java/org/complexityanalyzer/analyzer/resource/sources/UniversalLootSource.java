@@ -63,24 +63,6 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     private final Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
 
-    private static class LootFunctionFilter extends AbstractFilter {
-        @Override
-        public Result filter(LogEvent event) {
-            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
-
-            String loggerName = event.getLoggerName();
-            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
-                String message = event.getMessage().getFormattedMessage();
-                if (message != null && (message.contains("Couldn't set damage")
-                        || message.contains("Couldn't smelt")
-                        || message.contains("Couldn't find a compatible enchantment")
-                )) return Result.DENY;
-            }
-
-            return Result.NEUTRAL;
-        }
-    }
-
     @Override
     public void initialize(Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
@@ -270,12 +252,6 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         }
     }
 
-    private record TableTask(ResourceKey<LootTable> key, ResourceLocation id, LootContextDefinition def) {
-    }
-
-    private record TableResult(ResourceLocation id, LootContextDefinition def, Reference2IntOpenHashMap<Item> counts) {
-    }
-
     @Nullable
     private Reference2IntOpenHashMap<Item> sampleTable(ServerLevel serverLevel, MinecraftServer server, TableTask task) {
         try {
@@ -356,41 +332,6 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         return results;
     }
 
-    private record LootContextDefinition(BaseResourceData.ResourceSourceType sourceType, double baseActionCost) {
-        public LootParams createLootParams(ServerLevel level) {
-            var spawnPos = level.getSharedSpawnPos();
-            var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
-            var builder = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.ORIGIN, originVec);
-
-            if (sourceType == BaseResourceData.ResourceSourceType.FISHING) {
-                builder.withParameter(LootContextParams.TOOL, new ItemStack(Items.FISHING_ROD));
-                return builder.create(LootContextParamSets.FISHING);
-            }
-
-            if (sourceType == BaseResourceData.ResourceSourceType.SHEARING) {
-                builder.withParameter(LootContextParams.TOOL, new ItemStack(Items.SHEARS));
-                return builder.create(LootContextParamSets.SHEARING);
-            }
-
-            if (sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
-                try {
-                    var piglinEntity = EntityType.PIGLIN.create(level);
-                    if (piglinEntity != null) {
-                        piglinEntity.setPos(originVec.x, originVec.y, originVec.z);
-                        builder.withParameter(LootContextParams.THIS_ENTITY, piglinEntity);
-                        return builder.create(LootContextParamSets.PIGLIN_BARTER);
-                    }
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.warn("[ULS] Failed to create piglin entity: {}", e.getMessage());
-                }
-                return null;
-            }
-
-            return builder.create(LootContextParamSets.CHEST);
-        }
-    }
-
     @Nullable
     private LootContextDefinition inferContextFromId(ResourceLocation id) {
         var path = id.getPath();
@@ -439,5 +380,64 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     public Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> getAllLootData() {
         return allLootData;
+    }
+
+    private static class LootFunctionFilter extends AbstractFilter {
+        @Override
+        public Result filter(LogEvent event) {
+            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
+
+            String loggerName = event.getLoggerName();
+            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
+                String message = event.getMessage().getFormattedMessage();
+                if (message != null && (message.contains("Couldn't set damage")
+                        || message.contains("Couldn't smelt")
+                        || message.contains("Couldn't find a compatible enchantment")
+                )) return Result.DENY;
+            }
+
+            return Result.NEUTRAL;
+        }
+    }
+
+    private record TableTask(ResourceKey<LootTable> key, ResourceLocation id, LootContextDefinition def) {
+    }
+
+    private record TableResult(ResourceLocation id, LootContextDefinition def, Reference2IntOpenHashMap<Item> counts) {
+    }
+
+    private record LootContextDefinition(BaseResourceData.ResourceSourceType sourceType, double baseActionCost) {
+        public LootParams createLootParams(ServerLevel level) {
+            var spawnPos = level.getSharedSpawnPos();
+            var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+            var builder = new LootParams.Builder(level)
+                    .withParameter(LootContextParams.ORIGIN, originVec);
+
+            if (sourceType == BaseResourceData.ResourceSourceType.FISHING) {
+                builder.withParameter(LootContextParams.TOOL, new ItemStack(Items.FISHING_ROD));
+                return builder.create(LootContextParamSets.FISHING);
+            }
+
+            if (sourceType == BaseResourceData.ResourceSourceType.SHEARING) {
+                builder.withParameter(LootContextParams.TOOL, new ItemStack(Items.SHEARS));
+                return builder.create(LootContextParamSets.SHEARING);
+            }
+
+            if (sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
+                try {
+                    var piglinEntity = EntityType.PIGLIN.create(level);
+                    if (piglinEntity != null) {
+                        piglinEntity.setPos(originVec.x, originVec.y, originVec.z);
+                        builder.withParameter(LootContextParams.THIS_ENTITY, piglinEntity);
+                        return builder.create(LootContextParamSets.PIGLIN_BARTER);
+                    }
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.warn("[ULS] Failed to create piglin entity: {}", e.getMessage());
+                }
+                return null;
+            }
+
+            return builder.create(LootContextParamSets.CHEST);
+        }
     }
 }

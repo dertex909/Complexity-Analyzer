@@ -29,21 +29,6 @@ import java.util.Collections;
 
 public interface ManagedCache {
 
-    String id();
-
-    @Nullable
-    Path file(MinecraftServer server);
-
-    default boolean delete(MinecraftServer server) {
-        var f = file(server);
-        if (f == null) return false;
-        try {
-            return Files.deleteIfExists(f);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     static void register(ManagedCache cache) {
         Registry.MAP.put(cache.id(), cache);
     }
@@ -59,6 +44,21 @@ public interface ManagedCache {
     @Nullable
     static ManagedCache get(String id) {
         return Registry.MAP.get(id);
+    }
+
+    String id();
+
+    @Nullable
+    Path file(MinecraftServer server);
+
+    default boolean delete(MinecraftServer server) {
+        var f = file(server);
+        if (f == null) return false;
+        try {
+            return Files.deleteIfExists(f);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     final class Registry {

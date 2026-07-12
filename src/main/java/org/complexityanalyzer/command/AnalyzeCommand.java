@@ -133,9 +133,6 @@ public final class AnalyzeCommand {
         output.sendEmptyLine(source);
     }
 
-    private record SourceWithCost(BaseResourceData data, double fullCost) {
-    }
-
     private static void displaySourceInfo(CommandSourceStack source, Item item, ItemComplexity optimal,
                                           AnalysisEngine engine, OutputManager output) {
         output.sendStatusLine(source, "📦", "complexityanalyzer.command.analyze.source_section", ChatFormatting.YELLOW);
@@ -244,5 +241,8 @@ public final class AnalyzeCommand {
             case "TRADING" -> "💰";
             default -> "•";
         };
+    }
+
+    private record SourceWithCost(BaseResourceData data, double fullCost) {
     }
 }

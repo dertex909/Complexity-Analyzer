@@ -31,20 +31,6 @@ import net.minecraft.world.entity.EntityType;
 public interface IBossRegistry {
 
     /**
-     * Classification of a registered mob.
-     */
-    enum BossType {
-        /**
-         * A full boss — rare, summoned or arena-style encounter.
-         */
-        BOSS,
-        /**
-         * A mini-boss — tougher-than-normal but more frequently encountered than a full boss.
-         */
-        MINI_BOSS
-    }
-
-    /**
      * Registers a mob as a boss or mini-boss.
      *
      * @param entityType the mob to tag
@@ -70,4 +56,18 @@ public interface IBossRegistry {
      * @return {@code true} if the mob is a registered mini-boss.
      */
     boolean isMiniBoss(EntityType<?> entityType);
+
+    /**
+     * Classification of a registered mob.
+     */
+    enum BossType {
+        /**
+         * A full boss — rare, summoned or arena-style encounter.
+         */
+        BOSS,
+        /**
+         * A mini-boss — tougher-than-normal but more frequently encountered than a full boss.
+         */
+        MINI_BOSS
+    }
 }

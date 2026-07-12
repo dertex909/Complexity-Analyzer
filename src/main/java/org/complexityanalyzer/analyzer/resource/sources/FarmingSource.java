@@ -47,8 +47,27 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     private final Reference2ObjectMap<Item, ObjectList<FarmingData>> productionMap = new Reference2ObjectOpenHashMap<>();
     private final PlantSimulator simulator = new PlantSimulator();
 
-    private record FarmingData(Item plantItem, Block plantBlock, double avgGrowthTicks, double outputAmount,
-                               String dropsSummary, String details) {
+    private static void writeData(FriendlyByteBuf buf, FarmingData data) {
+        var plantId = GameRegistryManager.getItemId(data.plantItem());
+        var blockIdRl = GameRegistryManager.getBlockId(data.plantBlock());
+        buf.writeResourceLocation(plantId != null ? plantId : ResourceLocation.withDefaultNamespace("air"));
+        buf.writeResourceLocation(blockIdRl != null ? blockIdRl : ResourceLocation.withDefaultNamespace("air"));
+        buf.writeDouble(data.avgGrowthTicks());
+        buf.writeDouble(data.outputAmount());
+        buf.writeUtf(data.dropsSummary());
+        buf.writeUtf(data.details());
+    }
+
+    @Nullable
+    private static FarmingData readData(FriendlyByteBuf buf, Item dropItem) {
+        var plantItem = GameRegistryManager.getItem(buf.readResourceLocation());
+        var plantBlock = GameRegistryManager.getBlock(buf.readResourceLocation());
+        double growthTicks = buf.readDouble();
+        double outputAmount = buf.readDouble();
+        String dropsSummary = buf.readUtf();
+        String details = buf.readUtf();
+        if (plantItem == null || plantItem == Items.AIR || plantBlock == null) return null;
+        return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, dropsSummary, details);
     }
 
     @Override
@@ -125,7 +144,8 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         }
 
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
-        if (cacheFile != null) ResourceCache.FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
+        if (cacheFile != null)
+            ResourceCache.FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
     }
 
     private long[] computeFingerprint(long worldSeed) {
@@ -136,29 +156,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                 Fingerprints.hashMods(),
                 worldSeed
         };
-    }
-
-    private static void writeData(FriendlyByteBuf buf, FarmingData data) {
-        var plantId = GameRegistryManager.getItemId(data.plantItem());
-        var blockIdRl = GameRegistryManager.getBlockId(data.plantBlock());
-        buf.writeResourceLocation(plantId != null ? plantId : ResourceLocation.withDefaultNamespace("air"));
-        buf.writeResourceLocation(blockIdRl != null ? blockIdRl : ResourceLocation.withDefaultNamespace("air"));
-        buf.writeDouble(data.avgGrowthTicks());
-        buf.writeDouble(data.outputAmount());
-        buf.writeUtf(data.dropsSummary());
-        buf.writeUtf(data.details());
-    }
-
-    @Nullable
-    private static FarmingData readData(FriendlyByteBuf buf, Item dropItem) {
-        var plantItem = GameRegistryManager.getItem(buf.readResourceLocation());
-        var plantBlock = GameRegistryManager.getBlock(buf.readResourceLocation());
-        double growthTicks = buf.readDouble();
-        double outputAmount = buf.readDouble();
-        String dropsSummary = buf.readUtf();
-        String details = buf.readUtf();
-        if (plantItem == null || plantItem == Items.AIR || plantBlock == null) return null;
-        return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, dropsSummary, details);
     }
 
     private boolean itemPlacesBlock(Item item, Block targetBlock) {
@@ -274,5 +271,9 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     @Override
     public BaseResourceData.ResourceSourceType getSourceType() {
         return BaseResourceData.ResourceSourceType.FARMING;
+    }
+
+    private record FarmingData(Item plantItem, Block plantBlock, double avgGrowthTicks, double outputAmount,
+                               String dropsSummary, String details) {
     }
 }

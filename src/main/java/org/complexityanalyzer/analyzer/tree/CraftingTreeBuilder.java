@@ -270,16 +270,6 @@ public class CraftingTreeBuilder {
         return data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
     }
 
-    private static class IngredientChoice {
-        private final ItemStack stack;
-        private int count;
-
-        private IngredientChoice(ItemStack stack, int count) {
-            this.stack = stack != null ? stack.copy() : ItemStack.EMPTY;
-            this.count = count;
-        }
-    }
-
     private void calculateBaseResourcesFor(
             Item item,
             double neededAmount,
@@ -323,5 +313,15 @@ public class CraftingTreeBuilder {
             }
         }
         visited.remove(item);
+    }
+
+    private static class IngredientChoice {
+        private final ItemStack stack;
+        private int count;
+
+        private IngredientChoice(ItemStack stack, int count) {
+            this.stack = stack != null ? stack.copy() : ItemStack.EMPTY;
+            this.count = count;
+        }
     }
 }

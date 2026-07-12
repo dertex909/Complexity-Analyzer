@@ -54,24 +54,6 @@ import java.util.UUID;
 
 public class PlantSimulator {
 
-    private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
-    private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-    private final Object2ObjectMap<Block, GroundResult> groundCache = new Object2ObjectOpenHashMap<>();
-    private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
-    private Player fakePlayer;
-    private boolean platformReady = false;
-    private LevelReader survivalView;
-    private ServerLevel viewLevel;
-    private BlockPos viewGroundPos;
-    private BlockState viewGroundState;
-    private BlockPos viewPlantPos;
-
-    private final int simOriginX = SIM_ORIGIN.getX();
-    private final int simOriginY = SIM_ORIGIN.getY();
-    private final int simOriginZ = SIM_ORIGIN.getZ();
-    private final int originChunkX = simOriginX >> 4;
-    private final int originChunkZ = simOriginZ >> 4;
-
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
     private static final int BARRIER_RADIUS = 16;
     private static final int SEARCH_RADIUS = 32;
@@ -82,18 +64,27 @@ public class PlantSimulator {
     private static final int MAX_BONEMEAL = 8;
     private static final long MAX_SIMULATION_MS = 2000;
     private static final int FLAG_NO_UPDATE = 2 | 16;
-
     private static final ObjectList<Block> PRIORITY_GROUNDS = ObjectArrayList.of(
             Blocks.GRASS_BLOCK, Blocks.DIRT, Blocks.FARMLAND, Blocks.SAND,
             Blocks.RED_SAND, Blocks.GRAVEL, Blocks.NETHERRACK, Blocks.SOUL_SAND,
             Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
     );
-
-    public record SimulationResult(Reference2DoubleMap<Item> drops, int growthStages) {
-    }
-
-    private record GroundResult(Block block, Direction side) {
-    }
+    private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
+    private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+    private final Object2ObjectMap<Block, GroundResult> groundCache = new Object2ObjectOpenHashMap<>();
+    private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
+    private final int simOriginX = SIM_ORIGIN.getX();
+    private final int simOriginY = SIM_ORIGIN.getY();
+    private final int simOriginZ = SIM_ORIGIN.getZ();
+    private final int originChunkX = simOriginX >> 4;
+    private final int originChunkZ = simOriginZ >> 4;
+    private Player fakePlayer;
+    private boolean platformReady = false;
+    private LevelReader survivalView;
+    private ServerLevel viewLevel;
+    private BlockPos viewGroundPos;
+    private BlockState viewGroundState;
+    private BlockPos viewPlantPos;
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
         if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
@@ -537,5 +528,11 @@ public class PlantSimulator {
             }
         }
         return null;
+    }
+
+    public record SimulationResult(Reference2DoubleMap<Item> drops, int growthStages) {
+    }
+
+    private record GroundResult(Block block, Direction side) {
     }
 }

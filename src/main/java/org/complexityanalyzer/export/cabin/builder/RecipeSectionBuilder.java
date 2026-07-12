@@ -43,53 +43,6 @@ public final class RecipeSectionBuilder {
         this.ctx = ctx;
     }
 
-    public static final class RecipesResult {
-        public final byte[] payload;
-        public final byte[] outputIndex;
-        public final int recipeCount;
-
-        public RecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
-            this.payload = payload;
-            this.outputIndex = outputIndex;
-            this.recipeCount = recipeCount;
-        }
-    }
-
-    public RecipesResult buildRecipes(RecipeGraph graph) {
-        int n = ctx.orderedItems().size();
-        int[] firstOffset = new int[n];
-        int[] count = new int[n];
-        Arrays.fill(firstOffset, NULL_OFFSET);
-
-        if (graph == null)
-            return new RecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
-
-        var out = new LeBuf(256 * 1024);
-        out.i32(0);
-        int totalRecipes = 0;
-
-        var registry = ctx.engine().getMachineRegistry();
-        var recipesByOutput = buildRecipesByOutput(graph);
-        for (int i = 0; i < n; i++) {
-            var item = ctx.orderedItems().get(i);
-            var recipes = recipesByOutput.get(item);
-            if (recipes == null || recipes.isEmpty()) continue;
-            firstOffset[i] = out.position();
-            int written = 0;
-            for (var r : recipes) {
-                if (written == 0xFFFF) break;
-                writeRecipe(out, ctx, i, r, machineIndices(ctx, registry, r));
-                written++;
-            }
-            count[i] = written;
-            totalRecipes += written;
-        }
-        out.putI32At(0, totalRecipes);
-
-        byte[] outputIndex = encodeRecipeOutputIndex(firstOffset, count);
-        return new RecipesResult(out.toByteArray(), outputIndex, totalRecipes);
-    }
-
     private static Reference2ObjectOpenHashMap<Item, ObjectArrayList<RecipeNode>> buildRecipesByOutput(RecipeGraph graph) {
         var map = new Reference2ObjectOpenHashMap<Item, ObjectArrayList<RecipeNode>>();
         for (var r : graph.getAllRecipes()) {
@@ -119,9 +72,6 @@ public final class RecipeSectionBuilder {
             }
         }
         return list;
-    }
-
-    private record MergedSlot(IngredientSlot slot, int count) {
     }
 
     private static ObjectList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots,
@@ -295,6 +245,41 @@ public final class RecipeSectionBuilder {
         buf.i32(keyRef);
     }
 
+    public RecipesResult buildRecipes(RecipeGraph graph) {
+        int n = ctx.orderedItems().size();
+        int[] firstOffset = new int[n];
+        int[] count = new int[n];
+        Arrays.fill(firstOffset, NULL_OFFSET);
+
+        if (graph == null)
+            return new RecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
+
+        var out = new LeBuf(256 * 1024);
+        out.i32(0);
+        int totalRecipes = 0;
+
+        var registry = ctx.engine().getMachineRegistry();
+        var recipesByOutput = buildRecipesByOutput(graph);
+        for (int i = 0; i < n; i++) {
+            var item = ctx.orderedItems().get(i);
+            var recipes = recipesByOutput.get(item);
+            if (recipes == null || recipes.isEmpty()) continue;
+            firstOffset[i] = out.position();
+            int written = 0;
+            for (var r : recipes) {
+                if (written == 0xFFFF) break;
+                writeRecipe(out, ctx, i, r, machineIndices(ctx, registry, r));
+                written++;
+            }
+            count[i] = written;
+            totalRecipes += written;
+        }
+        out.putI32At(0, totalRecipes);
+
+        byte[] outputIndex = encodeRecipeOutputIndex(firstOffset, count);
+        return new RecipesResult(out.toByteArray(), outputIndex, totalRecipes);
+    }
+
     private byte[] encodeRecipeOutputIndex(int[] firstOffset, int[] count) {
         int n = firstOffset.length;
         var buf = new LeBuf(4 + n * 6);
@@ -343,5 +328,20 @@ public final class RecipeSectionBuilder {
         }
         out.bytes(flat.array(), 0, flat.size());
         return out.toByteArray();
+    }
+
+    public static final class RecipesResult {
+        public final byte[] payload;
+        public final byte[] outputIndex;
+        public final int recipeCount;
+
+        public RecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
+            this.payload = payload;
+            this.outputIndex = outputIndex;
+            this.recipeCount = recipeCount;
+        }
+    }
+
+    private record MergedSlot(IngredientSlot slot, int count) {
     }
 }

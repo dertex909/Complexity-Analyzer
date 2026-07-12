@@ -65,6 +65,168 @@ public final class SccCondensedSolver {
         this.machineRegistry = machineRegistry;
     }
 
+    private static boolean significantlyLower(double oldCost, double newCost) {
+        if (Double.isInfinite(oldCost)) return !Double.isInfinite(newCost);
+        if (Double.isInfinite(newCost)) return false;
+        if (newCost >= oldCost) return false;
+        double delta = oldCost - newCost;
+        if (delta <= CONVERGENCE_THRESHOLD) return false;
+        if (oldCost <= EPSILON) return delta > CONVERGENCE_THRESHOLD;
+        return delta / oldCost > CONVERGENCE_THRESHOLD;
+    }
+
+    private static double evalFormula(int f, CompiledModel m, double[] costs) {
+        double sum = 0.0;
+
+        int isStart = m.formulaItemSlotStart[f];
+        int isEnd = isStart + m.formulaItemSlotCount[f];
+        for (int s = isStart; s < isEnd; s++) {
+            int vStart = m.itemSlotVariantStart[s];
+            int vEnd = vStart + m.itemSlotVariantCount[s];
+            double minCost = Double.POSITIVE_INFINITY;
+            for (int v = vStart; v < vEnd; v++) {
+                double c = costs[m.itemVariantNode[v]];
+                if (c < minCost) minCost = c;
+            }
+            if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
+            sum += minCost * m.itemSlotAmount[s];
+        }
+
+        int fsStart = m.formulaFluidSlotStart[f];
+        int fsEnd = fsStart + m.formulaFluidSlotCount[f];
+        for (int s = fsStart; s < fsEnd; s++) {
+            int vStart = m.fluidSlotVariantStart[s];
+            int vEnd = vStart + m.fluidSlotVariantCount[s];
+            double minCost = Double.POSITIVE_INFINITY;
+            for (int v = vStart; v < vEnd; v++) {
+                double c = costs[m.fluidVariantNode[v]];
+                if (c < minCost) minCost = c;
+            }
+            if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
+            sum += minCost * m.fluidSlotAmount[s];
+        }
+
+        int cStart = m.formulaChemInputStart[f];
+        int cEnd = cStart + m.formulaChemInputCount[f];
+        for (int ci = cStart; ci < cEnd; ci++) {
+            double c = costs[m.chemInputNode[ci]];
+            if (Double.isInfinite(c)) return Double.POSITIVE_INFINITY;
+            sum += c * m.chemInputAmount[ci];
+        }
+
+        int mStart = m.formulaMachineNode[f];
+        int mCount = m.formulaMachineCount[f];
+        if (mCount > 0) {
+            double minMachineCost = Double.POSITIVE_INFINITY;
+            for (int i = mStart; i < mStart + mCount; i++) {
+                double c = costs[m.itemVariantNode[i]];
+                if (c < minMachineCost) minMachineCost = c;
+            }
+            if (Double.isInfinite(minMachineCost)) {
+                double fb = m.formulaMachineFallback[f];
+                if (fb < 0) return Double.POSITIVE_INFINITY;
+                minMachineCost = fb;
+            }
+            sum += minMachineCost * m.formulaMachineMul[f];
+        }
+
+        double divisor = m.formulaOutputDivisor[f];
+        return m.formulaBaseCost[f] + (sum * m.formulaMultiplier[f]) / divisor;
+    }
+
+    private static TarjanResult tarjanScc(int n, int[] adjStart, int[] adjNode) {
+        int[] index = new int[n];
+        int[] lowlink = new int[n];
+        boolean[] onStack = new boolean[n];
+        int[] sccStack = new int[n];
+        int sccTop = 0;
+        int[] componentOf = new int[n];
+        int[] callStack = new int[n];
+        int[] callIter = new int[n];
+
+        Arrays.fill(index, -1);
+        Arrays.fill(componentOf, -1);
+
+        int idxCounter = 0;
+        int compCounter = 0;
+
+        for (int start = 0; start < n; start++) {
+            if (index[start] != -1) continue;
+
+            int callTop = 0;
+            callStack[0] = start;
+            callIter[start] = adjStart[start];
+            index[start] = idxCounter;
+            lowlink[start] = idxCounter;
+            idxCounter++;
+            sccStack[sccTop++] = start;
+            onStack[start] = true;
+
+            while (callTop >= 0) {
+                int v = callStack[callTop];
+                int it = callIter[v];
+                int end = adjStart[v + 1];
+
+                if (it < end) {
+                    int w = adjNode[it];
+                    callIter[v] = it + 1;
+                    if (index[w] == -1) {
+                        callTop++;
+                        callStack[callTop] = w;
+                        callIter[w] = adjStart[w];
+                        index[w] = idxCounter;
+                        lowlink[w] = idxCounter;
+                        idxCounter++;
+                        sccStack[sccTop++] = w;
+                        onStack[w] = true;
+                    } else if (onStack[w]) {
+                        if (index[w] < lowlink[v]) lowlink[v] = index[w];
+                    }
+                } else {
+                    if (lowlink[v] == index[v]) {
+                        int popped;
+                        do {
+                            popped = sccStack[--sccTop];
+                            onStack[popped] = false;
+                            componentOf[popped] = compCounter;
+                        } while (popped != v);
+                        compCounter++;
+                    }
+                    callTop--;
+                    if (callTop >= 0) {
+                        int parent = callStack[callTop];
+                        if (lowlink[v] < lowlink[parent]) lowlink[parent] = lowlink[v];
+                    }
+                }
+            }
+        }
+
+        return new TarjanResult(componentOf, compCounter);
+    }
+
+    private static Fluid normalizeFluid(Fluid fluid) {
+        if (fluid == null) return Fluids.EMPTY;
+        var id = GameRegistryManager.getFluidId(fluid);
+        if (id == null) return fluid;
+        String fluidName = id.toString();
+        if (!fluidName.contains("flowing_")) return fluid;
+        var staticId = ResourceLocation.parse(fluidName.replace("flowing_", ""));
+        var staticFluid = GameRegistryManager.getFluid(staticId);
+        if (staticFluid == null || staticFluid == Fluids.EMPTY) return fluid;
+        return staticFluid;
+    }
+
+    private static boolean isProtectedFluid(Fluid fluid) {
+        return fluid == Fluids.WATER || fluid == Fluids.LAVA;
+    }
+
+    private static boolean isZeroCostRecipeType(RecipeType<?> recipeType) {
+        if (recipeType == null) return false;
+        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+        if (typeId == null) return false;
+        return typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
+    }
+
     public SolverResult solve() {
         long startTime = System.currentTimeMillis();
         ComplexityAnalyzer.LOGGER.info("🚀 Starting SCC/DAG solver...");
@@ -217,156 +379,6 @@ public final class SccCondensedSolver {
         return sol;
     }
 
-    private static boolean significantlyLower(double oldCost, double newCost) {
-        if (Double.isInfinite(oldCost)) return !Double.isInfinite(newCost);
-        if (Double.isInfinite(newCost)) return false;
-        if (newCost >= oldCost) return false;
-        double delta = oldCost - newCost;
-        if (delta <= CONVERGENCE_THRESHOLD) return false;
-        if (oldCost <= EPSILON) return delta > CONVERGENCE_THRESHOLD;
-        return delta / oldCost > CONVERGENCE_THRESHOLD;
-    }
-
-    private static double evalFormula(int f, CompiledModel m, double[] costs) {
-        double sum = 0.0;
-
-        int isStart = m.formulaItemSlotStart[f];
-        int isEnd = isStart + m.formulaItemSlotCount[f];
-        for (int s = isStart; s < isEnd; s++) {
-            int vStart = m.itemSlotVariantStart[s];
-            int vEnd = vStart + m.itemSlotVariantCount[s];
-            double minCost = Double.POSITIVE_INFINITY;
-            for (int v = vStart; v < vEnd; v++) {
-                double c = costs[m.itemVariantNode[v]];
-                if (c < minCost) minCost = c;
-            }
-            if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
-            sum += minCost * m.itemSlotAmount[s];
-        }
-
-        int fsStart = m.formulaFluidSlotStart[f];
-        int fsEnd = fsStart + m.formulaFluidSlotCount[f];
-        for (int s = fsStart; s < fsEnd; s++) {
-            int vStart = m.fluidSlotVariantStart[s];
-            int vEnd = vStart + m.fluidSlotVariantCount[s];
-            double minCost = Double.POSITIVE_INFINITY;
-            for (int v = vStart; v < vEnd; v++) {
-                double c = costs[m.fluidVariantNode[v]];
-                if (c < minCost) minCost = c;
-            }
-            if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
-            sum += minCost * m.fluidSlotAmount[s];
-        }
-
-        int cStart = m.formulaChemInputStart[f];
-        int cEnd = cStart + m.formulaChemInputCount[f];
-        for (int ci = cStart; ci < cEnd; ci++) {
-            double c = costs[m.chemInputNode[ci]];
-            if (Double.isInfinite(c)) return Double.POSITIVE_INFINITY;
-            sum += c * m.chemInputAmount[ci];
-        }
-
-        int mStart = m.formulaMachineNode[f];
-        int mCount = m.formulaMachineCount[f];
-        if (mCount > 0) {
-            double minMachineCost = Double.POSITIVE_INFINITY;
-            for (int i = mStart; i < mStart + mCount; i++) {
-                double c = costs[m.itemVariantNode[i]];
-                if (c < minMachineCost) minMachineCost = c;
-            }
-            if (Double.isInfinite(minMachineCost)) {
-                double fb = m.formulaMachineFallback[f];
-                if (fb < 0) return Double.POSITIVE_INFINITY;
-                minMachineCost = fb;
-            }
-            sum += minMachineCost * m.formulaMachineMul[f];
-        }
-
-        double divisor = m.formulaOutputDivisor[f];
-        return m.formulaBaseCost[f] + (sum * m.formulaMultiplier[f]) / divisor;
-    }
-
-    private record TarjanResult(int[] componentOf, int componentCount) {
-    }
-
-    private static TarjanResult tarjanScc(int n, int[] adjStart, int[] adjNode) {
-        int[] index = new int[n];
-        int[] lowlink = new int[n];
-        boolean[] onStack = new boolean[n];
-        int[] sccStack = new int[n];
-        int sccTop = 0;
-        int[] componentOf = new int[n];
-        int[] callStack = new int[n];
-        int[] callIter = new int[n];
-
-        Arrays.fill(index, -1);
-        Arrays.fill(componentOf, -1);
-
-        int idxCounter = 0;
-        int compCounter = 0;
-
-        for (int start = 0; start < n; start++) {
-            if (index[start] != -1) continue;
-
-            int callTop = 0;
-            callStack[0] = start;
-            callIter[start] = adjStart[start];
-            index[start] = idxCounter;
-            lowlink[start] = idxCounter;
-            idxCounter++;
-            sccStack[sccTop++] = start;
-            onStack[start] = true;
-
-            while (callTop >= 0) {
-                int v = callStack[callTop];
-                int it = callIter[v];
-                int end = adjStart[v + 1];
-
-                if (it < end) {
-                    int w = adjNode[it];
-                    callIter[v] = it + 1;
-                    if (index[w] == -1) {
-                        callTop++;
-                        callStack[callTop] = w;
-                        callIter[w] = adjStart[w];
-                        index[w] = idxCounter;
-                        lowlink[w] = idxCounter;
-                        idxCounter++;
-                        sccStack[sccTop++] = w;
-                        onStack[w] = true;
-                    } else if (onStack[w]) {
-                        if (index[w] < lowlink[v]) lowlink[v] = index[w];
-                    }
-                } else {
-                    if (lowlink[v] == index[v]) {
-                        int popped;
-                        do {
-                            popped = sccStack[--sccTop];
-                            onStack[popped] = false;
-                            componentOf[popped] = compCounter;
-                        } while (popped != v);
-                        compCounter++;
-                    }
-                    callTop--;
-                    if (callTop >= 0) {
-                        int parent = callStack[callTop];
-                        if (lowlink[v] < lowlink[parent]) lowlink[parent] = lowlink[v];
-                    }
-                }
-            }
-        }
-
-        return new TarjanResult(componentOf, compCounter);
-    }
-
-    private record MaterializedResult(
-            Reference2DoubleMap<Item> optimalComplexities,
-            Reference2ObjectMap<Item, RecipeNode> optimalRecipes,
-            Reference2DoubleMap<Fluid> optimalFluidComplexities,
-            Reference2ObjectMap<Fluid, RecipeNode> optimalFluidRecipes
-    ) {
-    }
-
     private MaterializedResult materialize(CompiledModel m, Solution sol) {
         var itemComplexities = new Reference2DoubleOpenHashMap<Item>(m.itemCount);
         itemComplexities.defaultReturnValue(Double.POSITIVE_INFINITY);
@@ -424,6 +436,17 @@ public final class SccCondensedSolver {
         return new MaterializedResult(itemComplexities, optimalRecipes, fluidComplexities, optimalFluidRecipes);
     }
 
+    private record TarjanResult(int[] componentOf, int componentCount) {
+    }
+
+    private record MaterializedResult(
+            Reference2DoubleMap<Item> optimalComplexities,
+            Reference2ObjectMap<Item, RecipeNode> optimalRecipes,
+            Reference2DoubleMap<Fluid> optimalFluidComplexities,
+            Reference2ObjectMap<Fluid, RecipeNode> optimalFluidRecipes
+    ) {
+    }
+
     private static final class CompileBuilder {
         private final RecipeGraph graph;
         private final SourceManager sourceManager;
@@ -438,11 +461,6 @@ public final class SccCondensedSolver {
         private final Reference2IntOpenHashMap<Item> itemToNode = new Reference2IntOpenHashMap<>();
         private final Reference2IntOpenHashMap<Fluid> fluidToNode = new Reference2IntOpenHashMap<>();
         private final Object2IntOpenHashMap<ResourceLocation> chemicalToNode = new Object2IntOpenHashMap<>();
-
-        private int itemCount = 0;
-        private int fluidCount = 0;
-        private int chemicalCount = 0;
-
         private final ByteList formulaType = new ByteList();
         private final IntArrayList formulaTarget = new IntArrayList();
         private final DoubleArrayList formulaBaseCost = new DoubleArrayList();
@@ -471,6 +489,9 @@ public final class SccCondensedSolver {
         private final DoubleArrayList chemInputAmount = new DoubleArrayList();
         private final IntArrayList edgeFrom = new IntArrayList();
         private final IntArrayList edgeTo = new IntArrayList();
+        private int itemCount = 0;
+        private int fluidCount = 0;
+        private int chemicalCount = 0;
 
         CompileBuilder(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
             this.itemToNode.defaultReturnValue(-1);
@@ -479,6 +500,17 @@ public final class SccCondensedSolver {
             this.graph = graph;
             this.sourceManager = sourceManager;
             this.machineRegistry = machineRegistry;
+        }
+
+        private static ObjectList<Item> sortedByItemId(ReferenceSet<Item> items) {
+            var list = new ObjectArrayList<>(items);
+            list.sort(Comparator.comparing(CompileBuilder::itemIdString));
+            return list;
+        }
+
+        private static String itemIdString(Item item) {
+            var id = GameRegistryManager.getItemId(item);
+            return id != null ? id.toString() : "";
         }
 
         CompiledModel build() {
@@ -881,9 +913,6 @@ public final class SccCondensedSolver {
             return formulaId;
         }
 
-        private record SharedInputs(int itemStart, int itemCount, int fluidStart, int fluidCount, boolean valid) {
-        }
-
         private SharedInputs appendSharedInputs(RecipeNode recipe, double fluidNorm) {
             int itemStart = itemSlotVariantStart.size();
             int fluidStart = fluidSlotVariantStart.size();
@@ -937,17 +966,6 @@ public final class SccCondensedSolver {
             itemSlotVariantStart.add(variantStart);
             itemSlotVariantCount.add(1);
             itemSlotAmount.add(amount);
-        }
-
-        private static ObjectList<Item> sortedByItemId(ReferenceSet<Item> items) {
-            var list = new ObjectArrayList<>(items);
-            list.sort(Comparator.comparing(CompileBuilder::itemIdString));
-            return list;
-        }
-
-        private static String itemIdString(Item item) {
-            var id = GameRegistryManager.getItemId(item);
-            return id != null ? id.toString() : "";
         }
 
         private boolean appendFluidSlot(ObjectList<Fluid> variants, double amount) {
@@ -1109,29 +1127,9 @@ public final class SccCondensedSolver {
             m.adjNode = adjNode;
             return m;
         }
-    }
 
-    private static Fluid normalizeFluid(Fluid fluid) {
-        if (fluid == null) return Fluids.EMPTY;
-        var id = GameRegistryManager.getFluidId(fluid);
-        if (id == null) return fluid;
-        String fluidName = id.toString();
-        if (!fluidName.contains("flowing_")) return fluid;
-        var staticId = ResourceLocation.parse(fluidName.replace("flowing_", ""));
-        var staticFluid = GameRegistryManager.getFluid(staticId);
-        if (staticFluid == null || staticFluid == Fluids.EMPTY) return fluid;
-        return staticFluid;
-    }
-
-    private static boolean isProtectedFluid(Fluid fluid) {
-        return fluid == Fluids.WATER || fluid == Fluids.LAVA;
-    }
-
-    private static boolean isZeroCostRecipeType(RecipeType<?> recipeType) {
-        if (recipeType == null) return false;
-        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
-        if (typeId == null) return false;
-        return typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
+        private record SharedInputs(int itemStart, int itemCount, int fluidStart, int fluidCount, boolean valid) {
+        }
     }
 
     private static final class CompiledModel {

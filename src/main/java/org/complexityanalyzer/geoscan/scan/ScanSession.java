@@ -37,23 +37,16 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ScanSession {
 
-    public record BiomeKey(ResourceLocation dim, ResourceLocation biome) {
-    }
-
     private final long sessionId;
     private final ScanProfile profile;
     private final int chunksPerBiome;
-
     private final AtomicLong totalChunksScanned = new AtomicLong(0);
     private final long startTimeMs = System.currentTimeMillis();
-
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
-
     private final ConcurrentHashMap<ResourceLocation, LongOpenHashSet> attemptedChunksByDimension = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
-
     private volatile ScanMetadata.ScanPhase phase = ScanMetadata.ScanPhase.RECONNAISSANCE;
 
     public ScanSession(long sessionId, ScanProfile profile, int chunksPerBiome) {
@@ -84,6 +77,10 @@ public class ScanSession {
         int remaining = 0;
         for (AtomicInteger need : remainingNeeds.values()) remaining += need.get();
         return remaining + (int) totalChunksScanned.get();
+    }
+
+    public void setTotalChunksNeeded(int total) {
+        totalChunksNeeded.set(total);
     }
 
     public int getProgressPercent() {
@@ -129,10 +126,6 @@ public class ScanSession {
 
     public void setPhase(ScanMetadata.ScanPhase phase) {
         this.phase = phase;
-    }
-
-    public void setTotalChunksNeeded(int total) {
-        totalChunksNeeded.set(total);
     }
 
     public void setBiomeNeed(ResourceLocation dim, ResourceLocation biome, int needed) {
@@ -228,5 +221,8 @@ public class ScanSession {
         remainingNeeds.clear();
         totalChunksNeeded.set(0);
         totalChunksFound.set(0);
+    }
+
+    public record BiomeKey(ResourceLocation dim, ResourceLocation biome) {
     }
 }

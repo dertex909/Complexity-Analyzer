@@ -20,9 +20,15 @@ package org.complexityanalyzer.geoscan.config;
 
 public final class ScanConfig {
 
+    public static final int COUNTDOWN_SECONDS = 60;
+    public static final int FULL_WORLD_THRESHOLD = 60;
+    public static final int RADIUS_MAX = 64000;
+    public static final int RADIUS_FULL_WORLD = 1_000_000;
+    public static final int BATCH_SAVE_THRESHOLD = 16;
+    public static final int MSPT_RECOVERY_THRESHOLD_MS = 5;
+    public static final int MSPT_SAMPLE_COUNT = 5;
     private ScanConfig() {
     }
-
     public enum ScanProfile {
         NORMAL("normal", "Normal", 30.0f, 4, 16, 4, 2, 3, 128, 128, 128, 2),
         FAST("fast", "Fast", 40.0f, 6, 24, 8, 4, 6, 256, 512, 512, 2),
@@ -59,17 +65,23 @@ public final class ScanConfig {
             this.maxPendingAnalysisBatches = maxPendingAnalysisBatches;
         }
 
-        public boolean hasMsptLimit() {
-            return msptLimit > 0;
+        public static ScanProfile fromInput(String input) {
+            String normalized = input.toLowerCase()
+                    .replace("-", "")
+                    .replace("_", "")
+                    .replace(" ", "");
+
+            return switch (normalized) {
+                case "normal", "quarter" -> NORMAL;
+                case "fast", "half" -> FAST;
+                case "ultrafast", "most" -> ULTRA_FAST;
+                case "maximum", "full", "max" -> MAXIMUM;
+                default -> throw new IllegalArgumentException("Unknown profile: " + input);
+            };
         }
 
-        public record ScanPolicy(
-                int batchSize,
-                int emptyBatchTolerance,
-                int stagnantBatchTolerance,
-                int maxScannedBudget,
-                int maxPendingAnalysisBatches
-        ) {
+        public boolean hasMsptLimit() {
+            return msptLimit > 0;
         }
 
         public ScanPolicy policy(int chunksPerBiome, float currentMspt, boolean msptLimitEnabled) {
@@ -103,27 +115,13 @@ public final class ScanConfig {
             return Math.clamp(scaled, budgetMin, budgetMax);
         }
 
-        public static ScanProfile fromInput(String input) {
-            String normalized = input.toLowerCase()
-                    .replace("-", "")
-                    .replace("_", "")
-                    .replace(" ", "");
-
-            return switch (normalized) {
-                case "normal", "quarter" -> NORMAL;
-                case "fast", "half" -> FAST;
-                case "ultrafast", "most" -> ULTRA_FAST;
-                case "maximum", "full", "max" -> MAXIMUM;
-                default -> throw new IllegalArgumentException("Unknown profile: " + input);
-            };
+        public record ScanPolicy(
+                int batchSize,
+                int emptyBatchTolerance,
+                int stagnantBatchTolerance,
+                int maxScannedBudget,
+                int maxPendingAnalysisBatches
+        ) {
         }
     }
-
-    public static final int COUNTDOWN_SECONDS = 60;
-    public static final int FULL_WORLD_THRESHOLD = 60;
-    public static final int RADIUS_MAX = 64000;
-    public static final int RADIUS_FULL_WORLD = 1_000_000;
-    public static final int BATCH_SAVE_THRESHOLD = 16;
-    public static final int MSPT_RECOVERY_THRESHOLD_MS = 5;
-    public static final int MSPT_SAMPLE_COUNT = 5;
 }

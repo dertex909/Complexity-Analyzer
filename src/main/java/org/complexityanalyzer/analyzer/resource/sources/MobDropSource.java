@@ -68,33 +68,36 @@ import java.util.concurrent.CompletableFuture;
 import static org.apache.logging.log4j.Level.WARN;
 
 public class MobDropSource implements IResourceSource {
-    private final MobPropertyProvider mobProvider;
-    private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
     private static final int SIMULATION_COUNT = 100;
     private static final int LOGIC_VERSION = 1;
-
     private static final ReferenceSet<EntityType<?>> SPECIAL_KILL_ENTITIES = new ReferenceOpenHashSet<>(new EntityType<?>[]{
             EntityType.WITHER,
             EntityType.ENDER_DRAGON,
             EntityType.SHULKER
     });
+    private final MobPropertyProvider mobProvider;
+    private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
 
     public MobDropSource(MobPropertyProvider mobProvider) {
         this.mobProvider = mobProvider;
     }
 
-    private static class LootFunctionFilter extends AbstractFilter {
-        @Override
-        public Result filter(LogEvent event) {
-            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
-            String loggerName = event.getLoggerName();
-            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
-                String message = event.getMessage().getFormattedMessage();
-                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
-                        || message.contains("Couldn't find a compatible enchantment"))) return Result.DENY;
-            }
-            return Result.NEUTRAL;
-        }
+    private static void writeData(FriendlyByteBuf buf, MobDropData data) {
+        var mobId = GameRegistryManager.getEntityTypeId(data.sourceMob());
+        buf.writeResourceLocation(mobId != null ? mobId : ResourceLocation.withDefaultNamespace("pig"));
+        buf.writeDouble(data.averageYield());
+        boolean hasMethod = data.killMethod() != null;
+        buf.writeBoolean(hasMethod);
+        if (hasMethod) buf.writeUtf(data.killMethod());
+    }
+
+    @Nullable
+    private static MobDropData readData(FriendlyByteBuf buf, Item item) {
+        var mob = GameRegistryManager.getEntityType(buf.readResourceLocation());
+        double yield = buf.readDouble();
+        String killMethod = buf.readBoolean() ? buf.readUtf() : null;
+        if (mob == null) return null;
+        return new MobDropData(item, mob, yield, killMethod);
     }
 
     @Override
@@ -152,24 +155,6 @@ public class MobDropSource implements IResourceSource {
                 Fingerprints.hashMods(),
                 Fingerprints.hashAllEntities()
         };
-    }
-
-    private static void writeData(FriendlyByteBuf buf, MobDropData data) {
-        var mobId = GameRegistryManager.getEntityTypeId(data.sourceMob());
-        buf.writeResourceLocation(mobId != null ? mobId : ResourceLocation.withDefaultNamespace("pig"));
-        buf.writeDouble(data.averageYield());
-        boolean hasMethod = data.killMethod() != null;
-        buf.writeBoolean(hasMethod);
-        if (hasMethod) buf.writeUtf(data.killMethod());
-    }
-
-    @Nullable
-    private static MobDropData readData(FriendlyByteBuf buf, Item item) {
-        var mob = GameRegistryManager.getEntityType(buf.readResourceLocation());
-        double yield = buf.readDouble();
-        String killMethod = buf.readBoolean() ? buf.readUtf() : null;
-        if (mob == null) return null;
-        return new MobDropData(item, mob, yield, killMethod);
     }
 
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes) {
@@ -353,9 +338,6 @@ public class MobDropSource implements IResourceSource {
         }
     }
 
-    private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {
-    }
-
     @Override
     public boolean canProvide(Item item) {
         synchronized (dropMap) {
@@ -444,6 +426,53 @@ public class MobDropSource implements IResourceSource {
         return "MobDropSource";
     }
 
+    private void registerSpecialKillDrops() {
+        ComplexityAnalyzer.LOGGER.info("Registering special kill-based drops...");
+        int count = 0;
+
+        registerDrop(EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
+        count++;
+        registerDrop(EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper");
+        count++;
+        registerDrop(EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper");
+        count++;
+        registerDrop(EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper");
+        count++;
+
+        registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
+        count++;
+        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
+        count++;
+        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot");
+        count++;
+        registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
+        count++;
+
+        ComplexityAnalyzer.LOGGER.info("Registered {} special kill-based drop entries.", count);
+    }
+
+    private void registerDrop(EntityType<?> entityType, Item item, double averageYield, String method) {
+        var dropData = new MobDropData(item, entityType, averageYield, method);
+        dropMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(dropData);
+    }
+
+    private static class LootFunctionFilter extends AbstractFilter {
+        @Override
+        public Result filter(LogEvent event) {
+            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
+            String loggerName = event.getLoggerName();
+            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
+                String message = event.getMessage().getFormattedMessage();
+                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
+                        || message.contains("Couldn't find a compatible enchantment"))) return Result.DENY;
+            }
+            return Result.NEUTRAL;
+        }
+    }
+
+    private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {
+    }
+
     private record DamageSourceConfig(String methodName, DamageSource damageSource, boolean isOnFire,
                                       ServerPlayer killerPlayer, Entity attackingEntity) {
     }
@@ -473,35 +502,5 @@ public class MobDropSource implements IResourceSource {
             }
             return bestMethod;
         }
-    }
-
-    private void registerSpecialKillDrops() {
-        ComplexityAnalyzer.LOGGER.info("Registering special kill-based drops...");
-        int count = 0;
-
-        registerDrop(EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
-        count++;
-        registerDrop(EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper");
-        count++;
-        registerDrop(EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper");
-        count++;
-        registerDrop(EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper");
-        count++;
-
-        registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
-        count++;
-        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
-        count++;
-        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot");
-        count++;
-        registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
-        count++;
-
-        ComplexityAnalyzer.LOGGER.info("Registered {} special kill-based drop entries.", count);
-    }
-
-    private void registerDrop(EntityType<?> entityType, Item item, double averageYield, String method) {
-        var dropData = new MobDropData(item, entityType, averageYield, method);
-        dropMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(dropData);
     }
 }

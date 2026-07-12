@@ -56,6 +56,29 @@ public final class FastHarvester {
         return TL_VISITED_INGREDIENTS.get().add(ing);
     }
 
+    private static void clearThreadLocals() {
+        TL_INPUT_ITEMS.get().clear();
+        TL_OUTPUT_ITEMS.get().clear();
+        TL_INPUT_FLUIDS.get().clear();
+        TL_OUTPUT_FLUIDS.get().clear();
+        TL_INPUT_INGREDIENTS.get().clear();
+        TL_VISITED.get().clear();
+        TL_TRANSITIONAL_ITEMS.get().clear();
+        TL_VISITED_INGREDIENTS.get().clear();
+    }
+
+    private static <T> ObjectArrayList<T> borrowList(ThreadLocal<ObjectArrayList<T>> tl) {
+        var l = tl.get();
+        l.clear();
+        return l;
+    }
+
+    private static ReferenceOpenHashSet<Object> borrowMap() {
+        var m = FastHarvester.TL_VISITED.get();
+        m.clear();
+        return m;
+    }
+
     public HarvestedItems harvest(Object recipe, Level level) {
         if (recipe == null) return HarvestedItems.EMPTY;
 
@@ -215,29 +238,6 @@ public final class FastHarvester {
         } finally {
             clearThreadLocals();
         }
-    }
-
-    private static void clearThreadLocals() {
-        TL_INPUT_ITEMS.get().clear();
-        TL_OUTPUT_ITEMS.get().clear();
-        TL_INPUT_FLUIDS.get().clear();
-        TL_OUTPUT_FLUIDS.get().clear();
-        TL_INPUT_INGREDIENTS.get().clear();
-        TL_VISITED.get().clear();
-        TL_TRANSITIONAL_ITEMS.get().clear();
-        TL_VISITED_INGREDIENTS.get().clear();
-    }
-
-    private static <T> ObjectArrayList<T> borrowList(ThreadLocal<ObjectArrayList<T>> tl) {
-        var l = tl.get();
-        l.clear();
-        return l;
-    }
-
-    private static ReferenceOpenHashSet<Object> borrowMap() {
-        var m = FastHarvester.TL_VISITED.get();
-        m.clear();
-        return m;
     }
 
     public void clearCaches() {

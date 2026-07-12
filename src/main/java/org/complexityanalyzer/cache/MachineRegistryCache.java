@@ -44,10 +44,15 @@ public final class MachineRegistryCache implements ManagedCache {
     private static final int MAGIC = 0x43414332;
     private static final int VERSION = 1;
 
-    public record Fingerprint(long blocks, long mods) {
+    private MachineRegistryCache() {
     }
 
-    private MachineRegistryCache() {
+    private static long fnv(long h, String s) {
+        for (int i = 0; i < s.length(); i++) {
+            h ^= s.charAt(i);
+            h *= 0x100000001b3L;
+        }
+        return h;
     }
 
     @Override
@@ -170,11 +175,6 @@ public final class MachineRegistryCache implements ManagedCache {
         }
     }
 
-    private static long fnv(long h, String s) {
-        for (int i = 0; i < s.length(); i++) {
-            h ^= s.charAt(i);
-            h *= 0x100000001b3L;
-        }
-        return h;
+    public record Fingerprint(long blocks, long mods) {
     }
 }

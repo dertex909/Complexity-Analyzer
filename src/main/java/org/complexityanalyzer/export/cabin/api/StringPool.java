@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
 public final class StringPool {
 
     public static final int EMPTY = 0;
-
+    private static final int MAX_LEN = 0xFFFF;
     private final Object2IntOpenHashMap<String> index;
     private final ObjectList<byte[]> entries;
     private long bytesEstimate;
@@ -39,7 +39,9 @@ public final class StringPool {
         intern("");
     }
 
-    private static final int MAX_LEN = 0xFFFF;
+    private static String oversizedSurrogate(byte[] data) {
+        return "[oversized:" + data.length + ":" + Long.toHexString(XxHash64.hash(data, 0L)) + "]";
+    }
 
     public int intern(String s) {
         if (s == null) return EMPTY;
@@ -62,10 +64,6 @@ public final class StringPool {
         index.put(key, ref);
         bytesEstimate += data.length + 2L;
         return ref;
-    }
-
-    private static String oversizedSurrogate(byte[] data) {
-        return "[oversized:" + data.length + ":" + Long.toHexString(XxHash64.hash(data, 0L)) + "]";
     }
 
     public int size() {

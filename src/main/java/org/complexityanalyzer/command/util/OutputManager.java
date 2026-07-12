@@ -28,6 +28,10 @@ import org.complexityanalyzer.util.ServerLanguage;
 
 public class OutputManager {
 
+    private static final Component SEPARATOR = Component.literal("═══════════════════════════════")
+            .withStyle(ChatFormatting.DARK_GRAY);
+    private static final Component THIN_SEPARATOR = Component.literal("  ─────────────────────────────")
+            .withStyle(ChatFormatting.DARK_GRAY);
     private final MinecraftServer server;
 
     public OutputManager(MinecraftServer server) {
@@ -219,10 +223,4 @@ public class OutputManager {
         int bars = Math.clamp(percent / 10, 0, 10);
         return "[" + "██████████".substring(0, bars) + "░░░░░░░░░░".substring(bars) + "]";
     }
-
-    private static final Component SEPARATOR = Component.literal("═══════════════════════════════")
-            .withStyle(ChatFormatting.DARK_GRAY);
-
-    private static final Component THIN_SEPARATOR = Component.literal("  ─────────────────────────────")
-            .withStyle(ChatFormatting.DARK_GRAY);
 }

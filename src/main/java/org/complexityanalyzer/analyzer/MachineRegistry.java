@@ -40,6 +40,7 @@ import static net.minecraft.core.BlockPos.ZERO;
 
 public class MachineRegistry {
 
+    private static final ClassInfo EMPTY_INFO = new ClassInfo(new Method[0], new Field[0]);
     private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping = new Object2ObjectOpenHashMap<>();
     private final Object2ObjectMap<Class<?>, ClassInfo> classInfoCache = new Object2ObjectOpenHashMap<>();
     private boolean initialized = false;
@@ -161,11 +162,6 @@ public class MachineRegistry {
         return count;
     }
 
-    private record ClassInfo(Method[] recipeMethods, Field[] fields) {
-    }
-
-    private static final ClassInfo EMPTY_INFO = new ClassInfo(new Method[0], new Field[0]);
-
     private ClassInfo classInfo(Class<?> clazz) {
         var info = classInfoCache.get(clazz);
         if (info != null) return info;
@@ -254,5 +250,8 @@ public class MachineRegistry {
         }
 
         mapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>()).add(item);
+    }
+
+    private record ClassInfo(Method[] recipeMethods, Field[] fields) {
     }
 }

@@ -30,34 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AntivirusStyleDetector {
     private static final ConcurrentHashMap<Class<?>, CompositeDetection> DETECT_CACHE = new ConcurrentHashMap<>(512);
 
-    public record CompositeDetection(
-            PatternSignatureEngine.DetectionLevel level,
-            int signatureConfidence,
-            int heuristicConfidence,
-            int behavioralConfidence,
-            int totalConfidence,
-            boolean isRecipe,
-            boolean isMachine,
-            boolean isCodec,
-            String verdict,
-            ObjectList<String> allEvidence
-    ) {
-        public static final CompositeDetection UNKNOWN = new CompositeDetection(
-                PatternSignatureEngine.DetectionLevel.UNKNOWN,
-                0, 0, 0, 0, false, false, false,
-                "No patterns detected at any level",
-                ObjectLists.emptyList()
-        );
-
-        @Override
-        public @NotNull String toString() {
-            return String.format(Locale.ROOT,
-                    "CompositeDetection[level=%s sig=%d heur=%d behav=%d total=%d recipe=%s machine=%s codec=%s verdict=%s]",
-                    level, signatureConfidence, heuristicConfidence, behavioralConfidence,
-                    totalConfidence, isRecipe, isMachine, isCodec, verdict);
-        }
-    }
-
     private AntivirusStyleDetector() {
     }
 
@@ -163,5 +135,33 @@ public final class AntivirusStyleDetector {
                 isRecipe, isMachine, isCodec,
                 verdict, allEvidence
         );
+    }
+
+    public record CompositeDetection(
+            PatternSignatureEngine.DetectionLevel level,
+            int signatureConfidence,
+            int heuristicConfidence,
+            int behavioralConfidence,
+            int totalConfidence,
+            boolean isRecipe,
+            boolean isMachine,
+            boolean isCodec,
+            String verdict,
+            ObjectList<String> allEvidence
+    ) {
+        public static final CompositeDetection UNKNOWN = new CompositeDetection(
+                PatternSignatureEngine.DetectionLevel.UNKNOWN,
+                0, 0, 0, 0, false, false, false,
+                "No patterns detected at any level",
+                ObjectLists.emptyList()
+        );
+
+        @Override
+        public @NotNull String toString() {
+            return String.format(Locale.ROOT,
+                    "CompositeDetection[level=%s sig=%d heur=%d behav=%d total=%d recipe=%s machine=%s codec=%s verdict=%s]",
+                    level, signatureConfidence, heuristicConfidence, behavioralConfidence,
+                    totalConfidence, isRecipe, isMachine, isCodec, verdict);
+        }
     }
 }

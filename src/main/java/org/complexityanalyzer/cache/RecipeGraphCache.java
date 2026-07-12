@@ -85,14 +85,13 @@ public final class RecipeGraphCache implements ManagedCache {
 
         long hRecipes = 0xcbf29ce484222325L;
         for (var holder : holders) {
-            hRecipes = fnv(hRecipes, holder.id().toString());
-            var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
-            hRecipes = fnv(hRecipes, typeId != null ? typeId.toString() : "?");
             try {
                 var resultStack = holder.value().getResultItem(registryAccess);
-                if (!resultStack.isEmpty()) {
-                    hRecipes = fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
-                }
+                if (resultStack.isEmpty()) continue;
+                hRecipes = fnv(hRecipes, holder.id().toString());
+                var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
+                hRecipes = fnv(hRecipes, typeId != null ? typeId.toString() : "?");
+                hRecipes = fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
                 for (var ingredient : holder.value().getIngredients()) {
                     if (ingredient.isEmpty()) continue;
                     hRecipes = fnv(hRecipes, "[");

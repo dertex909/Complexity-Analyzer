@@ -28,7 +28,8 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
-import org.complexityanalyzer.graph.*;
+import org.complexityanalyzer.graph.RecipeCategory;
+import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
 public class CraftingTreeBuilder {

@@ -18,24 +18,29 @@
 
 package org.complexityanalyzer.geoscan;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.refinement.DataRefiner;
-import org.complexityanalyzer.geoscan.scan.*;
-import org.complexityanalyzer.geoscan.task.*;
+import org.complexityanalyzer.geoscan.scan.ScanCoordinator;
+import org.complexityanalyzer.geoscan.scan.ScanExecutor;
+import org.complexityanalyzer.geoscan.scan.ScanSession;
+import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
+import org.complexityanalyzer.geoscan.task.ScanNotifier;
+import org.complexityanalyzer.geoscan.task.ScanTask;
+import org.complexityanalyzer.geoscan.task.WorldScanner;
 
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;

@@ -20,9 +20,8 @@ package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerLevel;
-import org.complexityanalyzer.core.GameRegistryManager;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -36,6 +35,7 @@ import org.complexityanalyzer.analyzer.resource.providers.PlantSimulator;
 import org.complexityanalyzer.cache.Fingerprints;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {

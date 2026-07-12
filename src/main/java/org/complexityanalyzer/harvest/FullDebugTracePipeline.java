@@ -28,7 +28,10 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 
 public final class FullDebugTracePipeline {
     private static final boolean ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");

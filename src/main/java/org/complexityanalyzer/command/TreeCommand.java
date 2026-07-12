@@ -22,30 +22,28 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 import net.minecraft.ChatFormatting;
-import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
-import org.complexityanalyzer.command.util.SharedSuggestions;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.tree.CraftingTreeBuilder;
 import org.complexityanalyzer.command.util.OutputManager;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
-
-import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 
 public final class TreeCommand {
     private TreeCommand() {

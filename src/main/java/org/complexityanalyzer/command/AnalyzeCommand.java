@@ -18,28 +18,26 @@
 
 package org.complexityanalyzer.command;
 
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.core.GameRegistryManager;
-
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
-import org.complexityanalyzer.command.util.SharedSuggestions;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
 
 import java.util.Comparator;
 

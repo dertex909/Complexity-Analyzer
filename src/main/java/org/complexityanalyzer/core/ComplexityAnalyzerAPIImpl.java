@@ -25,27 +25,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.api.ComplexityAnalyzerAPI;
-import org.complexityanalyzer.api.ComplexityQuery;
-import org.complexityanalyzer.api.GeoData;
-import org.complexityanalyzer.api.IBossRegistry;
-import org.complexityanalyzer.api.IHardcodedSourceRegistry;
-import org.complexityanalyzer.api.IRenewableRegistry;
-import org.complexityanalyzer.api.MachineData;
-import org.complexityanalyzer.api.MobData;
-import org.complexityanalyzer.api.MobInfo;
-import org.complexityanalyzer.api.RecipeData;
 import org.complexityanalyzer.analyzer.resource.sources.HardcodedSourcesProvider;
+import org.complexityanalyzer.api.*;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeNode;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.OptionalDouble;
-import java.util.Set;
+import java.util.*;
 
 public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
 

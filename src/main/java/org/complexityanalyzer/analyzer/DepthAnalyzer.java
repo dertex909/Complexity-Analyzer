@@ -22,8 +22,10 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.graph.*;
-
+import org.complexityanalyzer.graph.IngredientSlot;
+import org.complexityanalyzer.graph.RecipeCategory;
+import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
 public class DepthAnalyzer {

@@ -32,11 +32,11 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
-import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;

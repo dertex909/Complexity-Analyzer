@@ -25,7 +25,7 @@ import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
-import org.complexityanalyzer.graph.*;
+import org.complexityanalyzer.graph.RecipeGraph;
 
 import java.util.Arrays;
 

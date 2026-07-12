@@ -364,6 +364,9 @@ public class ThreadPoolManager {
         return new PoolStats(parallelism, 0, 0, 0, fj.getActiveThreadCount(), fj.getStealCount());
     }
 
+    public interface ComplexityThread {
+    }
+
     public record PoolStats(
             int parallelism,
             int activeThreads,
@@ -377,9 +380,6 @@ public class ThreadPoolManager {
             return String.format("PoolStats{parallelism=%d, active=%d, completed=%d, queued=%d, fjActive=%d, fjSteals=%d}",
                     parallelism, activeThreads, completedTasks, queuedTasks, forkJoinActive, forkJoinSteals);
         }
-    }
-
-    public interface ComplexityThread {
     }
 
     private static class ComplexityComputeThread extends Thread implements ComplexityThread {

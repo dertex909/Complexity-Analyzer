@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {state, selectItem} from "../core/state.js";
+import {selectItem, state} from "../core/state.js";
 import {readRecipesAt} from "../core/cabin.js";
 import * as d3 from "../core/libs/d3.js";
 

@@ -16,19 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    formatRawTooltip,
-    fmt,
-    renderSubTabHeader
-} from "../../core/utils.js";
+import {escapeHtml, fmt, formatRawTooltip, renderSubTabHeader} from "../../core/utils.js";
 import {state} from "../../core/state.js";
 import {formatSourceTypeName} from "../sources.js";
-import {
-    renderAndWireGroupedRecipes,
-    renderAndWireFlatRecipes,
-    wireRecipeLinks
-} from "./recipe-shared.js";
+import {renderAndWireFlatRecipes, renderAndWireGroupedRecipes, wireRecipeLinks} from "./recipe-shared.js";
 
 export async function renderItemRecipesView(container) {
     const db = state.db;

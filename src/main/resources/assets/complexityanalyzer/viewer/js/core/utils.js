@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {ITEM_FLAG, FLUID_FLAG, MOB_FLAG} from "./cabin.js";
+import {FLUID_FLAG, ITEM_FLAG, MOB_FLAG} from "./cabin.js";
 import {switchTab} from "./state.js";
 
 export const fmt = new Intl.NumberFormat("en-US", {maximumFractionDigits: 2});

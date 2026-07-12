@@ -16,15 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    debounce,
-    formatComplexity,
-    formatRawTooltip,
-    getItemFlags,
-    fmtInt
-} from "../core/utils.js";
-import {state, setFilter, selectItem} from "../core/state.js";
+import {debounce, escapeHtml, fmtInt, formatComplexity, formatRawTooltip, getItemFlags} from "../core/utils.js";
+import {selectItem, setFilter, state} from "../core/state.js";
 import {ITEM_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {renderItemDetail} from "./details/item-detail.js";
@@ -32,9 +25,9 @@ import {setupResizableTable} from "../components/resizable-table.js";
 import {generateTableHeader} from "../components/table-columns.js";
 import {openFilterPopover} from "../components/filter-popover.js";
 import {
-    passesModFilter,
-    passesFlagsFilter,
     passesCategoryFilter,
+    passesFlagsFilter,
+    passesModFilter,
     passesRangeFilter
 } from "../components/item-filter.js";
 

@@ -16,14 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    formatComplexityDetail,
-    formatRawTooltip,
-    getItemFlags,
-    fmtInt
-} from "../../core/utils.js";
-import {state, setState} from "../../core/state.js";
+import {escapeHtml, fmtInt, formatComplexityDetail, formatRawTooltip, getItemFlags} from "../../core/utils.js";
+import {setState, state} from "../../core/state.js";
 import {ITEM_FLAG} from "../../core/cabin.js";
 import {setupModalClose} from "../../components/modal-utils.js";
 

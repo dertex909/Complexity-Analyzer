@@ -17,7 +17,7 @@
  */
 
 import {CabinDatabase} from "./core/db.js";
-import {state, setState, store, selectItem, selectMob, switchTab} from "./core/state.js";
+import {selectItem, selectMob, setState, state, store, switchTab} from "./core/state.js";
 import {initRouter, renderTabs} from "./core/router.js";
 import {renderOverview} from "./views/overview.js";
 import {renderItems} from "./views/items.js";
@@ -30,15 +30,12 @@ import {renderFluidDetail} from "./views/details/fluid-detail.js";
 import {renderMobDetail} from "./views/details/mob-detail.js";
 import {renderMobDropsView} from "./views/sub/mob-sub-views.js";
 import {
-    renderItemRecipesView,
+    renderItemBaseSourcesView,
     renderItemMachineRecipesView,
-    renderItemUsesView,
-    renderItemBaseSourcesView
+    renderItemRecipesView,
+    renderItemUsesView
 } from "./views/sub/item-sub-views.js";
-import {
-    renderFluidRecipesView,
-    renderFluidUsesView
-} from "./views/sub/fluid-sub-views.js";
+import {renderFluidRecipesView, renderFluidUsesView} from "./views/sub/fluid-sub-views.js";
 
 const fmtInt = new Intl.NumberFormat("en-US");
 

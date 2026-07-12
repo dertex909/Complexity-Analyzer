@@ -16,12 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    getMobFlags,
-    fmt
-} from "../../core/utils.js";
-import {state, setState} from "../../core/state.js";
+import {escapeHtml, fmt, getMobFlags} from "../../core/utils.js";
+import {setState, state} from "../../core/state.js";
 import {setupModalClose} from "../../components/modal-utils.js";
 
 export async function renderMobDetail(unusedContainer, mobIndex) {

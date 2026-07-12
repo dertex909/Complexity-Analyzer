@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {escapeHtml, debounce} from "../core/utils.js";
+import {debounce, escapeHtml} from "../core/utils.js";
 import {closeActivePopover, setActivePopover} from "./resizable-table.js";
 import {getDefaultFilters} from "../core/state.js";
 

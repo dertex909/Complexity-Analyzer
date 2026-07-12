@@ -16,15 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    renderSubTabHeader
-} from "../../core/utils.js";
+import {escapeHtml, renderSubTabHeader} from "../../core/utils.js";
 import {state} from "../../core/state.js";
-import {
-    renderAndWireGroupedRecipes,
-    renderAndWireFlatRecipes
-} from "./recipe-shared.js";
+import {renderAndWireFlatRecipes, renderAndWireGroupedRecipes} from "./recipe-shared.js";
 
 export async function renderFluidRecipesView(container) {
     const db = state.db;

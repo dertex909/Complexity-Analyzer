@@ -16,25 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    debounce,
-    getMobFlags,
-    fmt,
-    fmtInt
-} from "../core/utils.js";
-import {state, setFilter, selectMob} from "../core/state.js";
+import {debounce, escapeHtml, fmt, fmtInt, getMobFlags} from "../core/utils.js";
+import {selectMob, setFilter, state} from "../core/state.js";
 import {MOB_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {renderMobDetail} from "./details/mob-detail.js";
 import {setupResizableTable} from "../components/resizable-table.js";
 import {generateTableHeader} from "../components/table-columns.js";
 import {openFilterPopover} from "../components/filter-popover.js";
-import {
-    passesModFilter,
-    passesFlagsFilter,
-    passesRangeFilter
-} from "../components/item-filter.js";
+import {passesFlagsFilter, passesModFilter, passesRangeFilter} from "../components/item-filter.js";
 
 const MOBS_COLUMNS = [
     {index: 1, label: "№", filter: null, sortable: false},

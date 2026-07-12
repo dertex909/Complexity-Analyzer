@@ -17,11 +17,26 @@
  */
 
 import {
-    SEC, CabinFile, StringPool, ItemTable, MobTable, FluidTable,
-    RecipeIndex, FluidRecipeIndex, UsageTable, FluidUsageTable, readMeta, readCategories,
-    readSourcesForItem, readBaseDataForItem, readRecipesAt,
-    readDropsForMob, readMachineIndex, readSourceTypeIndex, readModSummary,
+    CabinFile,
+    FluidRecipeIndex,
+    FluidTable,
+    FluidUsageTable,
     ITEM_FLAG,
+    ItemTable,
+    MobTable,
+    readBaseDataForItem,
+    readCategories,
+    readDropsForMob,
+    readMachineIndex,
+    readMeta,
+    readModSummary,
+    readRecipesAt,
+    readSourcesForItem,
+    readSourceTypeIndex,
+    RecipeIndex,
+    SEC,
+    StringPool,
+    UsageTable,
 } from "./cabin.js";
 import {mergeDuplicateRecipes} from "../views/sub/recipe-shared.js";
 

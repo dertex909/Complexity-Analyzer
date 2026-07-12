@@ -17,7 +17,7 @@
  */
 
 import {escapeHtml, fmt, formatComplexity} from "../../core/utils.js";
-import {state, setState} from "../../core/state.js";
+import {setState, state} from "../../core/state.js";
 
 function saveScrollPositions(elem) {
     const scrollPositions = [];

@@ -16,11 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    escapeHtml,
-    fmt,
-    renderSubTabHeader
-} from "../../core/utils.js";
+import {escapeHtml, fmt, renderSubTabHeader} from "../../core/utils.js";
 import {state} from "../../core/state.js";
 import {wireRecipeLinks} from "./recipe-shared.js";
 

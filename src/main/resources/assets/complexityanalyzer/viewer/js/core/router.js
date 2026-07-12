@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {state, setState, store, switchTab} from "./state.js";
+import {setState, state, store, switchTab} from "./state.js";
 
 let suppressHistory = false;
 

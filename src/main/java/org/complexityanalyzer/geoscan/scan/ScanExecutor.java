@@ -542,6 +542,7 @@ public class ScanExecutor {
         int emptyBatches = 0;
         int stagnantBatches = 0;
         int relocations = 0;
+
         ScanContext(SessionContext myCtx, ResourceKey<Level> dimension, ResourceKey<Biome> biomeKey,
                     ResourceLocation dimId, ResourceLocation biomeId) {
             this.myCtx = myCtx;

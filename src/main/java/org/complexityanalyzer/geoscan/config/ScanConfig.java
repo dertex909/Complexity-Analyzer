@@ -27,8 +27,10 @@ public final class ScanConfig {
     public static final int BATCH_SAVE_THRESHOLD = 16;
     public static final int MSPT_RECOVERY_THRESHOLD_MS = 5;
     public static final int MSPT_SAMPLE_COUNT = 5;
+
     private ScanConfig() {
     }
+
     public enum ScanProfile {
         NORMAL("normal", "Normal", 30.0f, 4, 16, 4, 2, 3, 128, 128, 128, 2),
         FAST("fast", "Fast", 40.0f, 6, 24, 8, 4, 6, 256, 512, 512, 2),

@@ -46,6 +46,7 @@ public final class CabinBackgroundService {
     private final AtomicReference<CompletableFuture<Snapshot>> inflight = new AtomicReference<>(null);
     private final AtomicReference<Throwable> lastError = new AtomicReference<>(null);
     private volatile boolean rebuildPending = false;
+
     private CabinBackgroundService() {
     }
 

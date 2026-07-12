@@ -33,6 +33,7 @@ public final class PatternSignatureEngine {
     private static final int RECIPE_THRESHOLD = 25;
     private static final int MACHINE_THRESHOLD = 30;
     private static final int CODEC_THRESHOLD = 10;
+
     private PatternSignatureEngine() {
     }
 

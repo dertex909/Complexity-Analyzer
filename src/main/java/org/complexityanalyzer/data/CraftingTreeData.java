@@ -32,6 +32,7 @@ public class CraftingTreeData {
     private final TreeStatistics statistics;
     private final DisplayMode displayMode;
     private final int maxDepth;
+
     public CraftingTreeData(Item rootItem, TreeNode root, Reference2DoubleMap<Item> baseResources,
                             TreeStatistics statistics, DisplayMode displayMode, int maxDepth) {
         this.rootItem = rootItem;

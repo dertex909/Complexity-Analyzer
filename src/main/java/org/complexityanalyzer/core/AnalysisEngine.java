@@ -80,6 +80,7 @@ public class AnalysisEngine {
     private volatile GeoAnalysisManager geoManager;
     private volatile MachineRegistry machineRegistry;
     private volatile MinecraftServer server;
+
     private AnalysisEngine() {
         this.complexityCache = new ComplexityCache();
     }

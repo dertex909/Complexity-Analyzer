@@ -56,6 +56,7 @@ public final class RecipeGraphCache implements ManagedCache {
     private static final int VERSION = 3;
     private static final ResourceLocation AIR_ID = ResourceLocation.withDefaultNamespace("air");
     private static final ResourceLocation EMPTY_FLUID_ID = ResourceLocation.withDefaultNamespace("empty");
+
     private RecipeGraphCache() {
     }
 

@@ -34,6 +34,7 @@ public final class CabinReader {
     private final long fileHash;
     private final long tocOffset;
     private final Byte2ObjectMap<Section> sectionsById;
+
     public CabinReader(byte[] data) throws IOException {
         this.data = data;
         if (data.length < CabinFormat.HEADER_SIZE) throw new IOException("Cabin too small: " + data.length);

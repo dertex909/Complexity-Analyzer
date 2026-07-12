@@ -59,6 +59,7 @@ public class RecipeNode {
     private final boolean isPlaceholder;
     private RecipeCategory category;
     private volatile int listIndex = -1;
+
     private RecipeNode(Builder builder) {
         this.ingredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.ingredients));
         this.fluidIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidIngredients));

@@ -22,6 +22,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.util.ServerLanguage;
 import org.jetbrains.annotations.Nullable;
 
 public class ScanNotifier {
@@ -33,53 +34,78 @@ public class ScanNotifier {
     }
 
     public void broadcastInfo(Component message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§e[CA] §f").append(message), false);
+        server.getPlayerList().getPlayers().forEach(player -> {
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            player.sendSystemMessage(Component.literal("§e[CA] §f").append(translated));
+        });
+        server.sendSystemMessage(Component.literal("§e[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void broadcastWarning(Component message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§e[CA] §6")
-                .append(Component.translatable("complexityanalyzer.notifier.warning_tag"))
-                .append(" §f").append(message), false);
+        server.getPlayerList().getPlayers().forEach(player -> {
+            var warningTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), player);
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            player.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTag).append(" §f").append(translated));
+        });
+        var warningTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), null);
+        server.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTagConsole).append(" §f").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void broadcastSevere(Component message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§c[CA] §l").append(message), false);
+        server.getPlayerList().getPlayers().forEach(player -> {
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            player.sendSystemMessage(Component.literal("§c[CA] §l").append(translated));
+        });
+        server.sendSystemMessage(Component.literal("§c[CA] §l").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void broadcastSuccess(Component message) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§a[CA] §f").append(message), false);
+        server.getPlayerList().getPlayers().forEach(player -> {
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            player.sendSystemMessage(Component.literal("§a[CA] §f").append(translated));
+        });
+        server.sendSystemMessage(Component.literal("§a[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void sendSuccess(@Nullable CommandSourceStack source, Component message) {
-        var component = Component.literal("§a[CA] §f").append(message);
         if (source != null) {
+            var player = source.getPlayer();
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            var component = Component.literal("§a[CA] §f").append(translated);
             source.sendSuccess(() -> component, false);
         } else {
-            logInfo(message.getString());
+            logInfo(message);
         }
     }
 
     public void sendFailure(@Nullable CommandSourceStack source, Component message) {
-        var component = Component.literal("§c[CA] ").append(
-                Component.translatable("complexityanalyzer.notifier.error_tag")).append(": ").append(message);
-        if (source != null) source.sendFailure(component);
-        else logError(message.getString());
+        if (source != null) {
+            var player = source.getPlayer();
+            var errorTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), player);
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            var component = Component.literal("§c[CA] ").append(errorTag).append(": ").append(translated);
+            source.sendFailure(component);
+        } else {
+            var errorTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), null);
+            var translatedConsole = ServerLanguage.translateForPlayer(message, null);
+            logError(Component.literal("").append(errorTagConsole).append(": ").append(translatedConsole).getString());
+        }
     }
 
-    public void logInfo(String message) {
-        ComplexityAnalyzer.LOGGER.info(message);
+    public void logInfo(Component message) {
+        ComplexityAnalyzer.LOGGER.info(ServerLanguage.translateForPlayer(message, null).getString());
     }
 
-    public void logWarn(String message) {
-        ComplexityAnalyzer.LOGGER.warn(message);
+    public void logWarn(Component message) {
+        ComplexityAnalyzer.LOGGER.warn(ServerLanguage.translateForPlayer(message, null).getString());
     }
 
     public void logError(String message) {
         ComplexityAnalyzer.LOGGER.error(message);
     }
 
-    public void logError(String message, Throwable throwable) {
-        ComplexityAnalyzer.LOGGER.error(message, throwable);
+    public void logError(Component message, Throwable throwable) {
+        ComplexityAnalyzer.LOGGER.error(ServerLanguage.translateForPlayer(message, null).getString(), throwable);
     }
 
     public void notifyScanCountdown(int secondsLeft) {
@@ -90,8 +116,8 @@ public class ScanNotifier {
         }
     }
 
-    public void notifyScanStarting(int chunksPerBiome, String initiator) {
-        logInfo(Component.translatable("complexityanalyzer.log.scan_starting", initiator, chunksPerBiome).getString());
+    public void notifyScanStarting(int chunksPerBiome, Component initiator) {
+        logInfo(Component.translatable("complexityanalyzer.log.scan_starting", initiator, chunksPerBiome));
     }
 
     public void notifyDatabaseIsUpToDate() {
@@ -108,6 +134,6 @@ public class ScanNotifier {
 
     public void notifyRefinementFinished() {
         broadcastSuccess(Component.translatable("complexityanalyzer.notifier.complete"));
-        logInfo(Component.translatable("complexityanalyzer.log.refinement_complete").getString());
+        logInfo(Component.translatable("complexityanalyzer.log.refinement_complete"));
     }
 }

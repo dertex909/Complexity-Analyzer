@@ -168,7 +168,7 @@ public class ScanCoordinator {
         session.setTotalChunksNeeded(totalChunks);
         session.loadAttemptedChunks(existingCoordinates);
 
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks).getString());
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks));
 
         return true;
     }

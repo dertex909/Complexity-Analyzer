@@ -61,7 +61,7 @@ public class DataRefiner {
                     ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine", reconPaths.size());
 
                     if (reconPaths.isEmpty()) {
-                        notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data").getString());
+                        notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data"));
                         finishRefinement(onComplete);
                         return;
                     }
@@ -71,7 +71,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.heuristics").getString());
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.heuristics"));
                     database.buildHeuristicFromFiles(reconPaths);
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -79,7 +79,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.clearing").getString());
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.clearing"));
                     database.clearFinalData();
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -90,7 +90,7 @@ public class DataRefiner {
                     int totalBiomes = reconPaths.values().stream().mapToInt(Object2ObjectMap::size).sum();
                     int processedBiomes = 0;
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimensions_count", reconPaths.size()).getString());
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimensions_count", reconPaths.size()));
 
                     for (var dimEntry : reconPaths.object2ObjectEntrySet()) {
 
@@ -100,7 +100,7 @@ public class DataRefiner {
                         }
 
                         var dimension = dimEntry.getKey();
-                        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), dimEntry.getValue().size()).getString());
+                        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), dimEntry.getValue().size()));
 
                         for (var biomeEntry : dimEntry.getValue().object2ObjectEntrySet()) {
 
@@ -123,11 +123,11 @@ public class DataRefiner {
                         }
                     }
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.success", totalBiomes).getString());
+                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.success", totalBiomes));
                     finishRefinement(onComplete);
 
                 } catch (IOException e) {
-                    notifier.logError(Component.translatable("complexityanalyzer.log.refiner.error").getString(), e);
+                    notifier.logError(Component.translatable("complexityanalyzer.log.refiner.error"), e);
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.error("[Refiner] Unexpected error!", e);
@@ -147,7 +147,7 @@ public class DataRefiner {
     }
 
     private void finishRefinement(Runnable onComplete) {
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.finalizing").getString());
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.finalizing"));
         database.setScanPhase(ScanMetadata.ScanPhase.COMPLETE);
         database.loadAll();
         notifier.notifyRefinementFinished();

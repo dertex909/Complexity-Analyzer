@@ -156,12 +156,12 @@ public class ScanExecutor {
         var newCtx = new SessionContext(newSession, onComplete, monitor);
         sessionRef.set(newCtx);
 
-        String msptInfo = monitor.hasLimit()
-                ? Component.translatable("complexityanalyzer.log.scan.mspt_limit", monitor.getMsptLimit()).getString()
-                : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit").getString();
+        Component msptInfo = monitor.hasLimit()
+                ? Component.translatable("complexityanalyzer.log.scan.mspt_limit", monitor.getMsptLimit())
+                : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit");
 
         notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.profile_info",
-                newSession.getProfile().displayName.toUpperCase(), msptInfo).getString());
+                newSession.getProfile().displayName.toUpperCase(), msptInfo));
 
         startWorker(newCtx);
     }
@@ -529,7 +529,7 @@ public class ScanExecutor {
         flushAllBuffers();
         logThrottleStats();
 
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.complete").getString());
+        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.complete"));
 
         var callback = myCtx.onComplete();
         if (callback != null && !isShutdown.get()) try {
@@ -541,8 +541,8 @@ public class ScanExecutor {
 
     private void logThrottleStats() {
         int pauses = throttlePauseCount.get();
-        if (pauses > 0) ComplexityAnalyzer.LOGGER.info(
-                Component.translatable("complexityanalyzer.log.scan.throttle_stats", pauses, totalThrottleTimeMs.get()).getString());
+        if (pauses > 0) notifier.logInfo(
+                Component.translatable("complexityanalyzer.log.scan.throttle_stats", pauses, totalThrottleTimeMs.get()));
     }
 
     private void saveToBuffer(ResourceLocation dim, ResourceLocation biome, ChunkSnapshot snapshot) {

@@ -55,9 +55,11 @@ public class ChunkAnalyzer {
         var it = blockCounts.reference2IntEntrySet().fastIterator();
         while (it.hasNext()) {
             var entry = it.next();
-            String blockId = blockIdCache.computeIfAbsent(
-                    entry.getKey(), block -> GameRegistryManager.getBlockId(block).toString()
-            );
+            var block = entry.getKey();
+            if (block == null) continue;
+            var resourceLoc = GameRegistryManager.getBlockId(block);
+            if (resourceLoc == null) continue;
+            String blockId = blockIdCache.computeIfAbsent(block, b -> resourceLoc.toString());
             finalCounts.put(blockId, entry.getIntValue());
         }
 

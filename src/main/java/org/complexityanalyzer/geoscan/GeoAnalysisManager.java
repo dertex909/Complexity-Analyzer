@@ -106,19 +106,19 @@ public class GeoAnalysisManager {
                 var phase = database.getScanPhase();
 
                 if (phase == ScanMetadata.ScanPhase.COMPLETE) {
-                    notifier.logInfo(Component.translatable("complexityanalyzer.notifier.complete").getString());
+                    notifier.logInfo(Component.translatable("complexityanalyzer.notifier.complete"));
                     database.loadAll();
                     return;
                 }
 
                 if (phase == ScanMetadata.ScanPhase.REFINING) {
-                    notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.error").getString());
+                    notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.error"));
                     dataRefiner.refine(analysisEngine::onGeoScanFinished);
                     return;
                 }
 
                 if (phase == ScanMetadata.ScanPhase.RECONNAISSANCE) {
-                    notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data").getString());
+                    notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data"));
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 }
 
@@ -221,32 +221,32 @@ public class GeoAnalysisManager {
         }
     }
 
-    public String getStatus() {
-        if (scanStarting.get()) return Component.translatable("complexityanalyzer.geoscan.status.starting").getString();
+    public Component getStatus() {
+        if (scanStarting.get()) return Component.translatable("complexityanalyzer.geoscan.status.starting");
 
         if (isCountdownActive()) return Component.translatable("complexityanalyzer.geoscan.status.scheduled",
-                Component.translatable("complexityanalyzer.geoscan.profile." + scheduledProfile.commandName).getString(),
-                countdownTicks.get() / 20).getString();
+                Component.translatable("complexityanalyzer.geoscan.profile." + scheduledProfile.commandName),
+                countdownTicks.get() / 20);
 
         var phase = database.getScanPhase();
 
         return switch (phase) {
-            case IDLE -> Component.translatable("complexityanalyzer.geoscan.status.idle").getString();
+            case IDLE -> Component.translatable("complexityanalyzer.geoscan.status.idle");
             case RECONNAISSANCE -> {
                 var session = coordinator.getCurrentSession();
                 if (session != null && session.isValid()) {
-                    String status = Component.translatable("complexityanalyzer.geoscan.status.phase1", session.getStatusString()).getString();
+                    var status = Component.translatable("complexityanalyzer.geoscan.status.phase1", session.getStatusString());
                     if (scanExecutor.isThrottled()) {
                         float mspt = scanExecutor.getCurrentMspt();
-                        status += Component.translatable("complexityanalyzer.geoscan.status.paused_mspt", mspt).getString();
+                        yield status.append(Component.translatable("complexityanalyzer.geoscan.status.paused_mspt", mspt));
                     }
                     yield status;
                 } else {
-                    yield Component.translatable("complexityanalyzer.geoscan.status.recon_no_session").getString();
+                    yield Component.translatable("complexityanalyzer.geoscan.status.recon_no_session");
                 }
             }
-            case REFINING -> Component.translatable("complexityanalyzer.geoscan.status.phase2").getString();
-            case COMPLETE -> Component.translatable("complexityanalyzer.geoscan.status.complete").getString();
+            case REFINING -> Component.translatable("complexityanalyzer.geoscan.status.phase2");
+            case COMPLETE -> Component.translatable("complexityanalyzer.geoscan.status.complete");
         };
     }
 
@@ -282,9 +282,9 @@ public class GeoAnalysisManager {
     }
 
     private void notifyScanStarting(int chunksPerBiome, String initiatorName, ScanProfile profile) {
-        String info = Component.translatable("complexityanalyzer.geoscan.initiator_format", initiatorName,
-                Component.translatable("complexityanalyzer.geoscan.profile." + profile.commandName).getString(),
-                Component.translatable("complexityanalyzer.unit.general.mode").getString()).getString();
+        var info = Component.translatable("complexityanalyzer.geoscan.initiator_format", initiatorName,
+                Component.translatable("complexityanalyzer.geoscan.profile." + profile.commandName),
+                Component.translatable("complexityanalyzer.unit.general.mode"));
         notifier.notifyScanStarting(chunksPerBiome, info);
     }
 

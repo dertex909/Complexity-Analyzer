@@ -39,6 +39,7 @@ public class BiomeScanData {
     }
 
     public void addBlock(Block block, long count) {
+        if (block == null) return;
         blockCounts.addTo(block, count);
     }
 

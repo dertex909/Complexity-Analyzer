@@ -37,6 +37,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
+import org.complexityanalyzer.util.ServerLanguage;
 
 import static net.minecraft.network.chat.Style.EMPTY;
 
@@ -200,10 +201,11 @@ public class GeoScanCommands {
             } else if (manager.isCountdownActive()) {
                 output.sendStatusLine(source, "⏳", manager.getStatus(), ChatFormatting.YELLOW);
             } else {
-                String status = manager.getStatus();
+                var statusComponent = manager.getStatus();
+                String status = ServerLanguage.translateForPlayer(statusComponent, null).getString();
                 var color = status.toLowerCase().contains("complete") ? ChatFormatting.GREEN : ChatFormatting.GRAY;
                 String statusIcon = status.toLowerCase().contains("complete") ? "✓" : "💤";
-                output.sendStatusLine(source, statusIcon, status, color);
+                output.sendStatusLine(source, statusIcon, statusComponent, color);
             }
 
             output.sendEmptyLine(source);

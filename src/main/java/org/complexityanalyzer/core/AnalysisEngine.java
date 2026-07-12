@@ -92,6 +92,12 @@ public class AnalysisEngine {
         return InstanceHolder.INSTANCE;
     }
 
+    private void changeState(State state) {
+        this.currentState.set(state);
+        if (state == State.ANALYZING) System.setProperty("complexityanalyzer.analyzing", "true");
+        else System.setProperty("complexityanalyzer.analyzing", "false");
+    }
+
     private AnalysisEngine() {
         this.complexityCache = new ComplexityCache();
     }
@@ -117,10 +123,12 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.debug("Analysis already in progress, ignoring duplicate request");
             }
             return;
+        } else {
+            System.setProperty("complexityanalyzer.analyzing", "true");
         }
 
         if (!(level instanceof ServerLevel serverLevel)) {
-            currentState.set(State.FAILED);
+            changeState(State.FAILED);
             ComplexityAnalyzer.LOGGER.error("Cannot initialize: not a ServerLevel");
             return;
         }
@@ -135,7 +143,7 @@ public class AnalysisEngine {
         stateLock.lock();
         try {
             if (currentState.get() == State.FAILED) {
-                currentState.set(State.IDLE);
+                changeState(State.IDLE);
                 ComplexityAnalyzer.LOGGER.info("Reset from FAILED state to IDLE for retry");
             }
         } finally {
@@ -251,12 +259,11 @@ public class AnalysisEngine {
         try {
             long active = analysisGeneration.get();
             if (active != generation) {
-                ComplexityAnalyzer.LOGGER.warn("Discarding superseded analysis task (gen {}, active {}); not transitioning to {}.",
-                        generation, active, state);
+                ComplexityAnalyzer.LOGGER.warn("Discarding superseded analysis task (gen {}, active {}); not transitioning to {}.", generation, active, state);
                 return false;
             }
             if (clearData) clearDataInternal();
-            currentState.set(state);
+            changeState(state);
             return true;
         } finally {
             stateLock.unlock();
@@ -495,7 +502,7 @@ public class AnalysisEngine {
                 performReloadOnServerThread(serverLevel);
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("Critical error during reload", e);
-                currentState.set(State.FAILED);
+                changeState(State.FAILED);
                 isReloading.set(false);
             }
         });
@@ -522,7 +529,7 @@ public class AnalysisEngine {
         stateLock.lock();
         try {
             clearDataInternal();
-            currentState.set(State.IDLE);
+            changeState(State.IDLE);
         } finally {
             stateLock.unlock();
         }
@@ -577,7 +584,7 @@ public class AnalysisEngine {
         stateLock.lock();
         try {
             clearDataInternal();
-            currentState.set(State.IDLE);
+            changeState(State.IDLE);
             ComplexityAnalyzer.LOGGER.info("AnalysisEngine state reset to IDLE.");
         } finally {
             stateLock.unlock();

@@ -107,7 +107,7 @@ public class GeoDatabase {
         ComplexityAnalyzer.LOGGER.info("Finished loading geo-data. Found data for {} dimensions.", inMemoryData.size());
     }
 
-    public void saveBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data) {
+    public synchronized void saveBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data) {
         if (data == null || data.getChunksScanned() == 0) return;
         storage.saveFinalBiomeData(dimension, biome, data, mapper);
         var dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
@@ -153,6 +153,7 @@ public class GeoDatabase {
             while (it.hasNext()) {
                 var entry = it.next();
                 var block = entry.getKey();
+                if (block == null) continue;
                 long value = entry.getLongValue();
                 globalBlockCountsCache.computeIfPresent(block, (k, v) -> {
                     long newCount = v.addAndGet(-value);
@@ -167,6 +168,7 @@ public class GeoDatabase {
             while (it.hasNext()) {
                 var entry = it.next();
                 var block = entry.getKey();
+                if (block == null) continue;
                 long value = entry.getLongValue();
                 globalBlockCountsCache.computeIfAbsent(block, k -> new AtomicLong(0)).addAndGet(value);
                 totalBlocksInCache.addAndGet(value);
@@ -179,8 +181,7 @@ public class GeoDatabase {
         totalBlocksInCache.set(0);
 
         long totalItems = 0;
-        for (var dimMap : inMemoryData.values())
-            totalItems += dimMap.size();
+        for (var dimMap : inMemoryData.values()) totalItems += dimMap.size();
 
         if (totalItems == 0) {
             ComplexityAnalyzer.LOGGER.info("Global block rarity cache is empty (no data loaded).");

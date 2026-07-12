@@ -107,12 +107,15 @@ public class GeoDatabase {
         ComplexityAnalyzer.LOGGER.info("Finished loading geo-data. Found data for {} dimensions.", inMemoryData.size());
     }
 
-    public synchronized void saveBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data) {
+    public void saveBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data) {
         if (data == null || data.getChunksScanned() == 0) return;
         storage.saveFinalBiomeData(dimension, biome, data, mapper);
-        var dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
-        var oldData = dimData.put(biome, data);
-        updateGlobalCache(oldData, data);
+
+        synchronized (this) {
+            var dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
+            var oldData = dimData.put(biome, data);
+            updateGlobalCache(oldData, data);
+        }
     }
 
     public void clearFinalData() throws IOException {

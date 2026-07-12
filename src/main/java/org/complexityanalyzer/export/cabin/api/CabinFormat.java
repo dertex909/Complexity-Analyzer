@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.export.cabin.api;
@@ -56,7 +56,6 @@ public final class CabinFormat {
     public static final int ITEM_FLAG_IS_INFINITE = 0x10;
     public static final int ITEM_FLAG_NO_RECIPE_RESULT = 0x20;
     public static final int FLUID_FLAG_HAS_RECIPE = 0x01;
-    public static final int FLUID_FLAG_HAS_CYCLE = 0x02;
     public static final int FLUID_FLAG_IS_VALID = 0x08;
     public static final int FLUID_FLAG_IS_INFINITE = 0x10;
     public static final int FLUID_FLAG_NO_RECIPE_RESULT = 0x20;

@@ -9,17 +9,18 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.util;
 
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.jetbrains.annotations.NotNull;
 
 public class ThreadSafeDelegatingRandomSource implements RandomSource {
@@ -32,7 +33,7 @@ public class ThreadSafeDelegatingRandomSource implements RandomSource {
     }
 
     private RandomSource getDelegate() {
-        if (Thread.currentThread().getName().startsWith("Complexity-")) return this.threadLocalRandom.get();
+        if (ThreadPoolManager.isComplexityThread()) return this.threadLocalRandom.get();
         return this.original;
     }
 

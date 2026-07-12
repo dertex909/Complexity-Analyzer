@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.mixin;
@@ -21,6 +21,7 @@ package org.complexityanalyzer.mixin;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -32,8 +33,6 @@ public abstract class ServerChunkCacheMixin {
     @Inject(method = "getChunk", at = @At("HEAD"), cancellable = true)
     private void onGetChunk(int chunkX, int chunkZ, ChunkStatus requiredStatus, boolean load,
                             CallbackInfoReturnable<ChunkAccess> cir) {
-        String threadName = Thread.currentThread().getName();
-        if (threadName.startsWith("Complexity-Compute-") || threadName.startsWith("Complexity-ForkJoin-"))
-            cir.setReturnValue(null);
+        if (ThreadPoolManager.isComplexityThread()) cir.setReturnValue(null);
     }
 }

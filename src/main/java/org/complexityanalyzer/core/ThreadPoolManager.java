@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.core;
@@ -85,6 +85,10 @@ public class ThreadPoolManager {
         }
     }
 
+    public static boolean isComplexityThread() {
+        return Thread.currentThread() instanceof ComplexityThread;
+    }
+
     private void initialize() {
         if (!isInitializing.compareAndSet(false, true)) {
             synchronized (LOCK) {
@@ -110,7 +114,7 @@ public class ThreadPoolManager {
                         60L, TimeUnit.SECONDS,
                         new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                         r -> {
-                            var t = new Thread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
+                            var t = new ComplexityComputeThread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
                             t.setDaemon(true);
                             t.setPriority(Thread.MIN_PRIORITY);
                             return t;
@@ -121,7 +125,7 @@ public class ThreadPoolManager {
                 this.forkJoinPool = new ForkJoinPool(
                         parallelism,
                         pool -> {
-                            var thread = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+                            var thread = new ComplexityForkJoinThread(pool);
                             thread.setName("Complexity-ForkJoin-" + thread.getPoolIndex());
                             thread.setDaemon(true);
                             return thread;
@@ -312,15 +316,10 @@ public class ThreadPoolManager {
         int interrupted = 0;
         for (int i = 0; i < count; i++) {
             var t = threads[i];
-            if (t != null && t.isAlive()) {
-                String name = t.getName();
-                if (name.startsWith("Complexity-Compute-") || name.startsWith("Complexity-ForkJoin-")) {
-                    if (!t.isInterrupted()) {
-                        t.interrupt();
-                        interrupted++;
-                        ComplexityAnalyzer.LOGGER.debug("Force interrupted thread: {}", name);
-                    }
-                }
+            if (t != null && t.isAlive() && t instanceof ComplexityThread) if (!t.isInterrupted()) {
+                t.interrupt();
+                interrupted++;
+                ComplexityAnalyzer.LOGGER.debug("Force interrupted thread: {}", t.getName());
             }
         }
 
@@ -377,6 +376,21 @@ public class ThreadPoolManager {
         public @NotNull String toString() {
             return String.format("PoolStats{parallelism=%d, active=%d, completed=%d, queued=%d, fjActive=%d, fjSteals=%d}",
                     parallelism, activeThreads, completedTasks, queuedTasks, forkJoinActive, forkJoinSteals);
+        }
+    }
+
+    public interface ComplexityThread {
+    }
+
+    private static class ComplexityComputeThread extends Thread implements ComplexityThread {
+        ComplexityComputeThread(Runnable target, String name) {
+            super(target, name);
+        }
+    }
+
+    private static class ComplexityForkJoinThread extends ForkJoinWorkerThread implements ComplexityThread {
+        ComplexityForkJoinThread(ForkJoinPool pool) {
+            super(pool);
         }
     }
 }

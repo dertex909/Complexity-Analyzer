@@ -27,15 +27,16 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static net.minecraft.world.item.Items.AIR;
+import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
 public final class MachineRegistryCache implements ManagedCache {
 
@@ -64,7 +65,7 @@ public final class MachineRegistryCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("machine_registry.bin");
+            return server.getWorldPath(ROOT).resolve("data").resolve("complexityanalyzer").resolve("machine_registry.bin");
         } catch (Throwable t) {
             return null;
         }
@@ -124,7 +125,7 @@ public final class MachineRegistryCache implements ManagedCache {
                 for (int j = 0; j < itemCount; j++) {
                     var itemId = buf.readResourceLocation();
                     var item = GameRegistryManager.getItem(itemId);
-                    if (item != null && item != Items.AIR) {
+                    if (item != null && item != AIR) {
                         list.add(item);
                         restored++;
                     }
@@ -142,7 +143,7 @@ public final class MachineRegistryCache implements ManagedCache {
 
     public void save(Path file, Fingerprint fingerprint, Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping) {
         if (file == null) return;
-        ByteBuf raw = Unpooled.buffer();
+        var raw = Unpooled.buffer();
         try {
             var buf = new FriendlyByteBuf(raw);
             buf.writeInt(MAGIC);
@@ -166,7 +167,7 @@ public final class MachineRegistryCache implements ManagedCache {
             Files.createDirectories(file.getParent());
             var tmp = file.resolveSibling(file.getFileName() + ".tmp");
             Files.write(tmp, bytes);
-            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            Files.move(tmp, file, REPLACE_EXISTING);
             ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());

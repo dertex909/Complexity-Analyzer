@@ -114,10 +114,10 @@ public class ThreadPoolManager {
                         60L, TimeUnit.SECONDS,
                         new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                         r -> {
-                            var t = new ComplexityComputeThread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
-                            t.setDaemon(true);
-                            t.setPriority(Thread.MIN_PRIORITY);
-                            return t;
+                            var thread = new ComplexityComputeThread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
+                            thread.setDaemon(true);
+                            thread.setPriority(Thread.MIN_PRIORITY);
+                            return thread;
                         },
                         new ThreadPoolExecutor.AbortPolicy()
                 );

@@ -21,9 +21,6 @@ package org.complexityanalyzer.graph;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
@@ -42,11 +39,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class GraphBuilder {
-    private static final TagKey<Item> STORAGE_BLOCKS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:storage_blocks"));
-    private static final TagKey<Item> INGOTS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:ingots"));
-    private static final TagKey<Item> NUGGETS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:nuggets"));
-    private static final TagKey<Item> GEMS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:gems"));
-    private static final TagKey<Item> RAW_MATERIALS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
 
     public static RecipeGraph buildFromWorld(Level level) {
         var recipeManager = level.getRecipeManager();
@@ -201,60 +193,7 @@ public class GraphBuilder {
 
     public static RecipeCategory classifyRecipe(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {
         if (isUnprocessable(recipe, resultItem, ingredients)) return RecipeCategory.UNPROCESSABLE;
-        if (isRecyclingRecipe(recipe, ingredients)) return RecipeCategory.RECYCLING;
-
-        var resultStack = new ItemStack(resultItem);
-
-        if (ingredients.size() == 1) {
-            var ingredientStacks = ingredients.getFirst().getItems();
-            for (var ingredientStack : ingredientStacks) {
-                if (ingredientStack.isEmpty()) continue;
-
-                if (ingredientStack.is(STORAGE_BLOCKS_TAG) && (resultStack.is(INGOTS_TAG) || resultStack.is(GEMS_TAG) || resultStack.is(RAW_MATERIALS_TAG))) {
-                    return RecipeCategory.STORAGE_DECOMPRESSION;
-                }
-
-                if (ingredientStack.is(INGOTS_TAG) && resultStack.is(NUGGETS_TAG)) {
-                    return RecipeCategory.STORAGE_DECOMPRESSION;
-                }
-            }
-        }
-
-        if (areAllIngredientsOfTag(ingredients, NUGGETS_TAG) && resultStack.is(INGOTS_TAG))
-            return RecipeCategory.STORAGE_COMPRESSION;
-        if (areAllIngredientsOfTag(ingredients, INGOTS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG))
-            return RecipeCategory.STORAGE_COMPRESSION;
-        if (areAllIngredientsOfTag(ingredients, GEMS_TAG) && resultStack.is(STORAGE_BLOCKS_TAG))
-            return RecipeCategory.STORAGE_COMPRESSION;
-        if (areAllIngredientsRawBlocks(ingredients) && resultStack.is(STORAGE_BLOCKS_TAG))
-            return RecipeCategory.STORAGE_COMPRESSION;
-
         return RecipeCategory.PRIMARY;
-    }
-
-    private static boolean areAllIngredientsOfTag(ObjectList<Ingredient> ingredients, TagKey<Item> tag) {
-        if (ingredients.isEmpty()) return false;
-        for (var ing : ingredients) {
-            var stacks = ing.getItems();
-            for (var stack : stacks) if (stack.isEmpty() || !stack.is(tag)) return false;
-        }
-        return true;
-    }
-
-    private static boolean areAllIngredientsRawBlocks(ObjectList<Ingredient> ingredients) {
-        if (ingredients.isEmpty()) return false;
-        var rawStorage = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:raw_materials"));
-
-        for (var ing : ingredients) {
-            var stacks = ing.getItems();
-            for (var stack : stacks) {
-                if (stack.isEmpty()) return false;
-                var rl = GameRegistryManager.getItemId(stack.getItem());
-                var path = rl.getPath();
-                if (!(stack.is(rawStorage) || path.contains("raw_") || path.contains("crude_"))) return false;
-            }
-        }
-        return true;
     }
 
     private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {
@@ -262,17 +201,5 @@ public class GraphBuilder {
             for (var stack : ing.getItems()) if (stack.getItem() == resultItem) return true;
         }
         return recipe instanceof TippedArrowRecipe || recipe instanceof MapCloningRecipe || recipe instanceof ArmorDyeRecipe || recipe instanceof BannerDuplicateRecipe;
-    }
-
-    private static boolean isRecyclingRecipe(Recipe<?> recipe, ObjectList<Ingredient> ingredients) {
-        if (ingredients.size() != 1) return false;
-        var damageable = false;
-        for (var stack : ingredients.getFirst().getItems()) {
-            if (stack.isDamageableItem()) {
-                damageable = true;
-                break;
-            }
-        }
-        return damageable && (recipe.getType() == RecipeType.SMELTING || recipe.getType() == RecipeType.BLASTING);
     }
 }

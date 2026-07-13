@@ -20,9 +20,7 @@ package org.complexityanalyzer.graph;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -31,7 +29,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static net.minecraft.core.registries.Registries.ITEM;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
 
@@ -52,16 +49,6 @@ public class RecipeGraph {
         this.recipesByFluidOutput = new ConcurrentHashMap<>(1024);
         this.fluidUsageMap = new ConcurrentHashMap<>(1024);
         this.allRecipesList = ObjectLists.synchronize(new ObjectArrayList<>());
-    }
-
-    private static boolean isVanillaRecipeType(String recipeType) {
-        return recipeType.equals("minecraft:crafting") || recipeType.equals("crafting") ||
-                recipeType.equals("minecraft:smelting") || recipeType.equals("smelting") ||
-                recipeType.equals("minecraft:blasting") || recipeType.equals("blasting") ||
-                recipeType.equals("minecraft:smoking") || recipeType.equals("smoking") ||
-                recipeType.equals("minecraft:campfire_cooking") || recipeType.equals("campfire_cooking") ||
-                recipeType.equals("minecraft:stonecutting") || recipeType.equals("stonecutting") ||
-                recipeType.equals("minecraft:smithing") || recipeType.equals("smithing");
     }
 
     private static Fluid normalizeFluid(Fluid fluid) {
@@ -240,88 +227,8 @@ public class RecipeGraph {
         if (recipes.size() == 1) return recipes.getFirst();
 
         RecipeNode best = null;
-
-        for (var r : recipes) {
-            if (r.getCategory() == RecipeCategory.PRIMARY) if (best == null || r.getPriority() > best.getPriority())
-                best = r;
-        }
-        if (best != null) return best;
-
-        for (var r : recipes) {
-            var cat = r.getCategory();
-            if (cat != RecipeCategory.STORAGE_DECOMPRESSION && cat != RecipeCategory.RECYCLING && cat !=
-                    RecipeCategory.UNPROCESSABLE) if (best == null || r.getPriority() > best.getPriority()) best = r;
-        }
-        if (best != null) return best;
-
         for (var r : recipes) if (best == null || r.getPriority() > best.getPriority()) best = r;
-
         return best != null ? best : recipes.getFirst();
-    }
-
-    public int reclassifyRecipesBasedOnComplexity(Reference2DoubleMap<Item> complexities) {
-        int reclassified = 0;
-
-        var oresTag = TagKey.create(ITEM, ResourceLocation.parse("c:ores"));
-        var rawMaterialsTag = TagKey.create(ITEM, ResourceLocation.parse("c:raw_materials"));
-        var storageBlocksTag = TagKey.create(ITEM, ResourceLocation.parse("c:storage_blocks"));
-        var dusts = TagKey.create(ITEM, ResourceLocation.parse("c:dusts"));
-        var crushed = TagKey.create(ITEM, ResourceLocation.parse("c:crushed"));
-
-        for (var item : getAllItems()) {
-            if (!hasRecipe(item)) continue;
-
-            var recipes = getRecipes(item);
-            var resultComplexity = complexities.getOrDefault(item, Double.POSITIVE_INFINITY);
-
-            if (Double.isInfinite(resultComplexity)) continue;
-
-            for (var recipe : recipes) {
-                if (recipe.getCategory() != RecipeCategory.PRIMARY) continue;
-
-                var recipeType = recipe.getRecipeType();
-                var recipeTypeRL = recipeType != null ? GameRegistryManager.getRecipeTypeId(recipeType) : null;
-                var recipeTypeStr = recipeTypeRL != null ? recipeTypeRL.toString() : "";
-                if (!isVanillaRecipeType(recipeTypeStr)) continue;
-
-                var isReverseRecipe = false;
-                var hasRawMaterial = false;
-
-                for (var slot : recipe.getIngredients()) {
-                    for (var ingredientStack : slot.getVariants()) {
-                        var ingredient = ingredientStack.getItem();
-
-                        if (ingredientStack.is(oresTag) || ingredientStack.is(rawMaterialsTag)
-                                || ingredientStack.is(dusts) || ingredientStack.is(crushed)
-                                || isRawStorageBlock(ingredientStack, storageBlocksTag)) {
-                            hasRawMaterial = true;
-                            break;
-                        }
-
-                        var ingredientComplexity = complexities.getOrDefault(ingredient, Double.POSITIVE_INFINITY);
-                        if (Double.isInfinite(ingredientComplexity)) continue;
-
-                        if (resultComplexity < ingredientComplexity * 0.95) isReverseRecipe = true;
-                    }
-                    if (hasRawMaterial) break;
-                }
-
-                if (hasRawMaterial) continue;
-
-                if (isReverseRecipe) {
-                    recipe.setCategory(RecipeCategory.PROCESSING);
-                    reclassified++;
-                }
-            }
-        }
-
-        return reclassified;
-    }
-
-    private boolean isRawStorageBlock(ItemStack stack, TagKey<Item> storageBlocksTag) {
-        if (!stack.is(storageBlocksTag)) return false;
-        var itemId = GameRegistryManager.getItemId(stack.getItem()).toString();
-        return itemId.contains("raw_") || itemId.contains("crude_");
     }
 
     public boolean hasRecipe(Item item) {

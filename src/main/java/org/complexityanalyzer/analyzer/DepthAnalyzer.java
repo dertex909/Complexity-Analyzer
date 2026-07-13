@@ -23,7 +23,6 @@ import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.graph.IngredientSlot;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
@@ -132,9 +131,6 @@ public class DepthAnalyzer {
         if (graph != null && graph.hasRecipe(item)) {
             var bestFromGraph = graph.getBestRecipe(item);
             if (bestFromGraph != null && !bestFromGraph.isBaseRecipe()) {
-                if (bestFromGraph.getCategory() == RecipeCategory.STORAGE_DECOMPRESSION && hasFiniteBaseSource(item)) {
-                    return null;
-                }
                 recipeCache.put(item, bestFromGraph);
                 return bestFromGraph;
             }

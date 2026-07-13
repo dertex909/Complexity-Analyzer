@@ -26,14 +26,14 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.fml.ModList;
-import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.multiplex.CabinNettyHandler;
 
-import java.util.Locale;
+import static java.util.Locale.ROOT;
+import static org.complexityanalyzer.ComplexityAnalyzer.MODID;
+import static org.complexityanalyzer.config.ComplexityConfig.WEB_SERVER_IP;
 
 public final class WebCommand {
 
@@ -68,7 +68,7 @@ public final class WebCommand {
             return 0;
         }
 
-        String publicIp = ComplexityConfig.WEB_SERVER_IP.get().trim();
+        String publicIp = WEB_SERVER_IP.get().trim();
         String finalUrl = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp).replace("0.0.0.0", publicIp);
 
         output.sendEmptyLine(source);
@@ -131,7 +131,7 @@ public final class WebCommand {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
             return 0;
         }
-        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
+        String modVersion = ModList.get().getModContainerById(MODID)
                 .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
 
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));
@@ -160,14 +160,16 @@ public final class WebCommand {
     }
 
     private static String humanBytes(long n) {
-        if (n < 1024) return n + " " + Component.translatable("complexityanalyzer.unit.size.bytes").getString();
+        if (n < 1024) return n + " " +
+                Component.translatable("complexityanalyzer.unit.size.bytes").getString();
         double k = n / 1024.0;
-        if (k < 1024)
-            return String.format(Locale.ROOT, "%.1f %s", k, Component.translatable("complexityanalyzer.unit.size.kilobytes").getString());
+        if (k < 1024) return String.format(ROOT, "%.1f %s", k,
+                Component.translatable("complexityanalyzer.unit.size.kilobytes").getString());
         double m = k / 1024.0;
-        if (m < 1024)
-            return String.format(Locale.ROOT, "%.1f %s", m, Component.translatable("complexityanalyzer.unit.size.megabytes").getString());
-        return String.format(Locale.ROOT, "%.2f %s", m / 1024.0, Component.translatable("complexityanalyzer.unit.size.gigabytes").getString());
+        if (m < 1024) return String.format(ROOT, "%.1f %s", m,
+                Component.translatable("complexityanalyzer.unit.size.megabytes").getString());
+        return String.format(ROOT, "%.2f %s", m / 1024.0,
+                Component.translatable("complexityanalyzer.unit.size.gigabytes").getString());
     }
 
     private static String humanDuration(long ms) {

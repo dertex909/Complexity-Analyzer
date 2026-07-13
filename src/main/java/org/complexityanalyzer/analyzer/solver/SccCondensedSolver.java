@@ -241,11 +241,6 @@ public final class SccCondensedSolver {
                 solution.componentCount, solution.cyclicComponents, solution.fixpointIterations);
 
         var materialized = materialize(compiled, solution);
-
-        int reclassified = graph.reclassifyRecipesBasedOnComplexity(materialized.optimalComplexities());
-        if (reclassified > 0)
-            ComplexityAnalyzer.LOGGER.info("🔄 Reclassified {} recipes (costs are category-independent; no re-solve)", reclassified);
-
         long totalTime = System.currentTimeMillis() - startTime;
         logFinalStatistics(compiled, solution, totalTime);
 

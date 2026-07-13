@@ -28,7 +28,6 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.CraftingTreeData;
 import org.complexityanalyzer.data.CraftingTreeData.*;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
@@ -157,10 +156,7 @@ public class CraftingTreeBuilder {
                 RecipeNode bestCraft = null;
                 for (var r : recipes) {
                     if (r.isBaseRecipe()) continue;
-                    var cat = r.getCategory();
-                    if (cat == RecipeCategory.PRIMARY || cat == RecipeCategory.PROCESSING) {
-                        if (bestCraft == null || r.getPriority() < bestCraft.getPriority()) bestCraft = r;
-                    }
+                    if (bestCraft == null || r.getPriority() < bestCraft.getPriority()) bestCraft = r;
                 }
                 if (bestCraft != null) recipe = bestCraft;
             }

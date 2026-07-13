@@ -228,6 +228,20 @@ export function getRecipeUnitCost(r, db, body = null) {
     return totalCost;
 }
 
+export function getSelectedOutputComplexity(db) {
+    const tab = state.tab;
+    const index = state.selectedItem;
+    if (index === undefined || index < 0) return null;
+
+    if (tab === "fluid-recipes") {
+        const fl = db.fluids.get(index);
+        return (fl && isFinite(fl.complexity) && fl.complexity > 0) ? fl.complexity : null;
+    } else {
+        const item = db.items.get(index);
+        return (item && isFinite(item.complexity) && item.complexity > 0) ? item.complexity : null;
+    }
+}
+
 export function sortRecipes(recipes, db, sortType) {
     const sorted = [...recipes];
     sorted.sort((a, b) => {
@@ -283,6 +297,15 @@ export function sortRecipes(recipes, db, sortType) {
         const costA = getRecipeUnitCost(a, db, null);
         const costB = getRecipeUnitCost(b, db, null);
 
+        if (sortType === "optimal") {
+            const itemComp = getSelectedOutputComplexity(db);
+            if (itemComp !== null) {
+                const diffA = Math.abs(costA - itemComp);
+                const diffB = Math.abs(costB - itemComp);
+                if (Math.abs(diffA - diffB) > 0.001) return diffA - diffB;
+            }
+        }
+
         if (sortType === "cheapest") {
             if (Math.abs(costA - costB) > 0.001) return costA - costB;
             return b.priority - a.priority;
@@ -292,8 +315,9 @@ export function sortRecipes(recipes, db, sortType) {
         const threshold = Math.max(10.0, 0.15 * Math.min(costA, costB));
         if (Math.abs(diff) > threshold) return diff;
 
+        if (a.priority !== b.priority) return b.priority - a.priority;
         if (Math.abs(diff) > 0.001) return diff;
-        return b.priority - a.priority;
+        return 0;
     });
     return sorted;
 }
@@ -370,11 +394,51 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
     }
 
     const sortedMachines = Array.from(machineToRecipes.keys()).sort((a, b) => {
+        const itemComp = getSelectedOutputComplexity(db);
+
+        if (activeSort === "optimal" && itemComp !== null) {
+            const recipesA = machineToRecipes.get(a) || [];
+            const recipesB = machineToRecipes.get(b) || [];
+
+            let minDiffA = Infinity;
+            for (const r of recipesA) {
+                const cost = getRecipeUnitCost(r, db, null);
+                const diff = Math.abs(cost - itemComp);
+                if (diff < minDiffA) minDiffA = diff;
+            }
+
+            let minDiffB = Infinity;
+            for (const r of recipesB) {
+                const cost = getRecipeUnitCost(r, db, null);
+                const diff = Math.abs(cost - itemComp);
+                if (diff < minDiffB) minDiffB = diff;
+            }
+
+            if (Math.abs(minDiffA - minDiffB) > 0.001) return minDiffA - minDiffB;
+        } else if (activeSort === "cheapest") {
+            const recipesA = machineToRecipes.get(a) || [];
+            const recipesB = machineToRecipes.get(b) || [];
+
+            let minCostA = Infinity;
+            for (const r of recipesA) {
+                const cost = getRecipeUnitCost(r, db, null);
+                if (cost < minCostA) minCostA = cost;
+            }
+
+            let minCostB = Infinity;
+            for (const r of recipesB) {
+                const cost = getRecipeUnitCost(r, db, null);
+                if (cost < minCostB) minCostB = cost;
+            }
+
+            if (Math.abs(minCostA - minCostB) > 0.001) return minCostA - minCostB;
+        }
+
         const itemA = a >= 0 ? db.items.get(a) : null;
         const itemB = b >= 0 ? db.items.get(b) : null;
         if (!itemA && itemB) return 1;
         if (itemA && !itemB) return -1;
-        return 0;
+        return a - b;
     });
 
     const groupsHtml = sortedMachines.map(mi => {

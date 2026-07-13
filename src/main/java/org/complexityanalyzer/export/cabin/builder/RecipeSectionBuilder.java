@@ -108,8 +108,6 @@ public final class RecipeSectionBuilder {
         var rt = r.getRecipeType();
         String rtStr = rt != null ? rt.toString() : "minecraft:custom";
         buf.i32(ctx.strings().intern(rtStr));
-        var cat = r.getCategory();
-        buf.u8(cat != null ? cat.ordinal() : 0);
         buf.i32(r.getPriority());
         buf.i32(r.getResultCount());
         buf.f64(r.getRecipeMultiplier());

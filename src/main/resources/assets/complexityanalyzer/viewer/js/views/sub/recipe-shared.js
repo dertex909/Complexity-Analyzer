@@ -285,7 +285,6 @@ export function sortRecipes(recipes, db, sortType) {
 
         if (sortType === "cheapest") {
             if (Math.abs(costA - costB) > 0.001) return costA - costB;
-            if (a.category !== b.category) return a.category - b.category;
             return b.priority - a.priority;
         }
 
@@ -293,9 +292,6 @@ export function sortRecipes(recipes, db, sortType) {
         const threshold = Math.max(10.0, 0.15 * Math.min(costA, costB));
         if (Math.abs(diff) > threshold) return diff;
 
-        const isPrimaryA = a.category === 0;
-        const isPrimaryB = b.category === 0;
-        if (isPrimaryA !== isPrimaryB) return isPrimaryA ? -1 : 1;
         if (Math.abs(diff) > 0.001) return diff;
         return b.priority - a.priority;
     });
@@ -982,7 +978,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     }
 
     return `
-        <div class="recipe-card ${r.category === 0 ? "primary" : ""}" style="margin-top: 6px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+        <div class="recipe-card primary" style="margin-top: 6px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
             <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
                 <span style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Ingredients</span>
                 <div class="ingredient-list" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">

@@ -101,11 +101,7 @@ public class GraphBuilder {
 
         if (template == null || base == null || addition == null) return null;
 
-        var builder = new RecipeNode.Builder(resultItem)
-                .recipeType(RecipeType.SMITHING)
-                .category(RecipeCategory.PRIMARY)
-                .resultCount(1)
-                .rawRecipe();
+        var builder = new RecipeNode.Builder(resultItem).recipeType(RecipeType.SMITHING).resultCount(1).rawRecipe();
         builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
 
         if (!template.isEmpty()) {
@@ -147,14 +143,9 @@ public class GraphBuilder {
         if (recipe instanceof SmithingTransformRecipe smithing) return buildSmithingNode(smithing, resultStack);
         if (ingredients.isEmpty()) return null;
 
-        var category = classifyRecipe(recipe, resultItem, ingredients);
-        if (category == RecipeCategory.UNPROCESSABLE) return null;
+        if (isUnprocessable(recipe, resultItem, ingredients)) return null;
 
-        var builder = new RecipeNode.Builder(resultItem)
-                .recipeType(recipe.getType())
-                .category(category)
-                .resultCount(resultStack.getCount())
-                .rawRecipe();
+        var builder = new RecipeNode.Builder(resultItem).recipeType(recipe.getType()).resultCount(resultStack.getCount()).rawRecipe();
         builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
 
         var merged = new Object2ObjectLinkedOpenHashMap<ObjectList<ItemStack>, Integer>();
@@ -189,11 +180,6 @@ public class GraphBuilder {
     private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
         for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
         return false;
-    }
-
-    public static RecipeCategory classifyRecipe(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {
-        if (isUnprocessable(recipe, resultItem, ingredients)) return RecipeCategory.UNPROCESSABLE;
-        return RecipeCategory.PRIMARY;
     }
 
     private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, ObjectList<Ingredient> ingredients) {

@@ -33,7 +33,6 @@ import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.NotNull;
 
@@ -107,8 +106,7 @@ public final class HarvestedRecipeConverter {
 
         if (output.isEmpty() && !isPlaceholder) return null;
 
-        var builder = new RecipeNode.Builder(
-                output.getItem()).category(RecipeCategory.PRIMARY).resultCount(output.getCount()).rawRecipe();
+        var builder = new RecipeNode.Builder(output.getItem()).resultCount(output.getCount()).rawRecipe();
 
         if (isPlaceholder) {
             builder.isPlaceholder(true);

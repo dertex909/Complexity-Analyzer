@@ -57,7 +57,6 @@ public class RecipeNode {
     private final int priority;
     private final double recipeMultiplier;
     private final boolean isPlaceholder;
-    private RecipeCategory category;
     private volatile int listIndex = -1;
 
     private RecipeNode(Builder builder) {
@@ -90,7 +89,6 @@ public class RecipeNode {
         this.resultItem = builder.resultItem;
         this.resultCount = builder.resultCount;
         this.recipeType = builder.recipeType;
-        this.category = builder.category;
         this.priority = builder.priority;
         this.isPlaceholder = builder.isPlaceholder;
         this.placeholderId = builder.placeholderId;
@@ -100,7 +98,7 @@ public class RecipeNode {
      * @return an empty/unprocessable node for the given item (no ingredients, no real recipe).
      */
     public static RecipeNode empty(Item item) {
-        return new Builder(item).category(RecipeCategory.UNPROCESSABLE).build();
+        return new Builder(item).build();
     }
 
     private static boolean equalItemStackLists(ObjectList<ItemStack> list1, ObjectList<ItemStack> list2) {
@@ -200,20 +198,6 @@ public class RecipeNode {
      */
     public RecipeType<?> getRecipeType() {
         return recipeType;
-    }
-
-    /**
-     * @return the solver-assigned category of this node.
-     */
-    public RecipeCategory getCategory() {
-        return category;
-    }
-
-    /**
-     * Reclassifies this node (used internally during solving).
-     */
-    public void setCategory(RecipeCategory category) {
-        this.category = category;
     }
 
     /**
@@ -343,7 +327,6 @@ public class RecipeNode {
         private ObjectList<ItemStack> itemOutputs = new ObjectArrayList<>();
         private ObjectList<FluidStack> fluidOutputs = new ObjectArrayList<>();
         private RecipeType<?> recipeType;
-        private RecipeCategory category = RecipeCategory.PRIMARY;
         private int priority = 0;
         private int resultCount = 1;
         private boolean isPlaceholder = false;
@@ -384,11 +367,6 @@ public class RecipeNode {
 
         public Builder recipeType(RecipeType<?> recipeType) {
             this.recipeType = recipeType;
-            return this;
-        }
-
-        public Builder category(RecipeCategory category) {
-            this.category = category;
             return this;
         }
 

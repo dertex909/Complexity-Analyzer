@@ -39,7 +39,6 @@ import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.graph.RecipeCategory;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 
@@ -75,7 +74,6 @@ public final class RecipeGraphCache implements ManagedCache {
         buf.writeBoolean(typeId != null);
         if (typeId != null) buf.writeResourceLocation(typeId);
 
-        buf.writeEnum(node.getCategory());
         buf.writeVarInt(node.getResultCount());
         buf.writeVarInt(node.getPriority());
         buf.writeBoolean(node.isPlaceholder());
@@ -130,7 +128,6 @@ public final class RecipeGraphCache implements ManagedCache {
 
         if (buf.readBoolean()) builder.recipeType(GameRegistryManager.getRecipeType(buf.readResourceLocation()));
 
-        builder.category(buf.readEnum(RecipeCategory.class));
         builder.resultCount(buf.readVarInt());
         builder.priority(buf.readVarInt());
         builder.isPlaceholder(buf.readBoolean());

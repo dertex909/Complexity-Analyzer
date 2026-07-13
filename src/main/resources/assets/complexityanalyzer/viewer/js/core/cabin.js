@@ -364,12 +364,14 @@ function readOneRecipe(b, strings) {
         const variants = [];
         const variantNames = [];
         const variantDataKeys = [];
+        const variantRemainingItemIndexes = [];
         for (let v = 0; v < vc; v++) {
             variants.push(b.i32());
             variantNames.push(strings.get(b.i32()));
             variantDataKeys.push(strings.get(b.i32()));
+            variantRemainingItemIndexes.push(b.i32());
         }
-        return {count, variants, variantNames, variantDataKeys};
+        return {count, variants, variantNames, variantDataKeys, variantRemainingItemIndexes};
     });
     res.fluidIngredients = Array.from({length: b.u8()}, () => {
         const vc = b.u8(), amount = b.i32();

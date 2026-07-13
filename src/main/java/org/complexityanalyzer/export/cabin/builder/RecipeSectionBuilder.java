@@ -137,6 +137,13 @@ public final class RecipeSectionBuilder {
                 var variant = variants.get(v);
                 buf.i32(ctx.itemIndex().getInt(variant.getItem()));
                 writeVariantStrings(buf, ctx, variant, registryAccess);
+
+                int remainingIdx = -1;
+                if (variant.hasCraftingRemainingItem()) {
+                    var remaining = variant.getCraftingRemainingItem();
+                    if (!remaining.isEmpty()) remainingIdx = ctx.itemIndex().getInt(remaining.getItem());
+                }
+                buf.i32(remainingIdx);
             }
         }
 

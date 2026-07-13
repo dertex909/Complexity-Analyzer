@@ -819,15 +819,69 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     }
 
 
+    const possibleByproducts = new Map();
+    if (r.ingredients) r.ingredients.forEach((slot, slotIdx) => {
+        if (slot.variantRemainingItemIndexes) slot.variantRemainingItemIndexes.forEach((remIdx, varIdx) => {
+            if (remIdx >= 0) possibleByproducts.set(remIdx, {slotIdx, varIdx});
+        });
+    });
+
+    const activeByproducts = new Map();
+    if (r.ingredients) {
+        for (let slotIdx = 0; slotIdx < r.ingredients.length; slotIdx++) {
+            const slot = r.ingredients[slotIdx];
+            if (!slot.variants || slot.variants.length === 0) continue;
+
+            let activeItemIndex = -1;
+            if (slot.variants.length === 1) {
+                activeItemIndex = slot.variants[0];
+            } else {
+                const ingKey = `${recipeKey}_ing_${slotIdx}`;
+                let activeVariantIdx = (body && body._customState && body._customState.selectedIngredients.has(ingKey))
+                    ? body._customState.selectedIngredients.get(ingKey) : -1;
+
+                const slotVariants = [...slot.variants].map((v, idx) => ({
+                    index: v,
+                    item: db.items.get(v),
+                    originalIdx: idx
+                })).filter(x => x.item).sort(compareByComplexity);
+
+                if (slotVariants.length > 0) {
+                    activeVariantIdx = resolveActiveVariant(slotVariants, activeVariantIdx, state);
+                    activeItemIndex = activeVariantIdx;
+                }
+            }
+
+            if (activeItemIndex >= 0 && slot.variantRemainingItemIndexes) {
+                const varIdx = slot.variants.indexOf(activeItemIndex);
+                if (varIdx >= 0) {
+                    const remIdx = slot.variantRemainingItemIndexes[varIdx];
+                    if (remIdx >= 0) activeByproducts.set(remIdx, (activeByproducts.get(remIdx) || 0) + slot.count);
+                }
+            }
+        }
+    }
+
     const outputsHtml = [];
     if (r.itemOutputs && r.itemOutputs.length > 0) for (const out of r.itemOutputs) {
         const outItem = db.items.get(out.itemIndex);
         if (outItem) {
+            const isPossibleByproduct = possibleByproducts.has(out.itemIndex);
+            if (isPossibleByproduct) if (!activeByproducts.has(out.itemIndex)) continue;
+
             const isCurrent = out.itemIndex === state.selectedItem && state.tab.startsWith("item");
             const props = getItemDisplayProperties(outItem, isCurrent, false);
             const specificDetail = getItemSpecificDetails(out.dataKey);
             const displayName = (out.hoverName || outItem.name) + specificDetail;
-            outputsHtml.push(`<span class="${props.classes}" data-index="${out.itemIndex}" title="${props.tooltip}" style="${props.style}">${escapeHtml(displayName)} × ${out.count}</span>`);
+
+            let extraStyle = "";
+            let extraClass = "";
+            if (isPossibleByproduct) {
+                extraStyle = "border-color: #10b981 !important; color: #10b981 !important; background: rgba(16, 185, 129, 0.08) !important;";
+                extraClass = " byproduct-highlight";
+            }
+
+            outputsHtml.push(`<span class="${props.classes}${extraClass}" data-index="${out.itemIndex}" title="${props.tooltip}" style="${props.style} ${extraStyle}">${escapeHtml(displayName)} × ${out.count}</span>`);
         }
     }
     if (r.fluidOutputs && r.fluidOutputs.length > 0) for (const out of r.fluidOutputs) {

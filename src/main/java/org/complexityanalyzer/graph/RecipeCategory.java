@@ -20,11 +20,6 @@ package org.complexityanalyzer.graph;
 
 public enum RecipeCategory {
     PRIMARY(1000, "Primary"),
-    PROCESSING(50, "Processing"),
-    STORAGE_COMPRESSION(100, "Compression"),
-    RECYCLING(20, "Recycling"),
-    STORAGE_DECOMPRESSION(10, "Decompression"),
-    RECOLORING(5, "Recoloring"),
     UNPROCESSABLE(0, "Unprocessable");
 
     private final int priority;

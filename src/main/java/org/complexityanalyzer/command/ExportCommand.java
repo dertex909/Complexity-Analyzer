@@ -38,6 +38,8 @@ import org.complexityanalyzer.export.ComplexityExporter;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+import static java.util.Locale.ROOT;
+
 public final class ExportCommand {
     private ExportCommand() {
     }
@@ -186,7 +188,7 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
         output.sendHeader(source, "🧟", "complexityanalyzer.command.export.all_mobs_header", ChatFormatting.RED);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📋", "complexityanalyzer.command.export.format_label", format.toUpperCase(), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEntry(source, "📋", "complexityanalyzer.command.export.format_label", format.toUpperCase(ROOT), ChatFormatting.GRAY, ChatFormatting.AQUA);
         output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 

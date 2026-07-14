@@ -50,7 +50,8 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.Locale;
+
+import static java.util.Locale.ROOT;
 
 public class ComplexityExporter {
 
@@ -83,7 +84,7 @@ public class ComplexityExporter {
             throws IOException {
         var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportFile = exportDir.resolve("items_category_" + categoryName.toLowerCase() + "_" + timestamp + ".json");
+        var exportFile = exportDir.resolve("items_category_" + categoryName.toLowerCase(ROOT) + "_" + timestamp + ".json");
         var filteredItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
@@ -143,7 +144,7 @@ public class ComplexityExporter {
             writer.println("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth," +
                     "Used In Recipes,Is Valid,Has Cycle,Is Hardcoded");
             for (var row : rows) {
-                writer.println(String.format(Locale.ROOT, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s,%s",
+                writer.println(String.format(ROOT, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s,%s",
                         row.itemId,
                         row.displayName.replace("\"", "\"\""),
                         row.complexity,
@@ -299,7 +300,7 @@ public class ComplexityExporter {
                     }
                     String drops = dropsBuilder.toString();
                     writer.println(String.format(
-                            Locale.ROOT, "\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%b,%b,\"%s\"",
+                            ROOT, "\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%b,%b,\"%s\"",
                             data.name(), data.id(), data.category(), data.health(), data.damage(), data.armor(),
                             data.survivability(), data.threat(), data.combatPower(), data.rarity(),
                             data.isBoss(), data.isMiniBoss(), drops.isEmpty() ? "None" : drops));

@@ -51,10 +51,10 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Future;
 
+import static java.util.Locale.ROOT;
 import static org.apache.logging.log4j.Level.WARN;
 
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
@@ -216,7 +216,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                             .baseFactor(baseFactor)
                             .sourceSpecifier(lootTableId.toString())
                             .details(details)
-                            .addMetadata("chance", String.format(Locale.ROOT, "%.6f", itemsPerAttempt * 100));
+                            .addMetadata("chance", String.format(ROOT, "%.6f", itemsPerAttempt * 100));
 
                     if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
                         builder.baseFactor(contextDef.baseActionCost);

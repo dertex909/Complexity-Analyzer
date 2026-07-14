@@ -34,45 +34,55 @@ public class ScanNotifier {
     }
 
     public void broadcastInfo(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            player.sendSystemMessage(Component.literal("§e[CA] §f").append(translated));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                player.sendSystemMessage(Component.literal("§e[CA] §f").append(translated));
+            });
+            server.sendSystemMessage(Component.literal("§e[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
         });
-        server.sendSystemMessage(Component.literal("§e[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void broadcastWarning(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            var warningTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), player);
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            player.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTag).append(" §f").append(translated));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                var warningTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), player);
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                player.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTag).append(" §f").append(translated));
+            });
+            var warningTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), null);
+            server.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTagConsole).append(" §f").append(ServerLanguage.translateForPlayer(message, null)));
         });
-        var warningTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), null);
-        server.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTagConsole).append(" §f").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void broadcastSevere(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            player.sendSystemMessage(Component.literal("§c[CA] §l").append(translated));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                player.sendSystemMessage(Component.literal("§c[CA] §l").append(translated));
+            });
+            server.sendSystemMessage(Component.literal("§c[CA] §l").append(ServerLanguage.translateForPlayer(message, null)));
         });
-        server.sendSystemMessage(Component.literal("§c[CA] §l").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void broadcastSuccess(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            player.sendSystemMessage(Component.literal("§a[CA] §f").append(translated));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                player.sendSystemMessage(Component.literal("§a[CA] §f").append(translated));
+            });
+            server.sendSystemMessage(Component.literal("§a[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
         });
-        server.sendSystemMessage(Component.literal("§a[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
     }
 
     public void sendSuccess(@Nullable CommandSourceStack source, Component message) {
         if (source != null) {
-            var player = source.getPlayer();
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            var component = Component.literal("§a[CA] §f").append(translated);
-            source.sendSuccess(() -> component, false);
+            server.execute(() -> {
+                var player = source.getPlayer();
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                var component = Component.literal("§a[CA] §f").append(translated);
+                source.sendSuccess(() -> component, false);
+            });
         } else {
             logInfo(message);
         }
@@ -80,15 +90,19 @@ public class ScanNotifier {
 
     public void sendFailure(@Nullable CommandSourceStack source, Component message) {
         if (source != null) {
-            var player = source.getPlayer();
-            var errorTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), player);
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            var component = Component.literal("§c[CA] ").append(errorTag).append(": ").append(translated);
-            source.sendFailure(component);
+            server.execute(() -> {
+                var player = source.getPlayer();
+                var errorTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), player);
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                var component = Component.literal("§c[CA] ").append(errorTag).append(": ").append(translated);
+                source.sendFailure(component);
+            });
         } else {
-            var errorTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), null);
-            var translatedConsole = ServerLanguage.translateForPlayer(message, null);
-            logError(Component.literal("").append(errorTagConsole).append(": ").append(translatedConsole).getString());
+            server.execute(() -> {
+                var errorTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), null);
+                var translatedConsole = ServerLanguage.translateForPlayer(message, null);
+                logError(Component.literal("").append(errorTagConsole).append(": ").append(translatedConsole).getString());
+            });
         }
     }
 

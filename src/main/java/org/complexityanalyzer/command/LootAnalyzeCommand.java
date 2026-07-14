@@ -31,6 +31,8 @@ import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 
+import static java.util.Locale.ROOT;
+
 public class LootAnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation lootTableId) {
@@ -171,7 +173,7 @@ public class LootAnalyzeCommand {
     }
 
     private static String getLootTableIcon(ResourceLocation lootTableId) {
-        String path = lootTableId.getPath().toLowerCase();
+        String path = lootTableId.getPath().toLowerCase(ROOT);
 
         if (path.contains("chest")) return "📦";
         if (path.contains("entities") || path.contains("mobs")) return "⚔";
@@ -183,7 +185,7 @@ public class LootAnalyzeCommand {
     }
 
     private static String getLootTableType(String path) {
-        path = path.toLowerCase();
+        path = path.toLowerCase(ROOT);
 
         if (path.contains("chests/")) return "chest";
         if (path.contains("entities/")) return "entity";

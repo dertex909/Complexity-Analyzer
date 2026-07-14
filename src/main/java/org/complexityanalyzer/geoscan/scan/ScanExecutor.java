@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
+import static java.util.Locale.ROOT;
 import static org.complexityanalyzer.geoscan.config.ScanConfig.BATCH_SAVE_THRESHOLD;
 
 public class ScanExecutor {
@@ -126,7 +127,7 @@ public class ScanExecutor {
                 : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit");
 
         notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.profile_info",
-                newSession.getProfile().displayName.toUpperCase(), msptInfo));
+                newSession.getProfile().displayName.toUpperCase(ROOT), msptInfo));
 
         startWorker(newCtx);
     }

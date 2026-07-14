@@ -31,6 +31,8 @@ import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import java.util.List;
 
+import static java.util.Locale.ROOT;
+
 public class ProtocolDetector extends ByteToMessageDecoder {
 
     private static final ObjectSet<String> PRESERVED_HANDLERS = new ObjectOpenHashSet<>(new String[]{"ssl", "proxydetector", "haproxy"});
@@ -50,7 +52,7 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     private void setupHttpPipeline(ChannelHandlerContext ctx) {
         var names = new ObjectArrayList<>(ctx.pipeline().names());
         for (var name : names) {
-            if (!name.equals(ctx.name()) && !PRESERVED_HANDLERS.contains(name.toLowerCase())) try {
+            if (!name.equals(ctx.name()) && !PRESERVED_HANDLERS.contains(name.toLowerCase(ROOT))) try {
                 ctx.pipeline().remove(name);
             } catch (Throwable ignored) {
             }

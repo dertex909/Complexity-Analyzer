@@ -20,6 +20,8 @@ package org.complexityanalyzer.data;
 
 import net.minecraft.ChatFormatting;
 
+import static java.util.Locale.ROOT;
+
 /**
  * Difficulty tier an item's complexity score falls into. Tiers grow by powers of ten — each constant's value
  * is the exclusive upper bound of its bucket — and carry a display name and chat colour for UI. Two special
@@ -111,7 +113,7 @@ public enum ComplexityCategory {
      * @return the i18n key for the tier's localized name.
      */
     public String getTranslationKey() {
-        return "complexityanalyzer.category." + name().toLowerCase();
+        return "complexityanalyzer.category." + name().toLowerCase(ROOT);
     }
 
     /**

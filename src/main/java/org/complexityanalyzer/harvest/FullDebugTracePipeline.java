@@ -30,8 +30,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
+
+import static java.util.Locale.ROOT;
 
 public final class FullDebugTracePipeline {
     private static final boolean ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");
@@ -129,7 +130,7 @@ public final class FullDebugTracePipeline {
         if (!recipeTypeStats.isEmpty()) {
             buffer.append("Recipe types distribution:\n");
             for (var entry : recipeTypeStats.entrySet()) {
-                buffer.append(String.format(Locale.ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
+                buffer.append(String.format(ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
             }
             buffer.append('\n');
         }
@@ -137,7 +138,7 @@ public final class FullDebugTracePipeline {
         if (!rejectReasons.isEmpty()) {
             buffer.append("Reject reasons:\n");
             for (var entry : rejectReasons.entrySet()) {
-                buffer.append(String.format(Locale.ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
+                buffer.append(String.format(ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
             }
         }
 
@@ -197,14 +198,14 @@ public final class FullDebugTracePipeline {
                     var valStr = formatValue(val);
                     var role = HeuristicRoleClassifier.classifyField(f);
 
-                    sb.append(String.format(Locale.ROOT,
+                    sb.append(String.format(ROOT,
                             "  [%s] %-30s : %-40s = %s\n",
                             role.role().name().substring(0, 4),
                             f.getName(),
                             f.getType().getSimpleName(),
                             valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(Locale.ROOT,
+                    sb.append(String.format(ROOT,
                             "  [ERR] %-30s : %-40s (error: %s)\n",
                             f.getName(),
                             f.getType().getSimpleName(),
@@ -241,14 +242,14 @@ public final class FullDebugTracePipeline {
                 try {
                     var val = h.invoke(recipe);
                     String valStr = formatValue(val);
-                    sb.append(String.format(Locale.ROOT,
+                    sb.append(String.format(ROOT,
                             "  [%s] %-30s() → %-40s = %s\n",
                             role.role().name().substring(0, 4),
                             m.getName(),
                             rt.getSimpleName(),
                             valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(Locale.ROOT,
+                    sb.append(String.format(ROOT,
                             "  [ERR] %-30s() → %-40s (error: %s)\n",
                             m.getName(),
                             rt.getSimpleName(),
@@ -269,10 +270,10 @@ public final class FullDebugTracePipeline {
                 try {
                     var val = acc.extract(recipe, level);
                     String valStr = formatValue(val);
-                    sb.append(String.format(Locale.ROOT, "  [%s] %-50s = %s\n",
+                    sb.append(String.format(ROOT, "  [%s] %-50s = %s\n",
                             acc.type(), acc, valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(Locale.ROOT, "  [ERR] %-50s = %s\n",
+                    sb.append(String.format(ROOT, "  [ERR] %-50s = %s\n",
                             acc, t.getClass().getSimpleName()));
                 }
             }

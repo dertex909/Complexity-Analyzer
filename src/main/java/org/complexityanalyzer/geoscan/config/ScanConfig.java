@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.geoscan.config;
 
+import static java.util.Locale.ROOT;
+
 public final class ScanConfig {
 
     public static final int COUNTDOWN_SECONDS = 60;
@@ -68,7 +70,7 @@ public final class ScanConfig {
         }
 
         public static ScanProfile fromInput(String input) {
-            String normalized = input.toLowerCase()
+            String normalized = input.toLowerCase(ROOT)
                     .replace("-", "")
                     .replace("_", "")
                     .replace(" ", "");

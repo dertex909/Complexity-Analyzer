@@ -51,39 +51,47 @@ public class OutputManager {
     }
 
     public void broadcast(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> player.sendSystemMessage(ServerLanguage.translateForPlayer(message, player)));
-        server.sendSystemMessage(ServerLanguage.translateForPlayer(message, null));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> player.sendSystemMessage(ServerLanguage.translateForPlayer(message, player)));
+            server.sendSystemMessage(ServerLanguage.translateForPlayer(message, null));
+        });
     }
 
     public void broadcastWarning(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            player.sendSystemMessage(Component.literal("").append(translated).withStyle(ChatFormatting.YELLOW));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                player.sendSystemMessage(Component.literal("").append(translated).withStyle(ChatFormatting.YELLOW));
+            });
+            server.sendSystemMessage(Component.literal("").append(ServerLanguage.translateForPlayer(message, null)).withStyle(ChatFormatting.YELLOW));
         });
-        server.sendSystemMessage(Component.literal("").append(ServerLanguage.translateForPlayer(message, null)).withStyle(ChatFormatting.YELLOW));
     }
 
     public void broadcastSever(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            var translated = ServerLanguage.translateForPlayer(message, player);
-            player.sendSystemMessage(Component.literal("").append(translated).withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                var translated = ServerLanguage.translateForPlayer(message, player);
+                player.sendSystemMessage(Component.literal("").append(translated).withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+            });
+            server.sendSystemMessage(Component.literal("").append(ServerLanguage.translateForPlayer(message, null)).withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
         });
-        server.sendSystemMessage(Component.literal("").append(ServerLanguage.translateForPlayer(message, null)).withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
     }
 
     public void sendToAdmins(Component message) {
-        server.getPlayerList().getPlayers().forEach(player -> {
-            if (player.hasPermissions(2)) {
-                var adminPrefix = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.output.admin_prefix"), player).copy().withStyle(ChatFormatting.GRAY);
-                var translatedBody = ServerLanguage.translateForPlayer(message, player);
-                var adminMessage = Component.literal("").append(adminPrefix)
-                        .append(translatedBody.copy().withStyle(ChatFormatting.ITALIC));
-                player.sendSystemMessage(adminMessage);
-            }
-        });
+        server.execute(() -> {
+            server.getPlayerList().getPlayers().forEach(player -> {
+                if (player.hasPermissions(2)) {
+                    var adminPrefix = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.output.admin_prefix"), player).copy().withStyle(ChatFormatting.GRAY);
+                    var translatedBody = ServerLanguage.translateForPlayer(message, player);
+                    var adminMessage = Component.literal("").append(adminPrefix)
+                            .append(translatedBody.copy().withStyle(ChatFormatting.ITALIC));
+                    player.sendSystemMessage(adminMessage);
+                }
+            });
 
-        var consolePrefix = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.output.admin_prefix"), null).copy().withStyle(ChatFormatting.GRAY);
-        server.sendSystemMessage(Component.literal("").append(consolePrefix).append(ServerLanguage.translateForPlayer(message, null).copy().withStyle(ChatFormatting.ITALIC)));
+            var consolePrefix = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.output.admin_prefix"), null).copy().withStyle(ChatFormatting.GRAY);
+            server.sendSystemMessage(Component.literal("").append(consolePrefix).append(ServerLanguage.translateForPlayer(message, null).copy().withStyle(ChatFormatting.ITALIC)));
+        });
     }
 
     public void sendSeparator(CommandSourceStack source) {

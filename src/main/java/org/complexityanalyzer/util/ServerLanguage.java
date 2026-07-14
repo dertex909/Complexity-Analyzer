@@ -32,60 +32,71 @@ import net.minecraft.server.level.ServerPlayer;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Locale.ROOT;
 
 public class ServerLanguage {
-    private static final Object2ObjectMap<String, Object2ObjectMap<String, String>> LANGUAGES = new Object2ObjectOpenHashMap<>();
+    private static final ConcurrentHashMap<String, Object2ObjectMap<String, String>> LANGUAGES = new ConcurrentHashMap<>(16);
     private static final String DEFAULT_LOCALE = "en_us";
     private static final Gson GSON = new Gson();
 
+    private static final Type MAP_TYPE = new TypeToken<Object2ObjectOpenHashMap<String, String>>() {
+    }.getType();
+
     static {
-        loadLanguage(DEFAULT_LOCALE);
+        LANGUAGES.put(DEFAULT_LOCALE, loadLanguageInternal(DEFAULT_LOCALE));
     }
 
     public static void init() {
         ComplexityAnalyzer.LOGGER.info("Initializing Server-Side Language Manager...");
     }
 
-    private static void loadLanguage(String locale) {
-        if (LANGUAGES.containsKey(locale)) return;
-
+    private static Object2ObjectMap<String, String> loadLanguageInternal(String locale) {
         String path = "/assets/complexityanalyzer/lang/" + locale + ".json";
         try (var is = ComplexityAnalyzer.class.getResourceAsStream(path)) {
             if (is != null) {
-                Object2ObjectOpenHashMap<String, String> map = GSON.fromJson(
-                        new InputStreamReader(is, StandardCharsets.UTF_8),
-                        new TypeToken<Object2ObjectOpenHashMap<String, String>>() {
-                        }.getType()
-                );
-                LANGUAGES.put(locale, map != null ? map : Object2ObjectMaps.emptyMap());
+                Object2ObjectOpenHashMap<String, String> map = GSON.fromJson(new InputStreamReader(is, StandardCharsets.UTF_8), MAP_TYPE);
+                return map != null ? Object2ObjectMaps.unmodifiable(map) : Object2ObjectMaps.emptyMap();
             } else {
                 ComplexityAnalyzer.LOGGER.warn("[Language] Lang file not found in resources: {}.json", locale);
-                LANGUAGES.put(locale, Object2ObjectMaps.emptyMap());
+                return Object2ObjectMaps.emptyMap();
             }
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[Language] Failed to load server-side language: {}", locale, e);
-            LANGUAGES.put(locale, Object2ObjectMaps.emptyMap());
+            return Object2ObjectMaps.emptyMap();
         }
     }
 
     public static String get(String key, String locale) {
-        String cleanLocale = locale != null ? locale.toLowerCase() : DEFAULT_LOCALE;
-        loadLanguage(cleanLocale);
-
-        var map = LANGUAGES.get(cleanLocale);
-        String val = map != null ? map.get(key) : null;
+        String cleanLocale = locale != null ? locale.toLowerCase(ROOT) : DEFAULT_LOCALE;
+        var map = LANGUAGES.computeIfAbsent(cleanLocale, ServerLanguage::loadLanguageInternal);
+        String val = map.get(key);
 
         if (val == null && !cleanLocale.equals(DEFAULT_LOCALE)) {
-            loadLanguage(DEFAULT_LOCALE);
-            var defaultMap = LANGUAGES.get(DEFAULT_LOCALE);
-            val = defaultMap != null ? defaultMap.get(key) : null;
+            var defaultMap = LANGUAGES.computeIfAbsent(DEFAULT_LOCALE, ServerLanguage::loadLanguageInternal);
+            val = defaultMap.get(key);
         }
         return val;
     }
 
+    private static boolean needsTranslation(Component component) {
+        if (component.getContents() instanceof TranslatableContents) return true;
+        var style = component.getStyle();
+        if (style.getHoverEvent() != null && style.getHoverEvent().getAction() == HoverEvent.Action.SHOW_TEXT) {
+            var hoverContent = style.getHoverEvent().getValue(HoverEvent.Action.SHOW_TEXT);
+            if (hoverContent != null && needsTranslation(hoverContent)) return true;
+        }
+        for (var sibling : component.getSiblings()) if (needsTranslation(sibling)) return true;
+        return false;
+    }
+
     public static Component translate(Component component, String locale) {
+        if (!needsTranslation(component)) return component;
+
         MutableComponent result;
 
         if (component.getContents() instanceof TranslatableContents translatable) {
@@ -135,6 +146,6 @@ public class ServerLanguage {
 
     public static Component translateForPlayer(Component component, ServerPlayer player) {
         if (player == null) return translate(component, DEFAULT_LOCALE);
-        return translate(component, player.clientInformation().language().toLowerCase());
+        return translate(component, player.clientInformation().language().toLowerCase(ROOT));
     }
 }

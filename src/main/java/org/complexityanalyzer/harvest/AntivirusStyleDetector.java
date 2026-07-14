@@ -24,8 +24,9 @@ import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Locale.ROOT;
 
 public final class AntivirusStyleDetector {
     private static final ConcurrentHashMap<Class<?>, CompositeDetection> DETECT_CACHE = new ConcurrentHashMap<>(512);
@@ -158,7 +159,7 @@ public final class AntivirusStyleDetector {
 
         @Override
         public @NotNull String toString() {
-            return String.format(Locale.ROOT,
+            return String.format(ROOT,
                     "CompositeDetection[level=%s sig=%d heur=%d behav=%d total=%d recipe=%s machine=%s codec=%s verdict=%s]",
                     level, signatureConfidence, heuristicConfidence, behavioralConfidence,
                     totalConfidence, isRecipe, isMachine, isCodec, verdict);

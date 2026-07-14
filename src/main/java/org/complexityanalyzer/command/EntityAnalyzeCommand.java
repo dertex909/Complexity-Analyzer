@@ -34,6 +34,8 @@ import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.util.Comparator;
 
+import static java.util.Locale.ROOT;
+
 public class EntityAnalyzeCommand {
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation entityId) {
@@ -208,7 +210,7 @@ public class EntityAnalyzeCommand {
         if (mobProvider.isBoss(type)) return "👑";
         if (mobProvider.isMiniBoss(type)) return "⭐";
 
-        String category = props.classification().getName().toLowerCase();
+        String category = props.classification().getName().toLowerCase(ROOT);
         return switch (category) {
             case "monster", "hostile" -> "⚔";
             case "creature", "passive" -> "🐾";
@@ -219,7 +221,7 @@ public class EntityAnalyzeCommand {
     }
 
     private static ChatFormatting getCategoryColor(String category) {
-        return switch (category.toLowerCase()) {
+        return switch (category.toLowerCase(ROOT)) {
             case "monster", "hostile" -> ChatFormatting.RED;
             case "creature", "passive" -> ChatFormatting.GREEN;
             case "ambient" -> ChatFormatting.AQUA;

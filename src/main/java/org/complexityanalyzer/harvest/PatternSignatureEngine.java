@@ -25,8 +25,9 @@ import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
-import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Locale.ROOT;
 
 public final class PatternSignatureEngine {
     private static final ConcurrentHashMap<Class<?>, ClassProfile> PROFILE_CACHE = new ConcurrentHashMap<>(512);
@@ -224,7 +225,7 @@ public final class PatternSignatureEngine {
     ) {
         @Override
         public @NotNull String toString() {
-            return String.format(Locale.ROOT,
+            return String.format(ROOT,
                     "%s score=%d recipe=%s machine=%s codec=%s level=%s itemF=%d ingrF=%d fluidF=%d itemM=%d ingrM=%d fluidM=%d codec=%d",
                     className, totalScore, isRecipe, isMachine, isCodec, level,
                     itemStackFields, ingredientFields, fluidStackFields,

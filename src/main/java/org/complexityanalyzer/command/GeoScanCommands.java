@@ -40,6 +40,7 @@ import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.util.ServerLanguage;
 
+import static java.util.Locale.ROOT;
 import static net.minecraft.commands.SharedSuggestionProvider.suggest;
 import static net.minecraft.network.chat.Style.EMPTY;
 
@@ -145,14 +146,14 @@ public class GeoScanCommands {
                     output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.force_broadcast"));
                     output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.lag_expected", profile.displayName));
                 } else {
-                    output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.started_broadcast", profile.displayName.toLowerCase()));
+                    output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.started_broadcast", profile.displayName.toLowerCase(ROOT)));
                 }
                 manager.startScanImmediately(chunks, initiatorName, profile);
             } else {
                 if (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST) {
                     output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.scheduled_broadcast", profile.displayName));
                 } else {
-                    output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.starting_soon", profile.displayName.toLowerCase()));
+                    output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.starting_soon", profile.displayName.toLowerCase(ROOT)));
                 }
                 manager.scheduleScan(chunks, initiatorName, profile);
             }
@@ -205,8 +206,8 @@ public class GeoScanCommands {
             } else {
                 var statusComponent = manager.getStatus();
                 String status = ServerLanguage.translateForPlayer(statusComponent, null).getString();
-                var color = status.toLowerCase().contains("complete") ? ChatFormatting.GREEN : ChatFormatting.GRAY;
-                String statusIcon = status.toLowerCase().contains("complete") ? "✓" : "💤";
+                var color = status.toLowerCase(ROOT).contains("complete") ? ChatFormatting.GREEN : ChatFormatting.GRAY;
+                String statusIcon = status.toLowerCase(ROOT).contains("complete") ? "✓" : "💤";
                 output.sendStatusLine(source, statusIcon, statusComponent, color);
             }
 

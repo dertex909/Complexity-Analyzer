@@ -399,7 +399,7 @@ public final class SccCondensedSolver {
             int formulaIdx = sol.itemBestRecipeFormulaIdx[itemIdx];
             if (formulaIdx < 0) continue;
 
-            RecipeNode recipe = m.formulaRecipe[formulaIdx];
+            var recipe = m.formulaRecipe[formulaIdx];
             if (recipe != null) optimalRecipes.put(item, recipe);
         }
 
@@ -424,7 +424,7 @@ public final class SccCondensedSolver {
             int formulaIdx = sol.fluidBestRecipeFormulaIdx[fluidIdx];
             if (formulaIdx < 0) continue;
 
-            RecipeNode recipe = m.formulaRecipe[formulaIdx];
+            var recipe = m.formulaRecipe[formulaIdx];
             if (recipe != null) optimalFluidRecipes.put(fluid, recipe);
         }
 
@@ -1074,7 +1074,7 @@ public final class SccCondensedSolver {
                 adjNode[cursor[src]++] = edgeTo.getInt(e);
             }
 
-            CompiledModel m = new CompiledModel();
+            var m = new CompiledModel();
             m.nodeCount = n;
             m.itemCount = itemCount;
             m.fluidCount = fluidCount;

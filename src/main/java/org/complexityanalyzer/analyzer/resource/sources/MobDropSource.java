@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import com.mojang.authlib.GameProfile;
@@ -56,7 +38,6 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.data.MobDropData;
 import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.cache.Fingerprints;
-import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
@@ -66,6 +47,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.apache.logging.log4j.Level.WARN;
+import static org.complexityanalyzer.cache.ResourceCache.MOB_DROP;
+import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 
 public class MobDropSource implements IResourceSource {
     private static final int SIMULATION_COUNT = 100;
@@ -76,7 +59,8 @@ public class MobDropSource implements IResourceSource {
             EntityType.SHULKER
     });
     private final MobPropertyProvider mobProvider;
-    private final Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = new Reference2ObjectOpenHashMap<>();
+
+    private volatile Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = Reference2ObjectMaps.emptyMap();
 
     public MobDropSource(MobPropertyProvider mobProvider) {
         this.mobProvider = mobProvider;
@@ -108,18 +92,16 @@ public class MobDropSource implements IResourceSource {
         }
 
         var server = serverLevel.getServer();
+        var localDropMap = new Reference2ObjectOpenHashMap<Item, ObjectList<MobDropData>>();
 
-        synchronized (dropMap) {
-            dropMap.clear();
-        }
-
-        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
-        var cacheFile = cacheEnabled ? ResourceCache.MOB_DROP.file(server) : null;
+        boolean cacheEnabled = ENABLE_CACHE.get();
+        var cacheFile = cacheEnabled ? MOB_DROP.file(server) : null;
         long[] fingerprint = cacheFile != null ? computeFingerprint() : null;
         if (cacheFile != null) {
-            int restored = ResourceCache.MOB_DROP.load(cacheFile, fingerprint, MobDropSource::readData, dropMap);
+            int restored = MOB_DROP.load(cacheFile, fingerprint, MobDropSource::readData, localDropMap);
             if (restored >= 0) {
                 ComplexityAnalyzer.LOGGER.info("[MobDropSource] Loaded {} drop entries from cache (loot simulation skipped).", restored);
+                this.dropMap = localDropMap;
                 return;
             }
         }
@@ -142,28 +124,24 @@ public class MobDropSource implements IResourceSource {
             return;
         }
 
-        processMobDrops(serverLevel, entityTypes);
+        processMobDrops(serverLevel, entityTypes, localDropMap);
 
-        if (cacheFile != null) synchronized (dropMap) {
-            ResourceCache.MOB_DROP.save(cacheFile, fingerprint, MobDropSource::writeData, dropMap);
-        }
+        if (cacheFile != null) MOB_DROP.save(cacheFile, fingerprint, MobDropSource::writeData, localDropMap);
+
+        this.dropMap = localDropMap;
     }
 
     private long[] computeFingerprint() {
-        return new long[]{
-                Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION),
-                Fingerprints.hashMods(),
-                Fingerprints.hashAllEntities()
-        };
+        return new long[]{Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION), Fingerprints.hashMods(), Fingerprints.hashAllEntities()};
     }
 
-    private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes) {
+    private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
         var server = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();
 
-        registerSpecialKillDrops();
+        registerSpecialKillDrops(targetMap);
 
         LootFunctionFilter filter = new LootFunctionFilter();
         Logger rootLogger = (Logger) LogManager.getRootLogger();
@@ -209,7 +187,7 @@ public class MobDropSource implements IResourceSource {
                         }
 
                         var v = new Victim(entityType, entityInstance, lootTable);
-                        mergeDrops(entityType, sampleVictim(serverLevel, v, finalConfigs));
+                        mergeDrops(entityType, sampleVictim(serverLevel, v, finalConfigs), targetMap);
                         processedEntities++;
 
                         if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
@@ -217,7 +195,7 @@ public class MobDropSource implements IResourceSource {
                     }
 
                     long duration = System.currentTimeMillis() - startTime;
-                    ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, dropMap.size(), duration);
+                    ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, targetMap.size(), duration);
 
                 } finally {
                     if (damageConfigs != null) for (DamageSourceConfig config : damageConfigs) {
@@ -330,30 +308,23 @@ public class MobDropSource implements IResourceSource {
         return combinedDrops;
     }
 
-    private void mergeDrops(EntityType<?> type, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
+    private void mergeDrops(EntityType<?> type, Reference2ObjectMap<Item, DropStatistics> combinedDrops, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
         for (var entry : combinedDrops.reference2ObjectEntrySet()) {
             var stats = entry.getValue();
-            if (stats.totalDropped > 0) dropMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>()).add(
-                    new MobDropData(entry.getKey(), type, stats.getAverageYield(), stats.getBestMethod()));
+            if (stats.totalDropped > 0) targetMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
+                    .add(new MobDropData(entry.getKey(), type, stats.getAverageYield(), stats.getBestMethod()));
         }
     }
 
     @Override
     public boolean canProvide(Item item) {
-        synchronized (dropMap) {
-            return dropMap.containsKey(item);
-        }
+        return dropMap.containsKey(item);
     }
 
     @Override
     @Nullable
     public BaseResourceData analyze(Item item) {
-        if (!canProvide(item)) return null;
-        ObjectList<MobDropData> list;
-        synchronized (dropMap) {
-            var raw = dropMap.get(item);
-            list = raw != null ? new ObjectArrayList<>(raw) : null;
-        }
+        var list = dropMap.get(item);
         if (list == null) return null;
         var best = (BaseResourceData) null;
         for (var data : list) {
@@ -365,10 +336,9 @@ public class MobDropSource implements IResourceSource {
 
     public ObjectList<MobDropData> getDropsForEntity(EntityType<?> entityType) {
         var results = new ObjectArrayList<MobDropData>();
-        synchronized (dropMap) {
-            for (var allDrops : dropMap.values()) {
-                for (var data : allDrops) if (data.sourceMob() == entityType) results.add(data);
-            }
+        var currentMap = this.dropMap;
+        for (var allDrops : currentMap.values()) {
+            for (var data : allDrops) if (data.sourceMob() == entityType) results.add(data);
         }
         return results;
     }
@@ -426,34 +396,34 @@ public class MobDropSource implements IResourceSource {
         return "MobDropSource";
     }
 
-    private void registerSpecialKillDrops() {
+    private void registerSpecialKillDrops(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
         ComplexityAnalyzer.LOGGER.info("Registering special kill-based drops...");
         int count = 0;
 
-        registerDrop(EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
+        registerDrop(targetMap, EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
         count++;
-        registerDrop(EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper");
+        registerDrop(targetMap, EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper");
         count++;
-        registerDrop(EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper");
+        registerDrop(targetMap, EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper");
         count++;
-        registerDrop(EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper");
+        registerDrop(targetMap, EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper");
         count++;
 
-        registerDrop(EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
+        registerDrop(targetMap, EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
         count++;
-        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
+        registerDrop(targetMap, EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
         count++;
-        registerDrop(EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot");
+        registerDrop(targetMap, EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot");
         count++;
-        registerDrop(EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
+        registerDrop(targetMap, EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
         count++;
 
         ComplexityAnalyzer.LOGGER.info("Registered {} special kill-based drop entries.", count);
     }
 
-    private void registerDrop(EntityType<?> entityType, Item item, double averageYield, String method) {
+    private void registerDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap, EntityType<?> entityType, Item item, double averageYield, String method) {
         var dropData = new MobDropData(item, entityType, averageYield, method);
-        dropMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(dropData);
+        targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(dropData);
     }
 
     private static class LootFunctionFilter extends AbstractFilter {

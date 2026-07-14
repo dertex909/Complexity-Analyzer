@@ -18,7 +18,9 @@
 
 package org.complexityanalyzer.analyzer;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
@@ -27,79 +29,82 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class DepthAnalyzer {
-    private static final int IN_PROGRESS = -999;
     private final RecipeGraph graph;
-    private final Reference2IntMap<Item> cache;
-    private final Reference2ObjectMap<Item, RecipeNode> recipeCache;
+    private final ConcurrentHashMap<Item, Integer> cache;
+    private final ConcurrentHashMap<Item, RecipeNode> recipeCache;
     private final SourceManager sourceManager;
-    private Reference2ObjectMap<Item, RecipeNode> optimalRecipes;
+    private volatile ConcurrentHashMap<Item, RecipeNode> optimalRecipes;
+    private final ThreadLocal<ReferenceSet<Item>> inProgress = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
 
     public DepthAnalyzer(RecipeGraph graph, SourceManager sourceManager) {
         this.graph = graph;
-        this.cache = Reference2IntMaps.synchronize(new Reference2IntOpenHashMap<>());
-        this.recipeCache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-        this.optimalRecipes = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+        this.cache = new ConcurrentHashMap<>();
+        this.recipeCache = new ConcurrentHashMap<>();
+        this.optimalRecipes = new ConcurrentHashMap<>();
         this.sourceManager = sourceManager;
-        this.cache.defaultReturnValue(-1);
     }
 
     public void setOptimalRecipes(Reference2ObjectMap<Item, RecipeNode> optimalRecipes) {
-        this.optimalRecipes = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>(optimalRecipes));
+        this.optimalRecipes = new ConcurrentHashMap<>(optimalRecipes);
         this.recipeCache.clear();
         this.cache.clear();
     }
 
     public int getDepth(Item item) {
-        int cachedDepth = cache.getInt(item);
-        if (cachedDepth != -1) return cachedDepth;
+        Integer cachedDepth = cache.get(item);
+        if (cachedDepth != null) return cachedDepth;
         return calculateDepth(item);
     }
 
     private int calculateDepth(Item item) {
-        int cached = cache.getInt(item);
-        if (cached != -1) {
-            if (cached == IN_PROGRESS) return 0;
-            return cached;
-        }
+        Integer cached = cache.get(item);
+        if (cached != null) return cached;
 
-        cache.put(item, IN_PROGRESS);
+        var visiting = inProgress.get();
+        if (!visiting.add(item)) return 0;
 
-        var recipeToFollow = getRecipeToFollow(item);
-        if (recipeToFollow == null) {
-            var source = sourceManager != null ? sourceManager.analyze(item) : null;
-            if (source != null && !source.getSourceItems().isEmpty()) {
-                int maxSourceDepth = 0;
-                boolean hasValidDeps = false;
-                for (var entry : source.getSourceItems().reference2DoubleEntrySet()) {
-                    var dep = entry.getKey();
-                    if (dep != item) {
-                        int depDepth = getDepth(dep);
-                        if (depDepth > maxSourceDepth) maxSourceDepth = depDepth;
-                        hasValidDeps = true;
+        try {
+            var recipeToFollow = getRecipeToFollow(item);
+            if (recipeToFollow == null) {
+                var source = sourceManager != null ? sourceManager.analyze(item) : null;
+                if (source != null && !source.getSourceItems().isEmpty()) {
+                    int maxSourceDepth = 0;
+                    boolean hasValidDeps = false;
+                    for (var entry : source.getSourceItems().reference2DoubleEntrySet()) {
+                        var dep = entry.getKey();
+                        if (dep != item) {
+                            int depDepth = getDepth(dep);
+                            if (depDepth > maxSourceDepth) maxSourceDepth = depDepth;
+                            hasValidDeps = true;
+                        }
+                    }
+                    if (hasValidDeps) {
+                        int depthVal = 1 + maxSourceDepth;
+                        cache.put(item, depthVal);
+                        return depthVal;
                     }
                 }
-                if (hasValidDeps) {
-                    int depthVal = 1 + maxSourceDepth;
-                    cache.put(item, depthVal);
-                    return depthVal;
-                }
+                cache.put(item, 0);
+                return 0;
             }
-            cache.put(item, 0);
-            return 0;
+
+            int maxIngredientDepth = 0;
+
+            for (var slot : recipeToFollow.getIngredients()) {
+                int slotDepth = calculateSlotDepth(slot);
+                if (slotDepth > maxIngredientDepth) maxIngredientDepth = slotDepth;
+            }
+
+            int finalDepth = 1 + maxIngredientDepth;
+
+            cache.put(item, finalDepth);
+            return finalDepth;
+        } finally {
+            visiting.remove(item);
         }
-
-        int maxIngredientDepth = 0;
-
-        for (var slot : recipeToFollow.getIngredients()) {
-            int slotDepth = calculateSlotDepth(slot);
-            if (slotDepth > maxIngredientDepth) maxIngredientDepth = slotDepth;
-        }
-
-        int finalDepth = 1 + maxIngredientDepth;
-
-        cache.put(item, finalDepth);
-        return finalDepth;
     }
 
     private int calculateSlotDepth(IngredientSlot slot) {

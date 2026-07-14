@@ -32,7 +32,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.GeoDatabase;
-import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
@@ -45,6 +44,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+
+import static org.complexityanalyzer.geoscan.config.ScanConfig.BATCH_SAVE_THRESHOLD;
 
 public class ScanExecutor {
 
@@ -254,13 +255,13 @@ public class ScanExecutor {
 
         var startPos = worldScanner.findBiomeLocation(dimension, biomeKey, false);
 
-        if (startPos.isEmpty() || shouldStop(myCtx)) {
+        if (startPos == null || shouldStop(myCtx)) {
             mySession.abandonBiome(dimId, biomeId);
             return;
         }
 
         var ctx = new ScanContext(myCtx, dimension, biomeKey, dimId, biomeId);
-        ctx.searcher.startAt(startPos.get().x, startPos.get().z);
+        ctx.searcher.startAt(startPos.x, startPos.z);
 
         performScan(ctx);
         logResults(ctx);
@@ -357,12 +358,12 @@ public class ScanExecutor {
                 true,
                 allowCachedLocation
         );
-        if (newPos.isEmpty() || shouldStop(ctx.myCtx)) {
+        if (newPos == null || shouldStop(ctx.myCtx)) {
             ctx.mySession.abandonBiome(ctx.dimId, ctx.biomeId);
             return true;
         }
 
-        ctx.searcher.startAt(newPos.get().x, newPos.get().z);
+        ctx.searcher.startAt(newPos.x, newPos.z);
         ctx.transientAreaBiomeCache.clear();
         ctx.emptyBatches = 0;
         ctx.stagnantBatches = 0;
@@ -492,33 +493,48 @@ public class ScanExecutor {
     private static final class BufferedSnapshots {
         private final ConcurrentLinkedQueue<ChunkSnapshot> queue = new ConcurrentLinkedQueue<>();
         private final AtomicInteger size = new AtomicInteger(0);
+        private final AtomicBoolean draining = new AtomicBoolean(false);
 
         ObjectArrayList<ChunkSnapshot> addAndDrainIfNeeded(ChunkSnapshot snapshot) {
             queue.offer(snapshot);
             int currentSize = size.incrementAndGet();
-            if (currentSize < ScanConfig.BATCH_SAVE_THRESHOLD) return null;
-            return drainUpTo();
+            if (currentSize < BATCH_SAVE_THRESHOLD) return null;
+
+            return tryDrain();
         }
 
-        ObjectArrayList<ChunkSnapshot> drainUpTo() {
-            var result = new ObjectArrayList<ChunkSnapshot>(ScanConfig.BATCH_SAVE_THRESHOLD);
-            for (int i = 0; i < ScanConfig.BATCH_SAVE_THRESHOLD; i++) {
-                var s = queue.poll();
-                if (s == null) break;
-                size.decrementAndGet();
-                result.add(s);
+        private ObjectArrayList<ChunkSnapshot> tryDrain() {
+            if (draining.compareAndSet(false, true)) try {
+                if (size.get() >= BATCH_SAVE_THRESHOLD) {
+                    var result = new ObjectArrayList<ChunkSnapshot>(BATCH_SAVE_THRESHOLD);
+                    for (int i = 0; i < BATCH_SAVE_THRESHOLD; i++) {
+                        var s = queue.poll();
+                        if (s != null) {
+                            size.decrementAndGet();
+                            result.add(s);
+                        }
+                    }
+                    return result;
+                }
+            } finally {
+                draining.set(false);
             }
-            return result;
+            return null;
         }
 
         ObjectArrayList<ChunkSnapshot> drainAll() {
-            var result = new ObjectArrayList<ChunkSnapshot>();
-            ChunkSnapshot s;
-            while ((s = queue.poll()) != null) {
-                size.decrementAndGet();
-                result.add(s);
+            while (!draining.compareAndSet(false, true)) Thread.onSpinWait();
+            try {
+                var result = new ObjectArrayList<ChunkSnapshot>();
+                ChunkSnapshot s;
+                while ((s = queue.poll()) != null) {
+                    size.decrementAndGet();
+                    result.add(s);
+                }
+                return result;
+            } finally {
+                draining.set(false);
             }
-            return result;
         }
     }
 

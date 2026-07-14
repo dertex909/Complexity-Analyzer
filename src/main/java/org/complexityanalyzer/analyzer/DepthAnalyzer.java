@@ -36,8 +36,8 @@ public class DepthAnalyzer {
     private final ConcurrentHashMap<Item, Integer> cache;
     private final ConcurrentHashMap<Item, RecipeNode> recipeCache;
     private final SourceManager sourceManager;
-    private volatile ConcurrentHashMap<Item, RecipeNode> optimalRecipes;
     private final ThreadLocal<ReferenceSet<Item>> inProgress = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
+    private volatile ConcurrentHashMap<Item, RecipeNode> optimalRecipes;
 
     public DepthAnalyzer(RecipeGraph graph, SourceManager sourceManager) {
         this.graph = graph;

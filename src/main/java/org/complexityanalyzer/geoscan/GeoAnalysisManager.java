@@ -367,7 +367,7 @@ public class GeoAnalysisManager {
         if (!isShutdown.compareAndSet(false, true)) return;
 
         long startTime = System.currentTimeMillis();
-        ComplexityAnalyzer.LOGGER.info("[Shutdown] GeoAnalysisManager shutting down...");
+        ComplexityAnalyzer.LOGGER.debug("[Shutdown] GeoAnalysisManager shutting down...");
 
         countdownTicks.set(-1);
         scanStarting.set(false);
@@ -383,6 +383,6 @@ public class GeoAnalysisManager {
         }
 
         long elapsed = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.info("[Shutdown] GeoAnalysisManager shut down in {}ms.", elapsed);
+        ComplexityAnalyzer.LOGGER.debug("[Shutdown] GeoAnalysisManager shut down in {}ms.", elapsed);
     }
 }

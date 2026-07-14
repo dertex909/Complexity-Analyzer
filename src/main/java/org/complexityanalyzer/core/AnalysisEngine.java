@@ -541,7 +541,7 @@ public class AnalysisEngine {
             return;
         }
 
-        ComplexityAnalyzer.LOGGER.info("Shutdown requested for AnalysisEngine.");
+        ComplexityAnalyzer.LOGGER.debug("Shutdown requested for AnalysisEngine.");
 
         analysisCancelled.set(true);
         analysisGeneration.incrementAndGet();
@@ -570,7 +570,7 @@ public class AnalysisEngine {
         try {
             clearDataInternal();
             currentState.set(State.IDLE);
-            ComplexityAnalyzer.LOGGER.info("AnalysisEngine state reset to IDLE.");
+            ComplexityAnalyzer.LOGGER.debug("AnalysisEngine state reset to IDLE.");
         } finally {
             stateLock.unlock();
         }

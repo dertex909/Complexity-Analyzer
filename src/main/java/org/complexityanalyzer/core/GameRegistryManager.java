@@ -119,7 +119,7 @@ public class GameRegistryManager {
         ALL_ENTITY_TYPES.clear();
         ALL_ITEM_IDS.clear();
         initialized = false;
-        ComplexityAnalyzer.LOGGER.info("[GameRegistryManager] Registry cache cleared.");
+        ComplexityAnalyzer.LOGGER.debug("[GameRegistryManager] Registry cache cleared.");
     }
 
     public static Block getBlock(ResourceLocation id) {

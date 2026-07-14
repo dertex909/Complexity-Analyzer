@@ -235,7 +235,7 @@ public class ThreadPoolManager {
 
         synchronized (LOCK) {
             long shutdownStartTime = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.info("Shutting down ThreadPoolManager...");
+            ComplexityAnalyzer.LOGGER.debug("Shutting down ThreadPoolManager...");
 
             var watchdog = shutdownWatchdog;
             if (watchdog != null) {
@@ -290,7 +290,7 @@ public class ThreadPoolManager {
             logRemainingThreads(compute, fj);
 
             long totalTime = System.currentTimeMillis() - shutdownStartTime;
-            ComplexityAnalyzer.LOGGER.info("ThreadPoolManager shutdown complete in {}ms.", totalTime);
+            ComplexityAnalyzer.LOGGER.debug("ThreadPoolManager shutdown complete in {}ms.", totalTime);
         }
     }
 

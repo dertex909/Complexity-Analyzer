@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
@@ -29,13 +11,20 @@ import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.locks.StampedLock;
+
+import static java.util.Locale.ROOT;
+
 public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSourceRegistry {
 
     private static final int NORMAL_PRIORITY = 35;
     private static final int OVERRIDE_PRIORITY = 1000;
     private static HardcodedSourcesProvider INSTANCE;
-    private final Reference2ObjectMap<Item, SourceRule> normalSources = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
-    private final Reference2ObjectMap<Item, SourceRule> overrideSources = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+
+    private final Reference2ObjectMap<Item, SourceRule> normalSources = new Reference2ObjectOpenHashMap<>();
+    private final Reference2ObjectMap<Item, SourceRule> overrideSources = new Reference2ObjectOpenHashMap<>();
+
+    private final StampedLock lock = new StampedLock();
 
     public HardcodedSourcesProvider() {
         INSTANCE = this;
@@ -52,8 +41,17 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
 
         registerVanillaSources();
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Registered {} normal + {} override sources",
-                getName(), normalSources.size(), overrideSources.size());
+        long stamp = lock.readLock();
+        int normalSize;
+        int overrideSize;
+        try {
+            normalSize = normalSources.size();
+            overrideSize = overrideSources.size();
+        } finally {
+            lock.unlockRead(stamp);
+        }
+
+        ComplexityAnalyzer.LOGGER.info("[{}] Registered {} normal + {} override sources", getName(), normalSize, overrideSize);
     }
 
     @Override
@@ -64,74 +62,127 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         if (toolWear != null) ingredients.putAll(toolWear);
 
         var modId = getCallingModId();
-        normalSources.put(result, new SourceRule(
+        var rule = new SourceRule(
                 ingredients,
                 baseCost,
                 BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION,
                 description,
                 modId
-        ));
+        );
+
+        long stamp = lock.writeLock();
+        try {
+            normalSources.put(result, rule);
+        } finally {
+            lock.unlockWrite(stamp);
+        }
     }
 
     @Override
     public void registerComplexSource(Item result, Reference2DoubleMap<Item> ingredients, double baseCost,
                                       BaseResourceData.ResourceSourceType type, String description) {
         var modId = getCallingModId();
-        normalSources.put(result, new SourceRule(
+        var rule = new SourceRule(
                 new Reference2DoubleOpenHashMap<>(ingredients),
                 baseCost,
                 type,
                 description,
                 modId
-        ));
+        );
+
+        long stamp = lock.writeLock();
+        try {
+            normalSources.put(result, rule);
+        } finally {
+            lock.unlockWrite(stamp);
+        }
     }
 
     @Override
     public void registerOverride(Item result, Reference2DoubleMap<Item> ingredients, double baseCost, String description) {
         var modId = getCallingModId();
-        overrideSources.put(result, new SourceRule(
+        var rule = new SourceRule(
                 new Reference2DoubleOpenHashMap<>(ingredients),
                 baseCost,
                 BaseResourceData.ResourceSourceType.CRAFTING,
                 "[OVERRIDE by " + modId + "] " + description,
                 modId
-        ));
+        );
 
-        ComplexityAnalyzer.LOGGER.warn("[{}] Mod {} OVERRIDING analysis for {}: {}",
-                getName(), modId, result, description);
+        long stamp = lock.writeLock();
+        try {
+            overrideSources.put(result, rule);
+        } finally {
+            lock.unlockWrite(stamp);
+        }
+
+        ComplexityAnalyzer.LOGGER.warn("[{}] Mod {} OVERRIDING analysis for {}: {}", getName(), modId, result, description);
     }
 
     @Override
     public void registerUnobtainable(Item item, String reason) {
         var modId = getCallingModId();
-        overrideSources.put(item, new SourceRule(
+        var rule = new SourceRule(
                 Reference2DoubleMaps.emptyMap(),
                 Double.POSITIVE_INFINITY,
                 BaseResourceData.ResourceSourceType.UNOBTAINABLE,
                 "[UNOBTAINABLE by " + modId + "] " + reason,
                 modId
-        ));
+        );
+
+        long stamp = lock.writeLock();
+        try {
+            overrideSources.put(item, rule);
+        } finally {
+            lock.unlockWrite(stamp);
+        }
 
         ComplexityAnalyzer.LOGGER.info("[{}] Mod {} marked {} as unobtainable: {}", getName(), modId, item, reason);
     }
 
     @Override
     public boolean isRegistered(Item item) {
-        return normalSources.containsKey(item) || overrideSources.containsKey(item);
+        long stamp = lock.tryOptimisticRead();
+        boolean hasNormal = normalSources.containsKey(item);
+        boolean hasOverride = overrideSources.containsKey(item);
+
+        if (!lock.validate(stamp)) {
+            stamp = lock.readLock();
+            try {
+                hasNormal = normalSources.containsKey(item);
+                hasOverride = overrideSources.containsKey(item);
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+        return hasNormal || hasOverride;
     }
 
     @Override
     public boolean canProvide(Item item) {
-        return normalSources.containsKey(item) || overrideSources.containsKey(item);
+        return isRegistered(item);
     }
 
     @Override
     @Nullable
     public BaseResourceData analyze(Item item) {
+        long stamp = lock.tryOptimisticRead();
         var rule = overrideSources.get(item);
         boolean isOverride = rule != null;
 
         if (rule == null) rule = normalSources.get(item);
+
+        if (!lock.validate(stamp)) {
+            stamp = lock.readLock();
+            try {
+                rule = overrideSources.get(item);
+                isOverride = rule != null;
+                if (rule == null) rule = normalSources.get(item);
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+
         if (rule == null) return null;
 
         var builder = new BaseResourceData.Builder(item, this)
@@ -151,7 +202,18 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
 
     @Override
     public int getPriority() {
-        return overrideSources.isEmpty() ? NORMAL_PRIORITY : OVERRIDE_PRIORITY;
+        long stamp = lock.tryOptimisticRead();
+        boolean empty = overrideSources.isEmpty();
+
+        if (!lock.validate(stamp)) {
+            stamp = lock.readLock();
+            try {
+                empty = overrideSources.isEmpty();
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+        return empty ? NORMAL_PRIORITY : OVERRIDE_PRIORITY;
     }
 
     @Override
@@ -168,10 +230,23 @@ public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSour
         var stack = Thread.currentThread().getStackTrace();
         for (var element : stack) {
             var className = element.getClassName();
-            if (!className.startsWith("org.complexityanalyzer") && !className.startsWith("java.") &&
-                    !className.startsWith("net.minecraft")) {
-                var parts = className.split("\\.");
-                if (parts.length > 0) return parts[0];
+
+            if (className.startsWith("org.complexityanalyzer") || className.startsWith("java.") || className.startsWith("sun.") ||
+                    className.startsWith("net.minecraft") || className.startsWith("com.mojang")) continue;
+
+            var parts = className.split("\\.");
+            if (parts.length > 0) {
+                int index = 0;
+                while (index < parts.length - 1) {
+                    String segment = parts[index];
+                    if (segment.equals("com") || segment.equals("net") || segment.equals("org") || segment.equals("io") ||
+                            segment.equals("me") || segment.equals("ru") || segment.equals("github") || segment.equals("git")) {
+                        index++;
+                    } else {
+                        break;
+                    }
+                }
+                return parts[index].toLowerCase(ROOT);
             }
         }
         return "minecraft";

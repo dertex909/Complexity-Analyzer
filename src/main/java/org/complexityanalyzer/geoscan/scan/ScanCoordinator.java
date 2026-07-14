@@ -31,7 +31,6 @@ import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
-import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
@@ -145,9 +144,8 @@ public class ScanCoordinator {
     }
 
     private int getExistingChunkCount(ResourceLocation dimension, ResourceLocation biome) {
-        int finalChunks = database.getBiomeData(dimension, biome)
-                .map(BiomeScanData::getChunksScanned)
-                .orElse(0);
+        var data = database.getBiomeData(dimension, biome);
+        int finalChunks = data != null ? data.getChunksScanned() : 0;
         int reconChunks = database.countReconChunks(dimension, biome);
         return Math.max(finalChunks, reconChunks);
     }

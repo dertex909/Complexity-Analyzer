@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.geoscan;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -33,10 +15,10 @@ import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
@@ -47,7 +29,7 @@ public class GeoDatabase {
     private final HeuristicAnalyzer analyzer;
     private final BiomeDataMapper mapper;
 
-    private final ConcurrentHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> inMemoryData;
+    private final ConcurrentHashMap<ResourceLocation, ConcurrentHashMap<ResourceLocation, BiomeScanData>> inMemoryData;
     private final ConcurrentHashMap<Block, AtomicLong> globalBlockCountsCache = new ConcurrentHashMap<>();
     private final AtomicLong totalBlocksInCache = new AtomicLong(0);
 
@@ -105,7 +87,15 @@ public class GeoDatabase {
 
         this.inMemoryData.clear();
         var loadedData = storage.loadAllFinalData(mapper);
-        this.inMemoryData.putAll(loadedData);
+
+        for (var entry : loadedData.entrySet()) {
+            var dim = entry.getKey();
+            var rawDimData = entry.getValue();
+            var concurrentDimMap = new ConcurrentHashMap<ResourceLocation, BiomeScanData>(rawDimData.size());
+            concurrentDimMap.putAll(rawDimData);
+            this.inMemoryData.put(dim, concurrentDimMap);
+        }
+
         rebuildGlobalCache();
         ComplexityAnalyzer.LOGGER.info("Finished loading geo-data. Found data for {} dimensions.", inMemoryData.size());
     }
@@ -114,8 +104,9 @@ public class GeoDatabase {
         if (data == null || data.getChunksScanned() == 0) return;
         storage.saveFinalBiomeData(dimension, biome, data, mapper);
 
-        synchronized (this) {
-            var dimData = inMemoryData.computeIfAbsent(dimension, k -> new Object2ObjectOpenHashMap<>());
+        var dimData = inMemoryData.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>());
+
+        synchronized (dimData) {
             var oldData = dimData.put(biome, data);
             updateGlobalCache(oldData, data);
         }
@@ -144,12 +135,18 @@ public class GeoDatabase {
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> getAllDimensionData() {
-        var copy = new Object2ObjectOpenHashMap<>(inMemoryData);
+        var copy = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>>(inMemoryData.size());
+        for (var entry : inMemoryData.entrySet()) {
+            var dimCopy = new Object2ObjectOpenHashMap<>(entry.getValue());
+            copy.put(entry.getKey(), Object2ObjectMaps.unmodifiable(dimCopy));
+        }
         return Object2ObjectMaps.unmodifiable(copy);
     }
 
-    public Optional<BiomeScanData> getBiomeData(ResourceLocation dim, ResourceLocation biome) {
-        return Optional.ofNullable(inMemoryData.get(dim)).map(dimData -> dimData.get(biome));
+    @Nullable
+    public BiomeScanData getBiomeData(ResourceLocation dim, ResourceLocation biome) {
+        var dimData = inMemoryData.get(dim);
+        return dimData != null ? dimData.get(biome) : null;
     }
 
     private void updateGlobalCache(BiomeScanData oldData, BiomeScanData newData) {

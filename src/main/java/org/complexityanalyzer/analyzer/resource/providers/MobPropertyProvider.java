@@ -1,24 +1,5 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.analyzer.resource.providers;
 
-import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -31,6 +12,8 @@ import org.complexityanalyzer.api.IRenewableRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     public static final double DEFAULT_MAX_HEALTH = 20.0;
@@ -47,9 +30,9 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
 
     public static final double POWER_TO_RARITY_COEFFICIENT = 0.05;
 
-    private final Reference2ObjectMap<EntityType<?>, MobProperties> propertiesCache = new Reference2ObjectOpenHashMap<>();
-    private final ReferenceSet<EntityType<?>> renewableTypes = new ReferenceOpenHashSet<>();
-    private final Reference2ObjectMap<EntityType<?>, BossType> registeredBosses = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private final ConcurrentHashMap<EntityType<?>, MobProperties> propertiesCache = new ConcurrentHashMap<>(256);
+    private final ConcurrentHashMap.KeySetView<EntityType<?>, Boolean> renewableTypes = ConcurrentHashMap.newKeySet(64);
+    private final ConcurrentHashMap<EntityType<?>, BossType> registeredBosses = new ConcurrentHashMap<>(32);
 
     public void initialize() {
         ComplexityAnalyzer.LOGGER.info("Initializing MobPropertyProvider...");
@@ -121,7 +104,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
             var classification = type.getCategory();
 
             var props = new MobProperties(maxHealth, attackDamage, armor, classification);
-            propertiesCache.put(type, props);
+            propertiesCache.put(type, props); // Теперь запись абсолютно безопасна
 
             return props;
 
@@ -144,7 +127,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
 
     @Override
     public void registerBoss(EntityType<?> entityType, BossType type) {
-        registeredBosses.put(entityType, type);
+        if (entityType != null && type != null) registeredBosses.put(entityType, type);
     }
 
     @Override
@@ -154,7 +137,8 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
             ComplexityAnalyzer.LOGGER.warn("[BossRegistry] Invalid entity ID: {}", entityId);
             return;
         }
-        registerBoss(GameRegistryManager.getEntityType(id), type);
+        var entityType = GameRegistryManager.getEntityType(id);
+        if (entityType != null) registerBoss(entityType, type);
     }
 
     @Override

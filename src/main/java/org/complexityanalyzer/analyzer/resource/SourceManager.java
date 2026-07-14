@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.analyzer.resource;
 
 import it.unimi.dsi.fastutil.objects.*;
@@ -27,30 +9,26 @@ import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.StampedLock;
 
 public class SourceManager {
-    private final CopyOnWriteArrayList<IResourceSource> sources;
-    private final Reference2ObjectMap<Item, BaseResourceData> cache = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private final ObjectList<IResourceSource> sources;
+
+    private final Reference2ObjectMap<Item, BaseResourceData> cache = new Reference2ObjectOpenHashMap<>();
+    private final StampedLock lock = new StampedLock();
 
     public SourceManager(ObjectList<IResourceSource> initialSources) {
-        this.sources = new CopyOnWriteArrayList<>(initialSources);
-        sortSources();
-    }
-
-    private void sortSources() {
-        var sorted = new ObjectArrayList<>(sources);
+        var sorted = new ObjectArrayList<>(initialSources);
         sorted.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
-        sources.clear();
-        sources.addAll(sorted);
+        this.sources = ObjectLists.unmodifiable(sorted);
     }
 
     public void initialize(Level level) {
         var successCount = new AtomicInteger(0);
         var failCount = new AtomicInteger(0);
-        var sourceSnapshot = new ObjectArrayList<>(sources);
+        var sourceSnapshot = this.sources;
 
         if (!(level instanceof ServerLevel serverLevel) || serverLevel.getServer().isSameThread()) {
             ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources sequentially...", sources.size());
@@ -105,9 +83,31 @@ public class SourceManager {
 
     @Nullable
     public BaseResourceData analyze(Item item) {
-        if (cache.containsKey(item)) return cache.get(item);
+        long stamp = lock.tryOptimisticRead();
+        boolean contains = cache.containsKey(item);
+        var cachedValue = contains ? cache.get(item) : null;
+
+        if (!lock.validate(stamp)) {
+            stamp = lock.readLock();
+            try {
+                contains = cache.containsKey(item);
+                cachedValue = contains ? cache.get(item) : null;
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+
+        if (contains) return cachedValue;
         var result = performAnalysis(item);
-        cache.put(item, result);
+
+        stamp = lock.writeLock();
+        try {
+            if (cache.containsKey(item)) return cache.get(item);
+            cache.put(item, result);
+        } finally {
+            lock.unlockWrite(stamp);
+        }
+
         return result;
     }
 
@@ -159,7 +159,7 @@ public class SourceManager {
     }
 
     public ObjectList<IResourceSource> getSources() {
-        return new ObjectArrayList<>(sources);
+        return this.sources;
     }
 
     @Nullable

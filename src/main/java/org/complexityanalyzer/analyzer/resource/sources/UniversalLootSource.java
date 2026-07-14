@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.analyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
@@ -60,8 +42,7 @@ import static org.apache.logging.log4j.Level.WARN;
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
 
     private static final int SIMULATION_COUNT = 500;
-
-    private final Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
+    private volatile Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.emptyMap();
 
     @Override
     public void initialize(Level level) {
@@ -73,16 +54,23 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         var server = serverLevel.getServer();
         try {
             var allLootTableKeys = getAllLootTableKeys(server);
+            var localLootData = new Reference2ObjectOpenHashMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>>();
 
             boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
             var cacheFile = cacheEnabled ? ResourceCache.UNIVERSAL_LOOT.file(server) : null;
             long[] fingerprint = cacheFile != null ? computeFingerprint(allLootTableKeys) : null;
-            if (cacheFile != null && tryLoadCache(cacheFile, fingerprint)) return;
 
-            processLootTables(serverLevel, allLootTableKeys);
+            if (cacheFile != null && tryLoadCache(cacheFile, fingerprint, localLootData)) {
+                this.allLootData = localLootData;
+                return;
+            }
+
+            processLootTables(serverLevel, allLootTableKeys, localLootData);
 
             if (cacheFile != null) ResourceCache.UNIVERSAL_LOOT.save(
-                    cacheFile, fingerprint, ResourceCache::writeResourceData, flattenLootData());
+                    cacheFile, fingerprint, ResourceCache::writeResourceData, flattenLootData(localLootData));
+
+            this.allLootData = localLootData;
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys. Aborting analysis.", e);
         }
@@ -102,28 +90,27 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         };
     }
 
-    private boolean tryLoadCache(java.nio.file.Path cacheFile, long[] fingerprint) {
+    private boolean tryLoadCache(java.nio.file.Path cacheFile, long[] fingerprint, Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
         var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
         int restored = ResourceCache.UNIVERSAL_LOOT.load(cacheFile, fingerprint, (buf, item) ->
                 ResourceCache.readResourceData(buf, item, this), flat);
         if (restored < 0) return false;
 
-        allLootData.clear();
+        targetMap.clear();
         for (var entry : flat.reference2ObjectEntrySet()) {
             for (var data : entry.getValue()) {
-                allLootData.computeIfAbsent(data.getSourceType(), k ->
-                        new Reference2ObjectOpenHashMap<>()).put(entry.getKey(), data);
+                targetMap.computeIfAbsent(data.getSourceType(), k -> new Reference2ObjectOpenHashMap<>()).put(entry.getKey(), data);
             }
         }
         int items = 0;
-        for (var map : allLootData.values()) items += map.size();
+        for (var map : targetMap.values()) items += map.size();
         ComplexityAnalyzer.LOGGER.info("[ULS] Loaded {} loot paths for {} items from cache (loot-table scan skipped).", restored, items);
         return true;
     }
 
-    private Reference2ObjectMap<Item, ObjectList<BaseResourceData>> flattenLootData() {
+    private Reference2ObjectMap<Item, ObjectList<BaseResourceData>> flattenLootData(Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
         var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
-        for (var typeMap : allLootData.values()) {
+        for (var typeMap : targetMap.values()) {
             for (var e : typeMap.reference2ObjectEntrySet()) {
                 flat.computeIfAbsent(e.getKey(), k -> new ObjectArrayList<>()).add(e.getValue());
             }
@@ -131,7 +118,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         return flat;
     }
 
-    private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys) {
+    private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys, Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
         var server = serverLevel.getServer();
 
         ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
@@ -222,7 +209,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
                     var data = builder.build();
 
-                    var typeMap = allLootData.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>());
+                    var typeMap = targetMap.computeIfAbsent(contextDef.sourceType, k -> new Reference2ObjectOpenHashMap<>());
                     var existing = typeMap.get(item);
                     if (existing == null || data.getBaseFactor() < existing.getBaseFactor()) typeMap.put(item, data);
                 }
@@ -240,14 +227,14 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
         long duration = System.currentTimeMillis() - startTime;
         var totalItemsFound = 0;
-        for (var map : allLootData.values()) totalItemsFound += map.size();
+        for (var map : targetMap.values()) totalItemsFound += map.size();
 
         ComplexityAnalyzer.LOGGER.info("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
                 duration, tablesProcessed, tablesSkipped, totalItemsFound);
         ComplexityAnalyzer.LOGGER.info("[ULS] PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
                 tablesProcessed, threads, SIMULATION_COUNT, (long) tablesProcessed * SIMULATION_COUNT, sampleWallMs, duration);
 
-        for (var entry : allLootData.reference2ObjectEntrySet()) {
+        for (var entry : targetMap.reference2ObjectEntrySet()) {
             ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
         }
     }
@@ -302,7 +289,8 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     @Override
     public boolean canProvide(Item item) {
-        for (var map : allLootData.values()) if (map.containsKey(item)) return true;
+        var currentMap = this.allLootData;
+        for (var map : currentMap.values()) if (map.containsKey(item)) return true;
         return false;
     }
 
@@ -310,8 +298,9 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     @Nullable
     public BaseResourceData analyze(Item item) {
         BaseResourceData best = null;
+        var currentMap = this.allLootData;
         for (var sourceType : BaseResourceData.ResourceSourceType.values()) {
-            var map = allLootData.get(sourceType);
+            var map = currentMap.get(sourceType);
             if (map == null) continue;
             var data = map.get(item);
             if (data != null && (best == null || data.getBaseFactor() < best.getBaseFactor())) best = data;
@@ -322,8 +311,9 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     @Override
     public ObjectList<BaseResourceData> findAllSources(Item item) {
         var results = new ObjectArrayList<BaseResourceData>();
+        var currentMap = this.allLootData;
         for (var sourceType : BaseResourceData.ResourceSourceType.values()) {
-            var map = allLootData.get(sourceType);
+            var map = currentMap.get(sourceType);
             if (map == null) continue;
             var data = map.get(item);
             if (data != null) results.add(data);

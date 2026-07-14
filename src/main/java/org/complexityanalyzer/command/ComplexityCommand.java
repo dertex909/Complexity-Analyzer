@@ -38,7 +38,6 @@ public final class ComplexityCommand {
                 .then(AnalyzeCommand.register())
                 .then(ExportCommand.register())
                 .then(WebCommand.register())
-                .then(TreeCommand.register())
                 .then(ResourceCommand.register())
                 .then(GeoScanCommands.register())
         );

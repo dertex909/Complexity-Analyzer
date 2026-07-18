@@ -36,6 +36,7 @@ import {
     renderItemUsesView
 } from "./views/sub/item-sub-views.js";
 import {renderFluidRecipesView, renderFluidUsesView} from "./views/sub/fluid-sub-views.js";
+import {renderCraftTreeView} from "./tree/craft-tree";
 
 const fmtInt = new Intl.NumberFormat("en-US");
 
@@ -53,6 +54,7 @@ const VIEW_RENDERERS = {
     mobs: renderMobs,
     sources: renderSources,
     graph: renderGraph,
+    "craft-tree": renderCraftTreeView,
     "item-recipes": renderItemRecipesView,
     "item-machine-recipes": renderItemMachineRecipesView,
     "item-uses": renderItemUsesView,

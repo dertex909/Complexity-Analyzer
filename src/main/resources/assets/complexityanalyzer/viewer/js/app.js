@@ -36,7 +36,7 @@ import {
     renderItemUsesView
 } from "./views/sub/item-sub-views.js";
 import {renderFluidRecipesView, renderFluidUsesView} from "./views/sub/fluid-sub-views.js";
-import {renderCraftTreeView} from "./tree/craft-tree";
+import {renderCraftTreeView} from "./tree/craft-tree.js";
 
 const fmtInt = new Intl.NumberFormat("en-US");
 

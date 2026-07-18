@@ -19,7 +19,7 @@
 import {state} from "../core/state.js";
 import {escapeHtml} from "../core/utils.js";
 import {renderItemDetail} from "../views/details/item-detail.js";
-import {renderFluidDetail} from "../views/details/fluid-detail";
+import {renderFluidDetail} from "../views/details/fluid-detail.js";
 
 import {renderClassicTree} from "./sub/tree-classic.js";
 import {renderHorizontalTree} from "./sub/tree-horizontal.js";

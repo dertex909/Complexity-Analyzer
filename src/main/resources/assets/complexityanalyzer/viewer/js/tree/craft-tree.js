@@ -120,24 +120,6 @@ export async function renderCraftTreeView(container) {
                 </div>
             `;
 
-            const suggestionsContainer = container.querySelector(".craft-tree-empty-suggestions");
-            const dbItems = [];
-            for (let i = 0; i < Math.min(db.items.count, 200); i++) {
-                const it = db.items.get(i);
-                if (it && it.complexity > 50 && !(it.flags & 0x10)) {
-                    dbItems.push({kind: "item", name: it.name, id: it.id, index: i});
-                }
-            }
-            dbItems.sort(() => Math.random() - 0.5);
-            const extraSugs = dbItems.slice(0, 4);
-
-            if (extraSugs.length > 0 && suggestionsContainer) {suggestionsContainer.innerHTML = extraSugs.map(s => `
-                    <button class="craft-tree-suggestion-pill" data-kind="${s.kind}" data-index="${s.index}">
-                        🔍 ${escapeHtml(s.name)}
-                    </button>
-                `).join("");
-            }
-
             initSearchEvents();
             initSuggestionEvents();
         } else {

@@ -63,69 +63,6 @@ export function removeLoader(container) {
     if (loader) loader.remove();
 }
 
-export function createInfoPanel(overlay, nodeCount, edgeCount, onRecenter) {
-    if (!overlay) return;
-
-    overlay.innerHTML = `
-        <div class="card" style="
-            position: absolute;
-            bottom: 16px;
-            left: 16px;
-            pointer-events: auto;
-            padding: 14px;
-            width: 260px;
-            background: rgba(17, 20, 24, 0.95);
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow-lg);
-            font-family: var(--sans), sans-serif;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        ">
-            <h4 style="margin: 0; color: var(--accent); font-size: 13px; font-weight: 600;">Recipe Network Graph</h4>
-            <div style="font-size: 11px; display: flex; justify-content: space-between;">
-                <span>Nodes (Connected items):</span>
-                <strong style="color: var(--text);">${nodeCount}</strong>
-            </div>
-            <div style="font-size: 11px; display: flex; justify-content: space-between;; margin-bottom: 4px;">
-                <span>Total Connections:</span>
-                <strong style="color: var(--text);">${edgeCount}</strong>
-            </div>
-            <div style="
-                font-size: 10px;
-                line-height: 1.4;
-                color: var(--text-dim);
-                border-top: 1px solid var(--border);
-                padding-top: 8px;
-                margin-bottom: 4px;
-            ">
-                • <strong>Scroll wheel</strong> to zoom in & out<br>
-                • <strong>Left-click & drag</strong> to pan<br>
-                • <strong>Hover</strong> circles to see recipe flows<br>
-                • <strong>Click a circle</strong> to lock & view details
-            </div>
-            <button id="recenter-graph-btn" style="
-                background: var(--bg-hover);
-                border: 1px solid var(--border);
-                color: var(--text);
-                padding: 6px;
-                cursor: pointer;
-                font-size: 11px;
-                text-align: center;
-                width: 100%;
-                transition: background var(--transition-fast);
-                font-weight: 500;
-            ">Recenter Graph</button>
-        </div>
-    `;
-
-    const btn = overlay.querySelector("#recenter-graph-btn");
-    if (btn) {
-        btn.addEventListener("click", onRecenter);
-        btn.addEventListener("pointerdown", e => e.stopPropagation());
-    }
-}
-
 export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
     if (!overlay) return;
 

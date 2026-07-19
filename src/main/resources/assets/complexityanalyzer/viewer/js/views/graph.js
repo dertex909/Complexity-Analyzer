@@ -23,7 +23,7 @@ import {applyInitialLayout, buildGraphData} from "./graph/data-builder.js";
 import {GraphRenderer} from "./graph/renderer.js";
 import {InteractionHandler} from "./graph/interaction.js";
 import {calculateFitView} from "./graph/utils.js";
-import {createInfoPanel, removeLoader, showLoader, updateSidePanel} from "./graph/ui.js";
+import {removeLoader, showLoader, updateSidePanel} from "./graph/ui.js";
 
 let activeRenderer = null;
 let activeResizeListener = null;
@@ -106,8 +106,6 @@ export async function renderGraph(container) {
     const onResize = () => draw();
     window.addEventListener("resize", onResize);
     activeResizeListener = onResize;
-
-    createInfoPanel(overlay, activeNodes.length, resolvedEdges.length, recenterGraph);
 }
 
 function cleanup() {

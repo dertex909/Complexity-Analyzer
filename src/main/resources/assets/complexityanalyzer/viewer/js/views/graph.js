@@ -21,12 +21,11 @@ import {LAYOUT_VERSION} from "./graph/constants.js";
 import {GraphCache} from "./graph/cache.js";
 import {applyInitialLayout, buildGraphData} from "./graph/data-builder.js";
 import {GraphRenderer} from "./graph/renderer.js";
-import {createSimulation, runSimulation} from "./graph/simulation.js";
 import {InteractionHandler} from "./graph/interaction.js";
 import {calculateFitView} from "./graph/utils.js";
-import {createInfoPanel, removeLoader, showLoader, updateLoaderProgress} from "./graph/ui.js";
+import {createInfoPanel, removeLoader, showLoader} from "./graph/ui.js";
 
-let activeSim = null;
+let activeRenderer = null;
 let activeResizeListener = null;
 const graphCache = new GraphCache();
 
@@ -48,28 +47,21 @@ export async function renderGraph(container) {
     const currentHash = db.file.fileHash.toString();
     const cacheKey = `${currentHash}_${LAYOUT_VERSION}`;
 
-    let activeNodes, resolvedEdges, neighborMap, isLayoutCached;
+    let activeNodes, resolvedEdges, neighborMap;
 
     const cached = graphCache.get(cacheKey);
-    if (cached) {
-        ({nodes: activeNodes, edges: resolvedEdges, neighborMap, isCached: isLayoutCached} = cached);
-    } else {
+    if (!cached) {
         const graphData = buildGraphData(db);
         activeNodes = graphData.nodes;
         resolvedEdges = graphData.edges;
         neighborMap = graphData.neighborMap;
 
-        applyInitialLayout(activeNodes);
+        applyInitialLayout(activeNodes, resolvedEdges);
 
         graphCache.set(cacheKey, activeNodes, resolvedEdges, neighborMap);
-        isLayoutCached = false;
     }
 
-    const viewState = {
-        zoom: 1.0,
-        pan: {x: 0, y: 0},
-        hoveredNode: null
-    };
+    const viewState = {zoom: 1.0, pan: {x: 0, y: 0}, hoveredNode: null};
 
     const renderer = new GraphRenderer(mCanvas);
 
@@ -87,20 +79,10 @@ export async function renderGraph(container) {
 
     new InteractionHandler(mCanvas, activeNodes, viewState, draw);
 
-    const simulation = createSimulation(activeNodes, resolvedEdges);
-    activeSim = simulation;
+    activeRenderer = renderer;
 
-    if (isLayoutCached) {
-        simulation.stop();
-        removeLoader(container);
-        recenterGraph();
-    } else {
-        await runSimulation(simulation, activeNodes, (progress) => {
-            updateLoaderProgress(container, progress);
-        });
-        removeLoader(container);
-        recenterGraph();
-    }
+    removeLoader(container);
+    recenterGraph();
 
     const onResize = () => draw();
     window.addEventListener("resize", onResize);
@@ -111,9 +93,9 @@ export async function renderGraph(container) {
 }
 
 function cleanup() {
-    if (activeSim) {
-        activeSim.stop();
-        activeSim = null;
+    if (activeRenderer) {
+        if (typeof activeRenderer.destroy === 'function') activeRenderer.destroy();
+        activeRenderer = null;
     }
     if (activeResizeListener) {
         window.removeEventListener("resize", activeResizeListener);

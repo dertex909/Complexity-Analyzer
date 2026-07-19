@@ -77,6 +77,7 @@ export async function renderGraph(container) {
             const onOpenDetails = currentSelectedNode ? () => selectItem(currentSelectedNode.id) : null;
             updateSidePanel(overlay, currentSelectedNode, () => {
                 viewState.selectedNode = null;
+                viewState.hoveredNode = null;
                 updatePanelIfChanged();
                 draw();
             }, onOpenDetails);

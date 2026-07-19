@@ -82,8 +82,10 @@ export async function renderMobs(container) {
             <span class="flex-grow"></span>
             <span class="chip" id="mobs-count">0 mobs</span>
         </div>
-        ${generateTableHeader(MOBS_COLUMNS, "mobs-grid", "mobs-head")}
-        <div id="mobs-list"></div>
+        <div style="overflow: hidden; flex: 0 0 auto;">
+            ${generateTableHeader(MOBS_COLUMNS, "mobs-grid", "mobs-head")}
+        </div>
+        <div id="mobs-list" style="flex: 1; min-height: 0; position: relative;"></div>
     `;
 
     wireMobFilters(tableConfig);

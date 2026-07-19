@@ -82,8 +82,10 @@ export function renderFluids(container) {
             <span class="flex-grow"></span>
             <span class="chip" id="fluids-count">0 fluids</span>
         </div>
-        ${generateTableHeader(FLUIDS_COLUMNS, "fluids-grid", "fluids-head")}
-        <div id="fluids-list"></div>
+        <div style="overflow: hidden; flex: 0 0 auto;">
+            ${generateTableHeader(FLUIDS_COLUMNS, "fluids-grid", "fluids-head")}
+        </div>
+        <div id="fluids-list" style="flex: 1; min-height: 0; position: relative;"></div>
     `;
 
     wireFluidFilters(tableConfig);

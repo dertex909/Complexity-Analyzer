@@ -168,16 +168,54 @@ export async function renderSources(container) {
     const f = state.filters.sources;
 
     container.innerHTML = `
-        <div class="sources-sidebar" style="width: 250px; flex: 0 0 250px; border-right: 1px solid var(--border); overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; background: linear-gradient(180deg, rgba(17, 20, 24, 0.98), rgba(24, 29, 36, 0.98));">
+        <style>
+            @media (max-width: 768px) {
+                .sources-sidebar {
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    z-index: 1000;
+                    transform: translateX(-100%);
+                    transition: transform 0.2s ease;
+                    box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+                }
+                .sources-sidebar.open {
+                    transform: translateX(0);
+                }
+                .sources-burger {
+                    display: inline-flex !important;
+                }
+                .sources-close-mobile {
+                    display: inline-block !important;
+                }
+                .sources-overlay {
+                    display: none;
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 999;
+                }
+                .sources-overlay.open {
+                    display: block;
+                }
+            }
+        </style>
+        <div class="sources-overlay" id="sources-overlay"></div>
+        <div class="sources-sidebar" id="sources-sidebar" style="width: 250px; flex: 0 0 250px; border-right: 1px solid var(--border); overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; background: linear-gradient(180deg, rgba(17, 20, 24, 0.98), rgba(24, 29, 36, 0.98));">
             <div class="sidebar-header" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); flex: 0 0 auto;">
-                <div class="sidebar-title" style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; font-family: var(--sans), sans-serif;">Sources</div>
+                <div class="sidebar-title" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; font-family: var(--sans), sans-serif;">
+                    <span>Sources</span>
+                    <button class="sources-close-mobile" style="display: none; background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer;">✕</button>
+                </div>
             </div>
             <div id="sources-categories-list" style="display: flex; flex-direction: column; gap: 4px;">
                 <div class="hint">Loading sources…</div>
             </div>
         </div>
-        <div class="sources-main" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="sources-main" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
             <div class="controls" id="sources-controls">
+                <button class="sources-burger btn" style="display: none; padding: 6px 10px; font-size: 16px; align-items: center; justify-content: center; height: 32px;" title="Categories">☰</button>
                 <input type="search" id="sources-query" placeholder="Filter items by name, ID..." value="${escapeHtml(f.query)}" autocomplete="off">
                 <select id="sources-sort">
                     <option value="complexity-desc" ${f.sort === "complexity-desc" ? "selected" : ""}>Source Complexity ▼</option>
@@ -188,8 +226,10 @@ export async function renderSources(container) {
                 <span class="flex-grow"></span>
                 <span class="chip" id="sources-count">0 items</span>
             </div>
-            ${generateTableHeader(SOURCES_COLUMNS, "sources-grid", "sources-head")}
-            <div id="sources-list" style="flex: 1; min-height: 0; overflow: hidden; position: relative;"></div>
+            <div style="overflow: hidden; flex: 0 0 auto;">
+                ${generateTableHeader(SOURCES_COLUMNS, "sources-grid", "sources-head")}
+            </div>
+            <div id="sources-list" style="flex: 1; min-height: 0; position: relative;"></div>
         </div>
     `;
 
@@ -206,6 +246,22 @@ export async function renderSources(container) {
 
         const catList = container.querySelector("#sources-categories-list");
         await renderCategoryButtons(catList, types);
+
+        const burgerBtn = container.querySelector(".sources-burger");
+        const sidebarEl = container.querySelector("#sources-sidebar");
+        const overlayEl = container.querySelector("#sources-overlay");
+        const mobileCloseBtn = container.querySelector(".sources-close-mobile");
+
+        const toggleSidebar = () => {
+            sidebarEl.classList.toggle("open");
+            overlayEl.classList.toggle("open");
+        };
+
+        if (burgerBtn) burgerBtn.addEventListener("click", toggleSidebar);
+        if (overlayEl) overlayEl.addEventListener("click", toggleSidebar);
+        if (mobileCloseBtn) mobileCloseBtn.addEventListener("click", toggleSidebar);
+        
+        catList._toggleSidebar = toggleSidebar;
 
         const queryInput = container.querySelector("#sources-query");
         queryInput.addEventListener("input", debounce(async (e) => {
@@ -253,6 +309,7 @@ async function renderCategoryButtons(containerEl, types) {
             const types = resolvedSourceTypes;
             const db = state.db;
             if (db && types) await updateSourcesResults(db, types);
+            if (window.innerWidth <= 768 && containerEl._toggleSidebar) containerEl._toggleSidebar();
         });
     });
 }

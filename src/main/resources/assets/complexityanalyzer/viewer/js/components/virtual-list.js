@@ -60,6 +60,7 @@ export function mountVirtualList(container, options) {
         if (head) {
             const scrollbarWidth = viewport.offsetWidth - viewport.clientWidth;
             head.style.paddingRight = `${scrollbarWidth}px`;
+            head.style.transform = `translateX(-${viewport.scrollLeft}px)`;
         }
     };
 
@@ -68,26 +69,20 @@ export function mountVirtualList(container, options) {
     });
     observer.observe(viewport);
 
-    viewport.addEventListener("scroll", render, {passive: true});
+    viewport.addEventListener("scroll", () => {
+        render();
+        syncScrollbar();
+    }, {passive: true});
     window.addEventListener("resize", syncScrollbar, {passive: true});
 
     render();
     syncScrollbar();
 
     return {
-        refresh: () => {
-            spacer.style.height = (itemCount * itemHeight) + "px";
-            render();
-            syncScrollbar();
-        },
-        scrollToIndex: (index) => {
-            viewport.scrollTop = index * itemHeight;
-            render();
-        },
         destroy: () => {
-            viewport.removeEventListener("scroll", render);
             window.removeEventListener("resize", syncScrollbar);
             observer.disconnect();
+            if (head) head.style.transform = '';
         }
     };
 }

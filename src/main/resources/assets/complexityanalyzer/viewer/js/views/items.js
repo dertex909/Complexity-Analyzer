@@ -86,8 +86,10 @@ export function renderItems(container) {
             <span class="flex-grow"></span>
             <span class="chip" id="items-count">0 items</span>
         </div>
-        ${generateTableHeader(ITEMS_COLUMNS, "items-grid", "items-head")}
-        <div id="items-list"></div>
+        <div style="overflow: hidden; flex: 0 0 auto;">
+            ${generateTableHeader(ITEMS_COLUMNS, "items-grid", "items-head")}
+        </div>
+        <div id="items-list" style="flex: 1; min-height: 0; position: relative;"></div>
     `;
 
     wireItemFilters(tableConfig);

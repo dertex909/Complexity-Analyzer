@@ -84,7 +84,7 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
             transform: translateX(16px);
             opacity: 0;
             transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2,0.9,0.3,1);
-            pointer-events: auto;
+            pointer-events: none;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -204,8 +204,10 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
         void panel.offsetWidth;
         panel.style.opacity = '1';
         panel.style.transform = 'translateX(0)';
+        panel.style.pointerEvents = 'auto';
     } else {
         panel.style.opacity = '0';
         panel.style.transform = 'translateX(16px)';
+        panel.style.pointerEvents = 'none';
     }
 }

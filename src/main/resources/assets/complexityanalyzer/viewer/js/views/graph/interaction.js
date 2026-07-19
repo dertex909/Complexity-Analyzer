@@ -16,7 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {selectItem} from "../../core/state.js";
 import {GRAPH_CONFIG} from "./constants.js";
 import {findNodeAtPosition, transformCoords} from "./utils.js";
 
@@ -94,7 +93,18 @@ export class InteractionHandler {
         this.onViewUpdate();
 
         const moveDist = Math.hypot(e.clientX - this.startMouse.x, e.clientY - this.startMouse.y);
-        if (moveDist < GRAPH_CONFIG.CLICK_THRESHOLD && this.viewState.hoveredNode) selectItem(this.viewState.hoveredNode.id);
+        if (moveDist < GRAPH_CONFIG.CLICK_THRESHOLD) {
+            if (this.viewState.hoveredNode) {
+                if (this.viewState.selectedNode === this.viewState.hoveredNode) {
+                    this.viewState.selectedNode = null;
+                } else {
+                    this.viewState.selectedNode = this.viewState.hoveredNode;
+                }
+            } else {
+                this.viewState.selectedNode = null;
+            }
+            this.onViewUpdate();
+        }
     }
 
     _onWheel(e) {

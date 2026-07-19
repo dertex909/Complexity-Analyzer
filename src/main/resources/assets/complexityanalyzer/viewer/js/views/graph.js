@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {state} from "../core/state.js";
+import {selectItem, state} from "../core/state.js";
 import {LAYOUT_VERSION} from "./graph/constants.js";
 import {GraphCache} from "./graph/cache.js";
 import {applyInitialLayout, buildGraphData} from "./graph/data-builder.js";
 import {GraphRenderer} from "./graph/renderer.js";
 import {InteractionHandler} from "./graph/interaction.js";
 import {calculateFitView} from "./graph/utils.js";
-import {createInfoPanel, removeLoader, showLoader} from "./graph/ui.js";
+import {createInfoPanel, removeLoader, showLoader, updateSidePanel} from "./graph/ui.js";
 
 let activeRenderer = null;
 let activeResizeListener = null;
@@ -50,7 +50,11 @@ export async function renderGraph(container) {
     let activeNodes, resolvedEdges, neighborMap;
 
     const cached = graphCache.get(cacheKey);
-    if (!cached) {
+    if (cached) {
+        activeNodes = cached.nodes;
+        resolvedEdges = cached.edges;
+        neighborMap = cached.neighborMap;
+    } else {
         const graphData = buildGraphData(db);
         activeNodes = graphData.nodes;
         resolvedEdges = graphData.edges;
@@ -61,11 +65,26 @@ export async function renderGraph(container) {
         graphCache.set(cacheKey, activeNodes, resolvedEdges, neighborMap);
     }
 
-    const viewState = {zoom: 1.0, pan: {x: 0, y: 0}, hoveredNode: null};
+    const viewState = {zoom: 1.0, pan: {x: 0, y: 0}, hoveredNode: null, selectedNode: null};
+    const overlay = container.querySelector("#graph-overlay");
 
     const renderer = new GraphRenderer(mCanvas);
 
+    let currentSelectedNode = null;
+    const updatePanelIfChanged = () => {
+        if (currentSelectedNode !== viewState.selectedNode) {
+            currentSelectedNode = viewState.selectedNode;
+            const onOpenDetails = currentSelectedNode ? () => selectItem(currentSelectedNode.id) : null;
+            updateSidePanel(overlay, currentSelectedNode, () => {
+                viewState.selectedNode = null;
+                updatePanelIfChanged();
+                draw();
+            }, onOpenDetails);
+        }
+    };
+
     const draw = () => {
+        updatePanelIfChanged();
         renderer.render(activeNodes, resolvedEdges, neighborMap, viewState);
     };
 
@@ -88,7 +107,6 @@ export async function renderGraph(container) {
     window.addEventListener("resize", onResize);
     activeResizeListener = onResize;
 
-    const overlay = container.querySelector("#graph-overlay");
     createInfoPanel(overlay, activeNodes.length, resolvedEdges.length, recenterGraph);
 }
 

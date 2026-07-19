@@ -34,9 +34,12 @@ export function buildGraphData(db) {
         const node = {
             id: i,
             name: item.name,
+            itemId: item.id,
             category: item.categoryName || "Unknown",
             complexity: item.complexity,
             depth: item.depth,
+            totalIngredients: item.totalIngredients,
+            usageCount: item.usageCount,
             flags: item.flags,
             degree: 0,
             radius: 6
@@ -47,24 +50,24 @@ export function buildGraphData(db) {
         neighborMap.set(i, new Set());
     }
 
-    const addEdge = (idA, idB) => {
-        if (idA < 0 || idA >= itemsCount || idB < 0 || idB >= itemsCount) return;
+    const addEdge = (ingId, outId) => {
+        if (ingId < 0 || ingId >= itemsCount || outId < 0 || outId >= itemsCount) return;
 
-        const minVal = Math.min(idA, idB);
-        const maxVal = Math.max(idA, idB);
+        const minVal = Math.min(ingId, outId);
+        const maxVal = Math.max(ingId, outId);
         const edgeKey = `${minVal}-${maxVal}`;
 
         if (!edgeKeySet.has(edgeKey)) {
             edgeKeySet.add(edgeKey);
-            edges.push({source: minVal, target: maxVal});
+            edges.push({source: ingId, target: outId});
 
-            const nA = nodeMap.get(minVal);
-            const nB = nodeMap.get(maxVal);
+            const nA = nodeMap.get(ingId);
+            const nB = nodeMap.get(outId);
             if (nA) nA.degree++;
             if (nB) nB.degree++;
 
-            neighborMap.get(minVal).add(maxVal);
-            neighborMap.get(maxVal).add(minVal);
+            neighborMap.get(ingId).add(outId);
+            neighborMap.get(outId).add(ingId);
         }
     };
 

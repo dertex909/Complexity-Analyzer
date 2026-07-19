@@ -84,14 +84,14 @@ export function calculateFitView(nodes, canvasWidth, canvasHeight) {
     return {zoom, pan};
 }
 
-export function findNodeAtPosition(nodes, graphX, graphY, zoom, maxRadius = null) {
+export function findNodeAtPosition(nodes, graphX, graphY, zoom) {
     let found = null;
     let bestDist = Infinity;
-    const fuzzyPadding = maxRadius !== null ? maxRadius : (GRAPH_CONFIG.HOVER_RADIUS / zoom);
 
     for (const n of nodes) {
         const dst = Math.hypot(n.x - graphX, n.y - graphY);
-        const hitLimit = Math.max(n.radius, fuzzyPadding);
+        const fuzzWorldUnits = Math.max(0, 2 / zoom);
+        const hitLimit = n.radius + fuzzWorldUnits;
 
         if (dst <= hitLimit && dst < bestDist) {
             found = n;

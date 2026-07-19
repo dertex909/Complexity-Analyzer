@@ -331,7 +331,7 @@ export class GraphRenderer {
         const maxGraphX = (w - pan.x) / zoom;
         const minGraphY = -pan.y / zoom;
         const maxGraphY = (h - pan.y) / zoom;
-        const pad = GRAPH_CONFIG.EDGE_PAD;
+        const pad = 100;
 
         const bounds = {
             minX: minGraphX - pad,
@@ -340,61 +340,71 @@ export class GraphRenderer {
             maxY: maxGraphY + pad
         };
 
-        for (const node of nodes) {
-            const rLimit = node.radius + GRAPH_CONFIG.LABEL_RENDER_BUFFER;
+        const fontSize = Math.max(2, 12 / zoom);
+        this.ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "top";
+        this.ctx.lineJoin = "round";
+        
+        const drawnBoxes = [];
+        const offset = Math.max(1, 5 / zoom);
+        const padX = 3 / zoom;
+        const padY = 2 / zoom;
 
-            if (node.x < bounds.minX - rLimit || node.x > bounds.maxX + rLimit ||
-                node.y < bounds.minY - rLimit || node.y > bounds.maxY + rLimit) continue;
+        const drawLabel = (node, opacity) => {
+            const textWidth = this.ctx.measureText(node.name).width;
+            const labelY = node.y + node.radius + offset;
+            
+            const box = {
+                minX: node.x - textWidth / 2 - padX,
+                maxX: node.x + textWidth / 2 + padX,
+                minY: labelY - padY,
+                maxY: labelY + fontSize + padY
+            };
+            
+            let collides = false;
+            for (let i = 0; i < drawnBoxes.length; i++) {
+                const b = drawnBoxes[i];
+                if (box.minX < b.maxX && box.maxX > b.minX &&
+                    box.minY < b.maxY && box.maxY > b.minY) {
+                    collides = true;
+                    break;
+                }
+            }
 
-            const labelState = this._shouldDrawLabel(node, hoveredNode, neighborMap, zoom);
-            if (labelState.shouldDraw) this._drawNodeLabel(node, labelState.opacity, zoom);
+            if (!collides) {
+                drawnBoxes.push(box);
+                
+                this.ctx.fillStyle = `rgba(${GRAPH_CONFIG.LABEL_COLOR || '255, 255, 255'}, ${opacity})`;
+                this.ctx.strokeStyle = `rgba(${GRAPH_CONFIG.LABEL_STROKE_COLOR || '0, 0, 0'}, ${opacity * 0.95})`;
+                this.ctx.lineWidth = Math.max(0.5, 3 / zoom); 
+                
+                this.ctx.strokeText(node.name, node.x, labelY);
+                this.ctx.fillText(node.name, node.x, labelY);
+            }
+        };
+
+        if (hoveredNode) {
+            drawLabel(hoveredNode, GRAPH_CONFIG.HOVER_OPACITY_FULL || 1.0);
+            for (const node of nodes) {
+                if (node !== hoveredNode && isNeighbor(node, hoveredNode, neighborMap)) drawLabel(node, 0.85);
+            }
+        }
+
+        if (zoom >= 2.0) {
+            const opacity = Math.min(1.0, (zoom - 2.0) * 2.0);
+            for (const node of nodes) {
+                if (hoveredNode && (node === hoveredNode || isNeighbor(node, hoveredNode, neighborMap))) continue;
+                
+                const rLimit = node.radius + 50;
+                if (node.x < bounds.minX - rLimit || node.x > bounds.maxX + rLimit ||
+                    node.y < bounds.minY - rLimit || node.y > bounds.maxY + rLimit) continue;
+                    
+                drawLabel(node, opacity);
+            }
         }
 
         this.ctx.restore();
-    }
-
-    _shouldDrawLabel(node, hoveredNode, neighborMap, zoom) {
-        let shouldDraw = false;
-        let opacity = 1.0;
-
-        if (hoveredNode) {
-            if (node === hoveredNode) {
-                shouldDraw = true;
-                opacity = GRAPH_CONFIG.HOVER_OPACITY_FULL;
-            } else if (isNeighbor(node, hoveredNode, neighborMap)) {
-                shouldDraw = true;
-                opacity = 0.85;
-            }
-        } else {
-            if (zoom >= GRAPH_CONFIG.LABEL_FULL_ZOOM) {
-                shouldDraw = true;
-                opacity = Math.min(1.0, (zoom - GRAPH_CONFIG.LABEL_FADE_START) * GRAPH_CONFIG.LABEL_FADE_FACTOR);
-            } else if (zoom >= GRAPH_CONFIG.LABEL_HUB_ZOOM && node.degree >= GRAPH_CONFIG.LABEL_HUB_MIN_DEGREE) {
-                shouldDraw = true;
-                opacity = Math.min(
-                    GRAPH_CONFIG.LABEL_MAX_OPACITY,
-                    (zoom - GRAPH_CONFIG.LABEL_HUB_FADE_START) * GRAPH_CONFIG.LABEL_HUB_FADE_FACTOR
-                );
-            }
-        }
-
-        return {shouldDraw, opacity};
-    }
-
-    _drawNodeLabel(node, opacity, zoom) {
-        this.ctx.fillStyle = `rgba(${GRAPH_CONFIG.LABEL_COLOR}, ${opacity})`;
-        this.ctx.font = "bold 9px system-ui, -apple-system, sans-serif";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "top";
-
-        this.ctx.strokeStyle = `rgba(${GRAPH_CONFIG.LABEL_STROKE_COLOR}, ${opacity * 0.95})`;
-        this.ctx.lineWidth = GRAPH_CONFIG.LABEL_STROKE_WIDTH / zoom;
-        this.ctx.lineJoin = "round";
-
-        const labelY = node.y + node.radius + GRAPH_CONFIG.LABEL_OFFSET;
-
-        this.ctx.strokeText(node.name, node.x, labelY);
-        this.ctx.fillText(node.name, node.x, labelY);
     }
 
     destroy() {

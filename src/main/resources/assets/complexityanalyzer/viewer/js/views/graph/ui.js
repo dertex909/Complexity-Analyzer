@@ -63,6 +63,8 @@ export function removeLoader(container) {
     if (loader) loader.remove();
 }
 
+let isPanelMinimized = false;
+
 export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
     if (!overlay) return;
 
@@ -74,7 +76,7 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
             position: absolute;
             top: 12px;
             right: 12px;
-            bottom: 12px;
+            max-height: calc(100vh - 24px);
             width: 260px;
             background: rgba(11, 13, 16, 0.92);
             border: 1px solid rgba(255,255,255,0.08);
@@ -130,22 +132,51 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
                     color: var(--text);
                     line-height: 1.3;
                 }
+                @media (max-width: 768px) {
+                    #graph-side-panel {
+                        top: auto !important;
+                        bottom: 12px !important;
+                        left: 12px !important;
+                        right: 12px !important;
+                        width: auto !important;
+                        max-height: 50vh !important;
+                        transform: translateY(120%) !important;
+                    }
+                    #graph-side-panel[data-active="true"] {
+                        transform: translateY(0) !important;
+                    }
+                    #graph-side-panel .gsp-row {
+                        padding: 8px 12px;
+                    }
+                }
             </style>
 
             <div style="padding: 14px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.07);">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom: 6px;">
                     <div style="font-size:13px; font-weight:700; color:var(--text); line-height:1.3; word-break:break-word;">${node.name}</div>
-                    <button id="gsp-close" style="
-                        flex-shrink:0; background:rgba(255,255,255,0.05);
-                        border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4);
-                        cursor:pointer; width:24px; height:24px; border-radius:6px;
-                        font-size:12px; display:flex; align-items:center; justify-content:center;
-                        transition: all 0.15s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
-                       onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.4)'">✕</button>
+                    <div style="display:flex; gap: 6px; flex-shrink:0;">
+                        <button id="gsp-minimize" style="
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4);
+                            cursor:pointer; width:24px; height:24px; border-radius:6px;
+                            font-size:12px; display:flex; align-items:center; justify-content:center;
+                            transition: all 0.15s;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
+                           onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.4)'">${isPanelMinimized ? '＋' : '−'}</button>
+                        <button id="gsp-close" style="
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4);
+                            cursor:pointer; width:24px; height:24px; border-radius:6px;
+                            font-size:12px; display:flex; align-items:center; justify-content:center;
+                            transition: all 0.15s;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
+                           onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.4)'">✕</button>
+                    </div>
                 </div>
                 ${node.itemId ? `<div style="font-size:10px; color:var(--accent); opacity:0.6; font-family:monospace; word-break:break-all;">${node.itemId}</div>` : ''}
             </div>
+
+            <div id="gsp-content-area" style="display: ${isPanelMinimized ? 'none' : 'flex'}; flex-direction: column; overflow: hidden; flex: 1;">
 
             <div style="flex:1; overflow-y:auto; padding: 6px 0;">
                 <div class="gsp-row">
@@ -193,21 +224,37 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
                     ⤢ Open Full Details
                 </button>
             </div>
+            </div>
         `;
 
         const closeBtn = panel.querySelector("#gsp-close");
         if (closeBtn) closeBtn.addEventListener("click", onClose);
+
+        const minimizeBtn = panel.querySelector("#gsp-minimize");
+        const contentArea = panel.querySelector("#gsp-content-area");
+        if (minimizeBtn) minimizeBtn.addEventListener("click", () => {
+            isPanelMinimized = !isPanelMinimized;
+            if (isPanelMinimized) {
+                contentArea.style.display = 'none';
+                minimizeBtn.textContent = '＋';
+            } else {
+                contentArea.style.display = 'flex';
+                minimizeBtn.textContent = '−';
+            }
+        });
 
         const detailsBtn = panel.querySelector("#gsp-open-details");
         if (detailsBtn && onOpenDetails) detailsBtn.addEventListener("click", onOpenDetails);
 
         void panel.offsetWidth;
         panel.style.opacity = '1';
-        panel.style.transform = 'translateX(0)';
+        panel.style.transform = window.innerWidth <= 768 ? 'translateY(0)' : 'translateX(0)';
+        panel.setAttribute('data-active', 'true');
         panel.style.pointerEvents = 'auto';
     } else {
         panel.style.opacity = '0';
-        panel.style.transform = 'translateX(16px)';
+        panel.style.transform = window.innerWidth <= 768 ? 'translateY(120%)' : 'translateX(16px)';
+        panel.removeAttribute('data-active');
         panel.style.pointerEvents = 'none';
     }
 }

@@ -24,35 +24,11 @@ import {renderFluidDetail} from "../views/details/fluid-detail.js";
 import {renderClassicTree} from "./sub/tree-classic.js";
 import {renderHorizontalTree} from "./sub/tree-horizontal.js";
 import {renderPipelineTree} from "./sub/tree-pipeline.js";
-import {renderNestedTree} from "./sub/tree-nested.js";
-import {renderWebTree} from "./sub/tree-web.js";
-import {renderRadialTree} from "./sub/tree-radial.js";
-import {renderSankeyTree} from "./sub/tree-sankey.js";
-import {renderTreemapTree} from "./sub/tree-treemap.js";
 
 let selectedRoot = null;
 let treeData = null;
 let nodeMap = new Map();
 let selectedFormat = "classic";
-let webPanX = 0;
-let webPanY = 0;
-let webZoom = 1.0;
-
-const webState = {
-    get panX() {
-        return webPanX;
-    }, set panX(v) {
-        webPanX = v;
-    }, get panY() {
-        return webPanY;
-    }, set panY(v) {
-        webPanY = v;
-    }, get zoom() {
-        return webZoom;
-    }, set zoom(v) {
-        webZoom = v;
-    }
-};
 
 function getFormatDescription(format) {
     switch (format) {
@@ -62,16 +38,6 @@ function getFormatDescription(format) {
             return "Horizontal tree layout spreading left-to-right. Ideal for mapping complex ingredient branching visually.";
         case "pipeline":
             return "Assembly conveyor system. Groups operations into chronological stages, from raw inputs up to the target product.";
-        case "nested":
-            return "Ultra-compact box-in-box module nesting. Shows child components physically nested inside their parent modules.";
-        case "web":
-            return "Fully interactive 2D production network. Nodes fan out radially, linked by animated material flow lines.";
-        case "radial":
-            return "Radial Dendrogram. Arranges components circularly around the root, demonstrating elegant symmetric fanout of deep ingredients.";
-        case "sankey":
-            return "Sankey Flow Chart. Represents the relative input quantities flowing through processors to visualize mass balance.";
-        case "treemap":
-            return "Compact Treemap. Visualizes recipe density and nesting. The relative surface area corresponds to total ingredient complexity.";
         default:
             return "Select a layout above to visualize the production chain.";
     }
@@ -168,26 +134,6 @@ export async function renderCraftTreeView(container) {
                                 
                                 <button class="format-select-btn btn ${selectedFormat === "pipeline" ? "active" : ""}" data-format="pipeline" style="text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; width: 100%;">
                                     <span style="font-size: 14px;">⚙️</span> Vertical Conveyor
-                                </button>
-                                
-                                <button class="format-select-btn btn ${selectedFormat === "nested" ? "active" : ""}" data-format="nested" style="text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; width: 100%;">
-                                    <span style="font-size: 14px;">🗂️</span> Compact Nested
-                                </button>
-                                
-                                <button class="format-select-btn btn ${selectedFormat === "web" ? "active" : ""}" data-format="web" style="text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; width: 100%;">
-                                    <span style="font-size: 14px;">🕸️</span> Production Web
-                                </button>
-
-                                <button class="format-select-btn btn ${selectedFormat === "radial" ? "active" : ""}" data-format="radial" style="text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; width: 100%;">
-                                    <span style="font-size: 14px;">🔆</span> Radial Dendrogram
-                                </button>
-
-                                <button class="format-select-btn btn ${selectedFormat === "sankey" ? "active" : ""}" data-format="sankey" style="text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; width: 100%;">
-                                    <span style="font-size: 14px;">📊</span> Sankey Flow
-                                </button>
-
-                                <button class="format-select-btn btn ${selectedFormat === "treemap" ? "active" : ""}" data-format="treemap" style="text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; width: 100%;">
-                                    <span style="font-size: 14px;">🍱</span> Treemap Enclosure
                                 </button>
                             </div>
                             
@@ -522,18 +468,6 @@ export async function renderCraftTreeView(container) {
             renderHorizontalTree(craftContainer, treeData);
         } else if (selectedFormat === "pipeline") {
             renderPipelineTree(craftContainer, treeData);
-        } else if (selectedFormat === "nested") {
-            renderNestedTree(craftContainer, treeData);
-        } else if (selectedFormat === "web") {
-            renderWebTree(craftContainer, treeData, webState, () => {
-            });
-        } else if (selectedFormat === "radial") {
-            renderRadialTree(craftContainer, treeData, webState, () => {
-            });
-        } else if (selectedFormat === "sankey") {
-            renderSankeyTree(craftContainer, treeData);
-        } else if (selectedFormat === "treemap") {
-            renderTreemapTree(craftContainer, treeData);
         }
 
         bindNodeEvents(craftContainer);

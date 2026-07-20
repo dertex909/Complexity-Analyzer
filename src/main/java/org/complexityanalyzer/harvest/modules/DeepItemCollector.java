@@ -29,11 +29,8 @@ import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.harvest.RecipeReflection;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import static net.minecraft.world.item.Items.AIR;
 
@@ -99,41 +96,11 @@ public final class DeepItemCollector {
         if (HarvestUtility.isTerminal(obj)) return;
         if (!visited.add(obj)) return;
         var meta = RecipeReflection.getMeta(obj.getClass());
-
-        if (depth <= 5) for (int i = 0; i < meta.allMethods.length; i++) {
-            var m = meta.allMethods[i];
-            var h = meta.allHandles[i];
-            try {
-                var rt = m.getReturnType();
-                String rtName = rt.getName();
-
-                if (ItemStack.class.isAssignableFrom(rt) || rt.isArray() || Iterable.class.isAssignableFrom(rt)
-                        || Stream.class.isAssignableFrom(rt) || rtName.contains("Item") || rtName.contains("Stack")) {
-
-                    String mName = m.getName();
-                    if (mName.equals("toString") || mName.equals("hashCode") || mName.equals("getClass")
-                            || mName.equals("getItem")) continue;
-
-                    var val = invokeSafe(m, h, obj);
-                    if (val != null && val != obj) if (val instanceof Stream<?> stream) {
-                        stream.limit(100).forEach(element -> collect(element, acc, depth + 1, visited));
-                    } else {
-                        collect(val, acc, depth + 1, visited);
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-
         for (var f : meta.scanFields) {
             try {
                 collect(f.get(obj), acc, depth + 1, visited);
             } catch (Throwable ignored) {
             }
         }
-    }
-
-    private static Object invokeSafe(Method m, MethodHandle h, Object obj) throws Throwable {
-        return h != null ? h.invoke(obj) : m.invoke(obj);
     }
 }

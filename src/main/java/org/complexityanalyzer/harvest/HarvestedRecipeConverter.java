@@ -214,12 +214,22 @@ public final class HarvestedRecipeConverter {
                 boolean alreadyAdded = false;
                 for (var existing : deduplicatedOutputs) {
                     if (ItemStackIdentity.sameItemData(existing, stack, registryAccess)) {
-                        existing.setCount(existing.getCount() + stack.getCount());
-                        alreadyAdded = true;
-                        break;
+                        if (existing.getCount() + stack.getCount() <= 64) {
+                            existing.setCount(existing.getCount() + stack.getCount());
+                            alreadyAdded = true;
+                            break;
+                        }
                     }
                 }
-                if (!alreadyAdded) deduplicatedOutputs.add(stack.copy());
+
+                if (!alreadyAdded) {
+                    int remaining = stack.getCount();
+                    while (remaining > 0) {
+                        int chunk = Math.min(64, remaining);
+                        remaining -= chunk;
+                        deduplicatedOutputs.add(stack.copyWithCount(chunk));
+                    }
+                }
             }
             builder.itemOutputs(deduplicatedOutputs);
         }

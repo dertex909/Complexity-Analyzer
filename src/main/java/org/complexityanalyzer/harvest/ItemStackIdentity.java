@@ -20,7 +20,6 @@ package org.complexityanalyzer.harvest;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.attachment.AttachmentHolder;
 
@@ -105,7 +104,8 @@ public final class ItemStackIdentity {
         var attachments = serializedAttachments(stack, provider);
         if (attachments != null && !attachments.isEmpty()) key.append(";attachments=").append(attachments);
         if (provider != null) try {
-            Tag saved = stack.saveOptional(provider);
+            var serializableStack = stack.getCount() > 99 ? stack.copyWithCount(1) : stack;
+            var saved = serializableStack.saveOptional(provider);
             key.append(";saved=").append(saved);
         } catch (Throwable ignored) {
         }

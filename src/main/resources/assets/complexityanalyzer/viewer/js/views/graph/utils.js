@@ -87,12 +87,19 @@ export function calculateFitView(nodes, canvasWidth, canvasHeight) {
 export function findNodeAtPosition(nodes, graphX, graphY, zoom) {
     let found = null;
     let bestDist = Infinity;
+    const fuzzWorldUnits = Math.max(0, 2 / zoom);
 
-    for (const n of nodes) {
-        const dst = Math.hypot(n.x - graphX, n.y - graphY);
-        const fuzzWorldUnits = Math.max(0, 2 / zoom);
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
         const hitLimit = n.radius + fuzzWorldUnits;
 
+        const dX = n.x - graphX;
+        if (dX > hitLimit || dX < -hitLimit) continue;
+
+        const dY = n.y - graphY;
+        if (dY > hitLimit || dY < -hitLimit) continue;
+
+        const dst = Math.hypot(dX, dY);
         if (dst <= hitLimit && dst < bestDist) {
             found = n;
             bestDist = dst;

@@ -95,6 +95,7 @@ uniform vec2 u_pan;
 uniform float u_zoom;
 uniform float u_time;
 uniform float u_activeNodeId;
+uniform float u_hideAllEdges;
 
 varying vec3 v_color;
 varying float v_opacity;
@@ -102,6 +103,11 @@ varying float v_t;
 varying float v_isAnimated;
 
 void main() {
+    if (u_hideAllEdges > 0.5) {
+        gl_Position = vec4(99.0, 99.0, 99.0, 1.0);
+        return;
+    }
+
     vec2 pos = (a_position * u_zoom) + u_pan;
     vec2 clipSpace = (pos / u_resolution) * 2.0 - 1.0;
     gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
@@ -114,8 +120,9 @@ void main() {
             v_opacity = 0.95;
             v_isAnimated = 1.0;
         } else {
+            gl_Position = vec4(99.0, 99.0, 99.0, 1.0);
             v_color = a_color;
-            v_opacity = 0.02;
+            v_opacity = 0.0;
             v_isAnimated = 0.0;
         }
     } else {
@@ -171,6 +178,7 @@ export class GraphRenderer {
         }
 
         this.lastHovered = undefined;
+        this.nodeData = null;
     }
 
     compileShader(type, source) {
@@ -231,7 +239,8 @@ export class GraphRenderer {
             pan: gl.getUniformLocation(this.edgeProgram, "u_pan"),
             zoom: gl.getUniformLocation(this.edgeProgram, "u_zoom"),
             time: gl.getUniformLocation(this.edgeProgram, "u_time"),
-            activeNodeId: gl.getUniformLocation(this.edgeProgram, "u_activeNodeId")
+            activeNodeId: gl.getUniformLocation(this.edgeProgram, "u_activeNodeId"),
+            hideAllEdges: gl.getUniformLocation(this.edgeProgram, "u_hideAllEdges")
         };
     }
 
@@ -276,21 +285,27 @@ export class GraphRenderer {
 
     updateNodeBuffer(nodes, neighborMap, activeFocus) {
         const gl = this.gl;
-        const nodeData = new Float32Array(nodes.length * 7);
+
+        if (!this.nodeData) this.nodeData = new Float32Array(nodes.length * 7);
+
+        const nodeData = this.nodeData;
         let i = 0;
 
-        for (const node of nodes) {
+        const activeNeighbors = activeFocus ? neighborMap.get(activeFocus.id) : null;
+
+        for (let j = 0; j < nodes.length; j++) {
+            const node = nodes[j];
             let opacity = GRAPH_CONFIG.HOVER_OPACITY_FULL;
 
-            if (activeFocus) if (node === activeFocus) {
+            if (activeFocus) if (node.id === activeFocus.id) {
                 opacity = GRAPH_CONFIG.HOVER_OPACITY_FULL;
-            } else if (isNeighbor(node, activeFocus, neighborMap)) {
+            } else if (activeNeighbors && activeNeighbors.has(node.id)) {
                 opacity = GRAPH_CONFIG.HOVER_OPACITY_NEIGHBOR;
             } else {
                 opacity = GRAPH_CONFIG.HOVER_OPACITY_OTHER;
             }
 
-            const color = hexToRgb(getCategoryColor(node.category));
+            const color = node.rgb || [0.5, 0.5, 0.5];
 
             nodeData[i++] = node.x;
             nodeData[i++] = node.y;
@@ -326,6 +341,10 @@ export class GraphRenderer {
         }
 
         if (this.edgeCount === undefined) {
+            for (let j = 0; j < nodes.length; j++) {
+                const node = nodes[j];
+                node.rgb = hexToRgb(getCategoryColor(node.category));
+            }
             this.initEdgeBuffer(edges);
             this.updateNodeBuffer(nodes, neighborMap, activeFocus);
         }
@@ -339,47 +358,38 @@ export class GraphRenderer {
         gl.clearColor(0.04, 0.05, 0.06, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        gl.useProgram(this.edgeProgram);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.edgeBuffer);
+        if (activeFocus) {
+            gl.useProgram(this.edgeProgram);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.edgeBuffer);
 
-        gl.enableVertexAttribArray(this.edgeLoc.pos);
-        gl.vertexAttribPointer(this.edgeLoc.pos, 2, gl.FLOAT, false, 40, 0);
-        gl.enableVertexAttribArray(this.edgeLoc.col);
-        gl.vertexAttribPointer(this.edgeLoc.col, 3, gl.FLOAT, false, 40, 8);
-        gl.enableVertexAttribArray(this.edgeLoc.opac);
-        gl.vertexAttribPointer(this.edgeLoc.opac, 1, gl.FLOAT, false, 40, 20);
-        gl.enableVertexAttribArray(this.edgeLoc.t);
-        gl.vertexAttribPointer(this.edgeLoc.t, 1, gl.FLOAT, false, 40, 24);
-        gl.enableVertexAttribArray(this.edgeLoc.anim);
-        gl.vertexAttribPointer(this.edgeLoc.anim, 1, gl.FLOAT, false, 40, 28);
-        gl.enableVertexAttribArray(this.edgeLoc.sourceId);
-        gl.vertexAttribPointer(this.edgeLoc.sourceId, 1, gl.FLOAT, false, 40, 32);
-        gl.enableVertexAttribArray(this.edgeLoc.targetId);
-        gl.vertexAttribPointer(this.edgeLoc.targetId, 1, gl.FLOAT, false, 40, 36);
+            gl.enableVertexAttribArray(this.edgeLoc.pos);
+            gl.vertexAttribPointer(this.edgeLoc.pos, 2, gl.FLOAT, false, 40, 0);
+            gl.enableVertexAttribArray(this.edgeLoc.col);
+            gl.vertexAttribPointer(this.edgeLoc.col, 3, gl.FLOAT, false, 40, 8);
+            gl.enableVertexAttribArray(this.edgeLoc.opac);
+            gl.vertexAttribPointer(this.edgeLoc.opac, 1, gl.FLOAT, false, 40, 20);
+            gl.enableVertexAttribArray(this.edgeLoc.t);
+            gl.vertexAttribPointer(this.edgeLoc.t, 1, gl.FLOAT, false, 40, 24);
+            gl.enableVertexAttribArray(this.edgeLoc.anim);
+            gl.vertexAttribPointer(this.edgeLoc.anim, 1, gl.FLOAT, false, 40, 28);
+            gl.enableVertexAttribArray(this.edgeLoc.sourceId);
+            gl.vertexAttribPointer(this.edgeLoc.sourceId, 1, gl.FLOAT, false, 40, 32);
+            gl.enableVertexAttribArray(this.edgeLoc.targetId);
+            gl.vertexAttribPointer(this.edgeLoc.targetId, 1, gl.FLOAT, false, 40, 36);
 
-        const now = performance.now() / 1000;
-        gl.uniform2f(this.edgeLoc.res, w, h);
-        gl.uniform2f(this.edgeLoc.pan, pan.x, pan.y);
-        gl.uniform1f(this.edgeLoc.zoom, zoom);
-        gl.uniform1f(this.edgeLoc.time, now);
+            const now = performance.now() / 1000;
+            gl.uniform2f(this.edgeLoc.res, w, h);
+            gl.uniform2f(this.edgeLoc.pan, pan.x, pan.y);
+            gl.uniform1f(this.edgeLoc.zoom, zoom);
+            gl.uniform1f(this.edgeLoc.time, now);
 
-        const activeNodeId = activeFocus ? activeFocus.id : -1.0;
-        gl.uniform1f(this.edgeLoc.activeNodeId, activeNodeId);
+            const activeNodeId = activeFocus ? activeFocus.id : -1.0;
+            gl.uniform1f(this.edgeLoc.activeNodeId, activeNodeId);
 
-        gl.drawArrays(gl.LINES, 0, this.edgeCount);
+            const hideAllEdges = viewState.isPanning ? 1.0 : 0.0;
+            gl.uniform1f(this.edgeLoc.hideAllEdges, hideAllEdges);
 
-        if (activeFocus && !this._rafPending) {
-            this._rafPending = true;
-            this._rafNodes = nodes;
-            this._rafEdges = edges;
-            this._rafNeighborMap = neighborMap;
-            this._rafViewState = viewState;
-            requestAnimationFrame(() => {
-                this._rafPending = false;
-                if (this._rafViewState && (this._rafViewState.hoveredNode || this._rafViewState.selectedNode)) {
-                    this.render(this._rafNodes, this._rafEdges, this._rafNeighborMap, this._rafViewState);
-                }
-            });
+            gl.drawArrays(gl.LINES, 0, this.edgeCount);
         }
 
         gl.useProgram(this.nodeProgram);
@@ -401,6 +411,20 @@ export class GraphRenderer {
         gl.drawArrays(gl.POINTS, 0, this.nodeCount);
 
         this._drawLabels(nodes, neighborMap, viewState, w, h, dpr);
+
+        if (activeFocus && !this._rafPending) {
+            this._rafPending = true;
+            this._rafNodes = nodes;
+            this._rafEdges = edges;
+            this._rafNeighborMap = neighborMap;
+            this._rafViewState = viewState;
+            requestAnimationFrame(() => {
+                this._rafPending = false;
+                if (this._rafViewState && (this._rafViewState.hoveredNode || this._rafViewState.selectedNode)) {
+                    this.render(this._rafNodes, this._rafEdges, this._rafNeighborMap, this._rafViewState);
+                }
+            });
+        }
     }
 
     _drawLabels(nodes, neighborMap, viewState, w, h, dpr) {
@@ -487,38 +511,8 @@ export class GraphRenderer {
                 if (node.x < bounds.minX - rLimit || node.x > bounds.maxX + rLimit ||
                     node.y < bounds.minY - rLimit || node.y > bounds.maxY + rLimit) continue;
 
-                const textWidth = this.ctx.measureText(node.name).width;
-                const labelY = node.y + node.radius + offset;
-
-                const box = {
-                    minX: node.x - textWidth / 2 - padX,
-                    maxX: node.x + textWidth / 2 + padX,
-                    minY: labelY - padY,
-                    maxY: labelY + fontSize + padY
-                };
-
-                let collides = false;
-                for (let i = 0; i < drawnBoxes.length; i++) {
-                    const b = drawnBoxes[i];
-                    if (box.minX < b.maxX && box.maxX > b.minX &&
-                        box.minY < b.maxY && box.maxY > b.minY) {
-                        collides = true;
-                        break;
-                    }
-                }
-
-                if (!collides) {
-                    drawnBoxes.push(box);
-
-                    this.ctx.fillStyle = `rgba(${GRAPH_CONFIG.LABEL_COLOR || '255, 255, 255'}, ${opacity})`;
-                    this.ctx.strokeStyle = `rgba(${GRAPH_CONFIG.LABEL_STROKE_COLOR || '0, 0, 0'}, ${opacity * 0.95})`;
-                    this.ctx.lineWidth = Math.max(0.5, 3 / zoom);
-
-                    this.ctx.strokeText(node.name, node.x, labelY);
-                    this.ctx.fillText(node.name, node.x, labelY);
-
-                    labelsDrawn++;
-                }
+                drawLabel(node, opacity);
+                labelsDrawn++;
             }
         }
 

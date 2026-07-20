@@ -87,9 +87,15 @@ export async function renderGraph(container) {
         }
     };
 
+    let renderPending = false;
     const draw = () => {
-        updatePanelIfChanged();
-        renderer.render(activeNodes, resolvedEdges, neighborMap, viewState);
+        if (renderPending) return;
+        renderPending = true;
+        requestAnimationFrame(() => {
+            renderPending = false;
+            updatePanelIfChanged();
+            renderer.render(activeNodes, resolvedEdges, neighborMap, viewState);
+        });
     };
 
     const recenterGraph = () => {

@@ -148,12 +148,12 @@ export function applyInitialLayoutAsync(nodes, edges, onProgress) {
             nodes.forEach(n => nodeMap.set(n.id, n));
 
             const ITERS = 120;
-            const COLL_LIMIT = 50;
+            const COLL_LIMIT = 100;
             const TOTAL_STEPS = ITERS + COLL_LIMIT;
 
-            const SPRING_K = 0.08;
-            const REPULSION_K = 250.0;
-            const CELL_SIZE = 120;
+            const SPRING_K = 0.02;
+            const REPULSION_K = 600.0;
+            const CELL_SIZE = 160; 
             const DAMPING = 0.7;
 
             const getGridKey = (x, y) => {
@@ -214,23 +214,35 @@ export function applyInitialLayoutAsync(nodes, edges, onProgress) {
                                     const n2 = cell[j];
                                     if (n1.id >= n2.id) continue;
 
-                                    const dX = n2.x - n1.x;
-                                    const dY = n2.y - n1.y;
-                                    const minGap = n1.radius + n2.radius + 3.0;
+                                    let dX = n2.x - n1.x;
+                                    let dY = n2.y - n1.y;
+                                    let distSq = dX * dX + dY * dY;
+
+                                    if (distSq < 0.01) {
+                                        const randAngle = Math.random() * Math.PI * 2;
+                                        dX = Math.cos(randAngle);
+                                        dY = Math.sin(randAngle);
+                                        distSq = 1.0;
+                                    }
+
+                                    const minGap = n1.radius + n2.radius + 8.0;
 
                                     if (Math.abs(dX) > CELL_SIZE || Math.abs(dY) > CELL_SIZE) continue;
 
-                                    const distSq = dX * dX + dY * dY;
                                     if (distSq < minGap * minGap) {
-                                        const dist = Math.sqrt(distSq) || 0.1;
+                                        const dist = Math.sqrt(distSq);
                                         const overlap = minGap - dist;
-                                        const force = Math.min((overlap / dist) * 0.5, 10.0);
-                                        n1.vx -= dX * force;
-                                        n1.vy -= dY * force;
-                                        n2.vx += dX * force;
-                                        n2.vy += dY * force;
+
+                                        const pushX = (dX / dist) * overlap * 0.5;
+                                        const pushY = (dY / dist) * overlap * 0.5;
+
+                                        n1.vx -= pushX;
+                                        n1.vy -= pushY;
+                                        n2.vx += pushX;
+                                        n2.vy += pushY;
                                     } else if (distSq < CELL_SIZE * CELL_SIZE) {
-                                        const repForce = Math.min(REPULSION_K / distSq, 8.0);
+                                        const safeDistSq = Math.max(distSq, 4.0);
+                                        const repForce = REPULSION_K / safeDistSq;
                                         n1.vx -= dX * repForce;
                                         n1.vy -= dY * repForce;
                                         n2.vx += dX * repForce;
@@ -249,9 +261,9 @@ export function applyInitialLayoutAsync(nodes, edges, onProgress) {
                     const n = nodes[i];
                     
                     const speed = Math.hypot(n.vx, n.vy);
-                    if (speed > 80.0) {
-                        n.vx = (n.vx / speed) * 80.0;
-                        n.vy = (n.vy / speed) * 80.0;
+                    if (speed > 100.0) {
+                        n.vx = (n.vx / speed) * 100.0;
+                        n.vy = (n.vy / speed) * 100.0;
                     }
 
                     n.x += n.vx;
@@ -303,22 +315,33 @@ export function applyInitialLayoutAsync(nodes, edges, onProgress) {
                                     const n2 = cell[j];
                                     if (n1.id >= n2.id) continue;
 
-                                    const dX = n2.x - n1.x;
-                                    const dY = n2.y - n1.y;
-                                    const minGap = n1.radius + n2.radius + 3.0;
+                                    let dX = n2.x - n1.x;
+                                    let dY = n2.y - n1.y;
+                                    let distSq = dX * dX + dY * dY;
+
+                                    if (distSq < 0.01) {
+                                        const randAngle = Math.random() * Math.PI * 2;
+                                        dX = Math.cos(randAngle);
+                                        dY = Math.sin(randAngle);
+                                        distSq = 1.0;
+                                    }
+
+                                    const minGap = n1.radius + n2.radius + 8.0;
 
                                     if (Math.abs(dX) > minGap || Math.abs(dY) > minGap) continue;
 
-                                    const distSq = dX * dX + dY * dY;
                                     if (distSq < minGap * minGap) {
                                         overlaps++;
-                                        const dist = Math.sqrt(distSq) || 0.1;
+                                        const dist = Math.sqrt(distSq);
                                         const overlap = minGap - dist;
-                                        const force = Math.min((overlap / dist) * 0.55, 15.0);
-                                        n1.x -= dX * force;
-                                        n1.y -= dY * force;
-                                        n2.x += dX * force;
-                                        n2.y += dY * force;
+
+                                        const pushX = (dX / dist) * overlap * 0.5;
+                                        const pushY = (dY / dist) * overlap * 0.5;
+
+                                        n1.x -= pushX;
+                                        n1.y -= pushY;
+                                        n2.x += pushX;
+                                        n2.y += pushY;
                                     }
                                 }
                             }

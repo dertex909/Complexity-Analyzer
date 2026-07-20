@@ -478,14 +478,47 @@ export class GraphRenderer {
 
         if (zoom >= 2.0) {
             const opacity = Math.min(1.0, (zoom - 2.0) * 2.0);
+            let labelsDrawn = 0;
             for (const node of nodes) {
+                if (labelsDrawn > 150) break;
                 if (activeFocus && (node === activeFocus || isNeighbor(node, activeFocus, neighborMap))) continue;
 
                 const rLimit = node.radius + 50;
                 if (node.x < bounds.minX - rLimit || node.x > bounds.maxX + rLimit ||
                     node.y < bounds.minY - rLimit || node.y > bounds.maxY + rLimit) continue;
 
-                drawLabel(node, opacity);
+                const textWidth = this.ctx.measureText(node.name).width;
+                const labelY = node.y + node.radius + offset;
+
+                const box = {
+                    minX: node.x - textWidth / 2 - padX,
+                    maxX: node.x + textWidth / 2 + padX,
+                    minY: labelY - padY,
+                    maxY: labelY + fontSize + padY
+                };
+
+                let collides = false;
+                for (let i = 0; i < drawnBoxes.length; i++) {
+                    const b = drawnBoxes[i];
+                    if (box.minX < b.maxX && box.maxX > b.minX &&
+                        box.minY < b.maxY && box.maxY > b.minY) {
+                        collides = true;
+                        break;
+                    }
+                }
+
+                if (!collides) {
+                    drawnBoxes.push(box);
+
+                    this.ctx.fillStyle = `rgba(${GRAPH_CONFIG.LABEL_COLOR || '255, 255, 255'}, ${opacity})`;
+                    this.ctx.strokeStyle = `rgba(${GRAPH_CONFIG.LABEL_STROKE_COLOR || '0, 0, 0'}, ${opacity * 0.95})`;
+                    this.ctx.lineWidth = Math.max(0.5, 3 / zoom);
+
+                    this.ctx.strokeText(node.name, node.x, labelY);
+                    this.ctx.fillText(node.name, node.x, labelY);
+
+                    labelsDrawn++;
+                }
             }
         }
 

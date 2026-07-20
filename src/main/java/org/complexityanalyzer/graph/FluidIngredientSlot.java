@@ -23,18 +23,32 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 
 public record FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
+
+    private static final Comparator<Fluid> FLUID_COMPARATOR = (f1, f2) -> {
+        var id1 = GameRegistryManager.getFluidId(f1);
+        var id2 = GameRegistryManager.getFluidId(f2);
+        if (id1 == id2) return 0;
+        if (id1 == null) return -1;
+        if (id2 == null) return 1;
+        return id1.compareTo(id2);
+    };
+
     public FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
-        var sorted = new ObjectArrayList<>(fluidVariants);
-        sorted.sort(Comparator.comparing(fluid -> {
-            var id = GameRegistryManager.getFluidId(fluid);
-            return id != null ? id.toString() : "";
-        }));
-        this.fluidVariants = ObjectLists.unmodifiable(sorted);
+        ObjectList<Fluid> finalVariants;
+        if (fluidVariants == null || fluidVariants.isEmpty()) {
+            finalVariants = ObjectLists.emptyList();
+        } else if (fluidVariants.size() == 1) {
+            finalVariants = ObjectLists.singleton(fluidVariants.getFirst());
+        } else {
+            var sorted = new ObjectArrayList<>(fluidVariants);
+            sorted.sort(FLUID_COMPARATOR);
+            finalVariants = ObjectLists.unmodifiable(sorted);
+        }
+        this.fluidVariants = finalVariants;
         this.amount = amount;
     }
 
@@ -44,10 +58,5 @@ public record FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
 
     public int getAmount() {
         return amount;
-    }
-
-    @Nullable
-    public Fluid getPrimaryFluid() {
-        return fluidVariants.isEmpty() ? null : fluidVariants.getFirst();
     }
 }

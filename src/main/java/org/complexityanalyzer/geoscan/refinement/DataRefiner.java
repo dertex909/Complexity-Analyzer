@@ -165,7 +165,7 @@ public class DataRefiner {
     }
 
     public void shutdown() {
-        ComplexityAnalyzer.LOGGER.info("[Refiner] Shutting down, interrupting {} threads", activeThreads.size());
+        ComplexityAnalyzer.LOGGER.debug("[Refiner] Shutting down, interrupting {} threads", activeThreads.size());
         for (var thread : activeThreads.keySet()) thread.interrupt();
         activeThreads.clear();
         refinementExecutor.shutdownNow();

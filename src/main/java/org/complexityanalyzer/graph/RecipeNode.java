@@ -44,6 +44,33 @@ import java.util.Objects;
  * stands in for a virtual/synthetic product.
  */
 public class RecipeNode {
+
+    private static final Comparator<ChemicalIngredient> CHEM_ING_COMPARATOR = Comparator.comparing(ChemicalIngredient::id).thenComparingInt(ChemicalIngredient::amount);
+
+    private static final Comparator<ChemicalOutput> CHEM_OUT_COMPARATOR = Comparator.comparing(ChemicalOutput::id).thenComparingLong(ChemicalOutput::amount);
+
+    private static final Comparator<ItemStack> ITEM_STACK_COMPARATOR = (a, b) -> {
+        var idA = GameRegistryManager.getItemId(a.getItem());
+        var idB = GameRegistryManager.getItemId(b.getItem());
+        if (idA == idB) return Integer.compare(a.getCount(), b.getCount());
+        if (idA == null) return -1;
+        if (idB == null) return 1;
+        int c = idA.compareTo(idB);
+        if (c != 0) return c;
+        return Integer.compare(a.getCount(), b.getCount());
+    };
+
+    private static final Comparator<FluidStack> FLUID_STACK_COMPARATOR = (a, b) -> {
+        var idA = GameRegistryManager.getFluidId(a.getFluid());
+        var idB = GameRegistryManager.getFluidId(b.getFluid());
+        if (idA == idB) return Integer.compare(a.getAmount(), b.getAmount());
+        if (idA == null) return -1;
+        if (idB == null) return 1;
+        int c = idA.compareTo(idB);
+        if (c != 0) return c;
+        return Integer.compare(a.getAmount(), b.getAmount());
+    };
+
     private final ObjectList<IngredientSlot> ingredients;
     private final ObjectList<FluidIngredientSlot> fluidIngredients;
     private final ObjectList<ChemicalIngredient> chemicalIngredients;
@@ -60,31 +87,12 @@ public class RecipeNode {
     private volatile int listIndex = -1;
 
     private RecipeNode(Builder builder) {
-        this.ingredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.ingredients));
-        this.fluidIngredients = ObjectLists.unmodifiable(new ObjectArrayList<>(builder.fluidIngredients));
-
-        var sortedChemInputs = new ObjectArrayList<>(builder.chemicalIngredients);
-        sortedChemInputs.sort(Comparator.comparing(ci -> ci.id().toString() + "x" + ci.amount()));
-        this.chemicalIngredients = ObjectLists.unmodifiable(sortedChemInputs);
-
-        var sortedItemOutputs = new ObjectArrayList<>(builder.itemOutputs);
-        sortedItemOutputs.sort(Comparator.comparing(stack -> {
-            var id = GameRegistryManager.getItemId(stack.getItem());
-            return (id != null ? id.toString() : "") + "x" + stack.getCount();
-        }));
-        this.itemOutputs = ObjectLists.unmodifiable(sortedItemOutputs);
-
-        var sortedFluidOutputs = new ObjectArrayList<>(builder.fluidOutputs);
-        sortedFluidOutputs.sort(Comparator.comparing(stack -> {
-            var id = GameRegistryManager.getFluidId(stack.getFluid());
-            return (id != null ? id.toString() : "") + "x" + stack.getAmount();
-        }));
-        this.fluidOutputs = ObjectLists.unmodifiable(sortedFluidOutputs);
-
-        var sortedChemOutputs = new ObjectArrayList<>(builder.chemicalOutputs);
-        sortedChemOutputs.sort(Comparator.comparing(co -> co.id().toString() + "x" + co.amount()));
-        this.chemicalOutputs = ObjectLists.unmodifiable(sortedChemOutputs);
-
+        this.ingredients = copyToUnmodifiable(builder.ingredients);
+        this.fluidIngredients = copyToUnmodifiable(builder.fluidIngredients);
+        this.chemicalIngredients = sortAndCopy(builder.chemicalIngredients, CHEM_ING_COMPARATOR);
+        this.chemicalOutputs = sortAndCopy(builder.chemicalOutputs, CHEM_OUT_COMPARATOR);
+        this.itemOutputs = sortAndCopy(builder.itemOutputs, ITEM_STACK_COMPARATOR);
+        this.fluidOutputs = sortAndCopy(builder.fluidOutputs, FLUID_STACK_COMPARATOR);
         this.recipeMultiplier = builder.recipeMultiplier;
         this.resultItem = builder.resultItem;
         this.resultCount = builder.resultCount;
@@ -92,6 +100,20 @@ public class RecipeNode {
         this.priority = builder.priority;
         this.isPlaceholder = builder.isPlaceholder;
         this.placeholderId = builder.placeholderId;
+    }
+
+    private static <T> ObjectList<T> copyToUnmodifiable(ObjectList<T> source) {
+        if (source == null || source.isEmpty()) return ObjectLists.emptyList();
+        if (source.size() == 1) return ObjectLists.singleton(source.getFirst());
+        return ObjectLists.unmodifiable(new ObjectArrayList<>(source));
+    }
+
+    private static <T> ObjectList<T> sortAndCopy(ObjectList<T> source, Comparator<T> comparator) {
+        if (source == null || source.isEmpty()) return ObjectLists.emptyList();
+        if (source.size() == 1) return ObjectLists.singleton(source.getFirst());
+        var copy = new ObjectArrayList<>(source);
+        copy.sort(comparator);
+        return ObjectLists.unmodifiable(copy);
     }
 
     /**

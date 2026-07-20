@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -54,10 +36,10 @@ public final class RecipeReflection {
         var ingredientAcc = new ObjectArrayList<Accessor>(4);
         var fluidAcc = new ObjectArrayList<Accessor>(4);
         var probeAcc = new ObjectArrayList<Accessor>(4);
+
         for (int i = 0; i < meta.allMethods.length; i++) {
             var m = meta.allMethods[i];
             var h = meta.allHandles[i];
-            if (h == null) continue;
             if (m.getDeclaringClass() == Recipe.class) continue;
             var kind = StructuralTypeClassifier.classifyDescriptor(descriptorOf(m));
             if (kind != null) {
@@ -73,6 +55,7 @@ public final class RecipeReflection {
                 probeAcc.add(new MethodAccessor(h, m));
             }
         }
+
         for (int i = 0; i < meta.fields.length; i++) {
             var f = meta.fields[i];
             var type = f.getType();
@@ -136,13 +119,18 @@ public final class RecipeReflection {
 
         public MethodAccessor(MethodHandle handle, Method method) {
             this.method = method;
-            int paramCount = method.getParameterCount();
-            if (paramCount == 0) {
-                this.noArgHandle = handle.asType(MethodType.methodType(Object.class, Object.class));
-                this.fullHandle = null;
+            if (handle != null) {
+                int paramCount = method.getParameterCount();
+                if (paramCount == 0) {
+                    this.noArgHandle = handle.asType(MethodType.methodType(Object.class, Object.class));
+                    this.fullHandle = null;
+                } else {
+                    this.noArgHandle = null;
+                    this.fullHandle = handle;
+                }
             } else {
                 this.noArgHandle = null;
-                this.fullHandle = handle;
+                this.fullHandle = null;
             }
         }
 
@@ -164,16 +152,31 @@ public final class RecipeReflection {
         @Override
         public Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
-            var params = method.getParameterTypes();
-            var args = new Object[params.length];
-            for (int i = 0; i < params.length; i++) {
-                if (params[i].isAssignableFrom(Level.class)) args[i] = level;
-                else return null;
+            if (fullHandle != null) {
+                var params = method.getParameterTypes();
+                var args = new Object[params.length];
+                for (int i = 0; i < params.length; i++) {
+                    if (params[i].isAssignableFrom(Level.class)) args[i] = level;
+                    else return null;
+                }
+                var all = new Object[1 + args.length];
+                all[0] = recipe;
+                System.arraycopy(args, 0, all, 1, args.length);
+                return fullHandle.invokeWithArguments(all);
             }
-            var all = new Object[1 + args.length];
-            all[0] = recipe;
-            System.arraycopy(args, 0, all, 1, args.length);
-            return fullHandle.invokeWithArguments(all);
+
+            int paramCount = method.getParameterCount();
+            if (paramCount == 0) {
+                return method.invoke(recipe);
+            } else {
+                var params = method.getParameterTypes();
+                var args = new Object[params.length];
+                for (int i = 0; i < params.length; i++) {
+                    if (params[i].isAssignableFrom(Level.class)) args[i] = level;
+                    else return null;
+                }
+                return method.invoke(recipe, args);
+            }
         }
     }
 
@@ -235,11 +238,8 @@ public final class RecipeReflection {
 
                     if (!seenMethods.add(m.getName())) continue;
 
-                    var handle = createHandle(m);
-                    if (handle != null) {
-                        mList.add(m);
-                        hList.add(handle);
-                    }
+                    mList.add(m);
+                    hList.add(createHandle(m));
                 }
                 var sup = current.getSuperclass();
                 if (sup != null && sup != Object.class) queue.add(sup);

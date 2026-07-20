@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -26,8 +8,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static java.util.Locale.ROOT;
 
 public final class PatternSignatureEngine {
     private static final ConcurrentHashMap<Class<?>, ClassProfile> PROFILE_CACHE = new ConcurrentHashMap<>(512);
@@ -40,20 +20,9 @@ public final class PatternSignatureEngine {
 
     public static ClassProfile profile(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("class is null");
-        if (TerminalTypeRegistry.isTerminalType(clazz)) return new ClassProfile(
-                clazz.getName().replace('.', '/'), clazz, DetectionLevel.UNKNOWN,
-                0, 0, 0,
-                false, false, false,
-                0, 0, 0, 0,
-                0, 0, 0,
-                0, 0, 0,
-                ObjectLists.emptyList(), ObjectLists.emptyList()
-        );
         var existing = PROFILE_CACHE.get(clazz);
         if (existing != null) return existing;
-        var result = buildProfile(clazz);
-        PROFILE_CACHE.put(clazz, result);
-        return result;
+        return PROFILE_CACHE.computeIfAbsent(clazz, PatternSignatureEngine::buildProfile);
     }
 
     public static void clearCache() {
@@ -62,24 +31,39 @@ public final class PatternSignatureEngine {
 
     private static ClassProfile buildProfile(Class<?> clazz) {
         String className = clazz.getName().replace('.', '/');
+
+        if (TerminalTypeRegistry.isTerminalType(clazz)) return new ClassProfile(
+                className, clazz, DetectionLevel.UNKNOWN,
+                0, 0, 0,
+                false, false, false,
+                0, 0, 0, 0,
+                0, 0, 0,
+                0, 0, 0,
+                ObjectLists.emptyList(), ObjectLists.emptyList()
+        );
+
         var evidence = new ObjectArrayList<String>();
         var interfaces = new ObjectArrayList<String>();
         int signatureScore = 0;
+
         if (Recipe.class.isAssignableFrom(clazz)) {
             signatureScore = 100;
             evidence.add("SIGNATURE: implements Recipe<?>");
             interfaces.add("Recipe<?>");
         }
+
         for (var iface : clazz.getInterfaces()) {
             String name = iface.getSimpleName();
             if (!name.startsWith("I") && !name.endsWith("able")) continue;
             interfaces.add(iface.getName().replace('/', '.'));
         }
+
         int itemStackFields = 0, ingredientFields = 0, fluidStackFields = 0;
         int collectionFields = 0, resourceIdFields = 0, tagFields = 0;
         int itemStackMethods = 0, ingredientMethods = 0, fluidStackMethods = 0;
         int codecRefs = 0;
         var scan = clazz;
+
         while (scan != null && scan != Object.class) {
             for (var f : scan.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
@@ -122,6 +106,7 @@ public final class PatternSignatureEngine {
             }
             scan = scan.getSuperclass();
         }
+
         for (var m : clazz.getMethods()) {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() > 1) continue;
@@ -158,6 +143,7 @@ public final class PatternSignatureEngine {
             }
             if (returnType.getName().contains("Codec") || returnType.getName().contains("MapCodec")) codecRefs++;
         }
+
         int heuristicScore = 0;
         heuristicScore += ingredientFields * 10;
         heuristicScore += ingredientMethods * 8;
@@ -169,7 +155,7 @@ public final class PatternSignatureEngine {
         heuristicScore += codecRefs * 3;
         heuristicScore += resourceIdFields * 2;
         heuristicScore += tagFields * 2;
-        int totalScore = signatureScore + heuristicScore;
+
         DetectionLevel level;
         if (signatureScore >= 100) {
             level = DetectionLevel.SIGNATURE;
@@ -182,9 +168,10 @@ public final class PatternSignatureEngine {
         boolean isRecipe = (signatureScore >= 100) || (ingredientFields + ingredientMethods > 0 && (itemStackFields + itemStackMethods + fluidStackFields + fluidStackMethods) > 0);
         boolean isMachine = !isRecipe && (itemStackFields + fluidStackFields > 0) && collectionFields > 2 && heuristicScore >= MACHINE_THRESHOLD;
         boolean isCodec = codecRefs > 0 && heuristicScore >= CODEC_THRESHOLD;
+
         return new ClassProfile(
                 className, clazz, level,
-                signatureScore, heuristicScore, totalScore,
+                signatureScore, heuristicScore, signatureScore + heuristicScore,
                 isRecipe, isMachine, isCodec,
                 itemStackFields, ingredientFields, fluidStackFields, collectionFields,
                 itemStackMethods, ingredientMethods, fluidStackMethods,
@@ -225,11 +212,9 @@ public final class PatternSignatureEngine {
     ) {
         @Override
         public @NotNull String toString() {
-            return String.format(ROOT,
-                    "%s score=%d recipe=%s machine=%s codec=%s level=%s itemF=%d ingrF=%d fluidF=%d itemM=%d ingrM=%d fluidM=%d codec=%d",
-                    className, totalScore, isRecipe, isMachine, isCodec, level,
-                    itemStackFields, ingredientFields, fluidStackFields,
-                    itemStackMethods, ingredientMethods, fluidStackMethods, codecRefs);
+            return className + " score=" + totalScore + " recipe=" + isRecipe + " machine=" + isMachine + " codec=" + isCodec + " level=" + level +
+                    " itemF=" + itemStackFields + " ingrF=" + ingredientFields + " fluidF=" + fluidStackFields +
+                    " itemM=" + itemStackMethods + " ingrM=" + ingredientMethods + " fluidM=" + fluidStackMethods + " codec=" + codecRefs;
         }
     }
 }

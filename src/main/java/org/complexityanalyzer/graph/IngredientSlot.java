@@ -25,27 +25,42 @@ import net.minecraft.world.item.ItemStack;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 
-import java.util.Objects;
+import java.util.Comparator;
 
 public class IngredientSlot {
+
+    private static final Comparator<ItemStack> ITEM_STACK_COMPARATOR = (a, b) -> {
+        var idA = GameRegistryManager.getItemId(a.getItem());
+        var idB = GameRegistryManager.getItemId(b.getItem());
+        if (idA == idB) return 0;
+        if (idA == null) return -1;
+        if (idB == null) return 1;
+        return idA.compareTo(idB);
+    };
+
     private final ObjectList<ItemStack> variants;
     private final int count;
 
     public IngredientSlot(ObjectList<ItemStack> variants, int count) {
-        this.variants = new ObjectArrayList<>(variants.size());
-        for (var variant : variants) {
-            if (variant == null || variant.isEmpty()) continue;
-            this.variants.add(variant.copyWithCount(1));
-        }
-        this.variants.sort(java.util.Comparator.comparing(stack -> {
-            var id = GameRegistryManager.getItemId(stack.getItem());
-            return id != null ? id.toString() : "";
-        }));
         this.count = Math.max(1, count);
+
+        var processed = new ObjectArrayList<ItemStack>(variants.size());
+        for (var variant : variants) {
+            if (variant != null && !variant.isEmpty()) processed.add(variant.copyWithCount(1));
+        }
+
+        if (processed.isEmpty()) {
+            this.variants = ObjectLists.emptyList();
+        } else if (processed.size() == 1) {
+            this.variants = ObjectLists.singleton(processed.getFirst());
+        } else {
+            processed.sort(ITEM_STACK_COMPARATOR);
+            this.variants = ObjectLists.unmodifiable(processed);
+        }
     }
 
     public ObjectList<ItemStack> getVariants() {
-        return ObjectLists.unmodifiable(variants);
+        return variants;
     }
 
     public int getCount() {
@@ -65,7 +80,7 @@ public class IngredientSlot {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(count);
+        int result = count;
         for (var stack : variants) result = 31 * result + ItemStackIdentity.hashItemData(stack);
         return result;
     }

@@ -90,9 +90,7 @@ public class RecipeGraph {
             node.setListIndex(allIdx);
             allRecipesMap.put(allIdx, node);
         } else {
-            int idx = recipeCounter.getAndIncrement();
-            node.setListIndex(idx);
-            allRecipesMap.put(idx, node);
+            appendToAllRecipes(node);
         }
     }
 
@@ -106,13 +104,7 @@ public class RecipeGraph {
         if (result != AIR) {
             recipesByItem.compute(result, (item, list) -> {
                 if (list == null) list = new ObjectArrayList<>();
-                int dupIdx = -1;
-                for (int i = 0; i < list.size(); i++) {
-                    if (list.get(i).equals(node)) {
-                        dupIdx = i;
-                        break;
-                    }
-                }
+                int dupIdx = list.indexOf(node);
                 if (dupIdx != -1) {
                     isDuplicate[0] = true;
                     var existing = list.get(dupIdx);
@@ -123,24 +115,8 @@ public class RecipeGraph {
                         var newList = new ObjectArrayList<>(list);
                         newList.set(dupIdx, node);
                         replaceOrAddInAllRecipes(existing, node);
-                        for (var slot : node.getFluidIngredients()) {
-                            for (var variant : slot.getFluidVariants()) {
-                                var normalized = normalizeFluid(variant);
-                                if (normalized != EMPTY) addFluidUsage(normalized, result);
-                            }
-                        }
-                        for (var stack : node.getFluidOutputs()) {
-                            var normalized = normalizeFluid(stack.getFluid());
-                            if (normalized != EMPTY) recipesByFluidOutput.compute(normalized, (f, foList) -> {
-                                if (foList == null) foList = new ObjectArrayList<>();
-                                if (!foList.contains(node)) {
-                                    var newFoList = new ObjectArrayList<>(foList);
-                                    newFoList.add(node);
-                                    return newFoList;
-                                }
-                                return foList;
-                            });
-                        }
+                        registerFluidIngredientsUsage(node, result);
+                        registerFluidOutputs(node);
                         bestRecipeCache.remove(result);
                         return newList;
                     }
@@ -160,33 +136,15 @@ public class RecipeGraph {
             boolean[] isPlaceholderDuplicate = {false};
             recipesByFluid.compute(fluidId, (id, list) -> {
                 if (list == null) list = new ObjectArrayList<>();
-                int dupIdx = -1;
-                for (int i = 0; i < list.size(); i++) {
-                    if (list.get(i).equals(node)) {
-                        dupIdx = i;
-                        break;
-                    }
-                }
+                int dupIdx = list.indexOf(node);
                 if (dupIdx != -1) {
                     isPlaceholderDuplicate[0] = true;
                     var existing = list.get(dupIdx);
-                    boolean nodeIsBetter = node.getFluidOutputs().size() > existing.getFluidOutputs().size();
-                    if (nodeIsBetter) {
+                    if (node.getFluidOutputs().size() > existing.getFluidOutputs().size()) {
                         var newList = new ObjectArrayList<>(list);
                         newList.set(dupIdx, node);
                         replaceOrAddInAllRecipes(existing, node);
-                        for (var stack : node.getFluidOutputs()) {
-                            var normalized = normalizeFluid(stack.getFluid());
-                            if (normalized != EMPTY) recipesByFluidOutput.compute(normalized, (f, foList) -> {
-                                if (foList == null) foList = new ObjectArrayList<>();
-                                if (!foList.contains(node)) {
-                                    ObjectList<RecipeNode> newFoList = new ObjectArrayList<>(foList);
-                                    newFoList.add(node);
-                                    return newFoList;
-                                }
-                                return foList;
-                            });
-                        }
+                        registerFluidOutputs(node);
                         return newList;
                     }
                     return list;
@@ -202,21 +160,13 @@ public class RecipeGraph {
         }
 
         appendToAllRecipes(node);
+        registerItemIngredientsUsage(node, result);
+        registerFluidIngredientsUsage(node, result);
+        registerFluidOutputs(node);
+        bestRecipeCache.remove(result);
+    }
 
-        for (var slot : node.getIngredients()) {
-            for (var ingredientStack : slot.getVariants()) {
-                var ingredient = ingredientStack.getItem();
-                if (result != AIR) addItemUsage(ingredient, result);
-            }
-        }
-
-        for (var slot : node.getFluidIngredients()) {
-            for (var variant : slot.getFluidVariants()) {
-                var normalized = normalizeFluid(variant);
-                if (normalized != EMPTY && result != AIR) addFluidUsage(normalized, result);
-            }
-        }
-
+    private void registerFluidOutputs(RecipeNode node) {
         for (var stack : node.getFluidOutputs()) {
             var normalized = normalizeFluid(stack.getFluid());
             if (normalized != EMPTY) recipesByFluidOutput.compute(normalized, (f, foList) -> {
@@ -228,43 +178,53 @@ public class RecipeGraph {
                 }
                 return foList;
             });
-        }
 
-        bestRecipeCache.remove(result);
+        }
+    }
+
+    private void registerFluidIngredientsUsage(RecipeNode node, Item result) {
+        if (result == AIR) return;
+        for (var slot : node.getFluidIngredients()) {
+            for (var variant : slot.getFluidVariants()) {
+                var normalized = normalizeFluid(variant);
+                if (normalized != EMPTY) addFluidUsage(normalized, result);
+            }
+        }
+    }
+
+    private void registerItemIngredientsUsage(RecipeNode node, Item result) {
+        if (result == AIR) return;
+        for (var slot : node.getIngredients()) {
+            for (var ingredientStack : slot.getVariants()) {
+                var ingredient = ingredientStack.getItem();
+                if (ingredient != AIR) addItemUsage(ingredient, result);
+            }
+        }
+    }
+
+    private <K> void addUsage(ConcurrentHashMap<K, ObjectList<Item>> map, K key, Item result) {
+        map.compute(key, (k, list) -> {
+            if (list == null) {
+                var newList = new ObjectArrayList<Item>(2);
+                newList.add(result);
+                return newList;
+            }
+            if (!list.contains(result)) {
+                var newList = new ObjectArrayList<Item>(list.size() + 1);
+                newList.addAll(list);
+                newList.add(result);
+                return newList;
+            }
+            return list;
+        });
     }
 
     private void addItemUsage(Item ingredient, Item result) {
-        usageMap.compute(ingredient, (k, list) -> {
-            if (list == null) {
-                var newList = new ObjectArrayList<Item>(2);
-                newList.add(result);
-                return newList;
-            }
-            if (!list.contains(result)) {
-                var newList = new ObjectArrayList<Item>(list.size() + 1);
-                newList.addAll(list);
-                newList.add(result);
-                return newList;
-            }
-            return list;
-        });
+        addUsage(usageMap, ingredient, result);
     }
 
     private void addFluidUsage(Fluid fluid, Item result) {
-        fluidUsageMap.compute(fluid, (k, list) -> {
-            if (list == null) {
-                var newList = new ObjectArrayList<Item>(2);
-                newList.add(result);
-                return newList;
-            }
-            if (!list.contains(result)) {
-                var newList = new ObjectArrayList<Item>(list.size() + 1);
-                newList.addAll(list);
-                newList.add(result);
-                return newList;
-            }
-            return list;
-        });
+        addUsage(fluidUsageMap, fluid, result);
     }
 
     public ObjectList<RecipeNode> getRecipes(Item item) {
@@ -278,11 +238,13 @@ public class RecipeGraph {
     private RecipeNode findBestRecipe(Item item) {
         var recipes = getRecipes(item);
         if (recipes.isEmpty()) return RecipeNode.empty(item);
-        if (recipes.size() == 1) return recipes.getFirst();
 
-        RecipeNode best = null;
-        for (var r : recipes) if (best == null || r.getPriority() > best.getPriority()) best = r;
-        return best != null ? best : recipes.getFirst();
+        var best = recipes.getFirst();
+        for (int i = 1; i < recipes.size(); i++) {
+            var current = recipes.get(i);
+            if (current.getPriority() > best.getPriority()) best = current;
+        }
+        return best;
     }
 
     public boolean hasRecipe(Item item) {

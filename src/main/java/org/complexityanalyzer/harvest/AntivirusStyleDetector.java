@@ -26,8 +26,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.Locale.ROOT;
-
 public final class AntivirusStyleDetector {
     private static final ConcurrentHashMap<Class<?>, CompositeDetection> DETECT_CACHE = new ConcurrentHashMap<>(512);
 
@@ -38,9 +36,7 @@ public final class AntivirusStyleDetector {
         if (clazz == null) return CompositeDetection.UNKNOWN;
         var existing = DETECT_CACHE.get(clazz);
         if (existing != null) return existing;
-        var result = performDetection(clazz);
-        DETECT_CACHE.put(clazz, result);
-        return result;
+        return DETECT_CACHE.computeIfAbsent(clazz, AntivirusStyleDetector::performDetection);
     }
 
     public static void clearCache() {
@@ -52,11 +48,13 @@ public final class AntivirusStyleDetector {
         int sigConfidence = 0;
         int behavioralConf = 0;
         var highestLevel = PatternSignatureEngine.DetectionLevel.UNKNOWN;
+
         if (Recipe.class.isAssignableFrom(clazz)) {
             sigConfidence = 100;
             highestLevel = PatternSignatureEngine.DetectionLevel.SIGNATURE;
             allEvidence.add("SIGNATURE[L1]: implements Recipe<?>");
         }
+
         for (var iface : clazz.getInterfaces()) {
             String name = iface.getSimpleName();
             if (name.contains("Recipe") || name.contains("Crafting") || name.contains("Processing")) {
@@ -71,6 +69,7 @@ public final class AntivirusStyleDetector {
                 allEvidence.add("BEHAVIORAL[L3]: implements " + name);
             }
         }
+
         var profile = PatternSignatureEngine.profile(clazz);
         int heuristicConf = profile.heuristicScore();
         allEvidence.add("HEURISTIC[L2]: score=" + heuristicConf
@@ -78,24 +77,29 @@ public final class AntivirusStyleDetector {
                 + " fluidF=" + profile.fluidStackFields()
                 + " itemM=" + profile.itemStackMethods() + " ingrM=" + profile.ingredientMethods()
                 + " fluidM=" + profile.fluidStackMethods());
+
         if (heuristicConf > 0 && highestLevel == PatternSignatureEngine.DetectionLevel.UNKNOWN) {
             highestLevel = PatternSignatureEngine.DetectionLevel.HEURISTIC;
         }
         allEvidence.addAll(profile.evidence());
-        String pkgName = clazz.getPackage() != null ? clazz.getPackage().getName() : "";
+
+        String pkgName = clazz.getPackageName();
         if (pkgName.contains("recipe") || pkgName.contains("crafting")) {
             behavioralConf += 10;
             allEvidence.add("BEHAVIORAL[L3]: package contains 'recipe/crafting'");
         }
+
         String simpleName = clazz.getSimpleName();
         if (simpleName.contains("Recipe")) {
             behavioralConf += 10;
             allEvidence.add("BEHAVIORAL[L3]: class name contains 'Recipe'");
         }
+
         int totalConf = Math.min(sigConfidence + heuristicConf + behavioralConf, 100);
         boolean isRecipe;
         boolean isMachine;
         boolean isCodec;
+
         if (sigConfidence >= 100) {
             isRecipe = true;
             isMachine = false;
@@ -113,13 +117,16 @@ public final class AntivirusStyleDetector {
             isMachine = false;
             isCodec = true;
         } else {
-            isRecipe = (profile.ingredientFields() + profile.ingredientMethods() > 0)
-                    && (profile.itemStackFields() + profile.itemStackMethods()
-                    + profile.fluidStackFields() + profile.fluidStackMethods() > 0);
-            isMachine = !isRecipe && (profile.itemStackFields() + profile.fluidStackFields() > 0)
-                    && profile.heuristicScore() > 25;
+            int ingFieldsAndMethods = profile.ingredientFields() + profile.ingredientMethods();
+            int itemAndFluidFieldsAndMethods = profile.itemStackFields() + profile.itemStackMethods()
+                    + profile.fluidStackFields() + profile.fluidStackMethods();
+            int itemAndFluidFields = profile.itemStackFields() + profile.fluidStackFields();
+
+            isRecipe = ingFieldsAndMethods > 0 && itemAndFluidFieldsAndMethods > 0;
+            isMachine = !isRecipe && itemAndFluidFields > 0 && profile.heuristicScore() > 25;
             isCodec = profile.codecRefs() > 0 && !isRecipe && !isMachine;
         }
+
         String verdict;
         if (isRecipe) {
             verdict = "RECIPE (L" + (sigConfidence >= 100 ? "1:SIGNATURE" : "2:HEURISTIC") + ")";
@@ -130,11 +137,12 @@ public final class AntivirusStyleDetector {
         } else {
             verdict = "UNKNOWN";
         }
+
         return new CompositeDetection(
                 highestLevel,
                 sigConfidence, heuristicConf, behavioralConf, totalConf,
                 isRecipe, isMachine, isCodec,
-                verdict, allEvidence
+                verdict, ObjectLists.unmodifiable(allEvidence)
         );
     }
 
@@ -159,10 +167,9 @@ public final class AntivirusStyleDetector {
 
         @Override
         public @NotNull String toString() {
-            return String.format(ROOT,
-                    "CompositeDetection[level=%s sig=%d heur=%d behav=%d total=%d recipe=%s machine=%s codec=%s verdict=%s]",
-                    level, signatureConfidence, heuristicConfidence, behavioralConfidence,
-                    totalConfidence, isRecipe, isMachine, isCodec, verdict);
+            return "CompositeDetection[level=" + level + " sig=" + signatureConfidence + " heur=" + heuristicConfidence
+                    + " behav=" + behavioralConfidence + " total=" + totalConfidence + " recipe=" + isRecipe
+                    + " machine=" + isMachine + " codec=" + isCodec + " verdict=" + verdict + "]";
         }
     }
 }

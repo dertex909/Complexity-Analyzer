@@ -21,6 +21,7 @@ package org.complexityanalyzer.graph;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
@@ -35,8 +36,11 @@ import org.complexityanalyzer.harvest.ItemStackIdentity;
 import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 
+import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static net.minecraft.world.item.Items.AIR;
 
 public class GraphBuilder {
 
@@ -104,31 +108,26 @@ public class GraphBuilder {
         var builder = new RecipeNode.Builder(resultItem).recipeType(RecipeType.SMITHING).resultCount(1).rawRecipe();
         builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
 
-        if (!template.isEmpty()) {
-            var variants = extractVariants(template);
-            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-        }
-
-        if (!base.isEmpty()) {
-            var variants = extractVariants(base);
-            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-        }
-
-        if (!addition.isEmpty()) {
-            var variants = extractVariants(addition);
-            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-        }
+        addSmithingIngredient(builder, template);
+        addSmithingIngredient(builder, base);
+        addSmithingIngredient(builder, addition);
 
         return builder.build();
     }
 
+    private static void addSmithingIngredient(RecipeNode.Builder builder, Ingredient ingredient) {
+        if (ingredient != null && !ingredient.isEmpty()) {
+            var variants = extractVariants(ingredient);
+            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
+        }
+    }
+
     private static ObjectList<ItemStack> extractVariants(Ingredient ingredient) {
         var items = new ObjectArrayList<ItemStack>();
-        var stacks = ingredient.getItems();
-        for (var stack : stacks) {
-            if (stack.isEmpty()) continue;
-            if (containsSameStackData(items, stack)) continue;
-            items.add(stack.copyWithCount(1));
+        if (ingredient == null || ingredient.isEmpty()) return items;
+        for (var stack : ingredient.getItems()) {
+            if (stack == null || stack.isEmpty() || stack.getItem() == AIR) continue;
+            if (!containsSameStackData(items, stack)) items.add(stack.copyWithCount(1));
         }
         return items;
     }
@@ -145,35 +144,26 @@ public class GraphBuilder {
 
         if (isUnprocessable(recipe, resultItem, ingredients)) return null;
 
-        var builder = new RecipeNode.Builder(resultItem).recipeType(recipe.getType()).resultCount(resultStack.getCount()).rawRecipe();
+        var builder = new RecipeNode.Builder(resultItem)
+                .recipeType(recipe.getType())
+                .resultCount(resultStack.getCount())
+                .rawRecipe();
         builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
 
         var merged = new Object2ObjectLinkedOpenHashMap<ObjectList<ItemStack>, Integer>();
         int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
+        var comparator = new ItemStackComparator(level.registryAccess());
+
         for (var ingredient : ingredients) {
-            if (ingredient.isEmpty()) continue;
-            var variants = new ObjectArrayList<ItemStack>();
-            for (var stack : ingredient.getItems()) {
-                if (stack.isEmpty()) continue;
-                if (!containsSameStackData(variants, stack)) variants.add(stack.copyWithCount(1));
-            }
+            var variants = extractVariants(ingredient);
             if (!variants.isEmpty()) {
-                variants.sort((a, b) -> {
-                    var idA = GameRegistryManager.getItemId(a.getItem());
-                    var idB = GameRegistryManager.getItemId(b.getItem());
-                    int byId = idA.compareTo(idB);
-                    if (byId != 0) return byId;
-                    return ItemStackIdentity.dataKey(a, level.registryAccess())
-                            .compareTo(ItemStackIdentity.dataKey(b, level.registryAccess()));
-                });
+                if (variants.size() > 1) variants.sort(comparator);
                 if (variants.size() > limit) variants.removeElements(limit, variants.size());
-                var key = new ObjectArrayList<>(variants);
-                merged.put(key, merged.getOrDefault(key, 0) + 1);
+                merged.merge(variants, 1, Integer::sum);
             }
         }
-        for (var entry : merged.entrySet()) {
-            builder.addIngredient(new ObjectArrayList<>(entry.getKey()), entry.getValue());
-        }
+
+        for (var entry : merged.entrySet()) builder.addIngredient(entry.getKey(), entry.getValue());
         return builder.build();
     }
 
@@ -187,5 +177,22 @@ public class GraphBuilder {
             for (var stack : ing.getItems()) if (stack.getItem() == resultItem) return true;
         }
         return recipe instanceof TippedArrowRecipe || recipe instanceof MapCloningRecipe || recipe instanceof ArmorDyeRecipe || recipe instanceof BannerDuplicateRecipe;
+    }
+
+    private static final class ItemStackComparator implements Comparator<ItemStack> {
+        private final HolderLookup.Provider provider;
+
+        ItemStackComparator(HolderLookup.Provider provider) {
+            this.provider = provider;
+        }
+
+        @Override
+        public int compare(ItemStack a, ItemStack b) {
+            var idA = GameRegistryManager.getItemId(a.getItem());
+            var idB = GameRegistryManager.getItemId(b.getItem());
+            int byId = idA.compareTo(idB);
+            if (byId != 0) return byId;
+            return ItemStackIdentity.dataKey(a, provider).compareTo(ItemStackIdentity.dataKey(b, provider));
+        }
     }
 }

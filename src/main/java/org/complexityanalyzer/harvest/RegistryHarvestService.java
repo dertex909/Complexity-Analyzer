@@ -121,6 +121,7 @@ public final class RegistryHarvestService {
         for (var node : nodes) graph.addRecipe(node);
         debugTrace.flush();
         DynamicRecipeHarvester.harvest(graph, level, knownRecipeIds);
+        harvester.clearCaches();
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
                 scanned, harvested, rejected, failed);

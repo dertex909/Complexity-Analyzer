@@ -104,12 +104,10 @@ public final class ItemStackIdentity {
         key.append(";components=").append(stack.getComponentsPatch());
         var attachments = serializedAttachments(stack, provider);
         if (attachments != null && !attachments.isEmpty()) key.append(";attachments=").append(attachments);
-        if (provider != null) {
-            try {
-                Tag saved = stack.saveOptional(provider);
-                key.append(";saved=").append(saved);
-            } catch (Throwable ignored) {
-            }
+        if (provider != null) try {
+            Tag saved = stack.saveOptional(provider);
+            key.append(";saved=").append(saved);
+        } catch (Throwable ignored) {
         }
         return key.toString();
     }
@@ -130,6 +128,7 @@ public final class ItemStackIdentity {
             try {
                 var m = cls.getMethod("serializeAttachments", HolderLookup.Provider.class);
                 if (!CompoundTag.class.isAssignableFrom(m.getReturnType())) return NO_METHOD;
+                m.setAccessible(true);
                 return m;
             } catch (Throwable ignored) {
                 return NO_METHOD;

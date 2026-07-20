@@ -1,26 +1,6 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -33,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class UniversalTypeResolver {
 
     private static final ConcurrentHashMap<Class<?>, ResolvedType> TYPE_CACHE = new ConcurrentHashMap<>(512);
+    private static final ThreadLocal<ReferenceSet<Class<?>>> RESOLVING_TYPES = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
 
     private UniversalTypeResolver() {
     }
@@ -43,12 +24,20 @@ public final class UniversalTypeResolver {
             if (clazz.isPrimitive() || Number.class.isAssignableFrom(clazz)) return ResolvedType.NUMBER_TYPE;
             return ResolvedType.UNKNOWN_TYPE;
         }
+
         var existing = TYPE_CACHE.get(clazz);
         if (existing != null) return existing;
-        TYPE_CACHE.put(clazz, ResolvedType.UNKNOWN_TYPE);
-        var result = resolveUncached(clazz);
-        TYPE_CACHE.put(clazz, result);
-        return result;
+
+        var resolving = RESOLVING_TYPES.get();
+        if (!resolving.add(clazz)) return ResolvedType.UNKNOWN_TYPE;
+
+        try {
+            var result = resolveUncached(clazz);
+            TYPE_CACHE.put(clazz, result);
+            return result;
+        } finally {
+            resolving.remove(clazz);
+        }
     }
 
     public static boolean isContainerType(Class<?> type) {

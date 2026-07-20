@@ -38,24 +38,29 @@ public final class UniversalAccessorResolver {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final ConcurrentHashMap<Class<?>, ResolvedAccessors> ACCESSOR_CACHE = new ConcurrentHashMap<>(512);
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
+    private static final ThreadLocal<ReferenceSet<Class<?>>> RESOLVING_CLASSES = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
 
     public static ResolvedAccessors resolve(Object recipe, Level level) {
         if (recipe == null) return empty();
         var clazz = recipe.getClass();
+
         var existing = ACCESSOR_CACHE.get(clazz);
         if (existing != null) return existing;
-        ACCESSOR_CACHE.put(clazz, empty());
-        var result = resolveUncached(clazz, recipe, level);
-        ACCESSOR_CACHE.put(clazz, result);
-        return result;
+
+        var resolving = RESOLVING_CLASSES.get();
+        if (!resolving.add(clazz)) return empty();
+
+        try {
+            var result = resolveUncached(clazz, recipe, level);
+            ACCESSOR_CACHE.put(clazz, result);
+            return result;
+        } finally {
+            resolving.remove(clazz);
+        }
     }
 
     public static ClassMeta getMeta(Class<?> clazz) {
-        var existing = META_CACHE.get(clazz);
-        if (existing != null) return existing;
-        var result = ClassMetaBuilder.build(clazz);
-        META_CACHE.put(clazz, result);
-        return result;
+        return META_CACHE.computeIfAbsent(clazz, ClassMetaBuilder::build);
     }
 
     public static void clearCache() {
@@ -93,7 +98,6 @@ public final class UniversalAccessorResolver {
         for (int i = 0; i < meta.allMethods().length; i++) {
             var m = meta.allMethods()[i];
             var h = meta.allHandles()[i];
-            if (h == null) continue;
 
             var returnType = m.getReturnType();
             if (returnType == void.class || returnType == Void.class) continue;
@@ -152,7 +156,6 @@ public final class UniversalAccessorResolver {
     }
 
     public interface Accessor {
-
         String type();
 
         String name();
@@ -190,15 +193,21 @@ public final class UniversalAccessorResolver {
 
         MethodAccessor(MethodHandle handle, Method method) {
             this.method = method;
-            int paramCount = method.getParameterCount();
-            if (paramCount == 0) {
-                this.noArgHandle = handle.asType(MethodType.methodType(Object.class, Object.class));
-                this.fullHandle = null;
+            this.roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
+
+            if (handle != null) {
+                int paramCount = method.getParameterCount();
+                if (paramCount == 0) {
+                    this.noArgHandle = handle.asType(MethodType.methodType(Object.class, Object.class));
+                    this.fullHandle = null;
+                } else {
+                    this.noArgHandle = null;
+                    this.fullHandle = handle;
+                }
             } else {
                 this.noArgHandle = null;
-                this.fullHandle = handle;
+                this.fullHandle = null;
             }
-            this.roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
         }
 
         void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
@@ -217,22 +226,36 @@ public final class UniversalAccessorResolver {
 
         @Override
         public String toString() {
-            return method.getDeclaringClass().getSimpleName() + "." + method.getName() + "() → " + method.getReturnType
-                    ().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
+            return method.getDeclaringClass().getSimpleName() + "." + method.getName() + "() → " + method.getReturnType().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
         public Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
-            var params = method.getParameterTypes();
-            var args = new Object[params.length];
-            for (int i = 0; i < params.length; i++) {
-                if (params[i].isAssignableFrom(Level.class)) args[i] = level;
-                else return null;
+            if (fullHandle != null) {
+                var params = method.getParameterTypes();
+                var args = new Object[params.length];
+                for (int i = 0; i < params.length; i++) {
+                    if (params[i].isAssignableFrom(Level.class)) args[i] = level;
+                    else return null;
+                }
+                var all = new Object[1 + args.length];
+                all[0] = recipe;
+                System.arraycopy(args, 0, all, 1, args.length);
+                return fullHandle.invokeWithArguments(all);
             }
-            var all = new Object[1 + args.length];
-            all[0] = recipe;
-            System.arraycopy(args, 0, all, 1, args.length);
-            return fullHandle.invokeWithArguments(all);
+
+            int paramCount = method.getParameterCount();
+            if (paramCount == 0) {
+                return method.invoke(recipe);
+            } else {
+                var params = method.getParameterTypes();
+                var args = new Object[params.length];
+                for (int i = 0; i < params.length; i++) {
+                    if (params[i].isAssignableFrom(Level.class)) args[i] = level;
+                    else return null;
+                }
+                return method.invoke(recipe, args);
+            }
         }
     }
 
@@ -261,8 +284,7 @@ public final class UniversalAccessorResolver {
 
         @Override
         public String toString() {
-            return field.getDeclaringClass().getSimpleName() + "." + field.getName() + " : " + field.getType()
-                    .getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
+            return field.getDeclaringClass().getSimpleName() + "." + field.getName() + " : " + field.getType().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
         @Override
@@ -326,11 +348,8 @@ public final class UniversalAccessorResolver {
 
                     if (!seenMethods.add(m.getName())) continue;
 
-                    var handle = createHandle(m);
-                    if (handle != null) {
-                        mList.add(m);
-                        hList.add(handle);
-                    }
+                    mList.add(m);
+                    hList.add(createHandle(m));
                 }
                 var sup = current.getSuperclass();
                 if (sup != null && sup != Object.class) queue.add(sup);

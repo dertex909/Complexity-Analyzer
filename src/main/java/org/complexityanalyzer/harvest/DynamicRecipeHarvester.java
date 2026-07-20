@@ -58,13 +58,12 @@ public final class DynamicRecipeHarvester {
             return;
         }
 
-        Set<ResourceLocation> known = ConcurrentHashMap.newKeySet();
-        known.addAll(knownRecipeIds);
-
         int detectionSampleSize = ComplexityConfig.DETECTION_SAMPLE_SIZE.get();
 
-        var ctx = new ProbeContext(recipeManager, level, graph, new FastHarvester(), allItems,
-                known, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize);
+        var ctx = new ProbeContext(
+                recipeManager, level, graph, new FastHarvester(), allItems,
+                knownRecipeIds, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize
+        );
 
         ThreadPoolManager.getInstance().invokeParallel(() ->
                 inputTypeMap.entrySet().parallelStream().forEach(e -> probeType(e.getKey(), e.getValue(), ctx)));
@@ -153,9 +152,11 @@ public final class DynamicRecipeHarvester {
 
     private static @NotNull Object2ObjectMap<RecipeType<?>, ObjectSet<Class<?>>> getTypeMap(RecipeManager recipeManager) {
         var inputTypeMap = new Object2ObjectLinkedOpenHashMap<RecipeType<?>, ObjectSet<Class<?>>>();
+        var classCache = new Object2ObjectOpenHashMap<Class<?>, Class<?>>();
         for (var holder : recipeManager.getRecipes()) {
             var type = holder.value().getType();
-            var inputClass = getRecipeInputClass(holder.value().getClass());
+            var recipeClass = holder.value().getClass();
+            var inputClass = classCache.computeIfAbsent(recipeClass, DynamicRecipeHarvester::getRecipeInputClass);
             if (inputClass == null) continue;
             inputTypeMap.computeIfAbsent(type, k -> new ObjectOpenHashSet<>()).add(inputClass);
         }

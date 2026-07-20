@@ -38,18 +38,15 @@ public final class HeuristicRoleClassifier {
     public static RoleClassification classify(Object recipe, Object raw, String accessorName, String accessorType,
                                               Item anchorItem, Set<Ingredient> standardInputs) {
         if (raw == null) return RoleClassification.UNKNOWN;
-        var methods = new ObjectArrayList<ClassificationMethod>();
-        var evidence = new ObjectArrayList<String>();
-        int confidence = 0;
 
-        if (recipe instanceof Recipe<?> && "method".equals(accessorType)) {
-            if ("getResultItem".equals(accessorName) || "getResult".equals(accessorName) || "getOutput".equals(accessorName)) {
+        if (recipe instanceof Recipe<?> && "method".equals(accessorType)) switch (accessorName) {
+            case "getResultItem", "getResult", "getOutput" -> {
                 return new RoleClassification(Role.OUTPUT, 100,
                         ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
                         ObjectLists.singleton("Standard output method")
                 );
             }
-            if ("getIngredients".equals(accessorName) || "getInputs".equals(accessorName)) {
+            case "getIngredients", "getInputs" -> {
                 return new RoleClassification(Role.INPUT, 100,
                         ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
                         ObjectLists.singleton("Standard input method")
@@ -57,24 +54,38 @@ public final class HeuristicRoleClassifier {
             }
         }
 
+        ObjectArrayList<ClassificationMethod> methods = null;
+        ObjectArrayList<String> evidence = null;
+        int confidence = 0;
+
         if (!standardInputs.isEmpty() && raw instanceof Ingredient ing && standardInputs.contains(ing)) {
+            methods = new ObjectArrayList<>();
+            evidence = new ObjectArrayList<>();
             methods.add(ClassificationMethod.STANDARD_INPUT_MATCH);
             confidence += 80;
             evidence.add("Matches standard ingredient");
         }
 
         if (anchorItem != null && raw instanceof ItemStack stack && !stack.isEmpty() && stack.getItem() == anchorItem) {
+            methods = new ObjectArrayList<>();
+            evidence = new ObjectArrayList<>();
             methods.add(ClassificationMethod.OUTPUT_ANCHOR_MATCH);
             confidence += 80;
             evidence.add("Matches anchor output");
         }
 
-        if (raw instanceof Ingredient && !methods.contains(ClassificationMethod.OUTPUT_ANCHOR_MATCH)) {
+        boolean matchesOutput = methods != null && methods.contains(ClassificationMethod.OUTPUT_ANCHOR_MATCH);
+        if (raw instanceof Ingredient && !matchesOutput) {
+            if (methods == null) {
+                methods = new ObjectArrayList<>();
+                evidence = new ObjectArrayList<>();
+            }
             methods.add(ClassificationMethod.TYPE_HEURISTIC);
             confidence += 20;
             evidence.add("Type is Ingredient");
         }
 
+        if (methods == null) return RoleClassification.UNKNOWN;
         var role = confidence >= 60 ? (methods.contains(ClassificationMethod.OUTPUT_ANCHOR_MATCH) ? Role.OUTPUT :
                                        methods.contains(ClassificationMethod.STANDARD_INPUT_MATCH) ? Role.INPUT :
                                        Role.UNKNOWN) : Role.UNKNOWN;
@@ -97,17 +108,18 @@ public final class HeuristicRoleClassifier {
     }
 
     public static RoleClassification classifyMethod(java.lang.reflect.Method method) {
-        String name = method.getName();
-        if ("getResultItem".equals(name) || "getResult".equals(name) || "getOutput".equals(name))
-            return new RoleClassification(Role.OUTPUT, 90,
-                    ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
-                    ObjectLists.singleton("Standard output")
-            );
-        if ("getIngredients".equals(name) || "getInputs".equals(name))
-            return new RoleClassification(Role.INPUT, 90,
-                    ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
-                    ObjectLists.singleton("Standard input")
-            );
+        switch (method.getName()) {
+            case "getResultItem", "getResult", "getOutput" -> {
+                return new RoleClassification(Role.OUTPUT, 90,
+                        ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard output")
+                );
+            }
+            case "getIngredients", "getInputs" -> {
+                return new RoleClassification(Role.INPUT, 90,
+                        ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard input")
+                );
+            }
+        }
         return RoleClassification.UNKNOWN;
     }
 

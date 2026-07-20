@@ -87,11 +87,14 @@ attribute vec3 a_color;
 attribute float a_opacity;
 attribute float a_t;
 attribute float a_isAnimated;
+attribute float a_sourceId;
+attribute float a_targetId;
 
 uniform vec2 u_resolution;
 uniform vec2 u_pan;
 uniform float u_zoom;
 uniform float u_time;
+uniform float u_activeNodeId;
 
 varying vec3 v_color;
 varying float v_opacity;
@@ -102,10 +105,24 @@ void main() {
     vec2 pos = (a_position * u_zoom) + u_pan;
     vec2 clipSpace = (pos / u_resolution) * 2.0 - 1.0;
     gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-    v_color = a_color;
-    v_opacity = a_opacity;
+    
     v_t = a_t;
-    v_isAnimated = a_isAnimated;
+    
+    if (u_activeNodeId >= 0.0) {
+        if (abs(a_sourceId - u_activeNodeId) < 0.1 || abs(a_targetId - u_activeNodeId) < 0.1) {
+            v_color = vec3(0.35, 0.75, 1.0);
+            v_opacity = 0.95;
+            v_isAnimated = 1.0;
+        } else {
+            v_color = a_color;
+            v_opacity = 0.02;
+            v_isAnimated = 0.0;
+        }
+    } else {
+        v_color = a_color;
+        v_opacity = a_opacity;
+        v_isAnimated = a_isAnimated;
+    }
 }
 `;
 
@@ -208,66 +225,59 @@ export class GraphRenderer {
             opac: gl.getAttribLocation(this.edgeProgram, "a_opacity"),
             t: gl.getAttribLocation(this.edgeProgram, "a_t"),
             anim: gl.getAttribLocation(this.edgeProgram, "a_isAnimated"),
+            sourceId: gl.getAttribLocation(this.edgeProgram, "a_sourceId"),
+            targetId: gl.getAttribLocation(this.edgeProgram, "a_targetId"),
             res: gl.getUniformLocation(this.edgeProgram, "u_resolution"),
             pan: gl.getUniformLocation(this.edgeProgram, "u_pan"),
             zoom: gl.getUniformLocation(this.edgeProgram, "u_zoom"),
-            time: gl.getUniformLocation(this.edgeProgram, "u_time")
+            time: gl.getUniformLocation(this.edgeProgram, "u_time"),
+            activeNodeId: gl.getUniformLocation(this.edgeProgram, "u_activeNodeId")
         };
     }
 
-    updateBuffers(nodes, edges, neighborMap, activeFocus) {
+    initEdgeBuffer(edges) {
         const gl = this.gl;
-
-        const edgeData = new Float32Array(edges.length * 2 * 8);
+        const edgeData = new Float32Array(edges.length * 2 * 10);
         let i = 0;
 
         const normalEdgeColor = hexToRgb(GRAPH_CONFIG.STROKE_COLOR_NORMAL);
-        const hoverEdgeColor = hexToRgb(GRAPH_CONFIG.HOVER_EDGE_COLOR);
 
         for (const edge of edges) {
-            let opacity = GRAPH_CONFIG.HOVER_OPACITY_OTHER;
-            let color = normalEdgeColor;
-            let isHighlighted = false;
-
-            if (activeFocus) {
-                if (edge.source === activeFocus || edge.target === activeFocus) {
-                    opacity = GRAPH_CONFIG.HOVER_OPACITY_NEIGHBOR;
-                    color = hoverEdgeColor;
-                    isHighlighted = true;
-                } else {
-                    opacity = 0.05;
-                }
-            } else {
-                opacity = 0.4;
-            }
-
-            const animFlag = isHighlighted ? 1.0 : 0.0;
+            const sId = edge.source.id;
+            const tId = edge.target.id;
 
             edgeData[i++] = edge.source.x;
             edgeData[i++] = edge.source.y;
-            edgeData[i++] = color[0];
-            edgeData[i++] = color[1];
-            edgeData[i++] = color[2];
-            edgeData[i++] = opacity;
+            edgeData[i++] = normalEdgeColor[0];
+            edgeData[i++] = normalEdgeColor[1];
+            edgeData[i++] = normalEdgeColor[2];
+            edgeData[i++] = 0.4;
             edgeData[i++] = 0.0;
-            edgeData[i++] = animFlag;
+            edgeData[i++] = 0.0;
+            edgeData[i++] = sId;
+            edgeData[i++] = tId;
 
             edgeData[i++] = edge.target.x;
             edgeData[i++] = edge.target.y;
-            edgeData[i++] = color[0];
-            edgeData[i++] = color[1];
-            edgeData[i++] = color[2];
-            edgeData[i++] = opacity;
+            edgeData[i++] = normalEdgeColor[0];
+            edgeData[i++] = normalEdgeColor[1];
+            edgeData[i++] = normalEdgeColor[2];
+            edgeData[i++] = 0.4;
             edgeData[i++] = 1.0;
-            edgeData[i++] = animFlag;
+            edgeData[i++] = 0.0;
+            edgeData[i++] = sId;
+            edgeData[i++] = tId;
         }
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.edgeBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, edgeData, gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, edgeData, gl.STATIC_DRAW);
         this.edgeCount = edges.length * 2;
+    }
 
+    updateNodeBuffer(nodes, neighborMap, activeFocus) {
+        const gl = this.gl;
         const nodeData = new Float32Array(nodes.length * 7);
-        i = 0;
+        let i = 0;
 
         for (const node of nodes) {
             let opacity = GRAPH_CONFIG.HOVER_OPACITY_FULL;
@@ -315,11 +325,14 @@ export class GraphRenderer {
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
 
+        if (this.edgeCount === undefined) {
+            this.initEdgeBuffer(edges);
+            this.updateNodeBuffer(nodes, neighborMap, activeFocus);
+        }
+
         if (this.lastHovered !== activeFocus) {
-            this.updateBuffers(nodes, edges, neighborMap, activeFocus);
+            this.updateNodeBuffer(nodes, neighborMap, activeFocus);
             this.lastHovered = activeFocus;
-        } else if (this.nodeCount === undefined) {
-            this.updateBuffers(nodes, edges, neighborMap, activeFocus);
         }
 
         const gl = this.gl;
@@ -330,21 +343,28 @@ export class GraphRenderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.edgeBuffer);
 
         gl.enableVertexAttribArray(this.edgeLoc.pos);
-        gl.vertexAttribPointer(this.edgeLoc.pos, 2, gl.FLOAT, false, 32, 0);
+        gl.vertexAttribPointer(this.edgeLoc.pos, 2, gl.FLOAT, false, 40, 0);
         gl.enableVertexAttribArray(this.edgeLoc.col);
-        gl.vertexAttribPointer(this.edgeLoc.col, 3, gl.FLOAT, false, 32, 8);
+        gl.vertexAttribPointer(this.edgeLoc.col, 3, gl.FLOAT, false, 40, 8);
         gl.enableVertexAttribArray(this.edgeLoc.opac);
-        gl.vertexAttribPointer(this.edgeLoc.opac, 1, gl.FLOAT, false, 32, 20);
+        gl.vertexAttribPointer(this.edgeLoc.opac, 1, gl.FLOAT, false, 40, 20);
         gl.enableVertexAttribArray(this.edgeLoc.t);
-        gl.vertexAttribPointer(this.edgeLoc.t, 1, gl.FLOAT, false, 32, 24);
+        gl.vertexAttribPointer(this.edgeLoc.t, 1, gl.FLOAT, false, 40, 24);
         gl.enableVertexAttribArray(this.edgeLoc.anim);
-        gl.vertexAttribPointer(this.edgeLoc.anim, 1, gl.FLOAT, false, 32, 28);
+        gl.vertexAttribPointer(this.edgeLoc.anim, 1, gl.FLOAT, false, 40, 28);
+        gl.enableVertexAttribArray(this.edgeLoc.sourceId);
+        gl.vertexAttribPointer(this.edgeLoc.sourceId, 1, gl.FLOAT, false, 40, 32);
+        gl.enableVertexAttribArray(this.edgeLoc.targetId);
+        gl.vertexAttribPointer(this.edgeLoc.targetId, 1, gl.FLOAT, false, 40, 36);
 
         const now = performance.now() / 1000;
         gl.uniform2f(this.edgeLoc.res, w, h);
         gl.uniform2f(this.edgeLoc.pan, pan.x, pan.y);
         gl.uniform1f(this.edgeLoc.zoom, zoom);
         gl.uniform1f(this.edgeLoc.time, now);
+
+        const activeNodeId = activeFocus ? activeFocus.id : -1.0;
+        gl.uniform1f(this.edgeLoc.activeNodeId, activeNodeId);
 
         gl.drawArrays(gl.LINES, 0, this.edgeCount);
 

@@ -113,164 +113,270 @@ export function buildGraphData(db) {
     };
 }
 
-export function applyInitialLayout(nodes, edges) {
-    nodes.sort((a, b) => b.degree - a.degree);
+export function applyInitialLayoutAsync(nodes, edges, onProgress) {
+    return new Promise((resolve) => {
+        const workerNodes = nodes.map(n => ({
+            id: n.id,
+            radius: n.radius,
+            degree: n.degree
+        }));
 
-    const PHI = Math.PI * (3 - Math.sqrt(5));
-    nodes.forEach((n, idx) => {
-        const angle = idx * PHI;
-        const baseRadius = GRAPH_CONFIG.INITIAL_LAYOUT_RADIUS * Math.sqrt(idx);
+        const workerEdges = edges.map(e => ({
+            sourceId: e.source.id,
+            targetId: e.target.id
+        }));
 
-        const jitterX = (Math.random() - 0.5) * 5;
-        const jitterY = (Math.random() - 0.5) * 5;
+        const workerCode = `
+        self.onmessage = function(e) {
+            const { nodes, edges, config } = e.data;
+            const PHI = Math.PI * (3 - Math.sqrt(5));
+            
+            nodes.forEach((n, idx) => {
+                const angle = idx * PHI;
+                const baseRadius = config.INITIAL_LAYOUT_RADIUS * Math.sqrt(idx);
 
-        n.x = baseRadius * Math.cos(angle) + jitterX;
-        n.y = baseRadius * Math.sin(angle) + jitterY;
-        n.vx = 0;
-        n.vy = 0;
+                const jitterX = (Math.random() - 0.5) * 5;
+                const jitterY = (Math.random() - 0.5) * 5;
+
+                n.x = baseRadius * Math.cos(angle) + jitterX;
+                n.y = baseRadius * Math.sin(angle) + jitterY;
+                n.vx = 0;
+                n.vy = 0;
+            });
+
+            const nodeMap = new Map();
+            nodes.forEach(n => nodeMap.set(n.id, n));
+
+            const ITERS = 120;
+            const COLL_LIMIT = 50;
+            const TOTAL_STEPS = ITERS + COLL_LIMIT;
+
+            const SPRING_K = 0.08;
+            const REPULSION_K = 250.0;
+            const CELL_SIZE = 120;
+            const DAMPING = 0.7;
+
+            const getGridKey = (x, y) => {
+                const cx = Math.floor(x / CELL_SIZE) + 50000;
+                const cy = Math.floor(y / CELL_SIZE) + 50000;
+                return (cx << 16) | cy;
+            };
+
+            for (let iter = 0; iter < ITERS; iter++) {
+                for (let i = 0; i < edges.length; i++) {
+                    const edge = edges[i];
+                    const sNode = nodeMap.get(edge.sourceId);
+                    const tNode = nodeMap.get(edge.targetId);
+                    if (!sNode || !tNode) continue;
+
+                    let dx = tNode.x - sNode.x;
+                    let dy = tNode.y - sNode.y;
+
+                    const dist = Math.hypot(dx, dy) || 0.1;
+                    if (dist > 300.0) {
+                        dx = (dx / dist) * 300.0;
+                        dy = (dy / dist) * 300.0;
+                    }
+
+                    const w1 = 1 / Math.max(1, Math.sqrt(sNode.degree || 1));
+                    const w2 = 1 / Math.max(1, Math.sqrt(tNode.degree || 1));
+
+                    sNode.vx += dx * SPRING_K * w1;
+                    sNode.vy += dy * SPRING_K * w1;
+                    tNode.vx -= dx * SPRING_K * w2;
+                    tNode.vy -= dy * SPRING_K * w2;
+                }
+
+                const grid = new Map();
+                for (let i = 0; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    const key = getGridKey(n.x, n.y);
+
+                    let cell = grid.get(key);
+                    if (!cell) {
+                        cell = [];
+                        grid.set(key, cell);
+                    }
+                    cell.push(n);
+                }
+
+                for (let i = 0; i < nodes.length; i++) {
+                    const n1 = nodes[i];
+                    const cx = Math.floor(n1.x / CELL_SIZE);
+                    const cy = Math.floor(n1.y / CELL_SIZE);
+
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            const key = ((cx + dx + 50000) << 16) | (cy + dy + 50000);
+                            const cell = grid.get(key);
+                            if (cell) {
+                                for (let j = 0; j < cell.length; j++) {
+                                    const n2 = cell[j];
+                                    if (n1.id >= n2.id) continue;
+
+                                    const dX = n2.x - n1.x;
+                                    const dY = n2.y - n1.y;
+                                    const minGap = n1.radius + n2.radius + 3.0;
+
+                                    if (Math.abs(dX) > CELL_SIZE || Math.abs(dY) > CELL_SIZE) continue;
+
+                                    const distSq = dX * dX + dY * dY;
+                                    if (distSq < minGap * minGap) {
+                                        const dist = Math.sqrt(distSq) || 0.1;
+                                        const overlap = minGap - dist;
+                                        const force = Math.min((overlap / dist) * 0.5, 10.0);
+                                        n1.vx -= dX * force;
+                                        n1.vy -= dY * force;
+                                        n2.vx += dX * force;
+                                        n2.vy += dY * force;
+                                    } else if (distSq < CELL_SIZE * CELL_SIZE) {
+                                        const repForce = Math.min(REPULSION_K / distSq, 8.0);
+                                        n1.vx -= dX * repForce;
+                                        n1.vy -= dY * repForce;
+                                        n2.vx += dX * repForce;
+                                        n2.vy += dY * repForce;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    n1.vx -= n1.x * 0.0001;
+                    n1.vy -= n1.y * 0.0001;
+                }
+
+                for (let i = 0; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    
+                    const speed = Math.hypot(n.vx, n.vy);
+                    if (speed > 80.0) {
+                        n.vx = (n.vx / speed) * 80.0;
+                        n.vy = (n.vy / speed) * 80.0;
+                    }
+
+                    n.x += n.vx;
+                    n.y += n.vy;
+                    n.vx *= DAMPING;
+                    n.vy *= DAMPING;
+
+                    if (!isFinite(n.x) || !isFinite(n.y)) {
+                        n.x = (Math.random() - 0.5) * 50;
+                        n.y = (Math.random() - 0.5) * 50;
+                        n.vx = 0;
+                        n.vy = 0;
+                    }
+                }
+
+                if (iter % 5 === 0) {
+                    self.postMessage({ type: "progress", percent: Math.round((iter / TOTAL_STEPS) * 100) });
+                }
+            }
+
+            let overlaps = 1;
+            let collIters = 0;
+            while (overlaps > 0 && collIters < COLL_LIMIT) {
+                overlaps = 0;
+
+                const grid = new Map();
+                for (let i = 0; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    const key = getGridKey(n.x, n.y);
+                    let cell = grid.get(key);
+                    if (!cell) {
+                        cell = [];
+                        grid.set(key, cell);
+                    }
+                    cell.push(n);
+                }
+
+                for (let i = 0; i < nodes.length; i++) {
+                    const n1 = nodes[i];
+                    const cx = Math.floor(n1.x / CELL_SIZE);
+                    const cy = Math.floor(n1.y / CELL_SIZE);
+
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            const key = ((cx + dx + 50000) << 16) | (cy + dy + 50000);
+                            const cell = grid.get(key);
+                            if (cell) {
+                                for (let j = 0; j < cell.length; j++) {
+                                    const n2 = cell[j];
+                                    if (n1.id >= n2.id) continue;
+
+                                    const dX = n2.x - n1.x;
+                                    const dY = n2.y - n1.y;
+                                    const minGap = n1.radius + n2.radius + 3.0;
+
+                                    if (Math.abs(dX) > minGap || Math.abs(dY) > minGap) continue;
+
+                                    const distSq = dX * dX + dY * dY;
+                                    if (distSq < minGap * minGap) {
+                                        overlaps++;
+                                        const dist = Math.sqrt(distSq) || 0.1;
+                                        const overlap = minGap - dist;
+                                        const force = Math.min((overlap / dist) * 0.55, 15.0);
+                                        n1.x -= dX * force;
+                                        n1.y -= dY * force;
+                                        n2.x += dX * force;
+                                        n2.y += dY * force;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isFinite(n1.x) || !isFinite(n1.y)) {
+                        n1.x = 0;
+                        n1.y = 0;
+                    }
+                }
+                collIters++;
+
+                if (collIters % 5 === 0) {
+                    self.postMessage({ type: "progress", percent: Math.round(((ITERS + collIters) / TOTAL_STEPS) * 100) });
+                }
+            }
+
+            const coords = nodes.map(n => ({ id: n.id, x: n.x, y: n.y }));
+            self.postMessage({ type: "complete", coords });
+        };
+        `;
+
+        const blob = new Blob([workerCode], {type: "application/javascript"});
+        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(workerUrl);
+
+        worker.postMessage({
+            nodes: workerNodes,
+            edges: workerEdges,
+            config: {INITIAL_LAYOUT_RADIUS: GRAPH_CONFIG.INITIAL_LAYOUT_RADIUS}
+        });
+
+        worker.onmessage = (e) => {
+            const msg = e.data;
+
+            if (msg.type === "progress") {
+                if (typeof onProgress === "function") onProgress(msg.percent);
+            } else if (msg.type === "complete") {
+                const {coords} = msg;
+
+                const nodeMap = new Map();
+                nodes.forEach(n => nodeMap.set(n.id, n));
+
+                coords.forEach(c => {
+                    const n = nodeMap.get(c.id);
+                    if (n) {
+                        n.x = c.x;
+                        n.y = c.y;
+                        n.vx = 0;
+                        n.vy = 0;
+                    }
+                });
+
+                worker.terminate();
+                URL.revokeObjectURL(workerUrl);
+                resolve();
+            }
+        };
     });
-
-    const ITERS = 120;
-    const SPRING_K = 0.08;
-    const REPULSION_K = 250.0;
-    const CELL_SIZE = 120;
-    const DAMPING = 0.7;
-
-    for (let iter = 0; iter < ITERS; iter++) {
-        for (let i = 0; i < edges.length; i++) {
-            const edge = edges[i];
-            const dx = edge.target.x - edge.source.x;
-            const dy = edge.target.y - edge.source.y;
-
-            const w1 = 1 / Math.max(1, Math.sqrt(edge.source.degree || 1));
-            const w2 = 1 / Math.max(1, Math.sqrt(edge.target.degree || 1));
-
-            edge.source.vx += dx * SPRING_K * w1;
-            edge.source.vy += dy * SPRING_K * w1;
-            edge.target.vx -= dx * SPRING_K * w2;
-            edge.target.vy -= dy * SPRING_K * w2;
-        }
-
-        const grid = new Map();
-        for (let i = 0; i < nodes.length; i++) {
-            const n = nodes[i];
-            const cx = Math.floor(n.x / CELL_SIZE);
-            const cy = Math.floor(n.y / CELL_SIZE);
-            const key = cx + "," + cy;
-
-            let cell = grid.get(key);
-            if (!cell) {
-                cell = [];
-                grid.set(key, cell);
-            }
-            cell.push(n);
-        }
-
-        for (let i = 0; i < nodes.length; i++) {
-            const n1 = nodes[i];
-            const cx = Math.floor(n1.x / CELL_SIZE);
-            const cy = Math.floor(n1.y / CELL_SIZE);
-
-            for (let dx = -1; dx <= 1; dx++) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    const key = (cx + dx) + "," + (cy + dy);
-                    const cell = grid.get(key);
-                    if (cell) for (let j = 0; j < cell.length; j++) {
-                        const n2 = cell[j];
-                        if (n1.id >= n2.id) continue;
-
-                        const dX = n2.x - n1.x;
-                        const dY = n2.y - n1.y;
-                        const minGap = n1.radius + n2.radius + 3.0;
-
-                        if (Math.abs(dX) > CELL_SIZE || Math.abs(dY) > CELL_SIZE) continue;
-
-                        const distSq = dX * dX + dY * dY;
-                        if (distSq < minGap * minGap) {
-                            const dist = Math.sqrt(distSq) || 0.1;
-                            const overlap = minGap - dist;
-                            const force = (overlap / dist) * 0.5;
-                            n1.vx -= dX * force;
-                            n1.vy -= dY * force;
-                            n2.vx += dX * force;
-                            n2.vy += dY * force;
-                        } else if (distSq < CELL_SIZE * CELL_SIZE) {
-                            const repForce = REPULSION_K / distSq;
-                            n1.vx -= dX * repForce;
-                            n1.vy -= dY * repForce;
-                            n2.vx += dX * repForce;
-                            n2.vy += dY * repForce;
-                        }
-                    }
-                }
-            }
-
-            n1.vx -= n1.x * 0.0001;
-            n1.vy -= n1.y * 0.0001;
-        }
-
-        for (let i = 0; i < nodes.length; i++) {
-            const n = nodes[i];
-            n.x += n.vx;
-            n.y += n.vy;
-            n.vx *= DAMPING;
-            n.vy *= DAMPING;
-        }
-    }
-
-    let overlaps = 1;
-    let collIters = 0;
-    while (overlaps > 0 && collIters < 100) {
-        overlaps = 0;
-
-        const grid = new Map();
-        for (let i = 0; i < nodes.length; i++) {
-            const n = nodes[i];
-            const cx = Math.floor(n.x / CELL_SIZE);
-            const cy = Math.floor(n.y / CELL_SIZE);
-            const key = cx + "," + cy;
-            let cell = grid.get(key);
-            if (!cell) {
-                cell = [];
-                grid.set(key, cell);
-            }
-            cell.push(n);
-        }
-
-        for (let i = 0; i < nodes.length; i++) {
-            const n1 = nodes[i];
-            const cx = Math.floor(n1.x / CELL_SIZE);
-            const cy = Math.floor(n1.y / CELL_SIZE);
-
-            for (let dx = -1; dx <= 1; dx++) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    const key = (cx + dx) + "," + (cy + dy);
-                    const cell = grid.get(key);
-                    if (cell) for (let j = 0; j < cell.length; j++) {
-                        const n2 = cell[j];
-                        if (n1.id >= n2.id) continue;
-
-                        const dX = n2.x - n1.x;
-                        const dY = n2.y - n1.y;
-                        const minGap = n1.radius + n2.radius + 3.0;
-
-                        if (Math.abs(dX) > minGap || Math.abs(dY) > minGap) continue;
-
-                        const distSq = dX * dX + dY * dY;
-                        if (distSq < minGap * minGap) {
-                            overlaps++;
-                            const dist = Math.sqrt(distSq) || 0.1;
-                            const overlap = minGap - dist;
-                            const force = (overlap / dist) * 0.55;
-                            n1.x -= dX * force;
-                            n1.y -= dY * force;
-                            n2.x += dX * force;
-                            n2.y += dY * force;
-                        }
-                    }
-                }
-            }
-        }
-        collIters++;
-    }
 }

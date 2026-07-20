@@ -19,7 +19,7 @@
 import {selectItem, state} from "../core/state.js";
 import {LAYOUT_VERSION} from "./graph/constants.js";
 import {GraphCache} from "./graph/cache.js";
-import {applyInitialLayout, buildGraphData} from "./graph/data-builder.js";
+import {applyInitialLayoutAsync, buildGraphData} from "./graph/data-builder.js";
 import {GraphRenderer} from "./graph/renderer.js";
 import {InteractionHandler} from "./graph/interaction.js";
 import {calculateFitView} from "./graph/utils.js";
@@ -60,7 +60,10 @@ export async function renderGraph(container) {
         resolvedEdges = graphData.edges;
         neighborMap = graphData.neighborMap;
 
-        applyInitialLayout(activeNodes, resolvedEdges);
+        await applyInitialLayoutAsync(activeNodes, resolvedEdges, (percent) => {
+            const subtitle = container.querySelector("#graph-loader div:last-child");
+            if (subtitle) subtitle.textContent = `Calculating layout: ${percent}%`;
+        });
 
         graphCache.set(cacheKey, activeNodes, resolvedEdges, neighborMap);
     }

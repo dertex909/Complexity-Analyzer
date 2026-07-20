@@ -97,19 +97,30 @@ public final class HarvestedRecipeConverter {
         String placeholderId = "";
 
         if (declaredResult.isEmpty() && outputStacks.isEmpty() && !outputFluids.isEmpty()) {
-            output = new ItemStack(AIR);
+            var fluid = outputFluids.getFirst().getFluid();
+            var bucketStack = ItemStack.EMPTY;
+            try {
+                bucketStack = fluid.getFluidType().getBucket(outputFluids.getFirst());
+            } catch (Throwable ignored) {
+            }
+
+            if (!bucketStack.isEmpty() && bucketStack.getItem() != AIR) {
+                output = bucketStack.copy();
+            } else {
+                return null;
+            }
             isPlaceholder = true;
-            placeholderId = GameRegistryManager.getFluidId(outputFluids.getFirst().getFluid()).toString();
+            placeholderId = GameRegistryManager.getFluidId(fluid).toString();
         } else {
             output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks, registryAccess);
         }
 
-        if (output.isEmpty() && !isPlaceholder && !inputIngredients.isEmpty()) {
+        if ((output.isEmpty() || output.getItem() == AIR) && !isPlaceholder && !inputIngredients.isEmpty()) {
             ItemStack[] items = inputIngredients.getFirst().ingredient().getItems();
-            if (items.length > 0) output = new ItemStack(items[0].getItem(), 1);
+            if (items.length > 0 && items[0].getItem() != AIR) output = new ItemStack(items[0].getItem(), 1);
         }
 
-        if (output.isEmpty() && !isPlaceholder) return null;
+        if ((output.isEmpty() || output.getItem() == AIR) && !isPlaceholder) return null;
 
         var builder = new RecipeNode.Builder(output.getItem()).resultCount(output.getCount()).rawRecipe();
 
@@ -136,7 +147,7 @@ public final class HarvestedRecipeConverter {
                 if (!isValid(stack)) continue;
                 var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
-                if (!containsSameStackData(variants, stack)) variants.add(stack.copyWithCount(1));
+                if (isUniqueStackData(variants, stack)) variants.add(stack.copyWithCount(1));
             }
 
             if (!variants.isEmpty()) {
@@ -154,7 +165,7 @@ public final class HarvestedRecipeConverter {
             var firstKey = mergedIngredients.keySet().getFirst();
             for (var transItem : transitionalItems) {
                 var transStack = new ItemStack(transItem);
-                if (!containsSameStackData(firstKey, transStack)) firstKey.add(transStack);
+                if (isUniqueStackData(firstKey, transStack)) firstKey.add(transStack);
             }
             if (firstKey.size() > 1) firstKey.sort(itemComparator);
         }
@@ -296,7 +307,7 @@ public final class HarvestedRecipeConverter {
                                           HolderLookup.Provider provider) {
         if (!declaredResult.isEmpty()) {
             for (var stack : stacks) {
-                if (stack.isEmpty() || stack.getItem() != declaredResult.getItem()) continue;
+                if (stack.isEmpty() || stack.getItem() == AIR || stack.getItem() != declaredResult.getItem()) continue;
                 if (!ItemStackIdentity.hasStackData(declaredResult, provider) && ItemStackIdentity.hasStackData(stack, provider)) {
                     return stack.copy();
                 }
@@ -306,7 +317,7 @@ public final class HarvestedRecipeConverter {
         var best = ItemStack.EMPTY;
         int bestScore = Integer.MAX_VALUE;
         for (var stack : stacks) {
-            if (stack.isEmpty()) continue;
+            if (stack.isEmpty() || stack.getItem() == AIR) continue;
             int score = stack.getCount() <= 0 ? Integer.MAX_VALUE : stack.getCount();
             if (best.isEmpty() || score < bestScore) {
                 best = stack;
@@ -320,9 +331,9 @@ public final class HarvestedRecipeConverter {
         return ItemStackIdentity.sameItemDataAndCount(a, b, provider);
     }
 
-    private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
-        for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
-        return false;
+    private static boolean isUniqueStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
+        for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return false;
+        return true;
     }
 
     private static final class ItemStackComparator implements Comparator<ItemStack> {

@@ -31,6 +31,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.harvest.modules.*;
 
 import static java.util.Locale.ROOT;
+import static net.minecraft.world.item.Items.AIR;
 
 public final class FastHarvester {
 
@@ -110,7 +111,7 @@ public final class FastHarvester {
 
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
-                    if (!apiResult.isEmpty()) outputItems.add(apiResult.copy());
+                    if (!apiResult.isEmpty() && apiResult.getItem() != AIR) outputItems.add(apiResult.copy());
                 } catch (Throwable ignored) {
                 }
             }
@@ -184,7 +185,7 @@ public final class FastHarvester {
             }
             if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
                 var res = r.getResultItem(level.registryAccess());
-                if (!res.isEmpty()) outputItems.add(res.copy());
+                if (!res.isEmpty() && res.getItem() != AIR) outputItems.add(res.copy());
             } catch (Throwable ignored) {
             }
 

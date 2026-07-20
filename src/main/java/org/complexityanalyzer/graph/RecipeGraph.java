@@ -96,38 +96,34 @@ public class RecipeGraph {
 
     public void addRecipe(RecipeNode node) {
         var result = node.getResultItem();
-        if (result == AIR && !node.isPlaceholder() && node.getFluidOutputs().isEmpty() && node.getChemicalOutputs().isEmpty()) {
-            return;
-        }
+        if (result == AIR) return;
 
         boolean[] isDuplicate = {false};
-        if (result != AIR) {
-            recipesByItem.compute(result, (item, list) -> {
-                if (list == null) list = new ObjectArrayList<>();
-                int dupIdx = list.indexOf(node);
-                if (dupIdx != -1) {
-                    isDuplicate[0] = true;
-                    var existing = list.get(dupIdx);
-                    boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
-                            || node.getItemOutputs().size() > existing.getItemOutputs().size()
-                            || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
-                    if (nodeIsBetter) {
-                        var newList = new ObjectArrayList<>(list);
-                        newList.set(dupIdx, node);
-                        replaceOrAddInAllRecipes(existing, node);
-                        registerFluidIngredientsUsage(node, result);
-                        registerFluidOutputs(node);
-                        bestRecipeCache.remove(result);
-                        return newList;
-                    }
-                    return list;
-                } else {
+        recipesByItem.compute(result, (item, list) -> {
+            if (list == null) list = new ObjectArrayList<>();
+            int dupIdx = list.indexOf(node);
+            if (dupIdx != -1) {
+                isDuplicate[0] = true;
+                var existing = list.get(dupIdx);
+                boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
+                        || node.getItemOutputs().size() > existing.getItemOutputs().size()
+                        || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                if (nodeIsBetter) {
                     var newList = new ObjectArrayList<>(list);
-                    newList.add(node);
+                    newList.set(dupIdx, node);
+                    replaceOrAddInAllRecipes(existing, node);
+                    registerFluidIngredientsUsage(node, result);
+                    registerFluidOutputs(node);
+                    bestRecipeCache.remove(result);
                     return newList;
                 }
-            });
-        }
+                return list;
+            } else {
+                var newList = new ObjectArrayList<>(list);
+                newList.add(node);
+                return newList;
+            }
+        });
 
         if (isDuplicate[0]) return;
 
@@ -178,7 +174,6 @@ public class RecipeGraph {
                 }
                 return foList;
             });
-
         }
     }
 

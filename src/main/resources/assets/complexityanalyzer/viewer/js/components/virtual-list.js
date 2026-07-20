@@ -20,6 +20,10 @@ export function mountVirtualList(container, options) {
     const {itemCount, itemHeight, renderRow} = options;
     const viewport = document.createElement("div");
     viewport.className = "virtual-viewport";
+
+    const head = container.parentNode ? container.parentNode.querySelector(".table-head") : null;
+    if (head) viewport.appendChild(head);
+
     const spacer = document.createElement("div");
     spacer.className = "virtual-spacer";
     const rows = document.createElement("div");
@@ -55,34 +59,12 @@ export function mountVirtualList(container, options) {
         });
     };
 
-    const head = container.parentNode ? container.parentNode.querySelector(".table-head") : null;
-    const syncScrollbar = () => {
-        if (head) {
-            const scrollbarWidth = viewport.offsetWidth - viewport.clientWidth;
-            head.style.paddingRight = `${scrollbarWidth}px`;
-            head.style.transform = `translateX(-${viewport.scrollLeft}px)`;
-        }
-    };
-
-    const observer = new ResizeObserver(() => {
-        syncScrollbar();
-    });
-    observer.observe(viewport);
-
-    viewport.addEventListener("scroll", () => {
-        render();
-        syncScrollbar();
-    }, {passive: true});
-    window.addEventListener("resize", syncScrollbar, {passive: true});
-
+    viewport.addEventListener("scroll", render, {passive: true});
     render();
-    syncScrollbar();
 
     return {
         destroy: () => {
-            window.removeEventListener("resize", syncScrollbar);
-            observer.disconnect();
-            if (head) head.style.transform = '';
+            viewport.removeEventListener("scroll", render);
         }
     };
 }

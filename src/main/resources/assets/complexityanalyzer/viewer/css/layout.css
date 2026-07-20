@@ -664,8 +664,9 @@ main {
         z-index: 1000;
         width: 280px;
         max-width: 85vw;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.8);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8);
     }
+
     body:not(.collapsed) #sidebar-resizer {
         display: none;
     }

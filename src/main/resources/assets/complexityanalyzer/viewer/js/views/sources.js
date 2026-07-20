@@ -260,7 +260,7 @@ export async function renderSources(container) {
         if (burgerBtn) burgerBtn.addEventListener("click", toggleSidebar);
         if (overlayEl) overlayEl.addEventListener("click", toggleSidebar);
         if (mobileCloseBtn) mobileCloseBtn.addEventListener("click", toggleSidebar);
-        
+
         catList._toggleSidebar = toggleSidebar;
 
         const queryInput = container.querySelector("#sources-query");

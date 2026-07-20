@@ -28,10 +28,7 @@ base {
     archivesName = mod_id
 }
 
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
-    withSourcesJar()
-}
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
     version = project.neo_version
@@ -39,18 +36,15 @@ neoForge {
     runs {
         client {
             client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         gameTestServer {
             type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         data {
@@ -60,6 +54,7 @@ neoForge {
 
         configureEach {
             systemProperty('forge.logging.markers', 'REGISTRIES')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             logLevel = org.slf4j.event.Level.DEBUG
             additionalRuntimeClasspathConfiguration.extendsFrom(project.configurations.implementation)
         }

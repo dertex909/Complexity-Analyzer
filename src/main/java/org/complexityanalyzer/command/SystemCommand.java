@@ -32,7 +32,6 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
-import org.complexityanalyzer.event.AnalysisBootstrap;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -63,7 +62,7 @@ public final class SystemCommand {
     private static int executeStatus(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
-        var engine = AnalysisBootstrap.getEngine();
+        var engine = AnalysisEngine.getInstance();
 
         if (engine == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.system.engine_not_initialized"));
@@ -77,20 +76,20 @@ public final class SystemCommand {
         output.sendEmptyLine(source);
 
         String stateIcon;
-        var stateColor = switch (state.toString()) {
-            case "READY" -> {
+        var stateColor = switch (state) {
+            case READY -> {
                 stateIcon = "✓";
                 yield ChatFormatting.GREEN;
             }
-            case "LOADING", "INITIALIZING" -> {
+            case ANALYZING -> {
                 stateIcon = "⏳";
                 yield ChatFormatting.YELLOW;
             }
-            case "ERROR", "FAILED" -> {
+            case FAILED -> {
                 stateIcon = "✗";
                 yield ChatFormatting.RED;
             }
-            default -> {
+            case IDLE -> {
                 stateIcon = "◆";
                 yield ChatFormatting.GRAY;
             }

@@ -26,7 +26,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -129,7 +128,7 @@ public class ServerLanguage {
             result.getSiblings().clear();
         }
 
-        Style style = component.getStyle();
+        var style = component.getStyle();
         if (style.getHoverEvent() != null && style.getHoverEvent().getAction() == HoverEvent.Action.SHOW_TEXT) {
             var hoverContent = style.getHoverEvent().getValue(HoverEvent.Action.SHOW_TEXT);
             if (hoverContent != null) {

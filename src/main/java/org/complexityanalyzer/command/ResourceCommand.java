@@ -28,14 +28,14 @@ import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.event.AnalysisBootstrap;
+
+import static net.minecraft.world.item.Items.AIR;
 
 public final class ResourceCommand {
     private ResourceCommand() {
@@ -49,7 +49,7 @@ public final class ResourceCommand {
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
-        var engine = AnalysisBootstrap.getEngine();
+        var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.tree.not_ready"));
@@ -57,7 +57,7 @@ public final class ResourceCommand {
         }
 
         var item = GameRegistryManager.getItem(itemId);
-        if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
+        if (item == AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.resource.not_found", itemId.toString()));
             return 0;
         }

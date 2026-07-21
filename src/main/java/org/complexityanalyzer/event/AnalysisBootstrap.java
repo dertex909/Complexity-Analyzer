@@ -56,8 +56,4 @@ public class AnalysisBootstrap {
         GameRegistryManager.clear();
         ComplexityAnalyzerAPI.Holder.uninstall();
     }
-
-    public static AnalysisEngine getEngine() {
-        return AnalysisEngine.getInstance();
-    }
 }

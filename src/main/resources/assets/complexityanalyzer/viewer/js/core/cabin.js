@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import * as fzstd from "../libs/fzstd.js";
+
 export const SEC = {
     META: 0x01, STRINGS: 0x02, ITEMS: 0x03, BASE_DATA: 0x04, SOURCES: 0x05,
     RECIPES: 0x06, USAGE: 0x07, MOBS: 0x08, DROPS: 0x09, SCC: 0x0A,
@@ -111,10 +113,7 @@ export class Buf {
 }
 
 async function decompress(bytes) {
-    if (typeof DecompressionStream === "undefined") throw new Error("No DecompressionStream support");
-    const ds = new DecompressionStream("deflate-raw");
-    const stream = new Blob([bytes]).stream().pipeThrough(ds);
-    return new Response(stream).arrayBuffer().then(buf => new Uint8Array(buf));
+    return fzstd.decompress(bytes);
 }
 
 export class CabinFile {

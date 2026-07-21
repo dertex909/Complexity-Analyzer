@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.cache;
 
+import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -31,6 +33,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
@@ -145,8 +148,8 @@ public final class ResourceCache implements ManagedCache {
         if (file == null || !Files.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
-        try {
-            raw = Unpooled.wrappedBuffer(Files.readAllBytes(file));
+        try (var is = Files.newInputStream(file); var zstdIs = new ZstdInputStream(is)) {
+            raw = Unpooled.wrappedBuffer(zstdIs.readAllBytes());
             var buf = new FriendlyByteBuf(raw);
 
             if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
@@ -209,9 +212,17 @@ public final class ResourceCache implements ManagedCache {
 
             Files.createDirectories(file.getParent());
             var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            Files.write(tmp, bytes);
-            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            ComplexityAnalyzer.LOGGER.info("[Cache:{}] Saved {} items -> {}", id, map.size(), file);
+
+            try (var os = Files.newOutputStream(tmp); var zstdOs = new ZstdOutputStream(os, 5)) {
+                zstdOs.write(bytes);
+            }
+
+            try {
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (Throwable t) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            ComplexityAnalyzer.LOGGER.info("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to save: {}", id, t.toString());
         } finally {

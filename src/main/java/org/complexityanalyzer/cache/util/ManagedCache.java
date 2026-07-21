@@ -16,10 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.cache;
+package org.complexityanalyzer.cache.util;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.minecraft.server.MinecraftServer;
+import org.complexityanalyzer.cache.MachineRegistryCache;
+import org.complexityanalyzer.cache.RecipeGraphCache;
+import org.complexityanalyzer.cache.ResourceCache;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Files;

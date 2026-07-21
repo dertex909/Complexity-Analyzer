@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.cache;
 
+import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -36,6 +38,8 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.cache.util.Fingerprints;
+import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
@@ -300,9 +304,17 @@ public final class RecipeGraphCache implements ManagedCache {
 
             Files.createDirectories(file.getParent());
             var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            Files.write(tmp, bytes);
-            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            ComplexityAnalyzer.LOGGER.info("[Harvest] Saved recipe graph cache: {} recipes -> {}", nodes.size(), file);
+
+            try (var os = Files.newOutputStream(tmp); var zstdOs = new ZstdOutputStream(os, 5)) {
+                zstdOs.write(bytes);
+            }
+
+            try {
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (Throwable t) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            ComplexityAnalyzer.LOGGER.info("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
         } finally {
@@ -314,8 +326,8 @@ public final class RecipeGraphCache implements ManagedCache {
         if (!Files.isRegularFile(file)) return null;
 
         ByteBuf raw = null;
-        try {
-            byte[] bytes = Files.readAllBytes(file);
+        try (var is = Files.newInputStream(file); var zstdIs = new ZstdInputStream(is)) {
+            byte[] bytes = zstdIs.readAllBytes();
             raw = Unpooled.wrappedBuffer(bytes);
             var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
 

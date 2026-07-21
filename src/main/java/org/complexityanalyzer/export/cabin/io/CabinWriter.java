@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.export.cabin.io;
 
+import com.github.luben.zstd.Zstd;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
@@ -26,7 +27,6 @@ import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 
 import java.util.stream.IntStream;
-import java.util.zip.Deflater;
 
 public final class CabinWriter {
 
@@ -63,10 +63,10 @@ public final class CabinWriter {
             var s = sections.get(i);
             byte[] data = s.payload();
             if (s.compress() && data.length >= 64) {
-                byte[] compressed = deflateRaw(data);
+                byte[] compressed = Zstd.compress(data, 19);
                 if (compressed.length < data.length) {
                     toWrites[i] = compressed;
-                    codecs[i] = CabinFormat.CODEC_DEFLATE_RAW;
+                    codecs[i] = CabinFormat.CODEC_ZSTD;
                 } else {
                     toWrites[i] = data;
                     codecs[i] = CabinFormat.CODEC_RAW;
@@ -102,34 +102,5 @@ public final class CabinWriter {
         out.putI64At((int) hashSlot, fileHash);
 
         return out.toByteArray();
-    }
-
-    private static byte[] deflateRaw(byte[] data) {
-        var def = new Deflater(Deflater.BEST_COMPRESSION, true);
-        try {
-            def.setInput(data);
-            def.finish();
-            byte[] out = new byte[Math.max(64, data.length)];
-            int total = 0;
-            while (!def.finished()) {
-                if (total == out.length) {
-                    byte[] grown = new byte[out.length + (out.length >>> 1) + 16];
-                    System.arraycopy(out, 0, grown, 0, total);
-                    out = grown;
-                }
-                int n = def.deflate(out, total, out.length - total, Deflater.SYNC_FLUSH);
-                total += n;
-                if (n == 0 && !def.needsInput()) {
-                    byte[] grown = new byte[out.length + (out.length >>> 1) + 16];
-                    System.arraycopy(out, 0, grown, 0, total);
-                    out = grown;
-                }
-            }
-            byte[] result = new byte[total];
-            System.arraycopy(out, 0, result, 0, total);
-            return result;
-        } finally {
-            def.end();
-        }
     }
 }

@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.cache;
 
+import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -28,12 +30,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.cache.util.Fingerprints;
+import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
@@ -70,8 +74,8 @@ public final class MachineRegistryCache implements ManagedCache {
         if (file == null || !Files.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
-        try {
-            byte[] bytes = Files.readAllBytes(file);
+        try (var is = Files.newInputStream(file); var zstdIs = new ZstdInputStream(is)) {
+            byte[] bytes = zstdIs.readAllBytes();
             raw = Unpooled.wrappedBuffer(bytes);
             var buf = new FriendlyByteBuf(raw);
 
@@ -142,9 +146,17 @@ public final class MachineRegistryCache implements ManagedCache {
 
             Files.createDirectories(file.getParent());
             var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            Files.write(tmp, bytes);
-            Files.move(tmp, file, REPLACE_EXISTING);
-            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved cache: {} recipe types -> {}", mapping.size(), file);
+
+            try (var os = Files.newOutputStream(tmp); var zstdOs = new ZstdOutputStream(os, 5)) {
+                zstdOs.write(bytes);
+            }
+
+            try {
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (Throwable t) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());
         } finally {

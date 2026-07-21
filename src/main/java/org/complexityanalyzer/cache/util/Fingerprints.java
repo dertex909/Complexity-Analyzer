@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.cache;
+package org.complexityanalyzer.cache.util;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.neoforged.fml.ModList;

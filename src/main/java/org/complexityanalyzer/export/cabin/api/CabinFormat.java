@@ -23,7 +23,7 @@ public final class CabinFormat {
     public static final short VERSION = 0x0104;
     public static final int HEADER_SIZE = 32;
     public static final byte CODEC_RAW = 0;
-    public static final byte CODEC_DEFLATE_RAW = 1;
+    public static final byte CODEC_ZSTD = 1;
     public static final byte SEC_META = 0x01;
     public static final byte SEC_STRINGS = 0x02;
     public static final byte SEC_ITEMS = 0x03;

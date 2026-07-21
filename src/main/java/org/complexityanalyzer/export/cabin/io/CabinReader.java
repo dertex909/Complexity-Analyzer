@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.export.cabin.io;
 
+import com.github.luben.zstd.Zstd;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
@@ -25,8 +26,6 @@ import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 
 import java.io.IOException;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
 
 public final class CabinReader {
 
@@ -54,32 +53,6 @@ public final class CabinReader {
         byte[] copy = data.clone();
         for (int i = 24; i < 32; i++) copy[i] = 0;
         return XxHash64.hash(copy, CabinFormat.XXH64_SEED);
-    }
-
-    private static byte[] inflateRaw(byte[] src, int off, int len, int uncompressed) throws IOException {
-        var inf = new Inflater(true);
-        try {
-            inf.setInput(src, off, len);
-            byte[] out = new byte[uncompressed];
-            int total = 0;
-            while (!inf.finished()) {
-                int n = inf.inflate(out, total, out.length - total);
-                if (n == 0) {
-                    if (inf.needsInput() || inf.needsDictionary()) throw new IOException("Truncated deflate stream");
-                    break;
-                }
-                total += n;
-                if (total > out.length) throw new IOException("Decompressed size exceeded declared " + uncompressed);
-            }
-            if (total != uncompressed)
-                throw new IOException("Decompressed size mismatch: " + total + " vs " + uncompressed);
-
-            return out;
-        } catch (DataFormatException e) {
-            throw new IOException(e);
-        } finally {
-            inf.end();
-        }
     }
 
     private Byte2ObjectMap<Section> parseTocAndValidateHash(byte[] data, long zeroedExpected) throws IOException {
@@ -120,8 +93,14 @@ public final class CabinReader {
             System.arraycopy(data, (int) s.offset, out, 0, out.length);
             return out;
         }
-        if (s.codec == CabinFormat.CODEC_DEFLATE_RAW) {
-            return inflateRaw(data, (int) s.offset, (int) s.length, (int) s.uncompressed);
+        if (s.codec == CabinFormat.CODEC_ZSTD) {
+            byte[] compressed = new byte[(int) s.length];
+            System.arraycopy(data, (int) s.offset, compressed, 0, compressed.length);
+            try {
+                return Zstd.decompress(compressed, (int) s.uncompressed);
+            } catch (Throwable t) {
+                throw new IOException("Zstd decompression failed for section 0x" + Integer.toHexString(id & 0xFF), t);
+            }
         }
         throw new IOException("Unknown codec " + s.codec);
     }

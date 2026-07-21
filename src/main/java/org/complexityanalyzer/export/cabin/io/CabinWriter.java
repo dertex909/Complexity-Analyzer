@@ -63,7 +63,7 @@ public final class CabinWriter {
             var s = sections.get(i);
             byte[] data = s.payload();
             if (s.compress() && data.length >= 64) {
-                byte[] compressed = Zstd.compress(data, 19);
+                byte[] compressed = Zstd.compress(data, 10);
                 if (compressed.length < data.length) {
                     toWrites[i] = compressed;
                     codecs[i] = CabinFormat.CODEC_ZSTD;

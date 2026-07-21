@@ -18,9 +18,13 @@
 
 package org.complexityanalyzer.harvest.modules;
 
+import com.mojang.datafixers.util.Either;
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -30,6 +34,7 @@ import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.FastHarvester;
 import org.complexityanalyzer.harvest.HarvestedItems;
 import org.complexityanalyzer.harvest.RecipeReflection;
@@ -37,6 +42,7 @@ import org.complexityanalyzer.harvest.RecipeReflection;
 import java.util.Map;
 import java.util.Optional;
 
+import static net.minecraft.core.registries.Registries.ITEM;
 import static net.minecraft.world.item.Items.AIR;
 
 public final class DeepUniversalCollector {
@@ -74,6 +80,39 @@ public final class DeepUniversalCollector {
             case Optional<?> opt -> {
                 if (visited.add(opt)) opt.ifPresent(o ->
                         collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
+                return;
+            }
+            case Either<?, ?> either -> {
+                if (visited.add(either)) {
+                    either.left().ifPresent(o -> collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
+                    either.right().ifPresent(o -> collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
+                }
+                return;
+            }
+            case Pair<?, ?> pair -> {
+                if (visited.add(pair)) {
+                    collect(pair.getFirst(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
+                    collect(pair.getSecond(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
+                }
+                return;
+            }
+            case TagKey<?> tagKey -> {
+                if (visited.add(tagKey) && tagKey.registry().equals(ITEM)) {
+                    @SuppressWarnings("unchecked")
+                    var itemTag = (TagKey<Item>) tagKey;
+                    var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
+                    if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+                        var item = holder.value();
+                        var id = BuiltInRegistries.ITEM.getKey(item);
+                        var registeredItem = GameRegistryManager.getItem(id);
+                        if (registeredItem != null && registeredItem != AIR) {
+                            var stack = new ItemStack(registeredItem);
+                            if (apiResultItem != null && registeredItem == apiResultItem) outputItems.add(stack);
+                            else inputItems.add(stack);
+                            break;
+                        }
+                    }
+                }
                 return;
             }
             case ItemStack stack when !stack.isEmpty() -> {

@@ -18,15 +18,21 @@
 
 package org.complexityanalyzer.harvest.modules;
 
+import com.mojang.datafixers.util.Either;
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.RecipeReflection;
 
 import java.util.Map;
@@ -44,6 +50,37 @@ public final class DeepItemCollector {
         switch (obj) {
             case Optional<?> opt -> {
                 if (visited.add(opt)) opt.ifPresent(o -> collect(o, acc, depth + 1, visited));
+                return;
+            }
+            case Either<?, ?> either -> {
+                if (visited.add(either)) {
+                    either.left().ifPresent(o -> collect(o, acc, depth + 1, visited));
+                    either.right().ifPresent(o -> collect(o, acc, depth + 1, visited));
+                }
+                return;
+            }
+            case Pair<?, ?> pair -> {
+                if (visited.add(pair)) {
+                    collect(pair.getFirst(), acc, depth + 1, visited);
+                    collect(pair.getSecond(), acc, depth + 1, visited);
+                }
+                return;
+            }
+            case TagKey<?> tagKey -> {
+                if (visited.add(tagKey) && tagKey.registry().equals(Registries.ITEM)) {
+                    @SuppressWarnings("unchecked")
+                    var itemTag = (TagKey<Item>) tagKey;
+                    var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
+                    if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+                        var item = holder.value();
+                        var id = BuiltInRegistries.ITEM.getKey(item);
+                        var registeredItem = GameRegistryManager.getItem(id);
+                        if (registeredItem != null && registeredItem != AIR) {
+                            acc.add(new ItemStack(registeredItem));
+                            break;
+                        }
+                    }
+                }
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {

@@ -18,8 +18,12 @@
 
 package org.complexityanalyzer.harvest.modules;
 
+import com.mojang.datafixers.util.Either;
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
@@ -31,6 +35,8 @@ import org.complexityanalyzer.harvest.RecipeReflection;
 import java.util.Map;
 import java.util.Optional;
 
+import static net.minecraft.core.registries.Registries.ITEM;
+
 public final class DeepIngredientCollector {
 
     private DeepIngredientCollector() {
@@ -41,6 +47,31 @@ public final class DeepIngredientCollector {
         switch (obj) {
             case Optional<?> opt -> {
                 if (visited.add(opt)) opt.ifPresent(o -> collect(o, acc, depth + 1, visited));
+                return;
+            }
+            case Either<?, ?> either -> {
+                if (visited.add(either)) {
+                    either.left().ifPresent(o -> collect(o, acc, depth + 1, visited));
+                    either.right().ifPresent(o -> collect(o, acc, depth + 1, visited));
+                }
+                return;
+            }
+            case Pair<?, ?> pair -> {
+                if (visited.add(pair)) {
+                    collect(pair.getFirst(), acc, depth + 1, visited);
+                    collect(pair.getSecond(), acc, depth + 1, visited);
+                }
+                return;
+            }
+            case TagKey<?> tagKey -> {
+                if (visited.add(tagKey) && tagKey.registry().equals(ITEM)) {
+                    @SuppressWarnings("unchecked")
+                    var itemTag = (TagKey<Item>) tagKey;
+                    var ing = Ingredient.of(itemTag);
+                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
+                        acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                    }
+                }
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {

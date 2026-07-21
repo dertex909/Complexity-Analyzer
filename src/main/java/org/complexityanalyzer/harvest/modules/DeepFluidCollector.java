@@ -18,12 +18,20 @@
 
 package org.complexityanalyzer.harvest.modules;
 
+import com.mojang.datafixers.util.Either;
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.RecipeReflection;
 
 import java.util.Map;
@@ -39,6 +47,37 @@ public final class DeepFluidCollector {
         switch (obj) {
             case Optional<?> opt -> {
                 if (visited.add(opt)) opt.ifPresent(o -> collect(o, acc, depth + 1, visited));
+                return;
+            }
+            case Either<?, ?> either -> {
+                if (visited.add(either)) {
+                    either.left().ifPresent(o -> collect(o, acc, depth + 1, visited));
+                    either.right().ifPresent(o -> collect(o, acc, depth + 1, visited));
+                }
+                return;
+            }
+            case Pair<?, ?> pair -> {
+                if (visited.add(pair)) {
+                    collect(pair.getFirst(), acc, depth + 1, visited);
+                    collect(pair.getSecond(), acc, depth + 1, visited);
+                }
+                return;
+            }
+            case TagKey<?> tagKey -> {
+                if (visited.add(tagKey) && tagKey.registry().equals(Registries.FLUID)) {
+                    @SuppressWarnings("unchecked")
+                    var fluidTag = (TagKey<Fluid>) tagKey;
+                    var optionalTag = BuiltInRegistries.FLUID.getTag(fluidTag);
+                    if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+                        var fluid = holder.value();
+                        var id = BuiltInRegistries.FLUID.getKey(fluid);
+                        var registeredFluid = GameRegistryManager.getFluid(id);
+                        if (registeredFluid != null && registeredFluid != Fluids.EMPTY) {
+                            acc.add(new FluidStack(registeredFluid, 1000));
+                            break;
+                        }
+                    }
+                }
                 return;
             }
             case SizedFluidIngredient sfi -> {

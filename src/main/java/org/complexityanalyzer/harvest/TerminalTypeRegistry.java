@@ -18,6 +18,9 @@
 
 package org.complexityanalyzer.harvest;
 
+import com.mojang.datafixers.util.Either;
+import com.mojang.datafixers.util.Pair;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class TerminalTypeRegistry {
@@ -32,6 +35,8 @@ public final class TerminalTypeRegistry {
         while (type.isArray()) type = type.getComponentType();
         if (type.isPrimitive() || type == String.class || type.isEnum() || type == Boolean.class
                 || type == Character.class || Number.class.isAssignableFrom(type)) return true;
+
+        if (Either.class.isAssignableFrom(type) || Pair.class.isAssignableFrom(type)) return false;
 
         Boolean cached = CACHE.get(type);
         if (cached != null) return cached;

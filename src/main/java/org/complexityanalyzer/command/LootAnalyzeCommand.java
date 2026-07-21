@@ -26,10 +26,10 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.sources.UniversalLootSource;
 
 import static java.util.Locale.ROOT;
 

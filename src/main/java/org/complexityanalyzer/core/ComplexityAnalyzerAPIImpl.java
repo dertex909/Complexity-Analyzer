@@ -24,12 +24,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
-import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.sources.HardcodedSourcesProvider;
 import org.complexityanalyzer.api.*;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.sources.HardcodedSourcesProvider;
 
 import java.util.*;
 

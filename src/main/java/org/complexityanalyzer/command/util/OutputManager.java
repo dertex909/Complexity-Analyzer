@@ -42,18 +42,6 @@ public class OutputManager {
         this.server = server;
     }
 
-    public void sendSuccess(CommandSourceStack source, Component message) {
-        source.sendSuccess(() -> translate(source, message), false);
-    }
-
-    public void sendFailure(CommandSourceStack source, Component message) {
-        source.sendFailure(translate(source, message));
-    }
-
-    public void sendInfo(CommandSourceStack source, Component message) {
-        source.sendSuccess(() -> translate(source, message), false);
-    }
-
     private static MutableComponent toMutableComponent(Object obj) {
         if (obj instanceof Component c) return c.copy();
         if (obj instanceof String s) {
@@ -93,6 +81,18 @@ public class OutputManager {
         return styled(obj, formats).withStyle(style -> style
                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textToCopy))
                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, toMutableComponent(hover))));
+    }
+
+    public void sendSuccess(CommandSourceStack source, Component message) {
+        source.sendSuccess(() -> translate(source, message), false);
+    }
+
+    public void sendFailure(CommandSourceStack source, Component message) {
+        source.sendFailure(translate(source, message));
+    }
+
+    public void sendInfo(CommandSourceStack source, Component message) {
+        source.sendSuccess(() -> translate(source, message), false);
     }
 
     public void sendSeparator(CommandSourceStack source) {

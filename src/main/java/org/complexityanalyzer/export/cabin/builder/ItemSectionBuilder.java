@@ -20,13 +20,13 @@ package org.complexityanalyzer.export.cabin.builder;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.resource.SourceManager;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.resource.SourceManager;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 
 public final class ItemSectionBuilder {
 

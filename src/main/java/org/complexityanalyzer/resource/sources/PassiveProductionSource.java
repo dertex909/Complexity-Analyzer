@@ -24,9 +24,9 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.jetbrains.annotations.Nullable;
 
 public class PassiveProductionSource implements IResourceSource {

@@ -23,10 +23,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.IResourceSource;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.locks.StampedLock;

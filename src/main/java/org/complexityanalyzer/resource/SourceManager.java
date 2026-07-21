@@ -23,8 +23,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Future;

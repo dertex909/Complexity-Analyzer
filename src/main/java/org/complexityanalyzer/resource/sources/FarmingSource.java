@@ -28,14 +28,14 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.IMultiSourceProvider;
-import org.complexityanalyzer.resource.IResourceSource;
-import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.providers.PlantSimulator;
 import org.complexityanalyzer.cache.Fingerprints;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.resource.IMultiSourceProvider;
+import org.complexityanalyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.providers.PlantSimulator;
 import org.jetbrains.annotations.Nullable;
 
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {

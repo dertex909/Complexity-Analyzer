@@ -26,9 +26,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.MobCategory;
-import org.complexityanalyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.resource.sources.UniversalLootSource;
 
 public final class SharedSuggestions {
     public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) -> SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);

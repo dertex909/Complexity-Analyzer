@@ -39,15 +39,15 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.IMultiSourceProvider;
-import org.complexityanalyzer.resource.IResourceSource;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.cache.Fingerprints;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
+import org.complexityanalyzer.resource.IMultiSourceProvider;
+import org.complexityanalyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;

@@ -21,7 +21,6 @@ package org.complexityanalyzer.graph;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
@@ -30,13 +29,12 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 import org.complexityanalyzer.harvest.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
+import org.complexityanalyzer.util.ComplexityComparators;
 
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -152,7 +150,7 @@ public class GraphBuilder {
 
         var merged = new Object2ObjectLinkedOpenHashMap<ObjectList<ItemStack>, Integer>();
         int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
-        var comparator = new ItemStackComparator(level.registryAccess());
+        var comparator = ComplexityComparators.createDeepItemStackComparator(level.registryAccess());
 
         for (var ingredient : ingredients) {
             var variants = extractVariants(ingredient);
@@ -177,22 +175,5 @@ public class GraphBuilder {
             for (var stack : ing.getItems()) if (stack.getItem() == resultItem) return true;
         }
         return recipe instanceof TippedArrowRecipe || recipe instanceof MapCloningRecipe || recipe instanceof ArmorDyeRecipe || recipe instanceof BannerDuplicateRecipe;
-    }
-
-    private static final class ItemStackComparator implements Comparator<ItemStack> {
-        private final HolderLookup.Provider provider;
-
-        ItemStackComparator(HolderLookup.Provider provider) {
-            this.provider = provider;
-        }
-
-        @Override
-        public int compare(ItemStack a, ItemStack b) {
-            var idA = GameRegistryManager.getItemId(a.getItem());
-            var idB = GameRegistryManager.getItemId(b.getItem());
-            int byId = idA.compareTo(idB);
-            if (byId != 0) return byId;
-            return ItemStackIdentity.dataKey(a, provider).compareTo(ItemStackIdentity.dataKey(b, provider));
-        }
     }
 }

@@ -29,6 +29,7 @@ import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import java.util.Comparator;
 import java.util.Objects;
@@ -44,32 +45,6 @@ import java.util.Objects;
  * stands in for a virtual/synthetic product.
  */
 public class RecipeNode {
-
-    private static final Comparator<ChemicalIngredient> CHEM_ING_COMPARATOR = Comparator.comparing(ChemicalIngredient::id).thenComparingInt(ChemicalIngredient::amount);
-
-    private static final Comparator<ChemicalOutput> CHEM_OUT_COMPARATOR = Comparator.comparing(ChemicalOutput::id).thenComparingLong(ChemicalOutput::amount);
-
-    private static final Comparator<ItemStack> ITEM_STACK_COMPARATOR = (a, b) -> {
-        var idA = GameRegistryManager.getItemId(a.getItem());
-        var idB = GameRegistryManager.getItemId(b.getItem());
-        if (idA == idB) return Integer.compare(a.getCount(), b.getCount());
-        if (idA == null) return -1;
-        if (idB == null) return 1;
-        int c = idA.compareTo(idB);
-        if (c != 0) return c;
-        return Integer.compare(a.getCount(), b.getCount());
-    };
-
-    private static final Comparator<FluidStack> FLUID_STACK_COMPARATOR = (a, b) -> {
-        var idA = GameRegistryManager.getFluidId(a.getFluid());
-        var idB = GameRegistryManager.getFluidId(b.getFluid());
-        if (idA == idB) return Integer.compare(a.getAmount(), b.getAmount());
-        if (idA == null) return -1;
-        if (idB == null) return 1;
-        int c = idA.compareTo(idB);
-        if (c != 0) return c;
-        return Integer.compare(a.getAmount(), b.getAmount());
-    };
 
     private final ObjectList<IngredientSlot> ingredients;
     private final ObjectList<FluidIngredientSlot> fluidIngredients;
@@ -89,10 +64,10 @@ public class RecipeNode {
     private RecipeNode(Builder builder) {
         this.ingredients = copyToUnmodifiable(builder.ingredients);
         this.fluidIngredients = copyToUnmodifiable(builder.fluidIngredients);
-        this.chemicalIngredients = sortAndCopy(builder.chemicalIngredients, CHEM_ING_COMPARATOR);
-        this.chemicalOutputs = sortAndCopy(builder.chemicalOutputs, CHEM_OUT_COMPARATOR);
-        this.itemOutputs = sortAndCopy(builder.itemOutputs, ITEM_STACK_COMPARATOR);
-        this.fluidOutputs = sortAndCopy(builder.fluidOutputs, FLUID_STACK_COMPARATOR);
+        this.chemicalIngredients = sortAndCopy(builder.chemicalIngredients, ComplexityComparators.CHEMICAL_INGREDIENT);
+        this.chemicalOutputs = sortAndCopy(builder.chemicalOutputs, ComplexityComparators.CHEMICAL_OUTPUT);
+        this.itemOutputs = sortAndCopy(builder.itemOutputs, ComplexityComparators.ITEM_STACK_BY_ID_AND_COUNT);
+        this.fluidOutputs = sortAndCopy(builder.fluidOutputs, ComplexityComparators.FLUID_STACK_BY_ID_AND_AMOUNT);
         this.recipeMultiplier = builder.recipeMultiplier;
         this.resultItem = builder.resultItem;
         this.resultCount = builder.resultCount;

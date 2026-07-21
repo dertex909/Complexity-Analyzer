@@ -51,13 +51,13 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.cache.Fingerprints;
+import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.cache.Fingerprints;
-import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;

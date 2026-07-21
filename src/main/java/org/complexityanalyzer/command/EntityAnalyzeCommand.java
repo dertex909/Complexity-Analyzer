@@ -26,11 +26,11 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
-import org.complexityanalyzer.resource.data.MobDropData;
-import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.resource.data.MobDropData;
+import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 
 import java.util.Comparator;
 

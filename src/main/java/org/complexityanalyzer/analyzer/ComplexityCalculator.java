@@ -20,12 +20,12 @@ package org.complexityanalyzer.analyzer;
 
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.resource.SourceManager;
 import org.jetbrains.annotations.Nullable;
 
 public class ComplexityCalculator {

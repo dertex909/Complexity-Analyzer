@@ -31,13 +31,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import java.util.Comparator;
 

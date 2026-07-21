@@ -29,11 +29,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import static net.minecraft.world.item.Items.AIR;
 

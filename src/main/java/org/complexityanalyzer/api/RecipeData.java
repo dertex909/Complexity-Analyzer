@@ -19,8 +19,8 @@
 package org.complexityanalyzer.api;
 
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import java.util.List;
 import java.util.Optional;

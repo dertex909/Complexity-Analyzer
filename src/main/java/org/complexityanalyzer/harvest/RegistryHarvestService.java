@@ -18,17 +18,16 @@
 
 package org.complexityanalyzer.harvest;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
-import java.util.Locale;
+
+import static java.util.Locale.US;
 
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
@@ -41,29 +40,14 @@ public final class RegistryHarvestService {
         double avgTimePerRecipe = (double) elapsed / scanned;
         long estimatedTotal = (long) (avgTimePerRecipe * totalRecipes);
         long estimatedRemaining = estimatedTotal - elapsed;
-
+        if (estimatedRemaining <= 0) return "0s";
         String remainingStr;
         if (estimatedRemaining > 60000) {
-            remainingStr = String.format(Locale.US, "%dm %ds", estimatedRemaining / 60000, (estimatedRemaining % 60000) / 1000);
+            remainingStr = String.format(US, "%dm %ds", estimatedRemaining / 60000, (estimatedRemaining % 60000) / 1000);
         } else {
-            remainingStr = String.format(Locale.US, "%ds", estimatedRemaining / 1000);
+            remainingStr = String.format(US, "%ds", estimatedRemaining / 1000);
         }
         return remainingStr;
-    }
-
-    private static String buildRejectReason(HarvestedItems items) {
-        var sb = new StringBuilder("No structural recipe node: ");
-        sb.append("inputItems=").append(items.inputItems().size());
-        sb.append(" outputItems=").append(items.outputItems().size());
-        sb.append(" inputIngredients=").append(items.inputIngredients().size());
-        sb.append(" inputFluids=").append(items.inputFluids().size());
-        sb.append(" outputFluids=").append(items.outputFluids().size());
-        sb.append(" rootType=").append(items.root() != null ? items.root().getClass().getSimpleName() : "null");
-        if (items.root() != null) {
-            var detection = AntivirusStyleDetector.detect(items.root().getClass());
-            sb.append(" antivirus=").append(detection.verdict());
-        }
-        return sb.toString();
     }
 
     public void harvestInto(RecipeGraph graph, Level level, Path worldDir) {
@@ -77,9 +61,8 @@ public final class RegistryHarvestService {
         int harvested = 0;
         int rejected = 0;
         int failed = 0;
-        var nodes = new ObjectArrayList<RecipeNode>();
-        var knownRecipeIds = new ObjectOpenHashSet<ResourceLocation>();
 
+        var knownRecipeIds = new ObjectOpenHashSet<ResourceLocation>(totalRecipes);
         var debugTrace = new FullDebugTracePipeline(worldDir);
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Starting runtime recipe scan (Total: {} recipes)...", totalRecipes);
@@ -87,38 +70,37 @@ public final class RegistryHarvestService {
 
         for (var holder : recipes) {
             scanned++;
-            knownRecipeIds.add(holder.id());
+            var recipeId = holder.id();
+            knownRecipeIds.add(recipeId);
             try {
                 var recipe = holder.value();
                 var items = harvester.harvest(recipe, level);
                 var node = HarvestedRecipeConverter.convert(items, level);
 
                 if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty() || !node.getChemicalIngredients().isEmpty())) {
-                    nodes.add(node);
+                    graph.addRecipe(node);
                     harvested++;
-                    debugTrace.traceHarvested(holder.id().toString(), recipe, level, items);
+                    debugTrace.traceHarvested(recipeId, recipe, level, items);
                 } else {
                     rejected++;
-                    String reason = buildRejectReason(items);
-                    debugTrace.traceRejected(holder.id().toString(), recipe, level, reason);
+                    debugTrace.traceRejected(recipeId, recipe, level, items);
                 }
             } catch (Throwable t) {
                 failed++;
-                debugTrace.traceFailed(holder.id().toString(), holder.value().getClass().getName(), t);
-                ComplexityAnalyzer.LOGGER.debug("[Harvest] Failed to scan recipe {}: {}", holder.id(), t.getMessage());
+                debugTrace.traceFailed(recipeId, holder.value().getClass().getName(), t);
+                ComplexityAnalyzer.LOGGER.debug("[Harvest] Failed to scan recipe {}: {}", recipeId, t.getMessage());
             }
 
-            if ((scanned < 1000 && scanned % 100 == 0) || (scanned >= 1000 && scanned % 1000 == 0) || scanned == totalRecipes) {
+            if (scanned % 1000 == 0 || scanned == totalRecipes) {
                 long elapsed = System.currentTimeMillis() - startTime;
                 final var remainingStr = getRemaining(elapsed, scanned, totalRecipes);
 
                 ComplexityAnalyzer.LOGGER.info("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
-                        scanned, totalRecipes, String.format(Locale.US, "%.1f", (scanned * 100.0) / totalRecipes),
+                        scanned, totalRecipes, String.format(US, "%.1f", (scanned * 100.0) / totalRecipes),
                         remainingStr, harvested, rejected, failed);
             }
         }
 
-        for (var node : nodes) graph.addRecipe(node);
         debugTrace.flush();
         DynamicRecipeHarvester.harvest(graph, level, knownRecipeIds);
         harvester.clearCaches();

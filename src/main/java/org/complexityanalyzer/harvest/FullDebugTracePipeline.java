@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.harvest;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -35,12 +36,12 @@ import java.util.Map;
 import static java.util.Locale.ROOT;
 
 public final class FullDebugTracePipeline {
-    private static final boolean ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");
+    private static final boolean DEBUG_ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 
     static {
-        if (ENABLED) {
+        if (DEBUG_ENABLED) {
             ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is ENABLED via JVM option (-Dcomplexityanalyzer.FullDebugTracePipeline=true)");
         } else {
             ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is DISABLED (To enable, use JVM option: -Dcomplexityanalyzer.FullDebugTracePipeline=true)");
@@ -49,8 +50,8 @@ public final class FullDebugTracePipeline {
 
     private final Path worldDir;
     private final StringBuilder buffer;
-    private final Map<String, Integer> recipeTypeStats = new LinkedHashMap<>();
-    private final Map<String, Integer> rejectReasons = new LinkedHashMap<>();
+    private final Map<String, Integer> recipeTypeStats;
+    private final Map<String, Integer> rejectReasons;
     private int totalRecipes;
     private int harvestedCount;
     private int rejectedCount;
@@ -58,10 +59,14 @@ public final class FullDebugTracePipeline {
 
     public FullDebugTracePipeline(Path worldDir) {
         this.worldDir = worldDir;
-        if (ENABLED) {
+        if (DEBUG_ENABLED) {
             this.buffer = new StringBuilder(256 * 1024);
+            this.recipeTypeStats = new LinkedHashMap<>();
+            this.rejectReasons = new LinkedHashMap<>();
         } else {
             this.buffer = null;
+            this.recipeTypeStats = null;
+            this.rejectReasons = null;
         }
     }
 
@@ -84,9 +89,24 @@ public final class FullDebugTracePipeline {
         return stack.getCount() + "x " + stack.getItem();
     }
 
-    public void traceHarvested(String recipeId, Object recipe, Level level, HarvestedItems items) {
-        if (!ENABLED) return;
-        var tb = new TraceBuilder(this, recipe, recipeId);
+    private static String buildRejectReason(HarvestedItems items) {
+        var sb = new StringBuilder("No structural recipe node: ");
+        sb.append("inputItems=").append(items.inputItems().size());
+        sb.append(" outputItems=").append(items.outputItems().size());
+        sb.append(" inputIngredients=").append(items.inputIngredients().size());
+        sb.append(" inputFluids=").append(items.inputFluids().size());
+        sb.append(" outputFluids=").append(items.outputFluids().size());
+        sb.append(" rootType=").append(items.root() != null ? items.root().getClass().getSimpleName() : "null");
+        if (items.root() != null) {
+            var detection = AntivirusStyleDetector.detect(items.root().getClass());
+            sb.append(" antivirus=").append(detection.verdict());
+        }
+        return sb.toString();
+    }
+
+    public void traceHarvested(ResourceLocation recipeId, Object recipe, Level level, HarvestedItems items) {
+        if (!DEBUG_ENABLED) return;
+        var tb = new TraceBuilder(this, recipe, recipeId.toString());
         tb.classInfo();
         tb.fields();
         tb.methods();
@@ -94,9 +114,10 @@ public final class FullDebugTracePipeline {
         tb.harvested(items);
     }
 
-    public void traceRejected(String recipeId, Object recipe, Level level, String reason) {
-        if (!ENABLED) return;
-        var tb = new TraceBuilder(this, recipe, recipeId);
+    public void traceRejected(ResourceLocation recipeId, Object recipe, Level level, HarvestedItems items) {
+        if (!DEBUG_ENABLED) return;
+        String reason = buildRejectReason(items);
+        var tb = new TraceBuilder(this, recipe, recipeId.toString());
         tb.classInfo();
         tb.fields();
         tb.methods();
@@ -104,12 +125,12 @@ public final class FullDebugTracePipeline {
         tb.rejected(reason);
     }
 
-    public void traceFailed(String recipeId, String className, Throwable t) {
-        if (!ENABLED) return;
+    public void traceFailed(ResourceLocation recipeId, String className, Throwable t) {
+        if (!DEBUG_ENABLED) return;
         synchronized (this) {
             totalRecipes++;
             failedCount++;
-            buffer.append("FAILED recipe=").append(recipeId)
+            buffer.append("FAILED recipe=").append(recipeId.toString())
                     .append(" class=").append(className)
                     .append(" error=").append(t.getClass().getSimpleName())
                     .append(": ").append(t.getMessage()).append('\n');
@@ -117,7 +138,7 @@ public final class FullDebugTracePipeline {
     }
 
     public void flush() {
-        if (!ENABLED) return;
+        if (!DEBUG_ENABLED || buffer == null) return;
         buffer.append('\n').append(SEP).append('\n');
         buffer.append("FINAL STATISTICS\n");
         buffer.append(SEP).append('\n');

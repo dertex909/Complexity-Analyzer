@@ -27,7 +27,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
-import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 
@@ -48,14 +47,6 @@ public final class MachineRegistryCache implements ManagedCache {
     private MachineRegistryCache() {
     }
 
-    private static long fnv(long h, String s) {
-        for (int i = 0; i < s.length(); i++) {
-            h ^= s.charAt(i);
-            h *= 0x100000001b3L;
-        }
-        return h;
-    }
-
     @Override
     public String id() {
         return "machine_registry";
@@ -72,22 +63,7 @@ public final class MachineRegistryCache implements ManagedCache {
     }
 
     public Fingerprint computeFingerprint() {
-        var blockIds = new ObjectArrayList<String>();
-        for (var block : GameRegistryManager.getAllBlocks()) {
-            var id = GameRegistryManager.getBlockId(block);
-            blockIds.add(id != null ? id.toString() : "?");
-        }
-        blockIds.sort(null);
-        long hBlocks = 0xcbf29ce484222325L;
-        for (var id : blockIds) hBlocks = fnv(hBlocks, id);
-
-        var modKeys = new ObjectArrayList<String>();
-        for (var mod : ModList.get().getMods()) modKeys.add(mod.getModId() + "@" + mod.getVersion());
-        modKeys.sort(null);
-        long hMods = 0xcbf29ce484222325L;
-        for (var key : modKeys) hMods = fnv(hMods, key);
-
-        return new Fingerprint(hBlocks, hMods);
+        return new Fingerprint(Fingerprints.hashAllBlocks(), Fingerprints.hashMods());
     }
 
     public int tryLoad(Path file, Fingerprint expected, Object2ObjectMap<ResourceLocation, ObjectList<Item>> target) {

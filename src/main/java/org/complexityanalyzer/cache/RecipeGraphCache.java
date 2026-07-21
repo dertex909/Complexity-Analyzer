@@ -33,7 +33,6 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.storage.LevelResource;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -57,14 +56,6 @@ public final class RecipeGraphCache implements ManagedCache {
     private static final ResourceLocation EMPTY_FLUID_ID = ResourceLocation.withDefaultNamespace("empty");
 
     private RecipeGraphCache() {
-    }
-
-    private static long fnv(long h, String s) {
-        for (int i = 0; i < s.length(); i++) {
-            h ^= s.charAt(i);
-            h *= 0x100000001b3L;
-        }
-        return h;
     }
 
     private static void writeNode(RegistryFriendlyByteBuf buf, RecipeNode node) {
@@ -256,41 +247,37 @@ public final class RecipeGraphCache implements ManagedCache {
         var holders = new ObjectArrayList<>(recipeManager.getRecipes());
         holders.sort(Comparator.comparing(RecipeHolder::id));
 
-        long hRecipes = 0xcbf29ce484222325L;
+        long hRecipes = Fingerprints.FNV_OFFSET;
         for (var holder : holders) {
             try {
                 var resultStack = holder.value().getResultItem(registryAccess);
                 if (resultStack.isEmpty()) continue;
-                hRecipes = fnv(hRecipes, holder.id().toString());
+                hRecipes = Fingerprints.fnv(hRecipes, holder.id().toString());
                 var typeId = GameRegistryManager.getRecipeTypeId(holder.value().getType());
-                hRecipes = fnv(hRecipes, typeId != null ? typeId.toString() : "?");
-                hRecipes = fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
+                hRecipes = Fingerprints.fnv(hRecipes, typeId != null ? typeId.toString() : "?");
+                hRecipes = Fingerprints.fnv(hRecipes, "->" + itemId(resultStack.getItem()).toString() + "x" + resultStack.getCount());
                 for (var ingredient : holder.value().getIngredients()) {
                     if (ingredient.isEmpty()) continue;
-                    hRecipes = fnv(hRecipes, "[");
+                    hRecipes = Fingerprints.fnv(hRecipes, "[");
                     var itemKeys = new ObjectArrayList<String>();
                     for (var stack : ingredient.getItems()) {
                         if (stack.isEmpty()) continue;
                         itemKeys.add(itemId(stack.getItem()).toString() + "x" + stack.getCount());
                     }
                     itemKeys.sort(null);
-                    for (var key : itemKeys) hRecipes = fnv(hRecipes, key);
-                    hRecipes = fnv(hRecipes, "]");
+                    for (var key : itemKeys) hRecipes = Fingerprints.fnv(hRecipes, key);
+                    hRecipes = Fingerprints.fnv(hRecipes, "]");
                 }
             } catch (Throwable t) {
-                hRecipes = fnv(hRecipes, "fail");
+                hRecipes = Fingerprints.fnv(hRecipes, "fail");
             }
         }
 
-        var modKeys = new ObjectArrayList<String>();
-        for (var mod : ModList.get().getMods()) modKeys.add(mod.getModId() + "@" + mod.getVersion());
-        modKeys.sort(null);
-        long hMods = 0xcbf29ce484222325L;
-        for (var key : modKeys) hMods = fnv(hMods, key);
+        long hMods = Fingerprints.hashMods();
 
-        long hConfig = 0xcbf29ce484222325L;
-        hConfig = fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
-        hConfig = fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.DETECTION_SAMPLE_SIZE.get());
+        long hConfig = Fingerprints.FNV_OFFSET;
+        hConfig = Fingerprints.fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
+        hConfig = Fingerprints.fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.DETECTION_SAMPLE_SIZE.get());
 
         return new Fingerprint(hRecipes, hMods, hConfig);
     }

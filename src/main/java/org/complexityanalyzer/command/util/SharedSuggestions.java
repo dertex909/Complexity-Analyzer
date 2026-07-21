@@ -21,24 +21,23 @@ package org.complexityanalyzer.command.util;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.MobCategory;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 public final class SharedSuggestions {
-    public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
-    private static final ObjectList<ResourceLocation> CACHED_ENTITIES = new ObjectArrayList<>();
-    public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
-    private static final ObjectList<ResourceLocation> CACHED_LOOT_TABLES = new ObjectArrayList<>();
-    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) ->
-            SharedSuggestionProvider.suggestResource(CACHED_LOOT_TABLES, builder);
+    public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) -> SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
+
+    private static volatile ObjectList<ResourceLocation> CACHED_ENTITIES = new ObjectArrayList<>();
+    public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) -> SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
+
+    private static volatile ObjectList<ResourceLocation> CACHED_LOOT_TABLES = new ObjectArrayList<>();
+    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) -> SharedSuggestionProvider.suggestResource(CACHED_LOOT_TABLES, builder);
 
     private SharedSuggestions() {
     }
@@ -49,29 +48,36 @@ public final class SharedSuggestions {
     }
 
     private static void refreshEntities() {
-        CACHED_ENTITIES.clear();
+        var temp = new ObjectArrayList<ResourceLocation>();
         GameRegistryManager.getAllEntityTypes().forEach(type -> {
             if (type.getCategory() != MobCategory.MISC) {
                 var id = GameRegistryManager.getEntityTypeId(type);
-                if (id != null) CACHED_ENTITIES.add(id);
+                if (id != null) temp.add(id);
             }
         });
+        CACHED_ENTITIES = temp;
     }
 
     private static void refreshLootTables() {
-        CACHED_LOOT_TABLES.clear();
         var engine = AnalysisEngine.getInstance();
-
         var uls = engine.getSourceByType(UniversalLootSource.class);
         if (uls == null) return;
+        var unique = new ObjectOpenHashSet<ResourceLocation>();
 
-        uls.getAllLootData().values().stream()
-                .flatMap(map -> map.values().stream())
-                .map(BaseResourceData::getSourceSpecifier)
-                .filter(s -> s != null && !s.isEmpty())
-                .map(ResourceLocation::parse)
-                .distinct()
-                .sorted()
-                .forEach(CACHED_LOOT_TABLES::add);
+        for (var map : uls.getAllLootData().values()) {
+            if (map == null) continue;
+            for (var data : map.values()) {
+                if (data == null) continue;
+                String spec = data.getSourceSpecifier();
+                if (spec != null && !spec.isEmpty()) {
+                    var loc = ResourceLocation.tryParse(spec);
+                    if (loc != null) unique.add(loc);
+                }
+            }
+        }
+
+        var temp = new ObjectArrayList<>(unique);
+        temp.sort(null);
+        CACHED_LOOT_TABLES = temp;
     }
 }

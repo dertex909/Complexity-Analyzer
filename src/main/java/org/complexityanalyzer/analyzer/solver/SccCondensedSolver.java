@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.analyzer.solver;
 
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
@@ -130,7 +132,7 @@ public final class SccCondensedSolver {
             sum += minMachineCost * m.formulaMachineMul[f];
         }
 
-        double divisor = m.formulaOutputDivisor[f];
+        double divisor = Math.max(m.formulaOutputDivisor[f], EPSILON);
         return m.formulaBaseCost[f] + (sum * m.formulaMultiplier[f]) / divisor;
     }
 
@@ -276,7 +278,7 @@ public final class SccCondensedSolver {
         ComplexityAnalyzer.LOGGER.info("⏱️ Time: {}ms", totalTime);
         ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, m.itemCount);
         ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} finite", finiteFluids, m.fluidCount);
-        ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChems, m.chemicalCount);
+        //ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChems, m.chemicalCount);
         ComplexityAnalyzer.LOGGER.info("🌀 Components: {} ({} cyclic)", sol.componentCount, sol.cyclicComponents);
         ComplexityAnalyzer.LOGGER.info("🔁 Fixpoint iterations: {}", sol.fixpointIterations);
     }
@@ -310,7 +312,7 @@ public final class SccCondensedSolver {
             return Integer.compare(m.formulaType[a], m.formulaType[b]);
         };
         for (int c = 0; c < componentCount; c++) {
-            IntArrays.quickSort(componentFormulas, componentFormulasStart[c], componentFormulasStart[c + 1], formulaOrder);
+            IntArrays.mergeSort(componentFormulas, componentFormulasStart[c], componentFormulasStart[c + 1], formulaOrder);
         }
 
         var sol = new Solution(m.nodeCount, m.itemCount, m.fluidCount);
@@ -449,14 +451,14 @@ public final class SccCondensedSolver {
         private final ObjectArrayList<Item> itemByNode = new ObjectArrayList<>();
         private final ObjectArrayList<Fluid> fluidByNode = new ObjectArrayList<>();
         private final ObjectArrayList<ResourceLocation> chemicalByNode = new ObjectArrayList<>();
-        private final ByteList nodeKind = new ByteList();
-        private final BoolList itemInCorpus = new BoolList();
+        private final ByteArrayList nodeKind = new ByteArrayList();
+        private final BooleanArrayList itemInCorpus = new BooleanArrayList();
         private final IntArrayList itemIdxByNode = new IntArrayList();
         private final IntArrayList fluidIdxByNode = new IntArrayList();
         private final Reference2IntOpenHashMap<Item> itemToNode = new Reference2IntOpenHashMap<>();
         private final Reference2IntOpenHashMap<Fluid> fluidToNode = new Reference2IntOpenHashMap<>();
         private final Object2IntOpenHashMap<ResourceLocation> chemicalToNode = new Object2IntOpenHashMap<>();
-        private final ByteList formulaType = new ByteList();
+        private final ByteArrayList formulaType = new ByteArrayList();
         private final IntArrayList formulaTarget = new IntArrayList();
         private final DoubleArrayList formulaBaseCost = new DoubleArrayList();
         private final DoubleArrayList formulaMultiplier = new DoubleArrayList();
@@ -526,7 +528,7 @@ public final class SccCondensedSolver {
             fluidByNode.add(null);
             chemicalByNode.add(null);
             nodeKind.add(K_ITEM);
-            itemInCorpus.addFalse();
+            itemInCorpus.add(false);
             itemIdxByNode.add(itemCount);
             fluidIdxByNode.add(-1);
             itemCount++;
@@ -542,7 +544,7 @@ public final class SccCondensedSolver {
             fluidByNode.add(fluid);
             chemicalByNode.add(null);
             nodeKind.add(K_FLUID);
-            itemInCorpus.addFalse();
+            itemInCorpus.add(false);
             itemIdxByNode.add(-1);
             fluidIdxByNode.add(fluidCount);
             fluidCount++;
@@ -558,7 +560,7 @@ public final class SccCondensedSolver {
             fluidByNode.add(null);
             chemicalByNode.add(chemId);
             nodeKind.add(K_CHEMICAL);
-            itemInCorpus.addFalse();
+            itemInCorpus.add(false);
             itemIdxByNode.add(-1);
             fluidIdxByNode.add(-1);
             chemicalCount++;
@@ -570,7 +572,7 @@ public final class SccCondensedSolver {
             for (var item : GameRegistryManager.getAllItems()) {
                 if (corpus.contains(item)) {
                     int node = allocateItemNode(item);
-                    itemInCorpus.setTrue(node);
+                    itemInCorpus.set(node, true);
                 }
             }
 
@@ -619,7 +621,7 @@ public final class SccCondensedSolver {
                 if (sources.isEmpty()) continue;
 
                 int node = allocateItemNode(item);
-                itemInCorpus.setTrue(node);
+                itemInCorpus.set(node, true);
 
                 for (var data : sources) {
                     if (data == null) continue;
@@ -1079,16 +1081,16 @@ public final class SccCondensedSolver {
             m.itemCount = itemCount;
             m.fluidCount = fluidCount;
             m.chemicalCount = chemicalCount;
-            m.nodeKind = nodeKind.toArray();
+            m.nodeKind = nodeKind.toByteArray();
             m.itemByNode = itemByNode.toArray(new Item[0]);
             m.fluidByNode = fluidByNode.toArray(new Fluid[0]);
             m.chemicalByNode = chemicalByNode.toArray(new ResourceLocation[0]);
-            m.itemInCorpus = itemInCorpus.toArray();
+            m.itemInCorpus = itemInCorpus.toBooleanArray();
             m.itemIdxByNode = itemIdxByNode.toIntArray();
             m.fluidIdxByNode = fluidIdxByNode.toIntArray();
 
             m.formulaCount = formulaType.size();
-            m.formulaType = formulaType.toArray();
+            m.formulaType = formulaType.toByteArray();
             m.formulaTarget = formulaTarget.toIntArray();
             m.formulaBaseCost = formulaBaseCost.toDoubleArray();
             m.formulaMultiplier = formulaMultiplier.toDoubleArray();
@@ -1194,46 +1196,6 @@ public final class SccCondensedSolver {
             Arrays.fill(this.fluidBestRecipeCost, Double.POSITIVE_INFINITY);
             this.fluidBestRecipeFormulaIdx = new int[fluidCount];
             Arrays.fill(this.fluidBestRecipeFormulaIdx, -1);
-        }
-    }
-
-    private static final class ByteList {
-        private byte[] data = new byte[64];
-        private int size = 0;
-
-        int size() {
-            return size;
-        }
-
-        void add(byte v) {
-            if (size == data.length) data = Arrays.copyOf(data, data.length * 2);
-            data[size++] = v;
-        }
-
-        byte[] toArray() {
-            return Arrays.copyOf(data, size);
-        }
-    }
-
-    private static final class BoolList {
-        private boolean[] data = new boolean[64];
-        private int size = 0;
-
-        void addFalse() {
-            if (size == data.length) data = Arrays.copyOf(data, data.length * 2);
-            data[size++] = false;
-        }
-
-        boolean getBoolean(int idx) {
-            return data[idx];
-        }
-
-        void setTrue(int idx) {
-            data[idx] = true;
-        }
-
-        boolean[] toArray() {
-            return Arrays.copyOf(data, size);
         }
     }
 }

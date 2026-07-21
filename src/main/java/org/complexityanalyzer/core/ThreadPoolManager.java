@@ -36,10 +36,12 @@ public class ThreadPoolManager {
     private static final AtomicBoolean JVM_SHUTTING_DOWN = new AtomicBoolean(false);
     private static final PoolStats EMPTY_STATS = new PoolStats(0, 0, 0, 0, 0, 0);
     private static volatile ThreadPoolManager instance;
+    private static Thread shutdownHook;
 
     static {
         try {
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> JVM_SHUTTING_DOWN.set(true), "Complexity-Shutdown-Flag-Setter"));
+            shutdownHook = new Thread(() -> JVM_SHUTTING_DOWN.set(true), "Complexity-Shutdown-Flag-Setter");
+            Runtime.getRuntime().addShutdownHook(shutdownHook);
         } catch (Exception ignored) {
         }
     }
@@ -70,18 +72,10 @@ public class ThreadPoolManager {
     public static void reinitialize() {
         synchronized (LOCK) {
             var existing = instance;
-
-            if (existing != null) {
-                if (!existing.isShutdown.get()) existing.shutdown();
-                existing.isShutdown.set(false);
-                existing.isInitializing.set(false);
-                existing.computeThreadCounter.set(0);
-                ComplexityConfig.resetThreadCache();
-                existing.initialize();
-                ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", existing.parallelism);
-            } else {
-                instance = new ThreadPoolManager();
-            }
+            if (existing != null) existing.shutdown();
+            ComplexityConfig.resetThreadCache();
+            instance = new ThreadPoolManager();
+            ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", instance.parallelism);
         }
     }
 
@@ -102,6 +96,12 @@ public class ThreadPoolManager {
                 if (isShutdown.get()) {
                     ComplexityAnalyzer.LOGGER.warn("Attempted to initialize during shutdown - aborting");
                     return;
+                }
+
+                if (shutdownHook == null) try {
+                    shutdownHook = new Thread(() -> JVM_SHUTTING_DOWN.set(true), "Complexity-Shutdown-Flag-Setter");
+                    Runtime.getRuntime().addShutdownHook(shutdownHook);
+                } catch (Exception ignored) {
                 }
 
                 this.parallelism = ComplexityConfig.getMaxThreads();
@@ -212,13 +212,11 @@ public class ThreadPoolManager {
     }
 
     public void invokeParallel(Runnable action) {
+        ensureNotShutdown();
         try {
-            getForkJoinPool().submit(action).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during parallel execution", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Parallel execution failed", e.getCause());
+            getForkJoinPool().invoke(ForkJoinTask.adapt(action));
+        } catch (RejectedExecutionException e) {
+            throw new RuntimeException("Parallel execution rejected", e);
         }
     }
 
@@ -236,6 +234,14 @@ public class ThreadPoolManager {
         synchronized (LOCK) {
             long shutdownStartTime = System.currentTimeMillis();
             ComplexityAnalyzer.LOGGER.debug("Shutting down ThreadPoolManager...");
+
+            try {
+                if (shutdownHook != null) {
+                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
+                    shutdownHook = null;
+                }
+            } catch (Exception ignored) {
+            }
 
             var watchdog = shutdownWatchdog;
             if (watchdog != null) {

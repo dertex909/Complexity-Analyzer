@@ -22,13 +22,12 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
@@ -48,6 +47,7 @@ import java.util.HashMap;
 
 import static net.minecraft.world.entity.MobCategory.MISC;
 import static net.minecraft.world.item.Items.AIR;
+import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class CabinBuilder {
 
@@ -175,10 +175,10 @@ public final class CabinBuilder {
         for (int i = 0; i < mobs.size(); i++) mobIndex.put(mobs.get(i), i);
 
         var fluids = new ObjectArrayList<Fluid>();
+        var seenFluids = new ReferenceOpenHashSet<Fluid>();
         for (var f : GameRegistryManager.getAllFluids()) {
-            var id = GameRegistryManager.getFluidId(f);
-            if (id != null && id.getPath().startsWith("flowing_")) continue;
-            fluids.add(f);
+            var normalized = normalize(f);
+            if (normalized != Fluids.EMPTY && seenFluids.add(normalized)) fluids.add(normalized);
         }
         this.orderedFluids = fluids;
         this.fluidIndex = new Reference2IntOpenHashMap<>(fluids.size());

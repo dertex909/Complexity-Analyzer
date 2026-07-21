@@ -42,6 +42,8 @@ import org.complexityanalyzer.graph.RecipeNode;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import static org.complexityanalyzer.util.FluidNormalizer.normalize;
+
 public final class SccCondensedSolver {
 
     private static final double EPSILON = 1e-12;
@@ -206,18 +208,6 @@ public final class SccCondensedSolver {
         return new TarjanResult(componentOf, compCounter);
     }
 
-    private static Fluid normalizeFluid(Fluid fluid) {
-        if (fluid == null) return Fluids.EMPTY;
-        var id = GameRegistryManager.getFluidId(fluid);
-        if (id == null) return fluid;
-        String fluidName = id.toString();
-        if (!fluidName.contains("flowing_")) return fluid;
-        var staticId = ResourceLocation.parse(fluidName.replace("flowing_", ""));
-        var staticFluid = GameRegistryManager.getFluid(staticId);
-        if (staticFluid == null || staticFluid == Fluids.EMPTY) return fluid;
-        return staticFluid;
-    }
-
     private static boolean isProtectedFluid(Fluid fluid) {
         return fluid == Fluids.WATER || fluid == Fluids.LAVA;
     }
@@ -257,6 +247,7 @@ public final class SccCondensedSolver {
         );
     }
 
+    @SuppressWarnings("unused")
     private void logFinalStatistics(CompiledModel m, Solution sol, long totalTime) {
         long finiteItems = 0;
         long finiteFluids = 0;
@@ -594,12 +585,12 @@ public final class SccCondensedSolver {
                 }
                 for (var slot : recipe.getFluidIngredients()) {
                     for (var variant : slot.getFluidVariants()) {
-                        var normalized = normalizeFluid(variant);
+                        var normalized = normalize(variant);
                         if (normalized != Fluids.EMPTY) allocateFluidNode(normalized);
                     }
                 }
                 for (var stack : recipe.getFluidOutputs()) {
-                    var normalized = normalizeFluid(stack.getFluid());
+                    var normalized = normalize(stack.getFluid());
                     if (normalized != Fluids.EMPTY) allocateFluidNode(normalized);
                 }
 
@@ -729,7 +720,7 @@ public final class SccCondensedSolver {
                 if (!recipe.getFluidOutputs().isEmpty()) {
                     var grouped = new Reference2DoubleOpenHashMap<Fluid>();
                     for (var stack : recipe.getFluidOutputs()) {
-                        var normalized = normalizeFluid(stack.getFluid());
+                        var normalized = normalize(stack.getFluid());
                         if (normalized == Fluids.EMPTY || isProtectedFluid(normalized)) continue;
                         grouped.addTo(normalized, stack.getAmount());
                     }
@@ -972,7 +963,7 @@ public final class SccCondensedSolver {
             ReferenceOpenHashSet<Fluid> seen = null;
             for (var v : variants) {
                 if (v == null) continue;
-                var normalized = normalizeFluid(v);
+                var normalized = normalize(v);
                 if (normalized == Fluids.EMPTY) continue;
                 if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
                 if (!seen.add(normalized)) continue;

@@ -23,7 +23,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
+import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public class RecipeGraph {
     private final ConcurrentHashMap<Item, ObjectList<RecipeNode>> recipesByItem;
@@ -51,21 +51,6 @@ public class RecipeGraph {
         this.fluidUsageMap = new ConcurrentHashMap<>(1024);
         this.allRecipesMap = new ConcurrentHashMap<>(16384);
         this.recipeCounter = new AtomicInteger(0);
-    }
-
-    private static Fluid normalizeFluid(Fluid fluid) {
-        var id = GameRegistryManager.getFluidId(fluid);
-        if (id == null) return fluid;
-        var fluidName = id.toString();
-
-        if (fluidName.contains("flowing_")) {
-            var staticName = fluidName.replace("flowing_", "");
-            var staticId = ResourceLocation.parse(staticName);
-            var staticFluid = GameRegistryManager.getFluid(staticId);
-            if (staticFluid != null) return staticFluid;
-        }
-
-        return fluid;
     }
 
     public ObjectList<RecipeNode> getAllRecipes() {
@@ -164,7 +149,7 @@ public class RecipeGraph {
 
     private void registerFluidOutputs(RecipeNode node) {
         for (var stack : node.getFluidOutputs()) {
-            var normalized = normalizeFluid(stack.getFluid());
+            var normalized = normalize(stack.getFluid());
             if (normalized != EMPTY) recipesByFluidOutput.compute(normalized, (f, foList) -> {
                 if (foList == null) foList = new ObjectArrayList<>();
                 if (!foList.contains(node)) {
@@ -181,7 +166,7 @@ public class RecipeGraph {
         if (result == AIR) return;
         for (var slot : node.getFluidIngredients()) {
             for (var variant : slot.getFluidVariants()) {
-                var normalized = normalizeFluid(variant);
+                var normalized = normalize(variant);
                 if (normalized != EMPTY) addFluidUsage(normalized, result);
             }
         }
@@ -248,21 +233,21 @@ public class RecipeGraph {
     }
 
     public ObjectList<RecipeNode> getFluidRecipes(Fluid fluid) {
-        return recipesByFluidOutput.getOrDefault(normalizeFluid(fluid), ObjectLists.emptyList());
+        return recipesByFluidOutput.getOrDefault(normalize(fluid), ObjectLists.emptyList());
     }
 
     public boolean hasFluidRecipe(Fluid fluid) {
-        var recipes = recipesByFluidOutput.get(normalizeFluid(fluid));
+        var recipes = recipesByFluidOutput.get(normalize(fluid));
         return recipes != null && !recipes.isEmpty();
     }
 
     public int getFluidUsageCount(Fluid fluid) {
-        var users = fluidUsageMap.get(normalizeFluid(fluid));
+        var users = fluidUsageMap.get(normalize(fluid));
         return users != null ? users.size() : 0;
     }
 
     public ObjectList<Item> getItemsUsingFluid(Fluid fluid) {
-        return fluidUsageMap.getOrDefault(normalizeFluid(fluid), ObjectLists.emptyList());
+        return fluidUsageMap.getOrDefault(normalize(fluid), ObjectLists.emptyList());
     }
 
     public int getUsageCount(Item item) {
@@ -308,9 +293,9 @@ public class RecipeGraph {
         var fluids = new ReferenceOpenHashSet<Fluid>();
         for (var recipe : getAllRecipes()) {
             for (var slot : recipe.getFluidIngredients()) {
-                for (var f : slot.getFluidVariants()) fluids.add(normalizeFluid(f));
+                for (var f : slot.getFluidVariants()) fluids.add(normalize(f));
             }
-            for (var stack : recipe.getFluidOutputs()) fluids.add(normalizeFluid(stack.getFluid()));
+            for (var stack : recipe.getFluidOutputs()) fluids.add(normalize(stack.getFluid()));
         }
         return fluids;
     }

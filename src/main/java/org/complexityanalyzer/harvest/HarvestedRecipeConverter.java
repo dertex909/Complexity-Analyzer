@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 import static net.minecraft.core.component.DataComponents.CUSTOM_NAME;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
+import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class HarvestedRecipeConverter {
 
@@ -276,7 +277,7 @@ public final class HarvestedRecipeConverter {
     private static Reference2IntOpenHashMap<Fluid> mergeFluids(ObjectList<FluidStack> fluids) {
         var merged = new Reference2IntOpenHashMap<Fluid>();
         for (var fluid : fluids) {
-            var f = normalizeFluid(fluid.getFluid());
+            var f = normalize(fluid.getFluid());
             if (f == EMPTY) continue;
             int amt = fluid.getAmount();
             if (amt > merged.getInt(f)) merged.put(f, amt);
@@ -289,20 +290,6 @@ public final class HarvestedRecipeConverter {
             var remaining = source.getCraftingRemainingItem();
             if (!remaining.isEmpty()) target.add(remaining.copyWithCount(remaining.getCount() * multiplier));
         }
-    }
-
-    private static Fluid normalizeFluid(Fluid fluid) {
-        var id = GameRegistryManager.getFluidId(fluid);
-        var fluidName = id.toString();
-        if (fluidName.contains("flowing_")) {
-            var staticName = fluidName.replace("flowing_", "");
-            try {
-                var staticFluid = GameRegistryManager.getFluid(ResourceLocation.parse(staticName));
-                if (staticFluid != null) return staticFluid;
-            } catch (Throwable ignored) {
-            }
-        }
-        return fluid;
     }
 
     private static ItemStack declaredRecipeResult(Object root, Level level) {

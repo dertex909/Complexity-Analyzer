@@ -447,10 +447,20 @@ public class MobDropSource implements IResourceSource {
     private static class LootFunctionFilter extends AbstractFilter {
         @Override
         public Result filter(LogEvent event) {
-            if (event == null || event.getLevel() != WARN) return Result.NEUTRAL;
+            if (event == null) return Result.NEUTRAL;
+
+            var msg = event.getMessage();
+            if (msg != null) {
+                String message = msg.getFormattedMessage();
+                if (message != null && message.contains("Failed to apply component patch")
+                        && message.contains("was larger than maximum")) return Result.DENY;
+            }
+
+            if (event.getLevel() != WARN) return Result.NEUTRAL;
+
             String loggerName = event.getLoggerName();
             if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
-                String message = event.getMessage().getFormattedMessage();
+                String message = msg != null ? msg.getFormattedMessage() : null;
                 if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
                         || message.contains("Couldn't find a compatible enchantment"))) return Result.DENY;
             }

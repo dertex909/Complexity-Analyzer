@@ -63,14 +63,15 @@ public final class FluidSectionBuilder {
             int errorRef = ctx.strings().intern("not analyzed");
 
             if (solverResult != null) {
-                Double compObj = solverResult.getFluidComplexity(fluid);
-                if (compObj != null) {
-                    complexity = compObj;
+                if (solverResult.optimalFluidComplexities().containsKey(fluid)) {
+                    double rawComplexity = solverResult.optimalFluidComplexities().getDouble(fluid);
+                    complexity = rawComplexity;
+
                     if (Double.isInfinite(complexity) || complexity < 0) complexity = -1.0;
 
                     category = ComplexityCategory.fromComplexity(complexity);
                     flags |= CabinFormat.FLUID_FLAG_IS_VALID;
-                    if (Double.isInfinite(compObj)) flags |= CabinFormat.FLUID_FLAG_IS_INFINITE;
+                    if (Double.isInfinite(rawComplexity)) flags |= CabinFormat.FLUID_FLAG_IS_INFINITE;
 
                     errorRef = ctx.strings().intern("");
                 }

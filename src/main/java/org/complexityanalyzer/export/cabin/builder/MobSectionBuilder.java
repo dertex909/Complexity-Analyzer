@@ -19,8 +19,8 @@
 package org.complexityanalyzer.export.cabin.builder;
 
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.analyzer.resource.sources.MobDropSource;
+import org.complexityanalyzer.resource.providers.MobPropertyProvider;
+import org.complexityanalyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;

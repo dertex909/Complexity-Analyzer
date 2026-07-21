@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource.providers;
+package org.complexityanalyzer.resource.providers;
 
 import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;

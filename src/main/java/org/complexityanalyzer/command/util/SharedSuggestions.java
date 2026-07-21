@@ -26,7 +26,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.MobCategory;
-import org.complexityanalyzer.analyzer.resource.sources.UniversalLootSource;
+import org.complexityanalyzer.resource.sources.UniversalLootSource;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 

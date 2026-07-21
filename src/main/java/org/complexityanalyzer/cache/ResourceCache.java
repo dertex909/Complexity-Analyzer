@@ -31,8 +31,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.IResourceSource;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 

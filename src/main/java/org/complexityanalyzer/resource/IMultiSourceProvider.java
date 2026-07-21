@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource;
+package org.complexityanalyzer.resource;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 
 public interface IMultiSourceProvider {
     ObjectList<BaseResourceData> findAllSources(Item item);

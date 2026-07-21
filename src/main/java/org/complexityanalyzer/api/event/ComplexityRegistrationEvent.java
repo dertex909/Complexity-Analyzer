@@ -79,7 +79,7 @@ public class ComplexityRegistrationEvent extends Event {
     }
 
     /**
-     * Add fully custom {@link org.complexityanalyzer.analyzer.resource.IResourceSource} implementations.
+     * Add fully custom {@link org.complexityanalyzer.resource.IResourceSource} implementations.
      */
     public IResourceSourceRegistry resourceSources() {
         return resourceSources;

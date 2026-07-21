@@ -20,7 +20,7 @@ package org.complexityanalyzer.api;
 
 import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 
 /**
  * Registry for manually defined acquisition sources and value overrides. Use it when the automatic analysis

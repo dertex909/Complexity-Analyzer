@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource.sources;
+package org.complexityanalyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.component.DataComponents;
@@ -39,9 +39,9 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.IMultiSourceProvider;
-import org.complexityanalyzer.analyzer.resource.IResourceSource;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.IMultiSourceProvider;
+import org.complexityanalyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.cache.Fingerprints;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.config.ComplexityConfig;

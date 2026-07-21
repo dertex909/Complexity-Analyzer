@@ -18,7 +18,7 @@
 
 package org.complexityanalyzer.api;
 
-import org.complexityanalyzer.analyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.IResourceSource;
 
 /**
  * Registry for fully custom {@link IResourceSource} implementations. A resource source tells the analyzer how

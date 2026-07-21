@@ -20,7 +20,7 @@ package org.complexityanalyzer.analyzer;
 
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.SourceManager;
+import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.core.AnalysisEngine;

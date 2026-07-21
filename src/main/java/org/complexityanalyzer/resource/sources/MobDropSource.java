@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource.sources;
+package org.complexityanalyzer.resource.sources;
 
 import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
@@ -51,10 +51,10 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.IResourceSource;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.analyzer.resource.data.MobDropData;
-import org.complexityanalyzer.analyzer.resource.providers.MobPropertyProvider;
+import org.complexityanalyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.data.MobDropData;
+import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.cache.Fingerprints;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;

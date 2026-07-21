@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource.data;
+package org.complexityanalyzer.resource.data;
 
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;

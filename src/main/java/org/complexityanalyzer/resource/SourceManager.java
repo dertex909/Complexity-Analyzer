@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource;
+package org.complexityanalyzer.resource;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.analyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.jetbrains.annotations.Nullable;
 

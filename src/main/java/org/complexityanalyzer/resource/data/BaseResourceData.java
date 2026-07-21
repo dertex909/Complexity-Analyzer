@@ -16,11 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.analyzer.resource.data;
+package org.complexityanalyzer.resource.data;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
-import org.complexityanalyzer.analyzer.resource.IResourceSource;
+import org.complexityanalyzer.resource.IResourceSource;
 
 import java.util.Map;
 

@@ -32,10 +32,11 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Locale.ROOT;
 
 public class ServerLanguage {
@@ -43,7 +44,7 @@ public class ServerLanguage {
     private static final String DEFAULT_LOCALE = "en_us";
     private static final Gson GSON = new Gson();
 
-    private static final Type MAP_TYPE = new TypeToken<Object2ObjectOpenHashMap<String, String>>() {
+    private static final Type MAP_TYPE = new TypeToken<Map<String, String>>() {
     }.getType();
 
     static {
@@ -58,12 +59,15 @@ public class ServerLanguage {
         String path = "/assets/complexityanalyzer/lang/" + locale + ".json";
         try (var is = ComplexityAnalyzer.class.getResourceAsStream(path)) {
             if (is != null) {
-                Object2ObjectOpenHashMap<String, String> map = GSON.fromJson(new InputStreamReader(is, StandardCharsets.UTF_8), MAP_TYPE);
-                return map != null ? Object2ObjectMaps.unmodifiable(map) : Object2ObjectMaps.emptyMap();
+                Map<String, String> rawMap = GSON.fromJson(new InputStreamReader(is, UTF_8), MAP_TYPE);
+                if (rawMap != null) {
+                    var fastMap = new Object2ObjectOpenHashMap<>(rawMap);
+                    return Object2ObjectMaps.unmodifiable(fastMap);
+                }
             } else {
                 ComplexityAnalyzer.LOGGER.warn("[Language] Lang file not found in resources: {}.json", locale);
-                return Object2ObjectMaps.emptyMap();
             }
+            return Object2ObjectMaps.emptyMap();
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[Language] Failed to load server-side language: {}", locale, e);
             return Object2ObjectMaps.emptyMap();
@@ -71,15 +75,30 @@ public class ServerLanguage {
     }
 
     public static String get(String key, String locale) {
-        String cleanLocale = locale != null ? locale.toLowerCase(ROOT) : DEFAULT_LOCALE;
-        var map = LANGUAGES.computeIfAbsent(cleanLocale, ServerLanguage::loadLanguageInternal);
-        String val = map.get(key);
+        String cleanLocale = isValidLocale(locale) ? locale.toLowerCase(ROOT) : DEFAULT_LOCALE;
 
+        var map = LANGUAGES.get(cleanLocale);
+        if (map == null) {
+            map = loadLanguageInternal(cleanLocale);
+            var existing = LANGUAGES.putIfAbsent(cleanLocale, map);
+            if (existing != null) map = existing;
+        }
+
+        String val = map.get(key);
         if (val == null && !cleanLocale.equals(DEFAULT_LOCALE)) {
-            var defaultMap = LANGUAGES.computeIfAbsent(DEFAULT_LOCALE, ServerLanguage::loadLanguageInternal);
-            val = defaultMap.get(key);
+            var defaultMap = LANGUAGES.get(DEFAULT_LOCALE);
+            if (defaultMap != null) val = defaultMap.get(key);
         }
         return val;
+    }
+
+    private static boolean isValidLocale(String locale) {
+        if (locale == null || locale.isEmpty() || locale.length() > 16) return false;
+        for (int i = 0; i < locale.length(); i++) {
+            char c = locale.charAt(i);
+            if (!Character.isLetterOrDigit(c) && c != '_') return false;
+        }
+        return true;
     }
 
     private static boolean needsTranslation(Component component) {
@@ -101,18 +120,17 @@ public class ServerLanguage {
         if (component.getContents() instanceof TranslatableContents translatable) {
             String key = translatable.getKey();
             Object[] args = translatable.getArgs();
-            Object[] translatedArgs = new Object[args.length];
-
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] instanceof Component c) {
-                    translatedArgs[i] = translate(c, locale).getString();
-                } else {
-                    translatedArgs[i] = args[i];
-                }
-            }
 
             String pattern = get(key, locale);
+            Object[] translatedArgs = new Object[args.length];
             if (pattern != null) {
+                for (int i = 0; i < args.length; i++) {
+                    if (args[i] instanceof Component c) {
+                        translatedArgs[i] = translate(c, locale).getString();
+                    } else {
+                        translatedArgs[i] = args[i];
+                    }
+                }
                 try {
                     String formatted = translatedArgs.length > 0 ? String.format(pattern, translatedArgs) : pattern;
                     result = Component.literal(formatted);
@@ -121,6 +139,13 @@ public class ServerLanguage {
                     result = Component.translatable(key, translatedArgs);
                 }
             } else {
+                for (int i = 0; i < args.length; i++) {
+                    if (args[i] instanceof Component c) {
+                        translatedArgs[i] = translate(c, locale);
+                    } else {
+                        translatedArgs[i] = args[i];
+                    }
+                }
                 result = Component.translatable(key, translatedArgs);
             }
         } else {

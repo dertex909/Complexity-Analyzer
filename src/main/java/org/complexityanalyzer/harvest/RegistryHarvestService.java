@@ -103,6 +103,9 @@ public final class RegistryHarvestService {
 
         debugTrace.flush();
         DynamicRecipeHarvester.harvest(graph, level, knownRecipeIds);
+
+        //test
+        HeuristicCustomRecipeHarvester.harvest(graph, level);
         harvester.clearCaches();
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",

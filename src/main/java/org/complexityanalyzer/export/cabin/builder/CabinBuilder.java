@@ -42,7 +42,7 @@ import org.complexityanalyzer.export.cabin.api.*;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.sources.HardcodedSourcesProvider;
+import org.complexityanalyzer.resource.sources.HardcodedSource;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -79,7 +79,7 @@ public final class CabinBuilder {
 
     private static IHardcodedSourceRegistry tryGetHardcodedRegistry() {
         try {
-            return HardcodedSourcesProvider.getRegistry();
+            return HardcodedSource.getRegistry();
         } catch (Throwable ignored) {
             return null;
         }

@@ -273,7 +273,7 @@ public class AnalysisEngine {
         initialSources.add(new VillagerTradeSource());
         initialSources.add(new PassiveProductionSource());
 
-        var hardcoded = new HardcodedSourcesProvider();
+        var hardcoded = new HardcodedSource();
         initialSources.add(hardcoded);
 
         var addonSources = new ObjectArrayList<IResourceSource>();

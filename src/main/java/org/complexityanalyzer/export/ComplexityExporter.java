@@ -40,7 +40,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.export.ExportData.MobData;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.sources.HardcodedSourcesProvider;
+import org.complexityanalyzer.resource.sources.HardcodedSource;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -219,7 +219,7 @@ public class ComplexityExporter {
 
     private static boolean checkIfHardcoded(Item item) {
         try {
-            var registry = HardcodedSourcesProvider.getRegistry();
+            var registry = HardcodedSource.getRegistry();
             return registry.isRegistered(item);
         } catch (IllegalStateException e) {
             return false;

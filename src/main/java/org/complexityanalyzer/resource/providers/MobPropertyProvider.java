@@ -122,7 +122,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
             var classification = type.getCategory();
 
             var props = new MobProperties(maxHealth, attackDamage, armor, classification);
-            propertiesCache.put(type, props); // Теперь запись абсолютно безопасна
+            propertiesCache.put(type, props);
 
             return props;
 

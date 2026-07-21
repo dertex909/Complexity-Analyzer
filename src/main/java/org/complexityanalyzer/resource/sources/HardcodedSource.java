@@ -33,23 +33,23 @@ import java.util.concurrent.locks.StampedLock;
 
 import static java.util.Locale.ROOT;
 
-public class HardcodedSourcesProvider implements IResourceSource, IHardcodedSourceRegistry {
+public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistry {
 
     private static final int NORMAL_PRIORITY = 35;
     private static final int OVERRIDE_PRIORITY = 1000;
-    private static HardcodedSourcesProvider INSTANCE;
+    private static HardcodedSource INSTANCE;
 
     private final Reference2ObjectMap<Item, SourceRule> normalSources = new Reference2ObjectOpenHashMap<>();
     private final Reference2ObjectMap<Item, SourceRule> overrideSources = new Reference2ObjectOpenHashMap<>();
 
     private final StampedLock lock = new StampedLock();
 
-    public HardcodedSourcesProvider() {
+    public HardcodedSource() {
         INSTANCE = this;
     }
 
     public static IHardcodedSourceRegistry getRegistry() {
-        if (INSTANCE == null) throw new IllegalStateException("HardcodedSourcesProvider not initialized yet!");
+        if (INSTANCE == null) throw new IllegalStateException("HardcodedSource not initialized yet!");
         return INSTANCE;
     }
 

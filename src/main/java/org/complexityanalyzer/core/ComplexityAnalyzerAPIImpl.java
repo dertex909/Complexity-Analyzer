@@ -29,7 +29,7 @@ import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.sources.HardcodedSourcesProvider;
+import org.complexityanalyzer.resource.sources.HardcodedSource;
 
 import java.util.*;
 
@@ -84,7 +84,7 @@ public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
 
     @Override
     public IHardcodedSourceRegistry hardcodedSources() {
-        return HardcodedSourcesProvider.getRegistry();
+        return HardcodedSource.getRegistry();
     }
 
     @Override

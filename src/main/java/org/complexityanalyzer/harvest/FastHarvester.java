@@ -102,6 +102,8 @@ public final class FastHarvester {
         var transitional = TL_TRANSITIONAL_ITEMS.get();
         transitional.clear();
 
+        var extRaw = new ReferenceOpenHashSet<>(16);
+
         try {
             var apiResult = ItemStack.EMPTY;
             boolean isVanillaRecipe = false;
@@ -131,7 +133,7 @@ public final class FastHarvester {
                 for (var acc : accessors.itemAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw != null) DeepItemCollector.collect(raw, inputItems, 0, visited);
+                        if (raw != null && extRaw.add(raw)) DeepItemCollector.collect(raw, inputItems, 0, visited);
                     } catch (Throwable ignored) {
                     }
                 }
@@ -142,7 +144,7 @@ public final class FastHarvester {
                             if (visitIngredient(ing)) {
                                 inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                             }
-                        } else if (raw != null) {
+                        } else if (raw != null && extRaw.add(raw)) {
                             DeepIngredientCollector.collect(raw, inputIngredients, 0, visited);
                         }
                     } catch (Throwable ignored) {
@@ -154,11 +156,16 @@ public final class FastHarvester {
                         if (raw == null) continue;
 
                         if (acc.name().contains("output")) {
-                            var visitedSecondary = borrowSecondaryMap();
-                            DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
+                            if (extRaw.add(raw)) {
+                                var visitedSecondary = borrowSecondaryMap();
+                                DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
+                            }
                         } else {
-                            if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs.copy());
-                            else DeepFluidCollector.collect(raw, inputFluids, 0, visited);
+                            if (raw instanceof FluidStack fs && !fs.isEmpty()) {
+                                inputFluids.add(fs.copy());
+                            } else if (extRaw.add(raw)) {
+                                DeepFluidCollector.collect(raw, inputFluids, 0, visited);
+                            }
                         }
                     } catch (Throwable ignored) {
                     }
@@ -167,7 +174,7 @@ public final class FastHarvester {
                 for (var acc : accessors.probeAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw != null && !HarvestUtility.isEmptyContainer(raw)) {
+                        if (raw != null && !HarvestUtility.isEmptyContainer(raw) && extRaw.add(raw)) {
                             String nameLower = acc.name().toLowerCase(ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);

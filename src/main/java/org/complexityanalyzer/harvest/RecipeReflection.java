@@ -54,6 +54,7 @@ public final class RecipeReflection {
         var ingredientAcc = new ObjectArrayList<Accessor>(4);
         var fluidAcc = new ObjectArrayList<Accessor>(4);
         var probeAcc = new ObjectArrayList<Accessor>(4);
+        var seenNames = new ObjectOpenHashSet<String>();
 
         for (int i = 0; i < meta.allMethods.length; i++) {
             var m = meta.allMethods[i];
@@ -63,19 +64,31 @@ public final class RecipeReflection {
             if (kind != null) {
                 var acc = new MethodAccessor(h, m);
                 switch (kind) {
-                    case ITEM_STACK -> itemAcc.add(acc);
-                    case INGREDIENT -> ingredientAcc.add(acc);
-                    case FLUID_STACK -> fluidAcc.add(acc);
+                    case ITEM_STACK -> {
+                        itemAcc.add(acc);
+                        seenNames.add(acc.name());
+                    }
+                    case INGREDIENT -> {
+                        ingredientAcc.add(acc);
+                        seenNames.add(acc.name());
+                    }
+                    case FLUID_STACK -> {
+                        fluidAcc.add(acc);
+                        seenNames.add(acc.name());
+                    }
                     default -> {
                     }
                 }
             } else if (isContainerReturnType(m.getReturnType())) {
-                probeAcc.add(new MethodAccessor(h, m));
+                var acc = new MethodAccessor(h, m);
+                probeAcc.add(acc);
+                seenNames.add(acc.name());
             }
         }
 
         for (int i = 0; i < meta.fields.length; i++) {
             var f = meta.fields[i];
+            if (seenNames.contains(f.getName())) continue;
             var type = f.getType();
             var kind = StructuralTypeClassifier.classifyDescriptor(type.getName().replace('.', '/'));
             if (kind != null) {

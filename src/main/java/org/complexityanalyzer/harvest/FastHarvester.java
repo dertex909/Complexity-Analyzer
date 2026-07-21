@@ -47,6 +47,8 @@ public final class FastHarvester {
             ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
     private static final ThreadLocal<ReferenceOpenHashSet<Object>> TL_VISITED =
             ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(128));
+    private static final ThreadLocal<ReferenceOpenHashSet<Object>> TL_VISITED_SECONDARY =
+            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(64));
     private static final ThreadLocal<ReferenceOpenHashSet<Item>> TL_TRANSITIONAL_ITEMS =
             ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(8));
     private static final ThreadLocal<ReferenceOpenHashSet<Ingredient>> TL_VISITED_INGREDIENTS =
@@ -64,6 +66,7 @@ public final class FastHarvester {
         TL_OUTPUT_FLUIDS.get().clear();
         TL_INPUT_INGREDIENTS.get().clear();
         TL_VISITED.get().clear();
+        TL_VISITED_SECONDARY.get().clear();
         TL_TRANSITIONAL_ITEMS.get().clear();
         TL_VISITED_INGREDIENTS.get().clear();
     }
@@ -76,6 +79,12 @@ public final class FastHarvester {
 
     private static ReferenceOpenHashSet<Object> borrowMap() {
         var m = FastHarvester.TL_VISITED.get();
+        m.clear();
+        return m;
+    }
+
+    private static ReferenceOpenHashSet<Object> borrowSecondaryMap() {
+        var m = FastHarvester.TL_VISITED_SECONDARY.get();
         m.clear();
         return m;
     }
@@ -116,6 +125,7 @@ public final class FastHarvester {
                 }
             }
 
+            var apiResultItem = apiResult.isEmpty() ? null : apiResult.getItem();
             if (!isVanillaRecipe) {
                 var accessors = RecipeReflection.getAccessors(recipe.getClass());
                 for (var acc : accessors.itemAccessors()) {
@@ -144,7 +154,8 @@ public final class FastHarvester {
                         if (raw == null) continue;
 
                         if (acc.name().contains("output")) {
-                            DeepFluidCollector.collect(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
+                            var visitedSecondary = borrowSecondaryMap();
+                            DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
                         } else {
                             if (raw instanceof FluidStack fs && !fs.isEmpty()) inputFluids.add(fs.copy());
                             else DeepFluidCollector.collect(raw, inputFluids, 0, visited);
@@ -160,11 +171,13 @@ public final class FastHarvester {
                             String nameLower = acc.name().toLowerCase(ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);
-                                DeepItemCollector.collect(raw, tempItems, 0, new ReferenceOpenHashSet<>(64));
+                                var visitedSecondary = borrowSecondaryMap();
+                                DeepItemCollector.collect(raw, tempItems, 0, visitedSecondary);
                                 outputItems.addAll(tempItems);
-                                DeepFluidCollector.collect(raw, outputFluids, 0, new ReferenceOpenHashSet<>(64));
+                                visitedSecondary.clear();
+                                DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
                             } else {
-                                DeepUniversalCollector.collect(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level, transitional);
+                                DeepUniversalCollector.collect(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
                             }
                         }
                     } catch (Throwable ignored) {
@@ -173,7 +186,7 @@ public final class FastHarvester {
 
                 if (inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty() && inputFluids.isEmpty() && outputFluids.isEmpty()) {
                     visited.clear();
-                    DeepUniversalCollector.collect(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResult, level, transitional);
+                    DeepUniversalCollector.collect(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
                 }
             }
 

@@ -46,14 +46,14 @@ public final class DeepUniversalCollector {
 
     public static void collect(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
                                ObjectList<HarvestedItems.HarvestedIngredient> inputIngredients, ObjectList<FluidStack> inputFluids,
-                               int depth, ReferenceOpenHashSet<Object> visited, ItemStack apiResult, Level level,
+                               int depth, ReferenceOpenHashSet<Object> visited, Item apiResultItem, Level level,
                                ReferenceOpenHashSet<Item> transitionalItems) {
         if (obj == null || depth > 8) return;
 
         if (depth > 0 && obj instanceof Recipe<?> subRecipe && level != null) {
             try {
                 var subOutput = subRecipe.getResultItem(level.registryAccess());
-                if (!subOutput.isEmpty() && !apiResult.isEmpty() && subOutput.getItem() != apiResult.getItem()) {
+                if (!subOutput.isEmpty() && apiResultItem != null && subOutput.getItem() != apiResultItem) {
                     transitionalItems.add(subOutput.getItem());
                 }
 
@@ -73,18 +73,18 @@ public final class DeepUniversalCollector {
         switch (obj) {
             case Optional<?> opt -> {
                 if (visited.add(opt)) opt.ifPresent(o ->
-                        collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level, transitionalItems));
+                        collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
                 return;
             }
             case ItemStack stack when !stack.isEmpty() -> {
-                if (!apiResult.isEmpty() && stack.getItem() == apiResult.getItem()) outputItems.add(stack.copy());
+                if (apiResultItem != null && stack.getItem() == apiResultItem) outputItems.add(stack.copy());
                 else inputItems.add(stack.copy());
                 return;
             }
             case Item item -> {
                 if (item != AIR) {
                     var stack = new ItemStack(item);
-                    if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
+                    if (apiResultItem != null && item == apiResultItem) outputItems.add(stack);
                     else inputItems.add(stack);
                 }
                 return;
@@ -93,14 +93,14 @@ public final class DeepUniversalCollector {
                 var item = block.asItem();
                 if (item != AIR) {
                     var stack = new ItemStack(item);
-                    if (!apiResult.isEmpty() && item == apiResult.getItem()) outputItems.add(stack);
+                    if (apiResultItem != null && item == apiResultItem) outputItems.add(stack);
                     else inputItems.add(stack);
                 }
                 return;
             }
             case Holder<?> holder -> {
                 if (visited.add(holder)) collect(holder.value(), inputItems, outputItems, inputIngredients,
-                        inputFluids, depth + 1, visited, apiResult, level, transitionalItems);
+                        inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
                 return;
             }
             case SizedIngredient si when si.count() > 0 -> {
@@ -125,7 +125,7 @@ public final class DeepUniversalCollector {
             }
             case Iterable<?> coll when HarvestUtility.isTooSmall(coll) -> {
                 if (visited.add(coll)) for (var item : coll)
-                    collect(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level, transitionalItems);
+                    collect(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
                 return;
             }
             case Map<?, ?> map when HarvestUtility.isTooSmall(map) -> {
@@ -133,14 +133,14 @@ public final class DeepUniversalCollector {
                     var key = e.getKey();
                     if (key != null && !HarvestUtility.isTerminal(key))
                         collect(key, inputItems, outputItems, inputIngredients,
-                                inputFluids, depth + 1, visited, apiResult, level, transitionalItems);
-                    collect(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level, transitionalItems);
+                                inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
+                    collect(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
                 }
                 return;
             }
             case Object[] arr when arr.length <= 50 -> {
                 if (visited.add(arr)) for (var item : arr)
-                    collect(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResult, level, transitionalItems);
+                    collect(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
                 return;
             }
             default -> {
@@ -153,7 +153,7 @@ public final class DeepUniversalCollector {
             try {
                 var val = f.get(obj);
                 if (val != null) collect(val, inputItems, outputItems, inputIngredients, inputFluids,
-                        depth + 1, visited, apiResult, level, transitionalItems);
+                        depth + 1, visited, apiResultItem, level, transitionalItems);
             } catch (Throwable ignored) {
             }
         }

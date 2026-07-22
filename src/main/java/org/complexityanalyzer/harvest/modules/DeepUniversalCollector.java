@@ -1,25 +1,5 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest.modules;
 
-import com.mojang.datafixers.util.Either;
-import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Holder;
@@ -37,10 +17,6 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.FastHarvester;
 import org.complexityanalyzer.harvest.HarvestedItems;
-import org.complexityanalyzer.harvest.RecipeReflection;
-
-import java.util.Map;
-import java.util.Optional;
 
 import static net.minecraft.core.registries.Registries.ITEM;
 import static net.minecraft.world.item.Items.AIR;
@@ -54,147 +30,111 @@ public final class DeepUniversalCollector {
                                ObjectList<HarvestedItems.HarvestedIngredient> inputIngredients, ObjectList<FluidStack> inputFluids,
                                int depth, ReferenceOpenHashSet<Object> visited, Item apiResultItem, Level level,
                                ReferenceOpenHashSet<Item> transitionalItems) {
-        if (obj == null || depth > 8) return;
 
-        if (depth > 0 && obj instanceof Recipe<?> subRecipe && level != null) {
-            try {
-                var subOutput = subRecipe.getResultItem(level.registryAccess());
-                if (!subOutput.isEmpty() && apiResultItem != null && subOutput.getItem() != apiResultItem) {
-                    transitionalItems.add(subOutput.getItem());
-                }
+        DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
+            if (d > 0 && node instanceof Recipe<?> subRecipe && level != null) {
+                try {
+                    var subOutput = subRecipe.getResultItem(level.registryAccess());
+                    if (!subOutput.isEmpty() && apiResultItem != null && subOutput.getItem() != apiResultItem) {
+                        transitionalItems.add(subOutput.getItem());
+                    }
 
-                var subIngs = subRecipe.getIngredients();
-                if (subIngs.size() > 1) {
-                    var toolIng = subIngs.get(1);
-                    if (!toolIng.isEmpty() && FastHarvester.visitIngredient(toolIng))
-                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
-                }
-
-                DeepFluidCollector.collect(subRecipe, inputFluids, 0, visited);
-            } catch (Throwable ignored) {
-            }
-            return;
-        }
-
-        switch (obj) {
-            case Optional<?> opt -> {
-                if (visited.add(opt)) opt.ifPresent(o ->
-                        collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
-                return;
-            }
-            case Either<?, ?> either -> {
-                if (visited.add(either)) {
-                    either.left().ifPresent(o -> collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
-                    either.right().ifPresent(o -> collect(o, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems));
-                }
-                return;
-            }
-            case Pair<?, ?> pair -> {
-                if (visited.add(pair)) {
-                    collect(pair.getFirst(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
-                    collect(pair.getSecond(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
-                }
-                return;
-            }
-            case TagKey<?> tagKey -> {
-                if (visited.add(tagKey) && tagKey.registry().equals(ITEM)) {
-                    @SuppressWarnings("unchecked")
-                    var itemTag = (TagKey<Item>) tagKey;
-                    var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
-                    if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
-                        var item = holder.value();
-                        var id = BuiltInRegistries.ITEM.getKey(item);
-                        var registeredItem = GameRegistryManager.getItem(id);
-                        if (registeredItem != null && registeredItem != AIR) {
-                            var stack = new ItemStack(registeredItem);
-                            if (apiResultItem != null && registeredItem == apiResultItem) outputItems.add(stack);
-                            else inputItems.add(stack);
-                            break;
+                    var subIngs = subRecipe.getIngredients();
+                    if (subIngs.size() > 1) {
+                        var toolIng = subIngs.get(1);
+                        if (!toolIng.isEmpty() && FastHarvester.visitIngredient(toolIng)) {
+                            inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
                         }
                     }
+
+                    DeepFluidCollector.collect(subRecipe, inputFluids, 0, visited);
+                } catch (Throwable ignored) {
                 }
-                return;
+                return true;
             }
-            case ItemStack stack when !stack.isEmpty() -> {
-                if (apiResultItem != null && stack.getItem() == apiResultItem) outputItems.add(stack.copy());
-                else inputItems.add(stack.copy());
-                return;
-            }
-            case Item item -> {
-                if (item != AIR) {
-                    var stack = new ItemStack(item);
-                    if (apiResultItem != null && item == apiResultItem) outputItems.add(stack);
-                    else inputItems.add(stack);
+
+            switch (node) {
+                case TagKey<?> tagKey -> {
+                    if (tagKey.registry().equals(ITEM)) {
+                        @SuppressWarnings("unchecked")
+                        var itemTag = (TagKey<Item>) tagKey;
+                        var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
+                        if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+                            var item = holder.value();
+                            var id = BuiltInRegistries.ITEM.getKey(item);
+                            var registeredItem = GameRegistryManager.getItem(id);
+                            if (registeredItem != null && registeredItem != AIR) {
+                                var stack = new ItemStack(registeredItem);
+                                if (apiResultItem != null && registeredItem == apiResultItem) outputItems.add(stack);
+                                else inputItems.add(stack);
+                                break;
+                            }
+                        }
+                    }
+                    return true;
                 }
-                return;
-            }
-            case Block block -> {
-                var item = block.asItem();
-                if (item != AIR) {
-                    var stack = new ItemStack(item);
-                    if (apiResultItem != null && item == apiResultItem) outputItems.add(stack);
-                    else inputItems.add(stack);
+                case ItemStack stack when !stack.isEmpty() -> {
+                    if (apiResultItem != null && stack.getItem() == apiResultItem) {
+                        outputItems.add(stack.copy());
+                    } else {
+                        inputItems.add(stack.copy());
+                    }
+                    return true;
                 }
-                return;
-            }
-            case Holder<?> holder -> {
-                if (visited.add(holder)) collect(holder.value(), inputItems, outputItems, inputIngredients,
-                        inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
-                return;
-            }
-            case SizedIngredient si when si.count() > 0 -> {
-                var ing = si.ingredient();
-                if (!ing.isEmpty() && FastHarvester.visitIngredient(ing))
-                    inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
-                return;
-            }
-            case SizedFluidIngredient sfi -> {
-                for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
-                return;
-            }
-            case Ingredient ing when !ing.isEmpty() -> {
-                if (FastHarvester.visitIngredient(ing)) {
-                    inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                case Item item -> {
+                    if (item != AIR) {
+                        var stack = new ItemStack(item);
+                        if (apiResultItem != null && item == apiResultItem) {
+                            outputItems.add(stack);
+                        } else {
+                            inputItems.add(stack);
+                        }
+                    }
+                    return true;
                 }
-                return;
-            }
-            case FluidStack fs when !fs.isEmpty() -> {
-                inputFluids.add(fs.copy());
-                return;
-            }
-            case Iterable<?> coll when HarvestUtility.isTooSmall(coll) -> {
-                if (visited.add(coll)) for (var item : coll)
-                    collect(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
-                return;
-            }
-            case Map<?, ?> map when HarvestUtility.isTooSmall(map) -> {
-                if (visited.add(map)) for (var e : map.entrySet()) {
-                    var key = e.getKey();
-                    if (key != null && !HarvestUtility.isTerminal(key))
-                        collect(key, inputItems, outputItems, inputIngredients,
-                                inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
-                    collect(e.getValue(), inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
+                case Block block -> {
+                    var item = block.asItem();
+                    if (item != AIR) {
+                        var stack = new ItemStack(item);
+                        if (apiResultItem != null && item == apiResultItem) {
+                            outputItems.add(stack);
+                        } else {
+                            inputItems.add(stack);
+                        }
+                    }
+                    return true;
                 }
-                return;
+                case Holder<?> holder -> {
+                    if (visited.add(holder)) {
+                        collect(holder.value(), inputItems, outputItems, inputIngredients, inputFluids, d + 1, visited, apiResultItem, level, transitionalItems);
+                    }
+                    return true;
+                }
+                case SizedIngredient si when si.count() > 0 -> {
+                    var ing = si.ingredient();
+                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
+                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
+                    }
+                    return true;
+                }
+                case SizedFluidIngredient sfi -> {
+                    for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
+                    return true;
+                }
+                case Ingredient ing when !ing.isEmpty() -> {
+                    if (FastHarvester.visitIngredient(ing)) {
+                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                    }
+                    return true;
+                }
+                case FluidStack fs when !fs.isEmpty() -> {
+                    inputFluids.add(fs.copy());
+                    return true;
+                }
+                default -> {
+                }
             }
-            case Object[] arr when arr.length <= 50 -> {
-                if (visited.add(arr)) for (var item : arr)
-                    collect(item, inputItems, outputItems, inputIngredients, inputFluids, depth + 1, visited, apiResultItem, level, transitionalItems);
-                return;
-            }
-            default -> {
-            }
-        }
-        if (HarvestUtility.isTerminal(obj)) return;
-        if (!visited.add(obj)) return;
-        var meta = RecipeReflection.getMeta(obj.getClass());
-        for (var f : meta.scanFields) {
-            try {
-                var val = f.get(obj);
-                if (val != null) collect(val, inputItems, outputItems, inputIngredients, inputFluids,
-                        depth + 1, visited, apiResultItem, level, transitionalItems);
-            } catch (Throwable ignored) {
-            }
-        }
+            return false;
+        });
     }
 }

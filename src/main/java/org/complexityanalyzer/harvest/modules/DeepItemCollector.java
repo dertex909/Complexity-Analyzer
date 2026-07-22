@@ -1,25 +1,5 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest.modules;
 
-import com.mojang.datafixers.util.Either;
-import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Holder;
@@ -33,10 +13,6 @@ import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.harvest.RecipeReflection;
-
-import java.util.Map;
-import java.util.Optional;
 
 import static net.minecraft.world.item.Items.AIR;
 
@@ -46,98 +22,55 @@ public final class DeepItemCollector {
     }
 
     public static void collect(Object obj, ObjectList<ItemStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
-        if (obj == null || depth > 8) return;
-        switch (obj) {
-            case Optional<?> opt -> {
-                if (visited.add(opt)) opt.ifPresent(o -> collect(o, acc, depth + 1, visited));
-                return;
-            }
-            case Either<?, ?> either -> {
-                if (visited.add(either)) {
-                    either.left().ifPresent(o -> collect(o, acc, depth + 1, visited));
-                    either.right().ifPresent(o -> collect(o, acc, depth + 1, visited));
-                }
-                return;
-            }
-            case Pair<?, ?> pair -> {
-                if (visited.add(pair)) {
-                    collect(pair.getFirst(), acc, depth + 1, visited);
-                    collect(pair.getSecond(), acc, depth + 1, visited);
-                }
-                return;
-            }
-            case TagKey<?> tagKey -> {
-                if (visited.add(tagKey) && tagKey.registry().equals(Registries.ITEM)) {
-                    @SuppressWarnings("unchecked")
-                    var itemTag = (TagKey<Item>) tagKey;
-                    var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
-                    if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
-                        var item = holder.value();
-                        var id = BuiltInRegistries.ITEM.getKey(item);
-                        var registeredItem = GameRegistryManager.getItem(id);
-                        if (registeredItem != null && registeredItem != AIR) {
-                            acc.add(new ItemStack(registeredItem));
-                            break;
+        DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
+            switch (node) {
+                case TagKey<?> tagKey -> {
+                    if (tagKey.registry().equals(Registries.ITEM)) {
+                        @SuppressWarnings("unchecked")
+                        var itemTag = (TagKey<Item>) tagKey;
+                        var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
+                        if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+                            var item = holder.value();
+                            var id = BuiltInRegistries.ITEM.getKey(item);
+                            var registeredItem = GameRegistryManager.getItem(id);
+                            if (registeredItem != null && registeredItem != AIR) {
+                                acc.add(new ItemStack(registeredItem));
+                                break;
+                            }
                         }
                     }
+                    return true;
                 }
-                return;
-            }
-            case SizedIngredient si when si.count() > 0 -> {
-                if (visited.add(si)) {
+                case SizedIngredient si when si.count() > 0 -> {
                     ItemStack[] stacks = si.ingredient().getItems();
                     if (stacks.length > 0) {
                         var stack = stacks[0].copy();
                         stack.setCount(si.count());
                         acc.add(stack);
                     }
+                    return true;
                 }
-                return;
-            }
-            case ItemStack stack when !stack.isEmpty() -> {
-                acc.add(stack.copy());
-                return;
-            }
-            case Item item -> {
-                if (item != AIR) acc.add(new ItemStack(item));
-                return;
-            }
-            case Block block -> {
-                var item = block.asItem();
-                if (item != AIR) acc.add(new ItemStack(item));
-                return;
-            }
-            case Holder<?> holder -> {
-                if (visited.add(holder)) collect(holder.value(), acc, depth + 1, visited);
-                return;
-            }
-            case Iterable<?> coll when HarvestUtility.isTooSmall(coll) -> {
-                if (visited.add(coll)) for (var item : coll) collect(item, acc, depth + 1, visited);
-                return;
-            }
-            case Map<?, ?> map when HarvestUtility.isTooSmall(map) -> {
-                if (visited.add(map)) for (var e : map.entrySet()) {
-                    collect(e.getKey(), acc, depth + 1, visited);
-                    collect(e.getValue(), acc, depth + 1, visited);
+                case ItemStack stack when !stack.isEmpty() -> {
+                    acc.add(stack.copy());
+                    return true;
                 }
-                return;
+                case Item item -> {
+                    if (item != AIR) acc.add(new ItemStack(item));
+                    return true;
+                }
+                case Block block -> {
+                    var item = block.asItem();
+                    if (item != AIR) acc.add(new ItemStack(item));
+                    return true;
+                }
+                case Holder<?> holder -> {
+                    if (visited.add(holder)) collect(holder.value(), acc, d + 1, visited);
+                    return true;
+                }
+                default -> {
+                }
             }
-            case Object[] arr when arr.length <= 50 -> {
-                if (visited.add(arr)) for (var item : arr) collect(item, acc, depth + 1, visited);
-                return;
-            }
-            default -> {
-            }
-        }
-        if (obj instanceof FluidStack || obj instanceof Ingredient) return;
-        if (HarvestUtility.isTerminal(obj)) return;
-        if (!visited.add(obj)) return;
-        var meta = RecipeReflection.getMeta(obj.getClass());
-        for (var f : meta.scanFields) {
-            try {
-                collect(f.get(obj), acc, depth + 1, visited);
-            } catch (Throwable ignored) {
-            }
-        }
+            return node instanceof FluidStack || node instanceof Ingredient;
+        });
     }
 }

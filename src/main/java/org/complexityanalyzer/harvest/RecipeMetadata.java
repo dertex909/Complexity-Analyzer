@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.*;
@@ -31,50 +13,97 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class UniversalAccessorResolver {
-
+public final class RecipeMetadata {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final ConcurrentHashMap<Class<?>, ResolvedAccessors> ACCESSOR_CACHE = new ConcurrentHashMap<>(512);
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
-    private static final ThreadLocal<ReferenceSet<Class<?>>> RESOLVING_CLASSES = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
+    private static final ConcurrentHashMap<Class<?>, FastAccessors> FAST_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
+    private static final ConcurrentHashMap<Class<?>, UniversalAccessors> UNIVERSAL_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
 
-    public static ResolvedAccessors resolve(Object recipe, Level level) {
-        if (recipe == null) return empty();
-        var clazz = recipe.getClass();
-
-        var existing = ACCESSOR_CACHE.get(clazz);
-        if (existing != null) return existing;
-
-        var resolving = RESOLVING_CLASSES.get();
-        if (!resolving.add(clazz)) return empty();
-
-        try {
-            var result = resolveUncached(clazz, recipe, level);
-            ACCESSOR_CACHE.put(clazz, result);
-            return result;
-        } finally {
-            resolving.remove(clazz);
-        }
+    private RecipeMetadata() {
     }
 
     public static ClassMeta getMeta(Class<?> clazz) {
-        return META_CACHE.computeIfAbsent(clazz, ClassMetaBuilder::build);
+        return META_CACHE.computeIfAbsent(clazz, ClassMeta::new);
     }
 
-    public static void clearCache() {
-        ACCESSOR_CACHE.clear();
+    public static void clearCaches() {
         META_CACHE.clear();
+        FAST_ACCESSORS_CACHE.clear();
+        UNIVERSAL_ACCESSORS_CACHE.clear();
     }
 
-    private static ResolvedAccessors empty() {
-        return new ResolvedAccessors(
-                ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList()
-        );
+    public static FastAccessors getFastAccessors(Class<?> clazz) {
+        return FAST_ACCESSORS_CACHE.computeIfAbsent(clazz, RecipeMetadata::resolveFastAccessors);
     }
 
-    private static ResolvedAccessors resolveUncached(Class<?> clazz, Object recipe, Level level) {
+    private static FastAccessors resolveFastAccessors(Class<?> clazz) {
+        var meta = getMeta(clazz);
+        var itemAcc = new ObjectArrayList<Accessor>(4);
+        var ingredientAcc = new ObjectArrayList<Accessor>(4);
+        var fluidAcc = new ObjectArrayList<Accessor>(4);
+        var probeAcc = new ObjectArrayList<Accessor>(4);
+        var seenNames = new ObjectOpenHashSet<String>();
+
+        for (int i = 0; i < meta.allMethods.length; i++) {
+            var m = meta.allMethods[i];
+            var h = meta.allHandles[i];
+            if (m.getDeclaringClass() == Recipe.class) continue;
+            var kind = StructuralTypeClassifier.classifyDescriptor(descriptorOf(m));
+            if (kind != null) {
+                var acc = new MethodAccessor(h, m);
+                switch (kind) {
+                    case ITEM_STACK -> {
+                        itemAcc.add(acc);
+                        seenNames.add(acc.name());
+                    }
+                    case INGREDIENT -> {
+                        ingredientAcc.add(acc);
+                        seenNames.add(acc.name());
+                    }
+                    case FLUID_STACK -> {
+                        fluidAcc.add(acc);
+                        seenNames.add(acc.name());
+                    }
+                    default -> {
+                    }
+                }
+            } else if (isContainerReturnType(m.getReturnType())) {
+                var acc = new MethodAccessor(h, m);
+                probeAcc.add(acc);
+                seenNames.add(acc.name());
+            }
+        }
+
+        for (int i = 0; i < meta.fields.length; i++) {
+            var f = meta.fields[i];
+            if (seenNames.contains(f.getName())) continue;
+            var type = f.getType();
+            var kind = StructuralTypeClassifier.classifyDescriptor(type.getName().replace('.', '/'));
+            if (kind != null) {
+                var acc = new FieldAccessor(f);
+                switch (kind) {
+                    case ITEM_STACK -> itemAcc.add(acc);
+                    case INGREDIENT -> ingredientAcc.add(acc);
+                    case FLUID_STACK -> fluidAcc.add(acc);
+                    default -> {
+                    }
+                }
+            } else if (isContainerReturnType(type)) {
+                probeAcc.add(new FieldAccessor(f));
+            }
+        }
+        return new FastAccessors(itemAcc, ingredientAcc, fluidAcc, probeAcc);
+    }
+
+    public static UniversalAccessors getUniversalAccessors(Object recipe, Level level) {
+        if (recipe == null) return UniversalAccessors.EMPTY;
+        return UNIVERSAL_ACCESSORS_CACHE.computeIfAbsent(recipe.getClass(), c -> resolveUniversalAccessors(c, recipe, level));
+    }
+
+    private static UniversalAccessors resolveUniversalAccessors(Class<?> clazz, Object recipe, Level level) {
         var meta = getMeta(clazz);
 
         ReferenceSet<Ingredient> standardInputs = ReferenceSets.emptySet();
@@ -95,9 +124,9 @@ public final class UniversalAccessorResolver {
         var unknownAcc = new ObjectArrayList<Accessor>(8);
         var allAcc = new ObjectArrayList<Accessor>(16);
 
-        for (int i = 0; i < meta.allMethods().length; i++) {
-            var m = meta.allMethods()[i];
-            var h = meta.allHandles()[i];
+        for (int i = 0; i < meta.allMethods.length; i++) {
+            var m = meta.allMethods[i];
+            var h = meta.allHandles[i];
 
             var returnType = m.getReturnType();
             if (returnType == void.class || returnType == Void.class) continue;
@@ -125,7 +154,7 @@ public final class UniversalAccessorResolver {
             }
         }
 
-        for (var f : meta.allFields()) {
+        for (var f : meta.fields) {
             var fieldType = f.getType();
             if (fieldType.isPrimitive() || fieldType == String.class || fieldType.isEnum()) continue;
             if (UniversalTypeResolver.isTerminalType(fieldType)) continue;
@@ -152,49 +181,63 @@ public final class UniversalAccessorResolver {
             }
         }
 
-        return new ResolvedAccessors(inputAcc, outputAcc, unknownAcc, allAcc);
+        return new UniversalAccessors(inputAcc, outputAcc, unknownAcc, allAcc);
+    }
+
+    private static String descriptorOf(Method m) {
+        var rt = m.getReturnType();
+        if (rt == void.class || rt == Void.class) return null;
+        return rt.getName().replace('.', '/');
+    }
+
+    private static boolean isContainerReturnType(Class<?> type) {
+        if (type == null || type == void.class) return false;
+        return type.isArray() || Iterable.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type);
     }
 
     public interface Accessor {
-        String type();
-
-        String name();
-
         Object extract(Object recipe, Level level) throws Throwable;
 
-        @Override
-        String toString();
+        default String type() {
+            return "unknown";
+        }
+
+        default String name() {
+            return "unknown";
+        }
     }
 
-    public record ResolvedAccessors(
+    public record FastAccessors(
+            ObjectList<Accessor> itemAccessors,
+            ObjectList<Accessor> ingredientAccessors,
+            ObjectList<Accessor> fluidAccessors,
+            ObjectList<Accessor> probeAccessors
+    ) {
+    }
+
+    public record UniversalAccessors(
             ObjectList<Accessor> inputAccessors,
             ObjectList<Accessor> outputAccessors,
             ObjectList<Accessor> unknownAccessors,
             ObjectList<Accessor> allAccessors
     ) {
+        public static final UniversalAccessors EMPTY = new UniversalAccessors(
+                ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList()
+        );
+
         public boolean isEmpty() {
             return allAccessors.isEmpty();
         }
-    }
-
-    public record ClassMeta(
-            Field[] allFields,
-            Field[] scanFields,
-            Method[] allMethods,
-            MethodHandle[] allHandles
-    ) {
     }
 
     public static final class MethodAccessor implements Accessor {
         private final MethodHandle noArgHandle;
         private final MethodHandle fullHandle;
         private final Method method;
-        private HeuristicRoleClassifier.RoleClassification roleClass;
+        private HeuristicRoleClassifier.RoleClassification roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
 
-        MethodAccessor(MethodHandle handle, Method method) {
+        public MethodAccessor(MethodHandle handle, Method method) {
             this.method = method;
-            this.roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
-
             if (handle != null) {
                 int paramCount = method.getParameterCount();
                 if (paramCount == 0) {
@@ -210,7 +253,7 @@ public final class UniversalAccessorResolver {
             }
         }
 
-        void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
+        public void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
             this.roleClass = rc;
         }
 
@@ -229,6 +272,7 @@ public final class UniversalAccessorResolver {
             return method.getDeclaringClass().getSimpleName() + "." + method.getName() + "() → " + method.getReturnType().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
         }
 
+        @Override
         public Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
             if (fullHandle != null) {
@@ -261,14 +305,13 @@ public final class UniversalAccessorResolver {
 
     public static final class FieldAccessor implements Accessor {
         private final Field field;
-        private HeuristicRoleClassifier.RoleClassification roleClass;
+        private HeuristicRoleClassifier.RoleClassification roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
 
-        FieldAccessor(Field field) {
+        public FieldAccessor(Field field) {
             this.field = field;
-            this.roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
         }
 
-        void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
+        public void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
             this.roleClass = rc;
         }
 
@@ -293,59 +336,33 @@ public final class UniversalAccessorResolver {
         }
     }
 
-    private static final class ClassMetaBuilder {
-        static ClassMeta build(Class<?> clazz) {
-            var fList = new ObjectArrayList<Field>();
-            var curCls = clazz;
-            while (curCls != null && curCls != Object.class) {
-                for (var f : curCls.getDeclaredFields()) {
-                    if (Modifier.isStatic(f.getModifiers())) continue;
-                    boolean dup = false;
-                    for (int i = 0; i < fList.size(); i++) {
-                        if (fList.get(i).getName().equals(f.getName())) {
-                            dup = true;
-                            break;
-                        }
-                    }
-                    if (dup) continue;
-                    try {
-                        f.setAccessible(true);
-                        fList.add(f);
-                    } catch (Exception ignored) {
-                    }
-                }
-                curCls = curCls.getSuperclass();
-            }
-            Field[] allFields = fList.toArray(new Field[0]);
+    public static final class ClassMeta {
+        public final Method[] allMethods;
+        public final MethodHandle[] allHandles;
+        public final Field[] fields;
+        public final Field[] scanFields;
 
-            var sList = new ObjectArrayList<Field>();
-            for (var f : fList) {
-                var type = f.getType();
-                if (type.isPrimitive() || type == String.class || type.isEnum()) continue;
-                if (UniversalTypeResolver.isTerminalType(type)) continue;
-                sList.add(f);
-            }
-            Field[] scanFields = sList.toArray(new Field[0]);
-
+        public ClassMeta(Class<?> clazz) {
             var mList = new ObjectArrayList<Method>();
             var hList = new ObjectArrayList<MethodHandle>();
-            var seenMethods = new ObjectOpenHashSet<String>();
             var queue = new ObjectArrayList<Class<?>>();
+            var seenMethods = new ObjectOpenHashSet<String>();
             queue.add(clazz);
             int idx = 0;
             while (idx < queue.size()) {
                 var current = queue.get(idx++);
                 if (current == null || current == Object.class) continue;
+                if (StructuralTypeClassifier.isTerminalType(current)) continue;
                 for (var m : current.getDeclaredMethods()) {
-                    if (Modifier.isStatic(m.getModifiers())) continue;
                     if (m.getParameterCount() > 1) continue;
+                    if (Modifier.isStatic(m.getModifiers())) continue;
                     if (m.getName().equals("getToastSymbol")) continue;
-
                     var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;
                     if (rt.isPrimitive()) continue;
-                    if (rt == String.class || rt == Boolean.class
-                            || Number.class.isAssignableFrom(rt) || rt == Character.class) continue;
+                    if (rt == String.class || rt == Boolean.class || Number.class.isAssignableFrom(rt) || rt == Character.class)
+                        continue;
+                    if (StructuralTypeClassifier.isTerminalType(rt)) continue;
 
                     if (!seenMethods.add(m.getName())) continue;
 
@@ -356,8 +373,57 @@ public final class UniversalAccessorResolver {
                 if (sup != null && sup != Object.class) queue.add(sup);
                 Collections.addAll(queue, current.getInterfaces());
             }
+            this.allMethods = mList.toArray(new Method[0]);
+            this.allHandles = hList.toArray(new MethodHandle[0]);
 
-            return new ClassMeta(allFields, scanFields, mList.toArray(new Method[0]), hList.toArray(new MethodHandle[0]));
+            var fList = new ObjectArrayList<Field>();
+            var curCls = clazz;
+            while (curCls != null && curCls != Object.class) {
+                for (var f : curCls.getDeclaredFields()) {
+                    if (Modifier.isStatic(f.getModifiers())) continue;
+                    boolean duplicate = false;
+                    for (int i = 0; i < fList.size(); i++) {
+                        if (fList.get(i).getName().equals(f.getName())) {
+                            duplicate = true;
+                            break;
+                        }
+                    }
+                    if (duplicate) continue;
+                    try {
+                        f.setAccessible(true);
+                        fList.add(f);
+                    } catch (Exception ignored) {
+                    }
+                }
+                curCls = curCls.getSuperclass();
+            }
+            this.fields = fList.toArray(new Field[0]);
+
+            var sList = new ObjectArrayList<Field>();
+            for (int i = 0; i < fList.size(); i++) {
+                var f = fList.get(i);
+                var type = f.getType();
+                if (type.isPrimitive() || type == String.class || type.isEnum()) continue;
+                if (StructuralTypeClassifier.isTerminalType(type)) continue;
+                sList.add(f);
+            }
+            this.scanFields = sList.toArray(new Field[0]);
+        }
+
+        public Field[] scanFields() {
+            return scanFields;
+        }
+
+        public Field[] allFields() {
+            return fields;
+        }
+
+        public Method[] allMethods() {
+            return allMethods;
+        }
+
+        public MethodHandle[] allHandles() {
+            return allHandles;
         }
 
         private static MethodHandle createHandle(Method method) {

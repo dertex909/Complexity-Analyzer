@@ -1,27 +1,8 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -35,72 +16,26 @@ import static net.minecraft.world.item.Items.AIR;
 
 public final class FastHarvester {
 
-    private static final ThreadLocal<ObjectArrayList<ItemStack>> TL_INPUT_ITEMS =
-            ThreadLocal.withInitial(() -> new ObjectArrayList<>(32));
-    private static final ThreadLocal<ObjectArrayList<ItemStack>> TL_OUTPUT_ITEMS =
-            ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
-    private static final ThreadLocal<ObjectArrayList<FluidStack>> TL_INPUT_FLUIDS =
-            ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
-    private static final ThreadLocal<ObjectArrayList<FluidStack>> TL_OUTPUT_FLUIDS =
-            ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
-    private static final ThreadLocal<ObjectArrayList<HarvestedItems.HarvestedIngredient>> TL_INPUT_INGREDIENTS =
-            ThreadLocal.withInitial(() -> new ObjectArrayList<>(16));
-    private static final ThreadLocal<ReferenceOpenHashSet<Object>> TL_VISITED =
-            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(128));
-    private static final ThreadLocal<ReferenceOpenHashSet<Object>> TL_VISITED_SECONDARY =
-            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(64));
-    private static final ThreadLocal<ReferenceOpenHashSet<Item>> TL_TRANSITIONAL_ITEMS =
-            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(8));
-    private static final ThreadLocal<ReferenceOpenHashSet<Ingredient>> TL_VISITED_INGREDIENTS =
-            ThreadLocal.withInitial(() -> new ReferenceOpenHashSet<>(64));
+    private static final ThreadLocal<HarvestSession> SESSION = ThreadLocal.withInitial(HarvestSession::new);
 
     public static boolean visitIngredient(Ingredient ing) {
         if (ing == null || ing.isEmpty()) return false;
-        return TL_VISITED_INGREDIENTS.get().add(ing);
-    }
-
-    private static void clearThreadLocals() {
-        TL_INPUT_ITEMS.get().clear();
-        TL_OUTPUT_ITEMS.get().clear();
-        TL_INPUT_FLUIDS.get().clear();
-        TL_OUTPUT_FLUIDS.get().clear();
-        TL_INPUT_INGREDIENTS.get().clear();
-        TL_VISITED.get().clear();
-        TL_VISITED_SECONDARY.get().clear();
-        TL_TRANSITIONAL_ITEMS.get().clear();
-        TL_VISITED_INGREDIENTS.get().clear();
-    }
-
-    private static <T> ObjectArrayList<T> borrowList(ThreadLocal<ObjectArrayList<T>> tl) {
-        var l = tl.get();
-        l.clear();
-        return l;
-    }
-
-    private static ReferenceOpenHashSet<Object> borrowMap() {
-        var m = FastHarvester.TL_VISITED.get();
-        m.clear();
-        return m;
-    }
-
-    private static ReferenceOpenHashSet<Object> borrowSecondaryMap() {
-        var m = FastHarvester.TL_VISITED_SECONDARY.get();
-        m.clear();
-        return m;
+        return SESSION.get().visitedIngredients.add(ing);
     }
 
     public HarvestedItems harvest(Object recipe, Level level) {
         if (recipe == null) return HarvestedItems.EMPTY;
 
-        TL_VISITED_INGREDIENTS.get().clear();
-        var inputItems = borrowList(TL_INPUT_ITEMS);
-        var outputItems = borrowList(TL_OUTPUT_ITEMS);
-        var inputIngredients = borrowList(TL_INPUT_INGREDIENTS);
-        var inputFluids = borrowList(TL_INPUT_FLUIDS);
-        var outputFluids = borrowList(TL_OUTPUT_FLUIDS);
-        var visited = borrowMap();
-        var transitional = TL_TRANSITIONAL_ITEMS.get();
-        transitional.clear();
+        var session = SESSION.get();
+        session.reset();
+
+        var inputItems = session.inputItems;
+        var outputItems = session.outputItems;
+        var inputIngredients = session.inputIngredients;
+        var inputFluids = session.inputFluids;
+        var outputFluids = session.outputFluids;
+        var visited = session.visited;
+        var transitional = session.transitionalItems;
 
         var extRaw = new ReferenceOpenHashSet<>(16);
 
@@ -114,11 +49,12 @@ public final class FastHarvester {
                         || type == RecipeType.SMOKING || type == RecipeType.CAMPFIRE_COOKING
                         || type == RecipeType.STONECUTTING || type == RecipeType.SMITHING) isVanillaRecipe = true;
 
-                for (var ing : r.getIngredients())
+                for (var ing : r.getIngredients()) {
                     if (ing != null && !ing.isEmpty()) {
                         visitIngredient(ing);
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                     }
+                }
 
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
@@ -129,7 +65,8 @@ public final class FastHarvester {
 
             var apiResultItem = apiResult.isEmpty() ? null : apiResult.getItem();
             if (!isVanillaRecipe) {
-                var accessors = RecipeReflection.getAccessors(recipe.getClass());
+                var accessors = RecipeMetadata.getFastAccessors(recipe.getClass());
+
                 for (var acc : accessors.itemAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
@@ -137,6 +74,7 @@ public final class FastHarvester {
                     } catch (Throwable ignored) {
                     }
                 }
+
                 for (var acc : accessors.ingredientAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
@@ -150,6 +88,7 @@ public final class FastHarvester {
                     } catch (Throwable ignored) {
                     }
                 }
+
                 for (var acc : accessors.fluidAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
@@ -157,7 +96,8 @@ public final class FastHarvester {
 
                         if (acc.name().contains("output")) {
                             if (extRaw.add(raw)) {
-                                var visitedSecondary = borrowSecondaryMap();
+                                var visitedSecondary = session.visitedSecondary;
+                                visitedSecondary.clear();
                                 DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
                             }
                         } else {
@@ -178,7 +118,8 @@ public final class FastHarvester {
                             String nameLower = acc.name().toLowerCase(ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);
-                                var visitedSecondary = borrowSecondaryMap();
+                                var visitedSecondary = session.visitedSecondary;
+                                visitedSecondary.clear();
                                 DeepItemCollector.collect(raw, tempItems, 0, visitedSecondary);
                                 outputItems.addAll(tempItems);
                                 visitedSecondary.clear();
@@ -230,9 +171,7 @@ public final class FastHarvester {
                             break;
                         }
                     }
-                    if (!isDup) {
-                        uniqueInputItems.add(stack);
-                    }
+                    if (!isDup) uniqueInputItems.add(stack);
                 }
                 inputItems.clear();
                 inputItems.addAll(uniqueInputItems);
@@ -240,7 +179,7 @@ public final class FastHarvester {
 
             if (!inputIngredients.isEmpty()) inputItems.removeIf(stack -> {
                 for (var hi : inputIngredients) {
-                    for (ItemStack ingStack : hi.ingredient().getItems()) {
+                    for (var ingStack : hi.ingredient().getItems()) {
                         if (ItemStackIdentity.sameItemData(ingStack, stack, registryAccess)) return true;
                     }
                 }
@@ -253,20 +192,18 @@ public final class FastHarvester {
                     inputIngredients.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputIngredients),
                     inputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(inputFluids),
                     outputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(outputFluids),
-                    recipe,
-                    new ReferenceOpenHashSet<>(transitional)
+                    recipe, new ReferenceOpenHashSet<>(transitional)
             );
         } finally {
-            clearThreadLocals();
+            session.reset();
         }
     }
 
     public void clearCaches() {
-        RecipeReflection.clearCaches();
+        RecipeMetadata.clearCaches();
         AntivirusStyleDetector.clearCache();
         PatternSignatureEngine.clearCache();
         UniversalTypeResolver.clearCache();
-        UniversalAccessorResolver.clearCache();
         TerminalTypeRegistry.clearCache();
     }
 }

@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest;
 
 import net.minecraft.resources.ResourceLocation;
@@ -211,7 +193,7 @@ public final class FullDebugTracePipeline {
             sb.append(MINOR_SEP).append('\n');
             sb.append("FIELDS:\n");
 
-            var meta = UniversalAccessorResolver.getMeta(recipe.getClass());
+            var meta = RecipeMetadata.getMeta(recipe.getClass());
 
             for (var f : meta.allFields()) {
                 try {
@@ -239,7 +221,7 @@ public final class FullDebugTracePipeline {
             sb.append(MINOR_SEP).append('\n');
             sb.append("METHODS:\n");
 
-            var meta = UniversalAccessorResolver.getMeta(recipe.getClass());
+            var meta = RecipeMetadata.getMeta(recipe.getClass());
             int shown = 0;
             for (int i = 0; i < meta.allMethods().length; i++) {
                 var m = meta.allMethods()[i];
@@ -278,24 +260,21 @@ public final class FullDebugTracePipeline {
                 }
             }
             sb.append(shown == 0 ? "  (no relevant methods found)\n" : "  (" + shown + " relevant methods shown)\n");
-
         }
 
         public void accessors(Level level) {
             sb.append(MINOR_SEP).append('\n');
             sb.append("ACCESSOR EXTRACTION:\n");
 
-            var accessors = UniversalAccessorResolver.resolve(recipe, level);
+            var accessors = RecipeMetadata.getUniversalAccessors(recipe, level);
 
             for (var acc : accessors.allAccessors()) {
                 try {
                     var val = acc.extract(recipe, level);
                     String valStr = formatValue(val);
-                    sb.append(String.format(ROOT, "  [%s] %-50s = %s\n",
-                            acc.type(), acc, valStr));
+                    sb.append(String.format(ROOT, "  [%s] %-50s = %s\n", acc.type(), acc, valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(ROOT, "  [ERR] %-50s = %s\n",
-                            acc, t.getClass().getSimpleName()));
+                    sb.append(String.format(ROOT, "  [ERR] %-50s = %s\n", acc, t.getClass().getSimpleName()));
                 }
             }
         }
@@ -321,9 +300,7 @@ public final class FullDebugTracePipeline {
                 for (var hi : items.inputIngredients()) {
                     sb.append("    - Ingredient[x").append(hi.count()).append(", items=");
                     var subItems = hi.ingredient().getItems();
-                    for (var stack : subItems) {
-                        sb.append(formatItemStack(stack)).append("; ");
-                    }
+                    for (var stack : subItems) sb.append(formatItemStack(stack)).append("; ");
                     if (subItems.length > 0) sb.setLength(sb.length() - 2);
                     sb.append("]\n");
                 }
@@ -363,8 +340,7 @@ public final class FullDebugTracePipeline {
         public void failed(Throwable t) {
             sb.append(MINOR_SEP).append('\n');
             sb.append("STATUS: FAILED\n");
-            sb.append("ERROR:  ").append(t.getClass().getSimpleName())
-                    .append(": ").append(t.getMessage()).append('\n');
+            sb.append("ERROR:  ").append(t.getClass().getSimpleName()).append(": ").append(t.getMessage()).append('\n');
             sb.append(SEP).append('\n');
             finalizeTrace(false);
         }

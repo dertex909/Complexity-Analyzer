@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.*;
@@ -410,6 +428,21 @@ public final class RecipeMetadata {
             this.scanFields = sList.toArray(new Field[0]);
         }
 
+        private static MethodHandle createHandle(Method method) {
+            try {
+                method.setAccessible(true);
+                if (method.getDeclaringClass().isInterface()) {
+                    var pub = MethodHandles.publicLookup();
+                    var mt = MethodType.methodType(method.getReturnType(), method.getParameterTypes());
+                    return pub.findVirtual(method.getDeclaringClass(), method.getName(), mt);
+                }
+                var priv = MethodHandles.privateLookupIn(method.getDeclaringClass(), LOOKUP);
+                return priv.unreflect(method);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
         public Field[] scanFields() {
             return scanFields;
         }
@@ -424,21 +457,6 @@ public final class RecipeMetadata {
 
         public MethodHandle[] allHandles() {
             return allHandles;
-        }
-
-        private static MethodHandle createHandle(Method method) {
-            try {
-                method.setAccessible(true);
-                if (method.getDeclaringClass().isInterface()) {
-                    var pub = MethodHandles.publicLookup();
-                    var mt = MethodType.methodType(method.getReturnType(), method.getParameterTypes());
-                    return pub.findVirtual(method.getDeclaringClass(), method.getName(), mt);
-                }
-                var priv = MethodHandles.privateLookupIn(method.getDeclaringClass(), LOOKUP);
-                return priv.unreflect(method);
-            } catch (Exception e) {
-                return null;
-            }
         }
     }
 }

@@ -339,6 +339,7 @@ public final class UniversalAccessorResolver {
                 for (var m : current.getDeclaredMethods()) {
                     if (Modifier.isStatic(m.getModifiers())) continue;
                     if (m.getParameterCount() > 1) continue;
+                    if (m.getName().equals("getToastSymbol")) continue;
 
                     var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;

@@ -259,7 +259,7 @@ public final class RecipeReflection {
                 for (var m : current.getDeclaredMethods()) {
                     if (m.getParameterCount() != 0) continue;
                     if (Modifier.isStatic(m.getModifiers())) continue;
-
+                    if (m.getName().equals("getToastSymbol")) continue;
                     var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;
                     if (rt.isPrimitive()) continue;

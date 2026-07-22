@@ -162,6 +162,7 @@ public final class UniversalTypeResolver {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() != 0) continue;
             if (m.getDeclaringClass() == Object.class) continue;
+            if (m.getName().equals("getToastSymbol")) continue;
 
             var returnType = resolve(m.getReturnType());
 

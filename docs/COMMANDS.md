@@ -5,9 +5,9 @@ action — always pick a sub-command below.
 
 ## Permissions
 
-| Badge | Meaning |
-|-------|---------|
-| 👤 **Player** | Usable by anyone. Read-only analysis/inspection. |
+| Badge               | Meaning                                                                           |
+|---------------------|-----------------------------------------------------------------------------------|
+| 👤 **Player**       | Usable by anyone. Read-only analysis/inspection.                                  |
 | 🛡 **OP (level 2)** | Requires operator permission. Changes state, writes files, or can lag the server. |
 
 All command output is **translated to each player's own client language** server-side
@@ -131,22 +131,22 @@ Engine and server diagnostics.
 Bulk-export analysis data to files for use outside Minecraft. **The entire group requires OP.**
 
 ### Items
-| Command | Description |
-|---------|-------------|
-| `export items all` | Full JSON report of every analyzed item. |
-| `export items csv` | Summary of all items as a single CSV. |
-| `export items top <count>` | Top N most complex items (`count` 1–1000). |
-| `export items category <name>` | All items of one complexity category (e.g. `Mythical`). Tab-completes. |
-| `export items single <item_id>` | Detailed JSON for one item. Tab-completes. |
+| Command                         | Description                                                            |
+|---------------------------------|------------------------------------------------------------------------|
+| `export items all`              | Full JSON report of every analyzed item.                               |
+| `export items csv`              | Summary of all items as a single CSV.                                  |
+| `export items top <count>`      | Top N most complex items (`count` 1–1000).                             |
+| `export items category <name>`  | All items of one complexity category (e.g. `Mythical`). Tab-completes. |
+| `export items single <item_id>` | Detailed JSON for one item. Tab-completes.                             |
 
 ### Mobs
-| Command | Description |
-|---------|-------------|
-| `export mobs all [format]` | All mobs; `format` is `json` (default) or `csv`. |
-| `export mobs csv` | Shortcut for all mobs as CSV. |
-| `export mobs top <count>` | Top N most powerful mobs (`count` 1–1000). |
+| Command                       | Description                                                          |
+|-------------------------------|----------------------------------------------------------------------|
+| `export mobs all [format]`    | All mobs; `format` is `json` (default) or `csv`.                     |
+| `export mobs csv`             | Shortcut for all mobs as CSV.                                        |
+| `export mobs top <count>`     | Top N most powerful mobs (`count` 1–1000).                           |
 | `export mobs category <name>` | All mobs of a vanilla `MobCategory` (e.g. `monster`). Tab-completes. |
-| `export mobs single <mob_id>` | Detailed JSON for one mob. Tab-completes. |
+| `export mobs single <mob_id>` | Detailed JSON for one mob. Tab-completes.                            |
 
 Each export prints the output file path on success.
 

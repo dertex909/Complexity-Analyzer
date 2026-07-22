@@ -26,33 +26,22 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.data.BiomeDataMapper;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
+import org.complexityanalyzer.util.ModFileManager;
 
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class GeoDataStorage {
-    private static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter())
-            .create();
-    private static final Gson PRETTY_GSON = new GsonBuilder()
-            .setPrettyPrinting()
-            .registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter())
-            .create();
+    private static final Gson GSON = new GsonBuilder().registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter()).create();
+    private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter()).create();
     private final Path dataDir;
     private final Path reconDir;
     private final Path finalDir;
@@ -60,25 +49,17 @@ public class GeoDataStorage {
     private final ConcurrentHashMap<Path, Object> fileLockMarkers = new ConcurrentHashMap<>();
 
     public GeoDataStorage(MinecraftServer server) {
-        this.dataDir = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(ComplexityAnalyzer.MODID);
-        this.reconDir = dataDir.resolve("recon");
-        this.finalDir = dataDir.resolve("final");
-        this.metadataFile = dataDir.resolve("metadata.json");
-    }
-
-    public void ensureDirectoriesExist() {
-        try {
-            Files.createDirectories(this.reconDir);
-            Files.createDirectories(this.finalDir);
-        } catch (IOException e) {
-            throw new RuntimeException("Could not create world-specific geo-data directories!", e);
-        }
+        this.dataDir = ModFileManager.resolve(server);
+        this.reconDir = ModFileManager.resolve(server, "recon");
+        this.finalDir = ModFileManager.resolve(server, "final");
+        this.metadataFile = ModFileManager.resolve(server, "metadata.json");
     }
 
     public ScanMetadata loadMetadata() {
-        if (!Files.exists(metadataFile)) return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
-        try (var reader = new FileReader(metadataFile.toFile())) {
-            var meta = PRETTY_GSON.fromJson(reader, ScanMetadata.class);
+        if (!ModFileManager.exists(metadataFile)) return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
+        try {
+            String json = ModFileManager.readString(metadataFile);
+            var meta = PRETTY_GSON.fromJson(json, ScanMetadata.class);
             return meta != null ? meta : new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to read metadata file! Assuming IDLE state.", e);
@@ -87,8 +68,8 @@ public class GeoDataStorage {
     }
 
     public void saveMetadata(ScanMetadata metadata) {
-        try (var writer = new FileWriter(metadataFile.toFile())) {
-            PRETTY_GSON.toJson(metadata, writer);
+        try {
+            ModFileManager.writeStringAtomic(metadataFile, PRETTY_GSON.toJson(metadata));
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to write metadata file!", e);
         }
@@ -100,13 +81,9 @@ public class GeoDataStorage {
 
         fileLockMarkers.compute(file, (k, v) -> {
             try {
-                Files.createDirectories(file.getParent());
-                try (var writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-                    for (int i = 0, n = newSnapshots.size(); i < n; i++) {
-                        writer.write(GSON.toJson(newSnapshots.get(i)));
-                        writer.newLine();
-                    }
-                }
+                var lines = new ObjectArrayList<String>(newSnapshots.size());
+                for (int i = 0, n = newSnapshots.size(); i < n; i++) lines.add(GSON.toJson(newSnapshots.get(i)));
+                ModFileManager.appendLines(file, lines);
             } catch (IOException e) {
                 ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
             }
@@ -116,14 +93,14 @@ public class GeoDataStorage {
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> getAllReconFilePaths() {
         var allPaths = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>>();
-        if (!Files.exists(reconDir)) return allPaths;
+        if (!ModFileManager.exists(reconDir)) return allPaths;
 
-        try (var dimNamespaces = Files.list(reconDir)) {
-            var dimNsIt = dimNamespaces.filter(Files::isDirectory).iterator();
+        try (var dimNamespaces = ModFileManager.list(reconDir)) {
+            var dimNsIt = dimNamespaces.filter(ModFileManager::exists).iterator();
             while (dimNsIt.hasNext()) {
                 var dimNamespaceDir = dimNsIt.next();
-                try (var dimPaths = Files.list(dimNamespaceDir)) {
-                    var dimPathIt = dimPaths.filter(Files::isDirectory).iterator();
+                try (var dimPaths = ModFileManager.list(dimNamespaceDir)) {
+                    var dimPathIt = dimPaths.filter(ModFileManager::exists).iterator();
                     while (dimPathIt.hasNext()) {
                         var dimPathDir = dimPathIt.next();
                         var dimensionId = ResourceLocation.fromNamespaceAndPath(
@@ -131,7 +108,7 @@ public class GeoDataStorage {
                                 dimPathDir.getFileName().toString()
                         );
                         var biomeFiles = new Object2ObjectOpenHashMap<ResourceLocation, Path>();
-                        try (var files = Files.list(dimPathDir)) {
+                        try (var files = ModFileManager.list(dimPathDir)) {
                             var fileIt = files.filter(f -> f.toString().endsWith(".jsonl")).iterator();
                             while (fileIt.hasNext()) {
                                 var filePath = fileIt.next();
@@ -157,17 +134,19 @@ public class GeoDataStorage {
     }
 
     public Stream<ChunkSnapshot> streamReconFile(Path path) {
-        if (!Files.exists(path)) return Stream.empty();
-        try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
+        if (!ModFileManager.exists(path)) return Stream.empty();
+        try {
             var snapshots = new ObjectArrayList<ChunkSnapshot>();
-            var it = lines.iterator();
-            while (it.hasNext()) {
-                String line = it.next();
-                try {
-                    var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
-                    if (snapshot != null) snapshots.add(snapshot);
-                } catch (JsonSyntaxException e) {
-                    ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
+            try (var lines = ModFileManager.streamLines(path)) {
+                var it = lines.iterator();
+                while (it.hasNext()) {
+                    String line = it.next();
+                    try {
+                        var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
+                        if (snapshot != null) snapshots.add(snapshot);
+                    } catch (JsonSyntaxException e) {
+                        ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
+                    }
                 }
             }
             return snapshots.stream();
@@ -178,8 +157,8 @@ public class GeoDataStorage {
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
-        var loadedData = loadDataFromDirectory(finalDir, (reader) -> {
-            var data = PRETTY_GSON.fromJson(reader, BiomeScanData.class);
+        var loadedData = loadDataFromDirectory(finalDir, (jsonString) -> {
+            var data = PRETTY_GSON.fromJson(jsonString, BiomeScanData.class);
             if (data != null) mapper.afterLoad(data);
             return data;
         });
@@ -199,57 +178,31 @@ public class GeoDataStorage {
     }
 
     public void deleteAllData() {
-        try {
-            if (Files.exists(dataDir)) try (var walk = Files.walk(dataDir)) {
-                walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
-            }
-        } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to clear geo-data directory.", e);
-        } finally {
-            ensureDirectoriesExist();
-        }
+        ModFileManager.delete(dataDir);
     }
 
-    public void deleteFinalData() throws IOException {
-        deleteDirectory(finalDir);
-    }
-
-    private void deleteDirectory(Path dir) throws IOException {
-        if (Files.exists(dir)) try (var walk = Files.walk(dir)) {
-            walk.sorted(Comparator.reverseOrder()).forEach(this::deletePath);
-        }
-        Files.createDirectories(dir);
-    }
-
-    private void deletePath(Path path) {
-        try {
-            Files.delete(path);
-        } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to delete path: {}", path, e);
-        }
+    public void deleteFinalData() {
+        ModFileManager.delete(finalDir);
     }
 
     private void saveJson(Path file, Object data) {
         try {
-            Files.createDirectories(file.getParent());
-            try (var writer = new FileWriter(file.toFile())) {
-                GeoDataStorage.PRETTY_GSON.toJson(data, writer);
-            }
+            ModFileManager.writeStringAtomic(file, GeoDataStorage.PRETTY_GSON.toJson(data));
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to save JSON to file {}", file, e);
         }
     }
 
-    private <T> Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<FileReader, T> fromJson) {
+    private <T> Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<String, T> fromJson) {
         var allData = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>>();
-        if (!Files.exists(rootDir)) return allData;
+        if (!ModFileManager.exists(rootDir)) return allData;
 
-        try (var dimNamespaces = Files.list(rootDir)) {
-            var dimNsIt = dimNamespaces.filter(Files::isDirectory).iterator();
+        try (var dimNamespaces = ModFileManager.list(rootDir)) {
+            var dimNsIt = dimNamespaces.filter(ModFileManager::exists).iterator();
             while (dimNsIt.hasNext()) {
                 var dimNamespaceDir = dimNsIt.next();
-                try (var dimPaths = Files.list(dimNamespaceDir)) {
-                    var dimPathIt = dimPaths.filter(Files::isDirectory).iterator();
+                try (var dimPaths = ModFileManager.list(dimNamespaceDir)) {
+                    var dimPathIt = dimPaths.filter(ModFileManager::exists).iterator();
                     while (dimPathIt.hasNext()) {
                         var dimPathDir = dimPathIt.next();
                         var dimensionId = ResourceLocation.fromNamespaceAndPath(
@@ -258,12 +211,13 @@ public class GeoDataStorage {
                         );
 
                         var biomeData = new Object2ObjectOpenHashMap<ResourceLocation, T>();
-                        try (var biomeFiles = Files.list(dimPathDir)) {
+                        try (var biomeFiles = ModFileManager.list(dimPathDir)) {
                             var fileIt = biomeFiles.filter(f -> f.toString().endsWith(".json")).iterator();
                             while (fileIt.hasNext()) {
                                 var biomeFile = fileIt.next();
-                                try (var reader = new FileReader(biomeFile.toFile())) {
-                                    var data = fromJson.apply(reader);
+                                try {
+                                    String json = ModFileManager.readString(biomeFile);
+                                    var data = fromJson.apply(json);
                                     if (data != null) {
                                         String fileName = biomeFile.getFileName().toString();
                                         String encodedName = fileName.substring(0, fileName.length() - 5);
@@ -309,8 +263,8 @@ public class GeoDataStorage {
 
     public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
         var path = getReconFilePath(dimension, biome);
-        if (!Files.exists(path)) return 0;
-        try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
+        if (!ModFileManager.exists(path)) return 0;
+        try (var lines = ModFileManager.streamLines(path)) {
             return (int) lines.count();
         } catch (IOException e) {
             return 0;
@@ -325,7 +279,7 @@ public class GeoDataStorage {
             var dim = dimEntry.getKey();
             var coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
             for (var path : dimEntry.getValue().values()) {
-                try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
+                try (var lines = ModFileManager.streamLines(path)) {
                     var it = lines.iterator();
                     while (it.hasNext()) {
                         try {

@@ -32,8 +32,8 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.util.ModFileManager;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -219,13 +219,13 @@ public final class SystemCommand {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.no_world", label));
             return 0;
         }
-        if (!Files.isRegularFile(file)) {
+        if (!ModFileManager.isRegularFile(file)) {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.not_built", label));
             return 0;
         }
         try {
-            long size = Files.size(file);
-            var modified = Files.getLastModifiedTime(file).toInstant();
+            long size = ModFileManager.getSize(file);
+            var modified = ModFileManager.getLastModifiedTime(file).toInstant();
             String age = formatAge(Duration.between(modified, Instant.now()));
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.present", label, humanSize(size), age, file.toString()));
             return 1;
@@ -255,7 +255,7 @@ public final class SystemCommand {
         if (removed > 0) {
             output.sendClickableSuccess(source,
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.prefix", removed),
-                    Component.literal(ComplexityCommand.ROOT + " system reload"),
+                    Component.literal(ComplexityCommand.ROOT + " system reload "),
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.suffix"),
                     ComplexityCommand.ROOT + " system reload",
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.hover")

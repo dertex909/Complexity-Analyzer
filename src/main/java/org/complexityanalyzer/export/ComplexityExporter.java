@@ -33,19 +33,15 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.storage.LevelResource;
-import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.export.ExportData.MobData;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.HardcodedSource;
+import org.complexityanalyzer.util.ModFileManager;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -66,9 +62,8 @@ public class ComplexityExporter {
             DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
     public static Path exportAllItems(MinecraftServer server, AnalysisEngine engine) throws IOException {
-        var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportFile = exportDir.resolve("items_all_" + timestamp + ".json");
+        var exportFile = ModFileManager.resolve(server, "export", "items_all_" + timestamp + ".json");
         var allItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
@@ -76,15 +71,14 @@ public class ComplexityExporter {
         }
         allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
         String json = GSON.toJson(new ExportData(timestamp, allItems.size(), allItems));
-        Files.writeString(exportFile, json);
+        ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
     }
 
     public static Path exportItemsByCategory(MinecraftServer server, AnalysisEngine engine, String categoryName)
             throws IOException {
-        var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportFile = exportDir.resolve("items_category_" + categoryName.toLowerCase(ROOT) + "_" + timestamp + ".json");
+        var exportFile = ModFileManager.resolve(server, "export", "items_category_" + categoryName.toLowerCase(ROOT) + "_" + timestamp + ".json");
         var filteredItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
@@ -94,14 +88,13 @@ public class ComplexityExporter {
         }
         filteredItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
         String json = GSON.toJson(new ExportData(timestamp, filteredItems.size(), filteredItems));
-        Files.writeString(exportFile, json);
+        ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
     }
 
     public static Path exportTopItems(MinecraftServer server, AnalysisEngine engine, int count) throws IOException {
-        var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportFile = exportDir.resolve("items_top" + count + "_" + timestamp + ".json");
+        var exportFile = ModFileManager.resolve(server, "export", "items_top" + count + "_" + timestamp + ".json");
         var allItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
@@ -112,14 +105,13 @@ public class ComplexityExporter {
         allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
         var topItems = new ObjectArrayList<>(allItems.subList(0, Math.min(count, allItems.size())));
         String json = GSON.toJson(new ExportData(timestamp, topItems.size(), topItems));
-        Files.writeString(exportFile, json);
+        ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
     }
 
     public static Path exportItemsCSV(MinecraftServer server, AnalysisEngine engine) throws IOException {
-        var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportFile = exportDir.resolve("items_all_" + timestamp + ".csv");
+        var exportFile = ModFileManager.resolve(server, "export", "items_all_" + timestamp + ".csv");
 
         var rows = new ObjectArrayList<CsvRow>();
         for (var item : GameRegistryManager.getAllItems()) {
@@ -139,32 +131,32 @@ public class ComplexityExporter {
         }
 
         rows.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
-
-        try (var writer = new PrintWriter(exportFile.toFile(), StandardCharsets.UTF_8)) {
-            writer.println("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth," +
-                    "Used In Recipes,Is Valid,Has Cycle,Is Hardcoded");
-            for (var row : rows) {
-                writer.println(String.format(ROOT, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s,%s",
-                        row.itemId,
-                        row.displayName.replace("\"", "\"\""),
-                        row.complexity,
-                        row.category,
-                        row.hasRecipe,
-                        row.craftingDepth,
-                        row.usedInRecipes,
-                        row.isValid,
-                        row.hasCycle,
-                        row.isHardcoded
-                ));
-            }
-        }
+        ModFileManager.writeStringAtomic(exportFile, buildItemsCsv(rows));
         return exportFile;
+    }
+
+    private static String buildItemsCsv(ObjectArrayList<CsvRow> rows) {
+        var sb = new StringBuilder();
+        sb.append("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth,Used In Recipes,Is Valid,Has Cycle,Is Hardcoded\n");
+        for (var row : rows) {
+            sb.append(String.format(ROOT, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s,%s\n",
+                    row.itemId,
+                    row.displayName.replace("\"", "\"\""),
+                    row.complexity,
+                    row.category,
+                    row.hasRecipe,
+                    row.craftingDepth,
+                    row.usedInRecipes,
+                    row.isValid,
+                    row.hasCycle,
+                    row.isHardcoded
+            ));
+        }
+        return sb.toString();
     }
 
     public static Path exportSingleItem(MinecraftServer server, AnalysisEngine engine, String itemIdString)
             throws IOException {
-        var exportDir = getExportDirectory(server).resolve("items");
-        Files.createDirectories(exportDir);
         var itemId = ResourceLocation.parse(itemIdString);
         var item = GameRegistryManager.getItem(itemId);
         if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
@@ -173,8 +165,8 @@ public class ComplexityExporter {
         var complexity = engine.getComplexityResult(item);
         if (complexity == null) throw new IllegalStateException("Failed to analyze item: " + itemIdString);
         var itemData = buildItemData(item, itemId, complexity, engine);
-        var exportFile = exportDir.resolve(itemId.getNamespace() + "_" + itemId.getPath() + ".json");
-        Files.writeString(exportFile, GSON.toJson(itemData));
+        var exportFile = ModFileManager.resolve(server, "export", "items", itemId.getNamespace() + "_" + itemId.getPath() + ".json");
+        ModFileManager.writeStringAtomic(exportFile, GSON.toJson(itemData));
         return exportFile;
     }
 
@@ -193,28 +185,13 @@ public class ComplexityExporter {
 
     public static Path exportSingleMob(MinecraftServer server, AnalysisEngine engine, String mobIdString)
             throws IOException {
-        var exportDir = getExportDirectory(server).resolve("mobs");
-        Files.createDirectories(exportDir);
         var mobId = ResourceLocation.parse(mobIdString);
         var mobType = GameRegistryManager.getEntityType(mobId);
         var mobData = buildMobData(mobType, engine);
         if (mobData == null) throw new IllegalStateException("Failed to analyze mob: " + mobIdString);
-        var exportFile = exportDir.resolve(mobId.getNamespace() + "_" + mobId.getPath() + ".json");
-        Files.writeString(exportFile, GSON.toJson(mobData));
+        var exportFile = ModFileManager.resolve(server, "export", "mobs", mobId.getNamespace() + "_" + mobId.getPath() + ".json");
+        ModFileManager.writeStringAtomic(exportFile, GSON.toJson(mobData));
         return exportFile;
-    }
-
-    private static Path getExportDirectory(MinecraftServer server) throws IOException {
-        var dir = server.getWorldPath(LevelResource.ROOT)
-                .resolve("data")
-                .resolve("complexityanalyzer")
-                .resolve("export");
-
-        dir = dir.toAbsolutePath().normalize();
-
-        if (!Files.exists(dir)) Files.createDirectories(dir);
-        ComplexityAnalyzer.LOGGER.info("[Exporter] Resolved export directory to absolute path: {}", dir);
-        return dir;
     }
 
     private static boolean checkIfHardcoded(Item item) {
@@ -283,33 +260,35 @@ public class ComplexityExporter {
         mobDataList.sort((a, b) -> Double.compare(b.combatPower(), a.combatPower()));
         if (topN > 0 && mobDataList.size() > topN) mobDataList = new ObjectArrayList<>(mobDataList.subList(0, topN));
 
-        var exportDir = getExportDirectory(server);
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportPath = exportDir.resolve("mobs_" + fileSuffix + "_" + timestamp + "." + format);
+        var exportPath = ModFileManager.resolve(server, "export", "mobs_" + fileSuffix + "_" + timestamp + "." + format);
 
         if ("csv".equalsIgnoreCase(format)) {
-            try (var writer = new PrintWriter(exportPath.toFile(), StandardCharsets.UTF_8)) {
-                writer.println("Name,ID,Category,Health,Damage,Armor,Survivability,Threat,Combat Power," +
-                        "Rarity,Is Boss,Is MiniBoss,Notable Drops");
-                for (var data : mobDataList) {
-                    var dropsBuilder = new StringBuilder();
-                    for (int i = 0; i < data.drops().size(); i++) {
-                        var d = data.drops().get(i);
-                        if (i > 0) dropsBuilder.append("; ");
-                        dropsBuilder.append(String.format("%s (%.2f)", d.itemName(), d.yieldPerKill()));
-                    }
-                    String drops = dropsBuilder.toString();
-                    writer.println(String.format(
-                            ROOT, "\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%b,%b,\"%s\"",
-                            data.name(), data.id(), data.category(), data.health(), data.damage(), data.armor(),
-                            data.survivability(), data.threat(), data.combatPower(), data.rarity(),
-                            data.isBoss(), data.isMiniBoss(), drops.isEmpty() ? "None" : drops));
-                }
-            }
+            ModFileManager.writeStringAtomic(exportPath, buildMobsCsv(mobDataList));
         } else {
-            Files.writeString(exportPath, GSON.toJson(mobDataList));
+            ModFileManager.writeStringAtomic(exportPath, GSON.toJson(mobDataList));
         }
         return exportPath;
+    }
+
+    private static String buildMobsCsv(ObjectArrayList<MobData> mobDataList) {
+        var sb = new StringBuilder();
+        sb.append("Name,ID,Category,Health,Damage,Armor,Survivability,Threat,Combat Power,Rarity,Is Boss,Is MiniBoss,Notable Drops\n");
+        for (var data : mobDataList) {
+            var dropsBuilder = new StringBuilder();
+            for (int i = 0; i < data.drops().size(); i++) {
+                var d = data.drops().get(i);
+                if (i > 0) dropsBuilder.append("; ");
+                dropsBuilder.append(String.format("%s (%.2f)", d.itemName(), d.yieldPerKill()));
+            }
+            String drops = dropsBuilder.toString();
+            sb.append(String.format(
+                    ROOT, "\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%b,%b,\"%s\"\n",
+                    data.name(), data.id(), data.category(), data.health(), data.damage(), data.armor(),
+                    data.survivability(), data.threat(), data.combatPower(), data.rarity(),
+                    data.isBoss(), data.isMiniBoss(), drops.isEmpty() ? "None" : drops));
+        }
+        return sb.toString();
     }
 
     private static MobData buildMobData(EntityType<?> type, AnalysisEngine engine) {

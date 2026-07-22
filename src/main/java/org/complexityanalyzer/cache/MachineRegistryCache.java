@@ -18,8 +18,6 @@
 
 package org.complexityanalyzer.cache;
 
-import com.github.luben.zstd.ZstdInputStream;
-import com.github.luben.zstd.ZstdOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -33,13 +31,11 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.util.ModFileManager;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 
 import static net.minecraft.world.item.Items.AIR;
-import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
 public final class MachineRegistryCache implements ManagedCache {
 
@@ -60,7 +56,7 @@ public final class MachineRegistryCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return server.getWorldPath(ROOT).resolve("data").resolve("complexityanalyzer").resolve("machine_registry.bin");
+            return ModFileManager.resolve(server, "machine_registry.bin");
         } catch (Throwable t) {
             return null;
         }
@@ -71,11 +67,11 @@ public final class MachineRegistryCache implements ManagedCache {
     }
 
     public int tryLoad(Path file, Fingerprint expected, Object2ObjectMap<ResourceLocation, ObjectList<Item>> target) {
-        if (file == null || !Files.isRegularFile(file)) return -1;
+        if (!ModFileManager.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
-        try (var is = Files.newInputStream(file); var zstdIs = new ZstdInputStream(is)) {
-            byte[] bytes = zstdIs.readAllBytes();
+        try {
+            byte[] bytes = ModFileManager.readCompressedBytes(file);
             raw = Unpooled.wrappedBuffer(bytes);
             var buf = new FriendlyByteBuf(raw);
 
@@ -144,18 +140,7 @@ public final class MachineRegistryCache implements ManagedCache {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
 
-            Files.createDirectories(file.getParent());
-            var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-
-            try (var os = Files.newOutputStream(tmp); var zstdOs = new ZstdOutputStream(os, 5)) {
-                zstdOs.write(bytes);
-            }
-
-            try {
-                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (Throwable t) {
-                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            }
+            ModFileManager.writeCompressedAtomic(file, bytes, 5);
             ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());

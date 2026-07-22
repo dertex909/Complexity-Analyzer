@@ -23,9 +23,9 @@ import net.minecraft.server.MinecraftServer;
 import org.complexityanalyzer.cache.MachineRegistryCache;
 import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.cache.ResourceCache;
+import org.complexityanalyzer.util.ModFileManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -57,11 +57,7 @@ public interface ManagedCache {
     default boolean delete(MinecraftServer server) {
         var f = file(server);
         if (f == null) return false;
-        try {
-            return Files.deleteIfExists(f);
-        } catch (Exception e) {
-            return false;
-        }
+        return ModFileManager.delete(f);
     }
 
     final class Registry {

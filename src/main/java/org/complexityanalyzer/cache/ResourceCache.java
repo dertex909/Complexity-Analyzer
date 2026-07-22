@@ -18,8 +18,6 @@
 
 package org.complexityanalyzer.cache;
 
-import com.github.luben.zstd.ZstdInputStream;
-import com.github.luben.zstd.ZstdOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -31,17 +29,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.ModFileManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 
 public final class ResourceCache implements ManagedCache {
 
@@ -138,18 +134,18 @@ public final class ResourceCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve(fileName);
+            return ModFileManager.resolve(server, fileName);
         } catch (Throwable t) {
             return null;
         }
     }
 
     public <T> int load(Path file, long[] fingerprint, Reader<T> reader, Reference2ObjectMap<Item, ObjectList<T>> target) {
-        if (file == null || !Files.isRegularFile(file)) return -1;
+        if (!ModFileManager.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
-        try (var is = Files.newInputStream(file); var zstdIs = new ZstdInputStream(is)) {
-            raw = Unpooled.wrappedBuffer(zstdIs.readAllBytes());
+        try {
+            raw = Unpooled.wrappedBuffer(ModFileManager.readCompressedBytes(file));
             var buf = new FriendlyByteBuf(raw);
 
             if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
@@ -210,18 +206,7 @@ public final class ResourceCache implements ManagedCache {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
 
-            Files.createDirectories(file.getParent());
-            var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-
-            try (var os = Files.newOutputStream(tmp); var zstdOs = new ZstdOutputStream(os, 5)) {
-                zstdOs.write(bytes);
-            }
-
-            try {
-                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (Throwable t) {
-                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            }
+            ModFileManager.writeCompressedAtomic(file, bytes, 5);
             ComplexityAnalyzer.LOGGER.info("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to save: {}", id, t.toString());

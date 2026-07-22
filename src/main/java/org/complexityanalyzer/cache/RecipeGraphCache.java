@@ -18,8 +18,6 @@
 
 package org.complexityanalyzer.cache;
 
-import com.github.luben.zstd.ZstdInputStream;
-import com.github.luben.zstd.ZstdOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -34,7 +32,6 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -44,10 +41,9 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.util.ModFileManager;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 
 public final class RecipeGraphCache implements ManagedCache {
@@ -241,7 +237,7 @@ public final class RecipeGraphCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer").resolve("recipe_graph.bin");
+            return ModFileManager.resolve(server, "recipe_graph.bin");
         } catch (Throwable t) {
             return null;
         }
@@ -302,18 +298,7 @@ public final class RecipeGraphCache implements ManagedCache {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
 
-            Files.createDirectories(file.getParent());
-            var tmp = file.resolveSibling(file.getFileName() + ".tmp");
-
-            try (var os = Files.newOutputStream(tmp); var zstdOs = new ZstdOutputStream(os, 5)) {
-                zstdOs.write(bytes);
-            }
-
-            try {
-                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (Throwable t) {
-                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            }
+            ModFileManager.writeCompressedAtomic(file, bytes, 5);
             ComplexityAnalyzer.LOGGER.info("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
@@ -323,11 +308,11 @@ public final class RecipeGraphCache implements ManagedCache {
     }
 
     public RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
-        if (!Files.isRegularFile(file)) return null;
+        if (!ModFileManager.isRegularFile(file)) return null;
 
         ByteBuf raw = null;
-        try (var is = Files.newInputStream(file); var zstdIs = new ZstdInputStream(is)) {
-            byte[] bytes = zstdIs.readAllBytes();
+        try {
+            byte[] bytes = ModFileManager.readCompressedBytes(file);
             raw = Unpooled.wrappedBuffer(bytes);
             var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
 

@@ -25,9 +25,8 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.util.ModFileManager;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -164,10 +163,8 @@ public final class FullDebugTracePipeline {
         }
 
         try {
-            var dir = worldDir.resolve("data").resolve("complexityanalyzer");
-            Files.createDirectories(dir);
-            var file = dir.resolve("runtime_harvest.txt");
-            Files.writeString(file, buffer.toString(), StandardCharsets.UTF_8);
+            var file = ModFileManager.resolve(worldDir, "runtime_harvest.txt");
+            ModFileManager.writeStringAtomic(file, buffer.toString());
             ComplexityAnalyzer.LOGGER.info("[Harvest:Debug] Written {} recipes trace to {}", totalRecipes, file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest:Debug] Failed to write trace: {}", t.getMessage());

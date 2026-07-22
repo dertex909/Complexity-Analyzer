@@ -55,7 +55,6 @@ public class GeoDatabase {
         this.storage = new GeoDataStorage(server);
         this.analyzer = new HeuristicAnalyzer();
         this.mapper = new BiomeDataMapper();
-        this.storage.ensureDirectoriesExist();
         this.inMemoryData = new ConcurrentHashMap<>();
     }
 

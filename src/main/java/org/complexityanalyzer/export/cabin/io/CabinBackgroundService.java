@@ -26,17 +26,13 @@ import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
 import org.complexityanalyzer.network.multiplex.CabinWsHub;
+import org.complexityanalyzer.util.ModFileManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
 public final class CabinBackgroundService {
 
@@ -68,11 +64,6 @@ public final class CabinBackgroundService {
         } catch (Throwable ignored) {
         }
         return new Snapshot(bytes, hash, System.currentTimeMillis(), itemCount, mobCount, recipeCount);
-    }
-
-    public static Path getCabinDirectory(MinecraftServer server) {
-        return server.getWorldPath(ROOT).resolve("data").resolve("complexityanalyzer")
-                .resolve("cabin").toAbsolutePath().normalize();
     }
 
     @Nullable
@@ -155,16 +146,8 @@ public final class CabinBackgroundService {
     }
 
     private void persistToFile(MinecraftServer server, byte[] bytes) throws IOException {
-        var dir = getCabinDirectory(server);
-        Files.createDirectories(dir);
-        var tmp = dir.resolve("latest.cabin.tmp");
-        var target = dir.resolve("latest.cabin");
-        Files.write(tmp, bytes);
-        try {
-            Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (Throwable t) {
-            Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
-        }
+        var target = ModFileManager.resolve(server, "cabin", "latest.cabin");
+        ModFileManager.writeBytesAtomic(target, bytes);
     }
 
     public void clear() {

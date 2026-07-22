@@ -253,7 +253,13 @@ public final class SystemCommand {
             return 0;
         }
         if (removed > 0) {
-            output.sendSuccess(source, Component.translatable("complexityanalyzer.command.system.cache.deleted", removed));
+            output.sendClickableSuccess(source,
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.prefix", removed),
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.link"),
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.suffix"),
+                    "/complexity system reload",
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.hover")
+            );
         } else {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
         }

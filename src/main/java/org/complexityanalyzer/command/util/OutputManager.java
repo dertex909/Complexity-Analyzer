@@ -235,6 +235,15 @@ public class OutputManager {
         source.sendSuccess(() -> translate(source, tip), false);
     }
 
+    public void sendClickableSuccess(CommandSourceStack source, Object prefix, Object linkText, Object suffix, String command, Object hoverText) {
+        var message = concat(
+                styled(prefix, ChatFormatting.GREEN),
+                clickable(linkText, command, hoverText),
+                styled(suffix, ChatFormatting.GREEN)
+        );
+        source.sendSuccess(() -> translate(source, message), false);
+    }
+
     public void sendProgressBar(CommandSourceStack source, Object label, int percent, Object textValue, ChatFormatting labelColor, ChatFormatting barColor) {
         String barStr = getBarString(percent);
         var bar = concat(

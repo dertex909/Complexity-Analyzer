@@ -21,12 +21,17 @@ package org.complexityanalyzer.core;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
+
+import static net.minecraft.world.item.Items.AIR;
 
 public class GameRegistryManager {
 
@@ -35,16 +40,20 @@ public class GameRegistryManager {
     private static final Object2ObjectMap<ResourceLocation, Fluid> FLUID_MAP = new Object2ObjectOpenHashMap<>();
     private static final Object2ObjectMap<ResourceLocation, RecipeType<?>> RECIPE_TYPE_MAP = new Object2ObjectOpenHashMap<>();
     private static final Object2ObjectMap<ResourceLocation, EntityType<?>> ENTITY_TYPE_MAP = new Object2ObjectOpenHashMap<>();
+
     private static final Reference2ObjectMap<Block, ResourceLocation> BLOCK_ID_MAP = new Reference2ObjectOpenHashMap<>();
     private static final Reference2ObjectMap<Item, ResourceLocation> ITEM_ID_MAP = new Reference2ObjectOpenHashMap<>();
     private static final Reference2ObjectMap<Fluid, ResourceLocation> FLUID_ID_MAP = new Reference2ObjectOpenHashMap<>();
     private static final Reference2ObjectMap<RecipeType<?>, ResourceLocation> RECIPE_TYPE_ID_MAP = new Reference2ObjectOpenHashMap<>();
     private static final Reference2ObjectMap<EntityType<?>, ResourceLocation> ENTITY_TYPE_ID_MAP = new Reference2ObjectOpenHashMap<>();
+    private static final Reference2ObjectMap<VillagerProfession, ResourceLocation> PROFESSION_ID_MAP = new Reference2ObjectOpenHashMap<>();
+
     private static final ObjectList<Block> ALL_BLOCKS = new ObjectArrayList<>();
     private static final ObjectList<Item> ALL_ITEMS = new ObjectArrayList<>();
     private static final ObjectList<Fluid> ALL_FLUIDS = new ObjectArrayList<>();
     private static final ObjectList<RecipeType<?>> ALL_RECIPE_TYPES = new ObjectArrayList<>();
     private static final ObjectList<EntityType<?>> ALL_ENTITY_TYPES = new ObjectArrayList<>();
+    private static final ObjectList<VillagerProfession> ALL_PROFESSIONS = new ObjectArrayList<>();
     private static final ObjectList<ResourceLocation> ALL_ITEM_IDS = new ObjectArrayList<>();
     private static boolean initialized = false;
 
@@ -95,10 +104,16 @@ public class GameRegistryManager {
             ALL_ENTITY_TYPES.add(entityType);
         }
 
+        for (var profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+            var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+            PROFESSION_ID_MAP.put(profession, id);
+            ALL_PROFESSIONS.add(profession);
+        }
+
         initialized = true;
         long duration = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.info("[GameRegistryManager] Initialized in {}ms. Blocks: {}, Items: {}, Fluids: {}, RecipeTypes: {}, EntityTypes: {}",
-                duration, ALL_BLOCKS.size(), ALL_ITEMS.size(), ALL_FLUIDS.size(), ALL_RECIPE_TYPES.size(), ALL_ENTITY_TYPES.size());
+        ComplexityAnalyzer.LOGGER.info("[GameRegistryManager] Initialized in {}ms. Blocks: {}, Items: {}, Fluids: {}, RecipeTypes: {}, EntityTypes: {}, Professions: {}",
+                duration, ALL_BLOCKS.size(), ALL_ITEMS.size(), ALL_FLUIDS.size(), ALL_RECIPE_TYPES.size(), ALL_ENTITY_TYPES.size(), ALL_PROFESSIONS.size());
     }
 
     public static void clear() {
@@ -107,19 +122,45 @@ public class GameRegistryManager {
         FLUID_MAP.clear();
         RECIPE_TYPE_MAP.clear();
         ENTITY_TYPE_MAP.clear();
+
         BLOCK_ID_MAP.clear();
         ITEM_ID_MAP.clear();
         FLUID_ID_MAP.clear();
         RECIPE_TYPE_ID_MAP.clear();
         ENTITY_TYPE_ID_MAP.clear();
+        PROFESSION_ID_MAP.clear();
+
         ALL_BLOCKS.clear();
         ALL_ITEMS.clear();
         ALL_FLUIDS.clear();
         ALL_RECIPE_TYPES.clear();
         ALL_ENTITY_TYPES.clear();
+        ALL_PROFESSIONS.clear();
         ALL_ITEM_IDS.clear();
         initialized = false;
         ComplexityAnalyzer.LOGGER.debug("[GameRegistryManager] Registry cache cleared.");
+    }
+
+    public static Item getFirstItemByTag(TagKey<Item> tagKey) {
+        var optionalTag = BuiltInRegistries.ITEM.getTag(tagKey);
+        if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+            var item = holder.value();
+            var id = getItemId(item);
+            var registeredItem = getItem(id);
+            if (registeredItem != null && registeredItem != AIR) return registeredItem;
+        }
+        return AIR;
+    }
+
+    public static Fluid getFirstFluidByTag(TagKey<Fluid> tagKey) {
+        var optionalTag = BuiltInRegistries.FLUID.getTag(tagKey);
+        if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
+            var fluid = holder.value();
+            var id = getFluidId(fluid);
+            var registeredFluid = getFluid(id);
+            if (registeredFluid != null && registeredFluid != Fluids.EMPTY) return registeredFluid;
+        }
+        return Fluids.EMPTY;
     }
 
     public static Block getBlock(ResourceLocation id) {
@@ -160,6 +201,10 @@ public class GameRegistryManager {
 
     public static ResourceLocation getEntityTypeId(EntityType<?> entityType) {
         return ENTITY_TYPE_ID_MAP.get(entityType);
+    }
+
+    public static ResourceLocation getProfessionId(VillagerProfession profession) {
+        return PROFESSION_ID_MAP.get(profession);
     }
 
     public static ObjectList<ResourceLocation> getItemIds() {

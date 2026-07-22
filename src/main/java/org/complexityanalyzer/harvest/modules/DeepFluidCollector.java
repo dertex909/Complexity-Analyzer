@@ -20,7 +20,6 @@ package org.complexityanalyzer.harvest.modules;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
@@ -43,16 +42,8 @@ public final class DeepFluidCollector {
                     if (tagKey.registry().equals(Registries.FLUID)) {
                         @SuppressWarnings("unchecked")
                         var fluidTag = (TagKey<Fluid>) tagKey;
-                        var optionalTag = BuiltInRegistries.FLUID.getTag(fluidTag);
-                        if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
-                            var fluid = holder.value();
-                            var id = BuiltInRegistries.FLUID.getKey(fluid);
-                            var registeredFluid = GameRegistryManager.getFluid(id);
-                            if (registeredFluid != null && registeredFluid != Fluids.EMPTY) {
-                                acc.add(new FluidStack(registeredFluid, 1000));
-                                break;
-                            }
-                        }
+                        var firstFluid = GameRegistryManager.getFirstFluidByTag(fluidTag);
+                        if (firstFluid != Fluids.EMPTY) acc.add(new FluidStack(firstFluid, 1000));
                     }
                     return true;
                 }

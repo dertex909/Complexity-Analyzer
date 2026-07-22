@@ -21,7 +21,6 @@ package org.complexityanalyzer.harvest.modules;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -76,16 +75,13 @@ public final class DeepUniversalCollector {
                     if (tagKey.registry().equals(ITEM)) {
                         @SuppressWarnings("unchecked")
                         var itemTag = (TagKey<Item>) tagKey;
-                        var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
-                        if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
-                            var item = holder.value();
-                            var id = BuiltInRegistries.ITEM.getKey(item);
-                            var registeredItem = GameRegistryManager.getItem(id);
-                            if (registeredItem != null && registeredItem != AIR) {
-                                var stack = new ItemStack(registeredItem);
-                                if (apiResultItem != null && registeredItem == apiResultItem) outputItems.add(stack);
-                                else inputItems.add(stack);
-                                break;
+                        var firstItem = GameRegistryManager.getFirstItemByTag(itemTag);
+                        if (firstItem != AIR) {
+                            var stack = new ItemStack(firstItem);
+                            if (apiResultItem != null && firstItem == apiResultItem) {
+                                outputItems.add(stack);
+                            } else {
+                                inputItems.add(stack);
                             }
                         }
                     }

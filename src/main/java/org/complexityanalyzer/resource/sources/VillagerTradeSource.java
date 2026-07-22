@@ -21,7 +21,6 @@ package org.complexityanalyzer.resource.sources;
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
@@ -32,6 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
@@ -58,8 +58,8 @@ public class VillagerTradeSource implements IResourceSource {
     private final Reference2ObjectMap<Item, ObjectList<TradeInfo>> tradesByResult = new Reference2ObjectOpenHashMap<>();
 
     private static String professionId(VillagerProfession profession) {
-        var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
-        return id.toString();
+        var id = GameRegistryManager.getProfessionId(profession);
+        return id != null ? id.toString() : "minecraft:none";
     }
 
     private static long stableSeed(String professionId, int level, int index) {

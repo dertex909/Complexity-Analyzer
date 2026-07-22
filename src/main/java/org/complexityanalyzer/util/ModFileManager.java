@@ -20,16 +20,19 @@ package org.complexityanalyzer.util;
 
 import com.github.luben.zstd.ZstdInputStream;
 import com.github.luben.zstd.ZstdOutputStream;
+import com.google.errorprone.annotations.MustBeClosed;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public final class ModFileManager {
@@ -43,66 +46,148 @@ public final class ModFileManager {
 
         @Override
         public @NotNull FileVisitResult postVisitDirectory(@NotNull Path dir, IOException exc) throws IOException {
+            if (exc != null) throw exc;
             Files.delete(dir);
             return FileVisitResult.CONTINUE;
         }
     };
+
     private static volatile boolean supportsAtomicMove = true;
 
     private ModFileManager() {
+        throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 
-    public static Path resolve(MinecraftServer server, String... relativePath) {
-        if (server == null) throw new IllegalArgumentException("MinecraftServer cannot be null for resolving path");
+    public static @NotNull Path resolve(@NotNull MinecraftServer server, @Nullable String... relativePath) {
+        Objects.requireNonNull(server, "MinecraftServer cannot be null for resolving path");
         return resolve(server.getWorldPath(LevelResource.ROOT), relativePath);
     }
 
-    public static Path resolve(Path worldRoot, String... relativePath) {
-        var path = worldRoot.resolve("data").resolve(ComplexityAnalyzer.MODID);
-        for (var element : relativePath) if (element != null && !element.isEmpty()) path = path.resolve(element);
-        return path.toAbsolutePath().normalize();
+    public static @NotNull Path resolve(@NotNull Path worldRoot, @Nullable String... relativePath) {
+        Objects.requireNonNull(worldRoot, "worldRoot cannot be null");
+
+        var baseDir = worldRoot.resolve("data").resolve(ComplexityAnalyzer.MODID).toAbsolutePath().normalize();
+        var path = baseDir;
+
+        if (relativePath != null) for (var element : relativePath) {
+            if (element != null && !element.isEmpty()) path = path.resolve(element);
+        }
+
+        path = path.toAbsolutePath().normalize();
+
+        if (!path.startsWith(baseDir)) throw new IllegalArgumentException("Path traversal attempt detected: " + path);
+        return path;
     }
 
-    public static void writeBytesAtomic(Path target, byte[] bytes) throws IOException {
-        Files.createDirectories(target.getParent());
-        var tmp = target.resolveSibling(target.getFileName() + ".tmp");
-        Files.write(tmp, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-        moveAtomic(tmp, target);
+    public static void writeBytesAtomic(@NotNull Path target, byte @NotNull [] bytes) throws IOException {
+        Objects.requireNonNull(target, "Target path cannot be null");
+        Objects.requireNonNull(bytes, "Bytes cannot be null");
+
+        ensureParentExists(target);
+        var tmp = createTempFileInSameDir(target);
+
+        try {
+            Files.write(tmp, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            moveAtomic(tmp, target);
+        } catch (Throwable t) {
+            cleanupQuietly(tmp);
+            throw t;
+        }
     }
 
-    public static void writeStringAtomic(Path target, String content) throws IOException {
+    public static void writeStringAtomic(@NotNull Path target, @NotNull String content) throws IOException {
+        Objects.requireNonNull(content, "Content cannot be null");
         writeBytesAtomic(target, content.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static void writeCompressedAtomic(Path target, byte[] uncompressedData, int zstdLevel) throws IOException {
-        Files.createDirectories(target.getParent());
-        var tmp = target.resolveSibling(target.getFileName() + ".tmp");
+    public static void writeCompressedAtomic(@NotNull Path target, byte @NotNull [] uncompressedData, int zstdLevel) throws IOException {
+        Objects.requireNonNull(target, "Target path cannot be null");
+        Objects.requireNonNull(uncompressedData, "Uncompressed data cannot be null");
 
-        try (var os = Files.newOutputStream(tmp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE); var zstdOs = new ZstdOutputStream(os, zstdLevel)) {
-            zstdOs.write(uncompressedData);
+        ensureParentExists(target);
+        var tmp = createTempFileInSameDir(target);
+
+        try {
+            try (var os = Files.newOutputStream(tmp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE); var zstdOs = new ZstdOutputStream(os, zstdLevel)) {
+                zstdOs.write(uncompressedData);
+            }
+            moveAtomic(tmp, target);
+        } catch (Throwable t) {
+            cleanupQuietly(tmp);
+            throw t;
         }
-
-        moveAtomic(tmp, target);
     }
 
-    public static byte[] readCompressedBytes(Path source) throws IOException {
+    public static byte[] readCompressedBytes(@NotNull Path source) throws IOException {
+        Objects.requireNonNull(source, "Source path cannot be null");
         try (var is = Files.newInputStream(source); var zstdIs = new ZstdInputStream(is)) {
             return zstdIs.readAllBytes();
         }
     }
 
-    public static String readString(Path source) throws IOException {
+    public static @NotNull String readString(@NotNull Path source) throws IOException {
+        Objects.requireNonNull(source, "Source path cannot be null");
         return Files.readString(source, StandardCharsets.UTF_8);
     }
 
-    public static Stream<String> streamLines(Path source) throws IOException {
-        if (!Files.exists(source)) return Stream.empty();
+    @MustBeClosed
+    public static @NotNull Stream<String> streamLines(@Nullable Path source) throws IOException {
+        if (source == null || !Files.isRegularFile(source)) return Stream.empty();
         return Files.lines(source, StandardCharsets.UTF_8);
     }
 
-    public static void appendLines(Path target, Iterable<String> lines) throws IOException {
-        Files.createDirectories(target.getParent());
+    public static void appendLines(@NotNull Path target, @NotNull Iterable<String> lines) throws IOException {
+        Objects.requireNonNull(target, "Target path cannot be null");
+        Objects.requireNonNull(lines, "Lines cannot be null");
+        ensureParentExists(target);
         Files.write(target, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
+
+    public static boolean exists(@Nullable Path path) {
+        return path != null && Files.exists(path);
+    }
+
+    public static boolean isRegularFile(@Nullable Path path) {
+        return path != null && Files.isRegularFile(path);
+    }
+
+    public static long getSize(@NotNull Path path) throws IOException {
+        Objects.requireNonNull(path, "Path cannot be null");
+        return Files.size(path);
+    }
+
+    public static @NotNull FileTime getLastModifiedTime(@NotNull Path path) throws IOException {
+        Objects.requireNonNull(path, "Path cannot be null");
+        return Files.getLastModifiedTime(path);
+    }
+
+    @MustBeClosed
+    public static @NotNull Stream<Path> list(@Nullable Path dir) throws IOException {
+        if (dir == null || !Files.isDirectory(dir)) return Stream.empty();
+        return Files.list(dir);
+    }
+
+    public static boolean delete(@Nullable Path path) {
+        if (path == null || !Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return false;
+        try {
+            if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                Files.walkFileTree(path, DELETE_VISITOR);
+                return true;
+            } else {
+                return Files.deleteIfExists(path);
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to delete path: {}", path, e);
+            return false;
+        }
+    }
+
+    private static Path createTempFileInSameDir(Path target) throws IOException {
+        var parent = target.getParent();
+        if (parent == null) parent = Path.of("");
+        var fileName = target.getFileName();
+        String prefix = (fileName != null ? fileName.toString() : "file") + ".tmp.";
+        return Files.createTempFile(parent, prefix, null);
     }
 
     private static void moveAtomic(Path tmp, Path target) throws IOException {
@@ -112,45 +197,19 @@ public final class ModFileManager {
         } catch (AtomicMoveNotSupportedException | UnsupportedOperationException e) {
             supportsAtomicMove = false;
             ComplexityAnalyzer.LOGGER.warn("Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
-        } catch (Throwable t) {
-            Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
-            return;
         }
         Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    public static boolean exists(Path path) {
-        return path != null && Files.exists(path);
+    private static void ensureParentExists(Path target) throws IOException {
+        var parent = target.getParent();
+        if (parent != null) Files.createDirectories(parent);
     }
 
-    public static boolean isRegularFile(Path path) {
-        return path != null && Files.isRegularFile(path);
-    }
-
-    public static long getSize(Path path) throws IOException {
-        return Files.size(path);
-    }
-
-    public static FileTime getLastModifiedTime(Path path) throws IOException {
-        return Files.getLastModifiedTime(path);
-    }
-
-    public static Stream<Path> list(Path dir) throws IOException {
-        if (!Files.exists(dir)) return Stream.empty();
-        return Files.list(dir);
-    }
-
-    public static boolean delete(Path path) {
-        if (path == null || !Files.exists(path)) return false;
-        try {
-            if (Files.isDirectory(path)) {
-                Files.walkFileTree(path, DELETE_VISITOR);
-                return true;
-            } else {
-                return Files.deleteIfExists(path);
-            }
-        } catch (Exception e) {
-            return false;
+    private static void cleanupQuietly(@Nullable Path path) {
+        if (path != null) try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
         }
     }
 }

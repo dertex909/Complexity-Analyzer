@@ -83,15 +83,15 @@ public class GeoScanCommands {
                     Component.translatable("complexityanalyzer.command.geoscan.profile.no_limit");
 
             output.sendClickableTip(source, icon + " ", profile.displayName, msptInfo.getString(),
-                    "/complexity geoscan start " + profile.commandName,
+                    ComplexityCommand.ROOT + " geoscan start " + profile.commandName,
                     Component.translatable("complexityanalyzer.command.geoscan.profile.hover", profile.displayName).getString());
         }
 
         output.sendEmptyLine(source);
         output.sendFooter(source);
 
-        output.sendTip(source, "complexityanalyzer.command.geoscan.usage");
-        output.sendTip(source, "complexityanalyzer.command.geoscan.example");
+        output.sendTip(source, "complexityanalyzer.command.geoscan.usage", ComplexityCommand.ROOT);
+        output.sendTip(source, "complexityanalyzer.command.geoscan.example", ComplexityCommand.ROOT);
         output.sendEmptyLine(source);
 
         return 1;
@@ -107,7 +107,7 @@ public class GeoScanCommands {
             profile = ScanProfile.fromInput(profileName);
         } catch (IllegalArgumentException e) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.unknown_profile", profileName));
-            output.sendTip(source, "complexityanalyzer.command.geoscan.profile_tip");
+            output.sendTip(source, "complexityanalyzer.command.geoscan.profile_tip", ComplexityCommand.ROOT);
             return 0;
         }
 
@@ -115,7 +115,7 @@ public class GeoScanCommands {
         if (manager != null) {
             if (manager.isScanning() || manager.isCountdownActive()) {
                 output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.already_running"));
-                output.sendTip(source, "complexityanalyzer.command.geoscan.stop_tip");
+                output.sendTip(source, "complexityanalyzer.command.geoscan.stop_tip", ComplexityCommand.ROOT);
                 return 1;
             }
 
@@ -350,7 +350,7 @@ public class GeoScanCommands {
         if (manager != null) {
             if (manager.isScanning() || manager.isCountdownActive()) {
                 output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.cannot_clear"));
-                output.sendTip(source, "complexityanalyzer.command.geoscan.clear_tip");
+                output.sendTip(source, "complexityanalyzer.command.geoscan.clear_tip", ComplexityCommand.ROOT);
                 return 0;
             } else {
                 output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.clearing"));

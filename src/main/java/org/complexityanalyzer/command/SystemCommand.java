@@ -255,9 +255,9 @@ public final class SystemCommand {
         if (removed > 0) {
             output.sendClickableSuccess(source,
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.prefix", removed),
-                    Component.translatable("complexityanalyzer.command.system.cache.deleted.link"),
+                    Component.literal(ComplexityCommand.ROOT + " system reload"),
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.suffix"),
-                    "/complexity system reload",
+                    ComplexityCommand.ROOT + " system reload",
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.hover")
             );
         } else {
@@ -284,7 +284,13 @@ public final class SystemCommand {
         }
 
         if (cache.delete(server)) {
-            output.sendSuccess(source, Component.translatable("complexityanalyzer.command.system.cache.deleted", id));
+            output.sendClickableSuccess(source,
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.prefix", 1),
+                    Component.literal(ComplexityCommand.ROOT + " system reload"),
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.suffix"),
+                    ComplexityCommand.ROOT + " system reload",
+                    Component.translatable("complexityanalyzer.command.system.cache.deleted.hover")
+            );
             return 1;
         }
         output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));

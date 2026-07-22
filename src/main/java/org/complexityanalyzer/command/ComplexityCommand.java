@@ -29,11 +29,14 @@ public final class ComplexityCommand {
     private ComplexityCommand() {
     }
 
+    public static final String BASE = "complexity";
+    public static final String ROOT = "/" + BASE;
+
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         var dispatcher = event.getDispatcher();
 
-        dispatcher.register(Commands.literal("complexity")
+        dispatcher.register(Commands.literal(BASE)
                 .then(SystemCommand.register())
                 .then(AnalyzeCommand.register())
                 .then(ExportCommand.register())
@@ -42,6 +45,6 @@ public final class ComplexityCommand {
                 .then(GeoScanCommands.register())
         );
 
-        ComplexityAnalyzer.LOGGER.info("Registered '/complexity command'");
+        ComplexityAnalyzer.LOGGER.info("Registered '{} command'", ROOT);
     }
 }

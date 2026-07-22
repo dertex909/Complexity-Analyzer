@@ -203,7 +203,7 @@ public final class AnalyzeCommand {
                     Component.translatable("complexityanalyzer.command.analyze.tree_tip_prefix"),
                     Component.translatable("complexityanalyzer.command.analyze.tree_tip_link"),
                     Component.translatable("complexityanalyzer.command.analyze.tree_tip_suffix"),
-                    "/complexity tree " + itemId,
+                    ComplexityCommand.ROOT + " tree " + itemId,
                     Component.translatable("complexityanalyzer.command.analyze.tree_tip_hover"));
         }
     }

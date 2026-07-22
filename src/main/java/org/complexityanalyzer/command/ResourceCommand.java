@@ -143,7 +143,7 @@ public final class ResourceCommand {
                     Component.translatable("complexityanalyzer.command.resource.full_analysis_prefix"),
                     Component.translatable("complexityanalyzer.command.resource.full_analysis_link"),
                     Component.translatable("complexityanalyzer.command.resource.full_analysis_suffix"),
-                    "/complexity analyze item " + itemId,
+                    ComplexityCommand.ROOT + " analyze item " + itemId,
                     Component.translatable("complexityanalyzer.command.resource.full_analysis_hover"));
         } else {
             output.sendSubEntry(source, "complexityanalyzer.command.resource.type_label", "complexityanalyzer.command.resource.pure_base_resource", ChatFormatting.GRAY, ChatFormatting.GREEN);

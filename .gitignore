@@ -18,3 +18,4 @@
 /tools/translate_lang.py
 /fix.bat
 /sync_lang.py
+/src/main/resources/assets/complexityanalyzer/lang/.en_us_cache.json

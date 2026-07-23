@@ -68,12 +68,9 @@ public final class SccCondensedSolver {
 
     private static boolean significantlyLower(double oldCost, double newCost, double convergenceThreshold) {
         if (Double.isInfinite(oldCost)) return !Double.isInfinite(newCost);
-        if (Double.isInfinite(newCost)) return false;
-        if (newCost >= oldCost) return false;
+        if (Double.isInfinite(newCost) || newCost >= oldCost) return false;
         double delta = oldCost - newCost;
-        if (delta <= convergenceThreshold) return false;
-        if (oldCost <= EPSILON) return delta > convergenceThreshold;
-        return delta / oldCost > convergenceThreshold;
+        return delta > convergenceThreshold && (delta / oldCost) > convergenceThreshold;
     }
 
     private static double evalFormula(int f, CompiledModel m, double[] costs) {

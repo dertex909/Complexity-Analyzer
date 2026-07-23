@@ -40,13 +40,16 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         if (in.readableBytes() < 4) return;
-        if (isHttp(in)) setupHttpPipeline(ctx);
-        else ctx.pipeline().remove(this);
+        if (isHttp(in)) {
+            setupHttpPipeline(ctx);
+        } else {
+            ctx.pipeline().remove(this);
+        }
     }
 
     private boolean isHttp(ByteBuf in) {
         int m = in.getInt(in.readerIndex());
-        return (((m - 0x20202020) | (0x5A5A5A5A - m)) & 0x80808080) == 0;
+        return m == 0x47455420 || m == 0x504F5354 || m == 0x48454144 || m == 0x50555420 || m == 0x4F505449 || m == 0x44454C45 || m == 0x50415443;
     }
 
     private void setupHttpPipeline(ChannelHandlerContext ctx) {

@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.network.multiplex;
 
+import com.google.gson.JsonObject;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -81,8 +82,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
-        uniqueVisitors.add(extractIp(ctx));
-
         boolean keepAlive = HttpUtil.isKeepAlive(request);
 
         if (!request.decoderResult().isSuccess()) {
@@ -94,10 +93,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         String prefix = "/" + TOKEN;
 
         if (!uri.startsWith(prefix)) {
-            ctx.fireChannelRead(request.retain());
+            sendError(ctx, HttpResponseStatus.FORBIDDEN, false);
             return;
         }
 
+        uniqueVisitors.add(extractIp(ctx));
         String path = uri.substring(prefix.length()).split("\\?")[0];
         if (path.isEmpty() || path.equals("/")) path = "/index.html";
 
@@ -135,19 +135,17 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server != null) serverName = server.getMotd();
 
-        String json = String.format(
-                "{\"hasCabin\":%b,\"size\":%d,\"hash\":\"%s\",\"generatedAtMs\":%d,\"itemCount\":%d,\"mobCount\":%d,\"recipeCount\":%d,\"serverName\":\"%s\",\"viewerVersion\":\"1.2\"}",
-                hasCabin,
-                hasCabin ? snap.bytes().length : 0,
-                hasCabin ? Long.toHexString(snap.fileHash()) : "0",
-                hasCabin ? snap.generatedAtMs() : 0,
-                hasCabin ? snap.itemCount() : 0,
-                hasCabin ? snap.mobCount() : 0,
-                hasCabin ? snap.recipeCount() : 0,
-                serverName.replace("\"", "\\\"")
-        );
-
-        sendResponse(ctx, json, keepAlive);
+        var json = new JsonObject();
+        json.addProperty("hasCabin", hasCabin);
+        json.addProperty("size", hasCabin ? snap.bytes().length : 0);
+        json.addProperty("hash", hasCabin ? Long.toHexString(snap.fileHash()) : "0");
+        json.addProperty("generatedAtMs", hasCabin ? snap.generatedAtMs() : 0);
+        json.addProperty("itemCount", hasCabin ? snap.itemCount() : 0);
+        json.addProperty("mobCount", hasCabin ? snap.mobCount() : 0);
+        json.addProperty("recipeCount", hasCabin ? snap.recipeCount() : 0);
+        json.addProperty("serverName", serverName);
+        json.addProperty("viewerVersion", "1.2");
+        sendResponse(ctx, json.toString(), keepAlive);
     }
 
     private void handleCabin(ChannelHandlerContext ctx, boolean keepAlive) {
@@ -166,6 +164,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void serveResource(ChannelHandlerContext ctx, String path, String mimeType, boolean keepAlive) {
+        if (path.contains("..") || path.contains("//")) {
+            sendError(ctx, HttpResponseStatus.BAD_REQUEST, keepAlive);
+            return;
+        }
+
         try (var in = getClass().getResourceAsStream(VIEWER_BASE + path)) {
             if (in == null) {
                 sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
@@ -185,6 +188,8 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         if (path.endsWith(".html")) return "text/html; charset=UTF-8";
         if (path.endsWith(".js")) return "application/javascript; charset=UTF-8";
         if (path.endsWith(".css")) return "text/css; charset=UTF-8";
+        if (path.endsWith(".json")) return "application/json; charset=UTF-8";
+        if (path.endsWith(".ico")) return "image/x-icon";
         if (path.endsWith(".png")) return "image/png";
         if (path.endsWith(".svg")) return "image/svg+xml";
         if (path.endsWith(".wasm")) return "application/wasm";
@@ -203,7 +208,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status, boolean keepAlive) {
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
-
         finish(ctx, response, keepAlive);
     }
 

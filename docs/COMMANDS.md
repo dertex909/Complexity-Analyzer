@@ -32,7 +32,6 @@ All command output is **translated to each player's own client language** server
 │   ├── item   <item_id>                      👤  full item complexity report
 │   ├── entity <entity_id>                    👤  mob combat/difficulty report
 │   └── loot   <loot_table_id>                👤  loot-table breakdown
-├── tree <item_id> [depth <n>] [mode <m>]     👤  recursive crafting tree
 ├── resource <item_id>                        👤  base-resource origin report
 ├── web
 │   ├── url [link]                            👤  show web dashboard URL
@@ -61,7 +60,6 @@ Full complexity report for an item — the core command of the mod.
   - **Complexity score & category** — final cost and human rank (`Trivial` → `Transcendent`, plus `Unobtainable`/`Uncalculable`) with icon and a visual bar.
   - **Source information** — crafted vs. base resource, crafting depth, and how many recipes use it.
   - **Alternative sources** — other ways to obtain it (mob drop, loot, etc.) with estimated cost.
-  - **Status** — whether the result is valid, plus a clickable link to the full crafting tree.
 
 ### `analyze entity <entity_id>`
 Combat/difficulty analysis of a mob.
@@ -72,19 +70,6 @@ Combat/difficulty analysis of a mob.
 Inspect any loot table.
 - **`loot_table_id`** — loot-table resource location, e.g. `minecraft:chests/end_city_treasure`. Tab-completes.
 - **Output:** table name and inferred type (Chest, Entity, Fishing, Block, Archaeology…), drop-chance statistics, and all drops grouped by rarity (`Common` → `Legendary`).
-
----
-
-## 🌳 `/complexity tree <item_id> [depth <n>] [mode <player|economic>]` 👤
-
-Renders a full recursive crafting tree in chat.
-- **`item_id`** — target item. Tab-completes.
-- **`depth <n>`** *(optional, default 100)* — maximum tree depth to display.
-- **`mode <player|economic>`** *(optional, default `player`)*:
-  - **`player`** — "shopping list" view; quantities rounded up for real gameplay.
-  - **`economic`** — "engineer's" view; exact fractional amounts.
-- `depth` and `mode` may be given in either order.
-- **Output:** the visual tree (icons: 🔨 craft, ⛏ base resource, 🔁 cycle, 💧 fluid), tree statistics (total nodes, unique items, steps, detected cycles), a base-resource "shopping list" with stack counts, and clickable tips to switch mode / limit depth. Hovering a node shows its item name, data and producing machine.
 
 ---
 

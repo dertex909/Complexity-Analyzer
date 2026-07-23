@@ -341,7 +341,7 @@ public class RecipeNode {
         }
 
         public void addIngredient(ObjectList<ItemStack> variants, int count) {
-            this.ingredients.add(new IngredientSlot(variants, count));
+            this.ingredients.add(IngredientSlot.intern(new IngredientSlot(variants, count)));
         }
 
         public void addChemicalIngredient(ChemicalIngredient ingredient) {

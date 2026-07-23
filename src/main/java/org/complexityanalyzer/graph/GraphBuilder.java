@@ -1,19 +1,6 @@
 /*
  * Complexity Analyzer
  * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.graph;
@@ -104,7 +91,7 @@ public class GraphBuilder {
         if (template == null || base == null || addition == null) return null;
 
         var builder = new RecipeNode.Builder(resultItem).recipeType(RecipeType.SMITHING).resultCount(1).rawRecipe();
-        builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
+        builder.itemOutputs(ObjectArrayList.of(ItemStackCanonicalizer.canonicalize(resultStack)));
 
         addSmithingIngredient(builder, template);
         addSmithingIngredient(builder, base);
@@ -125,7 +112,7 @@ public class GraphBuilder {
         if (ingredient == null || ingredient.isEmpty()) return items;
         for (var stack : ingredient.getItems()) {
             if (stack == null || stack.isEmpty() || stack.getItem() == AIR) continue;
-            if (!containsSameStackData(items, stack)) items.add(stack.copyWithCount(1));
+            if (!containsSameStackData(items, stack)) items.add(ItemStackCanonicalizer.canonicalize(stack));
         }
         return items;
     }
@@ -146,7 +133,7 @@ public class GraphBuilder {
                 .recipeType(recipe.getType())
                 .resultCount(resultStack.getCount())
                 .rawRecipe();
-        builder.itemOutputs(ObjectArrayList.of(resultStack.copy()));
+        builder.itemOutputs(ObjectArrayList.of(ItemStackCanonicalizer.canonicalize(resultStack)));
 
         var merged = new Object2ObjectLinkedOpenHashMap<ObjectList<ItemStack>, Integer>();
         int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();

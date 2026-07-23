@@ -1,19 +1,6 @@
 /*
  * Complexity Analyzer
  * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.graph;
@@ -24,9 +11,13 @@ import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.ItemStack;
 import org.complexityanalyzer.harvest.ItemStackIdentity;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import static org.complexityanalyzer.util.ComplexityComparators.ITEM_STACK_BY_ID;
 
 public class IngredientSlot {
+
+    private static final ConcurrentHashMap<IngredientSlot, IngredientSlot> INTERN_CACHE = new ConcurrentHashMap<>(16384);
 
     private final ObjectList<ItemStack> variants;
     private final int count;
@@ -37,7 +28,7 @@ public class IngredientSlot {
 
         var processed = new ObjectArrayList<ItemStack>(variants.size());
         for (var variant : variants) {
-            if (variant != null && !variant.isEmpty()) processed.add(variant.copyWithCount(1));
+            if (variant != null && !variant.isEmpty()) processed.add(ItemStackCanonicalizer.canonicalize(variant));
         }
 
         if (processed.isEmpty()) {
@@ -48,6 +39,16 @@ public class IngredientSlot {
             processed.sort(ITEM_STACK_BY_ID);
             this.variants = ObjectLists.unmodifiable(processed);
         }
+    }
+
+    public static IngredientSlot intern(IngredientSlot slot) {
+        if (slot == null) return null;
+        if (slot.getVariants().isEmpty()) return slot;
+        return INTERN_CACHE.computeIfAbsent(slot, s -> s);
+    }
+
+    public static void clearCache() {
+        INTERN_CACHE.clear();
     }
 
     public ObjectList<ItemStack> getVariants() {

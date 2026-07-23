@@ -39,6 +39,7 @@ import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.util.ModFileManager;
@@ -192,7 +193,10 @@ public final class RecipeGraphCache implements ManagedCache {
         if (!buf.readBoolean()) return ItemStack.EMPTY;
         try {
             var tag = buf.readNbt();
-            if (tag != null) return ItemStack.parse(buf.registryAccess(), tag).orElse(ItemStack.EMPTY);
+            if (tag != null) {
+                var parsed = ItemStack.parse(buf.registryAccess(), tag).orElse(ItemStack.EMPTY);
+                return ItemStackCanonicalizer.canonicalize(parsed);
+            }
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("Failed to load item stack from cache!", t);
         }

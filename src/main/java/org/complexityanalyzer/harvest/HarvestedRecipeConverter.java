@@ -1,19 +1,6 @@
 /*
  * Complexity Analyzer
  * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.complexityanalyzer.harvest;
@@ -33,6 +20,7 @@ import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.jetbrains.annotations.NotNull;
 
@@ -148,7 +136,7 @@ public final class HarvestedRecipeConverter {
                 if (!isValid(stack)) continue;
                 var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
-                if (isUniqueStackData(variants, stack)) variants.add(stack.copyWithCount(1));
+                if (isUniqueStackData(variants, stack)) variants.add(ItemStackCanonicalizer.canonicalize(stack));
             }
 
             if (!variants.isEmpty()) {
@@ -166,7 +154,7 @@ public final class HarvestedRecipeConverter {
             var firstKey = mergedIngredients.keySet().getFirst();
             for (var transItem : transitionalItems) {
                 var transStack = new ItemStack(transItem);
-                if (isUniqueStackData(firstKey, transStack)) firstKey.add(transStack);
+                if (isUniqueStackData(firstKey, transStack)) firstKey.add(ItemStackCanonicalizer.canonicalize(transStack));
             }
             if (firstKey.size() > 1) firstKey.sort(itemComparator);
         }
@@ -178,7 +166,7 @@ public final class HarvestedRecipeConverter {
             if (!transitionalItems.isEmpty() && transitionalItems.contains(item)) continue;
             if (!sameStackIdentity(stack, output, registryAccess)) {
                 var variants = new ObjectArrayList<ItemStack>();
-                variants.add(stack.copyWithCount(1));
+                variants.add(ItemStackCanonicalizer.canonicalize(stack));
                 mergedIngredients.addTo(variants, Math.max(1, stack.getCount()));
             }
         }
@@ -228,7 +216,7 @@ public final class HarvestedRecipeConverter {
                     while (remaining > 0) {
                         int chunk = Math.min(64, remaining);
                         remaining -= chunk;
-                        deduplicatedOutputs.add(stack.copyWithCount(chunk));
+                        deduplicatedOutputs.add(ItemStackCanonicalizer.canonicalize(stack.copyWithCount(chunk)));
                     }
                 }
             }
@@ -288,7 +276,7 @@ public final class HarvestedRecipeConverter {
     private static void addRemainingItem(ObjectArrayList<ItemStack> target, ItemStack source, int multiplier) {
         if (source != null && !source.isEmpty() && source.hasCraftingRemainingItem()) {
             var remaining = source.getCraftingRemainingItem();
-            if (!remaining.isEmpty()) target.add(remaining.copyWithCount(remaining.getCount() * multiplier));
+            if (!remaining.isEmpty()) target.add(ItemStackCanonicalizer.canonicalize(remaining.copyWithCount(remaining.getCount() * multiplier)));
         }
     }
 
@@ -306,10 +294,10 @@ public final class HarvestedRecipeConverter {
             for (var stack : stacks) {
                 if (stack.isEmpty() || stack.getItem() == AIR || stack.getItem() != declaredResult.getItem()) continue;
                 if (!ItemStackIdentity.hasStackData(declaredResult, provider) && ItemStackIdentity.hasStackData(stack, provider)) {
-                    return stack.copy();
+                    return ItemStackCanonicalizer.canonicalize(stack);
                 }
             }
-            return declaredResult.copy();
+            return ItemStackCanonicalizer.canonicalize(declaredResult);
         }
         var best = ItemStack.EMPTY;
         int bestScore = Integer.MAX_VALUE;
@@ -321,7 +309,7 @@ public final class HarvestedRecipeConverter {
                 bestScore = score;
             }
         }
-        return best.copy();
+        return ItemStackCanonicalizer.canonicalize(best);
     }
 
     private static boolean sameStackIdentity(ItemStack a, ItemStack b, HolderLookup.Provider provider) {

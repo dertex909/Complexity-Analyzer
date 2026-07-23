@@ -29,7 +29,8 @@ import net.neoforged.fml.ModList;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
-import org.complexityanalyzer.network.multiplex.CabinNettyHandler;
+import org.complexityanalyzer.network.web.CabinNettyHandler;
+import org.complexityanalyzer.network.web.StandaloneWebServer;
 
 import static java.util.Locale.ROOT;
 import static org.complexityanalyzer.ComplexityAnalyzer.MODID;
@@ -131,6 +132,7 @@ public final class WebCommand {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
             return 0;
         }
+        StandaloneWebServer.start();
         String modVersion = ModList.get().getModContainerById(MODID)
                 .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
 

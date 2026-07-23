@@ -19,7 +19,7 @@
 package org.complexityanalyzer.mixin;
 
 import io.netty.channel.Channel;
-import org.complexityanalyzer.network.multiplex.ProtocolDetector;
+import org.complexityanalyzer.network.web.ProtocolDetector;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

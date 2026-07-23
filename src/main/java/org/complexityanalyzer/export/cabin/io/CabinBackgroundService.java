@@ -25,7 +25,7 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
-import org.complexityanalyzer.network.multiplex.CabinWsHub;
+import org.complexityanalyzer.network.web.CabinWsHub;
 import org.complexityanalyzer.util.ModFileManager;
 import org.jetbrains.annotations.Nullable;
 

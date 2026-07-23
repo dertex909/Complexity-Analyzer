@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.network.multiplex;
+package org.complexityanalyzer.network.web;
 
 import com.google.gson.JsonObject;
 import io.netty.buffer.Unpooled;
@@ -27,6 +27,7 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
 import java.net.InetSocketAddress;
@@ -57,7 +58,9 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return null;
 
-        int port = server.getPort();
+        int configuredPort = ComplexityConfig.WEB_SERVER_PORT.get();
+        if (configuredPort > 0 && !StandaloneWebServer.isRunning()) return null;
+        int port = configuredPort > 0 ? configuredPort : server.getPort();
         if (port <= 0) return null;
 
         String hostname = server.getLocalIp();

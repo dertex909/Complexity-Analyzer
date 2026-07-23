@@ -28,6 +28,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ComplexityAnalyzerAPIImpl;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
+import org.complexityanalyzer.network.web.StandaloneWebServer;
 import org.complexityanalyzer.util.ServerLanguage;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
@@ -43,6 +44,7 @@ public class AnalysisBootstrap {
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
         engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete."));
+        StandaloneWebServer.start();
     }
 
     @SubscribeEvent
@@ -55,5 +57,6 @@ public class AnalysisBootstrap {
         AnalysisEngine.getInstance().shutdownCompletely();
         GameRegistryManager.clear();
         ComplexityAnalyzerAPI.Holder.uninstall();
+        StandaloneWebServer.stop();
     }
 }

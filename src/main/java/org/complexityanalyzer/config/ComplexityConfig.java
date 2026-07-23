@@ -46,6 +46,7 @@ public class ComplexityConfig {
     public static final ModConfigSpec.IntValue MAX_THREADS;
 
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
+    public static final ModConfigSpec.IntValue WEB_SERVER_PORT;
 
     public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
     public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
@@ -125,6 +126,12 @@ public class ComplexityConfig {
                 " IP address or domain of the server for the web dashboard.",
                 " If set to 127.0.0.1, players will see a tip suggesting to change it to a public IP for remote connections."
         ).define("ip", "127.0.0.1");
+
+        WEB_SERVER_PORT = builder.comment(
+                " Dedicated port for the web dashboard server.",
+                " 0 = multiplex on the main Minecraft server port (default).",
+                " 1-65535 = bind a separate standalone HTTP/WebSocket server to this port."
+        ).defineInRange("port", 0, 0, 65535);
         builder.pop();
 
         builder.push("harvest");

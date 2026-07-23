@@ -26,7 +26,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
@@ -41,7 +40,6 @@ import org.complexityanalyzer.cache.ComplexityCache;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.data.ItemComplexity;
-import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.graph.GraphBuilder;
@@ -167,7 +165,6 @@ public class AnalysisEngine {
                 ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
                 safeRunCallback(onComplete);
                 fireAnalysisComplete(!fullRebuild);
-                regenerateCabin();
             }
         } catch (Exception e) {
             if (isInterrupted() || isSuperseded(gen)) {
@@ -341,18 +338,6 @@ public class AnalysisEngine {
         if (srv == null) return;
         ComplexityAnalyzer.LOGGER.info("{} Rebuilding geo-dependent data...", reason);
         submitBuild(srv.overworld(), false, null);
-    }
-
-    private void regenerateCabin() {
-        var srv = this.server;
-        if (srv == null || isShuttingDown.get()) return;
-        try {
-            String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
-                    .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
-            CabinBackgroundService.getInstance().regenerateAsync(srv, this, modVersion);
-        } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("[Cabin] Failed to regenerate after geo-scan", t);
-        }
     }
 
     public ComplexityCache getComplexityCache() {

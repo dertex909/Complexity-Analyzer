@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.network.multiplex;
+package org.complexityanalyzer.network.web;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -28,6 +28,7 @@ import io.netty.handler.stream.ChunkedWriteHandler;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import org.complexityanalyzer.config.ComplexityConfig;
 
 import java.util.List;
 
@@ -39,6 +40,11 @@ public class ProtocolDetector extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+        if (ComplexityConfig.WEB_SERVER_PORT.get() > 0) {
+            ctx.pipeline().remove(this);
+            return;
+        }
+
         if (in.readableBytes() < 4) return;
         if (isHttp(in)) {
             setupHttpPipeline(ctx);

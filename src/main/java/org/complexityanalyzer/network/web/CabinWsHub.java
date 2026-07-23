@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.network.multiplex;
+package org.complexityanalyzer.network.web;
 
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;

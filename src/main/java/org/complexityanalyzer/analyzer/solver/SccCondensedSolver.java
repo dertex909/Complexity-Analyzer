@@ -40,15 +40,12 @@ import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.resource.SourceManager;
 
 import java.util.Arrays;
-import java.util.Comparator;
 
 import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class SccCondensedSolver {
 
     private static final double EPSILON = 1e-12;
-    private static final double CONVERGENCE_THRESHOLD = ComplexityConfig.CONVERGENCE_THRESHOLD.get();
-    private static final int MAX_FIXPOINT_ITERATIONS = ComplexityConfig.MAX_ITERATIONS.get();
     private static final byte F_SOURCE = 0;
     private static final byte F_ITEM_RECIPE = 1;
     private static final byte F_FLUID_RECIPE = 2;
@@ -69,14 +66,14 @@ public final class SccCondensedSolver {
         this.machineRegistry = machineRegistry;
     }
 
-    private static boolean significantlyLower(double oldCost, double newCost) {
+    private static boolean significantlyLower(double oldCost, double newCost, double convergenceThreshold) {
         if (Double.isInfinite(oldCost)) return !Double.isInfinite(newCost);
         if (Double.isInfinite(newCost)) return false;
         if (newCost >= oldCost) return false;
         double delta = oldCost - newCost;
-        if (delta <= CONVERGENCE_THRESHOLD) return false;
-        if (oldCost <= EPSILON) return delta > CONVERGENCE_THRESHOLD;
-        return delta / oldCost > CONVERGENCE_THRESHOLD;
+        if (delta <= convergenceThreshold) return false;
+        if (oldCost <= EPSILON) return delta > convergenceThreshold;
+        return delta / oldCost > convergenceThreshold;
     }
 
     private static double evalFormula(int f, CompiledModel m, double[] costs) {
@@ -247,17 +244,16 @@ public final class SccCondensedSolver {
         );
     }
 
-    @SuppressWarnings("unused")
     private void logFinalStatistics(CompiledModel m, Solution sol, long totalTime) {
         long finiteItems = 0;
         long finiteFluids = 0;
-        long finiteChems = 0;
+        //long finiteChems = 0;
         for (int n = 0; n < m.nodeCount; n++) {
             if (Double.isInfinite(sol.costs[n])) continue;
             switch (m.nodeKind[n]) {
                 case K_ITEM -> finiteItems++;
                 case K_FLUID -> finiteFluids++;
-                case K_CHEMICAL -> finiteChems++;
+                //case K_CHEMICAL -> finiteChems++;
                 default -> {
                 }
             }
@@ -275,6 +271,9 @@ public final class SccCondensedSolver {
     }
 
     private Solution solveCompiled(CompiledModel m) {
+        double convergenceThreshold = ComplexityConfig.CONVERGENCE_THRESHOLD.get();
+        int maxIterations = ComplexityConfig.MAX_ITERATIONS.get();
+
         var tarjan = tarjanScc(m.nodeCount, m.adjStart, m.adjNode);
         int[] componentOf = tarjan.componentOf;
         int componentCount = tarjan.componentCount;
@@ -321,7 +320,7 @@ public final class SccCondensedSolver {
 
             int iterations = 0;
             boolean changed = true;
-            while (changed && iterations < MAX_FIXPOINT_ITERATIONS) {
+            while (changed && iterations < maxIterations) {
                 iterations++;
                 changed = false;
                 for (int fi = fStart; fi < fEnd; fi++) {
@@ -333,7 +332,7 @@ public final class SccCondensedSolver {
                     byte fType = m.formulaType[formulaIdx];
 
                     double oldCost = sol.costs[target];
-                    if (significantlyLower(oldCost, newCost)) {
+                    if (significantlyLower(oldCost, newCost, convergenceThreshold)) {
                         sol.costs[target] = newCost;
                         changed = true;
                     }
@@ -492,13 +491,15 @@ public final class SccCondensedSolver {
 
         private static ObjectList<Item> sortedByItemId(ReferenceSet<Item> items) {
             var list = new ObjectArrayList<>(items);
-            list.sort(Comparator.comparing(CompileBuilder::itemIdString));
+            list.sort((a, b) -> {
+                var idA = GameRegistryManager.getItemId(a);
+                var idB = GameRegistryManager.getItemId(b);
+                if (idA == idB) return 0;
+                if (idA == null) return -1;
+                if (idB == null) return 1;
+                return idA.compareTo(idB);
+            });
             return list;
-        }
-
-        private static String itemIdString(Item item) {
-            var id = GameRegistryManager.getItemId(item);
-            return id != null ? id.toString() : "";
         }
 
         CompiledModel build() {
@@ -644,22 +645,16 @@ public final class SccCondensedSolver {
 
                     int itemSlotStart = itemSlotVariantStart.size();
                     int itemSlotCnt = 0;
-                    boolean depsOk = true;
 
                     var sourceItems = data.getSourceItems();
                     for (var dep : sortedByItemId(sourceItems.keySet())) {
                         double amount = sourceItems.getDouble(dep);
-                        if (dep == null || amount == 0.0) continue;
+                        if (dep == null || amount <= 0.0) continue;
                         if (dep == item) continue;
                         int depNode = itemToNode.getInt(dep);
                         if (depNode == -1) depNode = allocateItemNode(dep);
                         addItemSlotSingle(depNode, amount);
                         itemSlotCnt++;
-                    }
-
-                    if (!depsOk) {
-                        truncateItemSlots(itemSlotStart);
-                        continue;
                     }
 
                     int formulaId = emitFormulaShell(F_SOURCE, targetNode, base, 1.0, 1.0,
@@ -678,6 +673,7 @@ public final class SccCondensedSolver {
             for (var recipe : graph.getAllRecipes()) {
                 double multiplier = recipe.getRecipeMultiplier();
                 if (Double.isInfinite(multiplier) || Double.isNaN(multiplier)) continue;
+                int recipeVariantNodeMark = itemVariantNode.size();
 
                 int machineNode = -1;
                 int machineCount = 0;
@@ -715,6 +711,12 @@ public final class SccCondensedSolver {
                 } else {
                     truncateItemSlots(primary.itemStart());
                     truncateFluidSlots(primary.fluidStart());
+                    if (recipe.getFluidOutputs().isEmpty() && recipe.getItemOutputs().isEmpty() && recipe.getChemicalOutputs().isEmpty()) {
+                        while (itemVariantNode.size() > recipeVariantNodeMark) {
+                            itemVariantNode.removeInt(itemVariantNode.size() - 1);
+                        }
+                        continue;
+                    }
                 }
 
                 if (!recipe.getFluidOutputs().isEmpty()) {
@@ -927,14 +929,27 @@ public final class SccCondensedSolver {
         }
 
         private boolean appendItemSlot(ObjectList<ItemStack> variants, double amount) {
-            if (variants.isEmpty()) return true;
+            if (variants == null || variants.isEmpty()) return true;
             int variantStart = itemVariantNode.size();
+
+            if (variants.size() == 1) {
+                var v = variants.getFirst();
+                if (v == null || v.isEmpty()) return true;
+                var item = v.getItem();
+                int node = itemToNode.getInt(item);
+                if (node == -1) node = allocateItemNode(item);
+                itemVariantNode.add(node);
+                itemSlotVariantStart.add(variantStart);
+                itemSlotVariantCount.add(1);
+                itemSlotAmount.add(amount);
+                return false;
+            }
+
             int added = 0;
-            ReferenceOpenHashSet<Item> seen = null;
+            var seen = new ReferenceOpenHashSet<Item>(variants.size());
             for (var v : variants) {
                 if (v == null || v.isEmpty()) continue;
                 var item = v.getItem();
-                if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
                 if (!seen.add(item)) continue;
                 int node = itemToNode.getInt(item);
                 if (node == -1) node = allocateItemNode(item);
@@ -942,6 +957,7 @@ public final class SccCondensedSolver {
                 added++;
             }
             if (added == 0) return true;
+
             itemSlotVariantStart.add(variantStart);
             itemSlotVariantCount.add(added);
             itemSlotAmount.add(amount);
@@ -957,15 +973,29 @@ public final class SccCondensedSolver {
         }
 
         private boolean appendFluidSlot(ObjectList<Fluid> variants, double amount) {
-            if (variants.isEmpty()) return true;
+            if (variants == null || variants.isEmpty()) return true;
             int variantStart = fluidVariantNode.size();
+
+            if (variants.size() == 1) {
+                var v = variants.getFirst();
+                if (v == null) return true;
+                var normalized = normalize(v);
+                if (normalized == Fluids.EMPTY) return true;
+                int node = fluidToNode.getInt(normalized);
+                if (node == -1) node = allocateFluidNode(normalized);
+                fluidVariantNode.add(node);
+                fluidSlotVariantStart.add(variantStart);
+                fluidSlotVariantCount.add(1);
+                fluidSlotAmount.add(amount);
+                return false;
+            }
+
             int added = 0;
-            ReferenceOpenHashSet<Fluid> seen = null;
+            var seen = new ReferenceOpenHashSet<Fluid>(variants.size());
             for (var v : variants) {
                 if (v == null) continue;
                 var normalized = normalize(v);
                 if (normalized == Fluids.EMPTY) continue;
-                if (seen == null) seen = new ReferenceOpenHashSet<>(variants.size());
                 if (!seen.add(normalized)) continue;
                 int node = fluidToNode.getInt(normalized);
                 if (node == -1) node = allocateFluidNode(normalized);
@@ -973,6 +1003,7 @@ public final class SccCondensedSolver {
                 added++;
             }
             if (added == 0) return true;
+
             fluidSlotVariantStart.add(variantStart);
             fluidSlotVariantCount.add(added);
             fluidSlotAmount.add(amount);

@@ -103,12 +103,6 @@ public final class ItemStackIdentity {
         key.append(";components=").append(stack.getComponentsPatch());
         var attachments = serializedAttachments(stack, provider);
         if (attachments != null && !attachments.isEmpty()) key.append(";attachments=").append(attachments);
-        if (provider != null) try {
-            var serializableStack = stack.getCount() > 99 ? stack.copyWithCount(1) : stack;
-            var saved = serializableStack.saveOptional(provider);
-            key.append(";saved=").append(saved);
-        } catch (Throwable ignored) {
-        }
         return key.toString();
     }
 

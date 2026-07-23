@@ -22,201 +22,139 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.atomic.AtomicReference;
 
-public class ThreadPoolManager {
+public final class ThreadPoolManager implements AutoCloseable {
 
-    private static final int QUEUE_CAPACITY = 10000;
-    private static final long GRACEFUL_TIMEOUT_MS = 500;
-    private static final long FORCE_KILL_TIMEOUT_MS = 2000;
-    private static final Object LOCK = new Object();
-    private static final AtomicBoolean JVM_SHUTTING_DOWN = new AtomicBoolean(false);
+    private static final int QUEUE_CAPACITY = 10_000;
+    private static final long KEEP_ALIVE_SECONDS = 60L;
+    private static final long GRACEFUL_TIMEOUT_MS = 500L;
+    private static final long FORCE_KILL_TIMEOUT_MS = 1500L;
+    private static final long QUEUE_OFFER_TIMEOUT_SECONDS = 10L;
+
+    private static final Object LIFECYCLE_LOCK = new Object();
+    private static final AtomicReference<ThreadPoolManager> INSTANCE = new AtomicReference<>();
     private static final PoolStats EMPTY_STATS = new PoolStats(0, 0, 0, 0, 0, 0);
-    private static volatile ThreadPoolManager instance;
-    private static Thread shutdownHook;
 
     static {
         try {
-            shutdownHook = new Thread(() -> JVM_SHUTTING_DOWN.set(true), "Complexity-Shutdown-Flag-Setter");
-            Runtime.getRuntime().addShutdownHook(shutdownHook);
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                var current = INSTANCE.get();
+                if (current != null) current.shutdown();
+            }, "Complexity-JVM-Shutdown-Hook"));
         } catch (Exception ignored) {
         }
     }
 
+    private final int parallelism;
+    private final ThreadPoolExecutor computePool;
+    private final ForkJoinPool forkJoinPool;
     private final AtomicInteger computeThreadCounter = new AtomicInteger(0);
-    private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-    private final AtomicBoolean isInitializing = new AtomicBoolean(false);
-    private volatile ExecutorService computePool;
-    private volatile ForkJoinPool forkJoinPool;
-    private volatile int parallelism;
-    private volatile Thread shutdownWatchdog;
+    private final AtomicReference<State> state = new AtomicReference<>(State.RUNNING);
 
     private ThreadPoolManager() {
-        initialize();
+        this.parallelism = Math.max(1, ComplexityConfig.getMaxThreads());
+        ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with parallelism = {}", parallelism);
+
+        var pluginClassLoader = getClass().getClassLoader();
+
+        this.computePool = new ThreadPoolExecutor(
+                parallelism,
+                parallelism,
+                KEEP_ALIVE_SECONDS, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(QUEUE_CAPACITY),
+                r -> {
+                    var thread = new ComplexityComputeThread(this, r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet(), pluginClassLoader);
+                    thread.setDaemon(true);
+                    thread.setPriority(Thread.MIN_PRIORITY);
+                    return thread;
+                },
+                new BlockingTimeoutPolicy()
+        );
+
+        this.computePool.allowCoreThreadTimeOut(true);
+
+        this.forkJoinPool = new ForkJoinPool(
+                parallelism,
+                pool -> {
+                    var thread = new ComplexityForkJoinThread(this, pool, pluginClassLoader);
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                (t, e) -> ComplexityAnalyzer.LOGGER.error(
+                        "Uncaught exception in ForkJoinPool thread {}", t.getName(), e),
+                true
+        );
     }
 
     public static ThreadPoolManager getInstance() {
-        var localInstance = instance;
-        if (localInstance == null || localInstance.isShutdown.get()) synchronized (LOCK) {
-            localInstance = instance;
-            if (localInstance == null || localInstance.isShutdown.get()) {
-                instance = localInstance = new ThreadPoolManager();
+        var current = INSTANCE.get();
+        if (current != null && current.isRunning()) return current;
+
+        synchronized (LIFECYCLE_LOCK) {
+            current = INSTANCE.get();
+            if (current == null || !current.isRunning()) {
+                current = new ThreadPoolManager();
+                INSTANCE.set(current);
             }
+            return current;
         }
-        return localInstance;
     }
 
     public static void reinitialize() {
-        synchronized (LOCK) {
-            var existing = instance;
-            if (existing != null) existing.shutdown();
+        ThreadPoolManager oldManager;
+        var freshManager = new ThreadPoolManager();
+
+        synchronized (LIFECYCLE_LOCK) {
+            oldManager = INSTANCE.getAndSet(freshManager);
             ComplexityConfig.resetThreadCache();
-            instance = new ThreadPoolManager();
-            ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", instance.parallelism);
         }
+
+        if (oldManager != null) {
+            var asyncShutdown = new Thread(() -> {
+                try {
+                    oldManager.shutdown();
+                } finally {
+                    Thread.currentThread().setContextClassLoader(null);
+                }
+            }, "Complexity-Async-Shutdown");
+            asyncShutdown.setDaemon(true);
+            asyncShutdown.start();
+        }
+
+        ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", freshManager.parallelism);
     }
 
     public static boolean isComplexityThread() {
         return Thread.currentThread() instanceof ComplexityThread;
     }
 
-    private void initialize() {
-        if (!isInitializing.compareAndSet(false, true)) {
-            synchronized (LOCK) {
-                if (!isShutdown.get() && computePool != null && !computePool.isShutdown()) return;
-            }
-            return;
-        }
-
-        try {
-            synchronized (LOCK) {
-                if (isShutdown.get()) {
-                    ComplexityAnalyzer.LOGGER.warn("Attempted to initialize during shutdown - aborting");
-                    return;
-                }
-
-                if (shutdownHook == null) try {
-                    shutdownHook = new Thread(() -> JVM_SHUTTING_DOWN.set(true), "Complexity-Shutdown-Flag-Setter");
-                    Runtime.getRuntime().addShutdownHook(shutdownHook);
-                } catch (Exception ignored) {
-                }
-
-                this.parallelism = ComplexityConfig.getMaxThreads();
-
-                ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with {} threads", parallelism);
-
-                this.computePool = new ThreadPoolExecutor(
-                        parallelism,
-                        parallelism,
-                        60L, TimeUnit.SECONDS,
-                        new LinkedBlockingQueue<>(QUEUE_CAPACITY),
-                        r -> {
-                            var thread = new ComplexityComputeThread(r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet());
-                            thread.setDaemon(true);
-                            thread.setPriority(Thread.MIN_PRIORITY);
-                            return thread;
-                        },
-                        new ThreadPoolExecutor.AbortPolicy()
-                );
-
-                this.forkJoinPool = new ForkJoinPool(
-                        parallelism,
-                        pool -> {
-                            var thread = new ComplexityForkJoinThread(pool);
-                            thread.setName("Complexity-ForkJoin-" + thread.getPoolIndex());
-                            thread.setDaemon(true);
-                            return thread;
-                        },
-                        (t, e) -> ComplexityAnalyzer.LOGGER.error(
-                                "Uncaught exception in ForkJoinPool thread {}", t.getName(), e),
-                        true
-                );
-
-                var oldWatchdog = shutdownWatchdog;
-                if (oldWatchdog != null && oldWatchdog.isAlive()) oldWatchdog.interrupt();
-
-                shutdownWatchdog = new Thread(() -> {
-                    while (!isShutdown.get()) {
-                        LockSupport.parkNanos(500_000_000L);
-                        if (Thread.currentThread().isInterrupted()) return;
-
-                        if (JVM_SHUTTING_DOWN.get()) {
-                            ComplexityAnalyzer.LOGGER.info("[Watchdog] JVM shutdown detected — force killing all threads");
-                            forceShutdown();
-                            return;
-                        }
-                    }
-                }, "Complexity-Watchdog");
-
-                shutdownWatchdog.setDaemon(true);
-                shutdownWatchdog.start();
-            }
-        } finally {
-            isInitializing.set(false);
-        }
+    public boolean isRunning() {
+        return state.get() == State.RUNNING;
     }
 
-    private void forceShutdown() {
-        if (!isShutdown.compareAndSet(false, true)) return;
-
-        var compute = computePool;
-        var fj = forkJoinPool;
-
-        if (compute != null && !compute.isShutdown()) {
-            int droppedCount = compute.shutdownNow().size();
-            if (droppedCount > 0) {
-                ComplexityAnalyzer.LOGGER.debug("[Watchdog] ComputePool: dropped {} pending tasks", droppedCount);
-            }
-        }
-
-        if (fj != null && !fj.isShutdown()) {
-            int droppedCount = fj.shutdownNow().size();
-            if (droppedCount > 0) {
-                ComplexityAnalyzer.LOGGER.debug("[Watchdog] ForkJoinPool: dropped {} pending tasks", droppedCount);
-            }
-        }
-
-        computePool = null;
-        forkJoinPool = null;
-
-        ComplexityAnalyzer.LOGGER.info("[Watchdog] All pools force-killed");
-    }
-
+    @NotNull
     public ExecutorService getComputePool() {
-        ensureNotShutdown();
-        var pool = computePool;
-        if (pool == null || pool.isShutdown()) synchronized (LOCK) {
-            pool = computePool;
-            if (pool == null || pool.isShutdown()) {
-                initialize();
-                pool = computePool;
-            }
-        }
-        return pool;
+        ensureRunning();
+        return computePool;
     }
 
+    @NotNull
     public ForkJoinPool getForkJoinPool() {
-        ensureNotShutdown();
-        var pool = forkJoinPool;
-        if (pool == null || pool.isShutdown()) synchronized (LOCK) {
-            pool = forkJoinPool;
-            if (pool == null || pool.isShutdown()) {
-                initialize();
-                pool = forkJoinPool;
-            }
-        }
-        return pool;
+        ensureRunning();
+        return forkJoinPool;
     }
 
-    public void invokeParallel(Runnable action) {
-        ensureNotShutdown();
+    public void invokeParallel(@NotNull Runnable action) {
+        Objects.requireNonNull(action, "Action cannot be null");
+        ensureRunning();
         try {
-            getForkJoinPool().invoke(ForkJoinTask.adapt(action));
-        } catch (RejectedExecutionException e) {
-            throw new RuntimeException("Parallel execution rejected", e);
+            forkJoinPool.invoke(ForkJoinTask.adapt(action));
+        } catch (RejectedExecutionException | CancellationException e) {
+            throw new RejectedExecutionException("Parallel execution rejected or cancelled - pool is shut down", e);
         }
     }
 
@@ -224,150 +162,121 @@ public class ThreadPoolManager {
         return parallelism;
     }
 
-    private void ensureNotShutdown() {
-        if (isShutdown.get()) throw new RejectedExecutionException("ThreadPoolManager is shut down");
+    private void ensureRunning() {
+        if (state.get() != State.RUNNING) throw new RejectedExecutionException(
+                "ThreadPoolManager instance is shut down (state=" + state.get() +
+                        "). If reinitialized, call ThreadPoolManager.getInstance() to acquire the active manager.");
+    }
+
+    private boolean isWorkerOfThisManager() {
+        var current = Thread.currentThread();
+        if (current instanceof ComplexityComputeThread cct) return cct.owner == this;
+        if (current instanceof ComplexityForkJoinThread cfjt) return cfjt.owner == this;
+        return false;
+    }
+
+    @Override
+    public void close() {
+        shutdown();
     }
 
     public void shutdown() {
-        if (!isShutdown.compareAndSet(false, true)) return;
+        if (!state.compareAndSet(State.RUNNING, State.SHUTTING_DOWN)) return;
 
-        synchronized (LOCK) {
-            long shutdownStartTime = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.debug("Shutting down ThreadPoolManager...");
+        long startTime = System.currentTimeMillis();
+        ComplexityAnalyzer.LOGGER.debug("Shutting down ThreadPoolManager...");
+        boolean wasInterrupted = false;
+        int totalCancelledTasks = 0;
 
-            try {
-                if (shutdownHook != null) {
-                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                    shutdownHook = null;
-                }
-            } catch (Exception ignored) {
+        computePool.shutdown();
+        forkJoinPool.shutdown();
+
+        if (isWorkerOfThisManager()) {
+            ComplexityAnalyzer.LOGGER.debug("Self-shutdown detected from owner worker thread. Bypassing graceful wait.");
+            totalCancelledTasks += computePool.shutdownNow().size();
+            totalCancelledTasks += forkJoinPool.shutdownNow().size();
+        } else {
+            var computeResult = awaitPoolTermination(computePool, "ComputePool", GRACEFUL_TIMEOUT_MS);
+            wasInterrupted |= computeResult.interrupted();
+            totalCancelledTasks += computeResult.cancelledCount();
+
+            var fjResult = awaitPoolTermination(forkJoinPool, "ForkJoinPool", GRACEFUL_TIMEOUT_MS);
+            wasInterrupted |= fjResult.interrupted();
+            totalCancelledTasks += fjResult.cancelledCount();
+
+            if (!computeResult.terminated()) {
+                ComplexityAnalyzer.LOGGER.warn("ComputePool did not terminate gracefully. Forcing shutdownNow...");
+                totalCancelledTasks += computePool.shutdownNow().size();
             }
 
-            var watchdog = shutdownWatchdog;
-            if (watchdog != null) {
-                watchdog.interrupt();
-                shutdownWatchdog = null;
+            if (!fjResult.terminated()) {
+                ComplexityAnalyzer.LOGGER.warn("ForkJoinPool did not terminate gracefully. Forcing shutdownNow...");
+                totalCancelledTasks += forkJoinPool.shutdownNow().size();
             }
 
-            var compute = computePool;
-            var fj = forkJoinPool;
-
-            if (compute != null && !compute.isShutdown()) compute.shutdown();
-            if (fj != null && !fj.isShutdown()) fj.shutdown();
-
-            boolean computeTerminated = awaitTermination(compute, "ComputePool", GRACEFUL_TIMEOUT_MS);
-            boolean fjTerminated = awaitTermination(fj, "ForkJoinPool", GRACEFUL_TIMEOUT_MS);
-
-            if (!computeTerminated) {
-                ComplexityAnalyzer.LOGGER.warn("ComputePool did not terminate gracefully, forcing...");
-                int droppedCount = compute.shutdownNow().size();
-                if (droppedCount > 0)
-                    ComplexityAnalyzer.LOGGER.info("ComputePool: dropped {} pending tasks", droppedCount);
+            if (!computeResult.terminated()) {
+                wasInterrupted |= awaitPoolTermination(computePool, "ComputePool (Force)", FORCE_KILL_TIMEOUT_MS).interrupted();
             }
-
-            if (!fjTerminated) {
-                ComplexityAnalyzer.LOGGER.warn("ForkJoinPool did not terminate gracefully, forcing...");
-                int droppedCount = fj.shutdownNow().size();
-                if (droppedCount > 0)
-                    ComplexityAnalyzer.LOGGER.info("ForkJoinPool: dropped {} pending tasks", droppedCount);
+            if (!fjResult.terminated()) {
+                wasInterrupted |= awaitPoolTermination(forkJoinPool, "ForkJoinPool (Force)", FORCE_KILL_TIMEOUT_MS).interrupted();
             }
-
-            long elapsed = System.currentTimeMillis() - shutdownStartTime;
-            long remainingTime = FORCE_KILL_TIMEOUT_MS - elapsed;
-
-            if (remainingTime > 0) {
-                if (!computeTerminated) awaitTermination(compute, "ComputePool", remainingTime / 2);
-                if (!fjTerminated) {
-                    elapsed = System.currentTimeMillis() - shutdownStartTime;
-                    remainingTime = FORCE_KILL_TIMEOUT_MS - elapsed;
-                    if (remainingTime > 0) fjTerminated = awaitTermination(fj, "ForkJoinPool", remainingTime);
-                }
-            }
-
-            if (!fjTerminated) {
-                elapsed = System.currentTimeMillis() - shutdownStartTime;
-                ComplexityAnalyzer.LOGGER.warn("Pools did not terminate within {}ms - force killing threads", elapsed);
-                forceInterruptAllWorkers();
-            }
-
-            computePool = null;
-            forkJoinPool = null;
-
-            logRemainingThreads(compute, fj);
-
-            long totalTime = System.currentTimeMillis() - shutdownStartTime;
-            ComplexityAnalyzer.LOGGER.debug("ThreadPoolManager shutdown complete in {}ms.", totalTime);
         }
+
+        if (totalCancelledTasks > 0) {
+            ComplexityAnalyzer.LOGGER.info("ThreadPoolManager: Total {} pending tasks cancelled during shutdown", totalCancelledTasks);
+        }
+
+        state.set(State.SHUTDOWN);
+
+        INSTANCE.compareAndSet(this, null);
+
+        logRemainingThreads();
+
+        if (wasInterrupted) Thread.currentThread().interrupt();
+        long totalTime = System.currentTimeMillis() - startTime;
+        ComplexityAnalyzer.LOGGER.debug("ThreadPoolManager shutdown complete in {}ms.", totalTime);
     }
 
-    private boolean awaitTermination(ExecutorService pool, String name, long timeoutMs) {
-        if (pool == null || pool.isTerminated()) return true;
-        if (timeoutMs <= 0) return pool.isTerminated();
-
+    private TerminationResult awaitPoolTermination(ExecutorService pool, String poolName, long timeoutMs) {
+        if (pool.isTerminated()) return new TerminationResult(true, false, 0);
         try {
             boolean terminated = pool.awaitTermination(timeoutMs, TimeUnit.MILLISECONDS);
-            if (terminated) ComplexityAnalyzer.LOGGER.debug("{} terminated successfully", name);
-            return terminated;
+            if (terminated) ComplexityAnalyzer.LOGGER.debug("{} terminated successfully.", poolName);
+            return new TerminationResult(terminated, false, 0);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            ComplexityAnalyzer.LOGGER.debug("Interrupted while waiting for {} termination", name);
-            return pool.isTerminated();
+            ComplexityAnalyzer.LOGGER.warn("Interrupted while waiting for {} termination", poolName);
+            int cancelled = pool.shutdownNow().size();
+            return new TerminationResult(pool.isTerminated(), true, cancelled);
         }
     }
 
-    private void forceInterruptAllWorkers() {
-        Thread[] threads = new Thread[Thread.activeCount() * 2];
-        int count = Thread.enumerate(threads);
-
-        int interrupted = 0;
-        for (int i = 0; i < count; i++) {
-            var t = threads[i];
-            if (t != null && t.isAlive() && t instanceof ComplexityThread) if (!t.isInterrupted()) {
-                t.interrupt();
-                interrupted++;
-                ComplexityAnalyzer.LOGGER.debug("Force interrupted thread: {}", t.getName());
-            }
-        }
-
-        if (interrupted > 0) {
-            ComplexityAnalyzer.LOGGER.info("Force interrupted {} worker threads", interrupted);
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    private void logRemainingThreads(ExecutorService compute, ForkJoinPool fj) {
-        int computeActive = compute instanceof ThreadPoolExecutor tpe && !tpe.isTerminated() ? tpe.getActiveCount() : 0;
-        int fjActive = fj != null && !fj.isTerminated() ? fj.getActiveThreadCount() : 0;
+    private void logRemainingThreads() {
+        int computeActive = computePool.isTerminated() ? 0 : computePool.getActiveCount();
+        int fjActive = forkJoinPool.isTerminated() ? 0 : forkJoinPool.getActiveThreadCount();
         int total = computeActive + fjActive;
 
-        if (total > 0) {
-            String details = computeActive > 0 && fjActive > 0
-                    ? String.format(" (Compute: %d, ForkJoin: %d)", computeActive, fjActive)
-                    : computeActive > 0 ? " (ComputePool)" : " (ForkJoinPool)";
-            ComplexityAnalyzer.LOGGER.warn("{} daemon threads{} still running — will terminate with JVM", total, details);
-        }
+        if (total > 0) ComplexityAnalyzer.LOGGER.warn(
+                "{} worker threads still active after shutdown (Compute: {}, ForkJoin: {}) — will terminate with JVM", total, computeActive, fjActive);
     }
 
+    @NotNull
     public PoolStats getStats() {
-        var compute = computePool;
-        var fj = forkJoinPool;
+        if (state.get() != State.RUNNING) return EMPTY_STATS;
 
-        if (compute == null || fj == null || isShutdown.get()) return EMPTY_STATS;
-
-        if (compute instanceof ThreadPoolExecutor tpe) return new PoolStats(
+        return new PoolStats(
                 parallelism,
-                tpe.getActiveCount(),
-                tpe.getCompletedTaskCount(),
-                tpe.getQueue().size(),
-                fj.getActiveThreadCount(),
-                fj.getStealCount()
+                computePool.getActiveCount(),
+                computePool.getCompletedTaskCount(),
+                computePool.getQueue().size(),
+                forkJoinPool.getActiveThreadCount(),
+                forkJoinPool.getStealCount()
         );
+    }
 
-        return new PoolStats(parallelism, 0, 0, 0, fj.getActiveThreadCount(), fj.getStealCount());
+    public enum State {
+        RUNNING,
+        SHUTTING_DOWN,
+        SHUTDOWN
     }
 
     public interface ComplexityThread {
@@ -388,15 +297,82 @@ public class ThreadPoolManager {
         }
     }
 
-    private static class ComplexityComputeThread extends Thread implements ComplexityThread {
-        ComplexityComputeThread(Runnable target, String name) {
-            super(target, name);
+    private record TerminationResult(boolean terminated, boolean interrupted, int cancelledCount) {
+    }
+
+    private static final class BlockingTimeoutPolicy implements RejectedExecutionHandler {
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            if (executor.isShutdown()) throw new RejectedExecutionException(
+                    "Task " + r + " rejected from " + executor + " (pool is shut down)");
+
+            if (isComplexityThread()) {
+                if (!executor.getQueue().offer(r)) r.run();
+                return;
+            }
+
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(QUEUE_OFFER_TIMEOUT_SECONDS);
+            try {
+                while (System.nanoTime() < deadline) {
+                    if (executor.isShutdown()) throw new RejectedExecutionException(
+                            "Task " + r + " rejected: pool was shut down during offer");
+                    if (executor.getQueue().offer(r, 250, TimeUnit.MILLISECONDS)) {
+                        if (executor.isShutdown() && executor.getQueue().remove(r)) {
+                            throw new RejectedExecutionException("Task " + r + " rejected: pool was shut down after offer");
+                        }
+                        return;
+                    }
+                }
+                throw new RejectedExecutionException(
+                        "Task " + r + " rejected: queue offer timed out after " + QUEUE_OFFER_TIMEOUT_SECONDS + "s");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Task " + r + " interrupted while waiting for queue space", e);
+            }
         }
     }
 
-    private static class ComplexityForkJoinThread extends ForkJoinWorkerThread implements ComplexityThread {
-        ComplexityForkJoinThread(ForkJoinPool pool) {
+    private static final class ComplexityComputeThread extends Thread implements ComplexityThread {
+        final ThreadPoolManager owner;
+
+        ComplexityComputeThread(ThreadPoolManager owner, Runnable target, String name, ClassLoader classLoader) {
+            super(target, name);
+            this.owner = owner;
+            if (classLoader != null) setContextClassLoader(classLoader);
+        }
+
+        @Override
+        public void run() {
+            try {
+                super.run();
+            } finally {
+                setContextClassLoader(null);
+            }
+        }
+    }
+
+    private static final class ComplexityForkJoinThread extends ForkJoinWorkerThread implements ComplexityThread {
+        final ThreadPoolManager owner;
+
+        ComplexityForkJoinThread(ThreadPoolManager owner, ForkJoinPool pool, ClassLoader classLoader) {
             super(pool);
+            this.owner = owner;
+            if (classLoader != null) setContextClassLoader(classLoader);
+        }
+
+        @Override
+        protected void onStart() {
+            super.onStart();
+            setName("Complexity-ForkJoin-" + getPoolIndex());
+        }
+
+        @Override
+        protected void onTermination(Throwable cause) {
+            try {
+                super.onTermination(cause);
+            } finally {
+                setContextClassLoader(null);
+            }
         }
     }
 }

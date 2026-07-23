@@ -28,7 +28,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -37,6 +36,8 @@ import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.providers.PlantSimulator;
 import org.jetbrains.annotations.Nullable;
+
+import static org.complexityanalyzer.cache.ResourceCache.FARMING;
 
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
@@ -84,10 +85,10 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
         var server = serverLevel.getServer();
         boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
-        var cacheFile = cacheEnabled ? ResourceCache.FARMING.file(server) : null;
+        var cacheFile = cacheEnabled ? FARMING.file(server) : null;
         long[] fingerprint = cacheFile != null ? computeFingerprint(serverLevel.getSeed()) : null;
         if (cacheFile != null) {
-            int restored = ResourceCache.FARMING.load(cacheFile, fingerprint, FarmingSource::readData, productionMap);
+            int restored = FARMING.load(cacheFile, fingerprint, FarmingSource::readData, productionMap);
             if (restored >= 0) {
                 ComplexityAnalyzer.LOGGER.info("[FarmingSource] Loaded {} products from cache (plant simulation skipped).", restored);
                 return;
@@ -131,10 +132,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                     String plantItemId = itemId(plantItem);
                     String blockIdStr = blockId(block);
                     String details;
-                    if (plantItemId.equals(blockIdStr)) details = String.format("Plant %s → harvest for %s",
-                            plantItemId, itemId(drop));
-                    else details = String.format("Plant %s (becomes %s) → harvest for %s", plantItemId,
-                            blockIdStr, itemId(drop));
+                    if (plantItemId.equals(blockIdStr)) {
+                        details = String.format("Plant %s → harvest for %s", plantItemId, itemId(drop));
+                    } else {
+                        details = String.format("Plant %s (becomes %s) → harvest for %s", plantItemId, blockIdStr, itemId(drop));
+                    }
 
                     FarmingData data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
@@ -144,8 +146,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         }
 
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
-        if (cacheFile != null)
-            ResourceCache.FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
+        if (cacheFile != null) FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
     }
 
     private long[] computeFingerprint(long worldSeed) {
@@ -183,11 +184,13 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     }
 
     private String itemId(Item item) {
-        return GameRegistryManager.getItemId(item).toString();
+        var id = GameRegistryManager.getItemId(item);
+        return id != null ? id.toString() : "minecraft:air";
     }
 
     private String blockId(Block block) {
-        return GameRegistryManager.getBlockId(block).toString();
+        var id = GameRegistryManager.getBlockId(block);
+        return id != null ? id.toString() : "minecraft:air";
     }
 
     private String formatDrops(Reference2DoubleMap<Item> drops) {
@@ -214,9 +217,13 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         if (lst == null || lst.isEmpty()) return null;
 
         var best = lst.getFirst();
+        double bestCost = calculateCost(best.avgGrowthTicks(), best.outputAmount());
         for (int i = 1; i < lst.size(); i++) {
-            if (calculateCost(lst.get(i).avgGrowthTicks(), lst.get(i).outputAmount()) < calculateCost(best.avgGrowthTicks(), best.outputAmount())) {
-                best = lst.get(i);
+            var current = lst.get(i);
+            double currentCost = calculateCost(current.avgGrowthTicks(), current.outputAmount());
+            if (currentCost < bestCost) {
+                best = current;
+                bestCost = currentCost;
             }
         }
 
@@ -225,7 +232,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
         return new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())
-                .baseFactor(calculateCost(best.avgGrowthTicks(), best.outputAmount()))
+                .baseFactor(bestCost)
                 .sourceItems(sourceItems)
                 .sourceSpecifier(best.plantItem().getDescriptionId())
                 .details(best.details())

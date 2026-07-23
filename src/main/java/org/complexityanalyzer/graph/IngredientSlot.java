@@ -30,6 +30,7 @@ public class IngredientSlot {
 
     private final ObjectList<ItemStack> variants;
     private final int count;
+    private volatile int cachedHashCode = 0;
 
     public IngredientSlot(ObjectList<ItemStack> variants, int count) {
         this.count = Math.max(1, count);
@@ -70,9 +71,15 @@ public class IngredientSlot {
 
     @Override
     public int hashCode() {
-        int result = count;
-        for (var stack : variants) result = 31 * result + ItemStackIdentity.hashItemData(stack);
-        return result;
+        int h = cachedHashCode;
+        if (h == 0) {
+            int result = count;
+            for (var stack : variants) result = 31 * result + ItemStackIdentity.hashItemData(stack);
+            if (result == 0) result = 1;
+            cachedHashCode = result;
+            return result;
+        }
+        return h;
     }
 
     @Override

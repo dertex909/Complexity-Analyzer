@@ -60,6 +60,7 @@ public class RecipeNode {
     private final double recipeMultiplier;
     private final boolean isPlaceholder;
     private volatile int listIndex = -1;
+    private volatile int cachedHashCode = 0;
 
     private RecipeNode(Builder builder) {
         this.ingredients = copyToUnmodifiable(builder.ingredients);
@@ -270,31 +271,37 @@ public class RecipeNode {
 
     @Override
     public int hashCode() {
-        int result = resultItem.hashCode();
-        result = 31 * result + (recipeType != null ? recipeType.hashCode() : 0);
-        result = 31 * result + resultCount;
-        result = 31 * result + (isPlaceholder ? 1 : 0);
-        result = 31 * result + (placeholderId != null ? placeholderId.hashCode() : 0);
-        result = 31 * result + ingredients.hashCode();
-        result = 31 * result + fluidIngredients.hashCode();
-        result = 31 * result + chemicalIngredients.hashCode();
-        result = 31 * result + chemicalOutputs.hashCode();
+        int h = cachedHashCode;
+        if (h == 0) {
+            int result = resultItem.hashCode();
+            result = 31 * result + (recipeType != null ? recipeType.hashCode() : 0);
+            result = 31 * result + resultCount;
+            result = 31 * result + (isPlaceholder ? 1 : 0);
+            result = 31 * result + (placeholderId != null ? placeholderId.hashCode() : 0);
+            result = 31 * result + ingredients.hashCode();
+            result = 31 * result + fluidIngredients.hashCode();
+            result = 31 * result + chemicalIngredients.hashCode();
+            result = 31 * result + chemicalOutputs.hashCode();
 
-        int outputsHash = 1;
-        for (var stack : itemOutputs) {
-            int stackHash = ItemStackIdentity.hashItemDataAndCount(stack);
-            outputsHash = 31 * outputsHash + stackHash;
+            int outputsHash = 1;
+            for (var stack : itemOutputs) {
+                int stackHash = ItemStackIdentity.hashItemDataAndCount(stack);
+                outputsHash = 31 * outputsHash + stackHash;
+            }
+            result = 31 * result + outputsHash;
+
+            int fluidOutputsHash = 1;
+            for (var stack : fluidOutputs) {
+                int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getFluid().hashCode() * 31 + stack.getAmount());
+                fluidOutputsHash = 31 * fluidOutputsHash + stackHash;
+            }
+            result = 31 * result + fluidOutputsHash;
+
+            if (result == 0) result = 1;
+            cachedHashCode = result;
+            return result;
         }
-        result = 31 * result + outputsHash;
-
-        int fluidOutputsHash = 1;
-        for (var stack : fluidOutputs) {
-            int stackHash = (stack == null || stack.isEmpty()) ? 0 : (stack.getFluid().hashCode() * 31 + stack.getAmount());
-            fluidOutputsHash = 31 * fluidOutputsHash + stackHash;
-        }
-        result = 31 * result + fluidOutputsHash;
-
-        return result;
+        return h;
     }
 
     @Override

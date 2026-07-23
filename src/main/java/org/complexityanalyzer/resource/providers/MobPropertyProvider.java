@@ -22,6 +22,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -52,45 +53,21 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     private final ConcurrentHashMap.KeySetView<EntityType<?>, Boolean> renewableTypes = ConcurrentHashMap.newKeySet(64);
     private final ConcurrentHashMap<EntityType<?>, BossType> registeredBosses = new ConcurrentHashMap<>(32);
 
+    @Nullable
+    @SuppressWarnings("unchecked")
+    private static AttributeSupplier getSupplier(EntityType<?> type) {
+        var livingType = (EntityType<? extends LivingEntity>) type;
+        return DefaultAttributes.hasSupplier(livingType) ? DefaultAttributes.getSupplier(livingType) : null;
+    }
+
     public void initialize() {
         ComplexityAnalyzer.LOGGER.info("Initializing MobPropertyProvider...");
-
         int failedCount = 0;
 
         for (var type : GameRegistryManager.getAllEntityTypes()) {
             if (type.getCategory() == MobCategory.MISC) continue;
-
-            try {
-                @SuppressWarnings("unchecked")
-                var livingType = (EntityType<? extends LivingEntity>) type;
-
-                if (!DefaultAttributes.hasSupplier(livingType)) {
-                    failedCount++;
-                    continue;
-                }
-
-                var attributes = DefaultAttributes.getSupplier(livingType);
-
-                var maxHealth = attributes.getBaseValue(Attributes.MAX_HEALTH);
-                var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE) ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0;
-                var armor = attributes.hasAttribute(Attributes.ARMOR) ? attributes.getBaseValue(Attributes.ARMOR) : 0;
-
-                var classification = type.getCategory();
-
-                propertiesCache.put(type, new MobProperties(
-                        maxHealth,
-                        attackDamage,
-                        armor,
-                        classification
-                ));
-
-            } catch (ClassCastException e) {
-                failedCount++;
-            } catch (Exception e) {
-                var id = GameRegistryManager.getEntityTypeId(type);
-                ComplexityAnalyzer.LOGGER.warn("Could not analyze entity type: {}", id);
-                failedCount++;
-            }
+            var props = getProperties(type);
+            if (props == null) failedCount++;
         }
 
         ComplexityAnalyzer.LOGGER.debug("MobPropertyProvider initialized:");
@@ -103,36 +80,25 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
         var cached = propertiesCache.get(type);
         if (cached != null) return cached;
 
-        var id = GameRegistryManager.getEntityTypeId(type);
+        var attributes = getSupplier(type);
+        if (attributes == null) return null;
 
-        try {
-            @SuppressWarnings("unchecked")
-            var livingType = (EntityType<? extends LivingEntity>) type;
+        var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH)
+                ? attributes.getBaseValue(Attributes.MAX_HEALTH)
+                : DEFAULT_MAX_HEALTH;
 
-            if (!DefaultAttributes.hasSupplier(livingType)) return null;
+        var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
+                ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE)
+                : 0.0;
 
-            var attributes = DefaultAttributes.getSupplier(livingType);
+        var armor = attributes.hasAttribute(Attributes.ARMOR)
+                ? attributes.getBaseValue(Attributes.ARMOR)
+                : 0.0;
 
-            var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH) ? attributes.getBaseValue(Attributes.MAX_HEALTH) : DEFAULT_MAX_HEALTH;
+        var props = new MobProperties(maxHealth, attackDamage, armor, type.getCategory());
+        propertiesCache.put(type, props);
 
-            var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE) ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0;
-
-            var armor = attributes.hasAttribute(Attributes.ARMOR) ? attributes.getBaseValue(Attributes.ARMOR) : 0;
-
-            var classification = type.getCategory();
-
-            var props = new MobProperties(maxHealth, attackDamage, armor, classification);
-            propertiesCache.put(type, props);
-
-            return props;
-
-        } catch (ClassCastException e) {
-            ComplexityAnalyzer.LOGGER.debug("Entity {} cannot be cast to LivingEntity type", id);
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("Error loading properties for {}: {}", id, e.getMessage());
-        }
-
-        return null;
+        return props;
     }
 
     public void markRenewable(EntityType<?> type) {
@@ -215,7 +181,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
         }
 
         public double calculateThreat() {
-            return 1 + Math.log1p(attackDamage);
+            return 1.0 + Math.log1p(attackDamage);
         }
 
         public double calculateCombatPower() {

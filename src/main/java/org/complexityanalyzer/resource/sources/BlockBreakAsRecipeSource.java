@@ -325,7 +325,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         for (int i = 0; i < SAMPLE_COUNT; i++) {
             var deterministicRandom = RandomSource.create(baseSeed + i);
-            ObjectArrayList<ItemStack> drops = new ObjectArrayList<>();
+            var drops = new ObjectArrayList<ItemStack>();
 
             var spawnPos = level.getSharedSpawnPos();
             var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
@@ -429,11 +429,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
     private long generateStableSeed(long worldSeed, Block block, ItemStack tool) {
         long seed = worldSeed;
-        seed = seed * 31L + GameRegistryManager.getBlockId(block).toString().hashCode();
+        var blockId = GameRegistryManager.getBlockId(block);
+        if (blockId != null) seed = seed * 31L + blockId.hashCode();
 
         if (!tool.isEmpty()) {
-            seed = seed * 31L + GameRegistryManager.getItemId(tool.getItem()).toString().hashCode();
-            ItemEnchantments enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+            var itemId = GameRegistryManager.getItemId(tool.getItem());
+            if (itemId != null) seed = seed * 31L + itemId.hashCode();
+            var enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
             if (!enchantments.isEmpty()) seed = seed * 31L + enchantments.hashCode();
         } else {
             seed = seed * 31L + "empty_hand".hashCode();

@@ -32,7 +32,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
@@ -48,12 +47,12 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Proxy;
 import java.util.Optional;
 import java.util.UUID;
 
 public class PlantSimulator {
 
+    private static final GameProfile PLANT_SIM_PROFILE = new GameProfile(new UUID(0L, 1L), "[PlantSim]");
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
     private static final int BARRIER_RADIUS = 16;
     private static final int SEARCH_RADIUS = 32;
@@ -69,22 +68,21 @@ public class PlantSimulator {
             Blocks.RED_SAND, Blocks.GRAVEL, Blocks.NETHERRACK, Blocks.SOUL_SAND,
             Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
     );
+
     private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
     private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
     private final Object2ObjectMap<Block, GroundResult> groundCache = new Object2ObjectOpenHashMap<>();
     private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
+    private final Object2ObjectMap<Block, IntegerProperty> agePropCache = new Object2ObjectOpenHashMap<>();
+
     private final int simOriginX = SIM_ORIGIN.getX();
     private final int simOriginY = SIM_ORIGIN.getY();
     private final int simOriginZ = SIM_ORIGIN.getZ();
     private final int originChunkX = simOriginX >> 4;
     private final int originChunkZ = simOriginZ >> 4;
+
     private Player fakePlayer;
     private boolean platformReady = false;
-    private LevelReader survivalView;
-    private ServerLevel viewLevel;
-    private BlockPos viewGroundPos;
-    private BlockState viewGroundState;
-    private BlockPos viewPlantPos;
 
     public SimulationResult simulate(Block plantBlock, ServerLevel level) {
         if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
@@ -95,8 +93,9 @@ public class PlantSimulator {
 
     public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
         if (blocks == null || blocks.isEmpty()) return null;
+        clearCaches();
         ensurePlatform(level);
-        fakePlayer = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "[PlantSim]"));
+        fakePlayer = FakePlayerFactory.get(level, PLANT_SIM_PROFILE);
         var results = new Object2ObjectOpenHashMap<Block, SimulationResult>();
 
         for (var block : blocks) {
@@ -113,6 +112,13 @@ public class PlantSimulator {
         releasePlatform(level);
         fakePlayer = null;
         return results.isEmpty() ? null : results;
+    }
+
+    public void clearCaches() {
+        cache.clear();
+        groundCache.clear();
+        ageMaxCache.clear();
+        agePropCache.clear();
     }
 
     public boolean isPlant(Block block) {
@@ -262,26 +268,11 @@ public class PlantSimulator {
             mutablePos.setWithOffset(plantPos, dir);
             for (var b : blocks) {
                 if (b instanceof EntityBlock || b.defaultBlockState().hasBlockEntity()) continue;
-                if (tryGroundQuickly(b, plantState, level, mutablePos, plantPos)) return new GroundResult(b, dir);
+                if (tryGroundWithSetBlock(b.defaultBlockState(), plantState, level, mutablePos, plantPos))
+                    return new GroundResult(b, dir);
             }
         }
         return null;
-    }
-
-    private boolean tryGroundQuickly(Block candidate, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
-        if (candidate instanceof EntityBlock || candidate.defaultBlockState().hasBlockEntity()) return false;
-        var candidateState = candidate.defaultBlockState();
-        if (candidateState.isAir() && candidate != Blocks.WATER) return false;
-
-        try {
-            viewLevel = level;
-            viewGroundPos = groundPos;
-            viewGroundState = candidateState;
-            viewPlantPos = plantPos;
-            return plantState.canSurvive(survivalView(), plantPos);
-        } catch (Throwable t) {
-            return tryGroundWithSetBlock(candidateState, plantState, level, groundPos, plantPos);
-        }
     }
 
     private boolean tryGroundWithSetBlock(BlockState candidateState, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
@@ -294,20 +285,6 @@ public class PlantSimulator {
         } catch (Exception ignored) {
             return false;
         }
-    }
-
-    private LevelReader survivalView() {
-        if (survivalView == null) survivalView = (LevelReader) Proxy.newProxyInstance(
-                LevelReader.class.getClassLoader(),
-                new Class[]{LevelReader.class},
-                (proxy, method, args) -> {
-                    if (args != null && args.length == 1 && args[0] instanceof BlockPos p && "getBlockState".equals(method.getName())) {
-                        if (p.equals(viewGroundPos)) return viewGroundState;
-                        if (p.equals(viewPlantPos)) return Blocks.AIR.defaultBlockState();
-                    }
-                    return method.invoke(viewLevel, args);
-                });
-        return survivalView;
     }
 
     private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random) {
@@ -522,8 +499,12 @@ public class PlantSimulator {
     }
 
     private IntegerProperty findAgeProperty(Block b) {
+        var cached = agePropCache.get(b);
+        if (cached != null) return cached;
+
         for (var prop : b.defaultBlockState().getProperties()) {
             if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth"))) {
+                agePropCache.put(b, ip);
                 return ip;
             }
         }

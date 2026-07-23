@@ -145,9 +145,7 @@ public class GameRegistryManager {
         var optionalTag = BuiltInRegistries.ITEM.getTag(tagKey);
         if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
             var item = holder.value();
-            var id = getItemId(item);
-            var registeredItem = getItem(id);
-            if (registeredItem != null && registeredItem != AIR) return registeredItem;
+            if (item != AIR) return item;
         }
         return AIR;
     }
@@ -156,9 +154,7 @@ public class GameRegistryManager {
         var optionalTag = BuiltInRegistries.FLUID.getTag(tagKey);
         if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
             var fluid = holder.value();
-            var id = getFluidId(fluid);
-            var registeredFluid = getFluid(id);
-            if (registeredFluid != null && registeredFluid != Fluids.EMPTY) return registeredFluid;
+            if (fluid != Fluids.EMPTY) return fluid;
         }
         return Fluids.EMPTY;
     }

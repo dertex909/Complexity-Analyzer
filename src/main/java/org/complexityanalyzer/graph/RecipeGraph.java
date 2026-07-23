@@ -264,6 +264,7 @@ public class RecipeGraph {
         allRecipesMap.clear();
         recipeCounter.set(0);
         IngredientSlot.clearCache();
+        FluidIngredientSlot.clearCache();
         ItemStackCanonicalizer.clear();
         ComplexityAnalyzer.LOGGER.info("Recipe graph cleared");
     }

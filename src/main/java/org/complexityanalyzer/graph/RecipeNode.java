@@ -353,7 +353,7 @@ public class RecipeNode {
         }
 
         public void addFluidIngredient(ObjectList<Fluid> variants, int amount) {
-            this.fluidIngredients.add(new FluidIngredientSlot(variants, amount));
+            this.fluidIngredients.add(FluidIngredientSlot.intern(new FluidIngredientSlot(variants, amount)));
         }
 
         public void itemOutputs(ObjectList<ItemStack> outputs) {

@@ -43,6 +43,7 @@ public final class WebLifecycleManager {
 
         @SubscribeEvent
         public static void onServerStarted(ServerStartedEvent event) {
+            CabinNettyHandler.resetToken();
             StandaloneWebServer.start();
         }
 
@@ -71,7 +72,8 @@ public final class WebLifecycleManager {
         @SubscribeEvent
         public static void onConfigReload(ModConfigEvent.Reloading event) {
             if (event.getConfig().getSpec() == ComplexityConfig.SPEC) {
-                ComplexityAnalyzer.LOGGER.info("[Web] Config reloaded, restarting web server...");
+                ComplexityAnalyzer.LOGGER.info("[Web] Config reloaded, updating token & restarting web server...");
+                CabinNettyHandler.resetToken();
                 StandaloneWebServer.start();
             }
         }

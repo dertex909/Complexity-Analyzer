@@ -42,15 +42,33 @@ import static io.netty.util.CharsetUtil.UTF_8;
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
-    private static final String TOKEN = Base64.getUrlEncoder().withoutPadding().encodeToString(generateRandomBytes());
     private static final Set<String> uniqueVisitors = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static volatile String cachedToken = null;
 
     public static long getVisitorCount() {
         return uniqueVisitors.size();
     }
 
     public static String getToken() {
-        return TOKEN;
+        if (cachedToken != null) return cachedToken;
+
+        synchronized (CabinNettyHandler.class) {
+            if (cachedToken != null) return cachedToken;
+
+            String configuredToken = ComplexityConfig.WEB_SERVER_TOKEN.get().trim();
+            if (configuredToken.isEmpty()) {
+                configuredToken = Base64.getUrlEncoder().withoutPadding().encodeToString(generateRandomBytes());
+                ComplexityConfig.WEB_SERVER_TOKEN.set(configuredToken);
+            }
+            cachedToken = configuredToken;
+            return cachedToken;
+        }
+    }
+
+    public static void resetToken() {
+        synchronized (CabinNettyHandler.class) {
+            cachedToken = null;
+        }
     }
 
     @SuppressWarnings("ConstantValue")
@@ -68,7 +86,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             hostname = "127.0.0.1";
         }
 
-        return "http://" + hostname + ":" + port + "/" + TOKEN + "/";
+        return "http://" + hostname + ":" + port + "/" + getToken() + "/";
     }
 
     private static byte[] generateRandomBytes() {
@@ -93,7 +111,8 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         }
 
         String uri = request.uri();
-        String prefix = "/" + TOKEN;
+        String currentToken = getToken();
+        String prefix = "/" + currentToken;
 
         if (!uri.startsWith(prefix)) {
             sendError(ctx, HttpResponseStatus.FORBIDDEN, false);

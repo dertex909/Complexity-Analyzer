@@ -26,11 +26,10 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 
 @EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
 public final class ComplexityCommand {
-    private ComplexityCommand() {
-    }
-
     public static final String BASE = "complexity";
     public static final String ROOT = "/" + BASE;
+    private ComplexityCommand() {
+    }
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {

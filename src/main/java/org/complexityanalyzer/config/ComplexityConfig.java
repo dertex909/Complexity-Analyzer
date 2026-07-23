@@ -47,6 +47,7 @@ public class ComplexityConfig {
 
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
     public static final ModConfigSpec.IntValue WEB_SERVER_PORT;
+    public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_TOKEN;
 
     public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
     public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
@@ -132,6 +133,12 @@ public class ComplexityConfig {
                 " 0 = multiplex on the main Minecraft server port (default).",
                 " 1-65535 = bind a separate standalone HTTP/WebSocket server to this port."
         ).defineInRange("port", 0, 0, 65535);
+
+        WEB_SERVER_TOKEN = builder.comment(
+                " Secret access token for the web dashboard URL.",
+                " Automatically generated on first launch and saved to config.",
+                " You can change this to any custom secret string (e.g. 'my-secret-key') to keep a permanent URL."
+        ).define("token", "");
         builder.pop();
 
         builder.push("harvest");

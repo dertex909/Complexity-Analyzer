@@ -1,6 +1,6 @@
 # 📖 Complexity Analyzer
 
-![Project Banner](https://github.com/dertex909/Complexity-Analyzer/blob/neoforge-1.21.1/src/main/resources/banner.png)
+![Project Banner](src/main/resources/assets/complexityanalyzer/viewer/icon.png)
 
 > A powerful framework that calculates the 'true cost' of every item, enabling deep analysis and balancing for complex modpacks.
 

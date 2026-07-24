@@ -34,11 +34,11 @@ import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public class RecipeGraph {
     private final ConcurrentHashMap<Item, ObjectList<RecipeNode>> recipesByItem;
-    private final ConcurrentHashMap<Item, ObjectList<Item>> usageMap;
+    private final ConcurrentHashMap<Item, ReferenceSet<Item>> usageMap;
     private final ConcurrentHashMap<Item, RecipeNode> bestRecipeCache;
     private final ConcurrentHashMap<ResourceLocation, ObjectList<RecipeNode>> recipesByFluid;
     private final ConcurrentHashMap<Fluid, ObjectList<RecipeNode>> recipesByFluidOutput;
-    private final ConcurrentHashMap<Fluid, ObjectList<Item>> fluidUsageMap;
+    private final ConcurrentHashMap<Fluid, ReferenceSet<Item>> fluidUsageMap;
     private final ConcurrentHashMap<Integer, RecipeNode> allRecipesMap;
     private final AtomicInteger recipeCounter;
 
@@ -182,20 +182,19 @@ public class RecipeGraph {
         }
     }
 
-    private <K> void addUsage(ConcurrentHashMap<K, ObjectList<Item>> map, K key, Item result) {
-        map.compute(key, (k, list) -> {
-            if (list == null) {
-                var newList = new ObjectArrayList<Item>(2);
-                newList.add(result);
-                return newList;
+    private <K> void addUsage(ConcurrentHashMap<K, ReferenceSet<Item>> map, K key, Item result) {
+        map.compute(key, (k, set) -> {
+            if (set == null) {
+                var newSet = new ReferenceOpenHashSet<Item>(2);
+                newSet.add(result);
+                return newSet;
             }
-            if (!list.contains(result)) {
-                var newList = new ObjectArrayList<Item>(list.size() + 1);
-                newList.addAll(list);
-                newList.add(result);
-                return newList;
+            if (!set.contains(result)) {
+                var newSet = new ReferenceOpenHashSet<>(set);
+                newSet.add(result);
+                return newSet;
             }
-            return list;
+            return set;
         });
     }
 
@@ -246,8 +245,8 @@ public class RecipeGraph {
         return users != null ? users.size() : 0;
     }
 
-    public ObjectList<Item> getItemsUsingFluid(Fluid fluid) {
-        return fluidUsageMap.getOrDefault(normalize(fluid), ObjectLists.emptyList());
+    public ReferenceSet<Item> getItemsUsingFluid(Fluid fluid) {
+        return fluidUsageMap.getOrDefault(normalize(fluid), ReferenceSets.emptySet());
     }
 
     public int getUsageCount(Item item) {
@@ -255,8 +254,8 @@ public class RecipeGraph {
         return users != null ? users.size() : 0;
     }
 
-    public ObjectList<Item> getItemsUsingIngredient(Item ingredient) {
-        return usageMap.getOrDefault(ingredient, ObjectLists.emptyList());
+    public ReferenceSet<Item> getItemsUsingIngredient(Item ingredient) {
+        return usageMap.getOrDefault(ingredient, ReferenceSets.emptySet());
     }
 
     public ReferenceSet<Item> getAllItems() {

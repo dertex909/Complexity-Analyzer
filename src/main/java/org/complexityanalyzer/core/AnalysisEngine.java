@@ -420,11 +420,6 @@ public class AnalysisEngine {
         return calc.getOrCalculateComplexity(item);
     }
 
-    @Nullable
-    public DepthAnalyzer getDepthAnalyzer() {
-        return this.depthAnalyzer;
-    }
-
     public double getComplexity(Item item) {
         var result = getComplexityResult(item);
         return (result != null) ? result.getComplexity() : -1.0;

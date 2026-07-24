@@ -123,7 +123,7 @@ public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
         @Override
         public Collection<Item> getAnalyzedItems() {
             var graph = engine.getGraph();
-            return graph != null && engine.isReady() ? Collections.unmodifiableCollection(graph.getCorpus()) : List.of();
+            return graph != null && engine.isReady() ? Collections.unmodifiableCollection(graph.getCorpus()) : Collections.emptyList();
         }
 
         @Override
@@ -142,7 +142,7 @@ public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
         @Override
         public List<RecipeNode> getRecipes(Item item) {
             var graph = engine.getGraph();
-            return graph != null && engine.isReady() ? List.copyOf(graph.getRecipes(item)) : List.of();
+            return graph != null && engine.isReady() ? Collections.unmodifiableList(graph.getRecipes(item)) : Collections.emptyList();
         }
 
         @Override
@@ -159,12 +159,12 @@ public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
         @Override
         public Set<Item> getItemsUsing(Item ingredient) {
             var graph = engine.getGraph();
-            return graph != null && engine.isReady() ? Set.copyOf(graph.getItemsUsingIngredient(ingredient)) : Set.of();
+            return graph != null && engine.isReady() ? Collections.unmodifiableSet(graph.getItemsUsingIngredient(ingredient)) : Collections.emptySet();
         }
 
         @Override
         public List<BaseResourceData> getBaseSources(Item item) {
-            return List.copyOf(engine.findAllSourcesForItem(item));
+            return Collections.unmodifiableList(engine.findAllSourcesForItem(item));
         }
 
         @Override
@@ -243,16 +243,16 @@ public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
         @Override
         public Set<ResourceLocation> getScannedDimensions() {
             var db = engine.getGeoDatabase();
-            if (db == null || !db.isLoaded()) return Set.of();
-            return Set.copyOf(db.getAllDimensionData().keySet());
+            if (db == null || !db.isLoaded()) return Collections.emptySet();
+            return Collections.unmodifiableSet(db.getAllDimensionData().keySet());
         }
 
         @Override
         public Set<ResourceLocation> getScannedBiomes(ResourceLocation dimension) {
             var db = engine.getGeoDatabase();
-            if (db == null || !db.isLoaded()) return Set.of();
+            if (db == null || !db.isLoaded()) return Collections.emptySet();
             var biomes = db.getAllDimensionData().get(dimension);
-            return biomes != null ? Set.copyOf(biomes.keySet()) : Set.of();
+            return biomes != null ? Collections.unmodifiableSet(biomes.keySet()) : Collections.emptySet();
         }
 
         @Override
@@ -295,7 +295,7 @@ public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
         @Override
         public List<Item> getMachinesForRecipe(RecipeType<?> type) {
             var reg = engine.getMachineRegistry();
-            return reg != null ? List.copyOf(reg.getMachinesForRecipe(type)) : List.of();
+            return reg != null ? Collections.unmodifiableList(reg.getMachinesForRecipe(type)) : Collections.emptyList();
         }
     }
 }

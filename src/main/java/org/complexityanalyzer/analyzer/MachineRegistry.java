@@ -23,9 +23,12 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -71,7 +74,6 @@ public class MachineRegistry {
             fingerprint = MachineRegistryCache.INSTANCE.computeFingerprint();
             int restored = MachineRegistryCache.INSTANCE.tryLoad(cacheFile, fingerprint, idMapping);
             if (restored >= 0) {
-                // Восстанавливаем instanceMapping из idMapping после успешной загрузки кэша
                 for (var entry : idMapping.object2ObjectEntrySet()) {
                     RecipeType<?> rt = BuiltInRegistries.RECIPE_TYPE.get(entry.getKey());
                     if (rt != null) {
@@ -101,7 +103,6 @@ public class MachineRegistry {
 
         ObjectList<Item> result = new ObjectArrayList<>();
 
-        // 1. Собираем машины из instanceMapping
         var listByInst = instanceMapping.get(type);
         if (listByInst != null) {
             for (Item item : listByInst) {
@@ -109,7 +110,6 @@ public class MachineRegistry {
             }
         }
 
-        // 2. Собираем машины из idMapping
         var typeId = GameRegistryManager.getRecipeTypeId(type);
         if (typeId != null) {
             var listById = idMapping.get(typeId);
@@ -204,6 +204,9 @@ public class MachineRegistry {
             }
         }
 
+        int fallbacks = applySmartFallback(dump);
+        registeredCount += fallbacks;
+
         dump.append("\n=================================================================\n");
         dump.append("SCAN SUMMARY:\n");
         dump.append("Total Blocks: ").append(totalBlocks).append("\n");
@@ -267,10 +270,10 @@ public class MachineRegistry {
         ClassNode cn = new ClassNode();
         cr.accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
-        // Проверяем cn.fields ТОЛЬКО в целевом классе блока/BE! В сторонних классах не дампим все поля подряд.
         if (isTargetClass) {
             for (FieldNode field : cn.fields) {
-                if (field.desc != null && (field.desc.contains("RecipeType") || field.desc.contains("Recipe"))) {
+                RecipeType<?> directRt = extractStaticRecipeType(cn.name, field.name);
+                if (directRt != null) {
                     results.add(new StaticFieldRef(cn.name, field.name));
                 }
             }
@@ -282,31 +285,34 @@ public class MachineRegistry {
             if (method.instructions == null) continue;
             for (AbstractInsnNode insn : method.instructions) {
                 if (insn instanceof FieldInsnNode fieldInsn) {
-                    // Перехватываем точечные вызовы конкретных статичных полей рецептов
-                    if (fieldInsn.desc != null && (fieldInsn.desc.contains("RecipeType") || fieldInsn.desc.contains("Recipe") || fieldInsn.owner.contains("Recipe"))) {
+                    RecipeType<?> rt = extractStaticRecipeType(fieldInsn.owner, fieldInsn.name);
+                    if (rt != null) {
                         var ref = new StaticFieldRef(fieldInsn.owner, fieldInsn.name);
                         if (!results.contains(ref)) results.add(ref);
                     }
                 } else if (insn instanceof TypeInsnNode typeInsn) {
-                    if (typeInsn.desc != null && isRelevantClass(typeInsn.desc)) {
-                        referencedClasses.add(typeInsn.desc.replace('/', '.'));
+                    if (typeInsn.desc != null) {
+                        String name = typeInsn.desc.replace('/', '.');
+                        if (isRelevantClassByName(name)) referencedClasses.add(name);
                     }
                 } else if (insn instanceof MethodInsnNode methodInsn) {
-                    if (methodInsn.owner != null && isRelevantClass(methodInsn.owner)) {
-                        referencedClasses.add(methodInsn.owner.replace('/', '.'));
+                    if (methodInsn.owner != null) {
+                        String name = methodInsn.owner.replace('/', '.');
+                        if (isRelevantClassByName(name)) referencedClasses.add(name);
                     }
                 }
             }
         }
 
-        // Заглядываем только в классы GUI/Menu/Handler, связанные с этим блоком (например, SawmillMenu)
         if (depth < 1) {
             for (String refClsName : referencedClasses) {
                 try {
                     Class<?> refCls = Class.forName(refClsName);
-                    var deepRefs = findRecipeTypeReferencesASM(refCls, visitedClasses, depth + 1);
-                    for (var ref : deepRefs) {
-                        if (!results.contains(ref)) results.add(ref);
+                    if (isRelevantClassType(refCls)) {
+                        var deepRefs = findRecipeTypeReferencesASM(refCls, visitedClasses, depth + 1);
+                        for (var ref : deepRefs) {
+                            if (!results.contains(ref)) results.add(ref);
+                        }
                     }
                 } catch (Throwable ignored) {
                 }
@@ -314,10 +320,50 @@ public class MachineRegistry {
         }
     }
 
-    private static boolean isRelevantClass(String classDescOrOwner) {
-        String name = classDescOrOwner.replace('/', '.');
-        if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("net.minecraft.")) return false;
-        return !name.contains("RecipeType") && !name.endsWith("RecipeTypes") && !name.endsWith("Recipes");
+    private static boolean isRelevantClassByName(String className) {
+        return !className.startsWith("java.") && !className.startsWith("javax.") && !className.startsWith("net.minecraft.");
+    }
+
+    private static boolean isRelevantClassType(Class<?> cls) {
+        if (!curClsValid(cls)) return false;
+        // Чистая проверка иерархии типов без строк: проверяем интерфейсы и базовые классы
+        return AbstractContainerMenu.class.isAssignableFrom(cls)
+                || MenuProvider.class.isAssignableFrom(cls)
+                || BlockEntity.class.isAssignableFrom(cls)
+                || Block.class.isAssignableFrom(cls);
+    }
+
+    private int applySmartFallback(StringBuilder dump) {
+        int fallbackCount = 0;
+
+        for (RecipeType<?> recipeType : BuiltInRegistries.RECIPE_TYPE) {
+            ResourceLocation typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+            if (typeId == null || typeId.getNamespace().equals("minecraft")) continue;
+
+            var existing = idMapping.get(typeId);
+            if (existing == null || existing.isEmpty()) {
+                String modId = typeId.getNamespace();
+
+                for (var block : GameRegistryManager.getAllBlocks()) {
+                    ResourceLocation blockId = GameRegistryManager.getBlockId(block);
+                    if (blockId.getNamespace().equals(modId)) {
+                        Item item = block.asItem();
+                        if (item == Items.AIR) continue;
+
+                        // Абстрактное сопоставление по строгой идентичности пути
+                        if (blockId.getPath().equals(typeId.getPath())) {
+                            if (registerDynamicMachine(recipeType, item)) {
+                                dump.append("  [MATCH:FALLBACK] >>> SMART FALLBACK: RecipeType '")
+                                        .append(typeId).append("' -> Machine Item '")
+                                        .append(blockId).append("' <<<\n");
+                                fallbackCount++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return fallbackCount;
     }
 
     private static @Nullable RecipeType<?> extractStaticRecipeType(String ownerClass, String fieldName) {
@@ -475,10 +521,8 @@ public class MachineRegistry {
             if (method.getParameterCount() == 0) {
                 Class<?> rt = method.getReturnType();
                 if (rt != void.class && rt != Void.class && !rt.isPrimitive()) {
-                    String mName = method.getName().toLowerCase();
                     if (RecipeType.class.isAssignableFrom(rt) || Supplier.class.isAssignableFrom(rt) ||
-                            Holder.class.isAssignableFrom(rt) || Optional.class.isAssignableFrom(rt) ||
-                            mName.contains("recipe") || mName.contains("type")) {
+                            Holder.class.isAssignableFrom(rt) || Optional.class.isAssignableFrom(rt)) {
                         try {
                             method.setAccessible(true);
                             methods.add(method);

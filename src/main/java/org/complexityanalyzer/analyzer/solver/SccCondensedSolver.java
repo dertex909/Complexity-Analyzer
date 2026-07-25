@@ -701,9 +701,12 @@ public final class SccCondensedSolver {
                 var primary = appendSharedInputs(recipe, fluidNorm);
 
                 if (validItemRecipe && primary.valid()) {
-                    int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, resultCount,
-                            primary.itemStart(), primary.itemCount(), primary.fluidStart(), primary.fluidCount(), chemInputNode.size(), 0,
-                            machineNode, machineCount, machineMul, -1.0, recipe);
+                    int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget,
+                            recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, resultCount,
+                            primary.itemStart(), primary.itemCount(), primary.fluidStart(), primary.fluidCount(),
+                            chemInputNode.size(), 0, machineNode, machineCount, machineMul,
+                            machineCount > 0 ? machineFallback : -1.0, recipe
+                    );
                     addEdgesForFormula(formulaId);
                 } else {
                     truncateItemSlots(primary.itemStart());
@@ -734,9 +737,10 @@ public final class SccCondensedSolver {
                                 double outputAmount = entry.getDoubleValue();
                                 if (outputAmount <= 0) outputAmount = 1000.0;
                                 double outputBuckets = outputAmount / 1000.0;
-                                int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outputBuckets,
-                                        shared.itemStart(), shared.itemCount(),
-                                        shared.fluidStart(), shared.fluidCount(),
+                                int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode,
+                                        recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(),
+                                        multiplier, outputBuckets,
+                                        shared.itemStart(), shared.itemCount(), shared.fluidStart(), shared.fluidCount(),
                                         chemInputNode.size(), 0,
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         null);
@@ -767,9 +771,9 @@ public final class SccCondensedSolver {
                                 if (outNode == -1) outNode = allocateItemNode(outItem);
                                 double outCount = entry.getDoubleValue();
                                 if (outCount <= 0) outCount = 1.0;
-                                int formulaId = emitFormulaShell(F_ITEM_RECIPE, outNode, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outCount,
-                                        shared.itemStart(), shared.itemCount(),
-                                        shared.fluidStart(), shared.fluidCount(),
+                                int formulaId = emitFormulaShell(F_ITEM_RECIPE, outNode,
+                                        recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outCount,
+                                        shared.itemStart(), shared.itemCount(), shared.fluidStart(), shared.fluidCount(),
                                         chemInputNode.size(), 0,
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         recipe);

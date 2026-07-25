@@ -43,6 +43,8 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 
 import java.io.InputStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -55,9 +57,11 @@ import static net.minecraft.core.registries.Registries.RECIPE_TYPE;
 
 public class MachineRegistry {
 
-    private static final Method[] EMPTY_METHODS = new Method[0];
-    private static final Field[] EMPTY_FIELDS = new Field[0];
-    private static final ClassInfo EMPTY_INFO = new ClassInfo(EMPTY_METHODS, EMPTY_FIELDS);
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+
+    private static final MethodInfo[] EMPTY_METHOD_INFOS = new MethodInfo[0];
+    private static final FieldInfo[] EMPTY_FIELD_INFOS = new FieldInfo[0];
+    private static final ClassInfo EMPTY_INFO = new ClassInfo(EMPTY_METHOD_INFOS, EMPTY_FIELD_INFOS, EMPTY_FIELD_INFOS);
 
     private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> idMapping = new Object2ObjectOpenHashMap<>();
     private final Reference2ObjectMap<RecipeType<?>, ObjectList<Item>> instanceMapping = new Reference2ObjectOpenHashMap<>();
@@ -127,7 +131,8 @@ public class MachineRegistry {
             var f = cls.getDeclaredField(fieldName);
             f.setAccessible(true);
             if (!Modifier.isStatic(f.getModifiers())) return null;
-            var raw = f.get(null);
+            var mh = LOOKUP.unreflectGetter(f);
+            var raw = mh.invoke();
             return unwrapRecipeType(raw);
         } catch (Throwable ignored) {
         }
@@ -376,13 +381,13 @@ public class MachineRegistry {
 
     private int scanBlockEntityInstance(BlockEntity be, ObjectList<Item> groupItems, MachineRegistryDebugLogger logger) {
         int count = 0;
-        Class<?> beClass = be.getClass();
+        var beClass = be.getClass();
         var info = classInfo(beClass);
 
         logger.logBeMethodScanStart(beClass);
-        for (var method : info.recipeMethods()) {
+        for (var mInfo : info.recipeMethods()) {
             try {
-                var raw = method.invoke(be);
+                var raw = mInfo.handle().invoke(be);
                 var recipeType = unwrapRecipeType(raw);
                 boolean matched = false;
                 if (recipeType != null) for (var item : groupItems) {
@@ -391,34 +396,28 @@ public class MachineRegistry {
                         count++;
                     }
                 }
-                logger.logBeMethod(method, raw, recipeType, matched, null);
+                logger.logBeMethod(mInfo.method(), raw, recipeType, matched, null);
             } catch (Throwable t) {
-                logger.logBeMethod(method, null, null, false, t);
+                logger.logBeMethod(mInfo.method(), null, null, false, t);
             }
         }
 
-        var currentClass = beClass;
-        while (curClsValid(currentClass)) {
-            logger.logBeHierarchyClass(currentClass);
-            for (var field : currentClass.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) continue;
-                try {
-                    field.setAccessible(true);
-                    var val = field.get(be);
-                    var recipeType = unwrapRecipeType(val);
-                    boolean matched = false;
-                    if (recipeType != null) for (var item : groupItems) {
-                        if (registerDynamicMachine(recipeType, item)) {
-                            matched = true;
-                            count++;
-                        }
+        logger.logBeHierarchyClass(beClass);
+        for (var fInfo : info.instanceFields()) {
+            try {
+                var val = fInfo.handle().invoke(be);
+                var recipeType = unwrapRecipeType(val);
+                boolean matched = false;
+                if (recipeType != null) for (var item : groupItems) {
+                    if (registerDynamicMachine(recipeType, item)) {
+                        matched = true;
+                        count++;
                     }
-                    logger.logBeField(field, val, recipeType, matched, null);
-                } catch (Throwable t) {
-                    logger.logBeField(field, null, null, false, t);
                 }
+                logger.logBeField(fInfo.field(), val, recipeType, matched, null);
+            } catch (Throwable t) {
+                logger.logBeField(fInfo.field(), null, null, false, t);
             }
-            currentClass = currentClass.getSuperclass();
         }
 
         return count;
@@ -427,28 +426,23 @@ public class MachineRegistry {
     private int scanStaticFieldsOnly(Class<?> clazz, ObjectList<Item> groupItems, MachineRegistryDebugLogger logger) {
         int count = 0;
         logger.logStaticScanStart(clazz);
-        var current = clazz;
-        while (curClsValid(current)) {
-            logger.logStaticHierarchyClass(current);
-            for (var field : current.getDeclaredFields()) {
-                if (!Modifier.isStatic(field.getModifiers())) continue;
-                try {
-                    field.setAccessible(true);
-                    var val = field.get(null);
-                    var recipeType = unwrapRecipeType(val);
-                    boolean matched = false;
-                    if (recipeType != null) for (var item : groupItems) {
-                        if (registerDynamicMachine(recipeType, item)) {
-                            matched = true;
-                            count++;
-                        }
+        var info = classInfo(clazz);
+
+        for (var fInfo : info.staticFields()) {
+            try {
+                var val = fInfo.handle().invoke();
+                var recipeType = unwrapRecipeType(val);
+                boolean matched = false;
+                if (recipeType != null) for (var item : groupItems) {
+                    if (registerDynamicMachine(recipeType, item)) {
+                        matched = true;
+                        count++;
                     }
-                    logger.logStaticField(field, val, recipeType, matched, null);
-                } catch (Throwable t) {
-                    logger.logStaticField(field, null, null, false, t);
                 }
+                logger.logStaticField(fInfo.field(), val, recipeType, matched, null);
+            } catch (Throwable t) {
+                logger.logStaticField(fInfo.field(), null, null, false, t);
             }
-            current = current.getSuperclass();
         }
         return count;
     }
@@ -462,43 +456,62 @@ public class MachineRegistry {
         return info;
     }
 
+    private static boolean isCandidateMethodName(String name) {
+        if (name.length() < 3) return false;
+        char c0 = name.charAt(0);
+        if (c0 == 'g') return name.startsWith("get");
+        if (c0 == 'r') return name.startsWith("recipe");
+        if (c0 == 't') return name.startsWith("type");
+        return false;
+    }
+
     private ClassInfo buildClassInfo(Class<?> clazz) {
         if (!curClsValid(clazz)) return EMPTY_INFO;
 
-        var methods = new ObjectArrayList<Method>();
+        var methods = new ObjectArrayList<MethodInfo>();
         for (var method : clazz.getMethods()) {
             if (method.getParameterCount() == 0) {
                 var rt = method.getReturnType();
                 if (rt != void.class && rt != Void.class && !rt.isPrimitive()) {
-                    String name = method.getName();
-                    if (RecipeType.class.isAssignableFrom(rt) || Supplier.class.isAssignableFrom(rt)
-                            || Holder.class.isAssignableFrom(rt) || Optional.class.isAssignableFrom(rt)
-                            || name.startsWith("get") || name.startsWith("recipe") || name.startsWith("type")) try {
+                    boolean isValidType = RecipeType.class.isAssignableFrom(rt) || Supplier.class.isAssignableFrom(rt)
+                            || Holder.class.isAssignableFrom(rt) || Optional.class.isAssignableFrom(rt);
+
+                    if (isValidType || isCandidateMethodName(method.getName())) try {
                         method.setAccessible(true);
-                        methods.add(method);
+                        var mh = LOOKUP.unreflect(method);
+                        methods.add(new MethodInfo(mh, method));
                     } catch (Throwable ignored) {
                     }
                 }
             }
         }
 
-        var fields = new ObjectArrayList<Field>();
+        var instanceFields = new ObjectArrayList<FieldInfo>();
+        var staticFields = new ObjectArrayList<FieldInfo>();
         var current = clazz;
+
         while (curClsValid(current)) {
             for (var field : current.getDeclaredFields()) {
                 if (field.getType().isPrimitive()) continue;
                 try {
                     field.setAccessible(true);
-                    fields.add(field);
+                    var mh = LOOKUP.unreflectGetter(field);
+                    if (Modifier.isStatic(field.getModifiers())) {
+                        staticFields.add(new FieldInfo(mh, field));
+                    } else {
+                        instanceFields.add(new FieldInfo(mh, field));
+                    }
                 } catch (Throwable ignored) {
                 }
             }
             current = current.getSuperclass();
         }
 
-        var methodArray = methods.isEmpty() ? EMPTY_METHODS : methods.toArray(new Method[0]);
-        var fieldArray = fields.isEmpty() ? EMPTY_FIELDS : fields.toArray(new Field[0]);
-        return new ClassInfo(methodArray, fieldArray);
+        var methodArray = methods.isEmpty() ? EMPTY_METHOD_INFOS : methods.toArray(new MethodInfo[0]);
+        var instFieldArray = instanceFields.isEmpty() ? EMPTY_FIELD_INFOS : instanceFields.toArray(new FieldInfo[0]);
+        var staticFieldArray = staticFields.isEmpty() ? EMPTY_FIELD_INFOS : staticFields.toArray(new FieldInfo[0]);
+
+        return new ClassInfo(methodArray, instFieldArray, staticFieldArray);
     }
 
     @Nullable
@@ -538,14 +551,14 @@ public class MachineRegistry {
 
         var info = classInfo(obj.getClass());
 
-        for (var method : info.recipeMethods()) {
+        for (var mInfo : info.recipeMethods()) {
             try {
-                var val = method.invoke(obj);
+                var val = mInfo.handle().invoke(obj);
                 if (val == null) continue;
 
                 var rt = unwrapRecipeType(val);
                 boolean isComplex = isComplexObject(val);
-                logger.logDeepMethod(method, val, rt, null, isComplex, depth);
+                logger.logDeepMethod(mInfo.method(), val, rt, null, isComplex, depth);
 
                 if (rt != null) return rt;
 
@@ -554,18 +567,18 @@ public class MachineRegistry {
                     if (deep != null) return deep;
                 }
             } catch (Throwable t) {
-                logger.logDeepMethod(method, null, null, t, false, depth);
+                logger.logDeepMethod(mInfo.method(), null, null, t, false, depth);
             }
         }
 
-        for (var field : info.fields()) {
+        for (var fInfo : info.instanceFields()) {
             try {
-                var val = field.get(obj);
+                var val = fInfo.handle().invoke(obj);
                 if (val == null) continue;
 
                 var rt = unwrapRecipeType(val);
                 boolean isComplex = isComplexObject(val);
-                logger.logDeepField(field, val, rt, null, isComplex, depth);
+                logger.logDeepField(fInfo.field(), val, rt, null, isComplex, depth);
 
                 if (rt != null) return rt;
 
@@ -574,7 +587,7 @@ public class MachineRegistry {
                     if (deep != null) return deep;
                 }
             } catch (Throwable t) {
-                logger.logDeepField(field, null, null, t, false, depth);
+                logger.logDeepField(fInfo.field(), null, null, t, false, depth);
             }
         }
         return null;
@@ -633,7 +646,13 @@ public class MachineRegistry {
     private record StaticFieldRef(String ownerClass, String fieldName) {
     }
 
-    private record ClassInfo(Method[] recipeMethods, Field[] fields) {
+    private record MethodInfo(MethodHandle handle, Method method) {
+    }
+
+    private record FieldInfo(MethodHandle handle, Field field) {
+    }
+
+    private record ClassInfo(MethodInfo[] recipeMethods, FieldInfo[] instanceFields, FieldInfo[] staticFields) {
     }
 
     private record ClassGroupKey(Class<?> blockClass, @Nullable Class<?> beClass) {

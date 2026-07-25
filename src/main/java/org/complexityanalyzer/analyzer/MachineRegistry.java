@@ -20,6 +20,7 @@ package org.complexityanalyzer.analyzer;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
@@ -51,8 +52,11 @@ import static net.minecraft.core.BlockPos.ZERO;
 public class MachineRegistry {
 
     private static final ClassInfo EMPTY_INFO = new ClassInfo(new Method[0], new Field[0]);
-    private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping = new Object2ObjectOpenHashMap<>();
+
+    private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> idMapping = new Object2ObjectOpenHashMap<>();
+    private final Reference2ObjectMap<RecipeType<?>, ObjectList<Item>> instanceMapping = new Reference2ObjectOpenHashMap<>();
     private final Object2ObjectMap<Class<?>, ClassInfo> classInfoCache = new Object2ObjectOpenHashMap<>();
+
     private boolean initialized = false;
 
     public void initialize(MinecraftServer server) {
@@ -65,7 +69,7 @@ public class MachineRegistry {
         MachineRegistryCache.Fingerprint fingerprint = null;
         if (cacheFile != null) {
             fingerprint = MachineRegistryCache.INSTANCE.computeFingerprint();
-            int restored = MachineRegistryCache.INSTANCE.tryLoad(cacheFile, fingerprint, mapping);
+            int restored = MachineRegistryCache.INSTANCE.tryLoad(cacheFile, fingerprint, idMapping);
             if (restored >= 0) {
                 ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
                 initialized = true;
@@ -76,16 +80,25 @@ public class MachineRegistry {
         int dynamic = registerModdedMachines(server);
         ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Total registered {} dynamic modded machines", dynamic);
 
-        if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, mapping);
+        if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, idMapping);
 
         initialized = true;
     }
 
     @Nullable
     public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
-        if (!initialized) return null;
+        if (!initialized || type == null) return null;
+
+        var listByInst = instanceMapping.get(type);
+        if (listByInst != null && !listByInst.isEmpty()) return listByInst;
+
         var typeId = GameRegistryManager.getRecipeTypeId(type);
-        return (typeId != null) ? mapping.get(typeId) : null;
+        if (typeId != null) {
+            var listById = idMapping.get(typeId);
+            if (listById != null && !listById.isEmpty()) return listById;
+        }
+
+        return null;
     }
 
     @Nullable
@@ -139,16 +152,14 @@ public class MachineRegistry {
                         dump.append("  [BE_CREATE] FAILED: ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
                     }
 
-                    // 1. Сканируем через ASM инструкций байткода
                     Class<?> targetClass = be != null ? be.getClass() : block.getClass();
                     int asmScanned = scanClassBytecodeASM(targetClass, machineItem, dump);
                     registeredCount += asmScanned;
 
-                    // 2. Сканируем рефлексией инстанс
                     if (be != null) {
                         int scanned = scanBlockEntityInstance(be, machineItem, dump);
                         if (scanned == 0 && asmScanned == 0) {
-                            var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>(), dump);
+                            var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>());
                             if (rt != null && registerDynamicMachine(rt, machineItem)) {
                                 var typeId = GameRegistryManager.getRecipeTypeId(rt);
                                 dump.append("  [MATCH:DEEP] >>> MATCH: RecipeType '").append(typeId).append("' -> Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
@@ -199,8 +210,7 @@ public class MachineRegistry {
         return count;
     }
 
-    private record StaticFieldRef(String ownerClass, String fieldName) {
-    }
+    private record StaticFieldRef(String ownerClass, String fieldName) {}
 
     private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz) {
         var results = new ObjectArrayList<StaticFieldRef>();
@@ -252,6 +262,7 @@ public class MachineRegistry {
             Class<?> cls = Class.forName(ownerClass.replace('/', '.'));
             Field f = cls.getDeclaredField(fieldName);
             f.setAccessible(true);
+            if (!Modifier.isStatic(f.getModifiers())) return null;
             Object raw = f.get(null);
             return unwrapRecipeType(raw);
         } catch (Throwable ignored) {
@@ -325,25 +336,42 @@ public class MachineRegistry {
 
     @Nullable
     private static RecipeType<?> unwrapRecipeType(@Nullable Object obj) {
-        if (obj == null) return null;
-        if (obj instanceof RecipeType<?> rt) return rt;
-
-        // Разворачиваем обертки (например, Create IRecipeTypeInfo, Supplier, Holder, Optional)
-        try {
-            for (Method m : obj.getClass().getMethods()) {
-                if (m.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(m.getReturnType())) {
-                    m.setAccessible(true);
-                    Object res = m.invoke(obj);
-                    if (res instanceof RecipeType<?> rt) return rt;
+        switch (obj) {
+            case null -> {
+                return null;
+            }
+            case RecipeType<?> rt -> {
+                return rt;
+            }
+            case Holder<?> holder -> {
+                try {
+                    if (holder.isBound()) {
+                        Object val = holder.value();
+                        if (val instanceof RecipeType<?> rt) return rt;
+                    }
+                    var keyOpt = holder.unwrapKey();
+                    if (keyOpt.isPresent()) {
+                        ResourceLocation loc = keyOpt.get().location();
+                        RecipeType<?> rt = BuiltInRegistries.RECIPE_TYPE.get(loc);
+                        if (rt != null) return rt;
+                    }
+                } catch (Throwable ignored) {
                 }
             }
-        } catch (Throwable ignored) {
+            default -> {
+            }
+        }
+
+        if (obj instanceof ResourceLocation rl) {
+            try {
+                return BuiltInRegistries.RECIPE_TYPE.get(rl);
+            } catch (Throwable ignored) {
+            }
         }
 
         if (obj instanceof Supplier<?> supplier) {
             try {
-                Object val = supplier.get();
-                if (val instanceof RecipeType<?> rt) return rt;
+                return unwrapRecipeType(supplier.get());
             } catch (Throwable ignored) {
             }
         }
@@ -352,18 +380,23 @@ public class MachineRegistry {
             if (opt.isPresent()) return unwrapRecipeType(opt.get());
         }
 
-        if (obj instanceof Holder<?> holder) {
-            try {
-                return unwrapRecipeType(holder.value());
-            } catch (Throwable ignored) {
+        try {
+            for (Method m : obj.getClass().getMethods()) {
+                if (m.getParameterCount() == 0 && (RecipeType.class.isAssignableFrom(m.getReturnType()) || Holder.class.isAssignableFrom(m.getReturnType()))) {
+                    m.setAccessible(true);
+                    Object res = m.invoke(obj);
+                    RecipeType<?> rt = unwrapRecipeType(res);
+                    if (rt != null) return rt;
+                }
             }
+        } catch (Throwable ignored) {
         }
 
         return null;
     }
 
     private ClassInfo classInfo(Class<?> clazz) {
-        var info = classInfoCache.get(clazz);
+        ClassInfo info = classInfoCache.get(clazz);
         if (info != null) return info;
         info = buildClassInfo(clazz);
         classInfoCache.put(clazz, info);
@@ -409,7 +442,7 @@ public class MachineRegistry {
     }
 
     @Nullable
-    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited, StringBuilder dump) {
+    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited) {
         if (obj == null || depth > 5 || !visited.add(obj)) return null;
 
         RecipeType<?> directUnwrap = unwrapRecipeType(obj);
@@ -417,7 +450,7 @@ public class MachineRegistry {
 
         if (obj instanceof Iterable<?> coll) {
             for (Object item : coll) {
-                RecipeType<?> res = findRecipeTypeDeep(item, depth + 1, visited, dump);
+                RecipeType<?> res = findRecipeTypeDeep(item, depth + 1, visited);
                 if (res != null) return res;
             }
             return null;
@@ -425,7 +458,7 @@ public class MachineRegistry {
 
         if (obj instanceof Map<?, ?> map) {
             for (Object item : map.values()) {
-                RecipeType<?> res = findRecipeTypeDeep(item, depth + 1, visited, dump);
+                RecipeType<?> res = findRecipeTypeDeep(item, depth + 1, visited);
                 if (res != null) return res;
             }
             return null;
@@ -439,8 +472,8 @@ public class MachineRegistry {
                 RecipeType<?> rt = unwrapRecipeType(val);
                 if (rt != null) return rt;
 
-                if (val != null && !isPrimitiveOrJava(val)) {
-                    RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited, dump);
+                if (isComplexObject(val)) {
+                    RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited);
                     if (deep != null) return deep;
                 }
             } catch (Throwable ignored) {
@@ -453,8 +486,8 @@ public class MachineRegistry {
                 RecipeType<?> rt = unwrapRecipeType(val);
                 if (rt != null) return rt;
 
-                if (val != null && !isPrimitiveOrJava(val)) {
-                    RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited, dump);
+                if (isComplexObject(val)) {
+                    RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited);
                     if (deep != null) return deep;
                 }
             } catch (Throwable ignored) {
@@ -463,11 +496,11 @@ public class MachineRegistry {
         return null;
     }
 
-    private static boolean isPrimitiveOrJava(Object obj) {
-        if (obj == null) return true;
+    private static boolean isComplexObject(@Nullable Object obj) {
+        if (obj == null) return false;
         Class<?> c = obj.getClass();
         String name = c.getName();
-        return c.isPrimitive() || c.isEnum() || name.startsWith("java.") || name.startsWith("javax.");
+        return !c.isPrimitive() && !c.isEnum() && !name.startsWith("java.") && !name.startsWith("javax.");
     }
 
     private static boolean curClsValid(@Nullable Class<?> cls) {
@@ -490,15 +523,18 @@ public class MachineRegistry {
 
     private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
         if (item == Items.AIR) return false;
-        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
-        if (typeId == null) return false;
 
-        var list = mapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
-        if (!list.contains(item)) {
-            list.add(item);
-            return true;
+        instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>()).add(item);
+
+        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+        if (typeId != null) {
+            var list = idMapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
+            if (!list.contains(item)) {
+                list.add(item);
+                return true;
+            }
         }
-        return false;
+        return true;
     }
 
     private void register(String recipeTypeId, String itemId) {
@@ -511,7 +547,7 @@ public class MachineRegistry {
             return;
         }
 
-        mapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>()).add(item);
+        idMapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>()).add(item);
     }
 
     private record ClassInfo(Method[] recipeMethods, Field[] fields) {

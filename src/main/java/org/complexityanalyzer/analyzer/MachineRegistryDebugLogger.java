@@ -24,17 +24,15 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.util.ModFileManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 
 public final class MachineRegistryDebugLogger {
 
@@ -319,10 +317,8 @@ public final class MachineRegistryDebugLogger {
 
     private void saveDumpToDisk(String content) {
         try {
-            var saveDir = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer");
-            Files.createDirectories(saveDir);
-            var dumpFile = saveDir.resolve("machine_scan_debug.txt");
-            Files.writeString(dumpFile, content, StandardCharsets.UTF_8);
+            var dumpFile = ModFileManager.resolve(server, "machine_scan_debug.txt");
+            ModFileManager.writeStringAtomic(dumpFile, content);
             ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved full scan debug file to: {}", dumpFile.toAbsolutePath());
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("[MachineRegistry] Failed to write debug dump file: {}", t.getMessage());

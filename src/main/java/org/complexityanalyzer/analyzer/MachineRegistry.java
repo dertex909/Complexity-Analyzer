@@ -19,12 +19,12 @@
 package org.complexityanalyzer.analyzer;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -32,9 +32,19 @@ import org.complexityanalyzer.cache.MachineRegistryCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.tree.*;
 
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import static net.minecraft.core.BlockPos.ZERO;
 
@@ -63,8 +73,8 @@ public class MachineRegistry {
             }
         }
 
-        int dynamic = registerModdedMachines();
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} dynamic modded machines via BlockEntity scanning", dynamic);
+        int dynamic = registerModdedMachines(server);
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Total registered {} dynamic modded machines", dynamic);
 
         if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, mapping);
 
@@ -95,7 +105,7 @@ public class MachineRegistry {
         return 7;
     }
 
-    private int registerModdedMachines() {
+    private int registerModdedMachines(MinecraftServer server) {
         int registeredCount = 0;
         int entityBlocks = 0;
         int errors = 0;
@@ -103,56 +113,183 @@ public class MachineRegistry {
         var blocks = GameRegistryManager.getAllBlocks();
         int totalBlocks = blocks.size();
 
+        StringBuilder dump = new StringBuilder(1024 * 1024);
+        dump.append("=================================================================\n");
+        dump.append("MACHINE REGISTRY FULL DEBUG DUMP\n");
+        dump.append("Total Blocks to scan: ").append(totalBlocks).append("\n");
+        dump.append("=================================================================\n\n");
+
         for (var block : blocks) {
-            try {
-                var rt = findRecipeTypeDeep(block, 0, new ReferenceOpenHashSet<>());
-                if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
-            } catch (Throwable ignored) {
-            }
+            Item machineItem = block.asItem();
+            if (machineItem == Items.AIR) continue;
+
+            ResourceLocation blockId = GameRegistryManager.getBlockId(block);
 
             if (block instanceof EntityBlock entityBlock) {
                 entityBlocks++;
+                dump.append("\n-----------------------------------------------------------------\n");
+                dump.append("BLOCK: ").append(blockId).append(" | Class: ").append(block.getClass().getName()).append("\n");
+
                 try {
-                    var be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
+                    BlockEntity be = null;
+                    try {
+                        be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
+                        dump.append("  [BE_CREATE] SUCCESS: Created BlockEntity instance -> ").append(be.getClass().getName()).append("\n");
+                    } catch (Throwable t) {
+                        dump.append("  [BE_CREATE] FAILED: ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
+                    }
+
+                    // 1. Сканируем через ASM инструкций байткода
+                    Class<?> targetClass = be != null ? be.getClass() : block.getClass();
+                    int asmScanned = scanClassBytecodeASM(targetClass, machineItem, dump);
+                    registeredCount += asmScanned;
+
+                    // 2. Сканируем рефлексией инстанс
                     if (be != null) {
-                        var beClass = be.getClass();
-                        int scanned = scanBlockEntityClass(beClass, be, block);
-                        if (scanned == 0) {
-                            var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>());
-                            if (rt != null && registerDynamicMachine(rt, block.asItem())) registeredCount++;
+                        int scanned = scanBlockEntityInstance(be, machineItem, dump);
+                        if (scanned == 0 && asmScanned == 0) {
+                            var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>(), dump);
+                            if (rt != null && registerDynamicMachine(rt, machineItem)) {
+                                var typeId = GameRegistryManager.getRecipeTypeId(rt);
+                                dump.append("  [MATCH:DEEP] >>> MATCH: RecipeType '").append(typeId).append("' -> Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
+                                registeredCount++;
+                            }
                         } else {
                             registeredCount += scanned;
                         }
+                    } else {
+                        registeredCount += scanStaticFieldsOnly(block.getClass(), machineItem, dump);
                     }
                 } catch (Throwable t) {
                     errors++;
+                    dump.append("  [FATAL_BLOCK_ERROR] ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
                 }
             }
         }
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Dynamic machine scan results: totalBlocks={}, entityBlocks={}, registered={}, errors={}",
-                totalBlocks, entityBlocks, registeredCount, errors);
+
+        dump.append("\n=================================================================\n");
+        dump.append("SCAN SUMMARY:\n");
+        dump.append("Total Blocks: ").append(totalBlocks).append("\n");
+        dump.append("Entity Blocks: ").append(entityBlocks).append("\n");
+        dump.append("Registered Machines: ").append(registeredCount).append("\n");
+        dump.append("Errors: ").append(errors).append("\n");
+        dump.append("=================================================================\n");
+
+        saveDumpToDisk(server, dump.toString());
+
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry:SUMMARY] Scan finished! Registered Machines={}, Errors={}. Full debug dumped to disk!", registeredCount, errors);
+
         return registeredCount;
     }
 
-    private int scanBlockEntityClass(Class<?> beClass, BlockEntity be, Block block) {
+    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, StringBuilder dump) {
+        if (!curClsValid(clazz)) return 0;
         int count = 0;
+        var refs = findRecipeTypeReferencesASM(clazz);
 
-        for (var method : beClass.getMethods()) {
-            if (method.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(method.getReturnType())) try {
-                method.setAccessible(true);
-                var recipeType = (RecipeType<?>) method.invoke(be);
-                if (recipeType != null && registerDynamicMachine(recipeType, block.asItem())) count++;
+        for (var ref : refs) {
+            RecipeType<?> rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
+            if (rt != null && registerDynamicMachine(rt, machineItem)) {
+                var typeId = GameRegistryManager.getRecipeTypeId(rt);
+                dump.append("  [MATCH:ASM] >>> MATCH VIA ASM: Field ").append(ref.ownerClass()).append("->").append(ref.fieldName())
+                        .append(" => RecipeType '").append(typeId).append("' -> Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private record StaticFieldRef(String ownerClass, String fieldName) {
+    }
+
+    private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz) {
+        var results = new ObjectArrayList<StaticFieldRef>();
+        if (!curClsValid(clazz)) return results;
+
+        try {
+            String resourceName = clazz.getSimpleName() + ".class";
+            try (InputStream is = clazz.getResourceAsStream(resourceName)) {
+                if (is != null) {
+                    processBytecodeASM(is, results);
+                } else {
+                    String classPath = "/" + clazz.getName().replace('.', '/') + ".class";
+                    try (InputStream is2 = clazz.getResourceAsStream(classPath)) {
+                        if (is2 != null) processBytecodeASM(is2, results);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return results;
+    }
+
+    private static void processBytecodeASM(InputStream is, ObjectList<StaticFieldRef> results) throws Exception {
+        ClassReader cr = new ClassReader(is);
+        ClassNode cn = new ClassNode();
+        cr.accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+
+        for (FieldNode field : cn.fields) {
+            if (field.desc != null && (field.desc.contains("RecipeType") || field.desc.contains("Recipe"))) {
+                results.add(new StaticFieldRef(cn.name, field.name));
+            }
+        }
+
+        for (MethodNode method : cn.methods) {
+            if (method.instructions == null) continue;
+            for (AbstractInsnNode insn : method.instructions) {
+                if (insn instanceof FieldInsnNode fieldInsn) {
+                    if (fieldInsn.desc != null && (fieldInsn.desc.contains("RecipeType") || fieldInsn.desc.contains("Recipe") || fieldInsn.owner.contains("Recipe"))) {
+                        var ref = new StaticFieldRef(fieldInsn.owner, fieldInsn.name);
+                        if (!results.contains(ref)) results.add(ref);
+                    }
+                }
+            }
+        }
+    }
+
+    private static @Nullable RecipeType<?> extractStaticRecipeType(String ownerClass, String fieldName) {
+        try {
+            Class<?> cls = Class.forName(ownerClass.replace('/', '.'));
+            Field f = cls.getDeclaredField(fieldName);
+            f.setAccessible(true);
+            Object raw = f.get(null);
+            return unwrapRecipeType(raw);
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    private int scanBlockEntityInstance(BlockEntity be, Item machineItem, StringBuilder dump) {
+        int count = 0;
+        Class<?> beClass = be.getClass();
+        ClassInfo info = classInfo(beClass);
+
+        for (Method method : info.recipeMethods()) {
+            try {
+                Object raw = method.invoke(be);
+                RecipeType<?> recipeType = unwrapRecipeType(raw);
+                if (recipeType != null && registerDynamicMachine(recipeType, machineItem)) {
+                    var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+                    dump.append("    [MATCH:METHOD] >>> MAPPED RecipeType '").append(typeId).append("' -> Machine Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
+                    count++;
+                }
             } catch (Throwable ignored) {
             }
         }
 
         var currentClass = beClass;
-        while (currentClass != null && currentClass != Object.class) {
-            for (var field : currentClass.getDeclaredFields()) {
-                if (RecipeType.class.isAssignableFrom(field.getType())) try {
+        while (curClsValid(currentClass)) {
+            for (Field field : currentClass.getDeclaredFields()) {
+                try {
                     field.setAccessible(true);
-                    var recipeType = (RecipeType<?>) field.get(be);
-                    if (recipeType != null && registerDynamicMachine(recipeType, block.asItem())) count++;
+                    Object val = field.get(be);
+                    RecipeType<?> recipeType = unwrapRecipeType(val);
+
+                    if (recipeType != null && registerDynamicMachine(recipeType, machineItem)) {
+                        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+                        dump.append("    [MATCH:FIELD] >>> MAPPED RecipeType '").append(typeId).append("' -> Machine Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
+                        count++;
+                    }
                 } catch (Throwable ignored) {
                 }
             }
@@ -160,6 +297,69 @@ public class MachineRegistry {
         }
 
         return count;
+    }
+
+    private int scanStaticFieldsOnly(Class<?> clazz, Item machineItem, StringBuilder dump) {
+        int count = 0;
+        Class<?> current = clazz;
+        while (curClsValid(current)) {
+            for (Field field : current.getDeclaredFields()) {
+                try {
+                    field.setAccessible(true);
+                    if (Modifier.isStatic(field.getModifiers())) {
+                        Object val = field.get(null);
+                        RecipeType<?> recipeType = unwrapRecipeType(val);
+                        if (recipeType != null && registerDynamicMachine(recipeType, machineItem)) {
+                            var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+                            dump.append("    [MATCH:STATIC_FIELD] >>> MAPPED RecipeType '").append(typeId).append("' -> Machine Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
+                            count++;
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return count;
+    }
+
+    @Nullable
+    private static RecipeType<?> unwrapRecipeType(@Nullable Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof RecipeType<?> rt) return rt;
+
+        // Разворачиваем обертки (например, Create IRecipeTypeInfo, Supplier, Holder, Optional)
+        try {
+            for (Method m : obj.getClass().getMethods()) {
+                if (m.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(m.getReturnType())) {
+                    m.setAccessible(true);
+                    Object res = m.invoke(obj);
+                    if (res instanceof RecipeType<?> rt) return rt;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        if (obj instanceof Supplier<?> supplier) {
+            try {
+                Object val = supplier.get();
+                if (val instanceof RecipeType<?> rt) return rt;
+            } catch (Throwable ignored) {
+            }
+        }
+
+        if (obj instanceof Optional<?> opt) {
+            if (opt.isPresent()) return unwrapRecipeType(opt.get());
+        }
+
+        if (obj instanceof Holder<?> holder) {
+            try {
+                return unwrapRecipeType(holder.value());
+            } catch (Throwable ignored) {
+            }
+        }
+
+        return null;
     }
 
     private ClassInfo classInfo(Class<?> clazz) {
@@ -171,21 +371,30 @@ public class MachineRegistry {
     }
 
     private ClassInfo buildClassInfo(Class<?> clazz) {
-        var name = clazz.getName();
-        if (name.startsWith("java.") || name.startsWith("net.minecraft.")) return EMPTY_INFO;
+        if (!curClsValid(clazz)) return EMPTY_INFO;
 
         var methods = new ObjectArrayList<Method>();
         for (var method : clazz.getMethods()) {
-            if (method.getParameterCount() == 0 && RecipeType.class.isAssignableFrom(method.getReturnType())) try {
-                method.setAccessible(true);
-                methods.add(method);
-            } catch (Throwable ignored) {
+            if (method.getParameterCount() == 0) {
+                Class<?> rt = method.getReturnType();
+                if (rt != void.class && rt != Void.class && !rt.isPrimitive()) {
+                    String mName = method.getName().toLowerCase();
+                    if (RecipeType.class.isAssignableFrom(rt) || Supplier.class.isAssignableFrom(rt) ||
+                            Holder.class.isAssignableFrom(rt) || Optional.class.isAssignableFrom(rt) ||
+                            mName.contains("recipe") || mName.contains("type")) {
+                        try {
+                            method.setAccessible(true);
+                            methods.add(method);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
             }
         }
 
         var fields = new ObjectArrayList<Field>();
         var current = clazz;
-        while (current != null && current != Object.class) {
+        while (curClsValid(current)) {
             for (var field : current.getDeclaredFields()) {
                 if (field.getType().isPrimitive()) continue;
                 try {
@@ -200,30 +409,83 @@ public class MachineRegistry {
     }
 
     @Nullable
-    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited) {
-        if (obj == null || depth > 3 || !visited.add(obj)) return null;
+    private RecipeType<?> findRecipeTypeDeep(Object obj, int depth, ReferenceSet<Object> visited, StringBuilder dump) {
+        if (obj == null || depth > 5 || !visited.add(obj)) return null;
+
+        RecipeType<?> directUnwrap = unwrapRecipeType(obj);
+        if (directUnwrap != null) return directUnwrap;
+
+        if (obj instanceof Iterable<?> coll) {
+            for (Object item : coll) {
+                RecipeType<?> res = findRecipeTypeDeep(item, depth + 1, visited, dump);
+                if (res != null) return res;
+            }
+            return null;
+        }
+
+        if (obj instanceof Map<?, ?> map) {
+            for (Object item : map.values()) {
+                RecipeType<?> res = findRecipeTypeDeep(item, depth + 1, visited, dump);
+                if (res != null) return res;
+            }
+            return null;
+        }
+
         var info = classInfo(obj.getClass());
 
         for (var method : info.recipeMethods()) {
             try {
-                var recipeType = (RecipeType<?>) method.invoke(obj);
-                if (recipeType != null) return recipeType;
+                Object val = method.invoke(obj);
+                RecipeType<?> rt = unwrapRecipeType(val);
+                if (rt != null) return rt;
+
+                if (val != null && !isPrimitiveOrJava(val)) {
+                    RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited, dump);
+                    if (deep != null) return deep;
+                }
             } catch (Throwable ignored) {
             }
         }
 
         for (var field : info.fields()) {
             try {
-                var val = field.get(obj);
-                if (val != null) {
-                    if (val instanceof RecipeType<?> rt) return rt;
-                    var deep = findRecipeTypeDeep(val, depth + 1, visited);
+                Object val = field.get(obj);
+                RecipeType<?> rt = unwrapRecipeType(val);
+                if (rt != null) return rt;
+
+                if (val != null && !isPrimitiveOrJava(val)) {
+                    RecipeType<?> deep = findRecipeTypeDeep(val, depth + 1, visited, dump);
                     if (deep != null) return deep;
                 }
             } catch (Throwable ignored) {
             }
         }
         return null;
+    }
+
+    private static boolean isPrimitiveOrJava(Object obj) {
+        if (obj == null) return true;
+        Class<?> c = obj.getClass();
+        String name = c.getName();
+        return c.isPrimitive() || c.isEnum() || name.startsWith("java.") || name.startsWith("javax.");
+    }
+
+    private static boolean curClsValid(@Nullable Class<?> cls) {
+        if (cls == null || cls == Object.class) return false;
+        String name = cls.getName();
+        return !name.startsWith("java.") && !name.startsWith("net.minecraft.");
+    }
+
+    private static void saveDumpToDisk(MinecraftServer server, String content) {
+        try {
+            Path saveDir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("data").resolve("complexityanalyzer");
+            Files.createDirectories(saveDir);
+            Path dumpFile = saveDir.resolve("machine_scan_debug.txt");
+            Files.writeString(dumpFile, content, StandardCharsets.UTF_8);
+            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved full scan debug file to: {}", dumpFile.toAbsolutePath());
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.error("[MachineRegistry] Failed to write debug dump file: {}", t.getMessage());
+        }
     }
 
     private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {

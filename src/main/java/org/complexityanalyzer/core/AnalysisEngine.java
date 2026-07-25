@@ -166,7 +166,7 @@ public class AnalysisEngine {
                 safeRunCallback(onComplete);
                 fireAnalysisComplete(!fullRebuild);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             if (isInterrupted() || isSuperseded(gen)) {
                 restoreIdleState(gen);
             } else {

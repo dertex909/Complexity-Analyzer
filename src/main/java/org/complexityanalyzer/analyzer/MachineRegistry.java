@@ -93,7 +93,6 @@ public class MachineRegistry {
         var cn = new ClassNode();
         cr.accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
-        // 1. Проверяем статические поля самого класса
         for (var field : cn.fields) {
             if ((field.access & Modifier.STATIC) != 0) {
                 var directRt = extractStaticRecipeType(cn.name, field.name);
@@ -104,7 +103,6 @@ public class MachineRegistry {
             }
         }
 
-        // 2. Проверяем инструкции обращения к статическим полям в методах
         for (var method : cn.methods) {
             if (method.instructions == null) continue;
             for (var insn : method.instructions) {
@@ -181,7 +179,6 @@ public class MachineRegistry {
             }
 
 
-            // Supplier
             case Supplier<?> supplier -> {
                 try {
                     return unwrapRecipeType(supplier.get());
@@ -191,7 +188,6 @@ public class MachineRegistry {
             }
 
 
-            // Optional
             case Optional<?> opt -> {
                 return opt.map(MachineRegistry::unwrapRecipeType).orElse(null);
             }
@@ -199,7 +195,6 @@ public class MachineRegistry {
             }
         }
 
-        // Рефлексия по публичным методам без параметров
         try {
             for (var m : obj.getClass().getMethods()) {
                 if (m.getParameterCount() == 0 && (RecipeType.class.isAssignableFrom(m.getReturnType()) || Holder.class.isAssignableFrom(m.getReturnType()))) {

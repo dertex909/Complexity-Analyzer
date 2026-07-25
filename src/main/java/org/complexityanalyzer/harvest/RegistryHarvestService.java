@@ -95,7 +95,7 @@ public final class RegistryHarvestService {
                 long elapsed = System.currentTimeMillis() - startTime;
                 final var remainingStr = getRemaining(elapsed, scanned, totalRecipes);
 
-                ComplexityAnalyzer.LOGGER.info("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
+                ComplexityAnalyzer.LOGGER.debug("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
                         scanned, totalRecipes, String.format(US, "%.1f", (scanned * 100.0) / totalRecipes),
                         remainingStr, harvested, rejected, failed);
             }

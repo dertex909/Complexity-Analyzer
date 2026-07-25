@@ -24,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.jetbrains.annotations.Nullable;
@@ -43,7 +44,7 @@ public final class MachineRegistryDebugLogger {
         if (DEBUG_ENABLED) {
             ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Debug logging is ENABLED (-Dcomplexityanalyzer.MachineRegistryDebug=true)");
         } else {
-            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Debug logging is DISABLED (To enable, set JVM flag: -Dcomplexityanalyzer.MachineRegistryDebug=true)");
+            ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Debug logging is DISABLED (To enable, set JVM flag: -Dcomplexityanalyzer.MachineRegistryDebug=true)");
         }
     }
 
@@ -132,12 +133,6 @@ public final class MachineRegistryDebugLogger {
         dump.append("  [BE_CREATE] NULL: newBlockEntity returned null\n");
     }
 
-    public void logBeCreateFailed(Throwable t) {
-        if (!DEBUG_ENABLED) return;
-        dump.append("  [BE_CREATE] FAILED: ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
-        dump.append("  [BE_CREATE_STACKTRACE]:\n").append(getStackTraceString(t)).append("\n");
-    }
-
     public void logNonBeBlock() {
         if (!DEBUG_ENABLED) return;
         dump.append("  [NON_BE_BLOCK] Block has no BlockEntity (Stonecutter/Sawmill style)\n");
@@ -215,30 +210,6 @@ public final class MachineRegistryDebugLogger {
     public void logStaticScanStart(Class<?> clazz) {
         if (!DEBUG_ENABLED) return;
         dump.append("  [STATIC_FIELD_SCAN] Inspecting static fields for class: ").append(clazz.getName()).append("\n");
-    }
-
-    public void logStaticHierarchyClass(Class<?> cls) {
-        if (!DEBUG_ENABLED) return;
-        dump.append("  [STATIC_HIERARCHY] Class: ").append(cls.getName()).append("\n");
-    }
-
-    public void logStaticField(Field field, Object val, @Nullable RecipeType<?> rt, boolean matched, @Nullable Throwable err) {
-        if (!DEBUG_ENABLED) return;
-        if (err != null) {
-            dump.append("    [STATIC_FIELD_ERR] ").append(field.getName()).append(": ")
-                    .append(err.getClass().getName()).append(": ").append(err.getMessage()).append("\n")
-                    .append("    [STATIC_FIELD_ERR_STACKTRACE]:\n").append(getStackTraceString(err)).append("\n");
-        } else {
-            dump.append("    [STATIC_FIELD] ").append(field.getName())
-                    .append(" (").append(field.getType().getName()).append(") = ")
-                    .append(formatValue(val));
-            if (rt != null) {
-                var typeId = GameRegistryManager.getRecipeTypeId(rt);
-                dump.append(" -> Unwrapped RT: ").append(typeId);
-                if (matched) dump.append(" [MATCH]");
-            }
-            dump.append("\n");
-        }
     }
 
     public void logDeepScanStart() {
@@ -348,7 +319,7 @@ public final class MachineRegistryDebugLogger {
 
     private void saveDumpToDisk(String content) {
         try {
-            var saveDir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("data").resolve("complexityanalyzer");
+            var saveDir = server.getWorldPath(LevelResource.ROOT).resolve("data").resolve("complexityanalyzer");
             Files.createDirectories(saveDir);
             var dumpFile = saveDir.resolve("machine_scan_debug.txt");
             Files.writeString(dumpFile, content, StandardCharsets.UTF_8);

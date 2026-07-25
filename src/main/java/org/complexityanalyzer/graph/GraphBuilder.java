@@ -51,18 +51,12 @@ public class GraphBuilder {
             fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager, level.registryAccess());
             var cached = RecipeGraphCache.INSTANCE.tryLoad(cacheFile, fingerprint, level);
             if (cached != null) {
-                ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).",
-                        cached.getTotalRecipeCount());
+                ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).", cached.getTotalRecipeCount());
                 return cached;
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("Building recipe graph with advanced classification ({} threads)...",
-                ThreadPoolManager.getInstance().getParallelism());
-
-        var graph = new RecipeGraph();
         var allRecipes = new ObjectArrayList<>(recipeManager.getRecipes());
-
         var processedCount = new AtomicInteger(0);
         var skippedCount = new AtomicInteger(0);
         var processedNodes = new ConcurrentLinkedQueue<RecipeNode>();
@@ -82,10 +76,10 @@ public class GraphBuilder {
             }
         }));
 
+        var graph = new RecipeGraph();
         for (var node : processedNodes) graph.addRecipe(node);
 
-        ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped",
-                processedCount.get(), skippedCount.get());
+        ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped", processedCount.get(), skippedCount.get());
 
         new RegistryHarvestService().harvestInto(graph, level, level.getServer().getWorldPath(LevelResource.ROOT));
 

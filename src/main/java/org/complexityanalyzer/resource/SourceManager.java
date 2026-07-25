@@ -78,8 +78,7 @@ public class SourceManager {
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed",
-                successCount.get(), failCount.get());
+        ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed", successCount.get(), failCount.get());
     }
 
     private void initOne(IResourceSource source, Level level, AtomicInteger successCount, AtomicInteger failCount) {

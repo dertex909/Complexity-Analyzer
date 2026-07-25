@@ -43,7 +43,7 @@ public final class FullDebugTracePipeline {
         if (DEBUG_ENABLED) {
             ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is ENABLED via JVM option (-Dcomplexityanalyzer.FullDebugTracePipeline=true)");
         } else {
-            ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is DISABLED (To enable, use JVM option: -Dcomplexityanalyzer.FullDebugTracePipeline=true)");
+            ComplexityAnalyzer.LOGGER.debug("[Harvest] FullDebugTracePipeline is DISABLED (To enable, use JVM option: -Dcomplexityanalyzer.FullDebugTracePipeline=true)");
         }
     }
 

@@ -129,12 +129,12 @@ public class VillagerTradeSource implements IResourceSource {
         }
 
         long phase1Time = System.currentTimeMillis() - totalStartTime;
-        ComplexityAnalyzer.LOGGER.info("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)",
+        ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)",
                 phase1Time, fastParsed, totalTrades, skippedSlow);
 
         if (!pendingTrades.isEmpty()) {
             long phase2Start = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2: Processing {} trades with entity...", pendingTrades.size());
+            ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2: Processing {} trades with entity...", pendingTrades.size());
 
             var villager = new Villager(EntityType.VILLAGER, level) {
                 @Override
@@ -168,21 +168,21 @@ public class VillagerTradeSource implements IResourceSource {
             villager.discard();
 
             long phase2Time = System.currentTimeMillis() - phase2Start;
-            ComplexityAnalyzer.LOGGER.info("[VTS] Phase 2 complete in {}ms: {}/{} trades",
+            ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 complete in {}ms: {}/{} trades",
                     phase2Time, entityParsed, pendingTrades.size());
         }
 
         long totalTime = System.currentTimeMillis() - totalStartTime;
 
-        ComplexityAnalyzer.LOGGER.info("[VTS] ===== Initialization complete in {}ms =====", totalTime);
-        ComplexityAnalyzer.LOGGER.info("[VTS] Results: {} items, {}/{} trades ({}% success)",
+        ComplexityAnalyzer.LOGGER.debug("[VTS] ===== Initialization complete in {}ms =====", totalTime);
+        ComplexityAnalyzer.LOGGER.debug("[VTS] Results: {} items, {}/{} trades ({}% success)",
                 tradesByResult.size(), fastParsed + entityParsed, totalTrades,
                 String.format("%.1f", (fastParsed + entityParsed) * 100.0 / totalTrades));
-        ComplexityAnalyzer.LOGGER.info("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}",
+        ComplexityAnalyzer.LOGGER.debug("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}",
                 fastParsed, entityParsed, skippedSlow, failedTrades);
 
         if (!skippedByType.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("[VTS] Skipped slow trade types:");
+            ComplexityAnalyzer.LOGGER.debug("[VTS] Skipped slow trade types:");
             skippedByType.forEach((type, count) ->
                     ComplexityAnalyzer.LOGGER.info("[VTS]   {} - {} times", type, count));
         }

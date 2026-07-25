@@ -149,11 +149,11 @@ public final class ResourceCache implements ManagedCache {
             var buf = new FriendlyByteBuf(raw);
 
             if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
-                ComplexityAnalyzer.LOGGER.info("[Cache:{}] Bad/outdated header, rebuilding.", id);
+                ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Bad/outdated header, rebuilding.", id);
                 return -1;
             }
             if (!fingerprintMatches(buf, fingerprint)) {
-                ComplexityAnalyzer.LOGGER.info("[Cache:{}] Fingerprint changed, recomputing.", id);
+                ComplexityAnalyzer.LOGGER.info("[Cache:{}] Fingerprint changed, rebuilding.", id);
                 return -1;
             }
 
@@ -207,7 +207,7 @@ public final class ResourceCache implements ManagedCache {
             buf.readBytes(bytes);
 
             ModFileManager.writeCompressedAtomic(file, bytes, 5);
-            ComplexityAnalyzer.LOGGER.info("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
+            ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to save: {}", id, t.toString());
         } finally {

@@ -303,7 +303,7 @@ public final class RecipeGraphCache implements ManagedCache {
             buf.readBytes(bytes);
 
             ModFileManager.writeCompressedAtomic(file, bytes, 5);
-            ComplexityAnalyzer.LOGGER.info("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
+            ComplexityAnalyzer.LOGGER.debug("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
         } finally {

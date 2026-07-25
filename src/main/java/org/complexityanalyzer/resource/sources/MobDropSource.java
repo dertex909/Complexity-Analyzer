@@ -417,7 +417,6 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void registerSpecialKillDrops(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        ComplexityAnalyzer.LOGGER.info("Registering special kill-based drops...");
         int count = 0;
 
         registerDrop(targetMap, EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
@@ -438,7 +437,7 @@ public class MobDropSource implements IResourceSource {
         registerDrop(targetMap, EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
         count++;
 
-        ComplexityAnalyzer.LOGGER.info("Registered {} special kill-based drop entries.", count);
+        ComplexityAnalyzer.LOGGER.debug("Registered {} special kill-based drop entries.", count);
     }
 
     private void registerDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap, EntityType<?> entityType, Item item, double averageYield, String method) {

@@ -141,7 +141,7 @@ public final class MachineRegistryCache implements ManagedCache {
             buf.readBytes(bytes);
 
             ModFileManager.writeCompressedAtomic(file, bytes, 5);
-            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
+            ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());
         } finally {

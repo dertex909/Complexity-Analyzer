@@ -206,13 +206,28 @@ public class MachineRegistry {
         return curClsValid(c) && !c.isEnum();
     }
 
+    private static boolean isCandidateMethodName(String name) {
+        if (name.length() < 3) return false;
+        char c0 = name.charAt(0);
+        if (c0 == 'g') return name.startsWith("get");
+        if (c0 == 'r') return name.startsWith("recipe");
+        if (c0 == 't') return name.startsWith("type");
+        return false;
+    }
+
+    private static boolean curClsValid(@Nullable Class<?> cls) {
+        if (cls == null || cls == Object.class) return false;
+        String name = cls.getName();
+        return !name.startsWith("java.") && !name.startsWith("javax.") && !name.startsWith("net.minecraft.");
+    }
+
     @Nullable
     public Item getMachineForRecipe(RecipeType<?> type) {
         var list = getMachinesForRecipe(type);
         return (list != null && !list.isEmpty()) ? list.getFirst() : null;
     }
 
-    private int registerVanilla() {
+    private void registerVanilla() {
         register("minecraft:crafting", "minecraft:crafting_table");
         register("minecraft:smelting", "minecraft:furnace");
         register("minecraft:blasting", "minecraft:blast_furnace");
@@ -220,13 +235,11 @@ public class MachineRegistry {
         register("minecraft:campfire_cooking", "minecraft:campfire");
         register("minecraft:stonecutting", "minecraft:stonecutter");
         register("minecraft:smithing", "minecraft:smithing_table");
-        return 7;
     }
 
     public void initialize(MinecraftServer server) {
         if (initialized) return;
-        int vanilla = registerVanilla();
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Registered {} vanilla machines", vanilla);
+        registerVanilla();
 
         boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
         var cacheFile = cacheEnabled ? MachineRegistryCache.INSTANCE.file(server) : null;
@@ -242,14 +255,14 @@ public class MachineRegistry {
                         for (var item : entry.getValue()) if (!instList.contains(item)) instList.add(item);
                     }
                 }
-                ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
+                ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
                 initialized = true;
                 return;
             }
         }
 
         int dynamic = registerModdedMachines(server);
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Total registered {} dynamic modded machines", dynamic);
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Total registered {} machines", dynamic);
 
         if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, idMapping);
 
@@ -373,7 +386,7 @@ public class MachineRegistry {
         }
 
         logger.finishAndSave(totalBlocks, entityBlocks, registeredCount, errors);
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry:SUMMARY] Scan finished! Registered Machines={}, Errors={}.", registeredCount, errors);
+        ComplexityAnalyzer.LOGGER.debug("[MachineRegistry:SUMMARY] Scan finished! Registered Machines={}, Errors={}.", registeredCount, errors);
 
         return registeredCount;
     }
@@ -470,15 +483,6 @@ public class MachineRegistry {
             classInfoCache.put(clazz, info);
         }
         return info;
-    }
-
-    private static boolean isCandidateMethodName(String name) {
-        if (name.length() < 3) return false;
-        char c0 = name.charAt(0);
-        if (c0 == 'g') return name.startsWith("get");
-        if (c0 == 'r') return name.startsWith("recipe");
-        if (c0 == 't') return name.startsWith("type");
-        return false;
     }
 
     private ClassInfo buildClassInfo(Class<?> clazz) {
@@ -609,12 +613,6 @@ public class MachineRegistry {
         return null;
     }
 
-    private static boolean curClsValid(@Nullable Class<?> cls) {
-        if (cls == null || cls == Object.class) return false;
-        String name = cls.getName();
-        return !name.startsWith("java.") && !name.startsWith("javax.") && !name.startsWith("net.minecraft.");
-    }
-
     private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
         if (item == AIR) return false;
 
@@ -631,7 +629,7 @@ public class MachineRegistry {
             if (!list.contains(item)) {
                 list.add(item);
                 added = true;
-                ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
+                ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
             }
         }
         return added;
@@ -656,7 +654,7 @@ public class MachineRegistry {
             if (!instList.contains(item)) instList.add(item);
         }
 
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Mapped vanilla machine: '{}' -> '{}'", recipeTypeId, itemId);
+        ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Mapped vanilla machine: '{}' -> '{}'", recipeTypeId, itemId);
     }
 
     private record StaticFieldRef(String ownerClass, String fieldName) {

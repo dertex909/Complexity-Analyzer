@@ -247,9 +247,9 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         var totalItemsFound = 0;
         for (var map : targetMap.values()) totalItemsFound += map.size();
 
-        ComplexityAnalyzer.LOGGER.info("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
+        ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
                 duration, tablesProcessed, tablesSkipped, totalItemsFound);
-        ComplexityAnalyzer.LOGGER.info("[ULS] PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
+        ComplexityAnalyzer.LOGGER.debug("[ULS] PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
                 tablesProcessed, threads, SIMULATION_COUNT, (long) tablesProcessed * SIMULATION_COUNT, sampleWallMs, duration);
 
         for (var entry : targetMap.reference2ObjectEntrySet()) {

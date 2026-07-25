@@ -46,11 +46,11 @@ public final class DynamicRecipeHarvester {
     }
 
     public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Starting autonomous dynamic recipe probe...");
+        ComplexityAnalyzer.LOGGER.debug("[Harvest] Starting autonomous dynamic recipe probe...");
 
         var recipeManager = level.getRecipeManager();
         var inputTypeMap = getTypeMap(recipeManager);
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
+        ComplexityAnalyzer.LOGGER.debug("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
         var allItems = GameRegistryManager.getAllItems();
         if (allItems.isEmpty()) {

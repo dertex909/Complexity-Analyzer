@@ -69,7 +69,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
             lock.unlockRead(stamp);
         }
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Registered {} normal + {} override sources", getName(), normalSize, overrideSize);
+        ComplexityAnalyzer.LOGGER.debug("[{}] Registered {} normal + {} override sources", getName(), normalSize, overrideSize);
     }
 
     @Override

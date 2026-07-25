@@ -167,7 +167,8 @@ public final class HarvestedRecipeConverter {
             var firstKey = mergedIngredients.keySet().getFirst();
             for (var transItem : transitionalItems) {
                 var transStack = new ItemStack(transItem);
-                if (isUniqueStackData(firstKey, transStack)) firstKey.add(ItemStackCanonicalizer.canonicalize(transStack));
+                if (isUniqueStackData(firstKey, transStack))
+                    firstKey.add(ItemStackCanonicalizer.canonicalize(transStack));
             }
             if (firstKey.size() > 1) firstKey.sort(itemComparator);
         }

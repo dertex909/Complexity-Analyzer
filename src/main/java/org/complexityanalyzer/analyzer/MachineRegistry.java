@@ -71,6 +71,15 @@ public class MachineRegistry {
             fingerprint = MachineRegistryCache.INSTANCE.computeFingerprint();
             int restored = MachineRegistryCache.INSTANCE.tryLoad(cacheFile, fingerprint, idMapping);
             if (restored >= 0) {
+                for (var entry : idMapping.object2ObjectEntrySet()) {
+                    RecipeType<?> rt = BuiltInRegistries.RECIPE_TYPE.get(entry.getKey());
+                    if (rt != null) {
+                        var instList = instanceMapping.computeIfAbsent(rt, k -> new ObjectArrayList<>());
+                        for (Item item : entry.getValue()) {
+                            if (!instList.contains(item)) instList.add(item);
+                        }
+                    }
+                }
                 ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
                 initialized = true;
                 return;
@@ -89,16 +98,27 @@ public class MachineRegistry {
     public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
         if (!initialized || type == null) return null;
 
-        var listByInst = instanceMapping.get(type);
-        if (listByInst != null && !listByInst.isEmpty()) return listByInst;
+        ObjectList<Item> result = new ObjectArrayList<>();
 
+        var listByInst = instanceMapping.get(type);
+        if (listByInst != null) {
+            for (Item item : listByInst) {
+                if (!result.contains(item)) result.add(item);
+            }
+        }
+
+        // 2. Собираем машины из idMapping (здесь лежат ванильные и загруженные из кэша машины)
         var typeId = GameRegistryManager.getRecipeTypeId(type);
         if (typeId != null) {
             var listById = idMapping.get(typeId);
-            if (listById != null && !listById.isEmpty()) return listById;
+            if (listById != null) {
+                for (Item item : listById) {
+                    if (!result.contains(item)) result.add(item);
+                }
+            }
         }
 
-        return null;
+        return result.isEmpty() ? null : result;
     }
 
     @Nullable
@@ -397,9 +417,10 @@ public class MachineRegistry {
 
     private ClassInfo classInfo(Class<?> clazz) {
         ClassInfo info = classInfoCache.get(clazz);
-        if (info != null) return info;
-        info = buildClassInfo(clazz);
-        classInfoCache.put(clazz, info);
+        if (info == null) {
+            info = buildClassInfo(clazz);
+            classInfoCache.put(clazz, info);
+        }
         return info;
     }
 
@@ -524,17 +545,21 @@ public class MachineRegistry {
     private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
         if (item == Items.AIR) return false;
 
-        instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>()).add(item);
+        var instList = instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>());
+        if (!instList.contains(item)) {
+            instList.add(item);
+        }
 
         var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
         if (typeId != null) {
             var list = idMapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
             if (!list.contains(item)) {
                 list.add(item);
+                ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
                 return true;
             }
         }
-        return true;
+        return false;
     }
 
     private void register(String recipeTypeId, String itemId) {
@@ -547,7 +572,16 @@ public class MachineRegistry {
             return;
         }
 
-        idMapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>()).add(item);
+        var list = idMapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>());
+        if (!list.contains(item)) list.add(item);
+
+        RecipeType<?> rt = BuiltInRegistries.RECIPE_TYPE.get(typeRL);
+        if (rt != null) {
+            var instList = instanceMapping.computeIfAbsent(rt, k -> new ObjectArrayList<>());
+            if (!instList.contains(item)) instList.add(item);
+        }
+
+        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Mapped vanilla machine: '{}' -> '{}'", recipeTypeId, itemId);
     }
 
     private record ClassInfo(Method[] recipeMethods, Field[] fields) {

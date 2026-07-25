@@ -26,7 +26,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -49,11 +48,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import static net.minecraft.core.BlockPos.ZERO;
 import static net.minecraft.core.registries.Registries.RECIPE_TYPE;
+import static net.minecraft.world.item.Items.AIR;
 
 public class MachineRegistry {
 
@@ -272,15 +273,37 @@ public class MachineRegistry {
 
         var logger = new MachineRegistryDebugLogger(server, totalBlocks);
 
-        var scannedAsmClasses = new ObjectOpenHashSet<String>();
+        var uniqueTargetClasses = new ReferenceOpenHashSet<Class<?>>();
+        for (var block : blocks) {
+            if (block.asItem() == AIR) continue;
+            if (block instanceof EntityBlock entityBlock) {
+                try {
+                    var be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
+                    uniqueTargetClasses.add(Objects.requireNonNullElse(be, block).getClass());
+                } catch (Throwable ignored) {
+                    uniqueTargetClasses.add(block.getClass());
+                }
+            } else {
+                uniqueTargetClasses.add(block.getClass());
+            }
+        }
+
         var classAsmResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<StaticFieldRef>>();
-        var classStaticResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
+        var scannedAsmClasses = new ObjectOpenHashSet<String>();
         var asmRefBuffer = new ObjectArrayList<StaticFieldRef>();
+
+        for (var clazz : uniqueTargetClasses) {
+            if (!curClsValid(clazz)) continue;
+            findRecipeTypeReferencesASM(clazz, scannedAsmClasses, asmRefBuffer);
+            classAsmResults.put(clazz, new ObjectArrayList<>(asmRefBuffer));
+        }
+
+        var classStaticResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
         var deepScanVisitedBuffer = new ReferenceOpenHashSet<>();
 
         for (var block : blocks) {
             var machineItem = block.asItem();
-            if (machineItem == Items.AIR) continue;
+            if (machineItem == AIR) continue;
 
             var blockId = GameRegistryManager.getBlockId(block);
             boolean isEntityBlock = block instanceof EntityBlock;
@@ -308,7 +331,7 @@ public class MachineRegistry {
                 var targetClass = be != null ? be.getClass() : block.getClass();
                 int blockMatchedCount = 0;
 
-                int asmScanned = scanClassBytecodeASM(targetClass, machineItem, scannedAsmClasses, classAsmResults, asmRefBuffer, logger);
+                int asmScanned = scanClassBytecodeASM(targetClass, machineItem, classAsmResults, logger);
                 blockMatchedCount += asmScanned;
 
                 if (be != null) {
@@ -343,15 +366,11 @@ public class MachineRegistry {
         return registeredCount;
     }
 
-    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, ObjectSet<String> scannedAsmClasses, Object2ObjectOpenHashMap<Class<?>, ObjectList<StaticFieldRef>> classAsmResults, ObjectList<StaticFieldRef> asmRefBuffer, MachineRegistryDebugLogger logger) {
+    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, Object2ObjectOpenHashMap<Class<?>, ObjectList<StaticFieldRef>> classAsmResults, MachineRegistryDebugLogger logger) {
         if (!curClsValid(clazz)) return 0;
 
         var refs = classAsmResults.get(clazz);
-        if (refs == null) {
-            findRecipeTypeReferencesASM(clazz, scannedAsmClasses, asmRefBuffer);
-            refs = new ObjectArrayList<>(asmRefBuffer);
-            classAsmResults.put(clazz, refs);
-        }
+        if (refs == null) return 0;
 
         int count = 0;
         logger.logAsmScanStart(clazz, refs.size());
@@ -586,7 +605,7 @@ public class MachineRegistry {
     }
 
     private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
-        if (item == Items.AIR) return false;
+        if (item == AIR) return false;
 
         boolean added = false;
         var instList = instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>());
@@ -612,7 +631,7 @@ public class MachineRegistry {
         var itemRL = ResourceLocation.parse(itemId);
         var item = GameRegistryManager.getItem(itemRL);
 
-        if (item == null || item == Items.AIR) {
+        if (item == null || item == AIR) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
             return;
         }

@@ -55,7 +55,9 @@ import static net.minecraft.core.registries.Registries.RECIPE_TYPE;
 
 public class MachineRegistry {
 
-    private static final ClassInfo EMPTY_INFO = new ClassInfo(new Method[0], new Field[0]);
+    private static final Method[] EMPTY_METHODS = new Method[0];
+    private static final Field[] EMPTY_FIELDS = new Field[0];
+    private static final ClassInfo EMPTY_INFO = new ClassInfo(EMPTY_METHODS, EMPTY_FIELDS);
 
     private final Object2ObjectMap<ResourceLocation, ObjectList<Item>> idMapping = new Object2ObjectOpenHashMap<>();
     private final Reference2ObjectMap<RecipeType<?>, ObjectList<Item>> instanceMapping = new Reference2ObjectOpenHashMap<>();
@@ -63,28 +65,25 @@ public class MachineRegistry {
 
     private boolean initialized = false;
 
-    private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses) {
-        var results = new ObjectArrayList<StaticFieldRef>();
-        if (!curClsValid(clazz)) return results;
+    private static void findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, ObjectList<StaticFieldRef> outRefs) {
+        outRefs.clear();
+        if (!curClsValid(clazz)) return;
 
         String className = clazz.getName();
-        if (!visitedClasses.add(className)) return results;
+        if (!visitedClasses.add(className)) return;
 
-        try {
-            String resourceName = clazz.getSimpleName() + ".class";
-            try (var is = clazz.getResourceAsStream(resourceName)) {
-                if (is != null) {
-                    processBytecodeASM(is, results);
-                } else {
-                    String classPath = "/" + className.replace('.', '/') + ".class";
-                    try (var is2 = clazz.getResourceAsStream(classPath)) {
-                        if (is2 != null) processBytecodeASM(is2, results);
-                    }
-                }
-            }
+        try (var is = getClassInputStream(clazz, className)) {
+            if (is != null) processBytecodeASM(is, outRefs);
         } catch (Throwable ignored) {
         }
-        return results;
+    }
+
+    private static @Nullable InputStream getClassInputStream(Class<?> clazz, String className) {
+        String classPath = className.replace('.', '/') + ".class";
+        var is = clazz.getResourceAsStream("/" + classPath);
+        if (is != null) return is;
+        var cl = clazz.getClassLoader();
+        return cl != null ? cl.getResourceAsStream(classPath) : null;
     }
 
     private static void processBytecodeASM(InputStream is, ObjectList<StaticFieldRef> results) throws Exception {
@@ -249,19 +248,7 @@ public class MachineRegistry {
     @Nullable
     public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
         if (!initialized || type == null) return null;
-
-        var result = new ObjectArrayList<Item>();
-
-        var listByInst = instanceMapping.get(type);
-        if (listByInst != null) for (var item : listByInst) if (!result.contains(item)) result.add(item);
-
-        var typeId = GameRegistryManager.getRecipeTypeId(type);
-        if (typeId != null) {
-            var listById = idMapping.get(typeId);
-            if (listById != null) for (var item : listById) if (!result.contains(item)) result.add(item);
-        }
-
-        return result.isEmpty() ? null : result;
+        return instanceMapping.get(type);
     }
 
     private int registerModdedMachines(MinecraftServer server) {
@@ -301,6 +288,8 @@ public class MachineRegistry {
         }
 
         var globalVisitedAsmClasses = new ObjectOpenHashSet<String>();
+        var asmRefBuffer = new ObjectArrayList<StaticFieldRef>();
+        var deepScanVisitedBuffer = new ReferenceOpenHashSet<>();
 
         for (var entry : classGroups.entrySet()) {
             var key = entry.getKey();
@@ -323,7 +312,7 @@ public class MachineRegistry {
                 var targetClass = sampleBe != null ? sampleBe.getClass() : sampleBlock.getClass();
                 int blockMatchedCount = 0;
 
-                int asmScanned = scanClassBytecodeASM(targetClass, groupItems, globalVisitedAsmClasses, logger);
+                int asmScanned = scanClassBytecodeASM(targetClass, groupItems, globalVisitedAsmClasses, asmRefBuffer, logger);
                 blockMatchedCount += asmScanned;
 
                 if (sampleBe != null) {
@@ -332,7 +321,8 @@ public class MachineRegistry {
 
                     if (scanned == 0 && asmScanned == 0) {
                         logger.logDeepScanStart();
-                        var rt = findRecipeTypeDeep(sampleBe, 0, new ReferenceOpenHashSet<>(), logger);
+                        deepScanVisitedBuffer.clear();
+                        var rt = findRecipeTypeDeep(sampleBe, 0, deepScanVisitedBuffer, logger);
                         boolean matched = false;
                         if (rt != null) for (var item : groupItems) {
                             if (registerDynamicMachine(rt, item)) matched = true;
@@ -360,13 +350,13 @@ public class MachineRegistry {
         return registeredCount;
     }
 
-    private int scanClassBytecodeASM(Class<?> clazz, ObjectList<Item> groupItems, ObjectSet<String> globalVisitedClasses, MachineRegistryDebugLogger logger) {
+    private int scanClassBytecodeASM(Class<?> clazz, ObjectList<Item> groupItems, ObjectSet<String> globalVisitedClasses, ObjectList<StaticFieldRef> asmRefBuffer, MachineRegistryDebugLogger logger) {
         if (!curClsValid(clazz)) return 0;
         int count = 0;
-        var refs = findRecipeTypeReferencesASM(clazz, globalVisitedClasses);
+        findRecipeTypeReferencesASM(clazz, globalVisitedClasses, asmRefBuffer);
 
-        logger.logAsmScanStart(clazz, refs.size());
-        for (var ref : refs) {
+        logger.logAsmScanStart(clazz, asmRefBuffer.size());
+        for (var ref : asmRefBuffer) {
             try {
                 var rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
                 boolean matched = false;
@@ -505,7 +495,10 @@ public class MachineRegistry {
             }
             current = current.getSuperclass();
         }
-        return new ClassInfo(methods.toArray(new Method[0]), fields.toArray(new Field[0]));
+
+        var methodArray = methods.isEmpty() ? EMPTY_METHODS : methods.toArray(new Method[0]);
+        var fieldArray = fields.isEmpty() ? EMPTY_FIELDS : fields.toArray(new Field[0]);
+        return new ClassInfo(methodArray, fieldArray);
     }
 
     @Nullable
@@ -596,19 +589,23 @@ public class MachineRegistry {
     private boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
         if (item == Items.AIR) return false;
 
+        boolean added = false;
         var instList = instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>());
-        if (!instList.contains(item)) instList.add(item);
+        if (!instList.contains(item)) {
+            instList.add(item);
+            added = true;
+        }
 
         var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
         if (typeId != null) {
             var list = idMapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
             if (!list.contains(item)) {
                 list.add(item);
+                added = true;
                 ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
-                return true;
             }
         }
-        return false;
+        return added;
     }
 
     private void register(String recipeTypeId, String itemId) {

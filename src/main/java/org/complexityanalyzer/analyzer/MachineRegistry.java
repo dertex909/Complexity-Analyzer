@@ -204,9 +204,6 @@ public class MachineRegistry {
             }
         }
 
-        int fallbacks = applySmartFallback(dump);
-        registeredCount += fallbacks;
-
         dump.append("\n=================================================================\n");
         dump.append("SCAN SUMMARY:\n");
         dump.append("Total Blocks: ").append(totalBlocks).append("\n");
@@ -326,44 +323,10 @@ public class MachineRegistry {
 
     private static boolean isRelevantClassType(Class<?> cls) {
         if (!curClsValid(cls)) return false;
-        // Чистая проверка иерархии типов без строк: проверяем интерфейсы и базовые классы
         return AbstractContainerMenu.class.isAssignableFrom(cls)
                 || MenuProvider.class.isAssignableFrom(cls)
                 || BlockEntity.class.isAssignableFrom(cls)
                 || Block.class.isAssignableFrom(cls);
-    }
-
-    private int applySmartFallback(StringBuilder dump) {
-        int fallbackCount = 0;
-
-        for (RecipeType<?> recipeType : BuiltInRegistries.RECIPE_TYPE) {
-            ResourceLocation typeId = GameRegistryManager.getRecipeTypeId(recipeType);
-            if (typeId == null || typeId.getNamespace().equals("minecraft")) continue;
-
-            var existing = idMapping.get(typeId);
-            if (existing == null || existing.isEmpty()) {
-                String modId = typeId.getNamespace();
-
-                for (var block : GameRegistryManager.getAllBlocks()) {
-                    ResourceLocation blockId = GameRegistryManager.getBlockId(block);
-                    if (blockId.getNamespace().equals(modId)) {
-                        Item item = block.asItem();
-                        if (item == Items.AIR) continue;
-
-                        // Абстрактное сопоставление по строгой идентичности пути
-                        if (blockId.getPath().equals(typeId.getPath())) {
-                            if (registerDynamicMachine(recipeType, item)) {
-                                dump.append("  [MATCH:FALLBACK] >>> SMART FALLBACK: RecipeType '")
-                                        .append(typeId).append("' -> Machine Item '")
-                                        .append(blockId).append("' <<<\n");
-                                fallbackCount++;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return fallbackCount;
     }
 
     private static @Nullable RecipeType<?> extractStaticRecipeType(String ownerClass, String fieldName) {

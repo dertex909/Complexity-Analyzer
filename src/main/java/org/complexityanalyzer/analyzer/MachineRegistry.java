@@ -21,16 +21,16 @@ package org.complexityanalyzer.analyzer;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.MachineRegistryCache;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -39,8 +39,6 @@ import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.TypeInsnNode;
 
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -66,9 +64,9 @@ public class MachineRegistry {
 
     private boolean initialized = false;
 
-    private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, int depth) {
+    private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses) {
         var results = new ObjectArrayList<StaticFieldRef>();
-        if (!curClsValid(clazz) || depth > 2) return results;
+        if (!curClsValid(clazz)) return results;
 
         String className = clazz.getName();
         if (!visitedClasses.add(className)) return results;
@@ -77,11 +75,11 @@ public class MachineRegistry {
             String resourceName = clazz.getSimpleName() + ".class";
             try (var is = clazz.getResourceAsStream(resourceName)) {
                 if (is != null) {
-                    processBytecodeASM(is, results, visitedClasses, depth, depth == 0);
+                    processBytecodeASM(is, results);
                 } else {
                     String classPath = "/" + className.replace('.', '/') + ".class";
                     try (InputStream is2 = clazz.getResourceAsStream(classPath)) {
-                        if (is2 != null) processBytecodeASM(is2, results, visitedClasses, depth, depth == 0);
+                        if (is2 != null) processBytecodeASM(is2, results);
                     }
                 }
             }
@@ -90,59 +88,46 @@ public class MachineRegistry {
         return results;
     }
 
-    private static void processBytecodeASM(InputStream is, ObjectList<StaticFieldRef> results, ObjectSet<String> visitedClasses, int depth, boolean isTargetClass) throws Exception {
+    private static void processBytecodeASM(InputStream is, ObjectList<StaticFieldRef> results) throws Exception {
         var cr = new ClassReader(is);
         var cn = new ClassNode();
         cr.accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
-        if (isTargetClass) for (var field : cn.fields) {
-            var directRt = extractStaticRecipeType(cn.name, field.name);
-            if (directRt != null) results.add(new StaticFieldRef(cn.name, field.name));
+        // 1. Проверяем статические поля самого класса
+        for (var field : cn.fields) {
+            if ((field.access & Modifier.STATIC) != 0) {
+                var directRt = extractStaticRecipeType(cn.name, field.name);
+                if (directRt != null) {
+                    var ref = new StaticFieldRef(cn.name, field.name);
+                    if (!results.contains(ref)) results.add(ref);
+                }
+            }
         }
 
-        var referencedClasses = new ObjectArrayList<String>();
-
+        // 2. Проверяем инструкции обращения к статическим полям в методах
         for (var method : cn.methods) {
             if (method.instructions == null) continue;
             for (var insn : method.instructions) {
                 if (insn instanceof FieldInsnNode fieldInsn) {
-                    var rt = extractStaticRecipeType(fieldInsn.owner, fieldInsn.name);
-                    if (rt != null) {
-                        var ref = new StaticFieldRef(fieldInsn.owner, fieldInsn.name);
-                        if (!results.contains(ref)) results.add(ref);
-                    }
-                } else if (insn instanceof TypeInsnNode typeInsn) {
-                    if (typeInsn.desc != null) {
-                        String name = typeInsn.desc.replace('/', '.');
-                        if (isRelevantClassByName(name)) referencedClasses.add(name);
-                    }
-                } else if (insn instanceof MethodInsnNode methodInsn) {
-                    if (methodInsn.owner != null) {
-                        String name = methodInsn.owner.replace('/', '.');
-                        if (isRelevantClassByName(name)) referencedClasses.add(name);
+                    if (isPotentialRecipeTypeDescriptor(fieldInsn.desc)) {
+                        var rt = extractStaticRecipeType(fieldInsn.owner, fieldInsn.name);
+                        if (rt != null) {
+                            var ref = new StaticFieldRef(fieldInsn.owner, fieldInsn.name);
+                            if (!results.contains(ref)) results.add(ref);
+                        }
                     }
                 }
-            }
-        }
-
-        if (depth < 1) for (var refClsName : referencedClasses) {
-            try {
-                var refCls = Class.forName(refClsName);
-                if (isRelevantClassType(refCls)) {
-                    var deepRefs = findRecipeTypeReferencesASM(refCls, visitedClasses, depth + 1);
-                    for (var ref : deepRefs) if (!results.contains(ref)) results.add(ref);
-                }
-            } catch (Throwable ignored) {
             }
         }
     }
 
-    private static boolean isRelevantClassType(Class<?> cls) {
-        if (!curClsValid(cls)) return false;
-        return AbstractContainerMenu.class.isAssignableFrom(cls) ||
-                MenuProvider.class.isAssignableFrom(cls) ||
-                BlockEntity.class.isAssignableFrom(cls) ||
-                Block.class.isAssignableFrom(cls);
+    private static boolean isPotentialRecipeTypeDescriptor(@Nullable String desc) {
+        if (desc == null) return false;
+        return desc.contains("RecipeType") ||
+                desc.contains("Holder") ||
+                desc.contains("Supplier") ||
+                desc.contains("DeferredHolder") ||
+                desc.contains("RegistryObject");
     }
 
     private static @Nullable RecipeType<?> extractStaticRecipeType(String ownerClass, String fieldName) {
@@ -160,13 +145,23 @@ public class MachineRegistry {
 
     @Nullable
     private static RecipeType<?> unwrapRecipeType(@Nullable Object obj) {
+        if (obj == null) return null;
+
+        if (obj instanceof RecipeType<?> rt) {
+            return rt;
+        }
+
+        if (obj instanceof Block ||
+                obj instanceof Item ||
+                obj instanceof BlockEntity ||
+                obj instanceof BlockEntityType<?> ||
+                obj instanceof net.minecraft.sounds.SoundEvent ||
+                obj instanceof net.minecraft.world.level.material.Fluid ||
+                obj instanceof net.minecraft.world.entity.EntityType<?>) {
+            return null;
+        }
+
         switch (obj) {
-            case null -> {
-                return null;
-            }
-            case RecipeType<?> rt -> {
-                return rt;
-            }
             case Holder<?> holder -> {
                 try {
                     if (holder.isBound()) {
@@ -175,29 +170,36 @@ public class MachineRegistry {
                     }
                     var keyOpt = holder.unwrapKey();
                     if (keyOpt.isPresent()) {
-                        var loc = keyOpt.get().location();
-                        var rt = BuiltInRegistries.RECIPE_TYPE.get(loc);
-                        if (rt != null) return rt;
+                        var key = keyOpt.get();
+                        if (key.isFor(Registries.RECIPE_TYPE)) {
+                            return BuiltInRegistries.RECIPE_TYPE.get(key.location());
+                        }
                     }
                 } catch (Throwable ignored) {
                 }
+                return null;
+            }
+
+
+            // Supplier
+            case Supplier<?> supplier -> {
+                try {
+                    return unwrapRecipeType(supplier.get());
+                } catch (Throwable ignored) {
+                }
+                return null;
+            }
+
+
+            // Optional
+            case Optional<?> opt -> {
+                return opt.map(MachineRegistry::unwrapRecipeType).orElse(null);
             }
             default -> {
             }
         }
 
-        if (obj instanceof ResourceLocation rl) try {
-            return BuiltInRegistries.RECIPE_TYPE.get(rl);
-        } catch (Throwable ignored) {
-        }
-
-        if (obj instanceof Supplier<?> supplier) try {
-            return unwrapRecipeType(supplier.get());
-        } catch (Throwable ignored) {
-        }
-
-        if (obj instanceof Optional<?> opt) if (opt.isPresent()) return unwrapRecipeType(opt.get());
-
+        // Рефлексия по публичным методам без параметров
         try {
             for (var m : obj.getClass().getMethods()) {
                 if (m.getParameterCount() == 0 && (RecipeType.class.isAssignableFrom(m.getReturnType()) || Holder.class.isAssignableFrom(m.getReturnType()))) {
@@ -229,10 +231,6 @@ public class MachineRegistry {
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("[MachineRegistry] Failed to write debug dump file: {}", t.getMessage());
         }
-    }
-
-    private static boolean isRelevantClassByName(String className) {
-        return !className.startsWith("java.") && !className.startsWith("javax.") && !className.startsWith("net.minecraft.");
     }
 
     private static String getStackTraceString(Throwable t) {
@@ -460,7 +458,7 @@ public class MachineRegistry {
     private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, StringBuilder dump) {
         if (!curClsValid(clazz)) return 0;
         int count = 0;
-        var refs = findRecipeTypeReferencesASM(clazz, new ObjectOpenHashSet<>(), 0);
+        var refs = findRecipeTypeReferencesASM(clazz, new ObjectOpenHashSet<>());
 
         dump.append("  [ASM_SCAN] Target Class: ").append(clazz.getName()).append(" -> Found ").append(refs.size()).append(" potential static field ref(s)\n");
         for (var ref : refs) {

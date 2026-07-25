@@ -274,52 +274,74 @@ public class MachineRegistry {
 
         var logger = new MachineRegistryDebugLogger(server, totalBlocks);
 
+        var classGroups = new Reference2ObjectOpenHashMap<ClassGroupKey, ObjectList<Item>>();
+        var sampleBlocks = new Reference2ObjectOpenHashMap<ClassGroupKey, Block>();
+        var sampleBEs = new Reference2ObjectOpenHashMap<ClassGroupKey, BlockEntity>();
+
         for (var block : blocks) {
             var machineItem = block.asItem();
             if (machineItem == Items.AIR) continue;
 
-            var blockId = GameRegistryManager.getBlockId(block);
-            boolean isEntityBlock = block instanceof EntityBlock;
+            BlockEntity be = null;
+            if (block instanceof EntityBlock entityBlock) {
+                entityBlocks++;
+                try {
+                    be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
+                } catch (Throwable t) {
+                    logger.logBeCreateFailed(t);
+                }
+            }
 
-            logger.logBlockHeader(blockId, machineItem, block.getClass());
+            var beClass = (be != null) ? be.getClass() : null;
+            var key = new ClassGroupKey(block.getClass(), beClass);
+
+            classGroups.computeIfAbsent(key, k -> new ObjectArrayList<>()).add(machineItem);
+            sampleBlocks.putIfAbsent(key, block);
+            if (be != null) sampleBEs.putIfAbsent(key, be);
+        }
+
+        var globalVisitedAsmClasses = new ObjectOpenHashSet<String>();
+
+        for (var entry : classGroups.entrySet()) {
+            var key = entry.getKey();
+            var groupItems = entry.getValue();
+            var sampleBlock = sampleBlocks.get(key);
+            var sampleBe = sampleBEs.get(key);
+
+            var blockId = GameRegistryManager.getBlockId(sampleBlock);
+            boolean isEntityBlock = sampleBe != null;
+
+            logger.logBlockHeader(blockId, groupItems.getFirst(), sampleBlock.getClass());
 
             try {
-                BlockEntity be = null;
                 if (isEntityBlock) {
-                    entityBlocks++;
-                    try {
-                        be = ((EntityBlock) block).newBlockEntity(ZERO, block.defaultBlockState());
-                        if (be != null) {
-                            logger.logBeCreated(be);
-                        } else {
-                            logger.logBeCreateNull();
-                        }
-                    } catch (Throwable t) {
-                        logger.logBeCreateFailed(t);
-                    }
+                    logger.logBeCreated(sampleBe);
                 } else {
                     logger.logNonBeBlock();
                 }
 
-                var targetClass = be != null ? be.getClass() : block.getClass();
+                var targetClass = sampleBe != null ? sampleBe.getClass() : sampleBlock.getClass();
                 int blockMatchedCount = 0;
 
-                int asmScanned = scanClassBytecodeASM(targetClass, machineItem, logger);
+                int asmScanned = scanClassBytecodeASM(targetClass, groupItems, globalVisitedAsmClasses, logger);
                 blockMatchedCount += asmScanned;
 
-                if (be != null) {
-                    int scanned = scanBlockEntityInstance(be, machineItem, logger);
+                if (sampleBe != null) {
+                    int scanned = scanBlockEntityInstance(sampleBe, groupItems, logger);
                     blockMatchedCount += scanned;
 
                     if (scanned == 0 && asmScanned == 0) {
                         logger.logDeepScanStart();
-                        var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>(), logger);
-                        boolean matched = rt != null && registerDynamicMachine(rt, machineItem);
-                        logger.logDeepResult(matched ? rt : null, machineItem);
+                        var rt = findRecipeTypeDeep(sampleBe, 0, new ReferenceOpenHashSet<>(), logger);
+                        boolean matched = false;
+                        if (rt != null) for (var item : groupItems) {
+                            if (registerDynamicMachine(rt, item)) matched = true;
+                        }
+                        logger.logDeepResult(matched ? rt : null, groupItems.getFirst());
                         if (matched) blockMatchedCount++;
                     }
                 } else {
-                    int staticScanned = scanStaticFieldsOnly(block.getClass(), machineItem, logger);
+                    int staticScanned = scanStaticFieldsOnly(sampleBlock.getClass(), groupItems, logger);
                     blockMatchedCount += staticScanned;
                 }
 
@@ -338,19 +360,21 @@ public class MachineRegistry {
         return registeredCount;
     }
 
-    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, MachineRegistryDebugLogger logger) {
+    private int scanClassBytecodeASM(Class<?> clazz, ObjectList<Item> groupItems, ObjectSet<String> globalVisitedClasses, MachineRegistryDebugLogger logger) {
         if (!curClsValid(clazz)) return 0;
         int count = 0;
-        var refs = findRecipeTypeReferencesASM(clazz, new ObjectOpenHashSet<>());
+        var refs = findRecipeTypeReferencesASM(clazz, globalVisitedClasses);
 
         logger.logAsmScanStart(clazz, refs.size());
         for (var ref : refs) {
             try {
                 var rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
                 boolean matched = false;
-                if (rt != null && registerDynamicMachine(rt, machineItem)) {
-                    matched = true;
-                    count++;
+                if (rt != null) for (var item : groupItems) {
+                    if (registerDynamicMachine(rt, item)) {
+                        matched = true;
+                        count++;
+                    }
                 }
                 logger.logAsmRef(ref.ownerClass(), ref.fieldName(), rt, matched, null);
             } catch (Throwable t) {
@@ -360,7 +384,7 @@ public class MachineRegistry {
         return count;
     }
 
-    private int scanBlockEntityInstance(BlockEntity be, Item machineItem, MachineRegistryDebugLogger logger) {
+    private int scanBlockEntityInstance(BlockEntity be, ObjectList<Item> groupItems, MachineRegistryDebugLogger logger) {
         int count = 0;
         Class<?> beClass = be.getClass();
         var info = classInfo(beClass);
@@ -371,9 +395,11 @@ public class MachineRegistry {
                 var raw = method.invoke(be);
                 var recipeType = unwrapRecipeType(raw);
                 boolean matched = false;
-                if (recipeType != null && registerDynamicMachine(recipeType, machineItem)) {
-                    matched = true;
-                    count++;
+                if (recipeType != null) for (var item : groupItems) {
+                    if (registerDynamicMachine(recipeType, item)) {
+                        matched = true;
+                        count++;
+                    }
                 }
                 logger.logBeMethod(method, raw, recipeType, matched, null);
             } catch (Throwable t) {
@@ -391,9 +417,11 @@ public class MachineRegistry {
                     var val = field.get(be);
                     var recipeType = unwrapRecipeType(val);
                     boolean matched = false;
-                    if (recipeType != null && registerDynamicMachine(recipeType, machineItem)) {
-                        matched = true;
-                        count++;
+                    if (recipeType != null) for (var item : groupItems) {
+                        if (registerDynamicMachine(recipeType, item)) {
+                            matched = true;
+                            count++;
+                        }
                     }
                     logger.logBeField(field, val, recipeType, matched, null);
                 } catch (Throwable t) {
@@ -406,7 +434,7 @@ public class MachineRegistry {
         return count;
     }
 
-    private int scanStaticFieldsOnly(Class<?> clazz, Item machineItem, MachineRegistryDebugLogger logger) {
+    private int scanStaticFieldsOnly(Class<?> clazz, ObjectList<Item> groupItems, MachineRegistryDebugLogger logger) {
         int count = 0;
         logger.logStaticScanStart(clazz);
         var current = clazz;
@@ -419,9 +447,11 @@ public class MachineRegistry {
                     var val = field.get(null);
                     var recipeType = unwrapRecipeType(val);
                     boolean matched = false;
-                    if (recipeType != null && registerDynamicMachine(recipeType, machineItem)) {
-                        matched = true;
-                        count++;
+                    if (recipeType != null) for (var item : groupItems) {
+                        if (registerDynamicMachine(recipeType, item)) {
+                            matched = true;
+                            count++;
+                        }
                     }
                     logger.logStaticField(field, val, recipeType, matched, null);
                 } catch (Throwable t) {
@@ -607,5 +637,8 @@ public class MachineRegistry {
     }
 
     private record ClassInfo(Method[] recipeMethods, Field[] fields) {
+    }
+
+    private record ClassGroupKey(Class<?> blockClass, @Nullable Class<?> beClass) {
     }
 }

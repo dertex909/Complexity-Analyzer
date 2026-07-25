@@ -48,7 +48,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -274,12 +273,19 @@ public class MachineRegistry {
         var logger = new MachineRegistryDebugLogger(server, totalBlocks);
 
         var uniqueTargetClasses = new ReferenceOpenHashSet<Class<?>>();
+        var blockEntityCache = new Reference2ObjectOpenHashMap<Block, BlockEntity>();
+
         for (var block : blocks) {
             if (block.asItem() == AIR) continue;
             if (block instanceof EntityBlock entityBlock) {
                 try {
                     var be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
-                    uniqueTargetClasses.add(Objects.requireNonNullElse(be, block).getClass());
+                    if (be != null) {
+                        blockEntityCache.put(block, be);
+                        uniqueTargetClasses.add(be.getClass());
+                    } else {
+                        uniqueTargetClasses.add(block.getClass());
+                    }
                 } catch (Throwable ignored) {
                     uniqueTargetClasses.add(block.getClass());
                 }
@@ -288,14 +294,24 @@ public class MachineRegistry {
             }
         }
 
-        var classAsmResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<StaticFieldRef>>();
+        var classAsmResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
         var scannedAsmClasses = new ObjectOpenHashSet<String>();
         var asmRefBuffer = new ObjectArrayList<StaticFieldRef>();
 
         for (var clazz : uniqueTargetClasses) {
             if (!curClsValid(clazz)) continue;
             findRecipeTypeReferencesASM(clazz, scannedAsmClasses, asmRefBuffer);
-            classAsmResults.put(clazz, new ObjectArrayList<>(asmRefBuffer));
+            if (!asmRefBuffer.isEmpty()) {
+                var recipeTypes = new ObjectArrayList<RecipeType<?>>();
+                for (var ref : asmRefBuffer) {
+                    try {
+                        var rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
+                        if (rt != null && !recipeTypes.contains(rt)) recipeTypes.add(rt);
+                    } catch (Throwable ignored) {
+                    }
+                }
+                if (!recipeTypes.isEmpty()) classAsmResults.put(clazz, recipeTypes);
+            }
         }
 
         var classStaticResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
@@ -314,15 +330,11 @@ public class MachineRegistry {
                 BlockEntity be = null;
                 if (isEntityBlock) {
                     entityBlocks++;
-                    try {
-                        be = ((EntityBlock) block).newBlockEntity(ZERO, block.defaultBlockState());
-                        if (be != null) {
-                            logger.logBeCreated(be);
-                        } else {
-                            logger.logBeCreateNull();
-                        }
-                    } catch (Throwable t) {
-                        logger.logBeCreateFailed(t);
+                    be = blockEntityCache.get(block);
+                    if (be != null) {
+                        logger.logBeCreated(be);
+                    } else {
+                        logger.logBeCreateNull();
                     }
                 } else {
                     logger.logNonBeBlock();
@@ -366,25 +378,24 @@ public class MachineRegistry {
         return registeredCount;
     }
 
-    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, Object2ObjectOpenHashMap<Class<?>, ObjectList<StaticFieldRef>> classAsmResults, MachineRegistryDebugLogger logger) {
+    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>> classAsmResults, MachineRegistryDebugLogger logger) {
         if (!curClsValid(clazz)) return 0;
 
-        var refs = classAsmResults.get(clazz);
-        if (refs == null) return 0;
+        var recipeTypes = classAsmResults.get(clazz);
+        if (recipeTypes == null || recipeTypes.isEmpty()) return 0;
 
         int count = 0;
-        logger.logAsmScanStart(clazz, refs.size());
-        for (var ref : refs) {
+        logger.logAsmScanStart(clazz, recipeTypes.size());
+        for (var rt : recipeTypes) {
             try {
-                var rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
                 boolean matched = false;
-                if (rt != null && registerDynamicMachine(rt, machineItem)) {
+                if (registerDynamicMachine(rt, machineItem)) {
                     matched = true;
                     count++;
                 }
-                logger.logAsmRef(ref.ownerClass(), ref.fieldName(), rt, matched, null);
+                logger.logAsmRef(clazz.getName(), "preResolved", rt, matched, null);
             } catch (Throwable t) {
-                logger.logAsmRef(ref.ownerClass(), ref.fieldName(), null, false, t);
+                logger.logAsmRef(clazz.getName(), "preResolved", null, false, t);
             }
         }
         return count;

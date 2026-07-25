@@ -71,6 +71,7 @@ public class MachineRegistry {
             fingerprint = MachineRegistryCache.INSTANCE.computeFingerprint();
             int restored = MachineRegistryCache.INSTANCE.tryLoad(cacheFile, fingerprint, idMapping);
             if (restored >= 0) {
+                // Восстанавливаем instanceMapping из idMapping после успешной загрузки кэша
                 for (var entry : idMapping.object2ObjectEntrySet()) {
                     RecipeType<?> rt = BuiltInRegistries.RECIPE_TYPE.get(entry.getKey());
                     if (rt != null) {
@@ -100,6 +101,7 @@ public class MachineRegistry {
 
         ObjectList<Item> result = new ObjectArrayList<>();
 
+        // 1. Собираем машины из instanceMapping
         var listByInst = instanceMapping.get(type);
         if (listByInst != null) {
             for (Item item : listByInst) {
@@ -107,7 +109,7 @@ public class MachineRegistry {
             }
         }
 
-        // 2. Собираем машины из idMapping (здесь лежат ванильные и загруженные из кэша машины)
+        // 2. Собираем машины из idMapping
         var typeId = GameRegistryManager.getRecipeTypeId(type);
         if (typeId != null) {
             var listById = idMapping.get(typeId);
@@ -157,44 +159,48 @@ public class MachineRegistry {
             if (machineItem == Items.AIR) continue;
 
             ResourceLocation blockId = GameRegistryManager.getBlockId(block);
+            boolean isEntityBlock = block instanceof EntityBlock;
 
-            if (block instanceof EntityBlock entityBlock) {
-                entityBlocks++;
-                dump.append("\n-----------------------------------------------------------------\n");
-                dump.append("BLOCK: ").append(blockId).append(" | Class: ").append(block.getClass().getName()).append("\n");
+            dump.append("\n-----------------------------------------------------------------\n");
+            dump.append("BLOCK: ").append(blockId).append(" | Class: ").append(block.getClass().getName()).append("\n");
 
-                try {
-                    BlockEntity be = null;
+            try {
+                BlockEntity be = null;
+                if (isEntityBlock) {
+                    entityBlocks++;
                     try {
-                        be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
+                        be = ((EntityBlock) block).newBlockEntity(ZERO, block.defaultBlockState());
                         dump.append("  [BE_CREATE] SUCCESS: Created BlockEntity instance -> ").append(be.getClass().getName()).append("\n");
                     } catch (Throwable t) {
                         dump.append("  [BE_CREATE] FAILED: ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
                     }
+                } else {
+                    dump.append("  [NON_BE_BLOCK] Block has no BlockEntity (Stonecutter/Sawmill style)\n");
+                }
 
-                    Class<?> targetClass = be != null ? be.getClass() : block.getClass();
-                    int asmScanned = scanClassBytecodeASM(targetClass, machineItem, dump);
-                    registeredCount += asmScanned;
+                Class<?> targetClass = be != null ? be.getClass() : block.getClass();
+                int asmScanned = scanClassBytecodeASM(targetClass, machineItem, dump);
+                registeredCount += asmScanned;
 
-                    if (be != null) {
-                        int scanned = scanBlockEntityInstance(be, machineItem, dump);
-                        if (scanned == 0 && asmScanned == 0) {
-                            var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>());
-                            if (rt != null && registerDynamicMachine(rt, machineItem)) {
-                                var typeId = GameRegistryManager.getRecipeTypeId(rt);
-                                dump.append("  [MATCH:DEEP] >>> MATCH: RecipeType '").append(typeId).append("' -> Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
-                                registeredCount++;
-                            }
-                        } else {
-                            registeredCount += scanned;
+                if (be != null) {
+                    int scanned = scanBlockEntityInstance(be, machineItem, dump);
+                    if (scanned == 0 && asmScanned == 0) {
+                        var rt = findRecipeTypeDeep(be, 0, new ReferenceOpenHashSet<>());
+                        if (rt != null && registerDynamicMachine(rt, machineItem)) {
+                            var typeId = GameRegistryManager.getRecipeTypeId(rt);
+                            dump.append("  [MATCH:DEEP] >>> MATCH: RecipeType '").append(typeId).append("' -> Item '").append(GameRegistryManager.getItemId(machineItem)).append("' <<<\n");
+                            registeredCount++;
                         }
                     } else {
-                        registeredCount += scanStaticFieldsOnly(block.getClass(), machineItem, dump);
+                        registeredCount += scanned;
                     }
-                } catch (Throwable t) {
-                    errors++;
-                    dump.append("  [FATAL_BLOCK_ERROR] ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
+                } else {
+                    int staticScanned = scanStaticFieldsOnly(block.getClass(), machineItem, dump);
+                    registeredCount += staticScanned;
                 }
+            } catch (Throwable t) {
+                errors++;
+                dump.append("  [FATAL_BLOCK_ERROR] ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
             }
         }
 
@@ -216,7 +222,7 @@ public class MachineRegistry {
     private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, StringBuilder dump) {
         if (!curClsValid(clazz)) return 0;
         int count = 0;
-        var refs = findRecipeTypeReferencesASM(clazz);
+        var refs = findRecipeTypeReferencesASM(clazz, new ObjectOpenHashSet<>(), 0);
 
         for (var ref : refs) {
             RecipeType<?> rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
@@ -232,19 +238,22 @@ public class MachineRegistry {
 
     private record StaticFieldRef(String ownerClass, String fieldName) {}
 
-    private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz) {
+    private static ObjectList<StaticFieldRef> findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, int depth) {
         var results = new ObjectArrayList<StaticFieldRef>();
-        if (!curClsValid(clazz)) return results;
+        if (!curClsValid(clazz) || depth > 2) return results;
+
+        String className = clazz.getName();
+        if (!visitedClasses.add(className)) return results;
 
         try {
             String resourceName = clazz.getSimpleName() + ".class";
             try (InputStream is = clazz.getResourceAsStream(resourceName)) {
                 if (is != null) {
-                    processBytecodeASM(is, results);
+                    processBytecodeASM(is, results, visitedClasses, depth, depth == 0);
                 } else {
-                    String classPath = "/" + clazz.getName().replace('.', '/') + ".class";
+                    String classPath = "/" + className.replace('.', '/') + ".class";
                     try (InputStream is2 = clazz.getResourceAsStream(classPath)) {
-                        if (is2 != null) processBytecodeASM(is2, results);
+                        if (is2 != null) processBytecodeASM(is2, results, visitedClasses, depth, depth == 0);
                     }
                 }
             }
@@ -253,28 +262,62 @@ public class MachineRegistry {
         return results;
     }
 
-    private static void processBytecodeASM(InputStream is, ObjectList<StaticFieldRef> results) throws Exception {
+    private static void processBytecodeASM(InputStream is, ObjectList<StaticFieldRef> results, ObjectSet<String> visitedClasses, int depth, boolean isTargetClass) throws Exception {
         ClassReader cr = new ClassReader(is);
         ClassNode cn = new ClassNode();
         cr.accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
-        for (FieldNode field : cn.fields) {
-            if (field.desc != null && (field.desc.contains("RecipeType") || field.desc.contains("Recipe"))) {
-                results.add(new StaticFieldRef(cn.name, field.name));
+        // Проверяем cn.fields ТОЛЬКО в целевом классе блока/BE! В сторонних классах не дампим все поля подряд.
+        if (isTargetClass) {
+            for (FieldNode field : cn.fields) {
+                if (field.desc != null && (field.desc.contains("RecipeType") || field.desc.contains("Recipe"))) {
+                    results.add(new StaticFieldRef(cn.name, field.name));
+                }
             }
         }
+
+        ObjectList<String> referencedClasses = new ObjectArrayList<>();
 
         for (MethodNode method : cn.methods) {
             if (method.instructions == null) continue;
             for (AbstractInsnNode insn : method.instructions) {
                 if (insn instanceof FieldInsnNode fieldInsn) {
+                    // Перехватываем точечные вызовы конкретных статичных полей рецептов
                     if (fieldInsn.desc != null && (fieldInsn.desc.contains("RecipeType") || fieldInsn.desc.contains("Recipe") || fieldInsn.owner.contains("Recipe"))) {
                         var ref = new StaticFieldRef(fieldInsn.owner, fieldInsn.name);
                         if (!results.contains(ref)) results.add(ref);
                     }
+                } else if (insn instanceof TypeInsnNode typeInsn) {
+                    if (typeInsn.desc != null && isRelevantClass(typeInsn.desc)) {
+                        referencedClasses.add(typeInsn.desc.replace('/', '.'));
+                    }
+                } else if (insn instanceof MethodInsnNode methodInsn) {
+                    if (methodInsn.owner != null && isRelevantClass(methodInsn.owner)) {
+                        referencedClasses.add(methodInsn.owner.replace('/', '.'));
+                    }
                 }
             }
         }
+
+        // Заглядываем только в классы GUI/Menu/Handler, связанные с этим блоком (например, SawmillMenu)
+        if (depth < 1) {
+            for (String refClsName : referencedClasses) {
+                try {
+                    Class<?> refCls = Class.forName(refClsName);
+                    var deepRefs = findRecipeTypeReferencesASM(refCls, visitedClasses, depth + 1);
+                    for (var ref : deepRefs) {
+                        if (!results.contains(ref)) results.add(ref);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+    }
+
+    private static boolean isRelevantClass(String classDescOrOwner) {
+        String name = classDescOrOwner.replace('/', '.');
+        if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("net.minecraft.")) return false;
+        return !name.contains("RecipeType") && !name.endsWith("RecipeTypes") && !name.endsWith("Recipes");
     }
 
     private static @Nullable RecipeType<?> extractStaticRecipeType(String ownerClass, String fieldName) {

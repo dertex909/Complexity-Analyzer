@@ -35,7 +35,7 @@ import java.util.Map;
 import static java.util.Locale.ROOT;
 
 public final class FullDebugTracePipeline {
-    private static final boolean DEBUG_ENABLED = true;
+    private static final boolean DEBUG_ENABLED = false;
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 

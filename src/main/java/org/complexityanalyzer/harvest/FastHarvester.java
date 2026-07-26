@@ -79,6 +79,21 @@ public final class FastHarvester {
                     if (!apiResult.isEmpty() && apiResult.getItem() != AIR) outputItems.add(apiResult.copy());
                 } catch (Throwable ignored) {
                 }
+
+                if (apiResult.isEmpty()) {
+                    var meta = RecipeMetadata.getMeta(recipe.getClass());
+                    for (var f : meta.allFields()) {
+                        if (f.getType() == ItemStack.class) try {
+                            var fieldValue = (ItemStack) f.get(recipe);
+                            if (fieldValue != null && !fieldValue.isEmpty() && fieldValue.getItem() != AIR) {
+                                apiResult = fieldValue;
+                                outputItems.add(fieldValue.copy());
+                                break;
+                            }
+                        } catch (Throwable ignored2) {
+                        }
+                    }
+                }
             }
 
             var apiResultItem = apiResult.isEmpty() ? null : apiResult.getItem();
@@ -88,7 +103,29 @@ public final class FastHarvester {
                 for (var acc : accessors.itemAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw != null && extRaw.add(raw)) DeepItemCollector.collect(raw, inputItems, 0, visited);
+                        if (raw != null && extRaw.add(raw)) {
+                            var tempItems = new ObjectArrayList<ItemStack>();
+                            DeepItemCollector.collect(raw, tempItems, 0, visited);
+                            for (var stack : tempItems) {
+                                if (stack.isEmpty() || stack.getItem() == AIR) continue;
+                                if (apiResultItem != null && stack.getItem() == apiResultItem) {
+                                    boolean alreadyPresent = false;
+                                    for (int i = 0; i < outputItems.size(); i++) {
+                                        var existing = outputItems.get(i);
+                                        if (existing.getItem() == apiResultItem) {
+                                            alreadyPresent = true;
+                                            if (stack.getCount() > existing.getCount()) {
+                                                existing.setCount(stack.getCount());
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    if (!alreadyPresent) outputItems.add(stack.copy());
+                                } else {
+                                    inputItems.add(stack);
+                                }
+                            }
+                        }
                     } catch (Throwable ignored) {
                     }
                 }
@@ -200,6 +237,13 @@ public final class FastHarvester {
                     for (var ingStack : hi.ingredient().getItems()) {
                         if (ItemStackIdentity.sameItemData(ingStack, stack, registryAccess)) return true;
                     }
+                }
+                return false;
+            });
+
+            if (!outputItems.isEmpty()) inputItems.removeIf(stack -> {
+                for (var outStack : outputItems) {
+                    if (ItemStackIdentity.sameItemData(stack, outStack, registryAccess)) return true;
                 }
                 return false;
             });

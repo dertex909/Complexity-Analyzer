@@ -31,7 +31,9 @@ public final class ItemStackCanonicalizer {
 
     public static ItemStack canonicalize(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        return CACHE.computeIfAbsent(new Key(stack), k -> stack.copyWithCount(1));
+        int count = stack.getCount();
+        var base = CACHE.computeIfAbsent(new Key(stack), k -> stack.copyWithCount(1));
+        return base.copyWithCount(count);
     }
 
     public static void clear() {

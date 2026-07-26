@@ -296,9 +296,23 @@ public final class HarvestedRecipeConverter {
     }
 
     private static ItemStack declaredRecipeResult(Object root, Level level) {
-        if (root instanceof Recipe<?> recipe && level != null) try {
-            return recipe.getResultItem(level.registryAccess()).copy();
-        } catch (Throwable ignored) {
+        if (root instanceof Recipe<?> recipe && level != null) {
+            try {
+                var result = recipe.getResultItem(level.registryAccess());
+                if (!result.isEmpty() && result.getItem() != AIR) return result.copy();
+            } catch (Throwable ignored) {
+            }
+
+            var meta = RecipeMetadata.getMeta(recipe.getClass());
+            for (var f : meta.allFields()) {
+                if (f.getType() == ItemStack.class) try {
+                    var fieldValue = (ItemStack) f.get(recipe);
+                    if (fieldValue != null && !fieldValue.isEmpty() && fieldValue.getItem() != AIR) {
+                        return fieldValue.copy();
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
         }
         return ItemStack.EMPTY;
     }
@@ -306,13 +320,16 @@ public final class HarvestedRecipeConverter {
     private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks,
                                           HolderLookup.Provider provider) {
         if (!declaredResult.isEmpty()) {
+            var best = declaredResult;
             for (var stack : stacks) {
                 if (stack.isEmpty() || stack.getItem() == AIR || stack.getItem() != declaredResult.getItem()) continue;
-                if (!ItemStackIdentity.hasStackData(declaredResult, provider) && ItemStackIdentity.hasStackData(stack, provider)) {
-                    return ItemStackCanonicalizer.canonicalize(stack);
+                if (stack.getCount() > best.getCount()) {
+                    best = stack;
+                } else if (!ItemStackIdentity.hasStackData(best, provider) && ItemStackIdentity.hasStackData(stack, provider)) {
+                    best = stack;
                 }
             }
-            return ItemStackCanonicalizer.canonicalize(declaredResult);
+            return ItemStackCanonicalizer.canonicalize(best);
         }
         var best = ItemStack.EMPTY;
         int bestScore = Integer.MAX_VALUE;

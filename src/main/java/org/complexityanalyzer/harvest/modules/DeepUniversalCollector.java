@@ -43,6 +43,17 @@ public final class DeepUniversalCollector {
     private DeepUniversalCollector() {
     }
 
+    private static void addOrUpdateOutput(ObjectList<ItemStack> outputItems, ItemStack stack, Item apiResultItem) {
+        for (int i = 0; i < outputItems.size(); i++) {
+            var existing = outputItems.get(i);
+            if (existing.getItem() == apiResultItem) {
+                if (stack.getCount() > existing.getCount()) existing.setCount(stack.getCount());
+                return;
+            }
+        }
+        outputItems.add(stack.copy());
+    }
+
     public static void collect(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
                                ObjectList<HarvestedItems.HarvestedIngredient> inputIngredients, ObjectList<FluidStack> inputFluids,
                                int depth, ReferenceOpenHashSet<Object> visited, Item apiResultItem, Level level,
@@ -79,7 +90,7 @@ public final class DeepUniversalCollector {
                         if (firstItem != AIR) {
                             var stack = new ItemStack(firstItem);
                             if (apiResultItem != null && firstItem == apiResultItem) {
-                                outputItems.add(stack);
+                                addOrUpdateOutput(outputItems, stack, apiResultItem);
                             } else {
                                 inputItems.add(stack);
                             }
@@ -89,7 +100,7 @@ public final class DeepUniversalCollector {
                 }
                 case ItemStack stack when !stack.isEmpty() -> {
                     if (apiResultItem != null && stack.getItem() == apiResultItem) {
-                        outputItems.add(stack.copy());
+                        addOrUpdateOutput(outputItems, stack, apiResultItem);
                     } else {
                         inputItems.add(stack.copy());
                     }
@@ -99,7 +110,7 @@ public final class DeepUniversalCollector {
                     if (item != AIR) {
                         var stack = new ItemStack(item);
                         if (apiResultItem != null && item == apiResultItem) {
-                            outputItems.add(stack);
+                            addOrUpdateOutput(outputItems, stack, apiResultItem);
                         } else {
                             inputItems.add(stack);
                         }
@@ -111,7 +122,7 @@ public final class DeepUniversalCollector {
                     if (item != AIR) {
                         var stack = new ItemStack(item);
                         if (apiResultItem != null && item == apiResultItem) {
-                            outputItems.add(stack);
+                            addOrUpdateOutput(outputItems, stack, apiResultItem);
                         } else {
                             inputItems.add(stack);
                         }

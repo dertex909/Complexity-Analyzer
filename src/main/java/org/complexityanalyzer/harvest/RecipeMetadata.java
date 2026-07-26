@@ -19,6 +19,8 @@
 package org.complexityanalyzer.harvest;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -297,8 +299,14 @@ public final class RecipeMetadata {
                 var params = method.getParameterTypes();
                 var args = new Object[params.length];
                 for (int i = 0; i < params.length; i++) {
-                    if (params[i].isAssignableFrom(Level.class)) args[i] = level;
-                    else return null;
+                    if (params[i].isAssignableFrom(Level.class)) {
+                        args[i] = level;
+                    } else if (level != null && (params[i] == HolderLookup.Provider.class || params[i] == RegistryAccess.class
+                            || params[i].isAssignableFrom(level.registryAccess().getClass()))) {
+                        args[i] = level.registryAccess();
+                    } else {
+                        return null;
+                    }
                 }
                 var all = new Object[1 + args.length];
                 all[0] = recipe;
@@ -313,8 +321,14 @@ public final class RecipeMetadata {
                 var params = method.getParameterTypes();
                 var args = new Object[params.length];
                 for (int i = 0; i < params.length; i++) {
-                    if (params[i].isAssignableFrom(Level.class)) args[i] = level;
-                    else return null;
+                    if (params[i].isAssignableFrom(Level.class)) {
+                        args[i] = level;
+                    } else if (level != null && (params[i] == HolderLookup.Provider.class || params[i] == RegistryAccess.class
+                            || params[i].isAssignableFrom(level.registryAccess().getClass()))) {
+                        args[i] = level.registryAccess();
+                    } else {
+                        return null;
+                    }
                 }
                 return method.invoke(recipe, args);
             }

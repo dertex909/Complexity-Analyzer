@@ -196,16 +196,6 @@ public final class AnalyzeCommand {
 
         if (optimal.getErrorMessage() != null)
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.error_label", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);
-
-        if (optimal.hasRecipe()) {
-            output.sendEmptyLine(source);
-            output.sendClickableTip(source,
-                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_prefix"),
-                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_link"),
-                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_suffix"),
-                    ComplexityCommand.ROOT + " tree " + itemId,
-                    Component.translatable("complexityanalyzer.command.analyze.tree_tip_hover"));
-        }
     }
 
     private static String getCategoryIcon(ComplexityCategory category) {

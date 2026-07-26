@@ -35,15 +35,15 @@ import java.util.Map;
 import static java.util.Locale.ROOT;
 
 public final class FullDebugTracePipeline {
-    private static final boolean DEBUG_ENABLED = Boolean.getBoolean("complexityanalyzer.FullDebugTracePipeline");
+    private static final boolean DEBUG_ENABLED = true;
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 
     static {
         if (DEBUG_ENABLED) {
-            ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is ENABLED via JVM option (-Dcomplexityanalyzer.FullDebugTracePipeline=true)");
+            ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is ENABLED");
         } else {
-            ComplexityAnalyzer.LOGGER.debug("[Harvest] FullDebugTracePipeline is DISABLED (To enable, use JVM option: -Dcomplexityanalyzer.FullDebugTracePipeline=true)");
+            ComplexityAnalyzer.LOGGER.debug("[Harvest] FullDebugTracePipeline is DISABLED");
         }
     }
 

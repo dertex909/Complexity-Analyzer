@@ -40,9 +40,9 @@ public final class MachineRegistryDebugLogger {
 
     static {
         if (DEBUG_ENABLED) {
-            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Debug logging is ENABLED (-Dcomplexityanalyzer.MachineRegistryDebug=true)");
+            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Debug logging is ENABLED");
         } else {
-            ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Debug logging is DISABLED (To enable, set JVM flag: -Dcomplexityanalyzer.MachineRegistryDebug=true)");
+            ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Debug logging is DISABLED");
         }
     }
 

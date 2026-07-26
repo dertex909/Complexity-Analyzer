@@ -119,7 +119,7 @@ public class ComplexityConfig {
 
         MACHINE_BASE_COMPLEXITY = builder
                 .comment(" Base complexity for machines when they are not yet calculated (used as fallback)")
-                .defineInRange("baseComplexity", 100.0, 0.0, 10000.0);
+                .defineInRange("baseComplexity", 100.0, 0.0, 1000000.0);
         builder.pop();
 
         builder.push("web_server");

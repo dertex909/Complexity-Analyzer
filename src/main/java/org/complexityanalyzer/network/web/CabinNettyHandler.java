@@ -59,6 +59,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             if (configuredToken.isEmpty()) {
                 configuredToken = Base64.getUrlEncoder().withoutPadding().encodeToString(generateRandomBytes());
                 ComplexityConfig.WEB_SERVER_TOKEN.set(configuredToken);
+                ComplexityConfig.WEB_SERVER_TOKEN.save();
             }
             cachedToken = configuredToken;
             return cachedToken;

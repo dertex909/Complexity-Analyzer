@@ -130,7 +130,6 @@ public final class ModFileManager {
         return Files.readString(source, StandardCharsets.UTF_8);
     }
 
-    // Тот самый метод readLines, возвращающий ObjectArrayList<String> без использования Stream API
     public static @NotNull ObjectArrayList<String> readLines(@Nullable Path source) throws IOException {
         var lines = new ObjectArrayList<String>();
         if (source == null || !Files.isRegularFile(source)) return lines;
@@ -201,14 +200,12 @@ public final class ModFileManager {
     }
 
     private static void moveAtomic(Path tmp, Path target) throws IOException {
-        if (supportsAtomicMove) {
-            try {
-                Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-                return;
-            } catch (AtomicMoveNotSupportedException | UnsupportedOperationException e) {
-                supportsAtomicMove = false;
-                ComplexityAnalyzer.LOGGER.warn("Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
-            }
+        if (supportsAtomicMove) try {
+            Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            return;
+        } catch (AtomicMoveNotSupportedException | UnsupportedOperationException e) {
+            supportsAtomicMove = false;
+            ComplexityAnalyzer.LOGGER.warn("Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
         }
         Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
     }
@@ -219,11 +216,9 @@ public final class ModFileManager {
     }
 
     private static void cleanupQuietly(@Nullable Path path) {
-        if (path != null) {
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException ignored) {
-            }
+        if (path != null) try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
         }
     }
 }

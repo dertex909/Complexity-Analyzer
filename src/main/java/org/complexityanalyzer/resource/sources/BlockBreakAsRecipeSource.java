@@ -50,6 +50,7 @@ import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +62,25 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     private static final int SAMPLE_COUNT = 50;
     private static final double TIME_COST_MULTIPLIER = 1.0;
     private static final int LOGIC_VERSION = 1;
+    private static final int EMPTY_HAND_HASH = "empty_hand".hashCode();
+
+    private static final Comparator<BaseResourceData> PATH_COMPARATOR = (a, b) -> {
+        int typeCompare = Double.compare(a.getSourceType().getBaseMultiplier(), b.getSourceType().getBaseMultiplier());
+        if (typeCompare != 0) return typeCompare;
+
+        int factorCompare = Double.compare(a.getBaseFactor(), b.getBaseFactor());
+        if (factorCompare != 0) return factorCompare;
+
+        int sizeCompare = Integer.compare(a.getSourceItems().size(), b.getSourceItems().size());
+        if (sizeCompare != 0) return sizeCompare;
+
+        double sumA = sumValues(a.getSourceItems());
+        double sumB = sumValues(b.getSourceItems());
+        int sumCompare = Double.compare(sumA, sumB);
+        if (sumCompare != 0) return sumCompare;
+
+        return a.getDetails().compareTo(b.getDetails());
+    };
 
     private final Reference2ObjectMap<Item, ObjectList<BaseResourceData>> allPaths = new Reference2ObjectOpenHashMap<>();
     private final GeoDatabase geoDatabase;
@@ -177,7 +197,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                 double miningBaseFactor = rarityFactor + (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
                                 if (miningBaseFactor >= Double.POSITIVE_INFINITY) continue;
 
-                                for (var entry : averageDrop.reference2DoubleEntrySet()) {
+                                for (var entry : Reference2DoubleMaps.fastIterable(averageDrop)) {
                                     var droppedItem = entry.getKey();
                                     var itemsPerAction = entry.getDoubleValue();
                                     if (itemsPerAction <= 0) continue;
@@ -194,11 +214,12 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                         var enchs = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
                                         if (!enchs.isEmpty()) details.append(" (Enchanted)");
                                     }
-                                    details.append(String.format(" (avg: %s)", formatAverage(itemsPerAction)));
+                                    details.append(" (avg: ").append(formatAverage(itemsPerAction)).append(")");
 
                                     double actionCost = (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
                                     if (rarityFactor < Double.POSITIVE_INFINITY) {
-                                        details.append(String.format(" | Cost: Rarity ≈ %s, Action ≈ %s", formatAverage(rarityFactor), formatAverage(actionCost)));
+                                        details.append(" | Cost: Rarity ≈ ").append(formatAverage(rarityFactor))
+                                                .append(", Action ≈ ").append(formatAverage(actionCost));
                                     }
 
                                     boolean isSelfDrop = droppedItem == blockToMine.asItem();
@@ -208,10 +229,10 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                             .sourceSpecifier(blockToMine.getName().getString())
                                             .details(details.toString())
                                             .baseFactor(miningBaseFactor)
-                                            .sourceItems(isSelfDrop ? new Reference2DoubleOpenHashMap<>() : sourceItems)
+                                            .sourceItems(isSelfDrop ? Reference2DoubleMaps.emptyMap() : sourceItems)
                                             .build();
 
-                                    localPaths.computeIfAbsent(droppedItem, k -> new ConcurrentLinkedQueue<>()).add(data);
+                                    localPaths.computeIfAbsent(droppedItem, k2 -> new ConcurrentLinkedQueue<>()).add(data);
                                     pathsFound.incrementAndGet();
                                 }
                             } catch (Exception ignored) {
@@ -229,30 +250,20 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             this.allPaths.put(entry.getKey(), new ObjectArrayList<>(entry.getValue()));
         }
 
-        for (var paths : allPaths.values()) {
-            paths.sort((a, b) -> {
-                int typeCompare = Double.compare(a.getSourceType().getBaseMultiplier(), b.getSourceType().getBaseMultiplier());
-                if (typeCompare != 0) return typeCompare;
-
-                int factorCompare = Double.compare(a.getBaseFactor(), b.getBaseFactor());
-                if (factorCompare != 0) return factorCompare;
-
-                int sizeCompare = Integer.compare(a.getSourceItems().size(), b.getSourceItems().size());
-                if (sizeCompare != 0) return sizeCompare;
-
-                var sumA = a.getSourceItems().values().doubleStream().sum();
-                var sumB = b.getSourceItems().values().doubleStream().sum();
-                int sumCompare = Double.compare(sumA, sumB);
-                if (sumCompare != 0) return sumCompare;
-
-                return a.getDetails().compareTo(b.getDetails());
-            });
-        }
+        for (var paths : allPaths.values()) paths.sort(PATH_COMPARATOR);
 
         ComplexityAnalyzer.LOGGER.info("[{}] Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
         if (cacheFile != null) ResourceCache.BLOCK_BREAK.save(cacheFile, fingerprint,
                 ResourceCache::writeResourceData, allPaths);
+    }
+
+    private static double sumValues(Reference2DoubleMap<Item> map) {
+        if (map.isEmpty()) return 0;
+        double sum = 0;
+        var it = map.values().iterator();
+        while (it.hasNext()) sum += it.nextDouble();
+        return sum;
     }
 
     private long[] computeFingerprint(long worldSeed) {
@@ -323,22 +334,22 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         var totalCounts = new Reference2LongOpenHashMap<Item>();
         Reference2LongMap<Item> firstSample = null;
 
+        var spawnPos = level.getSharedSpawnPos();
+        var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+
+        var params = new LootParams.Builder(level)
+                .withParameter(LootContextParams.BLOCK_STATE, blockState)
+                .withParameter(LootContextParams.TOOL, tool)
+                .withParameter(LootContextParams.ORIGIN, originVec)
+                .create(LootContextParamSets.BLOCK);
+
+        var drops = new ObjectArrayList<ItemStack>();
+
         for (int i = 0; i < SAMPLE_COUNT; i++) {
             var deterministicRandom = RandomSource.create(baseSeed + i);
-            var drops = new ObjectArrayList<ItemStack>();
+            drops.clear();
 
-            var spawnPos = level.getSharedSpawnPos();
-            var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
-
-            var params = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
-                    .withParameter(LootContextParams.TOOL, tool)
-                    .withParameter(LootContextParams.ORIGIN, originVec)
-                    .create(LootContextParamSets.BLOCK);
-
-            var context = new LootContext.Builder(params)
-                    .withOptionalRandomSource(deterministicRandom)
-                    .create(Optional.empty());
+            var context = new LootContext.Builder(params).withOptionalRandomSource(deterministicRandom).create(Optional.empty());
 
             lootTable.getRandomItems(context, drops::add);
 
@@ -355,13 +366,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 if (isSampleConsistent(firstSample, currentSample)) return scaleAverages(firstSample);
             }
 
-            for (var entry : currentSample.reference2LongEntrySet()) {
+            for (var entry : Reference2LongMaps.fastIterable(currentSample)) {
                 totalCounts.put(entry.getKey(), totalCounts.getLong(entry.getKey()) + entry.getLongValue());
             }
         }
 
         var averages = new Reference2DoubleOpenHashMap<Item>();
-        for (var entry : totalCounts.reference2LongEntrySet()) {
+        for (var entry : Reference2LongMaps.fastIterable(totalCounts)) {
             averages.put(entry.getKey(), (double) entry.getLongValue() / SAMPLE_COUNT);
         }
 
@@ -370,7 +381,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
     private boolean isSampleConsistent(Reference2LongMap<Item> a, Reference2LongMap<Item> b) {
         if (a.size() != b.size()) return false;
-        for (var entry : a.reference2LongEntrySet()) {
+        for (var entry : Reference2LongMaps.fastIterable(a)) {
             if (b.getLong(entry.getKey()) != entry.getLongValue()) return false;
         }
         return true;
@@ -378,7 +389,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
     private Reference2DoubleMap<Item> scaleAverages(Reference2LongMap<Item> sample) {
         var averages = new Reference2DoubleOpenHashMap<Item>();
-        for (var entry : sample.reference2LongEntrySet()) averages.put(entry.getKey(), (double) entry.getLongValue());
+        for (var entry : Reference2LongMaps.fastIterable(sample)) {
+            averages.put(entry.getKey(), (double) entry.getLongValue());
+        }
         return averages;
     }
 
@@ -392,9 +405,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         if (toolItem != Items.AIR) {
             double durability = toolStack.getMaxDamage();
             if (durability > 0) {
-                double invDurability = 1.0 / durability;
-                double toolUsagePerDrop = invDurability * invYield;
-                sourceItems.put(toolItem, toolUsagePerDrop);
+                double invYieldDurability = (1.0 / durability) * invYield;
+                sourceItems.put(toolItem, invYieldDurability);
             }
         }
 
@@ -406,8 +418,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         if (isGeoLoaded) {
             double bestRarity = Double.POSITIVE_INFINITY;
             String bestLocation = "";
-            for (var dimEntry : this.geoDatabase.getAllDimensionData().entrySet()) {
-                for (var biomeEntry : dimEntry.getValue().entrySet()) {
+            for (var dimEntry : Object2ObjectMaps.fastIterable(this.geoDatabase.getAllDimensionData())) {
+                for (var biomeEntry : Object2ObjectMaps.fastIterable(dimEntry.getValue())) {
                     long total = biomeEntry.getValue().getTotalBlocks();
                     long count = biomeEntry.getValue().getBlockCount(block);
                     if (total > 0 && count > 0) {
@@ -438,7 +450,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             var enchantments = tool.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
             if (!enchantments.isEmpty()) seed = seed * 31L + enchantments.hashCode();
         } else {
-            seed = seed * 31L + "empty_hand".hashCode();
+            seed = seed * 31L + EMPTY_HAND_HASH;
         }
 
         return seed;

@@ -121,7 +121,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         }
 
         uniqueVisitors.add(extractIp(ctx));
-        String path = uri.substring(prefix.length()).split("\\?")[0];
+
+        String rawPath = uri.substring(prefix.length());
+        int queryIndex = rawPath.indexOf('?');
+        String path = queryIndex != -1 ? rawPath.substring(0, queryIndex) : rawPath;
+
         if (path.isEmpty() || path.equals("/")) path = "/index.html";
 
         if (path.equals("/index.html")) {

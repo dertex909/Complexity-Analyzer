@@ -26,7 +26,7 @@ import org.complexityanalyzer.export.cabin.api.CabinSection;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 
-import java.util.stream.IntStream;
+import java.util.concurrent.RecursiveAction;
 
 public final class CabinWriter {
 
@@ -36,8 +36,11 @@ public final class CabinWriter {
     }
 
     public static byte[] writeToBytes(ObjectList<CabinSection> sections) {
-        long estimated = CabinFormat.HEADER_SIZE + 2L + (long) sections.size() * TOC_ENTRY_SIZE;
-        for (var s : sections) estimated += s.uncompressedSize();
+        int sectionCount = sections.size();
+        long estimated = CabinFormat.HEADER_SIZE + 2L + (long) sectionCount * TOC_ENTRY_SIZE;
+
+        for (var section : sections) estimated += section.uncompressedSize();
+
         if (estimated > Integer.MAX_VALUE - 1024)
             throw new IllegalStateException("Cabin payload too large: " + estimated);
         var out = new LeBuf((int) estimated);
@@ -52,30 +55,17 @@ public final class CabinWriter {
         long hashSlot = out.position();
         out.i64(0);
 
-        int sectionCount = sections.size();
         long[] offsets = new long[sectionCount];
         long[] sizes = new long[sectionCount];
         long[] uncompressed = new long[sectionCount];
         byte[] codecs = new byte[sectionCount];
         byte[][] toWrites = new byte[sectionCount][];
 
-        ThreadPoolManager.getInstance().invokeParallel(() -> IntStream.range(0, sectionCount).parallel().forEach(i -> {
-            var s = sections.get(i);
-            byte[] data = s.payload();
-            if (s.compress() && data.length >= 64) {
-                byte[] compressed = Zstd.compress(data, 10);
-                if (compressed.length < data.length) {
-                    toWrites[i] = compressed;
-                    codecs[i] = CabinFormat.CODEC_ZSTD;
-                } else {
-                    toWrites[i] = data;
-                    codecs[i] = CabinFormat.CODEC_RAW;
-                }
-            } else {
-                toWrites[i] = data;
-                codecs[i] = CabinFormat.CODEC_RAW;
-            }
-        }));
+        if (sectionCount == 1) {
+            compressSection(0, sections, toWrites, codecs);
+        } else if (sectionCount > 1) {
+            ThreadPoolManager.getInstance().invokeParallel(() -> new CompressTask(sections, toWrites, codecs, 0, sectionCount).invoke());
+        }
 
         for (int i = 0; i < sectionCount; i++) {
             byte[] toWrite = toWrites[i];
@@ -102,5 +92,47 @@ public final class CabinWriter {
         out.putI64At((int) hashSlot, fileHash);
 
         return out.toByteArray();
+    }
+
+    private static void compressSection(int i, ObjectList<CabinSection> sections, byte[][] toWrites, byte[] codecs) {
+        var s = sections.get(i);
+        byte[] data = s.payload();
+        if (s.compress() && data.length >= 64) {
+            byte[] compressed = Zstd.compress(data, 10);
+            if (compressed.length < data.length) {
+                toWrites[i] = compressed;
+                codecs[i] = CabinFormat.CODEC_ZSTD;
+                return;
+            }
+        }
+        toWrites[i] = data;
+        codecs[i] = CabinFormat.CODEC_RAW;
+    }
+
+    private static final class CompressTask extends RecursiveAction {
+        private final ObjectList<CabinSection> sections;
+        private final byte[][] toWrites;
+        private final byte[] codecs;
+        private final int start;
+        private final int end;
+
+        CompressTask(ObjectList<CabinSection> sections, byte[][] toWrites, byte[] codecs, int start, int end) {
+            this.sections = sections;
+            this.toWrites = toWrites;
+            this.codecs = codecs;
+            this.start = start;
+            this.end = end;
+        }
+
+        @Override
+        protected void compute() {
+            int length = end - start;
+            if (length <= 2) {
+                for (int i = start; i < end; i++) compressSection(i, sections, toWrites, codecs);
+            } else {
+                int mid = (start + end) >>> 1;
+                invokeAll(new CompressTask(sections, toWrites, codecs, start, mid), new CompressTask(sections, toWrites, codecs, mid, end));
+            }
+        }
     }
 }

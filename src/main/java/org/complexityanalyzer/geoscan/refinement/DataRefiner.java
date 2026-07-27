@@ -18,7 +18,7 @@
 
 package org.complexityanalyzer.geoscan.refinement;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.geoscan.GeoDatabase;
@@ -87,12 +87,14 @@ public class DataRefiner {
                         return;
                     }
 
-                    int totalBiomes = reconPaths.values().stream().mapToInt(Object2ObjectMap::size).sum();
+                    int totalBiomes = 0;
+                    for (var biomesMap : reconPaths.values()) totalBiomes += biomesMap.size();
+
                     int processedBiomes = 0;
 
                     notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimensions_count", reconPaths.size()));
 
-                    for (var dimEntry : reconPaths.object2ObjectEntrySet()) {
+                    for (var dimEntry : Object2ObjectMaps.fastIterable(reconPaths)) {
 
                         if (Thread.currentThread().isInterrupted()) {
                             handleCancellation("during dimension loop");
@@ -100,9 +102,10 @@ public class DataRefiner {
                         }
 
                         var dimension = dimEntry.getKey();
-                        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), dimEntry.getValue().size()));
+                        var biomesMap = dimEntry.getValue();
+                        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), biomesMap.size()));
 
-                        for (var biomeEntry : dimEntry.getValue().object2ObjectEntrySet()) {
+                        for (var biomeEntry : Object2ObjectMaps.fastIterable(biomesMap)) {
 
                             if (Thread.currentThread().isInterrupted()) {
                                 handleCancellation("during biome loop");
@@ -113,8 +116,9 @@ public class DataRefiner {
                             var path = biomeEntry.getValue();
                             processedBiomes++;
 
-                            try (var stream = database.streamReconFile(path)) {
-                                var finData = database.refineRawDataFromStream(stream, dimension);
+                            try {
+                                var snapshots = database.readReconFile(path);
+                                var finData = database.refineRawData(snapshots, dimension);
                                 if (finData.getChunksScanned() > 0) database.saveBiomeData(dimension, biome, finData);
                                 ComplexityAnalyzer.LOGGER.debug("[Refiner] Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finData.getChunksScanned());
                             } catch (Exception e) {

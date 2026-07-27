@@ -20,7 +20,7 @@ package org.complexityanalyzer.util;
 
 import com.github.luben.zstd.ZstdInputStream;
 import com.github.luben.zstd.ZstdOutputStream;
-import com.google.errorprone.annotations.MustBeClosed;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -33,7 +33,6 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 public final class ModFileManager {
 
@@ -108,7 +107,8 @@ public final class ModFileManager {
         var tmp = createTempFileInSameDir(target);
 
         try {
-            try (var os = Files.newOutputStream(tmp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE); var zstdOs = new ZstdOutputStream(os, zstdLevel)) {
+            try (var os = Files.newOutputStream(tmp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                 var zstdOs = new ZstdOutputStream(os, zstdLevel)) {
                 zstdOs.write(uncompressedData);
             }
             moveAtomic(tmp, target);
@@ -130,10 +130,16 @@ public final class ModFileManager {
         return Files.readString(source, StandardCharsets.UTF_8);
     }
 
-    @MustBeClosed
-    public static @NotNull Stream<String> streamLines(@Nullable Path source) throws IOException {
-        if (source == null || !Files.isRegularFile(source)) return Stream.empty();
-        return Files.lines(source, StandardCharsets.UTF_8);
+    // Тот самый метод readLines, возвращающий ObjectArrayList<String> без использования Stream API
+    public static @NotNull ObjectArrayList<String> readLines(@Nullable Path source) throws IOException {
+        var lines = new ObjectArrayList<String>();
+        if (source == null || !Files.isRegularFile(source)) return lines;
+
+        try (var reader = Files.newBufferedReader(source, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) lines.add(line);
+        }
+        return lines;
     }
 
     public static void appendLines(@NotNull Path target, @NotNull Iterable<String> lines) throws IOException {
@@ -161,10 +167,14 @@ public final class ModFileManager {
         return Files.getLastModifiedTime(path);
     }
 
-    @MustBeClosed
-    public static @NotNull Stream<Path> list(@Nullable Path dir) throws IOException {
-        if (dir == null || !Files.isDirectory(dir)) return Stream.empty();
-        return Files.list(dir);
+    public static @NotNull ObjectArrayList<Path> list(@Nullable Path dir) throws IOException {
+        var paths = new ObjectArrayList<Path>();
+        if (dir == null || !Files.isDirectory(dir)) return paths;
+
+        try (var ds = Files.newDirectoryStream(dir)) {
+            for (var p : ds) paths.add(p);
+        }
+        return paths;
     }
 
     public static boolean delete(@Nullable Path path) {
@@ -191,12 +201,14 @@ public final class ModFileManager {
     }
 
     private static void moveAtomic(Path tmp, Path target) throws IOException {
-        if (supportsAtomicMove) try {
-            Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            return;
-        } catch (AtomicMoveNotSupportedException | UnsupportedOperationException e) {
-            supportsAtomicMove = false;
-            ComplexityAnalyzer.LOGGER.warn("Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
+        if (supportsAtomicMove) {
+            try {
+                Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                return;
+            } catch (AtomicMoveNotSupportedException | UnsupportedOperationException e) {
+                supportsAtomicMove = false;
+                ComplexityAnalyzer.LOGGER.warn("Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
+            }
         }
         Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
     }
@@ -207,9 +219,11 @@ public final class ModFileManager {
     }
 
     private static void cleanupQuietly(@Nullable Path path) {
-        if (path != null) try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
+        if (path != null) {
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException ignored) {
+            }
         }
     }
 }

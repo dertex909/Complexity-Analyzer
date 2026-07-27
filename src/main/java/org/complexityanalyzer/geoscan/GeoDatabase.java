@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 public class GeoDatabase {
 
@@ -90,12 +89,12 @@ public class GeoDatabase {
         analyzer.buildHeuristics(reconFilePaths, storage);
     }
 
-    public BiomeScanData refineRawDataFromStream(Stream<ChunkSnapshot> snapshotStream, ResourceLocation dimensionId) {
-        return analyzer.refineRawData(snapshotStream, dimensionId);
+    public BiomeScanData refineRawData(ObjectArrayList<ChunkSnapshot> snapshots, ResourceLocation dimensionId) {
+        return analyzer.refineRawData(snapshots, dimensionId);
     }
 
-    public Stream<ChunkSnapshot> streamReconFile(Path path) {
-        return storage.streamReconFile(path);
+    public ObjectArrayList<ChunkSnapshot> readReconFile(Path path) {
+        return storage.readReconFile(path);
     }
 
     public void loadAll() {

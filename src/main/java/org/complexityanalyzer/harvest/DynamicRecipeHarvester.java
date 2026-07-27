@@ -35,9 +35,11 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicRecipeHarvester {
@@ -65,8 +67,19 @@ public final class DynamicRecipeHarvester {
                 knownRecipeIds, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize
         );
 
-        ThreadPoolManager.getInstance().invokeParallel(() ->
-                inputTypeMap.entrySet().parallelStream().forEach(e -> probeType(e.getKey(), e.getValue(), ctx)));
+        var types = new ObjectArrayList<RecipeType<?>>(inputTypeMap.size());
+        var classesList = new ObjectArrayList<ObjectSet<Class<?>>>(inputTypeMap.size());
+        for (var entry : inputTypeMap.object2ObjectEntrySet()) {
+            types.add(entry.getKey());
+            classesList.add(entry.getValue());
+        }
+
+        int typeCount = types.size();
+        if (typeCount == 1) {
+            probeType(types.getFirst(), classesList.getFirst(), ctx);
+        } else if (typeCount > 1) {
+            ThreadPoolManager.getInstance().invokeParallel(() -> new ProcessTypesTask(types, classesList, ctx, 0, typeCount).invoke());
+        }
 
         ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
                 ctx.addedCount().get(), ctx.dynamicTypes().get());
@@ -92,7 +105,8 @@ public final class DynamicRecipeHarvester {
         int detectLimit = Math.min(n, ctx.detectionSampleSize());
         for (int d = 0; d < detectLimit; d++) {
             int idx = (int) ((long) d * n / detectLimit);
-            for (var holder : getRecipesFor(ctx.allItems().get(idx), creator, type, ctx)) {
+            var recipes = getRecipesFor(ctx.allItems().get(idx), creator, type, ctx);
+            for (var holder : recipes) {
                 if (!ctx.known().contains(holder.id())) return idx;
             }
         }
@@ -101,8 +115,9 @@ public final class DynamicRecipeHarvester {
 
     private static void fullScan(RecipeType<?> type, InputCreator creator, ProbeContext ctx) {
         var allItems = ctx.allItems();
-        for (int i = 0, n = allItems.size(); i < n; i++) {
-            for (var holder : getRecipesFor(allItems.get(i), creator, type, ctx)) {
+        for (var allItem : allItems) {
+            var recipes = getRecipesFor(allItem, creator, type, ctx);
+            for (var holder : recipes) {
                 if (!ctx.known().contains(holder.id())) harvestAndAdd(holder, ctx);
             }
         }
@@ -126,19 +141,20 @@ public final class DynamicRecipeHarvester {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static List<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> type, ProbeContext ctx) {
         try {
-            var stack = new ItemStack(item);
-            if (stack.isEmpty()) return List.of();
+            var stack = item.getDefaultInstance();
+            if (stack.isEmpty()) return Collections.emptyList();
             var input = creator.create(stack);
-            if (input == null) return List.of();
+            if (input == null) return Collections.emptyList();
             return ctx.recipeManager().getRecipesFor((RecipeType) type, (RecipeInput) input, ctx.level());
         } catch (Throwable ignored) {
-            return List.of();
+            return Collections.emptyList();
         }
     }
 
     private static Class<?> getRecipeInputClass(Class<?> recipeClass) {
         Class<?> bestParam = null;
-        for (var m : recipeClass.getMethods()) {
+        var methods = recipeClass.getMethods();
+        for (var m : methods) {
             if (m.getName().equals("assemble") && m.getParameterCount() == 2) {
                 var paramType = m.getParameterTypes()[0];
                 if (RecipeInput.class.isAssignableFrom(paramType)) {
@@ -166,7 +182,8 @@ public final class DynamicRecipeHarvester {
     }
 
     private static InputCreator resolveCreator(Class<?> inputClass) {
-        for (var m : inputClass.getMethods()) {
+        var methods = inputClass.getMethods();
+        for (var m : methods) {
             if (!Modifier.isStatic(m.getModifiers()) || !m.getName().equals("of")
                     || !inputClass.isAssignableFrom(m.getReturnType())) continue;
             try {
@@ -180,7 +197,8 @@ public final class DynamicRecipeHarvester {
             }
         }
 
-        for (var c : inputClass.getDeclaredConstructors()) {
+        var constructors = inputClass.getDeclaredConstructors();
+        for (var c : constructors) {
             try {
                 int pc = c.getParameterCount();
                 Class<?>[] pt = c.getParameterTypes();
@@ -213,10 +231,38 @@ public final class DynamicRecipeHarvester {
             RecipeGraph graph,
             FastHarvester harvester,
             ObjectList<Item> allItems,
-            Set<ResourceLocation> known,
+            ObjectSet<ResourceLocation> known,
             Set<ResourceLocation> discovered,
             AtomicInteger addedCount,
             AtomicInteger dynamicTypes,
             int detectionSampleSize) {
+    }
+
+    private static final class ProcessTypesTask extends RecursiveAction {
+        private final ObjectArrayList<RecipeType<?>> types;
+        private final ObjectArrayList<ObjectSet<Class<?>>> classesList;
+        private final ProbeContext ctx;
+        private final int start;
+        private final int end;
+
+        ProcessTypesTask(ObjectArrayList<RecipeType<?>> types, ObjectArrayList<ObjectSet<Class<?>>> classesList,
+                         ProbeContext ctx, int start, int end) {
+            this.types = types;
+            this.classesList = classesList;
+            this.ctx = ctx;
+            this.start = start;
+            this.end = end;
+        }
+
+        @Override
+        protected void compute() {
+            int length = end - start;
+            if (length <= 1) {
+                for (int i = start; i < end; i++) probeType(types.get(i), classesList.get(i), ctx);
+            } else {
+                int mid = (start + end) >>> 1;
+                invokeAll(new ProcessTypesTask(types, classesList, ctx, start, mid), new ProcessTypesTask(types, classesList, ctx, mid, end));
+            }
+        }
     }
 }

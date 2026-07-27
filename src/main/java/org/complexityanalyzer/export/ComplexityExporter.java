@@ -61,6 +61,20 @@ public class ComplexityExporter {
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
+    private static final ResourceLocation AIR_LOCATION = ResourceLocation.parse("minecraft:air");
+
+    private static final Comparator<ExportData.ItemData> ITEM_DATA_COMPARATOR =
+            (a, b) -> Double.compare(b.complexity(), a.complexity());
+
+    private static final Comparator<CsvRow> CSV_ROW_COMPARATOR =
+            (a, b) -> Double.compare(b.complexity(), a.complexity());
+
+    private static final Comparator<ExportData.SourceData> SOURCE_DATA_COMPARATOR =
+            Comparator.comparingDouble(ExportData.SourceData::estimatedCost);
+
+    private static final Comparator<MobData> MOB_DATA_COMPARATOR =
+            (a, b) -> Double.compare(b.combatPower(), a.combatPower());
+
     public static Path exportAllItems(MinecraftServer server, AnalysisEngine engine) throws IOException {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         var exportFile = ModFileManager.resolve(server, "export", "items_all_" + timestamp + ".json");
@@ -69,7 +83,7 @@ public class ComplexityExporter {
             var c = engine.getComplexityResult(item);
             if (c != null) allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
         }
-        allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
+        allItems.sort(ITEM_DATA_COMPARATOR);
         String json = GSON.toJson(new ExportData(timestamp, allItems.size(), allItems));
         ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
@@ -82,11 +96,11 @@ public class ComplexityExporter {
         var filteredItems = new ObjectArrayList<ExportData.ItemData>();
         for (var item : GameRegistryManager.getAllItems()) {
             var c = engine.getComplexityResult(item);
-            if (c != null) if (c.getCategory().getDisplayName().equalsIgnoreCase(categoryName)) {
+            if (c != null && c.getCategory().getDisplayName().equalsIgnoreCase(categoryName)) {
                 filteredItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
             }
         }
-        filteredItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
+        filteredItems.sort(ITEM_DATA_COMPARATOR);
         String json = GSON.toJson(new ExportData(timestamp, filteredItems.size(), filteredItems));
         ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
@@ -102,8 +116,12 @@ public class ComplexityExporter {
                 allItems.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
             }
         }
-        allItems.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
-        var topItems = new ObjectArrayList<>(allItems.subList(0, Math.min(count, allItems.size())));
+        allItems.sort(ITEM_DATA_COMPARATOR);
+
+        int topCount = Math.min(count, allItems.size());
+        var topItems = new ObjectArrayList<ExportData.ItemData>(topCount);
+        for (int i = 0; i < topCount; i++) topItems.add(allItems.get(i));
+
         String json = GSON.toJson(new ExportData(timestamp, topItems.size(), topItems));
         ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
@@ -130,27 +148,25 @@ public class ComplexityExporter {
             ));
         }
 
-        rows.sort((a, b) -> Double.compare(b.complexity(), a.complexity()));
+        rows.sort(CSV_ROW_COMPARATOR);
         ModFileManager.writeStringAtomic(exportFile, buildItemsCsv(rows));
         return exportFile;
     }
 
     private static String buildItemsCsv(ObjectArrayList<CsvRow> rows) {
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(rows.size() * 128);
         sb.append("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth,Used In Recipes,Is Valid,Has Cycle,Is Hardcoded\n");
         for (var row : rows) {
-            sb.append(String.format(ROOT, "%s,\"%s\",%.2f,%s,%s,%d,%d,%s,%s,%s\n",
-                    row.itemId,
-                    row.displayName.replace("\"", "\"\""),
-                    row.complexity,
-                    row.category,
-                    row.hasRecipe,
-                    row.craftingDepth,
-                    row.usedInRecipes,
-                    row.isValid,
-                    row.hasCycle,
-                    row.isHardcoded
-            ));
+            sb.append(row.itemId).append(",\"")
+                    .append(row.displayName.replace("\"", "\"\"")).append("\",")
+                    .append(String.format(ROOT, "%.2f", row.complexity)).append(",")
+                    .append(row.category).append(",")
+                    .append(row.hasRecipe).append(",")
+                    .append(row.craftingDepth).append(",")
+                    .append(row.usedInRecipes).append(",")
+                    .append(row.isValid).append(",")
+                    .append(row.hasCycle).append(",")
+                    .append(row.isHardcoded).append('\n');
         }
         return sb.toString();
     }
@@ -159,7 +175,7 @@ public class ComplexityExporter {
             throws IOException {
         var itemId = ResourceLocation.parse(itemIdString);
         var item = GameRegistryManager.getItem(itemId);
-        if (item == Items.AIR && !itemId.equals(ResourceLocation.parse("minecraft:air"))) {
+        if (item == Items.AIR && !itemId.equals(AIR_LOCATION)) {
             throw new IllegalArgumentException("Item not found: " + itemIdString);
         }
         var complexity = engine.getComplexityResult(item);
@@ -208,7 +224,7 @@ public class ComplexityExporter {
         var sourcesRaw = engine.findAllSourcesForItem(item);
         var sources = new ObjectArrayList<ExportData.SourceData>();
         for (var data : sourcesRaw) sources.add(buildSourceData(data, engine));
-        sources.sort(Comparator.comparingDouble(ExportData.SourceData::estimatedCost));
+        sources.sort(SOURCE_DATA_COMPARATOR);
 
         boolean isHardcoded = checkIfHardcoded(item);
 
@@ -257,8 +273,13 @@ public class ComplexityExporter {
             var data = buildMobData(type, engine);
             if (data != null && !Double.isInfinite(data.combatPower())) mobDataList.add(data);
         }
-        mobDataList.sort((a, b) -> Double.compare(b.combatPower(), a.combatPower()));
-        if (topN > 0 && mobDataList.size() > topN) mobDataList = new ObjectArrayList<>(mobDataList.subList(0, topN));
+        mobDataList.sort(MOB_DATA_COMPARATOR);
+
+        if (topN > 0 && mobDataList.size() > topN) {
+            var trimmed = new ObjectArrayList<MobData>(topN);
+            for (int i = 0; i < topN; i++) trimmed.add(mobDataList.get(i));
+            mobDataList = trimmed;
+        }
 
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         var exportPath = ModFileManager.resolve(server, "export", "mobs_" + fileSuffix + "_" + timestamp + "." + format);
@@ -272,21 +293,35 @@ public class ComplexityExporter {
     }
 
     private static String buildMobsCsv(ObjectArrayList<MobData> mobDataList) {
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(mobDataList.size() * 256);
         sb.append("Name,ID,Category,Health,Damage,Armor,Survivability,Threat,Combat Power,Rarity,Is Boss,Is MiniBoss,Notable Drops\n");
         for (var data : mobDataList) {
-            var dropsBuilder = new StringBuilder();
-            for (int i = 0; i < data.drops().size(); i++) {
-                var d = data.drops().get(i);
-                if (i > 0) dropsBuilder.append("; ");
-                dropsBuilder.append(String.format("%s (%.2f)", d.itemName(), d.yieldPerKill()));
+            var drops = data.drops();
+
+            sb.append('"').append(data.name()).append("\",")
+                    .append('"').append(data.id()).append("\",")
+                    .append('"').append(data.category()).append("\",")
+                    .append(String.format(ROOT, "%.2f", data.health())).append(",")
+                    .append(String.format(ROOT, "%.2f", data.damage())).append(",")
+                    .append(String.format(ROOT, "%.2f", data.armor())).append(",")
+                    .append(String.format(ROOT, "%.2f", data.survivability())).append(",")
+                    .append(String.format(ROOT, "%.2f", data.threat())).append(",")
+                    .append(String.format(ROOT, "%.2f", data.combatPower())).append(",")
+                    .append(String.format(ROOT, "%.2f", data.rarity())).append(",")
+                    .append(data.isBoss()).append(",")
+                    .append(data.isMiniBoss()).append(",")
+                    .append('"');
+
+            if (drops.isEmpty()) {
+                sb.append("None");
+            } else {
+                for (int j = 0; j < drops.size(); j++) {
+                    var d = drops.get(j);
+                    if (j > 0) sb.append("; ");
+                    sb.append(d.itemName()).append(" (").append(String.format(ROOT, "%.2f", d.yieldPerKill())).append(')');
+                }
             }
-            String drops = dropsBuilder.toString();
-            sb.append(String.format(
-                    ROOT, "\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%b,%b,\"%s\"\n",
-                    data.name(), data.id(), data.category(), data.health(), data.damage(), data.armor(),
-                    data.survivability(), data.threat(), data.combatPower(), data.rarity(),
-                    data.isBoss(), data.isMiniBoss(), drops.isEmpty() ? "None" : drops));
+            sb.append("\"\n");
         }
         return sb.toString();
     }

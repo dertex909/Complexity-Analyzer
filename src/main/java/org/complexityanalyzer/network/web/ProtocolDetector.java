@@ -25,18 +25,11 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import org.complexityanalyzer.config.ComplexityConfig;
 
 import java.util.List;
 
-import static java.util.Locale.ROOT;
-
 public class ProtocolDetector extends ByteToMessageDecoder {
-
-    private static final ObjectSet<String> PRESERVED_HANDLERS = new ObjectOpenHashSet<>(new String[]{"ssl", "proxydetector", "haproxy"});
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
@@ -59,9 +52,9 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     }
 
     private void setupHttpPipeline(ChannelHandlerContext ctx) {
-        var names = new ObjectArrayList<>(ctx.pipeline().names());
+        var names = ctx.pipeline().names();
         for (var name : names) {
-            if (!name.equals(ctx.name()) && !PRESERVED_HANDLERS.contains(name.toLowerCase(ROOT))) try {
+            if (!name.equals(ctx.name()) && !isPreserved(name)) try {
                 ctx.pipeline().remove(name);
             } catch (Throwable ignored) {
             }
@@ -75,5 +68,9 @@ public class ProtocolDetector extends ByteToMessageDecoder {
         ctx.pipeline().addAfter("ws_protocol", "cabin_handler", new CabinNettyHandler());
 
         ctx.pipeline().remove(this);
+    }
+
+    private static boolean isPreserved(String name) {
+        return name.equalsIgnoreCase("ssl") || name.equalsIgnoreCase("proxydetector") || name.equalsIgnoreCase("haproxy");
     }
 }

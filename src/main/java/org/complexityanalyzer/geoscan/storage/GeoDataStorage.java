@@ -21,6 +21,7 @@ package org.complexityanalyzer.geoscan.storage;
 import com.google.gson.*;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.resources.ResourceLocation;
@@ -37,7 +38,6 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 public class GeoDataStorage {
     private static final Gson GSON = new GsonBuilder().registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter()).create();
@@ -82,7 +82,7 @@ public class GeoDataStorage {
         fileLockMarkers.compute(file, (k, v) -> {
             try {
                 var lines = new ObjectArrayList<String>(newSnapshots.size());
-                for (int i = 0, n = newSnapshots.size(); i < n; i++) lines.add(GSON.toJson(newSnapshots.get(i)));
+                for (ChunkSnapshot newSnapshot : newSnapshots) lines.add(GSON.toJson(newSnapshot));
                 ModFileManager.appendLines(file, lines);
             } catch (IOException e) {
                 ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
@@ -95,36 +95,32 @@ public class GeoDataStorage {
         var allPaths = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>>();
         if (!ModFileManager.exists(reconDir)) return allPaths;
 
-        try (var dimNamespaces = ModFileManager.list(reconDir)) {
-            var dimNsIt = dimNamespaces.filter(ModFileManager::exists).iterator();
-            while (dimNsIt.hasNext()) {
-                var dimNamespaceDir = dimNsIt.next();
-                try (var dimPaths = ModFileManager.list(dimNamespaceDir)) {
-                    var dimPathIt = dimPaths.filter(ModFileManager::exists).iterator();
-                    while (dimPathIt.hasNext()) {
-                        var dimPathDir = dimPathIt.next();
-                        var dimensionId = ResourceLocation.fromNamespaceAndPath(
-                                dimNamespaceDir.getFileName().toString(),
-                                dimPathDir.getFileName().toString()
-                        );
-                        var biomeFiles = new Object2ObjectOpenHashMap<ResourceLocation, Path>();
-                        try (var files = ModFileManager.list(dimPathDir)) {
-                            var fileIt = files.filter(f -> f.toString().endsWith(".jsonl")).iterator();
-                            while (fileIt.hasNext()) {
-                                var filePath = fileIt.next();
-                                String fileName = filePath.getFileName().toString();
-                                String encodedName = fileName.substring(0, fileName.length() - 6);
-                                var biomeId = decodeLocation(encodedName);
-                                biomeFiles.put(biomeId, filePath);
-                            }
-                        } catch (IOException e) {
-                            ComplexityAnalyzer.LOGGER.error("Failed to list biome files in {}", dimPathDir, e);
-                        }
+        try {
+            var dimNamespaces = ModFileManager.list(reconDir);
+            for (var dimNamespaceDir : dimNamespaces) {
+                if (!ModFileManager.exists(dimNamespaceDir)) continue;
 
-                        if (!biomeFiles.isEmpty()) allPaths.put(dimensionId, biomeFiles);
+                var dimPaths = ModFileManager.list(dimNamespaceDir);
+                for (var dimPathDir : dimPaths) {
+                    if (!ModFileManager.exists(dimPathDir)) continue;
+
+                    var dimensionId = ResourceLocation.fromNamespaceAndPath(
+                            dimNamespaceDir.getFileName().toString(),
+                            dimPathDir.getFileName().toString()
+                    );
+
+                    var biomeFiles = new Object2ObjectOpenHashMap<ResourceLocation, Path>();
+                    var files = ModFileManager.list(dimPathDir);
+                    for (var filePath : files) {
+                        String fileName = filePath.getFileName().toString();
+                        if (!fileName.endsWith(".jsonl")) continue;
+
+                        String encodedName = fileName.substring(0, fileName.length() - 6);
+                        var biomeId = decodeLocation(encodedName);
+                        biomeFiles.put(biomeId, filePath);
                     }
-                } catch (IOException e) {
-                    ComplexityAnalyzer.LOGGER.error("Failed to list dimension paths in {}", dimNamespaceDir, e);
+
+                    if (!biomeFiles.isEmpty()) allPaths.put(dimensionId, biomeFiles);
                 }
             }
         } catch (IOException e) {
@@ -133,27 +129,23 @@ public class GeoDataStorage {
         return allPaths;
     }
 
-    public Stream<ChunkSnapshot> streamReconFile(Path path) {
-        if (!ModFileManager.exists(path)) return Stream.empty();
+    public ObjectArrayList<ChunkSnapshot> readReconFile(Path path) {
+        var snapshots = new ObjectArrayList<ChunkSnapshot>();
+        if (!ModFileManager.exists(path)) return snapshots;
         try {
-            var snapshots = new ObjectArrayList<ChunkSnapshot>();
-            try (var lines = ModFileManager.streamLines(path)) {
-                var it = lines.iterator();
-                while (it.hasNext()) {
-                    String line = it.next();
-                    try {
-                        var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
-                        if (snapshot != null) snapshots.add(snapshot);
-                    } catch (JsonSyntaxException e) {
-                        ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
-                    }
+            var lines = ModFileManager.readLines(path);
+            for (var line : lines) {
+                try {
+                    var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
+                    if (snapshot != null) snapshots.add(snapshot);
+                } catch (JsonSyntaxException e) {
+                    ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
                 }
             }
-            return snapshots.stream();
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to stream recon file {}", path, e);
-            return Stream.empty();
+            ComplexityAnalyzer.LOGGER.error("Failed to read recon file {}", path, e);
         }
+        return snapshots;
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>> loadAllFinalData(BiomeDataMapper mapper) {
@@ -164,7 +156,7 @@ public class GeoDataStorage {
         });
 
         var result = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, BiomeScanData>>();
-        for (var entry : loadedData.object2ObjectEntrySet()) {
+        for (var entry : Object2ObjectMaps.fastIterable(loadedData)) {
             result.put(entry.getKey(), new Object2ObjectOpenHashMap<>(entry.getValue()));
         }
         return result;
@@ -197,45 +189,40 @@ public class GeoDataStorage {
         var allData = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>>();
         if (!ModFileManager.exists(rootDir)) return allData;
 
-        try (var dimNamespaces = ModFileManager.list(rootDir)) {
-            var dimNsIt = dimNamespaces.filter(ModFileManager::exists).iterator();
-            while (dimNsIt.hasNext()) {
-                var dimNamespaceDir = dimNsIt.next();
-                try (var dimPaths = ModFileManager.list(dimNamespaceDir)) {
-                    var dimPathIt = dimPaths.filter(ModFileManager::exists).iterator();
-                    while (dimPathIt.hasNext()) {
-                        var dimPathDir = dimPathIt.next();
-                        var dimensionId = ResourceLocation.fromNamespaceAndPath(
-                                dimNamespaceDir.getFileName().toString(),
-                                dimPathDir.getFileName().toString()
-                        );
+        try {
+            var dimNamespaces = ModFileManager.list(rootDir);
+            for (var dimNamespaceDir : dimNamespaces) {
+                if (!ModFileManager.exists(dimNamespaceDir)) continue;
 
-                        var biomeData = new Object2ObjectOpenHashMap<ResourceLocation, T>();
-                        try (var biomeFiles = ModFileManager.list(dimPathDir)) {
-                            var fileIt = biomeFiles.filter(f -> f.toString().endsWith(".json")).iterator();
-                            while (fileIt.hasNext()) {
-                                var biomeFile = fileIt.next();
-                                try {
-                                    String json = ModFileManager.readString(biomeFile);
-                                    var data = fromJson.apply(json);
-                                    if (data != null) {
-                                        String fileName = biomeFile.getFileName().toString();
-                                        String encodedName = fileName.substring(0, fileName.length() - 5);
-                                        var biomeId = decodeLocation(encodedName);
-                                        biomeData.put(biomeId, data);
-                                    }
-                                } catch (Exception e) {
-                                    ComplexityAnalyzer.LOGGER.error("Failed to load/parse data from file {}", biomeFile, e);
-                                }
+                var dimPaths = ModFileManager.list(dimNamespaceDir);
+                for (var dimPathDir : dimPaths) {
+                    if (!ModFileManager.exists(dimPathDir)) continue;
+
+                    var dimensionId = ResourceLocation.fromNamespaceAndPath(
+                            dimNamespaceDir.getFileName().toString(),
+                            dimPathDir.getFileName().toString()
+                    );
+
+                    var biomeData = new Object2ObjectOpenHashMap<ResourceLocation, T>();
+                    var biomeFiles = ModFileManager.list(dimPathDir);
+                    for (var biomeFile : biomeFiles) {
+                        String fileName = biomeFile.getFileName().toString();
+                        if (!fileName.endsWith(".json")) continue;
+
+                        try {
+                            String json = ModFileManager.readString(biomeFile);
+                            var data = fromJson.apply(json);
+                            if (data != null) {
+                                String encodedName = fileName.substring(0, fileName.length() - 5);
+                                var biomeId = decodeLocation(encodedName);
+                                biomeData.put(biomeId, data);
                             }
-                        } catch (IOException e) {
-                            ComplexityAnalyzer.LOGGER.error("Failed to list biome files in {}", dimPathDir, e);
+                        } catch (Exception e) {
+                            ComplexityAnalyzer.LOGGER.error("Failed to load/parse data from file {}", biomeFile, e);
                         }
-
-                        if (!biomeData.isEmpty()) allData.put(dimensionId, biomeData);
                     }
-                } catch (IOException e) {
-                    ComplexityAnalyzer.LOGGER.error("Failed to list dimension paths in {}", dimNamespaceDir, e);
+
+                    if (!biomeData.isEmpty()) allData.put(dimensionId, biomeData);
                 }
             }
         } catch (IOException e) {
@@ -249,11 +236,13 @@ public class GeoDataStorage {
     }
 
     private ResourceLocation decodeLocation(String encoded) {
-        String[] parts = encoded.split("~", 2);
-        if (parts.length != 2) {
+        int tildeIndex = encoded.indexOf('~');
+        if (tildeIndex == -1) {
             return ResourceLocation.fromNamespaceAndPath("minecraft", encoded.replace('_', '/'));
         }
-        return ResourceLocation.fromNamespaceAndPath(parts[0], parts[1].replace('_', '/'));
+        String namespace = encoded.substring(0, tildeIndex);
+        String path = encoded.substring(tildeIndex + 1).replace('_', '/');
+        return ResourceLocation.fromNamespaceAndPath(namespace, path);
     }
 
     private Path getReconFilePath(ResourceLocation dimension, ResourceLocation biome) {
@@ -264,8 +253,8 @@ public class GeoDataStorage {
     public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
         var path = getReconFilePath(dimension, biome);
         if (!ModFileManager.exists(path)) return 0;
-        try (var lines = ModFileManager.streamLines(path)) {
-            return (int) lines.count();
+        try {
+            return ModFileManager.readLines(path).size();
         } catch (IOException e) {
             return 0;
         }
@@ -275,23 +264,13 @@ public class GeoDataStorage {
         var allCoordinates = new Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet>();
         var allPaths = getAllReconFilePaths();
 
-        for (var dimEntry : allPaths.object2ObjectEntrySet()) {
+        for (var dimEntry : Object2ObjectMaps.fastIterable(allPaths)) {
             var dim = dimEntry.getKey();
-            var coordinatesForDimension = allCoordinates.computeIfAbsent(dim, ignored -> new LongOpenHashSet());
+            var coordinatesForDimension = allCoordinates.computeIfAbsent(dim, k -> new LongOpenHashSet());
             for (var path : dimEntry.getValue().values()) {
-                try (var lines = ModFileManager.streamLines(path)) {
-                    var it = lines.iterator();
-                    while (it.hasNext()) {
-                        try {
-                            var snapshot = GSON.fromJson(it.next(), ChunkSnapshot.class);
-                            if (snapshot != null) {
-                                coordinatesForDimension.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
-                            }
-                        } catch (JsonSyntaxException ignored) {
-                        }
-                    }
-                } catch (IOException e) {
-                    ComplexityAnalyzer.LOGGER.debug("Failed to read recon file: {}", path);
+                var snapshots = readReconFile(path);
+                for (var snapshot : snapshots) {
+                    coordinatesForDimension.add(ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ()));
                 }
             }
         }

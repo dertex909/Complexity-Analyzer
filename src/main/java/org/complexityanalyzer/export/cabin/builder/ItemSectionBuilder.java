@@ -222,16 +222,7 @@ public final class ItemSectionBuilder {
         }
     }
 
-    public static final class ItemSectionResult {
-        public final byte[] items;
-        public final int validItems;
-        public final int infiniteItems;
-
-        public ItemSectionResult(byte[] items, int validItems, int infiniteItems) {
-            this.items = items;
-            this.validItems = validItems;
-            this.infiniteItems = infiniteItems;
-        }
+    public record ItemSectionResult(byte[] items, int validItems, int infiniteItems) {
     }
 
     public static final class BaseDataAccumulator {

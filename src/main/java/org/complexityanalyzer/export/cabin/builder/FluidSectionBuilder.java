@@ -214,15 +214,6 @@ public final class FluidSectionBuilder {
         return out.toByteArray();
     }
 
-    public static final class FluidRecipesResult {
-        public final byte[] payload;
-        public final byte[] outputIndex;
-        public final int recipeCount;
-
-        public FluidRecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
-            this.payload = payload;
-            this.outputIndex = outputIndex;
-            this.recipeCount = recipeCount;
-        }
+    public record FluidRecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
     }
 }

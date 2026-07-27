@@ -113,7 +113,7 @@ public final class CabinBuilder {
         var recipes = tw.run("recipes", () -> recipeBuilder.buildRecipes(graph));
         byte[] usageBytes = tw.run("usage", () -> recipeBuilder.buildUsage(graph));
         var mobsResult = tw.run("mobs", () -> mobBuilder.buildMobs(mobProvider, mobDropSource));
-        byte[] dropsBytes = mobsResult.drops;
+        byte[] dropsBytes = mobsResult.drops();
         byte[] sccBytes = tw.run("scc", () -> buildScc(solverResult));
         byte[] categoriesBytes = tw.run("categories", this::buildCategories);
         byte[] fluidsBytes = tw.run("fluids", fluidBuilder::buildFluidsSection);
@@ -132,30 +132,30 @@ public final class CabinBuilder {
         var out = new ObjectArrayList<CabinSection>(20);
         out.add(CabinSection.compressed(CabinFormat.SEC_META, meta));
         out.add(CabinSection.compressed(CabinFormat.SEC_STRINGS, stringsBytes));
-        out.add(CabinSection.compressed(CabinFormat.SEC_ITEMS, itemResult.items));
+        out.add(CabinSection.compressed(CabinFormat.SEC_ITEMS, itemResult.items()));
         out.add(CabinSection.compressed(CabinFormat.SEC_BASE_DATA, baseAcc.bytes()));
         out.add(CabinSection.compressed(CabinFormat.SEC_SOURCES, sourcesAcc.bytes()));
-        out.add(CabinSection.compressed(CabinFormat.SEC_RECIPES, recipes.payload));
+        out.add(CabinSection.compressed(CabinFormat.SEC_RECIPES, recipes.payload()));
         out.add(CabinSection.compressed(CabinFormat.SEC_USAGE, usageBytes));
-        out.add(CabinSection.compressed(CabinFormat.SEC_FLUID_RECIPES, fluidRecipes.payload));
+        out.add(CabinSection.compressed(CabinFormat.SEC_FLUID_RECIPES, fluidRecipes.payload()));
         out.add(CabinSection.compressed(CabinFormat.SEC_FLUID_USAGE, fluidUsageBytes));
-        out.add(CabinSection.compressed(CabinFormat.SEC_MOBS, mobsResult.mobs));
+        out.add(CabinSection.compressed(CabinFormat.SEC_MOBS, mobsResult.mobs()));
         out.add(CabinSection.compressed(CabinFormat.SEC_DROPS, dropsBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_SCC, sccBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_CATEGORIES, categoriesBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_FLUIDS, fluidsBytes));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_ITEM_HASH, idxItemHash));
-        out.add(CabinSection.raw(CabinFormat.SEC_IDX_RECIPES_BY_OUTPUT, recipes.outputIndex));
+        out.add(CabinSection.raw(CabinFormat.SEC_IDX_RECIPES_BY_OUTPUT, recipes.outputIndex()));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_MOB_HASH, idxMobHash));
         out.add(CabinSection.raw(CabinFormat.SEC_IDX_FLUID_HASH, idxFluidHash));
-        out.add(CabinSection.raw(CabinFormat.SEC_IDX_FLUID_RECIPES_BY_OUTPUT, fluidRecipes.outputIndex));
+        out.add(CabinSection.raw(CabinFormat.SEC_IDX_FLUID_RECIPES_BY_OUTPUT, fluidRecipes.outputIndex()));
         out.add(CabinSection.compressed(CabinFormat.SEC_MACHINE_INDEX, machineIndexBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_SOURCE_TYPE_INDEX, sourceTypeIndexBytes));
         out.add(CabinSection.compressed(CabinFormat.SEC_MOD_SUMMARY, modSummaryBytes));
 
         long elapsed = System.currentTimeMillis() - t0;
         ComplexityAnalyzer.LOGGER.info("[Cabin] Built {} sections (items={}, recipes={}, mobs={}, strings={}) in {} ms",
-                out.size(), orderedItems.size(), recipes.recipeCount, orderedMobs.size(), strings.size(), elapsed);
+                out.size(), orderedItems.size(), recipes.recipeCount(), orderedMobs.size(), strings.size(), elapsed);
 
         return out;
     }
@@ -381,8 +381,7 @@ public final class CabinBuilder {
     private byte[] buildModSummary(RecipeGraph graph) {
         var stats = new HashMap<String, ModStats>();
         int n = orderedItems.size();
-        for (int i = 0; i < n; i++) {
-            var item = orderedItems.get(i);
+        for (var item : orderedItems) {
             var id = GameRegistryManager.getItemId(item);
             String modId = id != null ? id.getNamespace() : "unknown";
             var s = stats.computeIfAbsent(modId, k -> new ModStats());
@@ -424,11 +423,11 @@ public final class CabinBuilder {
         buf.i32(strings.intern(Instant.ofEpochMilli(timestampEpochMs).toString()));
         buf.i64(timestampEpochMs);
         buf.i32(orderedItems.size());
-        buf.i32(mobsResult.mobCount);
+        buf.i32(mobsResult.mobCount());
         buf.i32(orderedFluids.size());
-        buf.i32(recipes.recipeCount);
-        buf.i32(itemResult.validItems);
-        buf.i32(itemResult.infiniteItems);
+        buf.i32(recipes.recipeCount());
+        buf.i32(itemResult.validItems());
+        buf.i32(itemResult.infiniteItems());
         int machineCount = machineIndexBytes != null && machineIndexBytes.length >= 4
                 ? LeBuf.readI32(machineIndexBytes, 0) : 0;
         int modCount = modSummaryBytes != null && modSummaryBytes.length >= 4

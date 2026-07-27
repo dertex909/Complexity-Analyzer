@@ -31,6 +31,10 @@ import java.util.List;
 
 public class ProtocolDetector extends ByteToMessageDecoder {
 
+    private static boolean isPreserved(String name) {
+        return name.equalsIgnoreCase("ssl") || name.equalsIgnoreCase("proxydetector") || name.equalsIgnoreCase("haproxy");
+    }
+
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         if (ComplexityConfig.WEB_SERVER_PORT.get() > 0) {
@@ -68,9 +72,5 @@ public class ProtocolDetector extends ByteToMessageDecoder {
         ctx.pipeline().addAfter("ws_protocol", "cabin_handler", new CabinNettyHandler());
 
         ctx.pipeline().remove(this);
-    }
-
-    private static boolean isPreserved(String name) {
-        return name.equalsIgnoreCase("ssl") || name.equalsIgnoreCase("proxydetector") || name.equalsIgnoreCase("haproxy");
     }
 }

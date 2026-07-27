@@ -353,12 +353,7 @@ public final class HarvestedRecipeConverter {
         return true;
     }
 
-    private static final class ItemStackComparator implements Comparator<ItemStack> {
-        private final HolderLookup.Provider provider;
-
-        ItemStackComparator(HolderLookup.Provider provider) {
-            this.provider = provider;
-        }
+    private record ItemStackComparator(HolderLookup.Provider provider) implements Comparator<ItemStack> {
 
         @Override
         public int compare(ItemStack a, ItemStack b) {

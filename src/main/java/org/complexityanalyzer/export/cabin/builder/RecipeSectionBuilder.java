@@ -335,16 +335,7 @@ public final class RecipeSectionBuilder {
         return out.toByteArray();
     }
 
-    public static final class RecipesResult {
-        public final byte[] payload;
-        public final byte[] outputIndex;
-        public final int recipeCount;
-
-        public RecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
-            this.payload = payload;
-            this.outputIndex = outputIndex;
-            this.recipeCount = recipeCount;
-        }
+    public record RecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {
     }
 
     private record MergedSlot(IngredientSlot slot, int count) {

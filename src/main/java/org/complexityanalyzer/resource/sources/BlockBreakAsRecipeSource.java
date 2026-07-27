@@ -89,6 +89,14 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         this.geoDatabase = geoDatabase;
     }
 
+    private static double sumValues(Reference2DoubleMap<Item> map) {
+        if (map.isEmpty()) return 0;
+        double sum = 0;
+        var it = map.values().iterator();
+        while (it.hasNext()) sum += it.nextDouble();
+        return sum;
+    }
+
     @Override
     public void initialize(Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
@@ -256,14 +264,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
         if (cacheFile != null) ResourceCache.BLOCK_BREAK.save(cacheFile, fingerprint,
                 ResourceCache::writeResourceData, allPaths);
-    }
-
-    private static double sumValues(Reference2DoubleMap<Item> map) {
-        if (map.isEmpty()) return 0;
-        double sum = 0;
-        var it = map.values().iterator();
-        while (it.hasNext()) sum += it.nextDouble();
-        return sum;
     }
 
     private long[] computeFingerprint(long worldSeed) {

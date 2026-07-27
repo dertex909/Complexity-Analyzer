@@ -120,15 +120,6 @@ public final class MobSectionBuilder {
         return new MobsResult(mobsBuf.toByteArray(), dropsBuf.toByteArray(), n);
     }
 
-    public static final class MobsResult {
-        public final byte[] mobs;
-        public final byte[] drops;
-        public final int mobCount;
-
-        public MobsResult(byte[] mobs, byte[] drops, int mobCount) {
-            this.mobs = mobs;
-            this.drops = drops;
-            this.mobCount = mobCount;
-        }
+    public record MobsResult(byte[] mobs, byte[] drops, int mobCount) {
     }
 }

@@ -46,7 +46,7 @@ public class ComplexityConfig {
     public static final ModConfigSpec.IntValue MAX_THREADS;
 
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
-    public static final ModConfigSpec.IntValue WEB_SERVER_PORT;
+    public static final ModConfigSpec.ConfigValue<Integer> WEB_SERVER_PORT;
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_TOKEN;
 
     public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
@@ -131,8 +131,14 @@ public class ComplexityConfig {
         WEB_SERVER_PORT = builder.comment(
                 " Dedicated port for the web dashboard server.",
                 " 0 = multiplex on the main Minecraft server port (default).",
-                " 1-65535 = bind a separate standalone HTTP/WebSocket server to this port."
-        ).defineInRange("port", 0, 0, 65535);
+                " 1024-65535 = bind a separate standalone HTTP/WebSocket server to this port."
+        ).define("port", 0, obj -> {
+            if (obj instanceof Number num) {
+                int port = num.intValue();
+                return port == 0 || (port >= 1024 && port <= 65535);
+            }
+            return false;
+        });
 
         WEB_SERVER_TOKEN = builder.comment(
                 " Secret access token for the web dashboard URL.",

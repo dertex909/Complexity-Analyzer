@@ -23,8 +23,12 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-import org.complexityanalyzer.ComplexityAnalyzer;
+
+import java.util.concurrent.CompletableFuture;
+
+import static net.minecraft.server.level.TicketType.START;
+import static net.minecraft.util.Unit.INSTANCE;
+import static net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES;
 
 public class ChunkGeneratorService {
 
@@ -36,29 +40,45 @@ public class ChunkGeneratorService {
 
     public ObjectArrayList<ChunkAccess> generateBatch(LongArrayList packedPositions) {
         int size = packedPositions.size();
-        var results = new ObjectArrayList<ChunkAccess>(size);
-        for (int i = 0; i < size; i++) {
-            if (Thread.currentThread().isInterrupted()) {
-                results.add(null);
-                continue;
-            }
-            long packed = packedPositions.getLong(i);
-            results.add(generateChunkForAnalysis(ChunkPos.getX(packed), ChunkPos.getZ(packed)));
-        }
-        return results;
-    }
+        if (size == 0) return new ObjectArrayList<>();
 
-    public ChunkAccess generateChunkForAnalysis(int chunkX, int chunkZ) {
-        try {
-            var chunk = level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FEATURES, true);
-            if (chunk != null) chunk.setUnsaved(false);
-            return chunk;
-        } catch (IllegalStateException e) {
-            ComplexityAnalyzer.LOGGER.debug("[VanillaGen] No chunk available for [{}, {}]: {}", chunkX, chunkZ, e.getMessage());
-            return null;
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[VanillaGen] Failed [{}, {}]: {}", chunkX, chunkZ, e.getMessage());
-            return null;
+        var server = level.getServer();
+        var chunkSource = level.getChunkSource();
+        var futures = new ObjectArrayList<CompletableFuture<ChunkAccess>>(size);
+        var chunkPositions = new ObjectArrayList<ChunkPos>(size);
+
+        server.execute(() -> {
+            for (int i = 0; i < size; i++) {
+                long packed = packedPositions.getLong(i);
+                var pos = new ChunkPos(packed);
+                chunkPositions.add(pos);
+                chunkSource.addRegionTicket(START, pos, 1, INSTANCE);
+            }
+        });
+
+        for (int i = 0; i < size; i++) {
+            long packed = packedPositions.getLong(i);
+            int chunkX = ChunkPos.getX(packed);
+            int chunkZ = ChunkPos.getZ(packed);
+
+            var future = chunkSource.getChunkFuture(chunkX, chunkZ, FEATURES, true).thenApply(chunkResult -> {
+                var chunk = chunkResult.orElse(null);
+                if (chunk != null) chunk.setUnsaved(false);
+                return chunk;
+            });
+
+            futures.add(future);
         }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        var results = new ObjectArrayList<ChunkAccess>(size);
+        for (int i = 0; i < size; i++) results.add(futures.get(i).join());
+
+        server.execute(() -> {
+            for (var pos : chunkPositions) chunkSource.removeRegionTicket(START, pos, 1, INSTANCE);
+        });
+
+        return results;
     }
 }

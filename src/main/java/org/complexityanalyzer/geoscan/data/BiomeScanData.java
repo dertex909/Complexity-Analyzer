@@ -22,6 +22,7 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 
 public class BiomeScanData {
@@ -43,7 +44,7 @@ public class BiomeScanData {
     }
 
     public void addScannedChunk(int chunkX, int chunkZ) {
-        long coord = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+        long coord = ChunkPos.asLong(chunkX, chunkZ);
         var set = this.scannedChunksSet;
         if (set == null) {
             set = new LongOpenHashSet();

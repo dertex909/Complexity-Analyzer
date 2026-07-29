@@ -67,12 +67,7 @@ public class EmergencyManager {
         }
 
         public float getCurrentMspt() {
-            long[] tickTimes = server.getTickTimesNanos();
-            if (tickTimes.length == 0) return 0;
-            long sum = 0;
-            int count = Math.min(20, tickTimes.length);
-            for (int i = 0; i < count; i++) sum += tickTimes[i];
-            return (float) sum / count / 1_000_000.0f;
+            return server.getCurrentSmoothedTickTime();
         }
 
         public float getAverageMspt() {

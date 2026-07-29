@@ -18,7 +18,7 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -150,14 +150,13 @@ public class ScanCoordinator {
         return Math.max(finalChunks, reconChunks);
     }
 
-    public boolean initializeSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongOpenHashSet> existingCoordinates) {
+    public boolean initializeSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongSet> existingCoordinates) {
         if (!session.isValid() || tasks.isEmpty()) return false;
 
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
 
         int totalChunks = 0;
-        for (int i = 0, n = tasks.size(); i < n; i++) {
-            ScanTask task = tasks.get(i);
+        for (var task : tasks) {
             int needed = task.chunksToFind();
             totalChunks += needed;
             session.setBiomeNeed(task.dimension().location(), task.biome().location(), needed);

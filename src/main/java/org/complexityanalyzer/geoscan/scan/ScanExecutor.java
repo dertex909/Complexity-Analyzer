@@ -318,9 +318,9 @@ public class ScanExecutor {
 
             if (batchResult.claimed() > 0) ctx.stagnantBatches = 0;
             var results = batchResult.results();
-            for (int i = 0, n = results.size(); i < n; i++) {
+            for (var result : results) {
                 if (shouldStop(ctx.myCtx)) return;
-                processResult(ctx, results.get(i));
+                processResult(ctx, result);
             }
         }
     }
@@ -385,9 +385,9 @@ public class ScanExecutor {
         var future = CompletableFuture.supplyAsync(() -> {
             var results = batchProcessor.analyzeLoadedBatch(loadedChunks, ctx.mySession);
             int claimed = 0;
-            for (int i = 0, n = results.size(); i < n; i++) {
+            for (var result : results) {
                 if (!ctx.mySession.isValid()) break;
-                var biome = results.get(i).biome();
+                var biome = result.biome();
                 if (!ctx.mySession.doesNotNeedBiome(ctx.dimId, biome)) claimed++;
             }
             return new ScanContext.AnalysisBatchResult(results, claimed);

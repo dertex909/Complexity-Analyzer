@@ -19,6 +19,7 @@
 package org.complexityanalyzer.geoscan;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -77,7 +78,7 @@ public class GeoDatabase {
         return storage.countReconChunks(dimension, biome);
     }
 
-    public Object2ObjectMap<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
+    public Object2ObjectMap<ResourceLocation, LongSet> loadAllReconChunkCoordinates() {
         return storage.loadAllReconChunkCoordinates();
     }
 

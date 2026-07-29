@@ -18,7 +18,7 @@
 
 package org.complexityanalyzer.geoscan;
 
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.commands.CommandSourceStack;
@@ -318,7 +318,7 @@ public class GeoAnalysisManager {
         }
     }
 
-    private void initializeAndExecuteSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongOpenHashSet> existingCoordinates) {
+    private void initializeAndExecuteSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongSet> existingCoordinates) {
         try {
             server.execute(() -> {
                 if (!session.isValid() || isShutdown.get()) return;

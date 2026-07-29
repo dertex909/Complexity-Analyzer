@@ -20,6 +20,7 @@ package org.complexityanalyzer.geoscan.storage;
 
 import com.google.gson.*;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -232,16 +233,16 @@ public class GeoDataStorage {
     }
 
     private String encodeLocation(ResourceLocation location) {
-        return location.getNamespace() + "~" + location.getPath().replace('/', '_');
+        return location.getNamespace() + "~" + location.getPath().replace('/', '@');
     }
 
     private ResourceLocation decodeLocation(String encoded) {
         int tildeIndex = encoded.indexOf('~');
         if (tildeIndex == -1) {
-            return ResourceLocation.fromNamespaceAndPath("minecraft", encoded.replace('_', '/'));
+            return ResourceLocation.fromNamespaceAndPath("minecraft", encoded.replace('@', '/'));
         }
         String namespace = encoded.substring(0, tildeIndex);
-        String path = encoded.substring(tildeIndex + 1).replace('_', '/');
+        String path = encoded.substring(tildeIndex + 1).replace('@', '/');
         return ResourceLocation.fromNamespaceAndPath(namespace, path);
     }
 
@@ -260,8 +261,8 @@ public class GeoDataStorage {
         }
     }
 
-    public Object2ObjectMap<ResourceLocation, LongOpenHashSet> loadAllReconChunkCoordinates() {
-        var allCoordinates = new Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet>();
+    public Object2ObjectMap<ResourceLocation, LongSet> loadAllReconChunkCoordinates() {
+        var allCoordinates = new Object2ObjectOpenHashMap<ResourceLocation, LongSet>();
         var allPaths = getAllReconFilePaths();
 
         for (var dimEntry : Object2ObjectMaps.fastIterable(allPaths)) {

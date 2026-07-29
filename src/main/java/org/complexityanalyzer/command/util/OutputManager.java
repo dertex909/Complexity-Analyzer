@@ -114,10 +114,7 @@ public class OutputManager {
     public void broadcast(Component message) {
         server.execute(() -> {
             var players = server.getPlayerList().getPlayers();
-            for (int i = 0; i < players.size(); i++) {
-                var player = players.get(i);
-                player.sendSystemMessage(ServerLanguage.translateForPlayer(message, player));
-            }
+            for (var player : players) player.sendSystemMessage(ServerLanguage.translateForPlayer(message, player));
             server.sendSystemMessage(ServerLanguage.translateForPlayer(message, null));
         });
     }
@@ -125,8 +122,7 @@ public class OutputManager {
     public void broadcastWarning(Component message) {
         server.execute(() -> {
             var players = server.getPlayerList().getPlayers();
-            for (int i = 0; i < players.size(); i++) {
-                var player = players.get(i);
+            for (var player : players) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
                 player.sendSystemMessage(styled(translated, ChatFormatting.YELLOW));
             }
@@ -138,8 +134,7 @@ public class OutputManager {
     public void broadcastSever(Component message) {
         server.execute(() -> {
             var players = server.getPlayerList().getPlayers();
-            for (int i = 0; i < players.size(); i++) {
-                var player = players.get(i);
+            for (var player : players) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
                 player.sendSystemMessage(styled(translated, ChatFormatting.RED, ChatFormatting.BOLD));
             }
@@ -151,8 +146,7 @@ public class OutputManager {
     public void sendToAdmins(Component message) {
         server.execute(() -> {
             var players = server.getPlayerList().getPlayers();
-            for (int i = 0; i < players.size(); i++) {
-                var player = players.get(i);
+            for (var player : players) {
                 if (player.hasPermissions(2)) {
                     var adminPrefix = styled(ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.output.admin_prefix"), player), ChatFormatting.GRAY);
                     var translatedBody = styled(ServerLanguage.translateForPlayer(message, player), ChatFormatting.ITALIC);

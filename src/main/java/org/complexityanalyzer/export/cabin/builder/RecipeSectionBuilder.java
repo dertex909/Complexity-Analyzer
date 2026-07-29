@@ -65,11 +65,9 @@ public final class RecipeSectionBuilder {
         var list = new IntArrayList(2);
         var rt = r.getRecipeType();
         var machineItems = (registry != null && rt != null) ? registry.getMachinesForRecipe(rt) : null;
-        if (machineItems != null) {
-            for (var mi : machineItems) {
-                int idx = ctx.itemIndex().getInt(mi);
-                if (idx >= 0) list.add(idx);
-            }
+        if (machineItems != null) for (var mi : machineItems) {
+            int idx = ctx.itemIndex().getInt(mi);
+            if (idx >= 0) list.add(idx);
         }
         return list;
     }

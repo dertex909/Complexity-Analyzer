@@ -55,8 +55,11 @@ public class BiomeDataMapper {
             var it = data.serializableBlockCounts.object2LongEntrySet().fastIterator();
             while (it.hasNext()) {
                 var entry = it.next();
-                var block = GameRegistryManager.getBlock(ResourceLocation.parse(entry.getKey()));
-                if (block != null && block != AIR) data.getInternalBlockCounts().put(block, entry.getLongValue());
+                var rl = ResourceLocation.tryParse(entry.getKey());
+                if (rl != null) {
+                    var block = GameRegistryManager.getBlock(rl);
+                    if (block != null && block != AIR) data.getInternalBlockCounts().put(block, entry.getLongValue());
+                }
             }
         }
 

@@ -1,50 +1,52 @@
-# 📖 Complexity Analyzer
+# 📊 Complexity Analyzer
 
-![Project Banner](src/main/resources/assets/complexityanalyzer/viewer/icon.png)
+Stop guessing when evaluating the complexity of modpacks, recipes, and world resources. **Complexity Analyzer** is an
+advanced framework for deep analysis of Minecraft’s economy and core mechanics.
 
-> A powerful framework that calculates the 'true cost' of every item, enabling deep analysis and balancing for complex modpacks.
-
-**Complexity Analyzer** is not just another utility mod. It's a foundational platform that transforms your Minecraft world's economy from an art into a science. At its core is a sophisticated analytical engine that processes every recipe in your game to calculate an objective "complexity score" for any item, uncovering the most optimal production chains and providing deep economic insights.
-
-### ⚠️ Project Status: Experimental Alpha
-
-This project is currently in a very early and experimental stage of development. Expect bugs, breaking changes, and incomplete features. It is intended for modpack creators, server administrators, and developers who are not afraid of a little instability. **Use at your own risk!**
-
-Your feedback is invaluable. Please report bugs and suggest features on the [Issues](https://github.com/dertex909/Complexity-Analyzer/issues) page.
+The mod transforms the chaos of thousands of recipes, mob statistics, and world generation rules into a transparent,
+objective digital model. It is designed for both **players** looking for the most efficient progression paths and *
+*analysts or modpack creators** who need precise control over game balance.
 
 ---
 
-## ✨ Core Features
+## 🌟 Key Features
 
-*   **🧠 Deep Economic Analysis:** A graph-based engine calculates the "true cost" of production for every item.
-*   **🔌 Universal Mod Support:** Automatically discovers and parses recipes from virtually any mod compatible with JEI (Planned EMI/REI).
-*   **📊 Powerful In-Game CLI:** A rich set of `/complexity` commands for detailed analysis, crafting tree visualization, and server performance monitoring.
-*   **📤 Data Export:** Export all calculated data into **CSV or JSON** for external analysis.
-*   **🤖 AI-Powered Assistant (Planned):** An upcoming feature to provide in-game guidance and answer complex economic questions.
-*   **⚙️ Developer API (Planned):** A future-proof API will allow other mods to integrate with the analysis engine.
-
----
-
-## 📚 Documentation
-
-For a detailed guide on all available in-game commands, please see the **[Command Documentation](docs/COMMANDS.md)**.
-
-*(Full API documentation and developer guides will be available in future releases.)*
+* 🧮 **Objective Complexity Score:** The analytical engine deconstructs every recipe to its core elements. Beyond simple
+  ingredient counts, it factors in crafting depth, fluid/gas logistics, processing chains, and even a "machine tax" for
+  used equipment.
+* 🌐 **Interactive Web Dashboard:** Browse your world's entire database in a clean browser dashboard — complete with fast
+  search, filtering, and detailed item breakdowns.
+* 🌍 **Smart World Geo-Scanner:** Background biome scanning measures the actual occurrence rate of ores and blocks across
+  your world, calculating true resource rarity based on real worldgen data instead of estimates.
+* ⚔️ **Combat Analytics & Loot Simulation:** Evaluates mob threat based on stats (health, armor, damage) and simulates
+  thousands of virtual kills and chest openings to calculate true drop yields.
+* 📤 **Flexible Data Export:** Export the entire economy dataset to CSV (for Excel / Google Sheets), JSON, or the
+  high-performance compressed binary **CABIN** format.
 
 ---
 
-## 🚀 Project's Future & Roadmap
+## 📖 Command Reference
 
-My vision for Complexity Analyzer goes beyond a simple mod. I aim to build a comprehensive, intelligent platform for game analysis. The current roadmap includes:
+All interactions with the mod are consolidated under the `/complexity` command. To keep this page clean and easy to
+read, the complete guide covering all commands, parameters, and permission levels is available in a dedicated document:
 
-1.  **Stabilizing the Core Engine:** Bug fixes, performance tuning, and ensuring maximum accuracy.
-2.  **Developing a Public API:** Allowing other mod developers to build upon this platform.
-3.  **Implementing the AI Assistant:** Integrating a true AI to create an interactive and intelligent in-game experience.
+👉 **[Command Reference Guide (COMMANDS.md)](docs/COMMANDS.md)**
 
-This is an ambitious, long-term project. Contributions and suggestions are always welcome.
+---
+
+## 🚀 Roadmap & Future Plans
+
+Complexity Analyzer is actively evolving. Upcoming milestones include:
+
+* 🤖 **Smart AI Advisor:** An interactive assistant designed to guide players through progression paths and help modpack
+  creators pinpoint broken crafting loops or economy imbalances.
+* 📈 **Advanced Web Analytics Platform:** Evolution of the web dashboard into a comprehensive analytics portal featuring
+  interactive dependency graphs, visual charts, and deep metric comparisons.
+* 👁️ **Optional Activity Logging:** Background event tracking to gather world analytics and activity history purely for
+  statistical review, without impacting gameplay.
 
 ---
 
 ## 📜 License
 
-This project is licensed under the [LGPL License](LICENSE).
+This project is licensed under the [LGPL-3.0 License](LICENSE).

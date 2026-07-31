@@ -4,8 +4,8 @@ Stop guessing when evaluating the complexity of modpacks, recipes, and world res
 advanced framework for deep analysis of Minecraft’s economy and core mechanics.
 
 The mod transforms the chaos of thousands of recipes, mob statistics, and world generation rules into a transparent,
-objective digital model. It is designed for both **players** looking for the most efficient progression paths and *
-*analysts or modpack creators** who need precise control over game balance.
+objective digital model. It is designed for both **players** looking for the most efficient progression paths and 
+*analysts or modpack creators* who need precise control over game balance.
 
 ---
 

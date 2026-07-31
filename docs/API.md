@@ -1,24 +1,48 @@
 ## 📦 1. Adding Dependency
 
-To use the API in your mod project, add Complexity Analyzer to your `build.gradle`:
+To use the Complexity Analyzer API in your mod project, add the JitPack repository and dependency coordinates to your Gradle setup.
+
+### 1.1. Add Repository (`settings.gradle` or `build.gradle`)
+
+In your `settings.gradle`:
+
+```groovy
+dependencyResolutionManagement {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+*(Or in your root `build.gradle` repositories block):*
+
+```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+```
+
+### 1.2. Add Dependency (`build.gradle`)
 
 ```groovy
 dependencies {
     // Compile against the Complexity Analyzer API
-    compileOnly "org.complexityanalyzer:complexityanalyzer:${complexity_analyzer_version}"
+    compileOnly "com.github.dertex909:Complexity-Analyzer:0.7.0-alpha-1.21.1"
 
-    // Or run against it at runtime
-    implementation "org.complexityanalyzer:complexityanalyzer:${complexity_analyzer_version}"
+    // Or include at runtime
+    implementation "com.github.dertex909:Complexity-Analyzer:0.7.0-alpha-1.21.1"
 }
 ```
 
-Ensure your `neoforge.mods.toml` optionally or mandatorily declares the dependency:
+### 1.3. Declare Mod Dependency (`neoforge.mods.toml`)
+
+Ensure your `neoforge.mods.toml` declares the dependency for correct NeoForge load ordering:
 
 ```toml
 [[dependencies.your_mod_id]]
     modId = "complexityanalyzer"
     type = "optional" # or "required"
-    versionRange = "[0.7.0,)"
+    versionRange = "[0.7.0-alpha-1.21.1,)"
     ordering = "AFTER"
     side = "BOTH"
 ```

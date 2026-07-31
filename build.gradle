@@ -134,6 +134,7 @@ publishMods {
         projectId = "1377875"
         minecraftVersions.add(minecraft_version)
         serverRequired = true
+        clientOptional = true
     }
 }
 

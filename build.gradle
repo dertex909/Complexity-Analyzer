@@ -133,6 +133,7 @@ publishMods {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1377875"
         minecraftVersions.add(minecraft_version)
+        serverRequired = true
     }
 }
 

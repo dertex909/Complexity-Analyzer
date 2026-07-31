@@ -71,10 +71,10 @@ ComplexityCategory category = items.getCategory(Items.NETHERITE_INGOT);
 // 4. Get full detailed snapshot
 Optional<ItemComplexity> detailed = items.getDetailed(Items.NETHERITE_INGOT);
 detailed.ifPresent(info -> {
-    int craftingDepth = info.getDepth();           // Crafting tree depth
+    int craftingDepth = info.getDepth();               // Crafting tree depth
     int totalIngredients = info.getTotalIngredients(); // Total raw units required
-    boolean hasRecipe = info.hasRecipe();           // Whether produced by a recipe
-    RecipeNode bestRecipe = info.getOptimalRecipe(); // Solver-selected cheapest recipe
+    boolean hasRecipe = info.hasRecipe();              // Whether produced by a recipe
+    RecipeNode bestRecipe = info.getOptimalRecipe();   // Solver-selected cheapest recipe
 });
 
 // 5. Query analyzed collection

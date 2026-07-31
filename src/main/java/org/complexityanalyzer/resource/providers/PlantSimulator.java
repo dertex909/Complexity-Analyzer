@@ -45,6 +45,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -93,25 +94,28 @@ public class PlantSimulator {
 
     public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
         if (blocks == null || blocks.isEmpty()) return null;
-        clearCaches();
-        ensurePlatform(level);
-        fakePlayer = FakePlayerFactory.get(level, PLANT_SIM_PROFILE);
-        var results = new Object2ObjectOpenHashMap<Block, SimulationResult>();
 
-        for (var block : blocks) {
-            try {
-                var result = simulate(block, level);
-                if (result != null) results.put(block, result);
-            } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.warn("[PlantSim] Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
+        try (var ignored = ProbeScope.open()) {
+            clearCaches();
+            ensurePlatform(level);
+            fakePlayer = FakePlayerFactory.get(level, PLANT_SIM_PROFILE);
+            var results = new Object2ObjectOpenHashMap<Block, SimulationResult>();
+
+            for (var block : blocks) {
+                try {
+                    var result = simulate(block, level);
+                    if (result != null) results.put(block, result);
+                } catch (Throwable t) {
+                    ComplexityAnalyzer.LOGGER.warn("[PlantSim] Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
+                }
             }
-        }
 
-        collectAndClear(level, null, null);
-        clearEntitiesInsideBox(level);
-        releasePlatform(level);
-        fakePlayer = null;
-        return results.isEmpty() ? null : results;
+            collectAndClear(level, null, null);
+            clearEntitiesInsideBox(level);
+            releasePlatform(level);
+            fakePlayer = null;
+            return results.isEmpty() ? null : results;
+        }
     }
 
     public void clearCaches() {

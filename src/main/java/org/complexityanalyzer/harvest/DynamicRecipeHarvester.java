@@ -32,6 +32,7 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
@@ -48,41 +49,43 @@ public final class DynamicRecipeHarvester {
     }
 
     public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
-        ComplexityAnalyzer.LOGGER.debug("[Harvest] Starting autonomous dynamic recipe probe...");
+        try (var ignored = ProbeScope.open()) {
+            ComplexityAnalyzer.LOGGER.debug("[Harvest] Starting autonomous dynamic recipe probe...");
 
-        var recipeManager = level.getRecipeManager();
-        var inputTypeMap = getTypeMap(recipeManager);
-        ComplexityAnalyzer.LOGGER.debug("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
+            var recipeManager = level.getRecipeManager();
+            var inputTypeMap = getTypeMap(recipeManager);
+            ComplexityAnalyzer.LOGGER.debug("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
-        var allItems = GameRegistryManager.getAllItems();
-        if (allItems.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("[Harvest] No registered items, skipping dynamic probe.");
-            return;
+            var allItems = GameRegistryManager.getAllItems();
+            if (allItems.isEmpty()) {
+                ComplexityAnalyzer.LOGGER.info("[Harvest] No registered items, skipping dynamic probe.");
+                return;
+            }
+
+            int detectionSampleSize = ComplexityConfig.DETECTION_SAMPLE_SIZE.get();
+
+            var ctx = new ProbeContext(
+                    recipeManager, level, graph, new FastHarvester(), allItems,
+                    knownRecipeIds, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize
+            );
+
+            var types = new ObjectArrayList<RecipeType<?>>(inputTypeMap.size());
+            var classesList = new ObjectArrayList<ObjectSet<Class<?>>>(inputTypeMap.size());
+            for (var entry : inputTypeMap.object2ObjectEntrySet()) {
+                types.add(entry.getKey());
+                classesList.add(entry.getValue());
+            }
+
+            int typeCount = types.size();
+            if (typeCount == 1) {
+                probeType(types.getFirst(), classesList.getFirst(), ctx);
+            } else if (typeCount > 1) {
+                ThreadPoolManager.getInstance().invokeParallel(() -> new ProcessTypesTask(types, classesList, ctx, 0, typeCount).invoke());
+            }
+
+            ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
+                    ctx.addedCount().get(), ctx.dynamicTypes().get());
         }
-
-        int detectionSampleSize = ComplexityConfig.DETECTION_SAMPLE_SIZE.get();
-
-        var ctx = new ProbeContext(
-                recipeManager, level, graph, new FastHarvester(), allItems,
-                knownRecipeIds, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize
-        );
-
-        var types = new ObjectArrayList<RecipeType<?>>(inputTypeMap.size());
-        var classesList = new ObjectArrayList<ObjectSet<Class<?>>>(inputTypeMap.size());
-        for (var entry : inputTypeMap.object2ObjectEntrySet()) {
-            types.add(entry.getKey());
-            classesList.add(entry.getValue());
-        }
-
-        int typeCount = types.size();
-        if (typeCount == 1) {
-            probeType(types.getFirst(), classesList.getFirst(), ctx);
-        } else if (typeCount > 1) {
-            ThreadPoolManager.getInstance().invokeParallel(() -> new ProcessTypesTask(types, classesList, ctx, 0, typeCount).invoke());
-        }
-
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
-                ctx.addedCount().get(), ctx.dynamicTypes().get());
     }
 
     private static void probeType(RecipeType<?> type, ObjectSet<Class<?>> inputClasses, ProbeContext ctx) {

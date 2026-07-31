@@ -49,6 +49,7 @@ import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.resource.sources.*;
+import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
@@ -143,7 +144,7 @@ public class AnalysisEngine {
     }
 
     private void runBuild(ServerLevel level, boolean fullRebuild, long gen, Runnable onComplete) {
-        try {
+        try (var ignored = ProbeScope.open()) {
             if (!setStateIfCurrent(gen, State.ANALYZING, false)) return;
 
             if (fullRebuild) {

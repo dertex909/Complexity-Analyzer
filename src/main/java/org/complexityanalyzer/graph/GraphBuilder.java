@@ -30,14 +30,13 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
-import org.complexityanalyzer.core.ThreadPoolManager;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.engine.RegistryHarvestService;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.util.ComplexityComparators;
+import org.complexityanalyzer.util.ParallelUtils;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static net.minecraft.world.item.Items.AIR;
@@ -68,7 +67,7 @@ public class GraphBuilder {
         if (recipeCount == 1) {
             processSingleRecipe(allRecipes.getFirst(), level, processedNodes, processedCount, skippedCount);
         } else if (recipeCount > 1) {
-            ThreadPoolManager.getInstance().invokeParallel(() -> new ProcessRecipesTask(allRecipes, level, processedNodes, processedCount, skippedCount, 0, recipeCount).invoke());
+            ParallelUtils.forRange(0, recipeCount, 16, i -> processSingleRecipe(allRecipes.get(i), level, processedNodes, processedCount, skippedCount));
         }
 
         var graph = new RecipeGraph();
@@ -184,40 +183,5 @@ public class GraphBuilder {
             for (var stack : stacks) if (stack.getItem() == resultItem) return true;
         }
         return recipe instanceof TippedArrowRecipe || recipe instanceof MapCloningRecipe || recipe instanceof ArmorDyeRecipe || recipe instanceof BannerDuplicateRecipe;
-    }
-
-    private static final class ProcessRecipesTask extends RecursiveAction {
-        private final ObjectArrayList<RecipeHolder<?>> allRecipes;
-        private final Level level;
-        private final ConcurrentLinkedQueue<RecipeNode> processedNodes;
-        private final AtomicInteger processedCount;
-        private final AtomicInteger skippedCount;
-        private final int start;
-        private final int end;
-
-        ProcessRecipesTask(ObjectArrayList<RecipeHolder<?>> allRecipes, Level level,
-                           ConcurrentLinkedQueue<RecipeNode> processedNodes, AtomicInteger processedCount,
-                           AtomicInteger skippedCount, int start, int end) {
-            this.allRecipes = allRecipes;
-            this.level = level;
-            this.processedNodes = processedNodes;
-            this.processedCount = processedCount;
-            this.skippedCount = skippedCount;
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        protected void compute() {
-            int length = end - start;
-            if (length <= 16) {
-                for (int i = start; i < end; i++) {
-                    processSingleRecipe(allRecipes.get(i), level, processedNodes, processedCount, skippedCount);
-                }
-            } else {
-                int mid = (start + end) >>> 1;
-                invokeAll(new ProcessRecipesTask(allRecipes, level, processedNodes, processedCount, skippedCount, start, mid), new ProcessRecipesTask(allRecipes, level, processedNodes, processedCount, skippedCount, mid, end));
-            }
-        }
     }
 }

@@ -20,13 +20,11 @@ package org.complexityanalyzer.export.cabin.io;
 
 import com.github.luben.zstd.Zstd;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.CabinSection;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
-
-import java.util.concurrent.RecursiveAction;
+import org.complexityanalyzer.util.ParallelUtils;
 
 public final class CabinWriter {
 
@@ -64,7 +62,7 @@ public final class CabinWriter {
         if (sectionCount == 1) {
             compressSection(0, sections, toWrites, codecs);
         } else if (sectionCount > 1) {
-            ThreadPoolManager.getInstance().invokeParallel(() -> new CompressTask(sections, toWrites, codecs, 0, sectionCount).invoke());
+            ParallelUtils.forRange(0, sectionCount, 2, i -> compressSection(i, sections, toWrites, codecs));
         }
 
         for (int i = 0; i < sectionCount; i++) {
@@ -107,32 +105,5 @@ public final class CabinWriter {
         }
         toWrites[i] = data;
         codecs[i] = CabinFormat.CODEC_RAW;
-    }
-
-    private static final class CompressTask extends RecursiveAction {
-        private final ObjectList<CabinSection> sections;
-        private final byte[][] toWrites;
-        private final byte[] codecs;
-        private final int start;
-        private final int end;
-
-        CompressTask(ObjectList<CabinSection> sections, byte[][] toWrites, byte[] codecs, int start, int end) {
-            this.sections = sections;
-            this.toWrites = toWrites;
-            this.codecs = codecs;
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        protected void compute() {
-            int length = end - start;
-            if (length <= 2) {
-                for (int i = start; i < end; i++) compressSection(i, sections, toWrites, codecs);
-            } else {
-                int mid = (start + end) >>> 1;
-                invokeAll(new CompressTask(sections, toWrites, codecs, start, mid), new CompressTask(sections, toWrites, codecs, mid, end));
-            }
-        }
     }
 }

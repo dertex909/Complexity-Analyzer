@@ -30,8 +30,8 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.util.ParallelUtils;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,7 +40,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicRecipeHarvester {
@@ -80,7 +79,7 @@ public final class DynamicRecipeHarvester {
             if (typeCount == 1) {
                 probeType(types.getFirst(), classesList.getFirst(), ctx);
             } else if (typeCount > 1) {
-                ThreadPoolManager.getInstance().invokeParallel(() -> new ProcessTypesTask(types, classesList, ctx, 0, typeCount).invoke());
+                ParallelUtils.forRange(0, typeCount, 1, i -> probeType(types.get(i), classesList.get(i), ctx));
             }
 
             ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
@@ -239,33 +238,5 @@ public final class DynamicRecipeHarvester {
             AtomicInteger addedCount,
             AtomicInteger dynamicTypes,
             int detectionSampleSize) {
-    }
-
-    private static final class ProcessTypesTask extends RecursiveAction {
-        private final ObjectArrayList<RecipeType<?>> types;
-        private final ObjectArrayList<ObjectSet<Class<?>>> classesList;
-        private final ProbeContext ctx;
-        private final int start;
-        private final int end;
-
-        ProcessTypesTask(ObjectArrayList<RecipeType<?>> types, ObjectArrayList<ObjectSet<Class<?>>> classesList,
-                         ProbeContext ctx, int start, int end) {
-            this.types = types;
-            this.classesList = classesList;
-            this.ctx = ctx;
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        protected void compute() {
-            int length = end - start;
-            if (length <= 1) {
-                for (int i = start; i < end; i++) probeType(types.get(i), classesList.get(i), ctx);
-            } else {
-                int mid = (start + end) >>> 1;
-                invokeAll(new ProcessTypesTask(types, classesList, ctx, start, mid), new ProcessTypesTask(types, classesList, ctx, mid, end));
-            }
-        }
     }
 }

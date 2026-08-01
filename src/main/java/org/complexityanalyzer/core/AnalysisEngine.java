@@ -30,7 +30,6 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
-import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.analyzer.solver.SccCondensedSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.api.ComplexityAnalyzerAPI;
@@ -44,6 +43,7 @@ import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
@@ -262,7 +262,7 @@ public class AnalysisEngine {
     }
 
     private void initializeResourceSources(ServerLevel serverLevel) {
-        ObjectList<IResourceSource> initialSources = new ObjectArrayList<>();
+        var initialSources = new ObjectArrayList<IResourceSource>();
 
         initialSources.add(new UniversalLootSource());
         initialSources.add(new MobDropSource(this.mobPropProvider));
@@ -603,10 +603,8 @@ public class AnalysisEngine {
 
     public EngineStats getStats() {
         if (!isReady()) return new EngineStats(currentState.get(), 0, 0, 0);
-
         var currentGraph = this.graph;
         if (currentGraph == null) return new EngineStats(currentState.get(), 0, 0, 0);
-
         return new EngineStats(currentState.get(), currentGraph.getAllItems().size(), currentGraph.getTotalRecipeCount(), 0);
     }
 

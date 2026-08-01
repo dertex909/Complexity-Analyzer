@@ -31,12 +31,11 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
-import org.complexityanalyzer.harvest.ItemStackIdentity;
-import org.complexityanalyzer.harvest.RegistryHarvestService;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
+import org.complexityanalyzer.harvest.engine.RegistryHarvestService;
 import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
 import org.complexityanalyzer.util.ComplexityComparators;
 
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -175,13 +174,11 @@ public class GraphBuilder {
     }
 
     private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
-        for (var stack : stacks) {
-            if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
-        }
+        for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
         return false;
     }
 
-    private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, List<Ingredient> ingredients) {
+    private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, Iterable<Ingredient> ingredients) {
         if (resultItem.getDefaultInstance().isDamageableItem()) for (var ing : ingredients) {
             var stacks = ing.getItems();
             for (var stack : stacks) if (stack.getItem() == resultItem) return true;

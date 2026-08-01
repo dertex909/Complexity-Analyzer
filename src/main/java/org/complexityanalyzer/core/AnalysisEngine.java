@@ -30,7 +30,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.ComplexityCalculator;
 import org.complexityanalyzer.analyzer.DepthAnalyzer;
-import org.complexityanalyzer.analyzer.MachineRegistry;
+import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.analyzer.solver.SccCondensedSolver;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.api.ComplexityAnalyzerAPI;

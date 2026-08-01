@@ -16,13 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest;
+package org.complexityanalyzer.harvest.engine;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.harvest.debug.FullDebugTracePipeline;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;

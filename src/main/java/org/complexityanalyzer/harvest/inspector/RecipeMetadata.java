@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest;
+package org.complexityanalyzer.harvest.inspector;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.HolderLookup;

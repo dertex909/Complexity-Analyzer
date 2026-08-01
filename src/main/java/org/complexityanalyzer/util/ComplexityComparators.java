@@ -26,7 +26,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeNode.ChemicalIngredient;
 import org.complexityanalyzer.graph.RecipeNode.ChemicalOutput;
-import org.complexityanalyzer.harvest.ItemStackIdentity;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 
 import java.util.Comparator;
 

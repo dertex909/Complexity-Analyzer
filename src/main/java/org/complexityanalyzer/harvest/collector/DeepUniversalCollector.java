@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest.modules;
+package org.complexityanalyzer.harvest.collector;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
@@ -32,8 +32,8 @@ import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.harvest.FastHarvester;
-import org.complexityanalyzer.harvest.HarvestedItems;
+import org.complexityanalyzer.harvest.engine.FastHarvester;
+import org.complexityanalyzer.harvest.engine.HarvestedItems;
 
 import static net.minecraft.core.registries.Registries.ITEM;
 import static net.minecraft.world.item.Items.AIR;

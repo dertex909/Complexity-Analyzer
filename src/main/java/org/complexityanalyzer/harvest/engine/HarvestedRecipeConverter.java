@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest;
+package org.complexityanalyzer.harvest.engine;
 
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
@@ -35,6 +35,8 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
+import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;

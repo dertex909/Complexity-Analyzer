@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest;
+package org.complexityanalyzer.harvest.engine;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
@@ -27,7 +27,8 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.harvest.modules.*;
+import org.complexityanalyzer.harvest.collector.*;
+import org.complexityanalyzer.harvest.inspector.*;
 
 import static java.util.Locale.ROOT;
 import static net.minecraft.world.item.Items.AIR;

@@ -22,7 +22,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.ItemStack;
-import org.complexityanalyzer.harvest.ItemStackIdentity;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 
 import java.util.concurrent.ConcurrentHashMap;
 

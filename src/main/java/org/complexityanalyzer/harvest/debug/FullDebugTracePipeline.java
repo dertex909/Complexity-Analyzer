@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest;
+package org.complexityanalyzer.harvest.debug;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -25,6 +25,8 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.harvest.engine.HarvestedItems;
+import org.complexityanalyzer.harvest.inspector.*;
 import org.complexityanalyzer.util.ModFileManager;
 
 import java.nio.file.Path;

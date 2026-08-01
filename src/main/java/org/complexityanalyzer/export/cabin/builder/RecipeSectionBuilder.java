@@ -24,12 +24,12 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import org.complexityanalyzer.analyzer.MachineRegistry;
+import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.harvest.ItemStackIdentity;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 
 import java.util.Arrays;
 

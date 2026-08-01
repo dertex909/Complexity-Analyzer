@@ -16,12 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest.modules;
+package org.complexityanalyzer.harvest.collector;
 
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import org.complexityanalyzer.harvest.RecipeMetadata;
+import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 
 import java.util.Map;
 import java.util.Optional;

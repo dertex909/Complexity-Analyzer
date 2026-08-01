@@ -16,9 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest.modules;
+package org.complexityanalyzer.harvest.collector;
 
-import org.complexityanalyzer.harvest.TerminalTypeRegistry;
+import org.complexityanalyzer.harvest.inspector.TerminalTypeRegistry;
 
 import java.util.Collection;
 import java.util.Map;

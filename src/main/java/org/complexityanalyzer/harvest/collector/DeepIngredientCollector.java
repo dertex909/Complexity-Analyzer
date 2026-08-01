@@ -16,70 +16,55 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.harvest.modules;
+package org.complexityanalyzer.harvest.collector;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.harvest.engine.FastHarvester;
+import org.complexityanalyzer.harvest.engine.HarvestedItems;
 
-import static net.minecraft.world.item.Items.AIR;
+import static net.minecraft.core.registries.Registries.ITEM;
 
-public final class DeepItemCollector {
+public final class DeepIngredientCollector {
 
-    private DeepItemCollector() {
+    private DeepIngredientCollector() {
     }
 
-    public static void collect(Object obj, ObjectList<ItemStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
+    public static void collect(Object obj, ObjectList<HarvestedItems.HarvestedIngredient> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    if (tagKey.registry().equals(Registries.ITEM)) {
+                    if (tagKey.registry().equals(ITEM)) {
                         @SuppressWarnings("unchecked")
                         var itemTag = (TagKey<Item>) tagKey;
-                        var firstItem = GameRegistryManager.getFirstItemByTag(itemTag);
-                        if (firstItem != AIR) acc.add(new ItemStack(firstItem));
+                        var ing = Ingredient.of(itemTag);
+                        if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
+                            acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
+                        }
                     }
                     return true;
                 }
                 case SizedIngredient si when si.count() > 0 -> {
-                    ItemStack[] stacks = si.ingredient().getItems();
-                    if (stacks.length > 0) {
-                        var stack = stacks[0].copy();
-                        stack.setCount(si.count());
-                        acc.add(stack);
+                    var ing = si.ingredient();
+                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
+                        acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
                     }
                     return true;
                 }
-                case ItemStack stack when !stack.isEmpty() -> {
-                    acc.add(stack.copy());
-                    return true;
-                }
-                case Item item -> {
-                    if (item != AIR) acc.add(new ItemStack(item));
-                    return true;
-                }
-                case Block block -> {
-                    var item = block.asItem();
-                    if (item != AIR) acc.add(new ItemStack(item));
-                    return true;
-                }
-                case Holder<?> holder -> {
-                    if (visited.add(holder)) collect(holder.value(), acc, d + 1, visited);
+                case Ingredient ing when !ing.isEmpty() -> {
+                    if (FastHarvester.visitIngredient(ing)) acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                     return true;
                 }
                 default -> {
                 }
             }
-            return node instanceof FluidStack || node instanceof Ingredient;
+            return node instanceof ItemStack || node instanceof FluidStack;
         });
     }
 }

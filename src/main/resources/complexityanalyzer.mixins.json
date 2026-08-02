@@ -1,20 +1,24 @@
 {
-  "required": true,
-  "minVersion": "0.8.7",
-  "package": "org.complexityanalyzer.mixin",
-  "compatibilityLevel": "JAVA_21",
-  "refmap": "complexity_analyzer.refmap.json",
   "mixins": [
     "ChunkGeneratorMixin",
+    "ConnectionMixin",
     "LevelMixin",
     "ServerChunkCacheMixin",
-    "ConnectionMixin",
     "ServerLevelMixin",
     "SmithingTransformRecipeAccessor"
   ],
   "client": [],
   "server": [],
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8.7",
+  "required": true,
+  "package": "org.complexityanalyzer.mixin",
+  "refmap": "complexity_analyzer.refmap.json",
+  "setSourceFile": true,
   "injectors": {
     "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
   }
 }

@@ -119,6 +119,7 @@ idea {
 
 publishMods {
     file = jar.archiveFile
+    additionalFiles.from(sourcesJar.archiveFile)
     changelog = "Release v${mod_version}"
     type = ALPHA
     modLoaders.add("neoforge")
@@ -135,13 +136,5 @@ publishMods {
         minecraftVersions.add(minecraft_version)
         server = true
         client = false
-    }
-}
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
     }
 }

@@ -198,19 +198,10 @@ function updateItemsView() {
     updateHeaderIndicators();
 
     const itemsList = $("items-list");
-    if (list.length === 0) {
-        itemsList.innerHTML = `
-            <div class="virtual-viewport" style="display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; width: 100%; flex: 1;">
-                <div class="empty-state" style="padding: 40px 0;">
-                    <div class="icon">🔍</div>
-                    <div class="message">No items match your filter.</div>
-                </div>
-            </div>`;
-        return;
-    }
     mountVirtualList(itemsList, {
         itemCount: list.length,
         itemHeight: 28,
+        emptyMessage: "No items match your filter.",
         renderRow: (absIndex) => {
             const it = list[absIndex];
             const el = document.createElement("div");

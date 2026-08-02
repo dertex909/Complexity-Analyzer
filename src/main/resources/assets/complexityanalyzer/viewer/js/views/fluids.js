@@ -202,20 +202,11 @@ function updateFluidsView() {
     document.getElementById("fluids-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.fluids.count)} fluids`;
 
     const listContainer = document.getElementById("fluids-list");
-    if (list.length === 0) {
-        listContainer.innerHTML = `
-            <div class="virtual-viewport" style="display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; width: 100%; flex: 1;">
-                <div class="empty-state" style="padding: 40px 0;">
-                    <div class="icon">🔍</div>
-                    <div class="message">No fluids match your filter.</div>
-                </div>
-            </div>`;
-        return;
-    }
 
     mountVirtualList(listContainer, {
         itemCount: list.length,
         itemHeight: 28,
+        emptyMessage: "No fluids match your filter.",
         renderRow: (absIndex) => {
             const fl = list[absIndex];
             const el = document.createElement("div");

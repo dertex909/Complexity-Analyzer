@@ -17,13 +17,12 @@
  */
 
 export function mountVirtualList(container, options) {
-    const {itemCount, itemHeight, renderRow} = options;
+    const {itemCount, itemHeight, renderRow, emptyMessage} = options;
+    let head = container.querySelector(".table-head") || (container.parentNode ? container.parentNode.querySelector(".table-head") : null);
+    if (head && head.parentNode) head.parentNode.removeChild(head);
     const viewport = document.createElement("div");
     viewport.className = "virtual-viewport";
-
-    const head = container.parentNode ? container.parentNode.querySelector(".table-head") : null;
     if (head) viewport.appendChild(head);
-
     const spacer = document.createElement("div");
     spacer.className = "virtual-spacer";
     const rows = document.createElement("div");
@@ -32,6 +31,19 @@ export function mountVirtualList(container, options) {
     viewport.appendChild(rows);
     container.innerHTML = "";
     container.appendChild(viewport);
+
+    if (itemCount === 0) {
+        spacer.style.height = "0px";
+        rows.innerHTML = `
+            <div class="empty-state" style="padding: 40px 0;">
+                <div class="icon">🔍</div>
+                <div class="message">${emptyMessage || "No items match your filter."}</div>
+            </div>`;
+        return {
+            destroy: () => {
+            }
+        };
+    }
 
     spacer.style.height = (itemCount * itemHeight) + "px";
 

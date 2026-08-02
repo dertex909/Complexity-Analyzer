@@ -139,19 +139,10 @@ function updateMobsView() {
     updateHeaderIndicators();
 
     const mobsList = $("mobs-list");
-    if (list.length === 0) {
-        mobsList.innerHTML = `
-            <div class="virtual-viewport" style="display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; width: 100%; flex: 1;">
-                <div class="empty-state" style="padding: 40px 0;">
-                    <div class="icon">🔍</div>
-                    <div class="message">No mobs match your filter.</div>
-                </div>
-            </div>`;
-        return;
-    }
     mountVirtualList(mobsList, {
         itemCount: list.length,
         itemHeight: 28,
+        emptyMessage: "No mobs match your filter.",
         renderRow: (absIndex) => {
             const m = list[absIndex];
             const el = document.createElement("div");

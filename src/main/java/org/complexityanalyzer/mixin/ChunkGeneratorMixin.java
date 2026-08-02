@@ -21,8 +21,6 @@ package org.complexityanalyzer.mixin;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderSet;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import org.complexityanalyzer.util.ProbeScope;
@@ -32,11 +30,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChunkGenerator.class)
-public class ChunkGeneratorMixin {
+public abstract class ChunkGeneratorMixin {
     @Inject(method = "findNearestMapStructure", at = @At("HEAD"), cancellable = true)
-    private void onFindNearestMapStructure(ServerLevel level, HolderSet<Structure> structures, BlockPos pos,
-                                           int searchRadius, boolean skipExistingChunks,
-                                           CallbackInfoReturnable<Pair<BlockPos, Holder<Structure>>> cir) {
+    private void onFindNearestMapStructure(CallbackInfoReturnable<Pair<BlockPos, Holder<Structure>>> cir) {
         if (ProbeScope.isProbing()) cir.setReturnValue(null);
     }
 }

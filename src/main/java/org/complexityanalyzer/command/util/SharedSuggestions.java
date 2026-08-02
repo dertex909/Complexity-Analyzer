@@ -21,6 +21,7 @@ package org.complexityanalyzer.command.util;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -32,12 +33,11 @@ import org.complexityanalyzer.resource.sources.UniversalLootSource;
 
 public final class SharedSuggestions {
     public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) -> SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
+    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) -> SharedSuggestionProvider.suggestResource(SharedSuggestions.CACHED_LOOT_TABLES, builder);
+    public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) -> SharedSuggestionProvider.suggestResource(SharedSuggestions.CACHED_ENTITIES, builder);
 
-    private static volatile ObjectList<ResourceLocation> CACHED_ENTITIES = new ObjectArrayList<>();
-    public static final SuggestionProvider<CommandSourceStack> ENTITY = (context, builder) -> SharedSuggestionProvider.suggestResource(CACHED_ENTITIES, builder);
-
-    private static volatile ObjectList<ResourceLocation> CACHED_LOOT_TABLES = new ObjectArrayList<>();
-    public static final SuggestionProvider<CommandSourceStack> LOOT_TABLE = (context, builder) -> SharedSuggestionProvider.suggestResource(CACHED_LOOT_TABLES, builder);
+    private static volatile ObjectList<ResourceLocation> CACHED_LOOT_TABLES = ObjectLists.emptyList();
+    private static volatile ObjectList<ResourceLocation> CACHED_ENTITIES = ObjectLists.emptyList();
 
     private SharedSuggestions() {
     }
@@ -49,12 +49,12 @@ public final class SharedSuggestions {
 
     private static void refreshEntities() {
         var temp = new ObjectArrayList<ResourceLocation>();
-        GameRegistryManager.getAllEntityTypes().forEach(type -> {
+        for (var type : GameRegistryManager.getAllEntityTypes()) {
             if (type.getCategory() != MobCategory.MISC) {
                 var id = GameRegistryManager.getEntityTypeId(type);
                 if (id != null) temp.add(id);
             }
-        });
+        }
         CACHED_ENTITIES = temp;
     }
 
@@ -67,10 +67,8 @@ public final class SharedSuggestions {
         for (var map : uls.getAllLootData().values()) {
             if (map == null) continue;
             for (var data : map.values()) {
-                if (data == null) continue;
-                String spec = data.getSourceSpecifier();
-                if (spec != null && !spec.isEmpty()) {
-                    var loc = ResourceLocation.tryParse(spec);
+                if (data != null && data.getSourceSpecifier() != null && !data.getSourceSpecifier().isEmpty()) {
+                    var loc = ResourceLocation.tryParse(data.getSourceSpecifier());
                     if (loc != null) unique.add(loc);
                 }
             }

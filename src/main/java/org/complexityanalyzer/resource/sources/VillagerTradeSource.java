@@ -146,9 +146,7 @@ public class VillagerTradeSource implements IResourceSource {
                 }
             };
 
-            for (int i = 0; i < pendingTrades.size(); i++) {
-                var pending = pendingTrades.get(i);
-
+            for (var pending : pendingTrades) {
                 try {
                     var offer = pending.listing.getOffer(villager, RandomSource.create(pending.seed()));
 
@@ -183,8 +181,9 @@ public class VillagerTradeSource implements IResourceSource {
 
         if (!skippedByType.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("[VTS] Skipped slow trade types:");
-            skippedByType.forEach((type, count) ->
-                    ComplexityAnalyzer.LOGGER.info("[VTS]   {} - {} times", type, count));
+            for (var entry : skippedByType.object2IntEntrySet()) {
+                ComplexityAnalyzer.LOGGER.info("[VTS]   {} - {} times", entry.getKey(), entry.getIntValue());
+            }
         }
     }
 

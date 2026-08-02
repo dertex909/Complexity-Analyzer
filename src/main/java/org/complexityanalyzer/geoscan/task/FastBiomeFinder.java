@@ -47,8 +47,7 @@ public class FastBiomeFinder {
         var samplers = getSamplers(level);
         int searchY = level.getSeaLevel();
         int coarseStep = Math.max(256, maxRadius / 25);
-        var coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(),
-                searchY, maxRadius, coarseStep);
+        var coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(), searchY, maxRadius, coarseStep);
         if (coarseMatch == null) {
             coarseMatch = fastRandomSearch(samplers, biomePredicate, origin, maxRadius, searchY);
             if (coarseMatch == null) return null;

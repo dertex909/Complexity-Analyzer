@@ -126,12 +126,12 @@ public class MobDropSource implements IResourceSource {
         try {
             if (server.isSameThread()) {
                 var types = new ObjectArrayList<EntityType<?>>();
-                GameRegistryManager.getAllEntityTypes().forEach(types::add);
+                for (var type : GameRegistryManager.getAllEntityTypes()) types.add(type);
                 entityTypes = types;
             } else {
                 entityTypes = CompletableFuture.supplyAsync(() -> {
                     var types = new ObjectArrayList<EntityType<?>>();
-                    GameRegistryManager.getAllEntityTypes().forEach(types::add);
+                    for (var type : GameRegistryManager.getAllEntityTypes()) types.add(type);
                     return types;
                 }, server).join();
             }

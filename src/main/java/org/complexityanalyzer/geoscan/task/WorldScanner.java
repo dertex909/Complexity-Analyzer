@@ -193,8 +193,7 @@ public class WorldScanner {
         while (true) {
             var current = ref.get();
 
-            for (int i = 0, n = current.size(); i < n; i++) {
-                var existing = current.get(i);
+            for (var existing : current) {
                 if (isNear(existing, pos)) return;
                 if (existing.getX() == pos.getX() && existing.getZ() == pos.getZ()) return;
             }

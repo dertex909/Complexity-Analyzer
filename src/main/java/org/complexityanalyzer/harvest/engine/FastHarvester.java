@@ -111,8 +111,7 @@ public final class FastHarvester {
                                 if (stack.isEmpty() || stack.getItem() == AIR) continue;
                                 if (apiResultItem != null && stack.getItem() == apiResultItem) {
                                     boolean alreadyPresent = false;
-                                    for (int i = 0; i < outputItems.size(); i++) {
-                                        var existing = outputItems.get(i);
+                                    for (var existing : outputItems) {
                                         if (existing.getItem() == apiResultItem) {
                                             alreadyPresent = true;
                                             if (stack.getCount() > existing.getCount()) {

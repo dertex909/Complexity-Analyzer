@@ -35,21 +35,21 @@ public class ScanNotifier {
 
     public void broadcastInfo(Component message) {
         server.execute(() -> {
-            server.getPlayerList().getPlayers().forEach(player -> {
+            for (var player : server.getPlayerList().getPlayers()) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
                 player.sendSystemMessage(Component.literal("§e[CA] §f").append(translated));
-            });
+            }
             server.sendSystemMessage(Component.literal("§e[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
         });
     }
 
     public void broadcastWarning(Component message) {
         server.execute(() -> {
-            server.getPlayerList().getPlayers().forEach(player -> {
+            for (var player : server.getPlayerList().getPlayers()) {
                 var warningTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), player);
                 var translated = ServerLanguage.translateForPlayer(message, player);
                 player.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTag).append(" §f").append(translated));
-            });
+            }
             var warningTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), null);
             server.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTagConsole).append(" §f").append(ServerLanguage.translateForPlayer(message, null)));
         });
@@ -57,20 +57,20 @@ public class ScanNotifier {
 
     public void broadcastSevere(Component message) {
         server.execute(() -> {
-            server.getPlayerList().getPlayers().forEach(player -> {
+            for (var player : server.getPlayerList().getPlayers()) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
                 player.sendSystemMessage(Component.literal("§c[CA] §l").append(translated));
-            });
+            }
             server.sendSystemMessage(Component.literal("§c[CA] §l").append(ServerLanguage.translateForPlayer(message, null)));
         });
     }
 
     public void broadcastSuccess(Component message) {
         server.execute(() -> {
-            server.getPlayerList().getPlayers().forEach(player -> {
+            for (var player : server.getPlayerList().getPlayers()) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
                 player.sendSystemMessage(Component.literal("§a[CA] §f").append(translated));
-            });
+            }
             server.sendSystemMessage(Component.literal("§a[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
         });
     }

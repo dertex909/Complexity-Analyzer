@@ -44,8 +44,7 @@ public final class DeepUniversalCollector {
     }
 
     private static void addOrUpdateOutput(ObjectList<ItemStack> outputItems, ItemStack stack, Item apiResultItem) {
-        for (int i = 0; i < outputItems.size(); i++) {
-            var existing = outputItems.get(i);
+        for (var existing : outputItems) {
             if (existing.getItem() == apiResultItem) {
                 if (stack.getCount() > existing.getCount()) existing.setCount(stack.getCount());
                 return;

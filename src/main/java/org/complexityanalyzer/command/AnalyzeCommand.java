@@ -108,7 +108,7 @@ public final class AnalyzeCommand {
 
         displayMainInfo(source, optimal, output);
         displaySourceInfo(source, item, optimal, engine, output);
-        displayStatus(source, optimal, output, itemId);
+        displayStatus(source, optimal, output);
 
         output.sendFooter(source);
     }
@@ -185,7 +185,7 @@ public final class AnalyzeCommand {
         output.sendEmptyLine(source);
     }
 
-    private static void displayStatus(CommandSourceStack source, ItemComplexity optimal, OutputManager output, ResourceLocation itemId) {
+    private static void displayStatus(CommandSourceStack source, ItemComplexity optimal, OutputManager output) {
         output.sendStatusLine(source, "ℹ", "complexityanalyzer.command.analyze.status_section", ChatFormatting.AQUA);
 
         boolean isValid = optimal.isValid();

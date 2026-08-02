@@ -414,8 +414,8 @@ public final class RecipeMetadata {
                 for (var f : curCls.getDeclaredFields()) {
                     if (Modifier.isStatic(f.getModifiers())) continue;
                     boolean duplicate = false;
-                    for (int i = 0; i < fList.size(); i++) {
-                        if (fList.get(i).getName().equals(f.getName())) {
+                    for (var field : fList) {
+                        if (field.getName().equals(f.getName())) {
                             duplicate = true;
                             break;
                         }
@@ -432,8 +432,7 @@ public final class RecipeMetadata {
             this.fields = fList.toArray(new Field[0]);
 
             var sList = new ObjectArrayList<Field>();
-            for (int i = 0; i < fList.size(); i++) {
-                var f = fList.get(i);
+            for (var f : fList) {
                 var type = f.getType();
                 if (type.isPrimitive() || type == String.class || type.isEnum()) continue;
                 if (StructuralTypeClassifier.isTerminalType(type)) continue;

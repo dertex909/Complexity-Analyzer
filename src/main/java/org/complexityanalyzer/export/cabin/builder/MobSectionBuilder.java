@@ -1,29 +1,11 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.export.cabin.builder;
 
-import net.minecraft.world.item.Item;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.resource.sources.MobDropSource;
+import org.complexityanalyzer.util.FormatUtils;
 
 public final class MobSectionBuilder {
 
@@ -31,15 +13,6 @@ public final class MobSectionBuilder {
 
     public MobSectionBuilder(SectionBuilderContext ctx) {
         this.ctx = ctx;
-    }
-
-    private static String safeDisplayName(Item item) {
-        try {
-            return item.getDescription().getString();
-        } catch (Throwable t) {
-            var id = GameRegistryManager.getItemId(item);
-            return id != null ? id.toString() : "unknown";
-        }
     }
 
     public MobsResult buildMobs(MobPropertyProvider mobProvider, MobDropSource mobDropSource) {
@@ -80,7 +53,7 @@ public final class MobSectionBuilder {
                         int itIdx = ctx.itemIndex().getInt(it);
                         var itId = it != null ? GameRegistryManager.getItemId(it) : null;
                         String itIdStr = itId != null ? itId.toString() : "minecraft:air";
-                        String itName = it != null ? safeDisplayName(it) : "";
+                        String itName = it != null ? FormatUtils.safeDisplayName(it) : "";
                         dropsBuf.i32(itIdx);
                         dropsBuf.i32(ctx.strings().intern(itName));
                         dropsBuf.f64(drop.averageYield());

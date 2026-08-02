@@ -24,12 +24,13 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.export.cabin.util.CabinIndexUtils;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
+import org.complexityanalyzer.harvest.machine.MachineRegistry;
 
 import java.util.Arrays;
 
@@ -254,8 +255,8 @@ public final class RecipeSectionBuilder {
         int[] count = new int[n];
         Arrays.fill(firstOffset, NULL_OFFSET);
 
-        if (graph == null)
-            return new RecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
+        if (graph == null) return new RecipesResult(new byte[]{0, 0, 0, 0},
+                CabinIndexUtils.encodeRecipeOutputIndex(firstOffset, count), 0);
 
         var out = new LeBuf(256 * 1024);
         out.i32(0);
@@ -279,19 +280,8 @@ public final class RecipeSectionBuilder {
         }
         out.putI32At(0, totalRecipes);
 
-        byte[] outputIndex = encodeRecipeOutputIndex(firstOffset, count);
+        byte[] outputIndex = CabinIndexUtils.encodeRecipeOutputIndex(firstOffset, count);
         return new RecipesResult(out.toByteArray(), outputIndex, totalRecipes);
-    }
-
-    private byte[] encodeRecipeOutputIndex(int[] firstOffset, int[] count) {
-        int n = firstOffset.length;
-        var buf = new LeBuf(4 + n * 6);
-        buf.i32(n);
-        for (int i = 0; i < n; i++) {
-            buf.i32(firstOffset[i]);
-            buf.u16(Math.min(count[i], 0xFFFF));
-        }
-        return buf.toByteArray();
     }
 
     public byte[] buildUsage(RecipeGraph graph) {

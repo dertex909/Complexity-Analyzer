@@ -38,7 +38,11 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
-import org.complexityanalyzer.export.cabin.api.*;
+import org.complexityanalyzer.export.cabin.api.CabinFormat;
+import org.complexityanalyzer.export.cabin.api.CabinSection;
+import org.complexityanalyzer.export.cabin.api.LeBuf;
+import org.complexityanalyzer.export.cabin.api.StringPool;
+import org.complexityanalyzer.export.cabin.util.CabinIndexUtils;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
@@ -233,45 +237,17 @@ public final class CabinBuilder {
     }
 
     private byte[] buildItemHashIndex() {
-        int n = orderedItems.size();
-        long[] hashes = new long[n];
-        for (int i = 0; i < n; i++) {
-            var id = GameRegistryManager.getItemId(orderedItems.get(i));
-            String s = id != null ? id.toString() : "";
-            hashes[i] = XxHash64.hashString(s, CabinFormat.XXH64_SEED);
-        }
-        Integer[] order = new Integer[n];
-        for (int i = 0; i < n; i++) order[i] = i;
-        Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
-        var out = new LeBuf(4 + n * 12);
-        out.i32(n);
-        for (int i = 0; i < n; i++) {
-            int idx = order[i];
-            out.i64(hashes[idx]);
-            out.i32(idx);
-        }
-        return out.toByteArray();
+        return CabinIndexUtils.buildHashIndex(orderedItems, item -> {
+            var id = GameRegistryManager.getItemId(item);
+            return id != null ? id.toString() : "";
+        });
     }
 
     private byte[] buildMobHashIndex() {
-        int n = orderedMobs.size();
-        long[] hashes = new long[n];
-        for (int i = 0; i < n; i++) {
-            var id = GameRegistryManager.getEntityTypeId(orderedMobs.get(i));
-            String s = id != null ? id.toString() : "";
-            hashes[i] = XxHash64.hashString(s, CabinFormat.XXH64_SEED);
-        }
-        Integer[] order = new Integer[n];
-        for (int i = 0; i < n; i++) order[i] = i;
-        Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
-        var out = new LeBuf(4 + n * 12);
-        out.i32(n);
-        for (int i = 0; i < n; i++) {
-            int idx = order[i];
-            out.i64(hashes[idx]);
-            out.i32(idx);
-        }
-        return out.toByteArray();
+        return CabinIndexUtils.buildHashIndex(orderedMobs, mob -> {
+            var id = GameRegistryManager.getEntityTypeId(mob);
+            return id != null ? id.toString() : "";
+        });
     }
 
     private byte[] buildMachineIndex(RecipeGraph graph) {
@@ -440,7 +416,7 @@ public final class CabinBuilder {
             buf.i32(strings.intern(c.getDisplayName()));
             buf.f64(c.ordinal() == ComplexityCategory.UNCALCULABLE.ordinal() ? -1.0
                     : (c.ordinal() == ComplexityCategory.UNOBTAINABLE.ordinal() ? Double.POSITIVE_INFINITY
-                       : (c.ordinal() == 0 ? 0.0 : Math.pow(10, c.ordinal()))));
+                    : (c.ordinal() == 0 ? 0.0 : Math.pow(10, c.ordinal()))));
         }
         buf.f64(ComplexityConfig.getMachineTaxMultiplier());
         return buf.toByteArray();

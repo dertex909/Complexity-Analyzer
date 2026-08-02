@@ -47,9 +47,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -58,13 +56,13 @@ import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
+import org.complexityanalyzer.util.LootLogFilter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static org.apache.logging.log4j.Level.WARN;
 import static org.complexityanalyzer.cache.ResourceCache.MOB_DROP;
 import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 
@@ -161,8 +159,8 @@ public class MobDropSource implements IResourceSource {
 
         registerSpecialKillDrops(targetMap);
 
-        LootFunctionFilter filter = new LootFunctionFilter();
-        Logger rootLogger = (Logger) LogManager.getRootLogger();
+        var filter = new LootLogFilter();
+        var rootLogger = (Logger) LogManager.getRootLogger();
         filter.start();
         rootLogger.addFilter(filter);
 
@@ -443,30 +441,6 @@ public class MobDropSource implements IResourceSource {
     private void registerDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap, EntityType<?> entityType, Item item, double averageYield, String method) {
         var dropData = new MobDropData(item, entityType, averageYield, method);
         targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(dropData);
-    }
-
-    private static class LootFunctionFilter extends AbstractFilter {
-        @Override
-        public Result filter(LogEvent event) {
-            if (event == null) return Result.NEUTRAL;
-
-            var msg = event.getMessage();
-            if (msg != null) {
-                String message = msg.getFormattedMessage();
-                if (message != null && message.contains("Failed to apply component patch")
-                        && message.contains("was larger than maximum")) return Result.DENY;
-            }
-
-            if (event.getLevel() != WARN) return Result.NEUTRAL;
-
-            String loggerName = event.getLoggerName();
-            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
-                String message = msg != null ? msg.getFormattedMessage() : null;
-                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt")
-                        || message.contains("Couldn't find a compatible enchantment"))) return Result.DENY;
-            }
-            return Result.NEUTRAL;
-        }
     }
 
     private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {

@@ -37,9 +37,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.cache.util.Fingerprints;
@@ -48,6 +46,7 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.LootLogFilter;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,7 +55,6 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 
 import static java.util.Locale.ROOT;
-import static org.apache.logging.log4j.Level.WARN;
 
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
 
@@ -149,7 +147,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             var pool = ThreadPoolManager.getInstance();
             int threads = pool.getParallelism();
 
-            var filter = new LootFunctionFilter();
+            var filter = new LootLogFilter();
             var rootLogger = (Logger) LogManager.getRootLogger();
             filter.start();
             rootLogger.addFilter(filter);
@@ -392,31 +390,6 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     public Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> getAllLootData() {
         return allLootData;
-    }
-
-    private static class LootFunctionFilter extends AbstractFilter {
-        @Override
-        public Result filter(LogEvent event) {
-            if (event == null) return Result.NEUTRAL;
-
-            var msg = event.getMessage();
-            if (msg != null) {
-                String message = msg.getFormattedMessage();
-                if (message != null && message.contains("Failed to apply component patch") && message.contains("was larger than maximum"))
-                    return Result.DENY;
-            }
-
-            if (event.getLevel() != WARN) return Result.NEUTRAL;
-
-            String loggerName = event.getLoggerName();
-            if (loggerName != null && loggerName.startsWith("net.minecraft.world.level.storage.loot.functions.")) {
-                String message = msg != null ? msg.getFormattedMessage() : null;
-                if (message != null && (message.contains("Couldn't set damage") || message.contains("Couldn't smelt") || message.contains("Couldn't find a compatible enchantment")))
-                    return Result.DENY;
-            }
-
-            return Result.NEUTRAL;
-        }
     }
 
     private record TableTask(ResourceKey<LootTable> key, ResourceLocation id, LootContextDefinition def) {

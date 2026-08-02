@@ -32,12 +32,12 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.util.FormatUtils;
 import org.complexityanalyzer.util.ModFileManager;
 
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Locale;
 
 public final class SystemCommand {
     private static final SuggestionProvider<CommandSourceStack> CACHE_SUGGESTIONS =
@@ -226,8 +226,8 @@ public final class SystemCommand {
         try {
             long size = ModFileManager.getSize(file);
             var modified = ModFileManager.getLastModifiedTime(file).toInstant();
-            String age = formatAge(Duration.between(modified, Instant.now()));
-            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.present", label, humanSize(size), age, file.toString()));
+            String age = FormatUtils.formatAge(Duration.between(modified, Instant.now()));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.present", label, FormatUtils.humanBytes(size), age, file.toString()));
             return 1;
         } catch (Throwable t) {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.unreadable", label, t.getMessage()));
@@ -295,20 +295,6 @@ public final class SystemCommand {
         }
         output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
         return 0;
-    }
-
-    private static String humanSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024L * 1024) return String.format(Locale.US, "%.1f KB", bytes / 1024.0);
-        return String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024));
-    }
-
-    private static String formatAge(Duration d) {
-        long s = Math.max(0, d.getSeconds());
-        if (s < 60) return s + "s";
-        if (s < 3600) return (s / 60) + "m " + (s % 60) + "s";
-        if (s < 86400) return (s / 3600) + "h " + ((s % 3600) / 60) + "m";
-        return (s / 86400) + "d " + ((s % 86400) / 3600) + "h";
     }
 
     private static int executeThreads(CommandContext<CommandSourceStack> context) {

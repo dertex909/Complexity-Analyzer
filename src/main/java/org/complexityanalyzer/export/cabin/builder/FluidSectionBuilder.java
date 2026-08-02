@@ -1,31 +1,13 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.export.cabin.builder;
 
-import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
-import org.complexityanalyzer.export.cabin.api.XxHash64;
+import org.complexityanalyzer.export.cabin.util.CabinIndexUtils;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.util.FormatUtils;
 
 import java.util.Arrays;
 
@@ -37,15 +19,6 @@ public final class FluidSectionBuilder {
         this.ctx = ctx;
     }
 
-    private static String safeFluidDisplayName(Fluid fluid) {
-        try {
-            return fluid.getFluidType().getDescription().getString();
-        } catch (Throwable t) {
-            var id = GameRegistryManager.getFluidId(fluid);
-            return id != null ? id.toString() : "unknown";
-        }
-    }
-
     public byte[] buildFluidsSection() {
         var solverResult = ctx.engine().getSolverResult();
         int n = ctx.orderedFluids().size();
@@ -55,7 +28,7 @@ public final class FluidSectionBuilder {
             var fluid = ctx.orderedFluids().get(i);
             var id = GameRegistryManager.getFluidId(fluid);
             String idStr = id != null ? id.toString() : "minecraft:empty";
-            String displayName = safeFluidDisplayName(fluid);
+            String displayName = FormatUtils.safeDisplayName(fluid);
 
             double complexity = -1.0;
             var category = ComplexityCategory.UNCALCULABLE;
@@ -114,8 +87,8 @@ public final class FluidSectionBuilder {
         int[] count = new int[n];
         Arrays.fill(firstOffset, CabinFormat.NULL_OFFSET);
 
-        if (graph == null)
-            return new FluidRecipesResult(new byte[]{0, 0, 0, 0}, encodeRecipeOutputIndex(firstOffset, count), 0);
+        if (graph == null) return new FluidRecipesResult(new byte[]{0, 0, 0, 0},
+                CabinIndexUtils.encodeRecipeOutputIndex(firstOffset, count), 0);
 
         var out = new LeBuf(64 * 1024);
         out.i32(0);
@@ -139,19 +112,8 @@ public final class FluidSectionBuilder {
         }
         out.putI32At(0, totalRecipes);
 
-        byte[] outputIndex = encodeRecipeOutputIndex(firstOffset, count);
+        byte[] outputIndex = CabinIndexUtils.encodeRecipeOutputIndex(firstOffset, count);
         return new FluidRecipesResult(out.toByteArray(), outputIndex, totalRecipes);
-    }
-
-    private byte[] encodeRecipeOutputIndex(int[] firstOffset, int[] count) {
-        int n = firstOffset.length;
-        var buf = new LeBuf(4 + n * 6);
-        buf.i32(n);
-        for (int i = 0; i < n; i++) {
-            buf.i32(firstOffset[i]);
-            buf.u16(Math.min(count[i], 0xFFFF));
-        }
-        return buf.toByteArray();
     }
 
     public byte[] buildFluidUsage(RecipeGraph graph) {
@@ -194,24 +156,10 @@ public final class FluidSectionBuilder {
     }
 
     public byte[] buildFluidHashIndex() {
-        int n = ctx.orderedFluids().size();
-        long[] hashes = new long[n];
-        for (int i = 0; i < n; i++) {
-            var id = GameRegistryManager.getFluidId(ctx.orderedFluids().get(i));
-            String s = id != null ? id.toString() : "";
-            hashes[i] = XxHash64.hashString(s, CabinFormat.XXH64_SEED);
-        }
-        Integer[] order = new Integer[n];
-        for (int i = 0; i < n; i++) order[i] = i;
-        Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
-        var out = new LeBuf(4 + n * 12);
-        out.i32(n);
-        for (int i = 0; i < n; i++) {
-            int idx = order[i];
-            out.i64(hashes[idx]);
-            out.i32(idx);
-        }
-        return out.toByteArray();
+        return CabinIndexUtils.buildHashIndex(ctx.orderedFluids(), fluid -> {
+            var id = GameRegistryManager.getFluidId(fluid);
+            return id != null ? id.toString() : "";
+        });
     }
 
     public record FluidRecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {

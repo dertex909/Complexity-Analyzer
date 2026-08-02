@@ -31,8 +31,8 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.network.web.StandaloneWebServer;
+import org.complexityanalyzer.util.FormatUtils;
 
-import static java.util.Locale.ROOT;
 import static org.complexityanalyzer.ComplexityAnalyzer.MODID;
 import static org.complexityanalyzer.config.ComplexityConfig.WEB_SERVER_IP;
 
@@ -104,7 +104,7 @@ public final class WebCommand {
 
         if (snap != null) {
             long ageMs = System.currentTimeMillis() - snap.generatedAtMs();
-            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", humanDuration(ageMs)), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", FormatUtils.formatDurationMs(ageMs)), ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", String.valueOf(snap.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", String.valueOf(snap.mobCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", String.valueOf(snap.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
@@ -143,7 +143,7 @@ public final class WebCommand {
             if (err != null) {
                 done = Component.translatable("complexityanalyzer.command.web.reload_failed", err.getMessage()).withStyle(ChatFormatting.RED);
             } else if (snap != null) {
-                done = Component.translatable("complexityanalyzer.command.web.reload_success", humanBytes(snap.bytes().length)).withStyle(ChatFormatting.GREEN);
+                done = Component.translatable("complexityanalyzer.command.web.reload_success", FormatUtils.humanBytes(snap.bytes().length)).withStyle(ChatFormatting.GREEN);
             } else {
                 done = Component.translatable("complexityanalyzer.command.web.reload_no_data").withStyle(ChatFormatting.YELLOW);
             }
@@ -159,33 +159,5 @@ public final class WebCommand {
             case FAILED -> ChatFormatting.RED;
             default -> ChatFormatting.GRAY;
         };
-    }
-
-    private static String humanBytes(long n) {
-        if (n < 1024) return n + " " +
-                Component.translatable("complexityanalyzer.unit.size.bytes").getString();
-        double k = n / 1024.0;
-        if (k < 1024) return String.format(ROOT, "%.1f %s", k,
-                Component.translatable("complexityanalyzer.unit.size.kilobytes").getString());
-        double m = k / 1024.0;
-        if (m < 1024) return String.format(ROOT, "%.1f %s", m,
-                Component.translatable("complexityanalyzer.unit.size.megabytes").getString());
-        return String.format(ROOT, "%.2f %s", m / 1024.0,
-                Component.translatable("complexityanalyzer.unit.size.gigabytes").getString());
-    }
-
-    private static String humanDuration(long ms) {
-        long sec = ms / 1000;
-        var sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
-        var mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
-        var hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
-        var dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short");
-
-        if (sec < 60) return sec + sSuffix.getString();
-        long min = sec / 60;
-        if (min < 60) return min + mSuffix.getString() + " " + (sec % 60) + sSuffix.getString();
-        long hour = min / 60;
-        if (hour < 24) return hour + hSuffix.getString() + " " + (min % 60) + mSuffix.getString();
-        return (hour / 24) + dSuffix.getString() + " " + (hour % 24) + hSuffix.getString();
     }
 }

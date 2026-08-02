@@ -1,39 +1,65 @@
 ## 📦 1. Adding Dependency
 
-To use the Complexity Analyzer API in your mod project, add the JitPack repository and dependency coordinates to your Gradle setup.
+To use the Complexity Analyzer API in your mod project, add the Modrinth Maven repository and dependency coordinates to
+your Gradle setup.
 
-### 1.1. Add Repository (`settings.gradle` or `build.gradle`)
+### 1.1. Add Repository (`build.gradle` or `settings.gradle`)
 
-In your `settings.gradle`:
+In your `build.gradle` `repositories` block (recommended approach using Gradle's `exclusiveContent` for faster
+resolution):
 
 ```groovy
-dependencyResolutionManagement {
-    repositories {
-        maven { url 'https://jitpack.io' }
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        filter {
+            includeGroup "maven.modrinth"
+        }
     }
 }
 ```
 
-*(Or in your root `build.gradle` repositories block):*
+*(Or in `settings.gradle` under `dependencyResolutionManagement`):*
 
 ```groovy
-repositories {
-    maven { url 'https://jitpack.io' }
+dependencyResolutionManagement {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "Modrinth"
+                    url = "https://api.modrinth.com/maven"
+                }
+            }
+            filter {
+                includeGroup "maven.modrinth"
+            }
+        }
+    }
 }
 ```
 
 ### 1.2. Add Dependency (`build.gradle`)
 
+Add the dependency using the `maven.modrinth` group ID, your project's slug, and the target version:
+
 ```groovy
 dependencies {
-    // Compile against the Complexity Analyzer API
-    compileOnly "com.github.dertex909:Complexity-Analyzer:0.7.0-alpha-1.21.1"
+    // Compile against the Complexity Analyzer API via Modrinth Maven
+    compileOnly "maven.modrinth:complexity-analyzer:0.7.0-alpha-1.21.1"
 
     // Or include at runtime
-    implementation "com.github.dertex909:Complexity-Analyzer:0.7.0-alpha-1.21.1"
+    implementation "maven.modrinth:complexity-analyzer:0.7.0-alpha-1.21.1"
 }
 ```
 
+> 💡 **Note:** Replace `complexity-analyzer` with your exact project slug on Modrinth, and `0.7.0-alpha-1.21.1` with the
+> exact version number published on Modrinth.
 ### 1.3. Declare Mod Dependency (`neoforge.mods.toml`)
 
 Ensure your `neoforge.mods.toml` declares the dependency for correct NeoForge load ordering:

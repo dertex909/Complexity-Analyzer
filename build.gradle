@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 plugins {
     id 'java-library'
     id 'maven-publish'
@@ -71,8 +89,8 @@ neoForge {
     }
 }
 
-def http = "io.netty:netty-codec-http:4.1.97.Final"
-def zstd = "com.github.luben:zstd-jni:1.5.7-11"
+def http = "io.netty:netty-codec-http:${netty_codec_http_version}"
+def zstd = "com.github.luben:zstd-jni:${zstd_jni_version}"
 
 def jei = "mezz.jei:jei-${minecraft_version}-neoforge:19.25.0.325"
 
@@ -84,6 +102,24 @@ dependencies {
     jarJar(zstd)
 
     runtimeOnly(jei)
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:6.1.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:6.1.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:6.1.1'
+
+    testImplementation 'org.mockito:mockito-core:5.23.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.23.0'
+
+    testImplementation 'org.assertj:assertj-core:3.27.6'
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

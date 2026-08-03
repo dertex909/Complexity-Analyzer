@@ -102,16 +102,6 @@ dependencies {
     jarJar(zstd)
 
     runtimeOnly(jei)
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:6.1.2'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:6.1.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:6.1.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.1.2'
-
-    testImplementation 'org.mockito:mockito-core:5.23.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.23.0'
-
-    testImplementation 'org.assertj:assertj-core:3.27.7'
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -164,21 +154,5 @@ publishMods {
         minecraftVersions.add(minecraft_version)
         server = true
         client = false
-    }
-}
-
-test {
-    useJUnitPlatform()
-
-    testLogging {
-        events "passed", "skipped", "failed"
-        exceptionFormat "full"
-    }
-}
-
-sourceSets {
-    test {
-        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
-        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
     }
 }

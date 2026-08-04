@@ -78,7 +78,7 @@ public final class RegistryHarvestService {
                 var items = harvester.harvest(recipe, level);
                 var node = HarvestedRecipeConverter.convert(items, level);
 
-                if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty() || !node.getChemicalIngredients().isEmpty())) {
+                if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty())) {
                     graph.addRecipe(node);
                     harvested++;
                     debugTrace.traceHarvested(recipeId, recipe, level, items);

@@ -25,7 +25,6 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import it.unimi.dsi.fastutil.ints.IntComparator;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -49,12 +48,9 @@ public final class SccCondensedSolver {
     private static final byte F_SOURCE = 0;
     private static final byte F_ITEM_RECIPE = 1;
     private static final byte F_FLUID_RECIPE = 2;
-    private static final byte F_CHEM_RECIPE = 3;
-    private static final byte F_PROTECTED_FLUID = 4;
-    private static final byte F_CHEM_BRIDGE = 5;
+    private static final byte F_PROTECTED_FLUID = 3;
     private static final byte K_ITEM = 0;
     private static final byte K_FLUID = 1;
-    private static final byte K_CHEMICAL = 2;
 
     private final RecipeGraph graph;
     private final SourceManager sourceManager;
@@ -102,14 +98,6 @@ public final class SccCondensedSolver {
             }
             if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
             sum += minCost * m.fluidSlotAmount[s];
-        }
-
-        int cStart = m.formulaChemInputStart[f];
-        int cEnd = cStart + m.formulaChemInputCount[f];
-        for (int ci = cStart; ci < cEnd; ci++) {
-            double c = costs[m.chemInputNode[ci]];
-            if (Double.isInfinite(c)) return Double.POSITIVE_INFINITY;
-            sum += c * m.chemInputAmount[ci];
         }
 
         int mStart = m.formulaMachineNode[f];
@@ -218,8 +206,8 @@ public final class SccCondensedSolver {
         ComplexityAnalyzer.LOGGER.info("🚀 Starting SCC/DAG solver...");
 
         var compiled = new CompileBuilder(graph, sourceManager, machineRegistry).build();
-        ComplexityAnalyzer.LOGGER.info("📐 IR compiled: {} nodes ({} items, {} fluids, {} chemicals), {} formulas, {} edges",
-                compiled.nodeCount, compiled.itemCount, compiled.fluidCount, compiled.chemicalCount,
+        ComplexityAnalyzer.LOGGER.info("📐 IR compiled: {} nodes ({} items, {} fluids), {} formulas, {} edges",
+                compiled.nodeCount, compiled.itemCount, compiled.fluidCount,
                 compiled.formulaCount, compiled.adjNode.length);
 
         var solution = solveCompiled(compiled);
@@ -244,13 +232,11 @@ public final class SccCondensedSolver {
     private void logFinalStatistics(CompiledModel m, Solution sol, long totalTime) {
         long finiteItems = 0;
         long finiteFluids = 0;
-        //long finiteChems = 0;
         for (int n = 0; n < m.nodeCount; n++) {
             if (Double.isInfinite(sol.costs[n])) continue;
             switch (m.nodeKind[n]) {
                 case K_ITEM -> finiteItems++;
                 case K_FLUID -> finiteFluids++;
-                //case K_CHEMICAL -> finiteChems++;
                 default -> {
                 }
             }
@@ -262,7 +248,6 @@ public final class SccCondensedSolver {
         ComplexityAnalyzer.LOGGER.info("⏱️ Time: {}ms", totalTime);
         ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, m.itemCount);
         ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} finite", finiteFluids, m.fluidCount);
-        //ComplexityAnalyzer.LOGGER.info("🧪 Chemicals: {}/{} finite", finiteChems, m.chemicalCount);
         ComplexityAnalyzer.LOGGER.info("🌀 Components: {} ({} cyclic)", sol.componentCount, sol.cyclicComponents);
         ComplexityAnalyzer.LOGGER.info("🔁 Fixpoint iterations: {}", sol.fixpointIterations);
     }
@@ -437,14 +422,12 @@ public final class SccCondensedSolver {
         private final MachineRegistry machineRegistry;
         private final ObjectArrayList<Item> itemByNode = new ObjectArrayList<>();
         private final ObjectArrayList<Fluid> fluidByNode = new ObjectArrayList<>();
-        private final ObjectArrayList<ResourceLocation> chemicalByNode = new ObjectArrayList<>();
         private final ByteArrayList nodeKind = new ByteArrayList();
         private final BooleanArrayList itemInCorpus = new BooleanArrayList();
         private final IntArrayList itemIdxByNode = new IntArrayList();
         private final IntArrayList fluidIdxByNode = new IntArrayList();
         private final Reference2IntOpenHashMap<Item> itemToNode = new Reference2IntOpenHashMap<>();
         private final Reference2IntOpenHashMap<Fluid> fluidToNode = new Reference2IntOpenHashMap<>();
-        private final Object2IntOpenHashMap<ResourceLocation> chemicalToNode = new Object2IntOpenHashMap<>();
         private final ByteArrayList formulaType = new ByteArrayList();
         private final IntArrayList formulaTarget = new IntArrayList();
         private final DoubleArrayList formulaBaseCost = new DoubleArrayList();
@@ -454,8 +437,6 @@ public final class SccCondensedSolver {
         private final IntArrayList formulaItemSlotCount = new IntArrayList();
         private final IntArrayList formulaFluidSlotStart = new IntArrayList();
         private final IntArrayList formulaFluidSlotCount = new IntArrayList();
-        private final IntArrayList formulaChemInputStart = new IntArrayList();
-        private final IntArrayList formulaChemInputCount = new IntArrayList();
         private final IntArrayList formulaMachineNode = new IntArrayList();
         private final IntArrayList formulaMachineCount = new IntArrayList();
         private final DoubleArrayList formulaMachineMul = new DoubleArrayList();
@@ -469,18 +450,14 @@ public final class SccCondensedSolver {
         private final IntArrayList fluidSlotVariantCount = new IntArrayList();
         private final DoubleArrayList fluidSlotAmount = new DoubleArrayList();
         private final IntArrayList fluidVariantNode = new IntArrayList();
-        private final IntArrayList chemInputNode = new IntArrayList();
-        private final DoubleArrayList chemInputAmount = new DoubleArrayList();
         private final IntArrayList edgeFrom = new IntArrayList();
         private final IntArrayList edgeTo = new IntArrayList();
         private int itemCount = 0;
         private int fluidCount = 0;
-        private int chemicalCount = 0;
 
         CompileBuilder(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
             this.itemToNode.defaultReturnValue(-1);
             this.fluidToNode.defaultReturnValue(-1);
-            this.chemicalToNode.defaultReturnValue(-1);
             this.graph = graph;
             this.sourceManager = sourceManager;
             this.machineRegistry = machineRegistry;
@@ -504,7 +481,6 @@ public final class SccCondensedSolver {
             compileSourceFormulas();
             compileRecipeFormulas();
             compileProtectedFluidFormulas();
-            compileChemicalBridgeFormulas();
             return materialize();
         }
 
@@ -515,7 +491,6 @@ public final class SccCondensedSolver {
             itemToNode.put(item, node);
             itemByNode.add(item);
             fluidByNode.add(null);
-            chemicalByNode.add(null);
             nodeKind.add(K_ITEM);
             itemInCorpus.add(false);
             itemIdxByNode.add(itemCount);
@@ -531,28 +506,11 @@ public final class SccCondensedSolver {
             fluidToNode.put(fluid, node);
             itemByNode.add(null);
             fluidByNode.add(fluid);
-            chemicalByNode.add(null);
             nodeKind.add(K_FLUID);
             itemInCorpus.add(false);
             itemIdxByNode.add(-1);
             fluidIdxByNode.add(fluidCount);
             fluidCount++;
-            return node;
-        }
-
-        private int allocateChemicalNode(ResourceLocation chemId) {
-            int existing = chemicalToNode.getInt(chemId);
-            if (existing != -1) return existing;
-            int node = nodeKind.size();
-            chemicalToNode.put(chemId, node);
-            itemByNode.add(null);
-            fluidByNode.add(null);
-            chemicalByNode.add(chemId);
-            nodeKind.add(K_CHEMICAL);
-            itemInCorpus.add(false);
-            itemIdxByNode.add(-1);
-            fluidIdxByNode.add(-1);
-            chemicalCount++;
             return node;
         }
 
@@ -596,13 +554,6 @@ public final class SccCondensedSolver {
                     var machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
                     if (machineItems != null) for (Item machineItem : machineItems) allocateItemNode(machineItem);
                 }
-
-                var chemOutputs = recipe.getChemicalOutputs();
-                for (var chem : chemOutputs) if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
-
-                for (var chem : recipe.getChemicalIngredients()) {
-                    if (chem != null && chem.id() != null) allocateChemicalNode(chem.id());
-                }
             }
 
             for (var item : GameRegistryManager.getAllItems()) {
@@ -618,12 +569,6 @@ public final class SccCondensedSolver {
                     if (sourceItems.isEmpty()) continue;
                     for (var dep : sortedByItemId(sourceItems.keySet())) if (dep != null) allocateItemNode(dep);
                 }
-            }
-
-            for (var entry : chemicalToNode.object2IntEntrySet()) {
-                var id = entry.getKey();
-                var fluid = GameRegistryManager.getFluid(id);
-                if (fluid != null && fluid != Fluids.EMPTY && !isProtectedFluid(fluid)) allocateFluidNode(fluid);
             }
         }
 
@@ -655,8 +600,8 @@ public final class SccCondensedSolver {
                     }
 
                     int formulaId = emitFormulaShell(F_SOURCE, targetNode, base, 1.0, 1.0,
-                            itemSlotStart, itemSlotCnt, fluidSlotVariantStart.size(), 0, chemInputNode.size(),
-                            0, -1, 0, 0.0, -1.0, null);
+                            itemSlotStart, itemSlotCnt, fluidSlotVariantStart.size(), 0,
+                            -1, 0, 0.0, -1.0, null);
                     addEdgesForFormula(formulaId);
                 }
             }
@@ -704,14 +649,14 @@ public final class SccCondensedSolver {
                     int formulaId = emitFormulaShell(F_ITEM_RECIPE, itemTarget,
                             recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, resultCount,
                             primary.itemStart(), primary.itemCount(), primary.fluidStart(), primary.fluidCount(),
-                            chemInputNode.size(), 0, machineNode, machineCount, machineMul,
+                            machineNode, machineCount, machineMul,
                             machineCount > 0 ? machineFallback : -1.0, recipe
                     );
                     addEdgesForFormula(formulaId);
                 } else {
                     truncateItemSlots(primary.itemStart());
                     truncateFluidSlots(primary.fluidStart());
-                    if (recipe.getFluidOutputs().isEmpty() && recipe.getItemOutputs().isEmpty() && recipe.getChemicalOutputs().isEmpty()) {
+                    if (recipe.getFluidOutputs().isEmpty() && recipe.getItemOutputs().isEmpty()) {
                         while (itemVariantNode.size() > recipeVariantNodeMark) {
                             itemVariantNode.removeInt(itemVariantNode.size() - 1);
                         }
@@ -741,7 +686,6 @@ public final class SccCondensedSolver {
                                         recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(),
                                         multiplier, outputBuckets,
                                         shared.itemStart(), shared.itemCount(), shared.fluidStart(), shared.fluidCount(),
-                                        chemInputNode.size(), 0,
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         null);
                                 addEdgesForFormula(formulaId);
@@ -774,7 +718,6 @@ public final class SccCondensedSolver {
                                 int formulaId = emitFormulaShell(F_ITEM_RECIPE, outNode,
                                         recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outCount,
                                         shared.itemStart(), shared.itemCount(), shared.fluidStart(), shared.fluidCount(),
-                                        chemInputNode.size(), 0,
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         recipe);
                                 addEdgesForFormula(formulaId);
@@ -783,64 +726,6 @@ public final class SccCondensedSolver {
                             truncateItemSlots(shared.itemStart());
                             truncateFluidSlots(shared.fluidStart());
                         }
-                    }
-                }
-
-                var chemOutputs = recipe.getChemicalOutputs();
-                if (!chemOutputs.isEmpty()) {
-                    var structured = recipe.getChemicalIngredients();
-
-                    int sharedItemSlotStart = itemSlotVariantStart.size();
-                    int sharedItemSlotCount = 0;
-                    int sharedFluidSlotStart = fluidSlotVariantStart.size();
-                    int sharedFluidSlotCount = 0;
-                    int sharedChemStart = chemInputNode.size();
-                    int sharedChemCount = 0;
-                    boolean sharedValid = true;
-
-                    for (var slot : recipe.getIngredients()) {
-                        if (appendItemSlot(slot.getVariants(), slot.getCount())) {
-                            sharedValid = false;
-                            break;
-                        }
-                        sharedItemSlotCount++;
-                    }
-                    if (sharedValid) for (var slot : recipe.getFluidIngredients()) {
-                        double amount = slot.getAmount() / 1000.0;
-                        if (appendFluidSlot(slot.getFluidVariants(), amount)) {
-                            sharedValid = false;
-                            break;
-                        }
-                        sharedFluidSlotCount++;
-                    }
-                    for (var chem : structured) {
-                        if (chem == null || chem.id() == null) continue;
-                        int chemNode = chemicalToNode.getInt(chem.id());
-                        if (chemNode == -1) chemNode = allocateChemicalNode(chem.id());
-                        chemInputNode.add(chemNode);
-                        chemInputAmount.add(chem.amount() / 1000.0);
-                        sharedChemCount++;
-                    }
-
-                    if (sharedValid) {
-                        for (var output : chemOutputs) {
-                            if (output == null || output.id() == null) continue;
-                            int chemNode = chemicalToNode.getInt(output.id());
-                            if (chemNode == -1) chemNode = allocateChemicalNode(output.id());
-                            double outputBuckets = output.amount() / 1000.0;
-                            if (outputBuckets <= 0) continue;
-                            int formulaId = emitFormulaShell(F_CHEM_RECIPE, chemNode, recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outputBuckets,
-                                    sharedItemSlotStart, sharedItemSlotCount,
-                                    sharedFluidSlotStart, sharedFluidSlotCount,
-                                    sharedChemStart, sharedChemCount,
-                                    machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
-                                    null);
-                            addEdgesForFormula(formulaId);
-                        }
-                    } else {
-                        truncateItemSlots(sharedItemSlotStart);
-                        truncateFluidSlots(sharedFluidSlotStart);
-                        truncateChemInputs(sharedChemStart);
                     }
                 }
             }
@@ -853,36 +738,15 @@ public final class SccCondensedSolver {
             if (lavaNode != -1) emitProtectedFluidFormula(lavaNode);
         }
 
-        private void compileChemicalBridgeFormulas() {
-            for (var entry : chemicalToNode.object2IntEntrySet()) {
-                var id = entry.getKey();
-                int chemNode = entry.getIntValue();
-                var fluid = GameRegistryManager.getFluid(id);
-                if (fluid == null || fluid == Fluids.EMPTY) continue;
-                if (isProtectedFluid(fluid)) continue;
-                int fluidNode = fluidToNode.getInt(fluid);
-                if (fluidNode == -1) continue;
-
-                int chemStart = chemInputNode.size();
-                chemInputNode.add(chemNode);
-                chemInputAmount.add(1.0);
-
-                int formulaId = emitFormulaShell(F_CHEM_BRIDGE, fluidNode, 0.0, 1.0, 1.0,
-                        itemSlotVariantStart.size(), 0, fluidSlotVariantStart.size(), 0,
-                        chemStart, 1, -1, 0, 0.0, -1.0, null);
-                addEdgesForFormula(formulaId);
-            }
-        }
-
         private void emitProtectedFluidFormula(int target) {
             emitFormulaShell(F_PROTECTED_FLUID, target, 1.0, 1.0, 1.0, itemSlotVariantStart.size(),
-                    0, fluidSlotVariantStart.size(), 0, chemInputNode.size(), 0,
+                    0, fluidSlotVariantStart.size(), 0,
                     -1, 0, 0.0, -1.0, null);
         }
 
         private int emitFormulaShell(byte type, int target, double base, double multiplier, double divisor,
                                      int itemSlotStart, int itemSlotCount, int fluidSlotStart, int fluidSlotCount,
-                                     int chemStart, int chemCount, int machineNode, int machineCount, double machineMul,
+                                     int machineNode, int machineCount, double machineMul,
                                      double machineFallback, RecipeNode recipe) {
             int formulaId = formulaType.size();
             formulaType.add(type);
@@ -894,8 +758,6 @@ public final class SccCondensedSolver {
             formulaItemSlotCount.add(itemSlotCount);
             formulaFluidSlotStart.add(fluidSlotStart);
             formulaFluidSlotCount.add(fluidSlotCount);
-            formulaChemInputStart.add(chemStart);
-            formulaChemInputCount.add(chemCount);
             formulaMachineNode.add(machineNode);
             formulaMachineCount.add(machineCount);
             formulaMachineMul.add(machineMul);
@@ -1037,14 +899,6 @@ public final class SccCondensedSolver {
             while (fluidVariantNode.size() > variantTrim) fluidVariantNode.removeInt(fluidVariantNode.size() - 1);
         }
 
-        private void truncateChemInputs(int chemStartInclusive) {
-            while (chemInputNode.size() > chemStartInclusive) {
-                int last = chemInputNode.size() - 1;
-                chemInputNode.removeInt(last);
-                chemInputAmount.removeDouble(last);
-            }
-        }
-
         private void addEdgesForFormula(int formulaId) {
             int target = formulaTarget.getInt(formulaId);
 
@@ -1068,13 +922,6 @@ public final class SccCondensedSolver {
                     edgeFrom.add(fluidVariantNode.getInt(v));
                     edgeTo.add(target);
                 }
-            }
-
-            int chemStart = formulaChemInputStart.getInt(formulaId);
-            int chemEnd = chemStart + formulaChemInputCount.getInt(formulaId);
-            for (int c = chemStart; c < chemEnd; c++) {
-                edgeFrom.add(chemInputNode.getInt(c));
-                edgeTo.add(target);
             }
 
             int mStart = formulaMachineNode.getInt(formulaId);
@@ -1103,11 +950,9 @@ public final class SccCondensedSolver {
             m.nodeCount = n;
             m.itemCount = itemCount;
             m.fluidCount = fluidCount;
-            m.chemicalCount = chemicalCount;
             m.nodeKind = nodeKind.toByteArray();
             m.itemByNode = itemByNode.toArray(new Item[0]);
             m.fluidByNode = fluidByNode.toArray(new Fluid[0]);
-            m.chemicalByNode = chemicalByNode.toArray(new ResourceLocation[0]);
             m.itemInCorpus = itemInCorpus.toBooleanArray();
             m.itemIdxByNode = itemIdxByNode.toIntArray();
             m.fluidIdxByNode = fluidIdxByNode.toIntArray();
@@ -1122,8 +967,6 @@ public final class SccCondensedSolver {
             m.formulaItemSlotCount = formulaItemSlotCount.toIntArray();
             m.formulaFluidSlotStart = formulaFluidSlotStart.toIntArray();
             m.formulaFluidSlotCount = formulaFluidSlotCount.toIntArray();
-            m.formulaChemInputStart = formulaChemInputStart.toIntArray();
-            m.formulaChemInputCount = formulaChemInputCount.toIntArray();
             m.formulaMachineNode = formulaMachineNode.toIntArray();
             m.formulaMachineCount = formulaMachineCount.toIntArray();
             m.formulaMachineMul = formulaMachineMul.toDoubleArray();
@@ -1140,9 +983,6 @@ public final class SccCondensedSolver {
             m.fluidSlotAmount = fluidSlotAmount.toDoubleArray();
             m.fluidVariantNode = fluidVariantNode.toIntArray();
 
-            m.chemInputNode = chemInputNode.toIntArray();
-            m.chemInputAmount = chemInputAmount.toDoubleArray();
-
             m.adjStart = adjStart;
             m.adjNode = adjNode;
             return m;
@@ -1156,11 +996,9 @@ public final class SccCondensedSolver {
         int nodeCount;
         int itemCount;
         int fluidCount;
-        int chemicalCount;
         byte[] nodeKind;
         Item[] itemByNode;
         Fluid[] fluidByNode;
-        ResourceLocation[] chemicalByNode;
         boolean[] itemInCorpus;
         int[] itemIdxByNode;
         int[] fluidIdxByNode;
@@ -1174,8 +1012,6 @@ public final class SccCondensedSolver {
         int[] formulaItemSlotCount;
         int[] formulaFluidSlotStart;
         int[] formulaFluidSlotCount;
-        int[] formulaChemInputStart;
-        int[] formulaChemInputCount;
         int[] formulaMachineNode;
         int[] formulaMachineCount;
         double[] formulaMachineMul;
@@ -1189,8 +1025,6 @@ public final class SccCondensedSolver {
         int[] fluidSlotVariantCount;
         double[] fluidSlotAmount;
         int[] fluidVariantNode;
-        int[] chemInputNode;
-        double[] chemInputAmount;
         int[] adjStart;
         int[] adjNode;
     }

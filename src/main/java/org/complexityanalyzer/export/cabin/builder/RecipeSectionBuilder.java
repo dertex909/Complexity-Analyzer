@@ -159,14 +159,6 @@ public final class RecipeSectionBuilder {
             }
         }
 
-        var chems = r.getChemicalIngredients();
-        buf.u8(Math.min(chems.size(), 0xFF));
-        for (int c = 0; c < Math.min(chems.size(), 0xFF); c++) {
-            var ci = chems.get(c);
-            buf.i32(ctx.strings().intern(ci.id() != null ? ci.id().toString() : ""));
-            buf.i32(ci.amount());
-        }
-
         var iouts = r.getItemOutputs();
         buf.u8(Math.min(iouts.size(), 0xFF));
         for (int o = 0; o < Math.min(iouts.size(), 0xFF); o++) {
@@ -197,15 +189,6 @@ public final class RecipeSectionBuilder {
             int fi = ctx.fluidIndex().getInt(fs.getFluid());
             buf.i32(fi);
             buf.i32(fs.getAmount());
-        }
-
-        var cOuts = r.getChemicalOutputs();
-        buf.u8(Math.min(cOuts.size(), 0xFF));
-        for (int o = 0; o < Math.min(cOuts.size(), 0xFF); o++) {
-            var co = cOuts.get(o);
-            String cid = co.id() != null ? co.id().toString() : "";
-            buf.i32(ctx.strings().intern(cid));
-            buf.i64(co.amount());
         }
     }
 

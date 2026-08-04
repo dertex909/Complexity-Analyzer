@@ -24,8 +24,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.graph.RecipeNode.ChemicalIngredient;
-import org.complexityanalyzer.graph.RecipeNode.ChemicalOutput;
 import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 
 import java.util.Comparator;
@@ -45,8 +43,6 @@ public final class ComplexityComparators {
         if (c != 0) return c;
         return Integer.compare(a.getAmount(), b.getAmount());
     };
-    public static final Comparator<ChemicalIngredient> CHEMICAL_INGREDIENT = Comparator.comparing(ChemicalIngredient::id).thenComparingInt(ChemicalIngredient::amount);
-    public static final Comparator<ChemicalOutput> CHEMICAL_OUTPUT = Comparator.comparing(ChemicalOutput::id).thenComparingLong(ChemicalOutput::amount);
 
     private ComplexityComparators() {
     }

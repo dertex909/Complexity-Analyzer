@@ -376,7 +376,6 @@ function readOneRecipe(b, strings) {
         const vc = b.u8(), amount = b.i32();
         return {amount, variants: Array.from({length: vc}, () => b.i32())};
     });
-    res.chemicalIngredients = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: b.i32()}));
     res.itemOutputs = Array.from({length: b.u8()}, () => {
         const itemIndex = b.i32();
         const count = b.i32();
@@ -385,7 +384,6 @@ function readOneRecipe(b, strings) {
         return {itemIndex, count, hoverName, dataKey};
     });
     res.fluidOutputs = Array.from({length: b.u8()}, () => ({fluidIndex: b.i32(), amount: b.i32()}));
-    res.chemicalOutputs = Array.from({length: b.u8()}, () => ({id: strings.get(b.i32()), amount: Number(b.i64())}));
     return res;
 }
 

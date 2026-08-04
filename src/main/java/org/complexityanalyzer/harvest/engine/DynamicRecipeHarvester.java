@@ -130,8 +130,7 @@ public final class DynamicRecipeHarvester {
         try {
             var items = ctx.harvester().harvest(holder.value(), ctx.level());
             var node = HarvestedRecipeConverter.convert(items, ctx.level());
-            if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty()
-                    || !node.getChemicalIngredients().isEmpty())) {
+            if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty())) {
                 ctx.graph().addRecipe(node);
                 ctx.addedCount().incrementAndGet();
             }

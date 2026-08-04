@@ -21,7 +21,6 @@ package org.complexityanalyzer.graph;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -36,7 +35,7 @@ import java.util.Objects;
 
 /**
  * A single normalized recipe in the harvested graph: one way to produce {@link #getResultItem()} from a set of
- * item, fluid and chemical ingredients. This is the analyzer's mod-agnostic representation of every recipe it
+ * item and fluid ingredients. This is the analyzer's mod-agnostic representation of every recipe it
  * discovered — vanilla crafting/smelting as well as modded machine recipes — so addons can inspect crafting
  * relationships uniformly without depending on each mod's own recipe classes.
  *
@@ -48,8 +47,6 @@ public class RecipeNode {
 
     private final ObjectList<IngredientSlot> ingredients;
     private final ObjectList<FluidIngredientSlot> fluidIngredients;
-    private final ObjectList<ChemicalIngredient> chemicalIngredients;
-    private final ObjectList<ChemicalOutput> chemicalOutputs;
     private final ObjectList<ItemStack> itemOutputs;
     private final ObjectList<FluidStack> fluidOutputs;
     private final Item resultItem;
@@ -65,8 +62,6 @@ public class RecipeNode {
     private RecipeNode(Builder builder) {
         this.ingredients = copyToUnmodifiable(builder.ingredients);
         this.fluidIngredients = copyToUnmodifiable(builder.fluidIngredients);
-        this.chemicalIngredients = sortAndCopy(builder.chemicalIngredients, ComplexityComparators.CHEMICAL_INGREDIENT);
-        this.chemicalOutputs = sortAndCopy(builder.chemicalOutputs, ComplexityComparators.CHEMICAL_OUTPUT);
         this.itemOutputs = sortAndCopy(builder.itemOutputs, ComplexityComparators.ITEM_STACK_BY_ID_AND_COUNT);
         this.fluidOutputs = sortAndCopy(builder.fluidOutputs, ComplexityComparators.FLUID_STACK_BY_ID_AND_AMOUNT);
         this.recipeMultiplier = builder.recipeMultiplier;
@@ -136,20 +131,6 @@ public class RecipeNode {
     }
 
     /**
-     * @return chemical/gas outputs produced; unmodifiable, may be empty.
-     */
-    public ObjectList<ChemicalOutput> getChemicalOutputs() {
-        return chemicalOutputs;
-    }
-
-    /**
-     * @return chemical/gas ingredients consumed; unmodifiable, may be empty.
-     */
-    public ObjectList<ChemicalIngredient> getChemicalIngredients() {
-        return chemicalIngredients;
-    }
-
-    /**
      * @return the item ingredient slots, each holding the accepted item variants and a count; unmodifiable.
      */
     public ObjectList<IngredientSlot> getIngredients() {
@@ -213,13 +194,12 @@ public class RecipeNode {
     }
 
     /**
-     * @return the summed count across all item, fluid and chemical ingredient slots.
+     * @return the summed count across all item and fluid ingredient slots.
      */
     public int getTotalIngredientCount() {
         int total = 0;
         for (var slot : ingredients) total += slot.getCount();
         for (var slot : fluidIngredients) total += slot.getAmount();
-        for (var slot : chemicalIngredients) total += slot.amount();
         return total;
     }
 
@@ -227,7 +207,7 @@ public class RecipeNode {
      * @return {@code true} if this recipe has no inputs at all (a leaf/raw producer).
      */
     public boolean isBaseRecipe() {
-        return ingredients.isEmpty() && fluidIngredients.isEmpty() && chemicalIngredients.isEmpty();
+        return ingredients.isEmpty() && fluidIngredients.isEmpty();
     }
 
     /**
@@ -263,8 +243,6 @@ public class RecipeNode {
         if (!Objects.equals(placeholderId, that.placeholderId)) return false;
         if (!ingredients.equals(that.ingredients)) return false;
         if (!fluidIngredients.equals(that.fluidIngredients)) return false;
-        if (!chemicalIngredients.equals(that.chemicalIngredients)) return false;
-        if (!chemicalOutputs.equals(that.chemicalOutputs)) return false;
         if (!equalItemStackLists(itemOutputs, that.itemOutputs)) return false;
         return equalFluidStackLists(fluidOutputs, that.fluidOutputs);
     }
@@ -280,8 +258,6 @@ public class RecipeNode {
             result = 31 * result + (placeholderId != null ? placeholderId.hashCode() : 0);
             result = 31 * result + ingredients.hashCode();
             result = 31 * result + fluidIngredients.hashCode();
-            result = 31 * result + chemicalIngredients.hashCode();
-            result = 31 * result + chemicalOutputs.hashCode();
 
             int outputsHash = 1;
             for (var stack : itemOutputs) {
@@ -309,24 +285,10 @@ public class RecipeNode {
         return "RecipeNode{" + "result=" + GameRegistryManager.getItemId(resultItem) + ", type=" + recipeType + '}';
     }
 
-    /**
-     * A chemical/gas ingredient identified by registry id and amount (for mods with chemical systems).
-     */
-    public record ChemicalIngredient(ResourceLocation id, int amount) {
-    }
-
-    /**
-     * A chemical/gas output identified by registry id and amount.
-     */
-    public record ChemicalOutput(ResourceLocation id, long amount) {
-    }
-
     public static class Builder {
         private final Item resultItem;
-        private final ObjectList<ChemicalIngredient> chemicalIngredients = new ObjectArrayList<>();
         private final ObjectList<IngredientSlot> ingredients = new ObjectArrayList<>();
         private final ObjectList<FluidIngredientSlot> fluidIngredients = new ObjectArrayList<>();
-        private final ObjectList<ChemicalOutput> chemicalOutputs = new ObjectArrayList<>();
         private final double recipeMultiplier = 1.0;
         private ObjectList<ItemStack> itemOutputs = new ObjectArrayList<>();
         private ObjectList<FluidStack> fluidOutputs = new ObjectArrayList<>();
@@ -342,14 +304,6 @@ public class RecipeNode {
 
         public void addIngredient(ObjectList<ItemStack> variants, int count) {
             this.ingredients.add(IngredientSlot.intern(new IngredientSlot(variants, count)));
-        }
-
-        public void addChemicalIngredient(ChemicalIngredient ingredient) {
-            this.chemicalIngredients.add(ingredient);
-        }
-
-        public void addChemicalOutput(ChemicalOutput output) {
-            this.chemicalOutputs.add(output);
         }
 
         public void addFluidIngredient(ObjectList<Fluid> variants, int amount) {

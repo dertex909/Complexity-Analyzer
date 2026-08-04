@@ -29,7 +29,7 @@ import java.util.Set;
 /**
  * Read-only access to the parsed recipe graph and the raw (non-crafted) resource sources behind every item.
  * This is the harvested, normalized view of <em>all</em> recipes the analyzer discovered across every mod —
- * vanilla crafting/smelting plus modded machine recipes, fluids and chemicals.
+ * vanilla crafting/smelting plus modded machine recipes and fluids.
  */
 public interface RecipeData {
 

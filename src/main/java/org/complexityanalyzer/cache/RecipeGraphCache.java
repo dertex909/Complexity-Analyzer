@@ -52,7 +52,7 @@ public final class RecipeGraphCache implements ManagedCache {
     public static final RecipeGraphCache INSTANCE = new RecipeGraphCache();
 
     private static final int MAGIC = 0x43414331;
-    private static final int VERSION = 3;
+    private static final int VERSION = 4;
     private static final ResourceLocation AIR_ID = ResourceLocation.withDefaultNamespace("air");
     private static final ResourceLocation EMPTY_FLUID_ID = ResourceLocation.withDefaultNamespace("empty");
 
@@ -87,20 +87,6 @@ public final class RecipeGraphCache implements ManagedCache {
             var variants = slot.getFluidVariants();
             buf.writeVarInt(variants.size());
             for (var fluid : variants) buf.writeResourceLocation(fluidId(fluid));
-        }
-
-        var chemicalIngredients = node.getChemicalIngredients();
-        buf.writeVarInt(chemicalIngredients.size());
-        for (var ci : chemicalIngredients) {
-            buf.writeResourceLocation(ci.id());
-            buf.writeVarInt(ci.amount());
-        }
-
-        var chemicalOutputs = node.getChemicalOutputs();
-        buf.writeVarInt(chemicalOutputs.size());
-        for (var co : chemicalOutputs) {
-            buf.writeResourceLocation(co.id());
-            buf.writeVarLong(co.amount());
         }
 
         var itemOutputs = node.getItemOutputs();
@@ -144,18 +130,6 @@ public final class RecipeGraphCache implements ManagedCache {
                 if (fluid != null) variants.add(fluid);
             }
             builder.addFluidIngredient(variants, amount);
-        }
-
-        int chemicalIngredientCount = buf.readVarInt();
-        for (int i = 0; i < chemicalIngredientCount; i++) {
-            var id = buf.readResourceLocation();
-            builder.addChemicalIngredient(new RecipeNode.ChemicalIngredient(id, buf.readVarInt()));
-        }
-
-        int chemicalOutputCount = buf.readVarInt();
-        for (int i = 0; i < chemicalOutputCount; i++) {
-            var id = buf.readResourceLocation();
-            builder.addChemicalOutput(new RecipeNode.ChemicalOutput(id, buf.readVarLong()));
         }
 
         int itemOutputCount = buf.readVarInt();

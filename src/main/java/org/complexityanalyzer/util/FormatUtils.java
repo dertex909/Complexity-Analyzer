@@ -34,7 +34,7 @@ public final class FormatUtils {
     public static String safeDisplayName(Item item) {
         if (item == null) return "unknown";
         try {
-            return item.getDescription().getString();
+            return item.getDefaultInstance().getHoverName().getString();
         } catch (Throwable t) {
             var id = GameRegistryManager.getItemId(item);
             return id != null ? id.toString() : "unknown";

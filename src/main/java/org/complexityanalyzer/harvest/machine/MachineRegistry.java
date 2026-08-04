@@ -386,8 +386,6 @@ public class MachineRegistry {
         }
 
         logger.finishAndSave(totalBlocks, entityBlocks, registeredCount, errors);
-        ComplexityAnalyzer.LOGGER.debug("[MachineRegistry:SUMMARY] Scan finished! Registered Machines={}, Errors={}.", registeredCount, errors);
-
         return registeredCount;
     }
 

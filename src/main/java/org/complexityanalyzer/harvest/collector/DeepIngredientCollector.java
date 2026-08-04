@@ -21,7 +21,6 @@ package org.complexityanalyzer.harvest.collector;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
@@ -40,9 +39,8 @@ public final class DeepIngredientCollector {
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    if (tagKey.registry().equals(ITEM)) {
-                        @SuppressWarnings("unchecked")
-                        var itemTag = (TagKey<Item>) tagKey;
+                    if (tagKey.isFor(ITEM)) {
+                        var itemTag = TagKey.create(ITEM, tagKey.location());
                         var ing = Ingredient.of(itemTag);
                         if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
                             acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));

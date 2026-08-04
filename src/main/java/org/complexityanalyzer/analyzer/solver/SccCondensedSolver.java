@@ -79,8 +79,7 @@ public final class SccCondensedSolver {
             int vEnd = vStart + m.itemSlotVariantCount[s];
             double minCost = Double.POSITIVE_INFINITY;
             for (int v = vStart; v < vEnd; v++) {
-                double c = costs[m.itemVariantNode[v]];
-                if (c < minCost) minCost = c;
+                minCost = Math.min(minCost, costs[m.itemVariantNode[v]]);
             }
             if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
             sum += minCost * m.itemSlotAmount[s];
@@ -93,8 +92,7 @@ public final class SccCondensedSolver {
             int vEnd = vStart + m.fluidSlotVariantCount[s];
             double minCost = Double.POSITIVE_INFINITY;
             for (int v = vStart; v < vEnd; v++) {
-                double c = costs[m.fluidVariantNode[v]];
-                if (c < minCost) minCost = c;
+                minCost = Math.min(minCost, costs[m.fluidVariantNode[v]]);
             }
             if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
             sum += minCost * m.fluidSlotAmount[s];
@@ -105,8 +103,7 @@ public final class SccCondensedSolver {
         if (mCount > 0) {
             double minMachineCost = Double.POSITIVE_INFINITY;
             for (int i = mStart; i < mStart + mCount; i++) {
-                double c = costs[m.itemVariantNode[i]];
-                if (c < minMachineCost) minMachineCost = c;
+                minMachineCost = Math.min(minMachineCost, costs[m.itemVariantNode[i]]);
             }
             if (Double.isInfinite(minMachineCost)) {
                 double fb = m.formulaMachineFallback[f];
@@ -133,8 +130,7 @@ public final class SccCondensedSolver {
         Arrays.fill(index, -1);
         Arrays.fill(componentOf, -1);
 
-        int idxCounter = 0;
-        int compCounter = 0;
+        int idxCounter = 0, compCounter = 0;
 
         for (int start = 0; start < n; start++) {
             if (index[start] != -1) continue;
@@ -142,9 +138,7 @@ public final class SccCondensedSolver {
             int callTop = 0;
             callStack[0] = start;
             callIter[start] = adjStart[start];
-            index[start] = idxCounter;
-            lowlink[start] = idxCounter;
-            idxCounter++;
+            index[start] = lowlink[start] = idxCounter++;
             sccStack[sccTop++] = start;
             onStack[start] = true;
 
@@ -160,13 +154,11 @@ public final class SccCondensedSolver {
                         callTop++;
                         callStack[callTop] = w;
                         callIter[w] = adjStart[w];
-                        index[w] = idxCounter;
-                        lowlink[w] = idxCounter;
-                        idxCounter++;
+                        index[w] = lowlink[w] = idxCounter++;
                         sccStack[sccTop++] = w;
                         onStack[w] = true;
                     } else if (onStack[w]) {
-                        if (index[w] < lowlink[v]) lowlink[v] = index[w];
+                        lowlink[v] = Math.min(lowlink[v], index[w]);
                     }
                 } else {
                     if (lowlink[v] == index[v]) {
@@ -181,7 +173,7 @@ public final class SccCondensedSolver {
                     callTop--;
                     if (callTop >= 0) {
                         int parent = callStack[callTop];
-                        if (lowlink[v] < lowlink[parent]) lowlink[parent] = lowlink[v];
+                        lowlink[parent] = Math.min(lowlink[parent], lowlink[v]);
                     }
                 }
             }
@@ -197,8 +189,7 @@ public final class SccCondensedSolver {
     private static boolean isZeroCostRecipeType(RecipeType<?> recipeType) {
         if (recipeType == null) return false;
         var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
-        if (typeId == null) return false;
-        return typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
+        return typeId != null && typeId.equals(GameRegistryManager.getRecipeTypeId(RecipeType.CRAFTING));
     }
 
     public SolverResult solve() {
@@ -230,16 +221,11 @@ public final class SccCondensedSolver {
     }
 
     private void logFinalStatistics(CompiledModel m, Solution sol, long totalTime) {
-        long finiteItems = 0;
-        long finiteFluids = 0;
+        long finiteItems = 0, finiteFluids = 0;
         for (int n = 0; n < m.nodeCount; n++) {
             if (Double.isInfinite(sol.costs[n])) continue;
-            switch (m.nodeKind[n]) {
-                case K_ITEM -> finiteItems++;
-                case K_FLUID -> finiteFluids++;
-                default -> {
-                }
-            }
+            if (m.nodeKind[n] == K_ITEM) finiteItems++;
+            else if (m.nodeKind[n] == K_FLUID) finiteFluids++;
         }
 
         ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
@@ -288,17 +274,14 @@ public final class SccCondensedSolver {
         }
 
         var sol = new Solution(m.nodeCount, m.itemCount, m.fluidCount);
-
-        int totalFixpointIterations = 0;
-        int cyclicComponents = 0;
+        int totalFixpointIterations = 0, cyclicComponents = 0;
 
         for (int c = componentCount - 1; c >= 0; c--) {
             int fStart = componentFormulasStart[c];
             int fEnd = componentFormulasStart[c + 1];
             if (fStart == fEnd) continue;
 
-            boolean cyclic = componentSize[c] > 1;
-            if (cyclic) cyclicComponents++;
+            if (componentSize[c] > 1) cyclicComponents++;
 
             int iterations = 0;
             boolean changed = true;
@@ -313,24 +296,23 @@ public final class SccCondensedSolver {
                     int target = m.formulaTarget[formulaIdx];
                     byte fType = m.formulaType[formulaIdx];
 
-                    double oldCost = sol.costs[target];
-                    if (significantlyLower(oldCost, newCost, convergenceThreshold)) {
+                    if (significantlyLower(sol.costs[target], newCost, convergenceThreshold)) {
                         sol.costs[target] = newCost;
                         changed = true;
                     }
 
                     int itemIdx = m.itemIdxByNode[target];
-                    if (itemIdx >= 0) if (fType == F_ITEM_RECIPE) {
-                        if (newCost < sol.itemBestRecipeCost[itemIdx]) {
+                    if (itemIdx >= 0) {
+                        if (fType == F_ITEM_RECIPE && newCost < sol.itemBestRecipeCost[itemIdx]) {
                             sol.itemBestRecipeCost[itemIdx] = newCost;
                             sol.itemBestRecipeFormulaIdx[itemIdx] = formulaIdx;
+                        } else if (fType == F_SOURCE && newCost < sol.itemBestSourceCost[itemIdx]) {
+                            sol.itemBestSourceCost[itemIdx] = newCost;
                         }
-                    } else if (fType == F_SOURCE) {
-                        if (newCost < sol.itemBestSourceCost[itemIdx]) sol.itemBestSourceCost[itemIdx] = newCost;
                     }
 
                     int fluidIdx = m.fluidIdxByNode[target];
-                    if (fluidIdx >= 0) if (fType == F_FLUID_RECIPE || fType == F_PROTECTED_FLUID) {
+                    if (fluidIdx >= 0 && (fType == F_FLUID_RECIPE || fType == F_PROTECTED_FLUID)) {
                         if (newCost < sol.fluidBestRecipeCost[fluidIdx]) {
                             sol.fluidBestRecipeCost[fluidIdx] = newCost;
                             sol.fluidBestRecipeFormulaIdx[fluidIdx] = formulaIdx;
@@ -354,27 +336,22 @@ public final class SccCondensedSolver {
         var optimalRecipes = new Reference2ObjectOpenHashMap<Item, RecipeNode>();
 
         for (int n = 0; n < m.nodeCount; n++) {
-            if (m.nodeKind[n] != K_ITEM) continue;
-            if (!m.itemInCorpus[n]) continue;
+            if (m.nodeKind[n] != K_ITEM || !m.itemInCorpus[n]) continue;
             var item = m.itemByNode[n];
             if (item == null) continue;
 
-            double cost = sol.costs[n];
-            itemComplexities.put(item, cost);
+            itemComplexities.put(item, sol.costs[n]);
 
             int itemIdx = m.itemIdxByNode[n];
             if (itemIdx < 0) continue;
 
             double recipeBest = sol.itemBestRecipeCost[itemIdx];
-            double sourceBest = sol.itemBestSourceCost[itemIdx];
-            if (Double.isInfinite(recipeBest)) continue;
-            if (recipeBest + EPSILON >= sourceBest) continue;
+            if (Double.isInfinite(recipeBest) || recipeBest + EPSILON >= sol.itemBestSourceCost[itemIdx]) continue;
 
             int formulaIdx = sol.itemBestRecipeFormulaIdx[itemIdx];
-            if (formulaIdx < 0) continue;
-
-            var recipe = m.formulaRecipe[formulaIdx];
-            if (recipe != null) optimalRecipes.put(item, recipe);
+            if (formulaIdx >= 0 && m.formulaRecipe[formulaIdx] != null) {
+                optimalRecipes.put(item, m.formulaRecipe[formulaIdx]);
+            }
         }
 
         var fluidComplexities = new Reference2DoubleOpenHashMap<Fluid>(m.fluidCount);
@@ -386,8 +363,7 @@ public final class SccCondensedSolver {
             var fluid = m.fluidByNode[n];
             if (fluid == null) continue;
 
-            double cost = sol.costs[n];
-            fluidComplexities.put(fluid, cost);
+            fluidComplexities.put(fluid, sol.costs[n]);
 
             int fluidIdx = m.fluidIdxByNode[n];
             if (fluidIdx < 0) continue;
@@ -396,10 +372,9 @@ public final class SccCondensedSolver {
             if (Double.isInfinite(recipeBest)) continue;
 
             int formulaIdx = sol.fluidBestRecipeFormulaIdx[fluidIdx];
-            if (formulaIdx < 0) continue;
-
-            var recipe = m.formulaRecipe[formulaIdx];
-            if (recipe != null) optimalFluidRecipes.put(fluid, recipe);
+            if (formulaIdx >= 0 && m.formulaRecipe[formulaIdx] != null) {
+                optimalFluidRecipes.put(fluid, m.formulaRecipe[formulaIdx]);
+            }
         }
 
         return new MaterializedResult(itemComplexities, optimalRecipes, fluidComplexities, optimalFluidRecipes);
@@ -452,8 +427,7 @@ public final class SccCondensedSolver {
         private final IntArrayList fluidVariantNode = new IntArrayList();
         private final IntArrayList edgeFrom = new IntArrayList();
         private final IntArrayList edgeTo = new IntArrayList();
-        private int itemCount = 0;
-        private int fluidCount = 0;
+        private int itemCount = 0, fluidCount = 0;
 
         CompileBuilder(RecipeGraph graph, SourceManager sourceManager, MachineRegistry machineRegistry) {
             this.itemToNode.defaultReturnValue(-1);
@@ -493,9 +467,8 @@ public final class SccCondensedSolver {
             fluidByNode.add(null);
             nodeKind.add(K_ITEM);
             itemInCorpus.add(false);
-            itemIdxByNode.add(itemCount);
+            itemIdxByNode.add(itemCount++);
             fluidIdxByNode.add(-1);
-            itemCount++;
             return node;
         }
 
@@ -509,18 +482,14 @@ public final class SccCondensedSolver {
             nodeKind.add(K_FLUID);
             itemInCorpus.add(false);
             itemIdxByNode.add(-1);
-            fluidIdxByNode.add(fluidCount);
-            fluidCount++;
+            fluidIdxByNode.add(fluidCount++);
             return node;
         }
 
         private void allocateNodes() {
             var corpus = graph.getCorpus();
             for (var item : GameRegistryManager.getAllItems()) {
-                if (corpus.contains(item)) {
-                    int node = allocateItemNode(item);
-                    itemInCorpus.set(node, true);
-                }
+                if (corpus.contains(item)) itemInCorpus.set(allocateItemNode(item), true);
             }
 
             var usedFluids = graph.getAllUsedFluids();
@@ -532,8 +501,7 @@ public final class SccCondensedSolver {
             allocateFluidNode(Fluids.LAVA);
 
             for (var recipe : graph.getAllRecipes()) {
-                var resultItem = recipe.getResultItem();
-                if (resultItem != null) allocateItemNode(resultItem);
+                if (recipe.getResultItem() != null) allocateItemNode(recipe.getResultItem());
 
                 for (var slot : recipe.getIngredients()) {
                     for (var variant : slot.getVariants())
@@ -560,14 +528,12 @@ public final class SccCondensedSolver {
                 var sources = sourceManager.findAllSources(item);
                 if (sources.isEmpty()) continue;
 
-                int node = allocateItemNode(item);
-                itemInCorpus.set(node, true);
-
+                itemInCorpus.set(allocateItemNode(item), true);
                 for (var data : sources) {
-                    if (data == null) continue;
-                    var sourceItems = data.getSourceItems();
-                    if (sourceItems.isEmpty()) continue;
-                    for (var dep : sortedByItemId(sourceItems.keySet())) if (dep != null) allocateItemNode(dep);
+                    if (data == null || data.getSourceItems().isEmpty()) continue;
+                    for (var dep : sortedByItemId(data.getSourceItems().keySet())) {
+                        if (dep != null) allocateItemNode(dep);
+                    }
                 }
             }
         }
@@ -588,11 +554,9 @@ public final class SccCondensedSolver {
                     int itemSlotStart = itemSlotVariantStart.size();
                     int itemSlotCnt = 0;
 
-                    var sourceItems = data.getSourceItems();
-                    for (var dep : sortedByItemId(sourceItems.keySet())) {
-                        double amount = sourceItems.getDouble(dep);
-                        if (dep == null || amount <= 0.0) continue;
-                        if (dep == item) continue;
+                    for (var dep : sortedByItemId(data.getSourceItems().keySet())) {
+                        double amount = data.getSourceItems().getDouble(dep);
+                        if (dep == null || amount <= 0.0 || dep == item) continue;
                         int depNode = itemToNode.getInt(dep);
                         if (depNode == -1) depNode = allocateItemNode(dep);
                         addItemSlotSingle(depNode, amount);
@@ -617,11 +581,9 @@ public final class SccCondensedSolver {
                 if (Double.isInfinite(multiplier) || Double.isNaN(multiplier)) continue;
                 int recipeVariantNodeMark = itemVariantNode.size();
 
-                int machineNode = -1;
-                int machineCount = 0;
+                int machineNode = -1, machineCount = 0;
                 double machineMul = 0.0;
-                boolean zeroCostMachine = isZeroCostRecipeType(recipe.getRecipeType());
-                if (!zeroCostMachine && machineRegistry != null) {
+                if (!isZeroCostRecipeType(recipe.getRecipeType()) && machineRegistry != null) {
                     var machineItems = machineRegistry.getMachinesForRecipe(recipe.getRecipeType());
                     if (machineItems != null) {
                         int start = itemVariantNode.size();
@@ -657,9 +619,7 @@ public final class SccCondensedSolver {
                     truncateItemSlots(primary.itemStart());
                     truncateFluidSlots(primary.fluidStart());
                     if (recipe.getFluidOutputs().isEmpty() && recipe.getItemOutputs().isEmpty()) {
-                        while (itemVariantNode.size() > recipeVariantNodeMark) {
-                            itemVariantNode.removeInt(itemVariantNode.size() - 1);
-                        }
+                        itemVariantNode.size(recipeVariantNodeMark);
                         continue;
                     }
                 }
@@ -668,8 +628,9 @@ public final class SccCondensedSolver {
                     var grouped = new Reference2DoubleOpenHashMap<Fluid>();
                     for (var stack : recipe.getFluidOutputs()) {
                         var normalized = normalize(stack.getFluid());
-                        if (normalized == Fluids.EMPTY || isProtectedFluid(normalized)) continue;
-                        grouped.addTo(normalized, stack.getAmount());
+                        if (normalized != Fluids.EMPTY && !isProtectedFluid(normalized)) {
+                            grouped.addTo(normalized, stack.getAmount());
+                        }
                     }
 
                     if (!grouped.isEmpty()) {
@@ -679,9 +640,7 @@ public final class SccCondensedSolver {
                                 var fluid = entry.getKey();
                                 int fluidNode = fluidToNode.getInt(fluid);
                                 if (fluidNode == -1) fluidNode = allocateFluidNode(fluid);
-                                double outputAmount = entry.getDoubleValue();
-                                if (outputAmount <= 0) outputAmount = 1000.0;
-                                double outputBuckets = outputAmount / 1000.0;
+                                double outputBuckets = Math.max(1.0, entry.getDoubleValue()) / 1000.0;
                                 int formulaId = emitFormulaShell(F_FLUID_RECIPE, fluidNode,
                                         recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(),
                                         multiplier, outputBuckets,
@@ -700,10 +659,9 @@ public final class SccCondensedSolver {
                 if (!recipe.getItemOutputs().isEmpty()) {
                     var groupedItems = new Reference2DoubleOpenHashMap<Item>();
                     for (var stack : recipe.getItemOutputs()) {
-                        if (stack == null || stack.isEmpty()) continue;
-                        var outItem = stack.getItem();
-                        if (outItem == resultItem) continue;
-                        groupedItems.addTo(outItem, Math.max(1, stack.getCount()));
+                        if (stack != null && !stack.isEmpty() && stack.getItem() != resultItem) {
+                            groupedItems.addTo(stack.getItem(), Math.max(1, stack.getCount()));
+                        }
                     }
 
                     if (!groupedItems.isEmpty()) {
@@ -713,10 +671,8 @@ public final class SccCondensedSolver {
                                 var outItem = entry.getKey();
                                 int outNode = itemToNode.getInt(outItem);
                                 if (outNode == -1) outNode = allocateItemNode(outItem);
-                                double outCount = entry.getDoubleValue();
-                                if (outCount <= 0) outCount = 1.0;
                                 int formulaId = emitFormulaShell(F_ITEM_RECIPE, outNode,
-                                        recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, outCount,
+                                        recipe.getPriority() + ComplexityConfig.BASE_COMPLEXITY.get(), multiplier, Math.max(1.0, entry.getDoubleValue()),
                                         shared.itemStart(), shared.itemCount(), shared.fluidStart(), shared.fluidCount(),
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
                                         recipe);
@@ -769,8 +725,7 @@ public final class SccCondensedSolver {
         private SharedInputs appendSharedInputs(RecipeNode recipe, double fluidNorm) {
             int itemStart = itemSlotVariantStart.size();
             int fluidStart = fluidSlotVariantStart.size();
-            int itemCount = 0;
-            int fluidCount = 0;
+            int itemCount = 0, fluidCount = 0;
             boolean valid = true;
 
             for (var slot : recipe.getIngredients()) {
@@ -828,9 +783,8 @@ public final class SccCondensedSolver {
         }
 
         private void addItemSlotSingle(int depNode, double amount) {
-            int variantStart = itemVariantNode.size();
+            itemSlotVariantStart.add(itemVariantNode.size());
             itemVariantNode.add(depNode);
-            itemSlotVariantStart.add(variantStart);
             itemSlotVariantCount.add(1);
             itemSlotAmount.add(amount);
         }
@@ -858,8 +812,7 @@ public final class SccCondensedSolver {
             for (var v : variants) {
                 if (v == null) continue;
                 var normalized = normalize(v);
-                if (normalized == Fluids.EMPTY) continue;
-                if (!seen.add(normalized)) continue;
+                if (normalized == Fluids.EMPTY || !seen.add(normalized)) continue;
                 int node = fluidToNode.getInt(normalized);
                 if (node == -1) node = allocateFluidNode(normalized);
                 fluidVariantNode.add(node);
@@ -876,27 +829,19 @@ public final class SccCondensedSolver {
         private void truncateItemSlots(int slotStartInclusive) {
             int variantTrim = (slotStartInclusive < itemSlotVariantStart.size())
                     ? itemSlotVariantStart.getInt(slotStartInclusive) : itemVariantNode.size();
-            while (itemSlotVariantStart.size() > slotStartInclusive) {
-                int last = itemSlotVariantStart.size() - 1;
-                itemSlotVariantStart.removeInt(last);
-                itemSlotVariantCount.removeInt(last);
-                itemSlotAmount.removeDouble(last);
-            }
-            while (itemVariantNode.size() > variantTrim) {
-                itemVariantNode.removeInt(itemVariantNode.size() - 1);
-            }
+            itemSlotVariantStart.size(slotStartInclusive);
+            itemSlotVariantCount.size(slotStartInclusive);
+            itemSlotAmount.size(slotStartInclusive);
+            itemVariantNode.size(variantTrim);
         }
 
         private void truncateFluidSlots(int slotStartInclusive) {
             int variantTrim = (slotStartInclusive < fluidSlotVariantStart.size())
                     ? fluidSlotVariantStart.getInt(slotStartInclusive) : fluidVariantNode.size();
-            while (fluidSlotVariantStart.size() > slotStartInclusive) {
-                int last = fluidSlotVariantStart.size() - 1;
-                fluidSlotVariantStart.removeInt(last);
-                fluidSlotVariantCount.removeInt(last);
-                fluidSlotAmount.removeDouble(last);
-            }
-            while (fluidVariantNode.size() > variantTrim) fluidVariantNode.removeInt(fluidVariantNode.size() - 1);
+            fluidSlotVariantStart.size(slotStartInclusive);
+            fluidSlotVariantCount.size(slotStartInclusive);
+            fluidSlotAmount.size(slotStartInclusive);
+            fluidVariantNode.size(variantTrim);
         }
 
         private void addEdgesForFormula(int formulaId) {
@@ -993,52 +938,28 @@ public final class SccCondensedSolver {
     }
 
     private static final class CompiledModel {
-        int nodeCount;
-        int itemCount;
-        int fluidCount;
-        byte[] nodeKind;
+        int nodeCount, itemCount, fluidCount, formulaCount;
+        byte[] nodeKind, formulaType;
         Item[] itemByNode;
         Fluid[] fluidByNode;
         boolean[] itemInCorpus;
-        int[] itemIdxByNode;
-        int[] fluidIdxByNode;
-        int formulaCount;
-        byte[] formulaType;
-        int[] formulaTarget;
-        double[] formulaBaseCost;
-        double[] formulaMultiplier;
-        double[] formulaOutputDivisor;
-        int[] formulaItemSlotStart;
-        int[] formulaItemSlotCount;
-        int[] formulaFluidSlotStart;
-        int[] formulaFluidSlotCount;
-        int[] formulaMachineNode;
-        int[] formulaMachineCount;
-        double[] formulaMachineMul;
-        double[] formulaMachineFallback;
+        int[] itemIdxByNode, fluidIdxByNode, formulaTarget;
+        double[] formulaBaseCost, formulaMultiplier, formulaOutputDivisor;
+        int[] formulaItemSlotStart, formulaItemSlotCount, formulaFluidSlotStart, formulaFluidSlotCount;
+        int[] formulaMachineNode, formulaMachineCount;
+        double[] formulaMachineMul, formulaMachineFallback;
         RecipeNode[] formulaRecipe;
-        int[] itemSlotVariantStart;
-        int[] itemSlotVariantCount;
+        int[] itemSlotVariantStart, itemSlotVariantCount, itemVariantNode;
         double[] itemSlotAmount;
-        int[] itemVariantNode;
-        int[] fluidSlotVariantStart;
-        int[] fluidSlotVariantCount;
+        int[] fluidSlotVariantStart, fluidSlotVariantCount, fluidVariantNode;
         double[] fluidSlotAmount;
-        int[] fluidVariantNode;
-        int[] adjStart;
-        int[] adjNode;
+        int[] adjStart, adjNode;
     }
 
     private static final class Solution {
-        final double[] costs;
-        final double[] itemBestRecipeCost;
-        final double[] itemBestSourceCost;
-        final int[] itemBestRecipeFormulaIdx;
-        final double[] fluidBestRecipeCost;
-        final int[] fluidBestRecipeFormulaIdx;
-        int componentCount;
-        int cyclicComponents;
-        int fixpointIterations;
+        final double[] costs, itemBestRecipeCost, itemBestSourceCost, fluidBestRecipeCost;
+        final int[] itemBestRecipeFormulaIdx, fluidBestRecipeFormulaIdx;
+        int componentCount, cyclicComponents, fixpointIterations;
 
         Solution(int nodeCount, int itemCount, int fluidCount) {
             this.costs = new double[nodeCount];

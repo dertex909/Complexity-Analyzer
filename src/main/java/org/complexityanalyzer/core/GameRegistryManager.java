@@ -20,6 +20,7 @@ package org.complexityanalyzer.core;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
@@ -141,8 +142,10 @@ public class GameRegistryManager {
         ComplexityAnalyzer.LOGGER.debug("[GameRegistryManager] Registry cache cleared.");
     }
 
-    public static Item getFirstItemByTag(TagKey<Item> tagKey) {
-        var optionalTag = BuiltInRegistries.ITEM.getTag(tagKey);
+    public static Item getFirstItemByTag(TagKey<?> tagKey) {
+        if (tagKey == null || !tagKey.isFor(Registries.ITEM)) return AIR;
+        var itemTag = TagKey.create(Registries.ITEM, tagKey.location());
+        var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
         if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
             var item = holder.value();
             if (item != AIR) return item;
@@ -150,8 +153,10 @@ public class GameRegistryManager {
         return AIR;
     }
 
-    public static Fluid getFirstFluidByTag(TagKey<Fluid> tagKey) {
-        var optionalTag = BuiltInRegistries.FLUID.getTag(tagKey);
+    public static Fluid getFirstFluidByTag(TagKey<?> tagKey) {
+        if (tagKey == null || !tagKey.isFor(Registries.FLUID)) return Fluids.EMPTY;
+        var fluidTag = TagKey.create(Registries.FLUID, tagKey.location());
+        var optionalTag = BuiltInRegistries.FLUID.getTag(fluidTag);
         if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
             var fluid = holder.value();
             if (fluid != Fluids.EMPTY) return fluid;

@@ -43,7 +43,7 @@ public class ComplexityConfig {
 
     public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
-    public static final ModConfigSpec.IntValue MAX_THREADS;
+    public static final ModConfigSpec.ConfigValue<Integer> MAX_THREADS;
 
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
     public static final ModConfigSpec.ConfigValue<Integer> WEB_SERVER_PORT;
@@ -63,9 +63,14 @@ public class ComplexityConfig {
                 " 0 = unlimited (uses all available CPU cores minus 2)",
                 " 1-1024 = fixed thread limit for hosting environments",
                 " ",
-                " WARNING: If set higher than available CPU cores, server will crash on startup!",
-                " Use 0 for local servers, set explicit limit (e.g. 4) for shared hosting."
-        ).defineInRange("maxThreads", 0, 0, 1024);
+                " NOTE: If set higher than available CPU cores, the config value will automatically reset to 0."
+        ).define("maxThreads", 0, obj -> {
+            if (obj instanceof Number num) {
+                int threads = num.intValue();
+                return threads >= 0 && threads <= Runtime.getRuntime().availableProcessors();
+            }
+            return false;
+        });
         builder.pop();
 
         builder.push("limits");
@@ -188,15 +193,9 @@ public class ComplexityConfig {
         int configValue = MAX_THREADS.get();
         int availableCores = Runtime.getRuntime().availableProcessors();
 
-        if (configValue == 0) {
+        if (configValue <= 0 || configValue > availableCores) {
             resolvedMaxThreads = Math.max(1, availableCores - 2);
         } else {
-            if (configValue > availableCores) throw new IllegalStateException(String.format(
-                    "[Complexity Analyzer] Config error: maxThreads=%d exceeds available CPU cores=%d. " +
-                            "Set maxThreads to %d or less, or use 0 for unlimited.",
-                    configValue, availableCores, availableCores
-            ));
-
             resolvedMaxThreads = configValue;
         }
 

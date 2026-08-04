@@ -60,6 +60,11 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
         return DefaultAttributes.hasSupplier(livingType) ? DefaultAttributes.getSupplier(livingType) : null;
     }
 
+    public MobPropertyProvider() {
+        registerBoss(EntityType.WITHER, BossType.BOSS);
+        registerBoss(EntityType.ENDER_DRAGON, BossType.BOSS);
+    }
+
     public void initialize() {
         ComplexityAnalyzer.LOGGER.info("Initializing MobPropertyProvider...");
         int failedCount = 0;
@@ -127,8 +132,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
 
     @Override
     public boolean isBoss(EntityType<?> type) {
-        if (registeredBosses.get(type) == BossType.BOSS) return true;
-        return type == EntityType.WITHER || type == EntityType.ENDER_DRAGON;
+        return registeredBosses.get(type) == BossType.BOSS;
     }
 
     @Override
@@ -140,19 +144,14 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
         if (isBoss(type)) return ComplexityConfig.BOSS_RARITY_MULTIPLIER.get();
         if (isMiniBoss(type)) return MINI_BOSS_RARITY_SCALE;
 
-        double baseRarity;
         var classification = type.getCategory();
-        if (classification == MobCategory.MONSTER) {
-            baseRarity = MONSTER_BASE_RARITY;
-        } else if (classification == MobCategory.CREATURE) {
-            baseRarity = CREATURE_BASE_RARITY;
-        } else if (classification == MobCategory.AMBIENT) {
-            baseRarity = AMBIENT_BASE_RARITY;
-        } else if (classification == MobCategory.WATER_CREATURE || classification == MobCategory.UNDERGROUND_WATER_CREATURE || classification == MobCategory.WATER_AMBIENT) {
-            baseRarity = WATER_CREATURE_BASE_RARITY;
-        } else {
-            baseRarity = OTHER_BASE_RARITY;
-        }
+        double baseRarity = switch (classification) {
+            case MONSTER -> MONSTER_BASE_RARITY;
+            case CREATURE -> CREATURE_BASE_RARITY;
+            case AMBIENT -> AMBIENT_BASE_RARITY;
+            case WATER_CREATURE, UNDERGROUND_WATER_CREATURE, WATER_AMBIENT -> WATER_CREATURE_BASE_RARITY;
+            default -> OTHER_BASE_RARITY;
+        };
 
         if (classification == MobCategory.MONSTER) {
             var props = getProperties(type);

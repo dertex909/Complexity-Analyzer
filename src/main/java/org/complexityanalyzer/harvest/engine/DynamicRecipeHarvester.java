@@ -36,7 +36,6 @@ import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -140,15 +139,19 @@ public final class DynamicRecipeHarvester {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static List<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> type, ProbeContext ctx) {
+    private static ObjectList<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> type, ProbeContext ctx) {
         try {
             var stack = item.getDefaultInstance();
-            if (stack.isEmpty()) return Collections.emptyList();
-            var input = creator.create(stack);
-            if (input == null) return Collections.emptyList();
-            return ctx.recipeManager().getRecipesFor((RecipeType) type, (RecipeInput) input, ctx.level());
+            if (stack.isEmpty()) return ObjectLists.emptyList();
+            var rawInput = creator.create(stack);
+            if (rawInput instanceof RecipeInput input) {
+                var recipes = ctx.recipeManager().getRecipesFor((RecipeType) type, input, ctx.level());
+                if (recipes.isEmpty()) return ObjectLists.emptyList();
+                return new ObjectArrayList<>(recipes);
+            }
+            return ObjectLists.emptyList();
         } catch (Throwable ignored) {
-            return Collections.emptyList();
+            return ObjectLists.emptyList();
         }
     }
 

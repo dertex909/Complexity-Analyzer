@@ -35,7 +35,6 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.engine.FastHarvester;
 import org.complexityanalyzer.harvest.engine.HarvestedItems;
 
-import static net.minecraft.core.registries.Registries.ITEM;
 import static net.minecraft.world.item.Items.AIR;
 
 public final class DeepUniversalCollector {
@@ -82,17 +81,13 @@ public final class DeepUniversalCollector {
 
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    if (tagKey.registry().equals(ITEM)) {
-                        @SuppressWarnings("unchecked")
-                        var itemTag = (TagKey<Item>) tagKey;
-                        var firstItem = GameRegistryManager.getFirstItemByTag(itemTag);
-                        if (firstItem != AIR) {
-                            var stack = new ItemStack(firstItem);
-                            if (apiResultItem != null && firstItem == apiResultItem) {
-                                addOrUpdateOutput(outputItems, stack, apiResultItem);
-                            } else {
-                                inputItems.add(stack);
-                            }
+                    var firstItem = GameRegistryManager.getFirstItemByTag(tagKey);
+                    if (firstItem != AIR) {
+                        var stack = new ItemStack(firstItem);
+                        if (apiResultItem != null && firstItem == apiResultItem) {
+                            addOrUpdateOutput(outputItems, stack, apiResultItem);
+                        } else {
+                            inputItems.add(stack);
                         }
                     }
                     return true;

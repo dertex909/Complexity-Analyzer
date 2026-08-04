@@ -20,11 +20,9 @@ package org.complexityanalyzer.harvest.collector;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
@@ -39,12 +37,8 @@ public final class DeepFluidCollector {
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    if (tagKey.registry().equals(Registries.FLUID)) {
-                        @SuppressWarnings("unchecked")
-                        var fluidTag = (TagKey<Fluid>) tagKey;
-                        var firstFluid = GameRegistryManager.getFirstFluidByTag(fluidTag);
-                        if (firstFluid != Fluids.EMPTY) acc.add(new FluidStack(firstFluid, 1000));
-                    }
+                    var firstFluid = GameRegistryManager.getFirstFluidByTag(tagKey);
+                    if (firstFluid != Fluids.EMPTY) acc.add(new FluidStack(firstFluid, 1000));
                     return true;
                 }
                 case SizedFluidIngredient sfi -> {

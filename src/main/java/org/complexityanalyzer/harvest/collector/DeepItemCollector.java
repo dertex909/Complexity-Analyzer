@@ -21,7 +21,6 @@ package org.complexityanalyzer.harvest.collector;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -42,12 +41,8 @@ public final class DeepItemCollector {
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    if (tagKey.registry().equals(Registries.ITEM)) {
-                        @SuppressWarnings("unchecked")
-                        var itemTag = (TagKey<Item>) tagKey;
-                        var firstItem = GameRegistryManager.getFirstItemByTag(itemTag);
-                        if (firstItem != AIR) acc.add(new ItemStack(firstItem));
-                    }
+                    var firstItem = GameRegistryManager.getFirstItemByTag(tagKey);
+                    if (firstItem != AIR) acc.add(new ItemStack(firstItem));
                     return true;
                 }
                 case SizedIngredient si when si.count() > 0 -> {

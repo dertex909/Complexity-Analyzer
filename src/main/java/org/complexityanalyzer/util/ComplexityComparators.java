@@ -29,36 +29,16 @@ import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import java.util.Comparator;
 
 public final class ComplexityComparators {
-    public static final Comparator<ItemStack> ITEM_STACK_BY_ID = (a, b) ->
-            compareIds(GameRegistryManager.getItemId(a.getItem()), GameRegistryManager.getItemId(b.getItem()));
-    public static final Comparator<ItemStack> ITEM_STACK_BY_ID_AND_COUNT = (a, b) -> {
-        int c = compareIds(GameRegistryManager.getItemId(a.getItem()), GameRegistryManager.getItemId(b.getItem()));
-        if (c != 0) return c;
-        return Integer.compare(a.getCount(), b.getCount());
-    };
-    public static final Comparator<Fluid> FLUID_BY_ID = (f1, f2) ->
-            compareIds(GameRegistryManager.getFluidId(f1), GameRegistryManager.getFluidId(f2));
-    public static final Comparator<FluidStack> FLUID_STACK_BY_ID_AND_AMOUNT = (a, b) -> {
-        int c = compareIds(GameRegistryManager.getFluidId(a.getFluid()), GameRegistryManager.getFluidId(b.getFluid()));
-        if (c != 0) return c;
-        return Integer.compare(a.getAmount(), b.getAmount());
-    };
+    private static final Comparator<ResourceLocation> RESOURCE_LOCATION_COMPARATOR = Comparator.nullsFirst(ResourceLocation::compareTo);
+    public static final Comparator<ItemStack> ITEM_STACK_BY_ID = Comparator.comparing(stack -> GameRegistryManager.getItemId(stack.getItem()), RESOURCE_LOCATION_COMPARATOR);
+    public static final Comparator<ItemStack> ITEM_STACK_BY_ID_AND_COUNT = ITEM_STACK_BY_ID.thenComparingInt(ItemStack::getCount);
+    public static final Comparator<Fluid> FLUID_BY_ID = Comparator.comparing(GameRegistryManager::getFluidId, RESOURCE_LOCATION_COMPARATOR);
+    public static final Comparator<FluidStack> FLUID_STACK_BY_ID_AND_AMOUNT = Comparator.comparing(FluidStack::getFluid, FLUID_BY_ID).thenComparingInt(FluidStack::getAmount);
 
     private ComplexityComparators() {
     }
 
-    private static int compareIds(ResourceLocation a, ResourceLocation b) {
-        if (a == b) return 0;
-        if (a == null) return -1;
-        if (b == null) return 1;
-        return a.compareTo(b);
-    }
-
     public static Comparator<ItemStack> createDeepItemStackComparator(HolderLookup.Provider provider) {
-        return (a, b) -> {
-            int byId = compareIds(GameRegistryManager.getItemId(a.getItem()), GameRegistryManager.getItemId(b.getItem()));
-            if (byId != 0) return byId;
-            return ItemStackIdentity.dataKey(a, provider).compareTo(ItemStackIdentity.dataKey(b, provider));
-        };
+        return ITEM_STACK_BY_ID.thenComparing(stack -> ItemStackIdentity.dataKey(stack, provider));
     }
 }

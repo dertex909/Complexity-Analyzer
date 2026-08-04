@@ -71,9 +71,9 @@ public final class StandaloneWebServer {
             });
 
             serverChannel = b.bind(new InetSocketAddress(port)).sync().channel();
-            ComplexityAnalyzer.LOGGER.info("[Complexity Analyzer] Standalone web dashboard server started on port {}", port);
+            ComplexityAnalyzer.LOGGER.info("Standalone web dashboard server started on port {}", port);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[Complexity Analyzer] Failed to bind standalone web server to port {}: {}", port, e.getMessage());
+            ComplexityAnalyzer.LOGGER.error("Failed to bind standalone web server to port {}: {}", port, e.getMessage());
             stop();
         }
     }

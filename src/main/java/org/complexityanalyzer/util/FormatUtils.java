@@ -52,29 +52,39 @@ public final class FormatUtils {
     }
 
     public static String humanBytes(long bytes) {
-        var b = Component.translatable("complexityanalyzer.unit.size.bytes").getString();
-        var kb = Component.translatable("complexityanalyzer.unit.size.kilobytes").getString();
-        var mb = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
-        var gb = Component.translatable("complexityanalyzer.unit.size.gigabytes").getString();
+        if (bytes < 1024) return bytes + " " + Component.translatable("complexityanalyzer.unit.size.bytes").getString();
 
-        if (bytes < 1024) return bytes + " " + b;
-        if (bytes < 1024L * 1024) return String.format(Locale.US, "%.1f %s", bytes / 1024.0, kb);
-        if (bytes < 1024L * 1024 * 1024) return String.format(Locale.US, "%.1f %s", bytes / (1024.0 * 1024), mb);
-        return String.format(Locale.US, "%.2f %s", bytes / (1024.0 * 1024 * 1024), gb);
+        if (bytes < (1L << 20)) {
+            var kb = Component.translatable("complexityanalyzer.unit.size.kilobytes").getString();
+            return String.format(Locale.US, "%.1f %s", bytes / 1024.0, kb);
+        }
+
+        if (bytes < (1L << 30)) {
+            var mb = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
+            return String.format(Locale.US, "%.1f %s", bytes / (1024.0 * 1024.0), mb);
+        }
+
+        var gb = Component.translatable("complexityanalyzer.unit.size.gigabytes").getString();
+        return String.format(Locale.US, "%.2f %s", bytes / (1024.0 * 1024.0 * 1024.0), gb);
     }
 
     public static String formatDurationSeconds(long seconds) {
         long s = Math.max(0, seconds);
+
+        if (s < 60) return s + Component.translatable("complexityanalyzer.unit.time.seconds_short").getString();
+
+        long min = s / 60;
         var sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short").getString();
         var mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short").getString();
-        var hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short").getString();
-        var dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short").getString();
 
-        if (s < 60) return s + sSuffix;
-        long min = s / 60;
         if (min < 60) return min + mSuffix + " " + (s % 60) + sSuffix;
+
         long hours = min / 60;
+        var hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short").getString();
+
         if (hours < 24) return hours + hSuffix + " " + (min % 60) + mSuffix;
+
+        var dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short").getString();
         return (hours / 24) + dSuffix + " " + (hours % 24) + hSuffix;
     }
 

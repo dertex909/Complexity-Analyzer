@@ -31,7 +31,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeNode;
@@ -45,6 +44,7 @@ import java.util.regex.Pattern;
 import static net.minecraft.core.component.DataComponents.CUSTOM_NAME;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
+import static org.complexityanalyzer.config.ComplexityConfig.MAX_INGREDIENT_VARIANTS;
 import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class HarvestedRecipeConverter {
@@ -145,7 +145,7 @@ public final class HarvestedRecipeConverter {
             var ingredient = hi.ingredient();
             int ingredientCount = hi.count();
             var variants = new ObjectArrayList<ItemStack>();
-            int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
+            int limit = MAX_INGREDIENT_VARIANTS.get();
             for (var raw : ingredient.getItems()) {
                 var stack = recoverUnbound(raw);
                 if (!isValid(stack)) continue;

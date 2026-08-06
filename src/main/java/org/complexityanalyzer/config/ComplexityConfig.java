@@ -114,7 +114,6 @@ public class ComplexityConfig {
                 " Example: If Furnace has complexity 10.0 and tax is 7.5%,",
                 " then smelted items get +0.75 complexity added to their recipe cost."
         );
-
         MACHINE_TAX_ENABLED = builder.comment(" Enable machine tax calculation").define("enabled", true);
 
         MACHINE_TAX_PERCENTAGE = builder.comment(

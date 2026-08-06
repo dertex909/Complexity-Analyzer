@@ -23,45 +23,39 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class ComplexityConfig {
     public static final ModConfigSpec SPEC;
 
-    public static final ModConfigSpec.IntValue MAX_INGREDIENT_VARIANTS;
-    public static final ModConfigSpec.IntValue MAX_ITERATIONS;
+    public static final ModConfigSpec.ConfigValue<Integer> MAX_THREADS;
+    public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
 
     public static final ModConfigSpec.DoubleValue BASE_COMPLEXITY;
+    public static final ModConfigSpec.IntValue MAX_ITERATIONS;
+    public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
+    public static final ModConfigSpec.IntValue MAX_INGREDIENT_VARIANTS;
+    public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
 
     public static final ModConfigSpec.DoubleValue MOB_DIFFICULTY_SCALER;
     public static final ModConfigSpec.DoubleValue BOSS_RARITY_MULTIPLIER;
-
     public static final ModConfigSpec.DoubleValue TIME_COST_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue FARMING_TIME_COST_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue BASE_ACTION_COST;
-
-    public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
 
     public static final ModConfigSpec.BooleanValue MACHINE_TAX_ENABLED;
     public static final ModConfigSpec.DoubleValue MACHINE_TAX_PERCENTAGE;
     public static final ModConfigSpec.DoubleValue MACHINE_BASE_COMPLEXITY;
 
-    public static final ModConfigSpec.DoubleValue FLUID_NORMALIZATION_FACTOR;
-
-    public static final ModConfigSpec.ConfigValue<Integer> MAX_THREADS;
-
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_IP;
     public static final ModConfigSpec.ConfigValue<Integer> WEB_SERVER_PORT;
     public static final ModConfigSpec.ConfigValue<String> WEB_SERVER_TOKEN;
-
-    public static final ModConfigSpec.BooleanValue ENABLE_CACHE;
-    public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
 
     private static volatile int resolvedMaxThreads = -1;
 
     static {
         var builder = new ModConfigSpec.Builder();
 
-        builder.push("threading");
+        builder.push("system");
         MAX_THREADS = builder.comment(
                 " Maximum number of threads for analysis and geo-scanning.",
                 " 0 = unlimited (uses all available CPU cores minus 2)",
-                " 1-1024 = fixed thread limit for hosting environments",
                 " ",
                 " NOTE: If set higher than available CPU cores, the config value will automatically reset to 0."
         ).define("maxThreads", 0, obj -> {
@@ -71,39 +65,52 @@ public class ComplexityConfig {
             }
             return false;
         });
+
+        ENABLE_CACHE = builder.comment(
+                " Cache expensive analysis results to disk (per-world). Covers:",
+                "   - the harvested recipe graph (static scan + dynamic probe + fluid scan)",
+                "   - the machine registry (block/BlockEntity reflective scan)",
+                "   - block-break drops, loot tables, crop farming and mob drops",
+                " When enabled, those scans run only once per recipe/mod set; later loads restore",
+                " the data instantly. The caches auto-invalidate when recipes, blocks, items, mods,",
+                " entities, the geo-scan or graph-affecting config change. Disable to always rebuild.",
+                " Manage with /complexity system cache info|clear."
+        ).define("enableCache", true);
         builder.pop();
 
-        builder.push("limits");
+        builder.push("solver");
+        BASE_COMPLEXITY = builder.defineInRange("baseComplexity", 1.0, 0.1, 1000.0);
+
+        MAX_ITERATIONS = builder.defineInRange("maxIterations", 1000, 10, 10000);
+
+        CONVERGENCE_THRESHOLD = builder.defineInRange("convergenceThreshold", 1.0E-9, 1.0E-12, 1.0E-3);
+
         MAX_INGREDIENT_VARIANTS = builder.comment(
                 " Max item variants kept per ingredient slot (e.g. for tag ingredients like 'any plank').",
                 " Higher = more accurate cost for broad tags, at a bit more solver work."
         ).defineInRange("maxIngredientVariants", 100, 1, 1000);
-        MAX_ITERATIONS = builder.defineInRange("maxIterations", 1000, 10, 10000);
+
+        DETECTION_SAMPLE_SIZE = builder.comment(
+                " Items probed per recipe type when detecting dynamically generated recipes,",
+                " spread evenly across the item registry. Higher = better chance to catch generators",
+                " that fire on only a few items, at slightly more startup cost."
+        ).defineInRange("detectionSampleSize", 1024, 16, 1048576);
         builder.pop();
 
-        builder.push("crafting");
-        BASE_COMPLEXITY = builder.defineInRange("baseComplexity", 1.0, 0.1, 1000.0);
-        builder.pop();
-
-        builder.push("mob_drops");
+        builder.push("costs");
         MOB_DIFFICULTY_SCALER = builder.defineInRange("mobDifficultyScaler", 0.1, 0.0, 100.0);
+
         BOSS_RARITY_MULTIPLIER = builder.defineInRange("bossRarityMultiplier", 20.0, 1.0, 500.0);
-        builder.pop();
 
-        builder.push("passive_generation");
         TIME_COST_MULTIPLIER = builder.defineInRange("timeCostMultiplier", 0.01, 0.0, 1.0);
+
         FARMING_TIME_COST_MULTIPLIER = builder.defineInRange("farmingTimeCostMultiplier", 0.005, 0.0, 1.0);
+
         BASE_ACTION_COST = builder.defineInRange("baseActionCost", 10.0, 0.0, 1000.0);
-        builder.pop();
 
-        builder.push("solver_internals");
-        CONVERGENCE_THRESHOLD = builder.defineInRange("convergenceThreshold", 1.0E-9, 1.0E-12, 1.0E-3);
-        builder.pop();
-
-        builder.push("fluids");
         FLUID_NORMALIZATION_FACTOR = builder
                 .comment(" Multiplier for fluid costs in recipes")
-                .defineInRange("normalizationFactor", 1.0, 0.01, 10.0);
+                .defineInRange("fluidNormalizationFactor", 1.0, 0.01, 10.0);
         builder.pop();
 
         builder.push("machine_tax");
@@ -151,25 +158,6 @@ public class ComplexityConfig {
         ).define("token", "");
         builder.pop();
 
-        builder.push("harvest");
-        ENABLE_CACHE = builder.comment(
-                " Cache expensive analysis results to disk (per-world). Covers:",
-                "   - the harvested recipe graph (static scan + dynamic probe + fluid scan)",
-                "   - the machine registry (block/BlockEntity reflective scan)",
-                "   - block-break drops, loot tables, crop farming and mob drops",
-                " When enabled, those scans run only once per recipe/mod set; later loads restore",
-                " the data instantly. The caches auto-invalidate when recipes, blocks, items, mods,",
-                " entities, the geo-scan or graph-affecting config change. Disable to always rebuild.",
-                " Manage with /complexity system cache info|clear."
-        ).define("enableCache", true);
-
-        DETECTION_SAMPLE_SIZE = builder.comment(
-                " Items probed per recipe type when detecting dynamically generated recipes,",
-                " spread evenly across the item registry. Higher = better chance to catch generators",
-                " that fire on only a few items, at slightly more startup cost."
-        ).defineInRange("detectionSampleSize", 1024, 16, 1048576);
-        builder.pop();
-
         SPEC = builder.build();
     }
 
@@ -188,17 +176,8 @@ public class ComplexityConfig {
 
     public static int getMaxThreads() {
         if (resolvedMaxThreads >= 0) return resolvedMaxThreads;
-
         int configValue = MAX_THREADS.get();
-        int availableCores = Runtime.getRuntime().availableProcessors();
-
-        if (configValue <= 0 || configValue > availableCores) {
-            resolvedMaxThreads = Math.max(1, availableCores - 2);
-        } else {
-            resolvedMaxThreads = configValue;
-        }
-
-        return resolvedMaxThreads;
+        return resolvedMaxThreads = (configValue <= 0) ? Math.max(1, Runtime.getRuntime().availableProcessors() - 2) : configValue;
     }
 
     public static void resetThreadCache() {

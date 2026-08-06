@@ -56,7 +56,7 @@ public final class ThreadPoolManager implements AutoCloseable {
     private final AtomicReference<State> state = new AtomicReference<>(State.RUNNING);
 
     private ThreadPoolManager() {
-        this.parallelism = Math.max(1, ComplexityConfig.getMaxThreads());
+        this.parallelism = ComplexityConfig.getMaxThreads();
         ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with parallelism = {}", parallelism);
 
         var pluginClassLoader = getClass().getClassLoader();

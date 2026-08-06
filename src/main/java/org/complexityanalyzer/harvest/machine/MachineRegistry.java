@@ -51,10 +51,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static net.minecraft.core.BlockPos.ZERO;
-import static net.minecraft.core.registries.Registries.RECIPE_TYPE;
 import static net.minecraft.world.item.Items.AIR;
 
 public class MachineRegistry {
@@ -153,20 +154,15 @@ public class MachineRegistry {
             case Holder<?> holder -> {
                 try {
                     if (holder.isBound()) {
-                        var val = holder.value();
-                        var rt = unwrapRecipeType(val);
+                        var rt = unwrapRecipeType(holder.value());
                         if (rt != null) return rt;
                     }
                     var keyOpt = holder.unwrapKey();
-                    if (keyOpt.isPresent()) {
-                        var key = keyOpt.get();
-                        if (key.isFor(RECIPE_TYPE)) return BuiltInRegistries.RECIPE_TYPE.get(key.location());
-                    }
+                    if (keyOpt.isPresent()) return GameRegistryManager.getRecipeType(keyOpt.get().location());
                 } catch (Throwable ignored) {
                 }
                 return null;
             }
-
             case Supplier<?> supplier -> {
                 try {
                     return unwrapRecipeType(supplier.get());
@@ -174,20 +170,12 @@ public class MachineRegistry {
                 }
                 return null;
             }
-
             case ResourceLocation loc -> {
-                if (BuiltInRegistries.RECIPE_TYPE.containsKey(loc)) return BuiltInRegistries.RECIPE_TYPE.get(loc);
-                return null;
+                return GameRegistryManager.getRecipeType(loc);
             }
-
             case ResourceKey<?> key -> {
-                if (key.isFor(RECIPE_TYPE)) return BuiltInRegistries.RECIPE_TYPE.get(key.location());
-                if (BuiltInRegistries.RECIPE_TYPE.containsKey(key.location())) {
-                    return BuiltInRegistries.RECIPE_TYPE.get(key.location());
-                }
-                return null;
+                return GameRegistryManager.getRecipeType(key.location());
             }
-
             case Optional<?> opt -> {
                 return opt.map(MachineRegistry::unwrapRecipeType).orElse(null);
             }
@@ -659,7 +647,7 @@ public class MachineRegistry {
             if (block.asItem() != AIR) candidateClasses.add(block.getClass());
         }
 
-        for (var rt : BuiltInRegistries.RECIPE_TYPE) candidateClasses.add(rt.getClass());
+        for (var rt : GameRegistryManager.getAllRecipeTypes()) candidateClasses.add(rt.getClass());
 
         var initialList = new ObjectArrayList<>(candidateClasses);
         for (var cls : initialList) addClassAndNeighbors(cls, candidateClasses);
@@ -701,33 +689,20 @@ public class MachineRegistry {
     }
 
     @Nullable
-    private Item findItemInObject(@Nullable Object obj, ReferenceSet<Object> visited) {
+    private <T> T findMemberInObject(@Nullable Object obj, ReferenceSet<Object> visited, Function<Object, T> extractor, Predicate<Class<?>> returnTypeFilter) {
         if (obj == null || !visited.add(obj)) return null;
-        switch (obj) {
-            case Item item -> {
-                return item != AIR ? item : null;
-            }
-            case Block block -> {
-                return block.asItem() != AIR ? block.asItem() : null;
-            }
-            case ItemStack stack -> {
-                return !stack.isEmpty() ? stack.getItem() : null;
-            }
-            default -> {
-            }
-        }
+        T direct = extractor.apply(obj);
+        if (direct != null) return direct;
 
         var cls = obj.getClass();
         if (!curClsValid(cls)) return null;
 
         for (var m : cls.getMethods()) {
-            if (m.getParameterCount() == 0 && curClsValid(m.getReturnType())) {
-                var rt = m.getReturnType();
-                if (Item.class.isAssignableFrom(rt) || Block.class.isAssignableFrom(rt)
-                        || ItemStack.class.isAssignableFrom(rt)) try {
+            if (m.getParameterCount() == 0 && returnTypeFilter.test(m.getReturnType())) {
+                try {
                     m.setAccessible(true);
                     var res = m.invoke(obj);
-                    var found = findItemInObject(res, visited);
+                    var found = findMemberInObject(res, visited, extractor, returnTypeFilter);
                     if (found != null) return found;
                 } catch (Throwable ignored) {
                 }
@@ -738,7 +713,7 @@ public class MachineRegistry {
             if (!Modifier.isStatic(f.getModifiers()) && !f.getType().isPrimitive()) try {
                 f.setAccessible(true);
                 var res = f.get(obj);
-                var found = findItemInObject(res, visited);
+                var found = findMemberInObject(res, visited, extractor, returnTypeFilter);
                 if (found != null) return found;
             } catch (Throwable ignored) {
             }
@@ -747,42 +722,18 @@ public class MachineRegistry {
     }
 
     @Nullable
+    private Item findItemInObject(@Nullable Object obj, ReferenceSet<Object> visited) {
+        return findMemberInObject(obj, visited, o -> switch (o) {
+            case Item item -> item != AIR ? item : null;
+            case Block block -> block.asItem() != AIR ? block.asItem() : null;
+            case ItemStack stack -> !stack.isEmpty() ? stack.getItem() : null;
+            default -> null;
+        }, rt -> Item.class.isAssignableFrom(rt) || Block.class.isAssignableFrom(rt) || ItemStack.class.isAssignableFrom(rt));
+    }
+
+    @Nullable
     private RecipeType<?> findRecipeTypeInObject(@Nullable Object obj, ReferenceSet<Object> visited) {
-        if (obj == null || !visited.add(obj)) return null;
-        var direct = unwrapRecipeType(obj);
-        if (direct != null) return direct;
-
-        var cls = obj.getClass();
-        if (!curClsValid(cls)) return null;
-
-        for (var m : cls.getMethods()) {
-            if (m.getParameterCount() == 0) {
-                var rt = m.getReturnType();
-                if (RecipeType.class.isAssignableFrom(rt) || Holder.class.isAssignableFrom(rt)
-                        || Supplier.class.isAssignableFrom(rt)) try {
-                    m.setAccessible(true);
-                    var res = m.invoke(obj);
-                    var found = unwrapRecipeType(res);
-                    if (found != null) return found;
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-
-        for (var f : cls.getDeclaredFields()) {
-            if (!Modifier.isStatic(f.getModifiers()) && !f.getType().isPrimitive()) try {
-                f.setAccessible(true);
-                var res = f.get(obj);
-                var found = unwrapRecipeType(res);
-                if (found != null) return found;
-                if (res != null && curClsValid(res.getClass())) {
-                    var deep = findRecipeTypeInObject(res, visited);
-                    if (deep != null) return deep;
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-        return null;
+        return findMemberInObject(obj, visited, MachineRegistry::unwrapRecipeType, rt -> RecipeType.class.isAssignableFrom(rt) || Holder.class.isAssignableFrom(rt) || Supplier.class.isAssignableFrom(rt));
     }
 
     private void register(String recipeTypeId, String itemId) {
@@ -798,7 +749,7 @@ public class MachineRegistry {
         var list = idMapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>());
         if (!list.contains(item)) list.add(item);
 
-        var rt = BuiltInRegistries.RECIPE_TYPE.get(typeRL);
+        var rt = GameRegistryManager.getRecipeType(typeRL);
         if (rt != null) {
             var instList = instanceMapping.computeIfAbsent(rt, k -> new ObjectArrayList<>());
             if (!instList.contains(item)) instList.add(item);

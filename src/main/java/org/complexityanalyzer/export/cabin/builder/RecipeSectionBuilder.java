@@ -24,6 +24,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.util.CabinIndexUtils;
 import org.complexityanalyzer.graph.IngredientSlot;
@@ -105,7 +106,8 @@ public final class RecipeSectionBuilder {
     public static void writeRecipe(LeBuf buf, SectionBuilderContext ctx, int outputItemIndex, RecipeNode r, IntList machineIdxs) {
         buf.i32(outputItemIndex);
         var rt = r.getRecipeType();
-        String rtStr = rt != null ? rt.toString() : "minecraft:custom";
+        var typeId = GameRegistryManager.getRecipeTypeId(rt);
+        String rtStr = typeId != null ? typeId.toString() : (rt != null ? rt.toString() : "minecraft:custom");
         buf.i32(ctx.strings().intern(rtStr));
         buf.i32(r.getPriority());
         buf.i32(r.getResultCount());

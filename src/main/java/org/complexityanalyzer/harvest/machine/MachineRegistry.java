@@ -21,11 +21,13 @@ package org.complexityanalyzer.harvest.machine;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -169,6 +171,19 @@ public class MachineRegistry {
                 try {
                     return unwrapRecipeType(supplier.get());
                 } catch (Throwable ignored) {
+                }
+                return null;
+            }
+
+            case ResourceLocation loc -> {
+                if (BuiltInRegistries.RECIPE_TYPE.containsKey(loc)) return BuiltInRegistries.RECIPE_TYPE.get(loc);
+                return null;
+            }
+
+            case ResourceKey<?> key -> {
+                if (key.isFor(RECIPE_TYPE)) return BuiltInRegistries.RECIPE_TYPE.get(key.location());
+                if (BuiltInRegistries.RECIPE_TYPE.containsKey(key.location())) {
+                    return BuiltInRegistries.RECIPE_TYPE.get(key.location());
                 }
                 return null;
             }
@@ -384,6 +399,9 @@ public class MachineRegistry {
                 logger.logFatalBlockError(t);
             }
         }
+
+        int staticHolderScanned = scanModStaticHoldersAndRegistries();
+        registeredCount += staticHolderScanned;
 
         logger.finishAndSave(totalBlocks, entityBlocks, registeredCount, errors);
         return registeredCount;
@@ -631,6 +649,140 @@ public class MachineRegistry {
             }
         }
         return added;
+    }
+
+    private int scanModStaticHoldersAndRegistries() {
+        int count = 0;
+        var candidateClasses = new ReferenceOpenHashSet<Class<?>>();
+
+        for (var block : GameRegistryManager.getAllBlocks()) {
+            if (block.asItem() != AIR) candidateClasses.add(block.getClass());
+        }
+
+        for (var rt : BuiltInRegistries.RECIPE_TYPE) candidateClasses.add(rt.getClass());
+
+        var initialList = new ObjectArrayList<>(candidateClasses);
+        for (var cls : initialList) addClassAndNeighbors(cls, candidateClasses);
+
+        var visitedObjects = new ReferenceOpenHashSet<>();
+        for (var clazz : candidateClasses) {
+            if (!curClsValid(clazz)) continue;
+            for (var field : clazz.getDeclaredFields()) {
+                if (!Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) continue;
+                try {
+                    field.setAccessible(true);
+                    var val = field.get(null);
+                    if (val == null) continue;
+
+                    var item = findItemInObject(val, visitedObjects);
+                    visitedObjects.clear();
+                    if (item != null && item != AIR) {
+                        var rt = findRecipeTypeInObject(val, visitedObjects);
+                        visitedObjects.clear();
+                        if (rt != null && registerDynamicMachine(rt, item)) count++;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return count;
+    }
+
+    private void addClassAndNeighbors(Class<?> cls, ReferenceOpenHashSet<Class<?>> set) {
+        if (!curClsValid(cls)) return;
+        set.add(cls);
+        var enc = cls.getEnclosingClass();
+        if (curClsValid(enc)) set.add(enc);
+        var decl = cls.getDeclaringClass();
+        if (curClsValid(decl)) set.add(decl);
+        for (var iface : cls.getInterfaces()) if (curClsValid(iface)) set.add(iface);
+        var superCls = cls.getSuperclass();
+        if (curClsValid(superCls)) set.add(superCls);
+    }
+
+    @Nullable
+    private Item findItemInObject(@Nullable Object obj, ReferenceSet<Object> visited) {
+        if (obj == null || !visited.add(obj)) return null;
+        switch (obj) {
+            case Item item -> {
+                return item != AIR ? item : null;
+            }
+            case Block block -> {
+                return block.asItem() != AIR ? block.asItem() : null;
+            }
+            case ItemStack stack -> {
+                return !stack.isEmpty() ? stack.getItem() : null;
+            }
+            default -> {
+            }
+        }
+
+        var cls = obj.getClass();
+        if (!curClsValid(cls)) return null;
+
+        for (var m : cls.getMethods()) {
+            if (m.getParameterCount() == 0 && curClsValid(m.getReturnType())) {
+                var rt = m.getReturnType();
+                if (Item.class.isAssignableFrom(rt) || Block.class.isAssignableFrom(rt)
+                        || ItemStack.class.isAssignableFrom(rt)) try {
+                    m.setAccessible(true);
+                    var res = m.invoke(obj);
+                    var found = findItemInObject(res, visited);
+                    if (found != null) return found;
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
+        for (var f : cls.getDeclaredFields()) {
+            if (!Modifier.isStatic(f.getModifiers()) && !f.getType().isPrimitive()) try {
+                f.setAccessible(true);
+                var res = f.get(obj);
+                var found = findItemInObject(res, visited);
+                if (found != null) return found;
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private RecipeType<?> findRecipeTypeInObject(@Nullable Object obj, ReferenceSet<Object> visited) {
+        if (obj == null || !visited.add(obj)) return null;
+        var direct = unwrapRecipeType(obj);
+        if (direct != null) return direct;
+
+        var cls = obj.getClass();
+        if (!curClsValid(cls)) return null;
+
+        for (var m : cls.getMethods()) {
+            if (m.getParameterCount() == 0) {
+                var rt = m.getReturnType();
+                if (RecipeType.class.isAssignableFrom(rt) || Holder.class.isAssignableFrom(rt)
+                        || Supplier.class.isAssignableFrom(rt)) try {
+                    m.setAccessible(true);
+                    var res = m.invoke(obj);
+                    var found = unwrapRecipeType(res);
+                    if (found != null) return found;
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
+        for (var f : cls.getDeclaredFields()) {
+            if (!Modifier.isStatic(f.getModifiers()) && !f.getType().isPrimitive()) try {
+                f.setAccessible(true);
+                var res = f.get(obj);
+                var found = unwrapRecipeType(res);
+                if (found != null) return found;
+                if (res != null && curClsValid(res.getClass())) {
+                    var deep = findRecipeTypeInObject(res, visited);
+                    if (deep != null) return deep;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
     }
 
     private void register(String recipeTypeId, String itemId) {

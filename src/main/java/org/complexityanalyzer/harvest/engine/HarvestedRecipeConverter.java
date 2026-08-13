@@ -25,7 +25,6 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
@@ -39,9 +38,7 @@ import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
-import java.util.regex.Pattern;
 
-import static net.minecraft.core.component.DataComponents.CUSTOM_NAME;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
 import static org.complexityanalyzer.config.ComplexityConfig.MAX_INGREDIENT_VARIANTS;
@@ -49,40 +46,11 @@ import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class HarvestedRecipeConverter {
 
-    private static final Pattern UNBOUND_KEY = Pattern.compile("cannot be bound[^']*key='([^']+)'");
-
     private HarvestedRecipeConverter() {
     }
 
     private static boolean isValid(ItemStack stack) {
         return stack != null && !stack.isEmpty() && stack.getItem() != AIR;
-    }
-
-    private static ItemStack recoverUnbound(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return stack;
-        var name = stack.get(CUSTOM_NAME);
-        if (name == null) return stack;
-        var matcher = UNBOUND_KEY.matcher(name.getString());
-        if (!matcher.find()) return stack;
-        var id = descriptionIdToItemId(matcher.group(1));
-        if (id == null) return stack;
-        var item = GameRegistryManager.getItem(id);
-        return (item != null && item != AIR) ? new ItemStack(item) : stack;
-    }
-
-    private static ResourceLocation descriptionIdToItemId(String descriptionId) {
-        int firstDot = descriptionId.indexOf('.');
-        if (firstDot < 0) return null;
-        String rest = descriptionId.substring(firstDot + 1);
-        int nsDot = rest.indexOf('.');
-        if (nsDot < 0) return null;
-        String namespace = rest.substring(0, nsDot);
-        String path = rest.substring(nsDot + 1).replace('.', '/');
-        try {
-            return ResourceLocation.fromNamespaceAndPath(namespace, path);
-        } catch (Throwable t) {
-            return null;
-        }
     }
 
     public static RecipeNode convert(HarvestedItems harvested, Level level) {
@@ -146,8 +114,7 @@ public final class HarvestedRecipeConverter {
             int ingredientCount = hi.count();
             var variants = new ObjectArrayList<ItemStack>();
             int limit = MAX_INGREDIENT_VARIANTS.get();
-            for (var raw : ingredient.getItems()) {
-                var stack = recoverUnbound(raw);
+            for (var stack : ingredient.getItems()) {
                 if (!isValid(stack)) continue;
                 var item = stack.getItem();
                 if (isSeqAss && transitionalItems.contains(item)) continue;
@@ -175,8 +142,7 @@ public final class HarvestedRecipeConverter {
             if (firstKey.size() > 1) firstKey.sort(itemComparator);
         }
 
-        for (var raw : inputStacks) {
-            var stack = recoverUnbound(raw);
+        for (var stack : inputStacks) {
             if (!isValid(stack)) continue;
             var item = stack.getItem();
             if (!transitionalItems.isEmpty() && transitionalItems.contains(item)) continue;
@@ -207,10 +173,7 @@ public final class HarvestedRecipeConverter {
             if (items.length > 0) addRemainingItem(mutableOutputStacks, items[0], hi.count());
         }
 
-        for (var raw : inputStacks) {
-            var stack = recoverUnbound(raw);
-            addRemainingItem(mutableOutputStacks, stack, Math.max(1, stack.getCount()));
-        }
+        for (var stack : inputStacks) addRemainingItem(mutableOutputStacks, stack, Math.max(1, stack.getCount()));
 
         if (!mutableOutputStacks.isEmpty()) {
             var deduplicatedOutputs = new ObjectArrayList<ItemStack>();

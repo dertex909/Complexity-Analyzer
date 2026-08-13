@@ -19,7 +19,6 @@
 package org.complexityanalyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -41,7 +40,6 @@ import org.apache.logging.log4j.core.Logger;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.cache.util.Fingerprints;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
@@ -55,6 +53,8 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 
 import static java.util.Locale.ROOT;
+import static net.minecraft.core.registries.Registries.LOOT_TABLE;
+import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
 
@@ -73,7 +73,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             var allLootTableKeys = getAllLootTableKeys(server);
             var localLootData = new Reference2ObjectOpenHashMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>>();
 
-            boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
+            boolean cacheEnabled = ENABLE_CACHE.get();
             var cacheFile = cacheEnabled ? ResourceCache.UNIVERSAL_LOOT.file(server) : null;
             long[] fingerprint = cacheFile != null ? computeFingerprint(allLootTableKeys) : null;
 
@@ -297,7 +297,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     private ObjectSet<ResourceKey<LootTable>> getAllLootTableKeys(MinecraftServer server) {
         try {
             var registries = server.reloadableRegistries().get();
-            var lootRegistry = registries.registry(Registries.LOOT_TABLE).orElseThrow();
+            var lootRegistry = registries.registry(LOOT_TABLE).orElseThrow();
             var keys = new ObjectOpenHashSet<>(lootRegistry.registryKeySet());
             ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} loot tables via reloadableRegistries.", keys.size());
             return keys;

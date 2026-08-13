@@ -197,7 +197,7 @@ public final class RecipeSectionBuilder {
     private static String safeHoverName(ItemStack stack) {
         try {
             String n = stack.getHoverName().getString();
-            if (!n.isBlank() && !n.contains("cannot be bound")) return n;
+            if (!n.isBlank()) return n;
         } catch (Throwable ignored) {
         }
         return stack.getItem().getDescription().getString();

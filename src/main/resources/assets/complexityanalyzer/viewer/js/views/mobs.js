@@ -22,21 +22,26 @@ import {MOB_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {renderMobDetail} from "./details/mob-detail.js";
 import {setupResizableTable} from "../components/resizable-table.js";
-import {generateTableHeader} from "../components/table-columns.js";
+import {
+    generateSortControlsHtml,
+    generateTableHeader,
+    universalSort,
+    wireSortControls
+} from "../components/table-columns.js";
 import {openFilterPopover} from "../components/filter-popover.js";
 import {passesFlagsFilter, passesModFilter, passesRangeFilter} from "../components/item-filter.js";
 
 const MOBS_COLUMNS = [
-    {index: 1, label: "№", filter: null, sortable: false},
-    {index: 2, label: "Name", filter: null, sortable: true},
-    {index: 3, label: "ID", filter: "id", sortable: true},
-    {index: 4, label: "HP", filter: "health", sortable: true, numeric: true},
-    {index: 5, label: "Dmg", filter: "damage", sortable: true, numeric: true},
-    {index: 6, label: "Armor", filter: "armor", sortable: true, numeric: true},
-    {index: 7, label: "Combat", filter: "combatPower", sortable: true, numeric: true},
-    {index: 8, label: "Drops", filter: "dropCount", sortable: true, numeric: true},
-    {index: 9, label: "Rarity", filter: "rarity", sortable: true, numeric: true},
-    {index: 10, label: "Flags", filter: "flags", sortable: false}
+    {index: 1, label: "№", field: null, filter: null, sortable: false},
+    {index: 2, label: "Name", field: "name", filter: null, sortable: true},
+    {index: 3, label: "ID", field: "id", filter: "id", sortable: true},
+    {index: 4, label: "HP", field: "health", filter: "health", sortable: true, numeric: true},
+    {index: 5, label: "Dmg", field: "damage", filter: "damage", sortable: true, numeric: true},
+    {index: 6, label: "Armor", field: "armor", filter: "armor", sortable: true, numeric: true},
+    {index: 7, label: "Combat", field: "combatPower", filter: "combatPower", sortable: true, numeric: true},
+    {index: 8, label: "Drops", field: "dropCount", filter: "dropCount", sortable: true, numeric: true},
+    {index: 9, label: "Rarity", field: "rarity", filter: "rarity", sortable: true, numeric: true},
+    {index: 10, label: "Flags", field: "flags", filter: "flags", sortable: true, numeric: true}
 ];
 
 export async function renderMobs(container) {
@@ -46,7 +51,7 @@ export async function renderMobs(container) {
     const tableConfig = setupResizableTable({
         tableId: "mobs",
         cssVarPrefix: "--mob-col",
-        columnCount: 10,
+        columnCount: MOBS_COLUMNS.length,
         headingColumns: [
             {index: 4, label: "HP"},
             {index: 5, label: "Dmg"},
@@ -71,14 +76,7 @@ export async function renderMobs(container) {
     container.innerHTML = `
         <div class="controls">
             <input type="search" id="mobs-query" placeholder="Filter mobs…" value="${escapeHtml(f.query)}" autocomplete="off">
-            <select id="mobs-sort">
-                <option value="combatPower-desc" ${f.sort === "combatPower-desc" ? "selected" : ""}>Combat ▼</option>
-                <option value="threat-desc" ${f.sort === "threat-desc" ? "selected" : ""}>Threat ▼</option>
-                <option value="dropCount-desc" ${f.sort === "dropCount-desc" ? "selected" : ""}>Drops ▼</option>
-                <option value="rarity-desc" ${f.sort === "rarity-desc" ? "selected" : ""}>Rarity ▼</option>
-                <option value="health-desc" ${f.sort === "health-desc" ? "selected" : ""}>HP ▼</option>
-                <option value="name-asc" ${f.sort === "name-asc" ? "selected" : ""}>Name A-Z</option>
-            </select>
+            ${generateSortControlsHtml(MOBS_COLUMNS, f.sort, "mobs")}
             <span class="flex-grow"></span>
             <span class="chip" id="mobs-count">0 mobs</span>
         </div>
@@ -88,7 +86,7 @@ export async function renderMobs(container) {
         <div id="mobs-list" style="flex: 1; min-height: 0; position: relative;"></div>
     `;
 
-    wireMobFilters(tableConfig);
+    wireMobFilters(tableConfig, container);
     updateHeaderIndicators();
     updateMobsView();
 
@@ -106,7 +104,6 @@ function updateMobsView() {
         if (q && !(m.name + " " + m.id).toLowerCase().includes(q)) continue;
 
         if (!passesModFilter(m, f.modsFilter)) continue;
-
         if (!passesFlagsFilter(m, f.flagsFilter, MOB_FLAG)) continue;
 
         if (!passesRangeFilter(m.health, f.minHealth, f.maxHealth)) continue;
@@ -118,21 +115,8 @@ function updateMobsView() {
 
         list.push(m);
     }
-    const [field, dir] = f.sort.split("-");
-    const sign = dir === "asc" ? 1 : -1;
-    const getVal = {
-        combatPower: m => m.combatPower,
-        threat: m => m.threat,
-        rarity: m => m.rarity,
-        health: m => m.health,
-        dropCount: m => m.dropCount,
-        name: m => m.name
-    }[field] || (m => m.combatPower);
-    list.sort((a, b) => {
-        const av = getVal(a), bv = getVal(b);
-        if (typeof av === "number") return sign * (av - bv);
-        return sign * String(av).localeCompare(String(bv));
-    });
+
+    universalSort(list, MOBS_COLUMNS, f.sort);
 
     $("mobs-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.mobs.count)} mobs`;
 
@@ -167,14 +151,16 @@ function updateMobsView() {
     });
 }
 
-function wireMobFilters(tableConfig) {
+function wireMobFilters(tableConfig, container) {
     const onInput = debounce((key, val) => {
         setFilter("mobs", {[key]: val});
         updateMobsView();
     }, 120);
+
     $("mobs-query").addEventListener("input", e => onInput("query", e.target.value));
-    $("mobs-sort").addEventListener("change", e => {
-        setFilter("mobs", {sort: e.target.value});
+
+    wireSortControls(container, "mobs", () => state.filters.mobs.sort, (newSort) => {
+        setFilter("mobs", {sort: newSort});
         updateMobsView();
     });
 
@@ -207,19 +193,19 @@ function updateHeaderIndicators() {
     const head = document.getElementById("mobs-head");
     if (!head) return;
 
-    const itemsDef = [
-        {key: "id", isFiltered: () => f.modsFilter && f.modsFilter.length > 0},
-        {key: "health", isFiltered: () => f.minHealth !== "" || f.maxHealth !== ""},
-        {key: "damage", isFiltered: () => f.minDamage !== "" || f.maxDamage !== ""},
-        {key: "armor", isFiltered: () => f.minArmor !== "" || f.maxArmor !== ""},
-        {key: "combatPower", isFiltered: () => f.minCombatPower !== "" || f.maxCombatPower !== ""},
-        {key: "dropCount", isFiltered: () => f.minDropCount !== "" || f.maxDropCount !== ""},
-        {key: "rarity", isFiltered: () => f.minRarity !== "" || f.maxRarity !== ""},
-        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length > 0},
-    ];
+    MOBS_COLUMNS.forEach(col => {
+        if (!col.filter) return;
+        let isFiltered = false;
+        if (col.filter === "id") isFiltered = f.modsFilter && f.modsFilter.length > 0;
+        else if (col.filter === "health") isFiltered = f.minHealth !== "" || f.maxHealth !== "";
+        else if (col.filter === "damage") isFiltered = f.minDamage !== "" || f.maxDamage !== "";
+        else if (col.filter === "armor") isFiltered = f.minArmor !== "" || f.maxArmor !== "";
+        else if (col.filter === "combatPower") isFiltered = f.minCombatPower !== "" || f.maxCombatPower !== "";
+        else if (col.filter === "dropCount") isFiltered = f.minDropCount !== "" || f.maxDropCount !== "";
+        else if (col.filter === "rarity") isFiltered = f.minRarity !== "" || f.maxRarity !== "";
+        else if (col.filter === "flags") isFiltered = f.flagsFilter && f.flagsFilter.length > 0;
 
-    itemsDef.forEach(item => {
-        const el = head.querySelector(`[data-filter="${item.key}"]`);
-        if (el) el.classList.toggle("filtered", item.isFiltered());
+        const el = head.querySelector(`[data-filter="${col.filter}"]`);
+        if (el) el.classList.toggle("filtered", isFiltered);
     });
 }

@@ -22,7 +22,12 @@ import {mountVirtualList} from "../components/virtual-list.js";
 import {renderFluidDetail} from "./details/fluid-detail.js";
 import {FLUID_FLAG} from "../core/cabin.js";
 import {setupResizableTable} from "../components/resizable-table.js";
-import {generateTableHeader} from "../components/table-columns.js";
+import {
+    generateSortControlsHtml,
+    generateTableHeader,
+    universalSort,
+    wireSortControls
+} from "../components/table-columns.js";
 import {openFilterPopover} from "../components/filter-popover.js";
 import {
     passesCategoryFilter,
@@ -32,13 +37,13 @@ import {
 } from "../components/item-filter.js";
 
 const FLUIDS_COLUMNS = [
-    {index: 1, label: "№", filter: null, sortable: false},
-    {index: 2, label: "ID", filter: "id", sortable: true},
-    {index: 3, label: "Name", filter: null, sortable: true},
-    {index: 4, label: "Complexity", filter: "complexity", sortable: true, numeric: true},
-    {index: 5, label: "Usage", filter: "usageCount", sortable: true, numeric: true},
-    {index: 6, label: "Category", filter: "category", sortable: true},
-    {index: 7, label: "Flags", filter: "flags", sortable: false}
+    {index: 1, label: "№", field: null, filter: null, sortable: false},
+    {index: 2, label: "ID", field: "id", filter: "id", sortable: true},
+    {index: 3, label: "Name", field: "name", filter: null, sortable: true},
+    {index: 4, label: "Complexity", field: "complexity", filter: "complexity", sortable: true, numeric: true},
+    {index: 5, label: "Usage", field: "usageCount", filter: "usageCount", sortable: true, numeric: true},
+    {index: 6, label: "Category", field: "categoryName", filter: "category", sortable: true},
+    {index: 7, label: "Flags", field: "flags", filter: "flags", sortable: true, numeric: true}
 ];
 
 export function renderFluids(container) {
@@ -48,7 +53,7 @@ export function renderFluids(container) {
     const tableConfig = setupResizableTable({
         tableId: "fluids",
         cssVarPrefix: "--fl-col",
-        columnCount: 7,
+        columnCount: FLUIDS_COLUMNS.length,
         headingColumns: [
             {index: 4, label: "Complexity"},
             {index: 5, label: "Usage"},
@@ -57,7 +62,6 @@ export function renderFluids(container) {
         flagsColumn: {
             index: 7,
             flagChecks: [
-                f => f & FLUID_FLAG.HAS_CYCLE,
                 f => f & FLUID_FLAG.IS_UNCALCULABLE,
                 f => !(f & FLUID_FLAG.HAS_RECIPE),
                 f => f & FLUID_FLAG.IS_PROTECTED
@@ -72,13 +76,7 @@ export function renderFluids(container) {
     container.innerHTML = `
         <div class="controls" id="fluids-controls">
             <input type="search" id="fluids-query" placeholder="Filter fluids by name, id or category…" value="${escapeHtml(f.query)}" autocomplete="off">
-            <select id="fluids-sort">
-                <option value="complexity-desc" ${f.sort === "complexity-desc" ? "selected" : ""}>Complexity ▼</option>
-                <option value="complexity-asc" ${f.sort === "complexity-asc" ? "selected" : ""}>Complexity ▲</option>
-                <option value="name-asc" ${f.sort === "name-asc" ? "selected" : ""}>Name A-Z</option>
-                <option value="id-asc" ${f.sort === "id-asc" ? "selected" : ""}>ID A-Z</option>
-                <option value="usage-desc" ${f.sort === "usage-desc" ? "selected" : ""}>Usage ▼</option>
-            </select>
+            ${generateSortControlsHtml(FLUIDS_COLUMNS, f.sort, "fluids")}
             <span class="flex-grow"></span>
             <span class="chip" id="fluids-count">0 fluids</span>
         </div>
@@ -88,11 +86,10 @@ export function renderFluids(container) {
         <div id="fluids-list" style="flex: 1; min-height: 0; position: relative;"></div>
     `;
 
-    wireFluidFilters(tableConfig);
+    wireFluidFilters(tableConfig, container);
     updateHeaderIndicators();
     updateFluidsView();
 }
-
 
 function updateHeaderIndicators() {
     const f = state.filters.fluids;
@@ -110,31 +107,18 @@ function updateHeaderIndicators() {
 
         hdr.classList.toggle("filtered", active);
     });
-
-    const [sortField, sortDir] = f.sort.split("-");
-    head.querySelectorAll(".clickable-header, .th-cell[data-filter]").forEach(hdr => {
-        const field = hdr.dataset.filter || hdr.dataset.sort;
-        const textNode = hdr.querySelector(".th-text");
-        if (textNode) {
-            let arrow = "▼";
-            if (field === sortField) arrow = sortDir === "asc" ? "▲" : "▼";
-            if (hdr.classList.contains("clickable-header")) {
-                const titleText = field.charAt(0).toUpperCase() + field.slice(1).replace(/Count|Usages|Filter/, "");
-                textNode.innerHTML = `${titleText} <span class="filter-indicator">${arrow}</span>`;
-            }
-        }
-    });
 }
 
-function wireFluidFilters(tableConfig) {
+function wireFluidFilters(tableConfig, container) {
     const onInput = debounce((key, val) => {
         setFilter("fluids", {[key]: val});
         updateFluidsView();
     }, 120);
 
     document.getElementById("fluids-query").addEventListener("input", e => onInput("query", e.target.value));
-    document.getElementById("fluids-sort").addEventListener("change", e => {
-        setFilter("fluids", {sort: e.target.value});
+
+    wireSortControls(container, "fluids", () => state.filters.fluids.sort, (newSort) => {
+        setFilter("fluids", {sort: newSort});
         updateFluidsView();
     });
 
@@ -181,23 +165,7 @@ function updateFluidsView() {
         list.push(fl);
     }
 
-    const [field, dir] = f.sort.split("-");
-    const sign = dir === "asc" ? 1 : -1;
-    list.sort((a, b) => {
-        let valA = a[field];
-        let valB = b[field];
-
-        if (field === "complexity") {
-            if (!isFinite(valA)) valA = Number.MAX_VALUE;
-            if (!isFinite(valB)) valB = Number.MAX_VALUE;
-        }
-
-        if (typeof valA === "number" && typeof valB === "number") return sign * (valA - valB);
-
-        valA = String(valA || "").toLowerCase();
-        valB = String(valB || "").toLowerCase();
-        return sign * valA.localeCompare(valB);
-    });
+    universalSort(list, FLUIDS_COLUMNS, f.sort);
 
     document.getElementById("fluids-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.fluids.count)} fluids`;
 

@@ -21,16 +21,21 @@ import {selectItem, setFilter, state} from "../core/state.js";
 import {ITEM_FLAG} from "../core/cabin.js";
 import {mountVirtualList} from "../components/virtual-list.js";
 import {setupResizableTable} from "../components/resizable-table.js";
-import {generateTableHeader} from "../components/table-columns.js";
+import {
+    generateSortControlsHtml,
+    generateTableHeader,
+    universalSort,
+    wireSortControls
+} from "../components/table-columns.js";
 import {openFilterPopover} from "../components/filter-popover.js";
 import {passesFlagsFilter, passesModFilter, passesRangeFilter} from "../components/item-filter.js";
 
 const SOURCES_COLUMNS = [
-    {index: 1, label: "№", filter: null, sortable: false},
-    {index: 2, label: "ID", filter: "id", sortable: true},
-    {index: 3, label: "Name", filter: null, sortable: true},
-    {index: 4, label: "Source Complexity", filter: "complexity", sortable: true, numeric: true},
-    {index: 5, label: "Flags", filter: "flags", sortable: false}
+    {index: 1, label: "№", field: null, filter: null, sortable: false},
+    {index: 2, label: "ID", field: "id", filter: "id", sortable: true},
+    {index: 3, label: "Name", field: "name", filter: null, sortable: true},
+    {index: 4, label: "Source Complexity", field: "complexity", filter: "complexity", sortable: true, numeric: true},
+    {index: 5, label: "Flags", field: "flags", filter: "flags", sortable: true, numeric: true}
 ];
 
 const SOURCE_TYPE_TRANSLATIONS = {
@@ -141,14 +146,13 @@ export async function renderSources(container) {
     const tableConfig = setupResizableTable({
         tableId: "sources",
         cssVarPrefix: "--src-col",
-        columnCount: 5,
+        columnCount: SOURCES_COLUMNS.length,
         headingColumns: [
             {index: 4, label: "Complexity"}
         ],
         flagsColumn: {
             index: 5,
             flagChecks: [
-                f => f & ITEM_FLAG.HAS_CYCLE,
                 f => f & ITEM_FLAG.IS_UNCALCULABLE,
                 f => !(f & ITEM_FLAG.HAS_RECIPE),
                 f => f & ITEM_FLAG.IS_HARDCODED
@@ -217,12 +221,7 @@ export async function renderSources(container) {
             <div class="controls" id="sources-controls">
                 <button class="sources-burger btn" style="display: none; padding: 6px 10px; font-size: 16px; align-items: center; justify-content: center; height: 32px;" title="Categories">☰</button>
                 <input type="search" id="sources-query" placeholder="Filter items by name, ID..." value="${escapeHtml(f.query)}" autocomplete="off">
-                <select id="sources-sort">
-                    <option value="complexity-desc" ${f.sort === "complexity-desc" ? "selected" : ""}>Source Complexity ▼</option>
-                    <option value="complexity-asc" ${f.sort === "complexity-asc" ? "selected" : ""}>Source Complexity ▲</option>
-                    <option value="name-asc" ${f.sort === "name-asc" ? "selected" : ""}>Name A-Z</option>
-                    <option value="id-asc" ${f.sort === "id-asc" ? "selected" : ""}>ID A-Z</option>
-                </select>
+                ${generateSortControlsHtml(SOURCES_COLUMNS, f.sort, "sources")}
                 <span class="flex-grow"></span>
                 <span class="chip" id="sources-count">0 items</span>
             </div>
@@ -269,9 +268,8 @@ export async function renderSources(container) {
             await updateSourcesResults(db, types);
         }, 120));
 
-        const sortSelect = container.querySelector("#sources-sort");
-        sortSelect.addEventListener("change", async (e) => {
-            setFilter("sources", {sort: e.target.value});
+        wireSortControls(container, "sources", () => state.filters.sources.sort, async (newSort) => {
+            setFilter("sources", {sort: newSort});
             await updateSourcesResults(db, types);
         });
 
@@ -382,24 +380,12 @@ async function updateSourcesResults(db, types) {
         filteredItems.push(it);
     }
 
-    const [field, dir] = f.sort.split("-");
-    const sign = dir === "asc" ? 1 : -1;
-    const getVal = {
-        complexity: x => {
-            const sc = sourceComplexities.get(x.index);
-            return isFinite(sc) ? sc : Number.MAX_VALUE;
-        },
-        name: x => x.name,
-        id: x => x.id,
-    }[field] || (x => {
-        const sc = sourceComplexities.get(x.index);
-        return isFinite(sc) ? sc : Number.MAX_VALUE;
-    });
-
-    filteredItems.sort((a, b) => {
-        const av = getVal(a), bv = getVal(b);
-        if (typeof av === "number") return sign * (av - bv);
-        return sign * String(av).localeCompare(String(bv));
+    universalSort(filteredItems, SOURCES_COLUMNS, f.sort, (item, field) => {
+        if (field === "complexity") {
+            const sc = sourceComplexities.get(item.index);
+            return isFinite(sc) ? sc : item.complexity;
+        }
+        return item[field];
     });
 
     const countEl = document.getElementById("sources-count");

@@ -68,9 +68,6 @@ export function formatRawTooltip(val) {
 export function getItemFlags(it, compact = false) {
     const out = [];
     const f = it.flags;
-    if (f & ITEM_FLAG.HAS_CYCLE) {
-        out.push(`<span class="flag cycle" title="cycle">⟲${compact ? "" : " Cycle"}</span>`);
-    }
     if (f & ITEM_FLAG.IS_UNCALCULABLE) {
         out.push(`<span class="flag infinite" title="uncalculable">-${compact ? "" : " Uncalculable"}</span>`);
     }
@@ -86,9 +83,6 @@ export function getItemFlags(it, compact = false) {
 export function getFluidFlags(fl, compact = false) {
     const out = [];
     const f = fl.flags;
-    if (f & FLUID_FLAG.HAS_CYCLE) {
-        out.push(`<span class="flag cycle" title="cycle">⟲${compact ? "" : " Cycle"}</span>`);
-    }
     if (f & FLUID_FLAG.IS_UNCALCULABLE) {
         out.push(`<span class="flag infinite" title="uncalculable">-${compact ? "" : " Uncalculable"}</span>`);
     }

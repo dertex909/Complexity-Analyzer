@@ -35,13 +35,11 @@ const RANGE_KEYS = {
 
 const VIEW_FLAGS = {
     items: [
-        {key: "cycle", label: "⟲ Cycle"},
         {key: "uncalculable", label: "- Uncalculable"},
         {key: "recipe", label: "∅ No Recipe"},
         {key: "hardcoded", label: "H Hardcoded"}
     ],
     fluids: [
-        {key: "cycle", label: "Cycle ⟲"},
         {key: "uncalculable", label: "Uncalculable -"},
         {key: "recipe", label: "No recipe ∅"},
         {key: "protected", label: "Protected P"}
@@ -51,7 +49,6 @@ const VIEW_FLAGS = {
         {key: "miniboss", label: "⚔️ Miniboss"}
     ],
     sources: [
-        {key: "cycle", label: "⟲ Cycle"},
         {key: "uncalculable", label: "- Uncalculable"},
         {key: "recipe", label: "∅ No Recipe"},
         {key: "hardcoded", label: "H Hardcoded"}

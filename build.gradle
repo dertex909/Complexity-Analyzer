@@ -28,18 +28,9 @@ version = mod_version
 group = mod_group_id
 
 repositories {
-    mavenLocal()
     maven {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
-    }
-    maven {
-        name = "ModMaven"
-        url = "https://modmaven.dev"
-    }
-    maven {
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/"
     }
 }
 

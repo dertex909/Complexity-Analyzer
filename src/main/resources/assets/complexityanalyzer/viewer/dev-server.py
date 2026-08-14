@@ -26,7 +26,6 @@ SAVES_DIR = Path(
     r"C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\saves"
 )
 
-
 def find_cabin_path():
     """Locate the newest latest.cabin across all world saves.
 
@@ -40,7 +39,6 @@ def find_cabin_path():
         return None
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
-
 def read_cabin_file_hash(path):
     """Read the u64 fileHash stored at offset 24 in the .cabin header (little-endian)."""
     with open(path, "rb") as f:
@@ -50,7 +48,6 @@ def read_cabin_file_hash(path):
             return "0"
         val = struct.unpack("<Q", raw)[0]
         return format(val, "x")
-
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -164,7 +161,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
-
 
 if __name__ == "__main__":
     import sys

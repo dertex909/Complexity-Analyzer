@@ -275,23 +275,6 @@ body {
     border-style: dashed;
 }
 
-.sidebar-header {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 0 0 14px 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.sidebar-title {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    font-family: var(--sans), sans-serif;
-}
-
 .tabs {
     display: flex;
     flex-direction: column;
@@ -445,6 +428,40 @@ main {
     font-size: 11px;
     color: var(--text-muted);
     flex: 0 0 auto;
+}
+
+.footer-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.footer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-family: var(--sans), sans-serif;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-decoration: none !important;
+    line-height: 1;
+    transition: all var(--transition-fast);
+}
+
+.footer-btn:hover {
+    color: var(--text-bright);
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.footer-btn svg {
+    flex-shrink: 0;
+    display: block;
 }
 
 .graph-overlay {

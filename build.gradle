@@ -80,10 +80,10 @@ neoForge {
     }
 }
 
-def http = "io.netty:netty-codec-http:${netty_codec_http_version}"
-def zstd = "com.github.luben:zstd-jni:${zstd_jni_version}"
+String http = "io.netty:netty-codec-http:${netty_codec_http_version}"
+String zstd = "com.github.luben:zstd-jni:${zstd_jni_version}"
 
-def jei = "mezz.jei:jei-${minecraft_version}-neoforge:19.25.0.325"
+String jei = "mezz.jei:jei-${minecraft_version}-neoforge:19.25.0.325"
 
 dependencies {
     implementation(http)

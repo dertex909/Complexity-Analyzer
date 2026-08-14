@@ -13,6 +13,7 @@ import base64
 import hashlib
 import http.server
 import json
+import os
 import struct
 import time
 from pathlib import Path
@@ -22,9 +23,16 @@ WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 PORT = 8080
 VIEWER_DIR = Path(__file__).parent.resolve()
 
-SAVES_DIR = Path(
-    r"C:\Users\xXx\Desktop\Mods_Sources\ComplexityAnalyzer\run\saves"
-)
+def get_project_root() -> Path:
+    """Find the root directory of the Gradle project by looking for build.gradle."""
+    cur = VIEWER_DIR
+    for p in [cur] + list(cur.parents):
+        if (p / "build.gradle").exists() or (p / "settings.gradle").exists():
+            return p
+    return VIEWER_DIR.parents[4] if len(VIEWER_DIR.parents) >= 5 else Path.cwd()
+
+PROJECT_ROOT = get_project_root()
+SAVES_DIR = Path(os.environ.get("COMPLEXITY_SAVES_DIR", PROJECT_ROOT / "run" / "saves"))
 
 def find_cabin_path():
     """Locate the newest latest.cabin across all world saves.
@@ -172,6 +180,8 @@ if __name__ == "__main__":
 
     cabin = find_cabin_path()
     with ThreadingHTTPServer(("", PORT), Handler) as httpd:
+        print(f"→ Project root: {PROJECT_ROOT}")
+        print(f"→ Saves directory: {SAVES_DIR}")
         print(f"→ http://localhost:{PORT}/")
         if cabin is not None:
             print(f"→ Serving cabin: {cabin}")

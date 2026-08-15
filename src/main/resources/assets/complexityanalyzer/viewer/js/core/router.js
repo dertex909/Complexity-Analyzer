@@ -87,7 +87,7 @@ function renderTabs() {
         if (isItemTab && state.selectedItem >= 0 && state.db) {
             const item = state.db.items.get(state.selectedItem);
             if (item) {
-                const isMachine = state.db.machines.some(m => m.itemIndex === state.selectedItem);
+                const isMachine = state.db.isMachine(state.selectedItem);
                 const hasRecipe = (item.flags & 0x01) !== 0;
                 const hasUses = item.usageCount > 0;
                 const hasBaseSources = (item.baseDataOffset !== 0xFFFFFFFF || item.sourcesOffset !== 0xFFFFFFFF || item.sourceCount > 0);

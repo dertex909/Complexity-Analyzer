@@ -153,6 +153,7 @@ export async function renderSources(container) {
         flagsColumn: {
             index: 5,
             flagChecks: [
+                (f, it, db) => db ? db.isMachine(it.index) : false,
                 f => f & ITEM_FLAG.IS_UNCALCULABLE,
                 f => !(f & ITEM_FLAG.HAS_RECIPE),
                 f => f & ITEM_FLAG.IS_HARDCODED

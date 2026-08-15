@@ -162,7 +162,7 @@ export function calculateDynamicMinWidths(config) {
             let fc = 0;
             const f = item.flags;
             flagChecks.forEach(check => {
-                if (check(f)) fc++;
+                if (check(f, item, db)) fc++;
             });
             if (fc > maxFlags) maxFlags = fc;
         }

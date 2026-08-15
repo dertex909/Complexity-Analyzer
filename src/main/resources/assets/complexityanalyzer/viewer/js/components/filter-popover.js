@@ -18,7 +18,6 @@
 
 import {debounce, escapeHtml} from "../core/utils.js";
 import {closeActivePopover, setActivePopover} from "./resizable-table.js";
-import {getDefaultFilters} from "../core/state.js";
 
 const RANGE_KEYS = {
     complexity: ["minComplexity", "maxComplexity"],
@@ -35,6 +34,7 @@ const RANGE_KEYS = {
 
 const VIEW_FLAGS = {
     items: [
+        {key: "machine", label: "⚙ Machine"},
         {key: "uncalculable", label: "- Uncalculable"},
         {key: "recipe", label: "∅ No Recipe"},
         {key: "hardcoded", label: "H Hardcoded"}
@@ -49,6 +49,7 @@ const VIEW_FLAGS = {
         {key: "miniboss", label: "⚔️ Miniboss"}
     ],
     sources: [
+        {key: "machine", label: "⚙ Machine"},
         {key: "uncalculable", label: "- Uncalculable"},
         {key: "recipe", label: "∅ No Recipe"},
         {key: "hardcoded", label: "H Hardcoded"}
@@ -59,19 +60,15 @@ export function openFilterPopover(headerCell, filterType, viewName, db, f, onFil
     const pop = createPopover(headerCell, filterType);
 
     const resetFilter = () => {
-        if (viewName === "items") {
-            if (RANGE_KEYS[filterType]) {
-                const [minKey, maxKey] = RANGE_KEYS[filterType];
-                onFilterApplied({[minKey]: "", [maxKey]: ""});
-            } else if (filterType === "category") {
-                onFilterApplied({categoriesFilter: []});
-            } else if (filterType === "id") {
-                onFilterApplied({modsFilter: []});
-            } else {
-                onFilterApplied(getDefaultFilters("items"));
-            }
-        } else {
-            onFilterApplied(getDefaultFilters(viewName));
+        if (RANGE_KEYS[filterType]) {
+            const [minKey, maxKey] = RANGE_KEYS[filterType];
+            onFilterApplied({[minKey]: "", [maxKey]: ""});
+        } else if (filterType === "category") {
+            onFilterApplied({categoriesFilter: []});
+        } else if (filterType === "id") {
+            onFilterApplied({modsFilter: []});
+        } else if (filterType === "flags") {
+            onFilterApplied({flagsFilter: []});
         }
         closeActivePopover();
     };

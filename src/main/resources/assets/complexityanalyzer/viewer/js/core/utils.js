@@ -17,7 +17,7 @@
  */
 
 import {FLUID_FLAG, ITEM_FLAG, MOB_FLAG} from "./cabin.js";
-import {switchTab} from "./state.js";
+import {state, switchTab} from "./state.js";
 
 export const fmt = new Intl.NumberFormat("en-US", {maximumFractionDigits: 2});
 export const fmtInt = new Intl.NumberFormat("en-US");
@@ -68,6 +68,9 @@ export function formatRawTooltip(val) {
 export function getItemFlags(it, compact = false) {
     const out = [];
     const f = it.flags;
+    if (state.db && state.db.isMachine(it.index)) {
+        out.push(`<span class="flag machine" title="machine">⚙${compact ? "" : " Machine"}</span>`);
+    }
     if (f & ITEM_FLAG.IS_UNCALCULABLE) {
         out.push(`<span class="flag infinite" title="uncalculable">-${compact ? "" : " Uncalculable"}</span>`);
     }

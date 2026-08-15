@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import {state} from "../core/state.js";
+
 export function extractModNamespace(id) {
     const colonIdx = id.indexOf(":");
     return colonIdx >= 0 ? id.substring(0, colonIdx) : "minecraft";
@@ -33,6 +35,7 @@ export function passesFlagsFilter(item, flagsFilter, FLAG_ENUM) {
     const f = item.flags;
 
     const commonFlagChecks = {
+        machine: () => state.db ? state.db.isMachine(item.index) : false,
         uncalculable: () => f & FLAG_ENUM.IS_UNCALCULABLE,
         recipe: () => !(f & FLAG_ENUM.HAS_RECIPE),
         hardcoded: () => f & FLAG_ENUM.IS_HARDCODED,

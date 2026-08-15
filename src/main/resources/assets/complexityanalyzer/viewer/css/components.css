@@ -605,6 +605,11 @@ input[type="search"] {
     color: var(--text-dim);
 }
 
+.flag.machine {
+    background-color: #3b2b18;
+    color: #ffb84d;
+}
+
 .flag.cycle {
     background-color: #4a2929;
     color: #ff9393;

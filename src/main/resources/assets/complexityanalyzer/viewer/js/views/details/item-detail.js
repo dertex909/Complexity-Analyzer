@@ -38,7 +38,7 @@ export function renderItemDetail(unusedContainer, itemIndex) {
         titleEl.innerHTML = `${escapeHtml(item.name)} <code class="mono-code" style="font-size:11px;">${escapeHtml(item.id)}</code>`;
     }
 
-    const isMachine = db.machines.some(m => m.itemIndex === itemIndex);
+    const isMachine = db.isMachine(itemIndex);
     const hasRecipe = (item.flags & ITEM_FLAG.HAS_RECIPE) !== 0;
     const hasUses = item.usageCount > 0;
     const hasBaseSources = (item.baseDataOffset !== 0xFFFFFFFF || item.sourcesOffset !== 0xFFFFFFFF || item.sourceCount > 0);

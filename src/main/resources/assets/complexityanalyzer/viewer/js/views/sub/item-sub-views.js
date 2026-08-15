@@ -72,7 +72,7 @@ export async function renderItemMachineRecipesView(container) {
     renderSubTabHeader(container, item, "Machine Production Output", "Back to Items", "items");
     const body = container.querySelector(".sub-tab-content-body");
 
-    const isMachine = db.machines.some(m => m.itemIndex === itemIndex);
+    const isMachine = db.isMachine(itemIndex);
     if (!isMachine) {
         body.innerHTML = `<div class="empty-state"><div class="icon">⚙️</div><div class="message">This item (${escapeHtml(item.name)}) is not a machine and cannot craft items.</div></div>`;
         return;

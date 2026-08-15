@@ -43,6 +43,7 @@ import {mergeDuplicateRecipes} from "../views/sub/recipe-shared.js";
 export class CabinDatabase {
     constructor(url) {
         this.file = new CabinFile(url);
+        this.machineIndexSet = new Set();
     }
 
     async open(opt = {}) {
@@ -64,6 +65,7 @@ export class CabinDatabase {
         this.fluidRecipeIndex = new FluidRecipeIndex(flRIB);
 
         this.machines = miB ? readMachineIndex(miB) : [];
+        this.machineIndexSet = new Set(this.machines.map(m => m.itemIndex));
         this.sourceTypes = stiB ? readSourceTypeIndex(stiB) : [];
         this.modSummary = msB ? readModSummary(msB, this.strings) : [];
         this._rB = rB;
@@ -192,6 +194,10 @@ export class CabinDatabase {
             if (it && (it.complexity === -1 || (it.flags & ITEM_FLAG.IS_UNCALCULABLE))) infCount++;
         }
         this.meta.infiniteItems = infCount;
+    }
+
+    isMachine(itemIndex) {
+        return this.machineIndexSet ? this.machineIndexSet.has(itemIndex) : false;
     }
 
     async _ensure(key, id) {

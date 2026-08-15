@@ -77,10 +77,6 @@ export const state = {
     graphPan: {x: 0, y: 0}
 };
 
-export function getDefaultFilters(view) {
-    return {...DEFAULT_FILTERS[view]};
-}
-
 export function setState(patch) {
     Object.assign(state, patch);
     store.dispatchEvent(new CustomEvent("change", {detail: patch}));

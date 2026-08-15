@@ -75,7 +75,7 @@ export async function renderCraftTreeView(container) {
                             Enter the name of an item or fluid below to build the craft tree.
                         </div>
                         
-                        <div class="craft-search-container" style="width: 100%; max-width: 500px; margin-bottom: 24px; position: relative;">
+                        <div class="craft-search-container" style="width: 100%; max-width: 500px; margin-bottom: 24px; position: relative; flex: 0 0 auto;">
                             <input type="text" class="craft-search-input" placeholder="Search for an item or fluid..." autocomplete="off" style="font-size: 15px; padding: 12px 18px; border-radius: 8px; background-color: var(--bg-raised); border: 1px solid var(--border); width: 100%; color: var(--text);">
                             <div class="craft-search-results" id="craft-search-results" hidden style="max-height: 250px;"></div>
                         </div>

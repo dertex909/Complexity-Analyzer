@@ -53,16 +53,16 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     private final ConcurrentHashMap.KeySetView<EntityType<?>, Boolean> renewableTypes = ConcurrentHashMap.newKeySet(64);
     private final ConcurrentHashMap<EntityType<?>, BossType> registeredBosses = new ConcurrentHashMap<>(32);
 
+    public MobPropertyProvider() {
+        registerBoss(EntityType.WITHER, BossType.BOSS);
+        registerBoss(EntityType.ENDER_DRAGON, BossType.BOSS);
+    }
+
     @Nullable
     @SuppressWarnings("unchecked")
     private static AttributeSupplier getSupplier(EntityType<?> type) {
         var livingType = (EntityType<? extends LivingEntity>) type;
         return DefaultAttributes.hasSupplier(livingType) ? DefaultAttributes.getSupplier(livingType) : null;
-    }
-
-    public MobPropertyProvider() {
-        registerBoss(EntityType.WITHER, BossType.BOSS);
-        registerBoss(EntityType.ENDER_DRAGON, BossType.BOSS);
     }
 
     public void initialize() {

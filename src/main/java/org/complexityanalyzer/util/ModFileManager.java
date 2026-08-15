@@ -32,7 +32,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Objects;
+
+import static java.util.Objects.requireNonNull;
 
 public final class ModFileManager {
 
@@ -58,12 +59,12 @@ public final class ModFileManager {
     }
 
     public static @NotNull Path resolve(@NotNull MinecraftServer server, @Nullable String... relativePath) {
-        Objects.requireNonNull(server, "MinecraftServer cannot be null for resolving path");
+        requireNonNull(server, "MinecraftServer cannot be null for resolving path");
         return resolve(server.getWorldPath(LevelResource.ROOT), relativePath);
     }
 
     public static @NotNull Path resolve(@NotNull Path worldRoot, @Nullable String... relativePath) {
-        Objects.requireNonNull(worldRoot, "worldRoot cannot be null");
+        requireNonNull(worldRoot, "worldRoot cannot be null");
 
         var baseDir = worldRoot.resolve("data").resolve(ComplexityAnalyzer.MODID).toAbsolutePath().normalize();
         var path = baseDir;
@@ -79,8 +80,8 @@ public final class ModFileManager {
     }
 
     public static void writeBytesAtomic(@NotNull Path target, byte @NotNull [] bytes) throws IOException {
-        Objects.requireNonNull(target, "Target path cannot be null");
-        Objects.requireNonNull(bytes, "Bytes cannot be null");
+        requireNonNull(target, "Target path cannot be null");
+        requireNonNull(bytes, "Bytes cannot be null");
 
         ensureParentExists(target);
         var tmp = createTempFileInSameDir(target);
@@ -95,13 +96,13 @@ public final class ModFileManager {
     }
 
     public static void writeStringAtomic(@NotNull Path target, @NotNull String content) throws IOException {
-        Objects.requireNonNull(content, "Content cannot be null");
+        requireNonNull(content, "Content cannot be null");
         writeBytesAtomic(target, content.getBytes(StandardCharsets.UTF_8));
     }
 
     public static void writeCompressedAtomic(@NotNull Path target, byte @NotNull [] uncompressedData, int zstdLevel) throws IOException {
-        Objects.requireNonNull(target, "Target path cannot be null");
-        Objects.requireNonNull(uncompressedData, "Uncompressed data cannot be null");
+        requireNonNull(target, "Target path cannot be null");
+        requireNonNull(uncompressedData, "Uncompressed data cannot be null");
 
         ensureParentExists(target);
         var tmp = createTempFileInSameDir(target);
@@ -119,14 +120,14 @@ public final class ModFileManager {
     }
 
     public static byte[] readCompressedBytes(@NotNull Path source) throws IOException {
-        Objects.requireNonNull(source, "Source path cannot be null");
+        requireNonNull(source, "Source path cannot be null");
         try (var is = Files.newInputStream(source); var zstdIs = new ZstdInputStream(is)) {
             return zstdIs.readAllBytes();
         }
     }
 
     public static @NotNull String readString(@NotNull Path source) throws IOException {
-        Objects.requireNonNull(source, "Source path cannot be null");
+        requireNonNull(source, "Source path cannot be null");
         return Files.readString(source, StandardCharsets.UTF_8);
     }
 
@@ -142,8 +143,8 @@ public final class ModFileManager {
     }
 
     public static void appendLines(@NotNull Path target, @NotNull Iterable<String> lines) throws IOException {
-        Objects.requireNonNull(target, "Target path cannot be null");
-        Objects.requireNonNull(lines, "Lines cannot be null");
+        requireNonNull(target, "Target path cannot be null");
+        requireNonNull(lines, "Lines cannot be null");
         ensureParentExists(target);
         Files.write(target, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
@@ -157,12 +158,12 @@ public final class ModFileManager {
     }
 
     public static long getSize(@NotNull Path path) throws IOException {
-        Objects.requireNonNull(path, "Path cannot be null");
+        requireNonNull(path, "Path cannot be null");
         return Files.size(path);
     }
 
     public static @NotNull FileTime getLastModifiedTime(@NotNull Path path) throws IOException {
-        Objects.requireNonNull(path, "Path cannot be null");
+        requireNonNull(path, "Path cannot be null");
         return Files.getLastModifiedTime(path);
     }
 

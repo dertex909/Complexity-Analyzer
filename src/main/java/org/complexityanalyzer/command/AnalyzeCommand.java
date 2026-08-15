@@ -209,6 +209,13 @@ public final class AnalyzeCommand {
             case "MASTER" -> "⭐";
             case "MYTHICAL" -> "💎";
             case "TRANSCENDENT" -> "👑";
+            case "CELESTIAL" -> "✨";
+            case "ASTRAL" -> "🌌";
+            case "ETERNAL" -> "⏳";
+            case "PRIMORDIAL" -> "🪐";
+            case "SINGULARITY" -> "🌀";
+            case "INCONCEIVABLE" -> "🔮";
+            case "BOUNDLESS" -> "♾️";
             case "UNOBTAINABLE" -> "🚫";
             default -> "❓";
         };

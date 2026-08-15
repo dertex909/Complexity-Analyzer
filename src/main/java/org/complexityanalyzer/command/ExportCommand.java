@@ -20,8 +20,12 @@ package org.complexityanalyzer.command;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -33,10 +37,11 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
+import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.ComplexityExporter;
 
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
 
 import static java.util.Locale.ROOT;
 
@@ -45,20 +50,73 @@ public final class ExportCommand {
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return Commands.literal("export").requires(source -> source.hasPermission(2))
-                .then(Commands.literal("items").then(Commands.literal("all")
-                        .executes(ExportCommand::executeAllItems)).then(Commands.literal("category").then(Commands.argument("category_name", StringArgumentType.word()).suggests((ctx, builder) -> SharedSuggestionProvider.suggest(new String[]{"Trivial", "Simple", "Moderate", "Complex", "Difficult", "Expert", "Master", "Mythical", "Transcendent", "Eternal"}, builder))
-                        .executes(ctx -> ExportCommand.executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name"))))).then(Commands.literal("top").then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
-                        .executes(ctx -> ExportCommand.executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count"))))).then(Commands.literal("single").then(Commands.argument("item_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
-                        .executes(ctx -> ExportCommand.executeSingleItem(ctx, ResourceLocationArgument.getId(ctx, "item_id").toString())))).then(Commands.literal("csv")
-                        .executes(ExportCommand::executeItemsCSV)))
-                .then(Commands.literal("mobs").then(Commands.literal("all")
-                        .executes(ctx -> ExportCommand.executeAllMobs(ctx, "json")).then(Commands.literal("format").then(Commands.argument("format_type", StringArgumentType.word()).suggests((ctx, builder) -> SharedSuggestionProvider.suggest(new String[]{"csv", "json"}, builder))
-                                .executes(ctx -> ExportCommand.executeAllMobs(ctx, StringArgumentType.getString(ctx, "format_type")))))).then(Commands.literal("category").then(Commands.argument("category_name", StringArgumentType.word()).suggests((ctx, builder) -> SharedSuggestionProvider.suggest(Arrays.stream(MobCategory.values()).map(MobCategory::getName), builder))
-                        .executes(ctx -> ExportCommand.executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name"))))).then(Commands.literal("top").then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
-                        .executes(ctx -> ExportCommand.executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count"))))).then(Commands.literal("single").then(Commands.argument("mob_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY)
-                        .executes(ctx -> ExportCommand.executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString())))).then(Commands.literal("csv")
-                        .executes(ctx -> ExportCommand.executeAllMobs(ctx, "csv"))));
+        return Commands.literal("export")
+                .requires(source -> source.hasPermission(2))
+                .then(buildItemsBranch())
+                .then(buildMobsBranch());
+    }
+
+    private static ArgumentBuilder<CommandSourceStack, ?> buildItemsBranch() {
+        return Commands.literal("items")
+                .then(Commands.literal("all")
+                        .executes(ExportCommand::executeAllItems))
+                .then(Commands.literal("category")
+                        .then(Commands.argument("category_name", StringArgumentType.word())
+                                .suggests(ExportCommand::suggestCategories)
+                                .executes(ctx -> executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
+                .then(Commands.literal("top")
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
+                                .executes(ctx -> executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
+                .then(Commands.literal("single")
+                        .then(Commands.argument("item_id", ResourceLocationArgument.id())
+                                .suggests(SharedSuggestions.ITEM)
+                                .executes(ctx -> executeSingleItem(ctx, ResourceLocationArgument.getId(ctx, "item_id").toString()))))
+                .then(Commands.literal("csv")
+                        .executes(ExportCommand::executeItemsCSV));
+    }
+
+    private static ArgumentBuilder<CommandSourceStack, ?> buildMobsBranch() {
+        return Commands.literal("mobs")
+                .then(Commands.literal("all")
+                        .executes(ctx -> executeAllMobs(ctx, "json")))
+                .then(Commands.literal("format")
+                        .then(Commands.argument("format_type", StringArgumentType.word())
+                                .suggests(ExportCommand::suggestFormats)
+                                .executes(ctx -> executeAllMobs(ctx, StringArgumentType.getString(ctx, "format_type")))))
+                .then(Commands.literal("category")
+                        .then(Commands.argument("category_name", StringArgumentType.word())
+                                .suggests(ExportCommand::suggestMobCategories)
+                                .executes(ctx -> executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
+                .then(Commands.literal("top")
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
+                                .executes(ctx -> executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
+                .then(Commands.literal("single")
+                        .then(Commands.argument("mob_id", ResourceLocationArgument.id())
+                                .suggests(SharedSuggestions.ENTITY)
+                                .executes(ctx -> executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString()))))
+                .then(Commands.literal("csv")
+                        .executes(ctx -> executeAllMobs(ctx, "csv")));
+    }
+
+    private static CompletableFuture<Suggestions> suggestCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        var catList = new ObjectArrayList<String>();
+        for (var category : ComplexityCategory.values()) {
+            if (category != ComplexityCategory.UNCALCULABLE && category != ComplexityCategory.ABSOLUTE) {
+                catList.add(category.getDisplayName());
+            }
+        }
+        return SharedSuggestionProvider.suggest(catList, builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestMobCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        var mobCategories = MobCategory.values();
+        var list = new ObjectArrayList<String>(mobCategories.length);
+        for (var mobCategory : mobCategories) list.add(mobCategory.getName());
+        return SharedSuggestionProvider.suggest(list, builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestFormats(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        return SharedSuggestionProvider.suggest(new String[]{"csv", "json"}, builder);
     }
 
     public static int executeAllItems(CommandContext<CommandSourceStack> context) {

@@ -1182,6 +1182,34 @@ input[type="search"] {
     border-left: 3px solid var(--cat-Transcendent);
 }
 
+.craft-tree-node-card.cat-Celestial {
+    border-left: 3px solid var(--cat-Celestial);
+}
+
+.craft-tree-node-card.cat-Astral {
+    border-left: 3px solid var(--cat-Astral);
+}
+
+.craft-tree-node-card.cat-Eternal {
+    border-left: 3px solid var(--cat-Eternal);
+}
+
+.craft-tree-node-card.cat-Primordial {
+    border-left: 3px solid var(--cat-Primordial);
+}
+
+.craft-tree-node-card.cat-Singularity {
+    border-left: 3px solid var(--cat-Singularity);
+}
+
+.craft-tree-node-card.cat-Inconceivable {
+    border-left: 3px solid var(--cat-Inconceivable);
+}
+
+.craft-tree-node-card.cat-Boundless {
+    border-left: 3px solid var(--cat-Boundless);
+}
+
 .craft-tree-node-card.cat-Unobtainable {
     border-left: 3px solid var(--cat-Unobtainable);
 }

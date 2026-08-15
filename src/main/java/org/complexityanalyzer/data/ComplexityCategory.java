@@ -36,11 +36,18 @@ public enum ComplexityCategory {
     MODERATE(1_000, "Moderate", ChatFormatting.YELLOW),
     COMPLEX(10_000, "Complex", ChatFormatting.GOLD),
     DIFFICULT(100_000, "Difficult", ChatFormatting.RED),
-    EXPERT(1_000_000, "Expert", ChatFormatting.DARK_PURPLE),
-    MASTER(10_000_000, "Master", ChatFormatting.AQUA),
-    MYTHICAL(100_000_000, "Mythical", ChatFormatting.LIGHT_PURPLE),
-    TRANSCENDENT(1_000_000_000, "Transcendent", ChatFormatting.DARK_AQUA),
-    UNOBTAINABLE(Double.POSITIVE_INFINITY, "Unobtainable", ChatFormatting.DARK_RED),
+    EXPERT(1_000_000, "Expert", ChatFormatting.DARK_RED),
+    MASTER(10_000_000, "Master", ChatFormatting.DARK_GREEN),
+    MYTHICAL(100_000_000, "Mythical", ChatFormatting.AQUA),
+    TRANSCENDENT(1_000_000_000L, "Transcendent", ChatFormatting.DARK_AQUA),
+    CELESTIAL(10_000_000_000L, "Celestial", ChatFormatting.BLUE),
+    ASTRAL(100_000_000_000L, "Astral", ChatFormatting.DARK_BLUE),
+    ETERNAL(1_000_000_000_000L, "Eternal", ChatFormatting.LIGHT_PURPLE),
+    PRIMORDIAL(10_000_000_000_000L, "Primordial", ChatFormatting.DARK_PURPLE),
+    SINGULARITY(100_000_000_000_000L, "Singularity", ChatFormatting.DARK_AQUA),
+    INCONCEIVABLE(1_000_000_000_000_000L, "Inconceivable", ChatFormatting.LIGHT_PURPLE),
+    BOUNDLESS(10_000_000_000_000_000L, "Boundless", ChatFormatting.AQUA),
+    UNOBTAINABLE(Double.POSITIVE_INFINITY, "Unobtainable", ChatFormatting.BLACK),
     UNCALCULABLE(-1, "Uncalculable", ChatFormatting.DARK_GRAY);
 
     private static final ComplexityCategory[] CALCULABLE_CATEGORIES;
@@ -81,8 +88,9 @@ public enum ComplexityCategory {
      * @return the matching category
      */
     public static ComplexityCategory fromComplexity(double complexity) {
-        if (complexity < 0) return UNCALCULABLE;
+        if (complexity < 0 || Double.isNaN(complexity)) return UNCALCULABLE;
         if (complexity == 0) return ABSOLUTE;
+        if (Double.isInfinite(complexity)) return UNOBTAINABLE;
         int categoryIndex = getCategoryIndex(complexity);
         if (categoryIndex >= CALCULABLE_CATEGORIES.length) return UNOBTAINABLE;
         return CALCULABLE_CATEGORIES[categoryIndex];
@@ -100,6 +108,15 @@ public enum ComplexityCategory {
             else return mid;
         }
         return low;
+    }
+
+    /**
+     * @return the exclusive upper complexity bound for this difficulty tier
+     * ({@code 0} for {@link #ABSOLUTE}, {@code -1} for {@link #UNCALCULABLE},
+     * and {@code Infinity} for {@link #UNOBTAINABLE}).
+     */
+    public double getMaxComplexity() {
+        return maxComplexity;
     }
 
     /**

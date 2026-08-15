@@ -51,18 +51,25 @@
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
     --cat-Absolute: #ffffff;
-    --cat-Trivial: #b8c4d0;
-    --cat-Simple: #5cd99a;
-    --cat-Moderate: #f0d060;
-    --cat-Complex: #f2943f;
-    --cat-Difficult: #ee5a5a;
-    --cat-Expert: #b178f0;
-    --cat-Master: #50d0d8;
-    --cat-Mythical: #ef8fc8;
-    --cat-Transcendent: #3cc8be;
-    --cat-Unobtainable: #7a2b2b;
-    --cat-Uncalculable: #505964;
-    --cat-EXTERNAL_FRAGMENT: #888;
+    --cat-Trivial: #aaaaaa;
+    --cat-Simple: #55ff55;
+    --cat-Moderate: #ffff55;
+    --cat-Complex: #ffaa00;
+    --cat-Difficult: #ff5555;
+    --cat-Expert: #aa0000;
+    --cat-Master: #00aa00;
+    --cat-Mythical: #55ffff;
+    --cat-Transcendent: #00aaaa;
+    --cat-Celestial: #5555ff;
+    --cat-Astral: #0000aa;
+    --cat-Eternal: #ff55ff;
+    --cat-Primordial: #aa00aa;
+    --cat-Singularity: #00aaaa;
+    --cat-Inconceivable: #ff55ff;
+    --cat-Boundless: #55ffff;
+    --cat-Unobtainable: #222222;
+    --cat-Uncalculable: #555555;
+    --cat-EXTERNAL_FRAGMENT: #888888;
 
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -155,6 +162,34 @@
 
 .cat-Transcendent {
     --cat-color: var(--cat-Transcendent);
+}
+
+.cat-Celestial {
+    --cat-color: var(--cat-Celestial);
+}
+
+.cat-Astral {
+    --cat-color: var(--cat-Astral);
+}
+
+.cat-Eternal {
+    --cat-color: var(--cat-Eternal);
+}
+
+.cat-Primordial {
+    --cat-color: var(--cat-Primordial);
+}
+
+.cat-Singularity {
+    --cat-color: var(--cat-Singularity);
+}
+
+.cat-Inconceivable {
+    --cat-color: var(--cat-Inconceivable);
+}
+
+.cat-Boundless {
+    --cat-color: var(--cat-Boundless);
 }
 
 .cat-Unobtainable {

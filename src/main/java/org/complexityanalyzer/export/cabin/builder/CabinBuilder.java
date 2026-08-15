@@ -414,9 +414,7 @@ public final class CabinBuilder {
         buf.u8(cats.length);
         for (var c : cats) {
             buf.i32(strings.intern(c.getDisplayName()));
-            buf.f64(c.ordinal() == ComplexityCategory.UNCALCULABLE.ordinal() ? -1.0
-                    : (c.ordinal() == ComplexityCategory.UNOBTAINABLE.ordinal() ? Double.POSITIVE_INFINITY
-                    : (c.ordinal() == 0 ? 0.0 : Math.pow(10, c.ordinal()))));
+            buf.f64(c.getMaxComplexity());
         }
         buf.f64(ComplexityConfig.getMachineTaxMultiplier());
         return buf.toByteArray();

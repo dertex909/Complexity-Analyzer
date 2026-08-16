@@ -66,7 +66,7 @@ export async function renderMobDetail(unusedContainer, mobIndex) {
             card.addEventListener("click", () => {
                 const action = card.dataset.action;
                 overlay.hidden = true;
-                setState({tab: action});
+                setState({tab: action, selectedMob: mobIndex});
             });
         });
     }

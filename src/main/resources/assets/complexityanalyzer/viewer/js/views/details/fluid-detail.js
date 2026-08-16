@@ -68,7 +68,7 @@ export function renderFluidDetail(unusedContainer, fluidIndex) {
             card.addEventListener("click", () => {
                 const action = card.dataset.action;
                 overlay.hidden = true;
-                setState({tab: action});
+                setState({tab: action, selectedItem: fluidIndex});
             });
         });
     }

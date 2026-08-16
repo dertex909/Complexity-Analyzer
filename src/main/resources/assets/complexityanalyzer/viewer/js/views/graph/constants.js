@@ -16,8 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const LAYOUT_VERSION = "v5_perfect_spread";
-
 export const GRAPH_CONFIG = {
     VIEWPORT_PAD: 48,
     EDGE_PAD: 20,
@@ -62,21 +60,6 @@ export const GRAPH_CONFIG = {
     STROKE_WIDTH_NORMAL: 1.2,
     STROKE_WIDTH_HOVER: 3.0,
     STROKE_WIDTH_NEIGHBOR: 2.0,
-
-    FORCE_LINK_DISTANCE: 240,
-    FORCE_LINK_STRENGTH: 0.0005,
-    FORCE_CHARGE_STRENGTH: -250,
-    FORCE_CHARGE_MAX_DISTANCE: 1000,
-    FORCE_CENTER_STRENGTH: 0.01,
-    FORCE_COLLIDE_ITERATIONS: 6,
-
-    TICK_COUNT_LARGE: 180,
-    TICK_COUNT_SMALL: 250,
-    TICK_LARGE_THRESHOLD: 500,
-    TICKS_PER_FRAME: 15,
-
-    INITIAL_LAYOUT_ANGLE: 0.15,
-    INITIAL_LAYOUT_RADIUS: 22,
 
     DEFAULT_COLOR: "#5bc0ff",
     STROKE_COLOR_NORMAL: "#0a0c10",

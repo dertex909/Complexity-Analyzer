@@ -17,7 +17,6 @@
  */
 
 import {selectItem, state} from "../core/state.js";
-import {LAYOUT_VERSION} from "./graph/constants.js";
 import {GraphCache} from "./graph/cache.js";
 import {applyInitialLayoutAsync, buildGraphData} from "./graph/data-builder.js";
 import {GraphRenderer} from "./graph/renderer.js";
@@ -43,9 +42,7 @@ export async function renderGraph(container) {
     const newCanvas = canvas.cloneNode(true);
     canvas.parentNode.replaceChild(newCanvas, canvas);
     const mCanvas = newCanvas;
-
-    const currentHash = db.file.fileHash.toString();
-    const cacheKey = `${currentHash}_${LAYOUT_VERSION}`;
+    const cacheKey = db.file.fileHash.toString();
 
     let activeNodes, resolvedEdges, neighborMap;
 

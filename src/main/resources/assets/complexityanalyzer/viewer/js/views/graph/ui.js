@@ -16,9 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * Show loading overlay
- */
 export function showLoader(container) {
     const overlay = container.querySelector("#graph-overlay");
     if (!overlay) return null;

@@ -16,20 +16,45 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {escapeHtml, formatComplexityDetail} from "../../core/utils.js";
+import {escapeHtml, fmt, formatComplexityDetail} from "../../core/utils.js";
+import {NodeType} from "./tree-builder.js";
+
+const NODE_ICONS = {
+    [NodeType.BASE_RESOURCE]: "⛏",
+    [NodeType.CYCLE]: "🔁",
+    [NodeType.NO_DATA]: "❌"
+};
 
 export class TreeUtils {
-    static escape(str) {
-        return escapeHtml(str);
+    static escape = escapeHtml;
+    static formatComplexity = formatComplexityDetail;
+
+    static getNodeIcon(node) {
+        if (node.kind === "fluid") return "💧";
+        return NODE_ICONS[node.type] || "🔨";
     }
 
-    static formatComplexity(complexity) {
-        return formatComplexityDetail(complexity);
+    static renderMachineBadgeHTML(node) {
+        if (!node.machineName || node.type === NodeType.BASE_RESOURCE || node.type === NodeType.CYCLE) return "";
+
+        const hasAmort = node.amortization > 0;
+        const amortText = hasAmort ? `+${fmt.format(node.amortization)}` : "";
+        const escapedName = escapeHtml(node.machineName);
+        const title = `Machine: ${escapedName}${hasAmort ? ` (Amortization: ${amortText})` : ""}`;
+
+        return `
+            <div class="node-machine-badge" title="${title}" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; font-size: 11px; max-width: 200px; flex-shrink: 0;">
+                <span style="font-size: 11px; opacity: 0.7;">🏭</span>
+                <span style="color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${escapedName}</span>
+                ${hasAmort ? `<span style="color: var(--accent); font-family: var(--mono), monospace; font-size: 10px; font-weight: 600; padding-left: 4px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,0.1);">${amortText}</span>` : ""}
+            </div>
+        `;
     }
 
     static renderActionsHTML(node, showToggle = true) {
-        const hasAnyChildren = node.children && node.children.length > 0;
+        const canToggle = node.type === NodeType.CRAFTING && (node.children?.length > 0 || node.collapsed);
         const isCollapsed = node.collapsed;
+
         return `
             <div class="node-actions">
                 <button class="node-action-btn act-details" title="Details" data-kind="${node.kind}" data-index="${node.index}">
@@ -38,76 +63,12 @@ export class TreeUtils {
                 <button class="node-action-btn act-root" title="Set as root" data-kind="${node.kind}" data-index="${node.index}">
                     🎯
                 </button>
-                ${showToggle && hasAnyChildren ? `
-                    <button class="node-action-btn act-toggle" title="${isCollapsed ? "Expand" : "Collapse"}" data-depth="${node.depth}" data-kind="${node.kind}" data-index="${node.index}" style="font-weight: bold; width: 18px; font-size: 14px;">
+                ${showToggle && canToggle ? `
+                    <button class="node-action-btn act-toggle" title="${isCollapsed ? "Expand" : "Collapse"}" data-uid="${node.uid}" style="font-weight: bold; width: 18px; font-size: 14px;">
                         ${isCollapsed ? "＋" : "－"}
                     </button>
                 ` : ""}
             </div>
         `;
-    }
-
-    static setupPanZoom(viewport, canvas, stateObj, onUpdate) {
-        let isDragging = false;
-        let startX, startY;
-
-        viewport.addEventListener("mousedown", e => {
-            if (e.target.closest(".node-actions") || e.target.closest(".web-node-badge") || e.target.closest(".craft-tree-node-card")) return;
-            isDragging = true;
-            viewport.style.cursor = "grabbing";
-            startX = e.clientX - stateObj.panX;
-            startY = e.clientY - stateObj.panY;
-        });
-
-        window.addEventListener("mousemove", e => {
-            if (!isDragging) return;
-            stateObj.panX = e.clientX - startX;
-            stateObj.panY = e.clientY - startY;
-            canvas.style.transform = `translate(${stateObj.panX}px, ${stateObj.panY}px) scale(${stateObj.zoom})`;
-            if (onUpdate) onUpdate();
-        });
-
-        window.addEventListener("mouseup", () => {
-            isDragging = false;
-            viewport.style.cursor = "grab";
-        });
-
-        viewport.addEventListener("wheel", e => {
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            const zoomFactor = 1.1;
-            let nextZoom;
-            if (e.deltaY < 0) {
-                nextZoom = Math.min(2.0, stateObj.zoom * zoomFactor);
-            } else {
-                nextZoom = Math.max(0.3, stateObj.zoom / zoomFactor);
-            }
-
-            stateObj.panX = e.clientX - viewport.getBoundingClientRect().left - mouseX * (nextZoom / stateObj.zoom);
-            stateObj.panY = e.clientY - viewport.getBoundingClientRect().top - mouseY * (nextZoom / stateObj.zoom);
-            stateObj.zoom = nextZoom;
-
-            canvas.style.transform = `translate(${stateObj.panX}px, ${stateObj.panY}px) scale(${stateObj.zoom})`;
-            if (onUpdate) onUpdate();
-        }, {passive: false});
-    }
-
-    static setupNodeHoverActions(viewport) {
-        viewport.querySelectorAll(".web-node-element").forEach(el => {
-            const badge = el.querySelector(".web-node-badge");
-            const actions = el.querySelector(".node-actions");
-            if (!badge || !actions) return;
-
-            badge.addEventListener("mouseenter", () => {
-                actions.style.display = "flex";
-            });
-
-            el.addEventListener("mouseleave", () => {
-                actions.style.display = "none";
-            });
-        });
     }
 }

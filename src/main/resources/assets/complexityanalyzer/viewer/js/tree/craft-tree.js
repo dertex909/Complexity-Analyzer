@@ -21,14 +21,17 @@ import {escapeHtml} from "../core/utils.js";
 import {renderItemDetail} from "../views/details/item-detail.js";
 import {renderFluidDetail} from "../views/details/fluid-detail.js";
 
+import {TreeBuilder} from "./sub/tree-builder.js";
+import {renderLandingHub} from "./sub/tree-landing.js";
+import {saveRecentItem} from "./sub/tree-recents.js";
 import {renderClassicTree} from "./sub/tree-classic.js";
 import {renderHorizontalTree} from "./sub/tree-horizontal.js";
 import {renderPipelineTree} from "./sub/tree-pipeline.js";
 
 let selectedRoot = null;
 let treeData = null;
-let nodeMap = new Map();
 let selectedFormat = "classic";
+let treeBuilder = null;
 
 function getFormatDescription(format) {
     switch (format) {
@@ -50,6 +53,8 @@ export async function renderCraftTreeView(container) {
         return;
     }
 
+    if (!treeBuilder || treeBuilder.db !== db) treeBuilder = new TreeBuilder(db);
+
     if (window.lastSelectedCraftNode) {
         selectedRoot = window.lastSelectedCraftNode;
         window.lastSelectedCraftNode = null;
@@ -62,39 +67,27 @@ export async function renderCraftTreeView(container) {
         treeData = null;
     }
 
-    drawMainLayout();
+    drawLayout();
 
-    function drawMainLayout() {
+    function drawLayout() {
         if (!selectedRoot) {
-            container.innerHTML = `
-                <div class="craft-tree-layout" style="justify-content: center; align-items: center; min-height: 100%;">
-                    <div class="craft-tree-empty" style="width: 100%; max-width: 600px; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                        <div style="font-size: 56px; margin-bottom: 12px; filter: drop-shadow(0 0 10px rgba(92,217,154,0.2));">🌿</div>
-                        <div class="craft-tree-empty-title" style="margin-bottom: 8px; font-size: 24px; font-weight: 700; color: var(--text-bright); text-align: center;">Visual Craft Tree</div>
-                        <div style="max-width: 460px; font-size: 13px; line-height: 1.6; margin-bottom: 24px; text-align: center; color: var(--text-dim);">
-                            Enter the name of an item or fluid below to build the craft tree.
-                        </div>
-                        
-                        <div class="craft-search-container" style="width: 100%; max-width: 500px; margin-bottom: 24px; position: relative; flex: 0 0 auto;">
-                            <input type="text" class="craft-search-input" placeholder="Search for an item or fluid..." autocomplete="off" style="font-size: 15px; padding: 12px 18px; border-radius: 8px; background-color: var(--bg-raised); border: 1px solid var(--border); width: 100%; color: var(--text);">
-                            <div class="craft-search-results" id="craft-search-results" hidden style="max-height: 250px;"></div>
-                        </div>
-
-                        <div class="craft-tree-empty-suggestions" style="margin-top: 8px;">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            initSearchEvents();
-            initSuggestionEvents();
+            renderLandingHub(
+                container,
+                db,
+                selectedFormat,
+                (kind, index) => {
+                    selectedRoot = {kind, index};
+                    treeData = null;
+                    drawLayout();
+                },
+                (format) => {
+                    selectedFormat = format;
+                }
+            );
         } else {
-            let rootName;
-            if (selectedRoot.kind === "item") {
-                rootName = db.items.get(selectedRoot.index)?.name || "Item";
-            } else {
-                rootName = db.fluids.get(selectedRoot.index)?.name || "Fluid";
-            }
+            const rootName = selectedRoot.kind === "item"
+                ? db.items.get(selectedRoot.index)?.name || "Item"
+                : db.fluids.get(selectedRoot.index)?.name || "Fluid";
 
             container.innerHTML = `
                 <div class="craft-tree-layout">
@@ -107,7 +100,7 @@ export async function renderCraftTreeView(container) {
                                 ${escapeHtml(rootName)}
                             </span>
                         </div>
-                        <div class="craft-search-container" style="width: 250px; position: relative;">
+                        <div class="craft-search-container" style="width: 250px; position: relative; flex: 0 0 auto;">
                             <input type="text" class="craft-search-input" placeholder="Quick jump..." autocomplete="off" style="font-size: 13px; padding: 6px 12px; border-radius: 6px; background-color: var(--bg-raised); border: 1px solid var(--border); width: 100%; color: var(--text);">
                             <div class="craft-search-results" id="craft-search-results" hidden style="max-height: 250px; width: 100%;"></div>
                         </div>
@@ -145,96 +138,18 @@ export async function renderCraftTreeView(container) {
                 </div>
             `;
 
-            initSearchEvents();
-            initTreeControls();
-            renderTree();
+            initHeaderControls();
+            void renderTree();
         }
     }
 
-    function initSearchEvents() {
-        const searchInput = container.querySelector(".craft-search-input");
-        const searchResults = container.querySelector("#craft-search-results");
-
-        if (!searchInput || !searchResults) return;
-
-        searchInput.addEventListener("input", () => {
-            const query = searchInput.value.trim().toLowerCase();
-            if (query.length < 2) {
-                searchResults.hidden = true;
-                return;
-            }
-
-            const matched = [];
-            for (let i = 0; i < db.items.count && matched.length < 50; i++) {
-                const it = db.items.get(i);
-                if (it && (it.name + " " + it.id).toLowerCase().includes(query)) {
-                    matched.push({kind: "item", name: it.name, id: it.id, index: i});
-                }
-            }
-            for (let i = 0; i < db.fluids.count && matched.length < 100; i++) {
-                const fl = db.fluids.get(i);
-                if (fl && (fl.name + " " + fl.id).toLowerCase().includes(query)) {
-                    matched.push({kind: "fluid", name: fl.name, id: fl.id, index: i});
-                }
-            }
-
-            if (matched.length > 0) {
-                searchResults.innerHTML = matched.map(m => `
-                    <div class="craft-search-item" data-kind="${m.kind}" data-index="${m.index}">
-                        <span class="name">${escapeHtml(m.name)}</span>
-                        <span class="kind kind-${m.kind}">${m.kind}</span>
-                    </div>
-                `).join("");
-                searchResults.hidden = false;
-            } else {
-                searchResults.innerHTML = `<div style="padding: 12px; color: var(--text-dim); text-align: center;">No results found</div>`;
-                searchResults.hidden = false;
-            }
-        });
-
-        const closeOnOutsideClick = e => {
-            if (!e.target.closest(".craft-search-container")) searchResults.hidden = true;
-        };
-        document.addEventListener("click", closeOnOutsideClick);
-        container.addEventListener("destroy", () => {
-            document.removeEventListener("click", closeOnOutsideClick);
-        });
-
-        searchResults.addEventListener("click", e => {
-            const item = e.target.closest(".craft-search-item");
-            if (!item) return;
-
-            const kind = item.dataset.kind;
-            const index = parseInt(item.dataset.index, 10);
-
-            selectedRoot = {kind, index};
-            treeData = null;
-            searchResults.hidden = true;
-            searchInput.value = "";
-
-            drawMainLayout();
-        });
-    }
-
-    function initSuggestionEvents() {
-        container.querySelectorAll(".craft-tree-suggestion-pill").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const kind = btn.dataset.kind;
-                const index = parseInt(btn.dataset.index, 10);
-                selectedRoot = {kind, index};
-                treeData = null;
-                drawMainLayout();
-            });
-        });
-    }
-
-    function initTreeControls() {
+    function initHeaderControls() {
         const btnBack = container.querySelector("#btn-back-search");
         if (btnBack) {
             btnBack.addEventListener("click", () => {
                 selectedRoot = null;
                 treeData = null;
-                drawMainLayout();
+                drawLayout();
             });
         }
 
@@ -250,207 +165,59 @@ export async function renderCraftTreeView(container) {
                 const descBox = container.querySelector("#format-description-box");
                 if (descBox) descBox.innerHTML = getFormatDescription(format);
 
-                renderTree();
+                void renderTree();
             });
         });
-    }
 
-    async function buildTreeData() {
-        if (!selectedRoot) return null;
-        nodeMap.clear();
-        return await buildNode(db, selectedRoot.kind, selectedRoot.index, 0, new Set());
-    }
-
-    async function buildNode(db, kind, index, depth, path) {
-        const key = `${kind}:${index}`;
-        const mapKey = `${depth}_${key}`;
-
-        const isCircular = path.has(key);
-        const node = {
-            kind,
-            index,
-            depth,
-            isCircular,
-            collapsed: nodeMap.get(mapKey)?.collapsed ?? false,
-            children: []
-        };
-
-        nodeMap.set(mapKey, node);
-
-        if (kind === "item") {
-            const it = db.items.get(index);
-            if (it) {
-                node.name = it.name;
-                node.id = it.id;
-                node.complexity = it.complexity;
-                node.categoryName = it.categoryName;
-            }
-        } else {
-            const fl = db.fluids.get(index);
-            if (fl) {
-                node.name = fl.name;
-                node.id = fl.id;
-                node.complexity = fl.complexity;
-                node.categoryName = fl.categoryName;
-            }
-        }
-
-        if (isCircular || depth >= 15) return node;
-
-        const newPath = new Set(path);
-        newPath.add(key);
-
-        try {
-            let recipes;
-            if (kind === "item") {
-                recipes = await db.getItemRecipes(index);
-            } else {
-                recipes = await db.getFluidRecipes(index);
-            }
-
-            if (recipes && recipes.length > 0) {
-                const nodeComplexity = node.complexity;
-                if (recipes.length > 1 && typeof nodeComplexity === "number" && nodeComplexity > 0) {
-                    const isReverseRecipe = async (rec) => {
-                        if (rec.ingredients) for (const slot of rec.ingredients) {
-                            if (slot.variants) for (const v of slot.variants) {
-                                const it = db.items.get(v);
-                                if (it && it.complexity !== -1 && it.complexity > nodeComplexity + 0.1) {
-                                    const base = await db.getItemBaseData(v);
-                                    const isOre = base && base.sourceType === "complexityanalyzer.source_type.block_transformation";
-                                    if (!isOre) return true;
-                                }
-                            }
-                        }
-                        if (rec.fluidIngredients) for (const slot of rec.fluidIngredients) {
-                            if (slot.variants) for (const v of slot.variants) {
-                                const fl = db.fluids.get(v);
-                                if (fl && fl.complexity !== -1 && fl.complexity > nodeComplexity + 0.1) return true;
-                            }
-                        }
-                        return false;
-                    };
-
-                    const recipeStatuses = await Promise.all(recipes.map(async (rec) => {
-                        const isRev = await isReverseRecipe(rec);
-                        return {rec, isRev};
-                    }));
-
-                    recipeStatuses.sort((a, b) => {
-                        if (a.isRev !== b.isRev) return a.isRev ? 1 : -1;
-                        return 0;
+        const jumpInput = container.querySelector(".craft-search-input");
+        const jumpResults = container.querySelector("#craft-search-results");
+        if (jumpInput && jumpResults) {
+            jumpInput.addEventListener("input", () => {
+                const q = jumpInput.value.trim().toLowerCase();
+                if (q.length < 2) {
+                    jumpResults.hidden = true;
+                    return;
+                }
+                const matched = [];
+                for (let i = 0; i < db.items.count && matched.length < 30; i++) {
+                    const it = db.items.get(i);
+                    if (it && (it.name + " " + it.id).toLowerCase().includes(q)) matched.push({
+                        kind: "item",
+                        index: i,
+                        name: it.name
                     });
-
-                    recipes = recipeStatuses.map(x => x.rec);
                 }
-
-                const bestRecipe = recipes[0];
-                node.recipe = bestRecipe;
-
-                const itemObj = kind === "item" ? db.items.get(index) : null;
-                const isBaseResource = kind === "item" && itemObj && itemObj.sourceCount > 0;
-                const isNodeCompValid = typeof node.complexity === "number" && node.complexity >= 0;
-
-                if (isBaseResource && isNodeCompValid) {
-                    let isMiningRecipe = false;
-                    if (bestRecipe.ingredients) for (const slot of bestRecipe.ingredients) {
-                        if (slot.variants) for (const v of slot.variants) {
-                            const base = await db.getItemBaseData(v);
-                            if (base && base.sourceType === "complexityanalyzer.source_type.block_transformation") {
-                                isMiningRecipe = true;
-                                break;
-                            }
-                        }
-                        if (isMiningRecipe) break;
-                    }
-
-                    let anyIngredientMoreExpensive = false;
-                    let totalIngredientsComplexity = 0;
-
-                    if (bestRecipe.ingredients) for (const slot of bestRecipe.ingredients) {
-                        if (slot.variants && slot.variants.length > 0) {
-                            let minComp = Infinity;
-                            for (const v of slot.variants) {
-                                const it = db.items.get(v);
-                                if (it && it.complexity !== -1 && it.complexity < minComp) minComp = it.complexity;
-                            }
-                            if (minComp !== Infinity) {
-                                totalIngredientsComplexity += minComp * (slot.count || 1);
-                                if (minComp > node.complexity) anyIngredientMoreExpensive = true;
-                            }
-                        }
-                    }
-
-                    if (bestRecipe.fluidIngredients) for (const slot of bestRecipe.fluidIngredients) {
-                        if (slot.variants && slot.variants.length > 0) {
-                            let minComp = Infinity;
-                            for (const v of slot.variants) {
-                                const fl = db.fluids.get(v);
-                                if (fl && fl.complexity !== -1 && fl.complexity < minComp) minComp = fl.complexity;
-                            }
-                            if (minComp !== Infinity) {
-                                totalIngredientsComplexity += minComp * (slot.count || 1);
-                                if (minComp > node.complexity) anyIngredientMoreExpensive = true;
-                            }
-                        }
-                    }
-
-                    const isCraftMoreExpensive = anyIngredientMoreExpensive || (totalIngredientsComplexity > node.complexity);
-
-                    if (isCraftMoreExpensive && !isMiningRecipe) return node;
+                for (let i = 0; i < db.fluids.count && matched.length < 50; i++) {
+                    const fl = db.fluids.get(i);
+                    if (fl && (fl.name + " " + fl.id).toLowerCase().includes(q)) matched.push({
+                        kind: "fluid",
+                        index: i,
+                        name: fl.name
+                    });
                 }
-
-                const seen = new Set();
-
-                if (bestRecipe.ingredients) for (const slot of bestRecipe.ingredients) {
-                    if (slot.variants && slot.variants.length > 0) {
-                        let bestVariant = slot.variants[0];
-                        let minComp = Infinity;
-                        for (const v of slot.variants) {
-                            const it = db.items.get(v);
-                            if (it && it.complexity !== -1 && it.complexity < minComp) {
-                                minComp = it.complexity;
-                                bestVariant = v;
-                            }
-                        }
-
-                        const childKey = `item:${bestVariant}`;
-                        if (!seen.has(childKey)) {
-                            seen.add(childKey);
-                            const child = await buildNode(db, "item", bestVariant, depth + 1, newPath);
-                            child.amountText = slot.count + "×";
-                            node.children.push(child);
-                        }
-                    }
+                if (matched.length > 0) {
+                    jumpResults.innerHTML = matched.map(m => `
+                        <div class="craft-search-item" data-kind="${m.kind}" data-index="${m.index}" style="padding: 6px 10px; font-size: 12px; cursor: pointer;">
+                            <span class="name">${escapeHtml(m.name)}</span>
+                        </div>
+                    `).join("");
+                    jumpResults.hidden = false;
+                } else {
+                    jumpResults.hidden = true;
                 }
+            });
 
-                if (bestRecipe.fluidIngredients) for (const slot of bestRecipe.fluidIngredients) {
-                    if (slot.variants && slot.variants.length > 0) {
-                        let bestVariant = slot.variants[0];
-                        let minComp = Infinity;
-                        for (const v of slot.variants) {
-                            const fl = db.fluids.get(v);
-                            if (fl && fl.complexity !== -1 && fl.complexity < minComp) {
-                                minComp = fl.complexity;
-                                bestVariant = v;
-                            }
-                        }
-
-                        const childKey = `fluid:${bestVariant}`;
-                        if (!seen.has(childKey)) {
-                            seen.add(childKey);
-                            const child = await buildNode(db, "fluid", bestVariant, depth + 1, newPath);
-                            child.amountText = (slot.amount >= 1000 ? (slot.amount / 1000) + "B" : slot.amount + "mB");
-                            node.children.push(child);
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("Failed to fetch recipes for tree node:", e);
+            jumpResults.addEventListener("click", (e) => {
+                const it = e.target.closest(".craft-search-item");
+                if (!it) return;
+                const kind = it.dataset.kind;
+                const index = parseInt(it.dataset.index, 10);
+                saveRecentItem(kind, index, db);
+                selectedRoot = {kind, index};
+                treeData = null;
+                drawLayout();
+            });
         }
-
-        return node;
     }
 
     async function renderTree() {
@@ -459,7 +226,7 @@ export async function renderCraftTreeView(container) {
 
         if (!treeData) {
             craftContainer.innerHTML = `<div style="padding: 32px; color: var(--text-dim); text-align: center;">Building tree...</div>`;
-            treeData = await buildTreeData();
+            treeData = await treeBuilder.buildRoot(selectedRoot.kind, selectedRoot.index, 2);
         }
 
         if (selectedFormat === "classic") {
@@ -470,10 +237,10 @@ export async function renderCraftTreeView(container) {
             renderPipelineTree(craftContainer, treeData);
         }
 
-        bindNodeEvents(craftContainer);
+        bindTreeEvents(craftContainer);
     }
 
-    function bindNodeEvents(craftContainer) {
+    function bindTreeEvents(craftContainer) {
         craftContainer.querySelectorAll(".act-details").forEach(btn => {
             btn.addEventListener("click", () => {
                 const kind = btn.dataset.kind;
@@ -498,24 +265,27 @@ export async function renderCraftTreeView(container) {
             btn.addEventListener("click", () => {
                 const kind = btn.dataset.kind;
                 const index = parseInt(btn.dataset.index, 10);
+                saveRecentItem(kind, index, db);
                 selectedRoot = {kind, index};
                 treeData = null;
-                drawMainLayout();
+                drawLayout();
             });
         });
 
         craftContainer.querySelectorAll(".act-toggle").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const kind = btn.dataset.kind;
-                const index = parseInt(btn.dataset.index, 10);
-                const depth = parseInt(btn.dataset.depth, 10);
-                const key = `${depth}_${kind}:${index}`;
+            btn.addEventListener("click", async () => {
+                const uid = btn.dataset.uid;
+                const node = treeBuilder.nodeMap.get(uid);
+                if (!node) return;
 
-                const node = nodeMap.get(key);
-                if (node) {
-                    node.collapsed = !node.collapsed;
-                    renderTree();
+                if (node.collapsed) {
+                    if (!node.children || node.children.length === 0) await treeBuilder.expandNode(node);
+                    node.collapsed = false;
+                } else {
+                    node.collapsed = true;
                 }
+
+                void renderTree();
             });
         });
     }

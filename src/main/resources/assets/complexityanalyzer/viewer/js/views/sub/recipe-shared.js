@@ -973,10 +973,15 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     const machineName = machineItem ? machineItem.name : r.recipeType;
 
     let amortizationHtml = "";
+    const taxVal = (db.meta && db.meta.machineTaxMultiplier !== undefined) ? db.meta.machineTaxMultiplier : 0.05;
+    const fallbackVal = (db.meta && db.meta.machineFallbackComplexity !== undefined) ? db.meta.machineFallbackComplexity : 100.0;
+
     if (machineItem && machineItem.complexity > 0) {
-        const taxVal = (db.meta && db.meta.machineTaxMultiplier !== undefined) ? db.meta.machineTaxMultiplier : 0.05;
         const amortization = machineItem.complexity * taxVal;
         amortizationHtml = `<span style="font-size: 10px; color: var(--text-dim); margin-top: -2px; margin-bottom: 4px;" title="Amortization (machine complexity tax): ${fmt.format(machineItem.complexity)} * ${taxVal * 100}%">amort: +${fmt.format(amortization)}</span>`;
+    } else if (!machineItem && r.recipeType && !r.recipeType.includes("crafting_table") && r.recipeType !== "minecraft:crafting") {
+        const amortization = fallbackVal * taxVal;
+        amortizationHtml = `<span style="font-size: 10px; color: var(--warn); margin-top: -2px; margin-bottom: 4px;" title="Fallback Amortization (unknown machine config: ${fallbackVal} * ${taxVal * 100}%): +${fmt.format(amortization)}">amort (fallback): +${fmt.format(amortization)}</span>`;
     }
 
     let machineHtml;

@@ -446,6 +446,13 @@ export function readMeta(bytes, strings) {
     } else {
         res.machineTaxMultiplier = 0.05;
     }
+
+    if (b.p <= bytes.length - 8) {
+        res.machineFallbackComplexity = b.f64();
+    } else {
+        res.machineFallbackComplexity = 100.0;
+    }
+
     return res;
 }
 

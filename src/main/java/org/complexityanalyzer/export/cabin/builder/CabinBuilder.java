@@ -417,6 +417,7 @@ public final class CabinBuilder {
             buf.f64(c.getMaxComplexity());
         }
         buf.f64(ComplexityConfig.getMachineTaxMultiplier());
+        buf.f64(ComplexityConfig.getMachineBaseComplexity());
         return buf.toByteArray();
     }
 

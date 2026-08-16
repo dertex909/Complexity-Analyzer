@@ -19,7 +19,7 @@
 import {debounce, escapeHtml} from "../core/utils.js";
 import {closeActivePopover, setActivePopover} from "./resizable-table.js";
 
-const RANGE_KEYS = {
+export const RANGE_KEYS = {
     complexity: ["minComplexity", "maxComplexity"],
     depth: ["minDepth", "maxDepth"],
     totalIngredients: ["minTotalIngredients", "maxTotalIngredients"],
@@ -32,7 +32,7 @@ const RANGE_KEYS = {
     rarity: ["minRarity", "maxRarity"]
 };
 
-const VIEW_FLAGS = {
+export const VIEW_FLAGS = {
     items: [
         {key: "machine", label: "⚙ Machine"},
         {key: "uncalculable", label: "- Uncalculable"},

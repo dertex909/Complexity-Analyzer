@@ -16,19 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {debounce, escapeHtml, fmtInt, formatComplexity, formatRawTooltip, getItemFlags} from "../core/utils.js";
-import {selectItem, setFilter, state} from "../core/state.js";
+import {escapeHtml, formatComplexity, formatRawTooltip, getItemFlags} from "../core/utils.js";
+import {selectItem, state} from "../core/state.js";
 import {ITEM_FLAG} from "../core/cabin.js";
-import {mountVirtualList} from "../components/virtual-list.js";
-import {setupResizableTable} from "../components/resizable-table.js";
-import {
-    generateSortControlsHtml,
-    generateTableHeader,
-    universalSort,
-    wireSortControls
-} from "../components/table-columns.js";
-import {openFilterPopover} from "../components/filter-popover.js";
-import {passesFlagsFilter, passesModFilter, passesRangeFilter} from "../components/item-filter.js";
+import {renderGenericTable} from "../components/generic-table.js";
 
 const SOURCES_COLUMNS = [
     {index: 1, label: "№", field: null, filter: null, sortable: false},
@@ -108,32 +99,34 @@ async function ensureSourceTypes(db) {
     return resolvedSourceTypes;
 }
 
-let currentListInstance = null;
+async function ensureSourceComplexities(db, activeType) {
+    if (activeType.sourceComplexities) return activeType.sourceComplexities;
 
-function updateHeaderIndicators() {
-    const f = state.filters.sources;
-    const head = document.getElementById("sources-head");
-    if (!head) return;
+    if (activeType.items.length > 0) try {
+        await db.getItemSources(activeType.items[0]);
+    } catch (e) {
+        console.error(e);
+    }
 
-    const itemsDef = [
-        {key: "id", isFiltered: () => f.modsFilter && f.modsFilter.length > 0},
-        {key: "complexity", isFiltered: () => f.minComplexity !== "" || f.maxComplexity !== ""},
-        {key: "flags", isFiltered: () => f.flagsFilter && f.flagsFilter.length > 0},
-    ];
+    const complexities = new Map();
+    const promises = activeType.items.map(async itemIdx => {
+        const item = db.items.get(itemIdx);
+        if (!item) return;
 
-    itemsDef.forEach(item => {
-        const el = head.querySelector(`[data-filter="${item.key}"]`);
-        if (el) el.classList.toggle("filtered", item.isFiltered());
+        let sc = item.complexity;
+        try {
+            const sources = await db.getItemSources(itemIdx);
+            const matched = sources.find(s => s.sourceTypeEnum === activeType.typeEnum);
+            if (matched && isFinite(matched.estimatedCost) && matched.estimatedCost >= 0) sc = matched.estimatedCost;
+        } catch (e) {
+            console.error("Error loading source complexity for", itemIdx, e);
+        }
+        complexities.set(itemIdx, sc);
     });
-}
 
-function openPopover(headerCell, filterType) {
-    const db = state.db;
-    const f = state.filters.sources;
-    openFilterPopover(headerCell, filterType, "sources", db, f, async (patch) => {
-        setFilter("sources", patch);
-        await updateSourcesResults(db, resolvedSourceTypes);
-    });
+    await Promise.all(promises);
+    activeType.sourceComplexities = complexities;
+    return complexities;
 }
 
 export async function renderSources(container) {
@@ -143,22 +136,12 @@ export async function renderSources(container) {
         return;
     }
 
-    const tableConfig = setupResizableTable({
-        tableId: "sources",
-        cssVarPrefix: "--src-col",
-        columns: SOURCES_COLUMNS,
-        db,
-        tableType: "items"
-    });
-
     container.style.padding = "0";
     container.style.overflow = "hidden";
     container.style.display = "flex";
     container.style.flexDirection = "row";
     container.style.gap = "0";
     container.style.alignItems = "stretch";
-
-    const f = state.filters.sources;
 
     container.innerHTML = `
         <style>
@@ -206,19 +189,7 @@ export async function renderSources(container) {
                 <div class="hint">Loading sources…</div>
             </div>
         </div>
-        <div class="sources-main" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
-            <div class="controls" id="sources-controls">
-                <button class="sources-burger btn" style="display: none; padding: 6px 10px; font-size: 16px; align-items: center; justify-content: center; height: 32px;" title="Categories">☰</button>
-                <input type="search" id="sources-query" placeholder="Filter items by name, ID..." value="${escapeHtml(f.query)}" autocomplete="off">
-                ${generateSortControlsHtml(SOURCES_COLUMNS, f.sort, "sources")}
-                <span class="flex-grow"></span>
-                <span class="chip" id="sources-count">0 items</span>
-            </div>
-            <div style="overflow: hidden; flex: 0 0 auto;">
-                ${generateTableHeader(SOURCES_COLUMNS, "sources-grid", "sources-head")}
-            </div>
-            <div id="sources-list" style="flex: 1; min-height: 0; position: relative;"></div>
-        </div>
+        <div class="sources-main" id="sources-main-table-container" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;"></div>
     `;
 
     try {
@@ -233,178 +204,94 @@ export async function renderSources(container) {
         }
 
         const catList = container.querySelector("#sources-categories-list");
-        await renderCategoryButtons(catList, types);
+        const tableMain = container.querySelector("#sources-main-table-container");
 
-        const burgerBtn = container.querySelector(".sources-burger");
-        const sidebarEl = container.querySelector("#sources-sidebar");
-        const overlayEl = container.querySelector("#sources-overlay");
-        const mobileCloseBtn = container.querySelector(".sources-close-mobile");
+        let currentTableCtrl = null;
 
-        const toggleSidebar = () => {
-            sidebarEl.classList.toggle("open");
-            overlayEl.classList.toggle("open");
+        const loadAndMountTable = async () => {
+            const activeEnum = state.filters.sources.sourceType;
+            const activeType = types.find(t => t.typeEnum === activeEnum);
+            if (!activeType) return;
+
+            const sourceComplexities = await ensureSourceComplexities(db, activeType);
+
+            currentTableCtrl = renderGenericTable(tableMain, {
+                id: "sources",
+                tableType: "items",
+                cssVarPrefix: "--src-col",
+                gridClass: "sources-grid",
+                columns: SOURCES_COLUMNS,
+                flagEnum: ITEM_FLAG,
+                searchPlaceholder: "Filter items by name, ID...",
+                entityLabel: "items",
+                controlsPrefixHtml: `<button class="sources-burger btn" style="display: none; padding: 6px 10px; font-size: 16px; align-items: center; justify-content: center; height: 32px;" title="Categories">☰</button>`,
+                getEntities: () => activeType.items.map(idx => db.items.get(idx)).filter(Boolean),
+                customFilter: (it, currentFilters) => {
+                    const compVal = sourceComplexities.get(it.index) ?? it.complexity;
+                    const min = currentFilters.minComplexity !== "" ? parseFloat(currentFilters.minComplexity) : -Infinity;
+                    const max = currentFilters.maxComplexity !== "" ? parseFloat(currentFilters.maxComplexity) : Infinity;
+                    return compVal >= min && compVal <= max;
+                },
+                customSortGetter: (it, field) => {
+                    if (field === "complexity") {
+                        const sc = sourceComplexities.get(it.index);
+                        return isFinite(sc) ? sc : it.complexity;
+                    }
+                    return it[field];
+                },
+                renderRow: (it, absIndex) => {
+                    const sc = sourceComplexities.get(it.index) ?? it.complexity;
+                    const el = document.createElement("div");
+                    el.className = "row sources-grid";
+                    el.style.cursor = "pointer";
+                    el.innerHTML = `
+                        <span class="idx">${absIndex + 1}</span>
+                        <span class="id" title="${it.id}">${it.id}</span>
+                        <span title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</span>
+                        <span class="num cat-${it.categoryName || "Uncalculable"}" title="${formatRawTooltip(sc)}">${formatComplexity(sc)}</span>
+                        <span class="flags">${getItemFlags(it, true)}</span>
+                    `;
+                    return el;
+                },
+                onRowClick: (it) => selectItem(it.index)
+            });
+
+            const burgerBtn = tableMain.querySelector(".sources-burger");
+            if (burgerBtn) burgerBtn.addEventListener("click", toggleSidebar);
         };
 
-        if (burgerBtn) burgerBtn.addEventListener("click", toggleSidebar);
+        const toggleSidebar = () => {
+            const sidebarEl = container.querySelector("#sources-sidebar");
+            const overlayEl = container.querySelector("#sources-overlay");
+            if (sidebarEl && overlayEl) {
+                sidebarEl.classList.toggle("open");
+                overlayEl.classList.toggle("open");
+            }
+        };
+
+        const overlayEl = container.querySelector("#sources-overlay");
+        const mobileCloseBtn = container.querySelector(".sources-close-mobile");
         if (overlayEl) overlayEl.addEventListener("click", toggleSidebar);
         if (mobileCloseBtn) mobileCloseBtn.addEventListener("click", toggleSidebar);
 
-        catList._toggleSidebar = toggleSidebar;
+        catList.innerHTML = types.map(t => `
+            <button class="tab ${t.typeEnum === state.filters.sources.sourceType ? "active" : ""}" data-type="${t.typeEnum}" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 10px 14px; font-size:13px; font-weight: 500;">
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;" title="${escapeHtml(t.displayName)}">${escapeHtml(t.displayName)}</span>
+                <span class="chip" style="font-size:10px; padding:1px 6px; background:rgba(255,255,255,0.06); font-family:var(--mono), monospace; color: var(--text-muted); border-radius: 10px;">${t.items.length}</span>
+            </button>
+        `).join("");
 
-        const queryInput = container.querySelector("#sources-query");
-        queryInput.addEventListener("input", debounce(async (e) => {
-            setFilter("sources", {query: e.target.value});
-            await updateSourcesResults(db, types);
-        }, 120));
-
-        wireSortControls(container, "sources", () => state.filters.sources.sort, async (newSort) => {
-            setFilter("sources", {sort: newSort});
-            await updateSourcesResults(db, types);
-        });
-
-        const head = container.querySelector("#sources-head");
-        if (head) head.querySelectorAll(".clickable-header").forEach(hdr => {
-            hdr.addEventListener("click", (e) => {
-                if (e.target.classList.contains("col-drag-handle")) return;
-                openPopover(hdr, hdr.dataset.filter);
+        catList.querySelectorAll("button").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                state.filters.sources.sourceType = parseInt(btn.dataset.type, 10);
+                catList.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+                await loadAndMountTable();
+                if (window.innerWidth <= 768) toggleSidebar();
             });
         });
 
-        tableConfig.initResizers("sources-head");
-        updateHeaderIndicators();
-        await updateSourcesResults(db, types);
-
+        await loadAndMountTable();
     } catch (e) {
         container.innerHTML = `<div style="padding: 20px; color:var(--err)">Error loading base sources: ${escapeHtml(String(e))}</div>`;
     }
-}
-
-async function renderCategoryButtons(containerEl, types) {
-    const activeEnum = state.filters.sources.sourceType;
-    containerEl.innerHTML = types.map(t => `
-        <button class="tab ${t.typeEnum === activeEnum ? "active" : ""}" data-type="${t.typeEnum}" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 10px 14px; font-size:13px; font-weight: 500;">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;" title="${escapeHtml(t.displayName)}">${escapeHtml(t.displayName)}</span>
-            <span class="chip" style="font-size:10px; padding:1px 6px; background:rgba(255,255,255,0.06); font-family:var(--mono), monospace; color: var(--text-muted); border-radius: 10px;">${t.items.length}</span>
-        </button>
-    `).join("");
-
-    containerEl.querySelectorAll("button").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            state.filters.sources.sourceType = parseInt(btn.dataset.type, 10);
-            containerEl.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
-
-            const types = resolvedSourceTypes;
-            const db = state.db;
-            if (db && types) await updateSourcesResults(db, types);
-            if (window.innerWidth <= 768 && containerEl._toggleSidebar) containerEl._toggleSidebar();
-        });
-    });
-}
-
-async function ensureSourceComplexities(db, activeType) {
-    if (activeType.sourceComplexities) return activeType.sourceComplexities;
-
-    if (activeType.items.length > 0) try {
-        await db.getItemSources(activeType.items[0]);
-    } catch (e) {
-        console.error(e);
-    }
-
-    const complexities = new Map();
-    const promises = activeType.items.map(async itemIdx => {
-        const item = db.items.get(itemIdx);
-        if (!item) return;
-
-        let sc = item.complexity;
-        try {
-            const sources = await db.getItemSources(itemIdx);
-            const matched = sources.find(s => s.sourceTypeEnum === activeType.typeEnum);
-            if (matched && isFinite(matched.estimatedCost) && matched.estimatedCost >= 0) sc = matched.estimatedCost;
-        } catch (e) {
-            console.error("Error loading source complexity for", itemIdx, e);
-        }
-        complexities.set(itemIdx, sc);
-    });
-
-    await Promise.all(promises);
-    activeType.sourceComplexities = complexities;
-    return complexities;
-}
-
-async function updateSourcesResults(db, types) {
-    if (currentListInstance) {
-        currentListInstance.destroy();
-        currentListInstance = null;
-    }
-
-    const activeEnum = state.filters.sources.sourceType;
-    const activeType = types.find(t => t.typeEnum === activeEnum);
-    if (!activeType) return;
-
-    const listContainer = document.getElementById("sources-list");
-    if (!activeType.sourceComplexities && listContainer) {
-        listContainer.innerHTML = `<div class="hint" style="padding: 20px;">Calculating source complexities…</div>`;
-    }
-
-    const sourceComplexities = await ensureSourceComplexities(db, activeType);
-
-    const f = state.filters.sources;
-    const q = (f.query || "").trim().toLowerCase();
-
-    const filteredItems = [];
-    for (const itemIndex of activeType.items) {
-        const it = db.items.get(itemIndex);
-        if (!it) continue;
-
-        if (q) {
-            const hay = (it.name + " " + it.id + " " + (it.categoryName || "")).toLowerCase();
-            if (!hay.includes(q)) continue;
-        }
-
-        const compVal = sourceComplexities.get(itemIndex) ?? it.complexity;
-        if (!passesRangeFilter(compVal, f.minComplexity, f.maxComplexity)) continue;
-        if (!passesModFilter(it, f.modsFilter)) continue;
-        if (!passesFlagsFilter(it, f.flagsFilter, ITEM_FLAG)) continue;
-
-        filteredItems.push(it);
-    }
-
-    universalSort(filteredItems, SOURCES_COLUMNS, f.sort, (item, field) => {
-        if (field === "complexity") {
-            const sc = sourceComplexities.get(item.index);
-            return isFinite(sc) ? sc : item.complexity;
-        }
-        return item[field];
-    });
-
-    const countEl = document.getElementById("sources-count");
-    if (countEl) {
-        countEl.textContent = `${fmtInt.format(filteredItems.length)} / ${fmtInt.format(activeType.items.length)} items`;
-    }
-
-    updateHeaderIndicators();
-
-    if (!listContainer) return;
-
-    currentListInstance = mountVirtualList(listContainer, {
-        itemCount: filteredItems.length,
-        itemHeight: 28,
-        emptyMessage: "No items match your filter.",
-        renderRow: (absIndex) => {
-            const it = filteredItems[absIndex];
-            const sc = sourceComplexities.get(it.index) ?? it.complexity;
-            const el = document.createElement("div");
-            el.className = "row sources-grid";
-            el.style.cursor = "pointer";
-            el.innerHTML = `
-                <span class="idx">${absIndex + 1}</span>
-                <span class="id" title="${it.id}">${it.id}</span>
-                <span title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</span>
-                <span class="num cat-${it.categoryName || "Uncalculable"}" title="${formatRawTooltip(sc)}">${formatComplexity(sc)}</span>
-                <span class="flags">${getItemFlags(it, true)}</span>
-            `;
-            el.addEventListener("click", () => selectItem(it.index));
-            return el;
-        }
-    });
 }

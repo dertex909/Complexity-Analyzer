@@ -16,25 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {debounce, escapeHtml, fmtInt, formatComplexity, getFluidFlags} from "../core/utils.js";
-import {setFilter, setState, state} from "../core/state.js";
-import {mountVirtualList} from "../components/virtual-list.js";
-import {renderFluidDetail} from "./details/fluid-detail.js";
+import {escapeHtml, fmtInt, formatComplexity, getFluidFlags} from "../core/utils.js";
+import {setState} from "../core/state.js";
 import {FLUID_FLAG} from "../core/cabin.js";
-import {setupResizableTable} from "../components/resizable-table.js";
-import {
-    generateSortControlsHtml,
-    generateTableHeader,
-    universalSort,
-    wireSortControls
-} from "../components/table-columns.js";
-import {openFilterPopover} from "../components/filter-popover.js";
-import {
-    passesCategoryFilter,
-    passesFlagsFilter,
-    passesModFilter,
-    passesRangeFilter
-} from "../components/item-filter.js";
+import {renderFluidDetail} from "./details/fluid-detail.js";
+import {renderGenericTable} from "../components/generic-table.js";
 
 const FLUIDS_COLUMNS = [
     {index: 1, label: "№", field: null, filter: null, sortable: false},
@@ -47,123 +33,16 @@ const FLUIDS_COLUMNS = [
 ];
 
 export function renderFluids(container) {
-    const db = state.db;
-    if (!db) return;
-
-    const tableConfig = setupResizableTable({
-        tableId: "fluids",
+    renderGenericTable(container, {
+        id: "fluids",
+        tableType: "fluids",
         cssVarPrefix: "--fl-col",
+        gridClass: "fluids-grid",
         columns: FLUIDS_COLUMNS,
-        db,
-        tableType: "fluids"
-    });
-
-    const f = state.filters.fluids;
-
-    container.innerHTML = `
-        <div class="controls" id="fluids-controls">
-            <input type="search" id="fluids-query" placeholder="Filter fluids by name, id or category…" value="${escapeHtml(f.query)}" autocomplete="off">
-            ${generateSortControlsHtml(FLUIDS_COLUMNS, f.sort, "fluids")}
-            <span class="flex-grow"></span>
-            <span class="chip" id="fluids-count">0 fluids</span>
-        </div>
-        <div style="overflow: hidden; flex: 0 0 auto;">
-            ${generateTableHeader(FLUIDS_COLUMNS, "fluids-grid", "fluids-head")}
-        </div>
-        <div id="fluids-list" style="flex: 1; min-height: 0; position: relative;"></div>
-    `;
-
-    wireFluidFilters(tableConfig, container);
-    updateHeaderIndicators();
-    updateFluidsView();
-}
-
-function updateHeaderIndicators() {
-    const f = state.filters.fluids;
-    const head = document.getElementById("fluids-head");
-    if (!head) return;
-
-    head.querySelectorAll(".clickable-header").forEach(hdr => {
-        const type = hdr.dataset.filter;
-        let active = false;
-        if (type === "complexity") active = f.minComplexity !== "" || f.maxComplexity !== "";
-        else if (type === "usageCount") active = f.minRecipeUsages !== "" || f.maxRecipeUsages !== "";
-        else if (type === "category") active = f.categoriesFilter.length > 0;
-        else if (type === "flags") active = f.flagsFilter.length > 0;
-        else if (type === "id") active = f.modsFilter.length > 0;
-
-        hdr.classList.toggle("filtered", active);
-    });
-}
-
-function wireFluidFilters(tableConfig, container) {
-    const onInput = debounce((key, val) => {
-        setFilter("fluids", {[key]: val});
-        updateFluidsView();
-    }, 120);
-
-    document.getElementById("fluids-query").addEventListener("input", e => onInput("query", e.target.value));
-
-    wireSortControls(container, "fluids", () => state.filters.fluids.sort, (newSort) => {
-        setFilter("fluids", {sort: newSort});
-        updateFluidsView();
-    });
-
-    const head = document.getElementById("fluids-head");
-    if (head) head.querySelectorAll(".clickable-header").forEach(hdr => {
-        hdr.addEventListener("click", (e) => {
-            if (e.target.classList.contains("col-drag-handle")) return;
-            openPopover(hdr, hdr.dataset.filter);
-        });
-    });
-
-    tableConfig.initResizers("fluids-head");
-}
-
-function openPopover(headerCell, filterType) {
-    const db = state.db;
-    const f = state.filters.fluids;
-    openFilterPopover(headerCell, filterType, "fluids", db, f, (patch) => {
-        setFilter("fluids", patch);
-        updateFluidsView();
-    });
-}
-
-function updateFluidsView() {
-    const db = state.db;
-    const f = state.filters.fluids;
-    const q = f.query.trim().toLowerCase();
-
-    updateHeaderIndicators();
-
-    const list = [];
-    for (let i = 0; i < db.fluids.count; i++) {
-        const fl = db.fluids.get(i);
-        if (!fl) continue;
-
-        if (q && !(fl.name + " " + fl.id + " " + fl.categoryName).toLowerCase().includes(q)) continue;
-
-        if (!passesModFilter(fl, f.modsFilter)) continue;
-        if (!passesCategoryFilter(fl, f.categoriesFilter)) continue;
-        if (!passesRangeFilter(fl.complexity, f.minComplexity, f.maxComplexity)) continue;
-        if (!passesRangeFilter(fl.usageCount, f.minRecipeUsages, f.maxRecipeUsages)) continue;
-        if (!passesFlagsFilter(fl, f.flagsFilter, FLUID_FLAG)) continue;
-
-        list.push(fl);
-    }
-
-    universalSort(list, FLUIDS_COLUMNS, f.sort);
-
-    document.getElementById("fluids-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.fluids.count)} fluids`;
-
-    const listContainer = document.getElementById("fluids-list");
-
-    mountVirtualList(listContainer, {
-        itemCount: list.length,
-        itemHeight: 28,
-        emptyMessage: "No fluids match your filter.",
-        renderRow: (absIndex) => {
-            const fl = list[absIndex];
+        flagEnum: FLUID_FLAG,
+        searchPlaceholder: "Filter fluids by name, id or category…",
+        entityLabel: "fluids",
+        renderRow: (fl, absIndex) => {
             const el = document.createElement("div");
             el.className = "row fluids-grid";
             el.dataset.index = fl.index;
@@ -176,11 +55,11 @@ function updateFluidsView() {
                 <span><span class="category-pill cat-${fl.categoryName || "Uncalculable"}">${fl.categoryName}</span></span>
                 <span class="flags">${getFluidFlags(fl, true)}</span>
             `;
-            el.addEventListener("click", () => {
-                setState({selectedItem: fl.index});
-                renderFluidDetail(null, fl.index);
-            });
             return el;
+        },
+        onRowClick: (fl) => {
+            setState({selectedItem: fl.index});
+            renderFluidDetail(null, fl.index);
         }
     });
 }

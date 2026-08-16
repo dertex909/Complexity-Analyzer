@@ -16,20 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {debounce, escapeHtml, fmt, fmtInt, getMobFlags} from "../core/utils.js";
-import {selectMob, setFilter, state} from "../core/state.js";
+import {escapeHtml, fmt, fmtInt, getMobFlags} from "../core/utils.js";
+import {selectMob, state} from "../core/state.js";
 import {MOB_FLAG} from "../core/cabin.js";
-import {mountVirtualList} from "../components/virtual-list.js";
 import {renderMobDetail} from "./details/mob-detail.js";
-import {setupResizableTable} from "../components/resizable-table.js";
-import {
-    generateSortControlsHtml,
-    generateTableHeader,
-    universalSort,
-    wireSortControls
-} from "../components/table-columns.js";
-import {openFilterPopover} from "../components/filter-popover.js";
-import {passesFlagsFilter, passesModFilter, passesRangeFilter} from "../components/item-filter.js";
+import {renderGenericTable} from "../components/generic-table.js";
 
 const MOBS_COLUMNS = [
     {index: 1, label: "№", field: null, filter: null, sortable: false},
@@ -45,75 +36,16 @@ const MOBS_COLUMNS = [
 ];
 
 export async function renderMobs(container) {
-    const db = state.db;
-    if (!db) return;
-
-    const tableConfig = setupResizableTable({
-        tableId: "mobs",
+    renderGenericTable(container, {
+        id: "mobs",
+        tableType: "mobs",
         cssVarPrefix: "--mob-col",
+        gridClass: "mobs-grid",
         columns: MOBS_COLUMNS,
-        db,
-        tableType: "mobs"
-    });
-
-    const f = state.filters.mobs;
-
-    container.innerHTML = `
-        <div class="controls">
-            <input type="search" id="mobs-query" placeholder="Filter mobs…" value="${escapeHtml(f.query)}" autocomplete="off">
-            ${generateSortControlsHtml(MOBS_COLUMNS, f.sort, "mobs")}
-            <span class="flex-grow"></span>
-            <span class="chip" id="mobs-count">0 mobs</span>
-        </div>
-        <div style="overflow: hidden; flex: 0 0 auto;">
-            ${generateTableHeader(MOBS_COLUMNS, "mobs-grid", "mobs-head")}
-        </div>
-        <div id="mobs-list" style="flex: 1; min-height: 0; position: relative;"></div>
-    `;
-
-    wireMobFilters(tableConfig, container);
-    updateHeaderIndicators();
-    updateMobsView();
-
-    if (state.selectedMob >= 0) await renderMobDetail(null, state.selectedMob);
-}
-
-function updateMobsView() {
-    const db = state.db;
-    const f = state.filters.mobs;
-    const q = f.query.trim().toLowerCase();
-    const list = [];
-    for (let i = 0; i < db.mobs.count; i++) {
-        const m = db.mobs.get(i);
-
-        if (q && !(m.name + " " + m.id).toLowerCase().includes(q)) continue;
-
-        if (!passesModFilter(m, f.modsFilter)) continue;
-        if (!passesFlagsFilter(m, f.flagsFilter, MOB_FLAG)) continue;
-
-        if (!passesRangeFilter(m.health, f.minHealth, f.maxHealth)) continue;
-        if (!passesRangeFilter(m.damage, f.minDamage, f.maxDamage)) continue;
-        if (!passesRangeFilter(m.armor, f.minArmor, f.maxArmor)) continue;
-        if (!passesRangeFilter(m.combatPower, f.minCombatPower, f.maxCombatPower)) continue;
-        if (!passesRangeFilter(m.dropCount, f.minDropCount, f.maxDropCount)) continue;
-        if (!passesRangeFilter(m.rarity, f.minRarity, f.maxRarity)) continue;
-
-        list.push(m);
-    }
-
-    universalSort(list, MOBS_COLUMNS, f.sort);
-
-    $("mobs-count").textContent = `${fmtInt.format(list.length)} / ${fmtInt.format(db.mobs.count)} mobs`;
-
-    updateHeaderIndicators();
-
-    const mobsList = $("mobs-list");
-    mountVirtualList(mobsList, {
-        itemCount: list.length,
-        itemHeight: 28,
-        emptyMessage: "No mobs match your filter.",
-        renderRow: (absIndex) => {
-            const m = list[absIndex];
+        flagEnum: MOB_FLAG,
+        searchPlaceholder: "Filter mobs…",
+        entityLabel: "mobs",
+        renderRow: (m, absIndex) => {
             const el = document.createElement("div");
             el.className = "row mobs-grid";
             el.innerHTML = `
@@ -128,69 +60,10 @@ function updateMobsView() {
                 <span class="num">${fmt.format(m.rarity)}</span>
                 <span class="flags">${getMobFlags(m)}</span>
             `;
-            el.addEventListener("click", () => {
-                selectMob(m.index);
-            });
             return el;
-        }
-    });
-}
-
-function wireMobFilters(tableConfig, container) {
-    const onInput = debounce((key, val) => {
-        setFilter("mobs", {[key]: val});
-        updateMobsView();
-    }, 120);
-
-    $("mobs-query").addEventListener("input", e => onInput("query", e.target.value));
-
-    wireSortControls(container, "mobs", () => state.filters.mobs.sort, (newSort) => {
-        setFilter("mobs", {sort: newSort});
-        updateMobsView();
+        },
+        onRowClick: (m) => selectMob(m.index)
     });
 
-    const head = document.getElementById("mobs-head");
-    if (head) head.querySelectorAll(".clickable-header").forEach(hdr => {
-        hdr.addEventListener("click", (e) => {
-            if (e.target.classList.contains("col-drag-handle")) return;
-            openPopover(hdr, hdr.dataset.filter);
-        });
-    });
-
-    tableConfig.initResizers("mobs-head");
-}
-
-function openPopover(headerCell, filterType) {
-    const db = state.db;
-    const f = state.filters.mobs;
-    openFilterPopover(headerCell, filterType, "mobs", db, f, (patch) => {
-        setFilter("mobs", patch);
-        updateMobsView();
-    });
-}
-
-function $(id) {
-    return document.getElementById(id);
-}
-
-function updateHeaderIndicators() {
-    const f = state.filters.mobs;
-    const head = document.getElementById("mobs-head");
-    if (!head) return;
-
-    MOBS_COLUMNS.forEach(col => {
-        if (!col.filter) return;
-        let isFiltered = false;
-        if (col.filter === "id") isFiltered = f.modsFilter && f.modsFilter.length > 0;
-        else if (col.filter === "health") isFiltered = f.minHealth !== "" || f.maxHealth !== "";
-        else if (col.filter === "damage") isFiltered = f.minDamage !== "" || f.maxDamage !== "";
-        else if (col.filter === "armor") isFiltered = f.minArmor !== "" || f.maxArmor !== "";
-        else if (col.filter === "combatPower") isFiltered = f.minCombatPower !== "" || f.maxCombatPower !== "";
-        else if (col.filter === "dropCount") isFiltered = f.minDropCount !== "" || f.maxDropCount !== "";
-        else if (col.filter === "rarity") isFiltered = f.minRarity !== "" || f.maxRarity !== "";
-        else if (col.filter === "flags") isFiltered = f.flagsFilter && f.flagsFilter.length > 0;
-
-        const el = head.querySelector(`[data-filter="${col.filter}"]`);
-        if (el) el.classList.toggle("filtered", isFiltered);
-    });
+    if (state.selectedMob >= 0) await renderMobDetail(null, state.selectedMob);
 }

@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+const STORAGE_VERSION = 4;
+
 let activePopover = null;
 
 document.addEventListener("click", (e) => {
@@ -73,18 +75,16 @@ function normalizeWidths(widths, columnCount) {
 }
 
 function calculateInitialWidths(config) {
-    const columnCount = config.columnCount;
+    const cols = config.columns || [];
+    const columnCount = cols.length || config.columnCount || 1;
     const pixelWidths = calculateDynamicMinWidths(config);
 
-    const nameColIndex = config.tableId === "mobs" ? 2 : 3;
-    if (pixelWidths[nameColIndex] !== undefined) pixelWidths[nameColIndex] = Math.max(pixelWidths[nameColIndex], 150);
-
-    let totalMinWidth = 0;
-    for (let i = 1; i <= columnCount; i++) totalMinWidth += pixelWidths[i] || 40;
+    let totalWeight = 0;
+    for (let i = 1; i <= columnCount; i++) totalWeight += pixelWidths[i] || 40;
 
     const percentages = {};
     for (let i = 1; i <= columnCount; i++) {
-        const pct = ((pixelWidths[i] || 40) / totalMinWidth) * 100;
+        const pct = ((pixelWidths[i] || 40) / totalWeight) * 100;
         percentages[i] = `${pct}%`;
     }
 
@@ -96,13 +96,13 @@ export function loadColumnWidths(tableId, config, cssVarPrefix) {
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.includes("col-width-pct") && !key.includes("-v2-")) keysToRemove.push(key);
+        if (key && key.includes("col-width-pct") && !key.includes(`-${STORAGE_VERSION}-`)) keysToRemove.push(key);
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
 
-    const storageKey = `${tableId}-v2-col-width-pct`;
-    const columnCount = config.columnCount;
-
+    const storageKey = `${tableId}-${STORAGE_VERSION}-col-width-pct`;
+    const cols = config.columns || [];
+    const columnCount = cols.length || config.columnCount || 1;
     const initialWidths = calculateInitialWidths(config);
 
     let sum = 0;
@@ -128,48 +128,67 @@ export function loadColumnWidths(tableId, config, cssVarPrefix) {
 }
 
 export function calculateDynamicMinWidths(config) {
-    const {db, tableType, columnCount} = config;
+    const {db, tableType, columns, columnCount} = config;
+    const cols = columns || [];
+    const count = cols.length || columnCount || 1;
     const mins = {};
+    const totalRows = (db && tableType && db[tableType]) ? db[tableType].count : 0;
+    const sampleSize = Math.min(totalRows, 80);
 
-    for (let i = 1; i <= columnCount; i++) mins[i] = 40;
-    if (!db) return mins;
+    for (let i = 1; i <= count; i++) {
+        const col = cols[i - 1] || {};
+        const label = col.label || "";
+        const field = col.field;
+        const isNumeric = col.numeric || false;
+        const isMono = field === "id" || field === "complexity" || field === "combatPower";
 
-    const count = db[tableType].count;
-    const text_1 = String(count);
-    const w_1 = measureTextWidth(text_1, false) + 24;
-    mins[1] = Math.max(mins[1], Math.ceil(w_1));
+        let maxContentWidth = measureTextWidth(label, false) + (col.filter ? 32 : 18);
 
-    const nameColIndex = config.tableId === "mobs" ? 2 : 3;
-    const idColIndex = config.tableId === "mobs" ? 3 : 2;
-
-    const w_id = measureTextWidth("ID", false) + 32;
-    mins[idColIndex] = Math.max(mins[idColIndex], Math.ceil(w_id));
-
-    mins[nameColIndex] = Math.max(mins[nameColIndex], 24);
-
-    if (config.headingColumns) config.headingColumns.forEach(({index, label}) => {
-        const w = measureTextWidth(label, false) + 32;
-        mins[index] = Math.max(mins[index], Math.ceil(w));
-    });
-
-    if (config.flagsColumn) {
-        const {index, flagChecks} = config.flagsColumn;
-        let maxFlags = 1;
-
-        for (let i = 0; i < count; i++) {
-            const item = db[tableType].get(i);
-            if (!item) continue;
-            let fc = 0;
-            const f = item.flags;
-            flagChecks.forEach(check => {
-                if (check(f, item, db)) fc++;
-            });
-            if (fc > maxFlags) maxFlags = fc;
+        if (label === "№" || (!field && i === 1)) {
+            const rowNumWidth = measureTextWidth(String(totalRows || 9999), false) + 20;
+            mins[i] = Math.max(38, Math.ceil(Math.max(maxContentWidth, rowNumWidth)));
+            continue;
         }
 
-        const headingWidth = measureTextWidth("Flags", false) + 28;
-        const contentWidth = maxFlags * 16 + Math.max(0, maxFlags - 1) * 3 + 24;
-        mins[index] = Math.max(headingWidth, contentWidth);
+        if (field === "flags" || label.toLowerCase().includes("flag")) {
+            mins[i] = Math.max(52, Math.ceil(maxContentWidth));
+            continue;
+        }
+
+        if (field === "categoryName" || label.toLowerCase().includes("category")) {
+            mins[i] = Math.max(85, Math.ceil(maxContentWidth + 14));
+            continue;
+        }
+
+        if (totalRows > 0 && field) {
+            for (let s = 0; s < sampleSize; s++) {
+                const entity = db[tableType].get(s);
+                if (!entity) continue;
+                const val = entity[field];
+                if (val !== undefined && val !== null) {
+                    let text = String(val);
+                    if (typeof val === "number") {
+                        if (field === "complexity") {
+                            text = val >= 1e6 ? val.toExponential(2) : String(Math.round(val * 100) / 100);
+                        } else {
+                            text = String(Math.round(val * 100) / 100);
+                        }
+                    }
+                    const sampleW = measureTextWidth(text, isMono) + 20;
+                    if (sampleW > maxContentWidth) maxContentWidth = sampleW;
+                }
+            }
+        }
+
+        if (field === "name" || label.toLowerCase().includes("name")) {
+            mins[i] = Math.max(200, Math.ceil(maxContentWidth * 1.25));
+        } else if (field === "id") {
+            mins[i] = Math.min(300, Math.max(150, Math.ceil(maxContentWidth + 16)));
+        } else if (isNumeric) {
+            mins[i] = Math.min(140, Math.max(48, Math.ceil(maxContentWidth + 10)));
+        } else {
+            mins[i] = Math.max(55, Math.ceil(maxContentWidth + 12));
+        }
     }
 
     return mins;
@@ -181,7 +200,7 @@ export function initColumnResizers(headId, tableId, cssVarPrefix, defaults, getM
 
     const handles = head.querySelectorAll(".col-drag-handle");
     const columnCount = parseInt(head.dataset.columnCount) || 7;
-    const storageKey = `${tableId}-v2-col-width-pct`;
+    const storageKey = `${tableId}-${STORAGE_VERSION}-col-width-pct`;
 
     handles.forEach(handle => {
         handle.addEventListener("pointerdown", (e) => {
@@ -260,8 +279,8 @@ export function initColumnResizers(headId, tableId, cssVarPrefix, defaults, getM
 }
 
 export function setupResizableTable(config) {
-    if (!config.tableId || !config.cssVarPrefix || !config.columnCount) {
-        throw new Error("setupResizableTable requires tableId, cssVarPrefix, and columnCount");
+    if (!config.tableId || !config.cssVarPrefix) {
+        throw new Error("setupResizableTable requires tableId and cssVarPrefix");
     }
 
     loadColumnWidths(config.tableId, config, config.cssVarPrefix);

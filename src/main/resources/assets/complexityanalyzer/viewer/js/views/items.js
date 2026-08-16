@@ -62,23 +62,7 @@ export function renderItems(container) {
     const tableConfig = setupResizableTable({
         tableId: "items",
         cssVarPrefix: "--col",
-        columnCount: ITEMS_COLUMNS.length,
-        headingColumns: [
-            {index: 4, label: "Complexity"},
-            {index: 5, label: "Depth"},
-            {index: 6, label: "Total Ingredients"},
-            {index: 7, label: "Usage"},
-            {index: 8, label: "Category"}
-        ],
-        flagsColumn: {
-            index: 9,
-            flagChecks: [
-                (f, it, db) => db ? db.isMachine(it.index) : false,
-                f => f & ITEM_FLAG.IS_UNCALCULABLE,
-                f => !(f & ITEM_FLAG.HAS_RECIPE),
-                f => f & ITEM_FLAG.IS_HARDCODED
-            ]
-        },
+        columns: ITEMS_COLUMNS,
         db,
         tableType: "items"
     });

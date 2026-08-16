@@ -53,20 +53,7 @@ export function renderFluids(container) {
     const tableConfig = setupResizableTable({
         tableId: "fluids",
         cssVarPrefix: "--fl-col",
-        columnCount: FLUIDS_COLUMNS.length,
-        headingColumns: [
-            {index: 4, label: "Complexity"},
-            {index: 5, label: "Usage"},
-            {index: 6, label: "Category"}
-        ],
-        flagsColumn: {
-            index: 7,
-            flagChecks: [
-                f => f & FLUID_FLAG.IS_UNCALCULABLE,
-                f => !(f & FLUID_FLAG.HAS_RECIPE),
-                f => f & FLUID_FLAG.IS_PROTECTED
-            ]
-        },
+        columns: FLUIDS_COLUMNS,
         db,
         tableType: "fluids"
     });

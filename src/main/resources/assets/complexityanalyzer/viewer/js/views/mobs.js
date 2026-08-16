@@ -51,22 +51,7 @@ export async function renderMobs(container) {
     const tableConfig = setupResizableTable({
         tableId: "mobs",
         cssVarPrefix: "--mob-col",
-        columnCount: MOBS_COLUMNS.length,
-        headingColumns: [
-            {index: 4, label: "HP"},
-            {index: 5, label: "Dmg"},
-            {index: 6, label: "Armor"},
-            {index: 7, label: "Combat"},
-            {index: 8, label: "Drops"},
-            {index: 9, label: "Rarity"}
-        ],
-        flagsColumn: {
-            index: 10,
-            flagChecks: [
-                f => f & MOB_FLAG.BOSS,
-                f => f & MOB_FLAG.MINIBOSS
-            ]
-        },
+        columns: MOBS_COLUMNS,
         db,
         tableType: "mobs"
     });

@@ -146,19 +146,7 @@ export async function renderSources(container) {
     const tableConfig = setupResizableTable({
         tableId: "sources",
         cssVarPrefix: "--src-col",
-        columnCount: SOURCES_COLUMNS.length,
-        headingColumns: [
-            {index: 4, label: "Complexity"}
-        ],
-        flagsColumn: {
-            index: 5,
-            flagChecks: [
-                (f, it, db) => db ? db.isMachine(it.index) : false,
-                f => f & ITEM_FLAG.IS_UNCALCULABLE,
-                f => !(f & ITEM_FLAG.HAS_RECIPE),
-                f => f & ITEM_FLAG.IS_HARDCODED
-            ]
-        },
+        columns: SOURCES_COLUMNS,
         db,
         tableType: "items"
     });

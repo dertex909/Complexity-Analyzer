@@ -69,21 +69,35 @@ public final class MachineAsmScanner {
         if (!MachineTypeUnwrapper.curClsValid(clazz) || !visitedClasses.add(clazz.getName())) return;
 
         try (var is = getClassInputStream(clazz, clazz.getName())) {
-            if (is == null) return;
-
-            var cn = new ClassNode();
-            new ClassReader(is).accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-
-            scanStaticFields(cn, outRefs);
-            scanReferencedMenus(clazz, cn, visitedClasses, outRefs);
+            if (is != null) {
+                var cn = new ClassNode();
+                new ClassReader(is).accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+                scanStaticFields(cn, outRefs);
+                scanClassMethodBytecode(cn, outRefs);
+                scanReferencedMenus(clazz, cn, visitedClasses, outRefs);
+            }
         } catch (Throwable ignored) {
         }
+
+        var superCls = clazz.getSuperclass();
+        if (MachineTypeUnwrapper.curClsValid(superCls)) findRecipeTypeReferencesASM(superCls, visitedClasses, outRefs);
     }
 
     private static void scanStaticFields(ClassNode cn, ObjectList<StaticFieldRef> outRefs) {
         for (var field : cn.fields) {
             if ((field.access & Modifier.STATIC) != 0 && isPotentialRecipeTypeDescriptor(field.desc)) {
                 tryAddRecipeRef(cn.name, field.name, outRefs);
+            }
+        }
+    }
+
+    private static void scanClassMethodBytecode(ClassNode cn, ObjectList<StaticFieldRef> outRefs) {
+        for (var method : cn.methods) {
+            if (method.instructions == null) continue;
+            for (var insn : method.instructions) {
+                if (insn instanceof FieldInsnNode f && isPotentialRecipeTypeDescriptor(f.desc)) {
+                    tryAddRecipeRef(f.owner, f.name, outRefs);
+                }
             }
         }
     }
@@ -132,18 +146,9 @@ public final class MachineAsmScanner {
     private static void scanMenuBytecode(Class<?> menuClass, String menuClassName, ObjectList<StaticFieldRef> outRefs) {
         try (var is = getClassInputStream(menuClass, menuClassName)) {
             if (is == null) return;
-
             var cn = new ClassNode();
             new ClassReader(is).accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-
-            for (var method : cn.methods) {
-                if (method.instructions == null) continue;
-                for (var insn : method.instructions) {
-                    if (insn instanceof FieldInsnNode f && isPotentialRecipeTypeDescriptor(f.desc)) {
-                        tryAddRecipeRef(f.owner, f.name, outRefs);
-                    }
-                }
-            }
+            scanClassMethodBytecode(cn, outRefs);
         } catch (Throwable ignored) {
         }
     }
@@ -171,7 +176,8 @@ public final class MachineAsmScanner {
     private static boolean isPotentialRecipeTypeDescriptor(@Nullable String desc) {
         if (desc == null) return false;
         return desc.contains("RecipeType") || desc.contains("Holder") || desc.contains("Supplier")
-                || desc.contains("DeferredHolder") || desc.contains("RegistryObject");
+                || desc.contains("DeferredHolder") || desc.contains("RegistryObject")
+                || desc.contains("IRecipeTypeInfo") || desc.contains("AllRecipeTypes");
     }
 
     @Nullable

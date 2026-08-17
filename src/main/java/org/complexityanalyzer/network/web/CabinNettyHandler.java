@@ -20,7 +20,6 @@ package org.complexityanalyzer.network.web;
 
 import com.google.gson.JsonObject;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
@@ -37,6 +36,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static io.netty.channel.ChannelFutureListener.CLOSE;
 import static io.netty.util.CharsetUtil.UTF_8;
 
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
@@ -247,7 +247,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             ctx.writeAndFlush(response);
         } else {
             response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
-            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+            ctx.writeAndFlush(response).addListener(CLOSE);
         }
     }
 }

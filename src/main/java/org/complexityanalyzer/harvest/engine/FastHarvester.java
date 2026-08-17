@@ -77,7 +77,6 @@ public final class FastHarvester {
 
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
-                    if (!apiResult.isEmpty() && apiResult.getItem() != AIR) outputItems.add(apiResult.copy());
                 } catch (Throwable ignored) {
                 }
 
@@ -88,18 +87,22 @@ public final class FastHarvester {
                             var fieldValue = (ItemStack) f.get(recipe);
                             if (fieldValue != null && !fieldValue.isEmpty() && fieldValue.getItem() != AIR) {
                                 apiResult = fieldValue;
-                                outputItems.add(fieldValue.copy());
                                 break;
                             }
                         } catch (Throwable ignored2) {
                         }
                     }
                 }
+
+                if (isVanillaRecipe && !apiResult.isEmpty() && apiResult.getItem() != AIR) {
+                    outputItems.add(apiResult.copy());
+                }
             }
 
             var apiResultItem = apiResult.isEmpty() ? null : apiResult.getItem();
             if (!isVanillaRecipe) {
                 var accessors = RecipeMetadata.getFastAccessors(recipe.getClass());
+                var containerOutputs = new ObjectArrayList<ItemStack>();
 
                 for (var acc : accessors.itemAccessors()) {
                     try {
@@ -176,7 +179,7 @@ public final class FastHarvester {
                                 var visitedSecondary = session.visitedSecondary;
                                 visitedSecondary.clear();
                                 DeepItemCollector.collect(raw, tempItems, 0, visitedSecondary);
-                                outputItems.addAll(tempItems);
+                                containerOutputs.addAll(tempItems);
                                 visitedSecondary.clear();
                                 DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
                             } else {
@@ -185,6 +188,11 @@ public final class FastHarvester {
                         }
                     } catch (Throwable ignored) {
                     }
+                }
+
+                if (!containerOutputs.isEmpty()) {
+                    outputItems.clear();
+                    outputItems.addAll(containerOutputs);
                 }
 
                 if (inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty() && inputFluids.isEmpty() && outputFluids.isEmpty()) {
@@ -199,10 +207,17 @@ public final class FastHarvester {
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                 }
             }
-            if (outputItems.isEmpty() && recipe instanceof Recipe<?> r) try {
-                var res = r.getResultItem(level.registryAccess());
-                if (!res.isEmpty() && res.getItem() != AIR) outputItems.add(res.copy());
-            } catch (Throwable ignored) {
+
+            if (outputItems.isEmpty()) {
+                if (!apiResult.isEmpty() && apiResult.getItem() != AIR) {
+                    outputItems.add(apiResult.copy());
+                } else if (recipe instanceof Recipe<?> r) {
+                    try {
+                        var res = r.getResultItem(level.registryAccess());
+                        if (!res.isEmpty() && res.getItem() != AIR) outputItems.add(res.copy());
+                    } catch (Throwable ignored) {
+                    }
+                }
             }
 
             if (!transitional.isEmpty()) {

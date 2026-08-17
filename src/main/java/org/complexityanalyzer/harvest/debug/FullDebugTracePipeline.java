@@ -50,7 +50,7 @@ import static java.util.Locale.ROOT;
 import static net.minecraft.world.item.Items.AIR;
 
 public final class FullDebugTracePipeline {
-    public static final boolean DEBUG_ENABLED = true;
+    public static final boolean DEBUG_ENABLED = false;
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 

@@ -708,47 +708,6 @@ input[type="search"] {
     color: var(--accent);
 }
 
-.search-results {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.search-result {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.search-result:hover {
-    background-color: var(--bg-hover);
-}
-
-.search-result .kind {
-    font-size: 10px;
-    color: var(--text-dim);
-    padding: 2px 6px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    text-transform: uppercase;
-}
-
-.search-result .name {
-    flex: 1;
-    margin: 0 10px;
-}
-
-.search-result .id {
-    font-family: var(--mono), monospace;
-    color: var(--text-dim);
-    font-size: 12px;
-}
-
 .variant-group {
     display: inline-block;
     position: relative;

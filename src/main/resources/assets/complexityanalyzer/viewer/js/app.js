@@ -17,7 +17,7 @@
  */
 
 import {CabinDatabase} from "./core/db.js";
-import {selectItem, selectMob, setState, state, store, switchTab} from "./core/state.js";
+import {selectItem, selectMob, setState, state, store} from "./core/state.js";
 import {initRouter, renderTabs} from "./core/router.js";
 import {renderOverview} from "./views/overview.js";
 import {renderItems} from "./views/items.js";
@@ -165,7 +165,6 @@ async function main() {
     initSidebarToggle();
     renderTabs();
     renderCurrentTab();
-    setupGlobalSearch();
     startLiveUpdates(token);
 }
 
@@ -332,100 +331,6 @@ function startLiveUpdates(token) {
     }
 
     connect();
-}
-
-function setupGlobalSearch() {
-    const overlay = document.getElementById("search-overlay");
-    const input = document.getElementById("global-search");
-    const results = document.getElementById("search-results-overlay");
-    if (!overlay || !input || !results) return;
-
-    window.addEventListener("keydown", e => {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-            e.preventDefault();
-            overlay.hidden = false;
-            input.focus();
-            input.select();
-        } else if (e.key === "Escape" && !overlay.hidden) {
-            overlay.hidden = true;
-            input.blur();
-        }
-    });
-
-    overlay.addEventListener("click", e => {
-        if (e.target === overlay) overlay.hidden = true;
-    });
-
-    input.addEventListener("input", debounce(() => {
-        const q = input.value.trim().toLowerCase();
-        if (q.length < 2) {
-            results.innerHTML = "";
-            return;
-        }
-        const matched = [];
-        const db = state.db;
-        for (let i = 0; i < db.items.count && matched.length < 100; i++) {
-            const it = db.items.get(i);
-            if (it && (it.name + " " + it.id).toLowerCase().includes(q)) {
-                matched.push({kind: "item", name: it.name, id: it.id, index: i});
-            }
-        }
-        for (let i = 0; i < db.fluids.count && matched.length < 150; i++) {
-            const fl = db.fluids.get(i);
-            if (fl && (fl.name + " " + fl.id).toLowerCase().includes(q)) {
-                matched.push({kind: "fluid", name: fl.name, id: fl.id, index: i});
-            }
-        }
-        for (let i = 0; i < db.mobs.count && matched.length < 200; i++) {
-            const m = db.mobs.get(i);
-            if (m && (m.name + " " + m.id).toLowerCase().includes(q)) {
-                matched.push({kind: "mob", name: m.name, id: m.id, index: i});
-            }
-        }
-        results.innerHTML = matched.map(m => `
-            <div class="search-result" data-kind="${m.kind}" data-index="${m.index}">
-                <span class="kind">${m.kind}</span>
-                <span class="name">${escapeHtml(m.name)}</span>
-                <span class="id">${escapeHtml(m.id)}</span>
-            </div>
-        `).join("");
-    }, 120));
-
-    results.addEventListener("click", e => {
-        const item = e.target.closest(".search-result");
-        if (!item) return;
-        const index = parseInt(item.dataset.index, 10);
-        overlay.hidden = true;
-        if (item.dataset.kind === "item") {
-            switchTab("items");
-            selectItem(index);
-        } else if (item.dataset.kind === "fluid") {
-            switchTab("fluids");
-            setState({selectedItem: index});
-            renderFluidDetail(null, index);
-        } else {
-            switchTab("mobs");
-            selectMob(index);
-        }
-    });
-}
-
-function debounce(fn, ms) {
-    let t;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
-    };
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    })[c]);
 }
 
 function initSidebarResizer() {

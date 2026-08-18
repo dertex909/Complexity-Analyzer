@@ -87,9 +87,8 @@ export function openFilterPopover(headerCell, filterType, viewName, db, f, onFil
         }, debounce);
 
     } else if (filterType === "category") {
-        const categoriesSet = new Set(db.categories.map(c => c.name));
-        categoriesSet.add("Uncalculable");
-        const categoriesList = Array.from(categoriesSet).sort();
+        const categoriesList = (db.categories || []).map(c => c.name);
+        if (!categoriesList.includes("Uncalculable")) categoriesList.push("Uncalculable");
 
         pop.innerHTML = `
             <button class="popover-reset" id="filter-reset-btn">Select All (Reset)</button>

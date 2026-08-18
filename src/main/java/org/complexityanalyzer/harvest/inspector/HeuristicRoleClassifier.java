@@ -32,6 +32,9 @@ import java.util.Set;
 
 public final class HeuristicRoleClassifier {
 
+    private static final String METHOD_GET_RESULT_ITEM = MethodRefUtils.getRecipeResultItemName(Recipe::getResultItem);
+    private static final String METHOD_GET_INGREDIENTS = MethodRefUtils.getMethodName(Recipe.class, Recipe::getIngredients);
+
     private HeuristicRoleClassifier() {
     }
 
@@ -39,14 +42,14 @@ public final class HeuristicRoleClassifier {
                                               Item anchorItem, Set<Ingredient> standardInputs) {
         if (raw == null) return RoleClassification.UNKNOWN;
 
-        if (recipe instanceof Recipe<?> && "method".equals(accessorType)) switch (accessorName) {
-            case "getResultItem", "getResult", "getOutput" -> {
+        if (recipe instanceof Recipe<?> && "method".equals(accessorType)) {
+            if (accessorName.equals(METHOD_GET_RESULT_ITEM) || "getResult".equals(accessorName) || "getOutput".equals(accessorName)) {
                 return new RoleClassification(Role.OUTPUT, 100,
                         ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
                         ObjectLists.singleton("Standard output method")
                 );
             }
-            case "getIngredients", "getInputs" -> {
+            if (accessorName.equals(METHOD_GET_INGREDIENTS) || "getInputs".equals(accessorName)) {
                 return new RoleClassification(Role.INPUT, 100,
                         ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
                         ObjectLists.singleton("Standard input method")
@@ -107,17 +110,16 @@ public final class HeuristicRoleClassifier {
     }
 
     public static RoleClassification classifyMethod(java.lang.reflect.Method method) {
-        switch (method.getName()) {
-            case "getResultItem", "getResult", "getOutput" -> {
-                return new RoleClassification(Role.OUTPUT, 90,
-                        ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard output")
-                );
-            }
-            case "getIngredients", "getInputs" -> {
-                return new RoleClassification(Role.INPUT, 90,
-                        ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard input")
-                );
-            }
+        String name = method.getName();
+        if (name.equals(METHOD_GET_RESULT_ITEM) || "getResult".equals(name) || "getOutput".equals(name)) {
+            return new RoleClassification(Role.OUTPUT, 90,
+                    ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard output")
+            );
+        }
+        if (name.equals(METHOD_GET_INGREDIENTS) || "getInputs".equals(name)) {
+            return new RoleClassification(Role.INPUT, 90,
+                    ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard input")
+            );
         }
         return RoleClassification.UNKNOWN;
     }

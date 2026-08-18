@@ -43,6 +43,7 @@ public final class RecipeMetadata {
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
     private static final ConcurrentHashMap<Class<?>, FastAccessors> FAST_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
     private static final ConcurrentHashMap<Class<?>, UniversalAccessors> UNIVERSAL_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
+    private static final String METHOD_GET_TOAST_SYMBOL = MethodRefUtils.getMethodName(Recipe.class, Recipe::getToastSymbol);
 
     private RecipeMetadata() {
     }
@@ -396,7 +397,7 @@ public final class RecipeMetadata {
                 for (var m : methods) {
                     if (m.getParameterCount() > 1) continue;
                     if (Modifier.isStatic(m.getModifiers())) continue;
-                    if (m.getName().equals("getToastSymbol")) continue;
+                    if (m.getName().equals(METHOD_GET_TOAST_SYMBOL)) continue;
                     var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;
                     if (rt.isPrimitive()) continue;

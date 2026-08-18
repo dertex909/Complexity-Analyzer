@@ -33,6 +33,7 @@ import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +44,46 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
     private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
     private static final Set<String> uniqueVisitors = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Map<String, String> MIME_TYPES = new ConcurrentHashMap<>();
     private static volatile String cachedToken = null;
+
+    static {
+        registerMimeType(".html", "text/html; charset=UTF-8");
+        registerMimeType(".js", "text/javascript; charset=UTF-8");
+        registerMimeType(".mjs", "text/javascript; charset=UTF-8");
+        registerMimeType(".css", "text/css; charset=UTF-8");
+        registerMimeType(".wasm", "application/wasm");
+        registerMimeType(".json", "application/json");
+        registerMimeType(".xml", "application/xml; charset=UTF-8");
+        registerMimeType(".txt", "text/plain; charset=UTF-8");
+        registerMimeType(".csv", "text/csv; charset=UTF-8");
+        registerMimeType(".yml", "text/yaml; charset=UTF-8");
+        registerMimeType(".yaml", "text/yaml; charset=UTF-8");
+        registerMimeType(".ico", "image/x-icon");
+        registerMimeType(".png", "image/png");
+        registerMimeType(".jpg", "image/jpeg");
+        registerMimeType(".jpeg", "image/jpeg");
+        registerMimeType(".svg", "image/svg+xml");
+        registerMimeType(".webp", "image/webp");
+        registerMimeType(".gif", "image/gif");
+        registerMimeType(".woff2", "font/woff2");
+        registerMimeType(".woff", "font/woff");
+        registerMimeType(".ttf", "font/ttf");
+        registerMimeType(".otf", "font/otf");
+        registerMimeType(".ogg", "audio/ogg");
+        registerMimeType(".mp3", "audio/mpeg");
+        registerMimeType(".wav", "audio/wav");
+        registerMimeType(".gltf", "model/gltf+json");
+        registerMimeType(".glb", "model/gltf-binary");
+        registerMimeType(".zip", "application/zip");
+    }
+
+    public static void registerMimeType(String extension, String mimeType) {
+        if (extension == null || mimeType == null) return;
+        String ext = extension.toLowerCase();
+        if (!ext.startsWith(".")) ext = "." + ext;
+        MIME_TYPES.put(ext, mimeType);
+    }
 
     public static long getVisitorCount() {
         return uniqueVisitors.size();
@@ -102,6 +142,17 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return String.valueOf(ctx.channel().remoteAddress());
     }
 
+    public static String getMimeType(String path) {
+        if (path == null) return "application/octet-stream";
+        int dotIndex = path.lastIndexOf('.');
+        if (dotIndex != -1) {
+            String ext = path.substring(dotIndex).toLowerCase();
+            String mime = MIME_TYPES.get(ext);
+            if (mime != null) return mime;
+        }
+        return "application/octet-stream";
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
         boolean keepAlive = HttpUtil.isKeepAlive(request);
@@ -128,9 +179,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
         if (path.isEmpty() || path.equals("/")) path = "/index.html";
 
-        if (path.equals("/index.html")) {
-            serveResource(ctx, "/index.html", "text/html; charset=UTF-8", keepAlive);
-        } else if (path.equals("/api/meta")) {
+        if (path.equals("/api/meta")) {
             handleMeta(ctx, keepAlive);
         } else if (path.equals("/api/cabin")) {
             handleCabin(ctx, keepAlive);
@@ -209,18 +258,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         } catch (Exception e) {
             sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
         }
-    }
-
-    private String getMimeType(String path) {
-        if (path.endsWith(".html")) return "text/html; charset=UTF-8";
-        if (path.endsWith(".js")) return "application/javascript; charset=UTF-8";
-        if (path.endsWith(".css")) return "text/css; charset=UTF-8";
-        if (path.endsWith(".json")) return "application/json; charset=UTF-8";
-        if (path.endsWith(".ico")) return "image/x-icon";
-        if (path.endsWith(".png")) return "image/png";
-        if (path.endsWith(".svg")) return "image/svg+xml";
-        if (path.endsWith(".wasm")) return "application/wasm";
-        return "application/octet-stream";
     }
 
     private void sendResponse(ChannelHandlerContext ctx, String content, boolean keepAlive) {

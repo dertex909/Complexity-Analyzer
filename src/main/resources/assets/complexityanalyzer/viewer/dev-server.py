@@ -14,14 +14,93 @@ import hashlib
 import http.server
 import json
 import os
+import socket
 import struct
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
 PORT = 8080
 VIEWER_DIR = Path(__file__).parent.resolve()
+
+def free_port(port: int):
+    """Forcefully terminates any process occupying the given port and waits until free."""
+    current_pid = os.getpid()
+    pids = set()
+
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+            iphlpapi = ctypes.windll.iphlpapi
+            kernel32 = ctypes.windll.kernel32
+
+            size = wintypes.DWORD(0)
+            iphlpapi.GetExtendedTcpTable(None, ctypes.byref(size), False, 2, 5, 0)
+            if size.value > 0:
+                buf = ctypes.create_string_buffer(size.value)
+                if iphlpapi.GetExtendedTcpTable(buf, ctypes.byref(size), False, 2, 5, 0) == 0:
+                    num_entries = struct.unpack_from("<I", buf.raw, 0)[0]
+                    offset = 4
+                    for _ in range(num_entries):
+                        _, _, l_port, _, _, pid = struct.unpack_from("<IIIIII", buf.raw, offset)
+                        offset += 24
+                        entry_port = ((l_port & 0xFF) << 8) | ((l_port >> 8) & 0xFF)
+                        if entry_port == port and pid != 0 and pid != current_pid:
+                            pids.add(pid)
+
+            size_v6 = wintypes.DWORD(0)
+            iphlpapi.GetExtendedTcpTable(None, ctypes.byref(size_v6), False, 23, 5, 0)
+            if size_v6.value > 0:
+                buf_v6 = ctypes.create_string_buffer(size_v6.value)
+                if iphlpapi.GetExtendedTcpTable(buf_v6, ctypes.byref(size_v6), False, 23, 5, 0) == 0:
+                    num_entries = struct.unpack_from("<I", buf_v6.raw, 0)[0]
+                    offset = 4
+                    for _ in range(num_entries):
+                        l_port = struct.unpack_from(">H", buf_v6.raw, offset + 20)[0]
+                        pid = struct.unpack_from("<I", buf_v6.raw, offset + 52)[0]
+                        offset += 56
+                        if l_port == port and pid != 0 and pid != current_pid:
+                            pids.add(pid)
+
+            for pid in pids:
+                print(f"→ Killing previous process PID {pid} on port {port}...")
+                handle = kernel32.OpenProcess(0x0001, False, pid)
+                if handle:
+                    kernel32.TerminateProcess(handle, 1)
+                    kernel32.CloseHandle(handle)
+        except Exception:
+            pass
+
+    else:
+        try:
+            subprocess.run(["fuser", "-k", "-9", f"{port}/tcp"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        try:
+            out = subprocess.check_output(["lsof", "-ti", f":{port}"], text=True, stderr=subprocess.DEVNULL)
+            for pid_str in out.strip().split():
+                if pid_str.isdigit() and int(pid_str) != current_pid:
+                    pids.add(int(pid_str))
+        except Exception:
+            pass
+        for pid in pids:
+            print(f"→ Killing process PID {pid} on port {port}...")
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                pass
+
+    for _ in range(30):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("", port))
+                return
+            except OSError:
+                time.sleep(0.1)
 
 def get_project_root() -> Path:
     """Find the root directory of the Gradle project by looking for build.gradle."""
@@ -35,11 +114,7 @@ PROJECT_ROOT = get_project_root()
 SAVES_DIR = Path(os.environ.get("COMPLEXITY_SAVES_DIR", PROJECT_ROOT / "run" / "saves"))
 
 def find_cabin_path():
-    """Locate the newest latest.cabin across all world saves.
-
-    Auto-discovery means the dev server keeps working when the world is renamed
-    or a new world is created, without editing this file.
-    """
+    """Locate the newest latest.cabin across all world saves."""
     if not SAVES_DIR.is_dir():
         return None
     candidates = list(SAVES_DIR.glob("*/data/complexityanalyzer/cabin/latest.cabin"))
@@ -89,11 +164,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def _serve_ws(self):
-        """Minimal WebSocket endpoint: handshake, then push the cabin file hash on connect and on change.
-
-        The server watches the file itself (server-side), so the browser uses a pure WebSocket with no
-        polling — same contract as the in-game Netty server.
-        """
         key = self.headers.get("Sec-WebSocket-Key")
         if not key:
             self.send_error(400, "Missing Sec-WebSocket-Key")
@@ -170,16 +240,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+class DevServer(http.server.ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
 if __name__ == "__main__":
-    import sys
-    from http.server import ThreadingHTTPServer
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
 
+    free_port(PORT)
     cabin = find_cabin_path()
-    with ThreadingHTTPServer(("", PORT), Handler) as httpd:
+    with DevServer(("", PORT), Handler) as httpd:
         print(f"→ Project root: {PROJECT_ROOT}")
         print(f"→ Saves directory: {SAVES_DIR}")
         print(f"→ http://localhost:{PORT}/")

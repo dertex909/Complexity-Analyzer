@@ -24,7 +24,11 @@ import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PatternSignatureEngine {
@@ -70,7 +74,9 @@ public final class PatternSignatureEngine {
             interfaces.add("Recipe<?>");
         }
 
-        for (var iface : clazz.getInterfaces()) {
+        var ifaces = clazz.getInterfaces();
+        Arrays.sort(ifaces, Comparator.comparing(Class::getName));
+        for (var iface : ifaces) {
             String name = iface.getSimpleName();
             if (!name.startsWith("I") && !name.endsWith("able")) continue;
             interfaces.add(iface.getName().replace('/', '.'));
@@ -83,7 +89,10 @@ public final class PatternSignatureEngine {
         var scan = clazz;
 
         while (scan != null && scan != Object.class) {
-            for (var f : scan.getDeclaredFields()) {
+            var fields = scan.getDeclaredFields();
+            Arrays.sort(fields, Comparator.comparing(Field::getName));
+
+            for (var f : fields) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
                 var fieldType = UniversalTypeResolver.resolve(f.getType());
                 final String e = "field " + f.getName() + ": " + f.getType().getSimpleName();
@@ -125,7 +134,13 @@ public final class PatternSignatureEngine {
             scan = scan.getSuperclass();
         }
 
-        for (var m : clazz.getMethods()) {
+        var methods = clazz.getMethods();
+        Arrays.sort(methods, Comparator.comparing(Method::getName)
+                .thenComparingInt(Method::getParameterCount)
+                .thenComparing(m -> Arrays.toString(m.getParameterTypes()))
+                .thenComparing(m -> m.getReturnType().getName()));
+
+        for (var m : methods) {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() > 1) continue;
             if (m.getDeclaringClass() == Object.class) continue;

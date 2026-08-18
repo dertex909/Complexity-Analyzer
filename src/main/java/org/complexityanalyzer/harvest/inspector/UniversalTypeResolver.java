@@ -25,6 +25,8 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.*;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -120,7 +122,9 @@ public final class UniversalTypeResolver {
 
         var scan = clazz;
         while (scan != null && scan != Object.class) {
-            for (var f : scan.getDeclaredFields()) {
+            var fields = scan.getDeclaredFields();
+            Arrays.sort(fields, Comparator.comparing(Field::getName));
+            for (var f : fields) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
 
                 var fieldType = resolve(f.getType());
@@ -158,7 +162,13 @@ public final class UniversalTypeResolver {
             scan = scan.getSuperclass();
         }
 
-        for (var m : clazz.getMethods()) {
+        var methods = clazz.getMethods();
+        Arrays.sort(methods, Comparator.comparing(Method::getName)
+                .thenComparingInt(Method::getParameterCount)
+                .thenComparing(m -> Arrays.toString(m.getParameterTypes()))
+                .thenComparing(m -> m.getReturnType().getName()));
+
+        for (var m : methods) {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() != 0) continue;
             if (m.getDeclaringClass() == Object.class) continue;

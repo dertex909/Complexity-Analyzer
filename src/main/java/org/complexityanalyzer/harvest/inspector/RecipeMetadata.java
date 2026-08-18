@@ -32,7 +32,9 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -385,7 +387,13 @@ public final class RecipeMetadata {
                 var current = queue.get(idx++);
                 if (current == null || current == Object.class) continue;
                 if (StructuralTypeClassifier.isTerminalType(current)) continue;
-                for (var m : current.getDeclaredMethods()) {
+                var methods = current.getDeclaredMethods();
+                Arrays.sort(methods, Comparator.comparing(Method::getName)
+                        .thenComparingInt(Method::getParameterCount)
+                        .thenComparing(m -> Arrays.toString(m.getParameterTypes()))
+                        .thenComparing(m -> m.getReturnType().getName()));
+
+                for (var m : methods) {
                     if (m.getParameterCount() > 1) continue;
                     if (Modifier.isStatic(m.getModifiers())) continue;
                     if (m.getName().equals("getToastSymbol")) continue;
@@ -395,7 +403,6 @@ public final class RecipeMetadata {
                     if (rt == String.class || rt == Boolean.class || Number.class.isAssignableFrom(rt) || rt == Character.class)
                         continue;
                     if (StructuralTypeClassifier.isTerminalType(rt)) continue;
-
                     if (!seenMethods.add(m.getName())) continue;
 
                     mList.add(m);
@@ -403,7 +410,9 @@ public final class RecipeMetadata {
                 }
                 var sup = current.getSuperclass();
                 if (sup != null && sup != Object.class) queue.add(sup);
-                Collections.addAll(queue, current.getInterfaces());
+                var ifaces = current.getInterfaces();
+                Arrays.sort(ifaces, Comparator.comparing(Class::getName));
+                Collections.addAll(queue, ifaces);
             }
             this.allMethods = mList.toArray(new Method[0]);
             this.allHandles = hList.toArray(new MethodHandle[0]);
@@ -411,7 +420,9 @@ public final class RecipeMetadata {
             var fList = new ObjectArrayList<Field>();
             var curCls = clazz;
             while (curCls != null && curCls != Object.class) {
-                for (var f : curCls.getDeclaredFields()) {
+                var curFields = curCls.getDeclaredFields();
+                Arrays.sort(curFields, Comparator.comparing(Field::getName));
+                for (var f : curFields) {
                     if (Modifier.isStatic(f.getModifiers())) continue;
                     boolean duplicate = false;
                     for (var field : fList) {

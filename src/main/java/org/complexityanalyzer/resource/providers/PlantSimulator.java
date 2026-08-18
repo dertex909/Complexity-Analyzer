@@ -48,6 +48,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -62,12 +63,11 @@ public class PlantSimulator {
     private static final int HEIGHT_ABOVE = 30;
     private static final int MAX_TICKS = 50;
     private static final int MAX_BONEMEAL = 8;
-    private static final long MAX_SIMULATION_MS = 2000;
     private static final int FLAG_NO_UPDATE = 2 | 16;
     private static final ObjectList<Block> PRIORITY_GROUNDS = ObjectArrayList.of(
-            Blocks.GRASS_BLOCK, Blocks.DIRT, Blocks.FARMLAND, Blocks.SAND,
-            Blocks.RED_SAND, Blocks.GRAVEL, Blocks.NETHERRACK, Blocks.SOUL_SAND,
-            Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
+            Blocks.FARMLAND, Blocks.PODZOL, Blocks.MYCELIUM, Blocks.DIRT,
+            Blocks.GRASS_BLOCK, Blocks.SAND, Blocks.RED_SAND, Blocks.GRAVEL,
+            Blocks.NETHERRACK, Blocks.SOUL_SAND, Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
     );
 
     private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
@@ -104,13 +104,17 @@ public class PlantSimulator {
             for (var block : blocks) {
                 try {
                     var result = simulate(block, level);
-                    if (result != null) results.put(block, result);
+                    if (result != null) {
+                        results.put(block, result);
+                        var sortedDrops = new ObjectArrayList<>(result.drops().reference2DoubleEntrySet());
+                        sortedDrops.sort(Comparator.comparing(e -> GameRegistryManager.getItemId(e.getKey()).toString()));
+                    }
                 } catch (Throwable t) {
                     ComplexityAnalyzer.LOGGER.warn("[PlantSim] Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
                 }
             }
 
-            collectAndClear(level, null, null);
+            collectAndClear(level, null, null, 0L);
             clearEntitiesInsideBox(level);
             releasePlatform(level);
             fakePlayer = null;
@@ -160,10 +164,13 @@ public class PlantSimulator {
 
     private SimulationResult runSimulation(Block plantBlock, ServerLevel level) {
         var drops = new Reference2DoubleOpenHashMap<Item>();
-        var random = RandomSource.create(12345);
+
+        var blockId = GameRegistryManager.getBlockId(plantBlock);
+        long blockSeed = level.getSeed() ^ (blockId != null ? (long) blockId.hashCode() * 31L : 12345L);
+        level.random.setSeed(blockSeed);
 
         collectAndKillEntities(level, null);
-        collectAndClear(level, null, null);
+        collectAndClear(level, null, null, blockSeed);
 
         var ground = findSuitableGround(plantBlock, level);
         if (ground == null) return null;
@@ -175,20 +182,24 @@ public class PlantSimulator {
         level.setBlock(groundPos, ground.block().defaultBlockState(), FLAG_NO_UPDATE);
         level.setBlock(plantPos, plantBlock.defaultBlockState(), FLAG_NO_UPDATE);
 
-        int stages = growPlant(plantBlock, level, plantPos, random);
-        var currentDrops = new Reference2DoubleOpenHashMap<Item>();
-        collectAndClear(level, currentDrops, groundPos);
-        collectAndKillEntities(level, currentDrops);
-        addDrops(drops, currentDrops);
+        int stages = growPlant(plantBlock, level, plantPos, RandomSource.create(blockSeed), blockSeed);
+        var matureLoot = simulateMatureLoot(plantBlock, level, ground, blockSeed);
+        addDrops(drops, matureLoot);
 
-        var matureLoot = simulateMatureLoot(plantBlock, level, ground);
-        mergeDropEstimates(drops, matureLoot);
+        var worldDrops = new Reference2DoubleOpenHashMap<Item>();
+        collectAndClear(level, worldDrops, groundPos, blockSeed);
+        collectAndKillEntities(level, worldDrops);
+
+        for (var e : worldDrops.reference2DoubleEntrySet()) {
+            if (!drops.containsKey(e.getKey())) drops.put(e.getKey(), e.getDoubleValue());
+        }
+
         if (drops.isEmpty()) return null;
         if (stages <= 1) stages = 2;
         return new SimulationResult(drops, stages);
     }
 
-    private Reference2DoubleMap<Item> simulateMatureLoot(Block block, ServerLevel level, @Nullable GroundResult ground) {
+    private Reference2DoubleMap<Item> simulateMatureLoot(Block block, ServerLevel level, @Nullable GroundResult ground, long blockSeed) {
         var drops = new Reference2DoubleOpenHashMap<Item>();
         var lootPos = SIM_ORIGIN;
         var oldState = level.getBlockState(lootPos);
@@ -220,6 +231,8 @@ public class PlantSimulator {
             double sampleMultiplier = 1.0 / samples;
 
             for (int i = 0; i < samples; i++) {
+                long sampleSeed = blockSeed + (676767L + i) * 31L;
+                level.random.setSeed(sampleSeed);
                 var params = new LootParams.Builder(level)
                         .withParameter(LootContextParams.BLOCK_STATE, state)
                         .withParameter(LootContextParams.ORIGIN, Vec3.atLowerCornerOf(lootPos))
@@ -227,9 +240,7 @@ public class PlantSimulator {
                         .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
                         .create(LootContextParamSets.BLOCK);
 
-                var context = new LootContext.Builder(params)
-                        .withOptionalRandomSource(RandomSource.create(676767 + i))
-                        .create(Optional.empty());
+                var context = new LootContext.Builder(params).withOptionalRandomSource(RandomSource.create(sampleSeed)).create(Optional.empty());
                 PlantSimulator.this.fakePlayer.setPos(lootPos.getX() + 0.5, lootPos.getY() + 0.5, lootPos.getZ() + 0.5);
 
                 var lootDrops = new ObjectArrayList<ItemStack>();
@@ -240,6 +251,15 @@ public class PlantSimulator {
 
                 for (var stack : lootDrops) addDrop(drops, stack, sampleMultiplier);
             }
+
+            for (var entry : drops.reference2DoubleEntrySet()) {
+                double val = entry.getDoubleValue();
+                if (val > 0.0 && val < 1.0) {
+                    double rounded = Math.round(val * 20.0) / 20.0;
+                    entry.setValue(Math.max(0.05, rounded));
+                }
+            }
+
         } catch (Throwable e) {
             ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
         } finally {
@@ -291,33 +311,36 @@ public class PlantSimulator {
         }
     }
 
-    private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random) {
+    private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random, long blockSeed) {
         int bonemealUses = 0;
         var startState = level.getBlockState(plantPos);
         int stageCount = estimateGrowthStages(plantBlock);
-        long simStart = System.currentTimeMillis();
         var bm = (plantBlock instanceof BonemealableBlock b) ? b : null;
 
         for (int tick = 0; tick < MAX_TICKS; tick++) {
-            if ((tick & 7) == 0 && System.currentTimeMillis() - simStart > MAX_SIMULATION_MS) break;
+            long tickSeed = blockSeed + (long) tick * 10007L;
+            random.setSeed(tickSeed);
+            level.random.setSeed(tickSeed);
+
             var current = level.getBlockState(plantPos);
+            if (current.getBlock() != plantBlock) break;
 
-            boolean canUseBonemeal = bm != null && current.getBlock() == plantBlock && bonemealUses < MAX_BONEMEAL;
-            if (canUseBonemeal && bm.isValidBonemealTarget(level, plantPos, current)) try {
-                bm.performBonemeal(level, random, plantPos, current);
-                bonemealUses++;
-                continue;
-            } catch (Throwable ignored) {
-            }
-
-            if (current.isRandomlyTicking()) try {
-                current.randomTick(level, plantPos, random);
-            } catch (Throwable ignored) {
+            boolean canUseBonemeal = bm != null && bonemealUses < MAX_BONEMEAL;
+            if (canUseBonemeal && bm.isValidBonemealTarget(level, plantPos, current)) {
+                try {
+                    bm.performBonemeal(level, random, plantPos, current);
+                    bonemealUses++;
+                } catch (Throwable ignored) {
+                }
+            } else if (current.isRandomlyTicking()) {
+                try {
+                    current.randomTick(level, plantPos, random);
+                } catch (Throwable ignored) {
+                }
             }
 
             var after = level.getBlockState(plantPos);
-            if (after.isAir()) break;
-
+            if (after.isAir() || after.getBlock() != plantBlock) break;
             var ageProp = findAgeProperty(after.getBlock());
             if (ageProp != null) {
                 int val = after.getValue(ageProp);
@@ -419,7 +442,7 @@ public class PlantSimulator {
         }
     }
 
-    private void collectAndClear(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops, @Nullable BlockPos groundPos) {
+    private void collectAndClear(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops, @Nullable BlockPos groundPos, long blockSeed) {
         long groundPosLong = groundPos != null ? groundPos.asLong() : BlockPos.asLong(simOriginX, simOriginY - 1, simOriginZ);
         int minY = simOriginY - DEPTH_BELOW;
         int maxY = Math.min(level.getMaxBuildHeight() - 1, simOriginY + HEIGHT_ABOVE);
@@ -431,7 +454,7 @@ public class PlantSimulator {
             try {
                 var state = level.getBlockState(mutablePos);
                 if (state.isAir() || isManagedPlatformBlock(state) || mutablePos.asLong() == groundPosLong) continue;
-                if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops);
+                if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops, blockSeed);
                 level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
             } catch (Throwable ignored) {
             }
@@ -456,7 +479,7 @@ public class PlantSimulator {
                             var pos = mutablePos.immutable();
                             if (pos.asLong() != groundPosLong) {
                                 foundBlocks = true;
-                                if (shouldCollectDrops) collectDropsAt(level, pos, state, drops);
+                                if (shouldCollectDrops) collectDropsAt(level, pos, state, drops, blockSeed);
                             }
                             level.setBlock(pos, air, FLAG_NO_UPDATE);
                         } catch (Throwable ignored) {
@@ -470,10 +493,11 @@ public class PlantSimulator {
         }
     }
 
-    private void collectDropsAt(ServerLevel level, BlockPos pos, BlockState state, Reference2DoubleMap<Item> drops) {
+    private void collectDropsAt(ServerLevel level, BlockPos pos, BlockState state, Reference2DoubleMap<Item> drops, long blockSeed) {
         try {
             if (state.is(BlockTags.LEAVES)) addDrop(drops, state.getBlock().asItem(), 1.0);
             fakePlayer.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+            level.random.setSeed(blockSeed ^ pos.asLong());
             for (var stack : Block.getDrops(state, level, pos, level.getBlockEntity(pos), fakePlayer, ItemStack.EMPTY)) {
                 addDrop(drops, stack, 1.0);
             }
@@ -491,11 +515,6 @@ public class PlantSimulator {
 
     private void addDrops(Reference2DoubleMap<Item> target, Reference2DoubleMap<Item> source) {
         for (var entry : source.reference2DoubleEntrySet()) addDrop(target, entry.getKey(), entry.getDoubleValue());
-    }
-
-    private void mergeDropEstimates(Reference2DoubleMap<Item> tar, Reference2DoubleMap<Item> source) {
-        for (var entry : source.reference2DoubleEntrySet())
-            if (entry.getDoubleValue() > tar.getDouble(entry.getKey())) tar.put(entry.getKey(), entry.getDoubleValue());
     }
 
     private boolean isManagedPlatformBlock(BlockState state) {

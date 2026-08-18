@@ -37,6 +37,8 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.providers.PlantSimulator;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
+
 import static org.complexityanalyzer.cache.ResourceCache.FARMING;
 
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {
@@ -197,7 +199,9 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         if (drops.isEmpty()) return "[]";
         var sb = new StringBuilder("[");
         boolean first = true;
-        for (var entry : drops.reference2DoubleEntrySet()) {
+        var sorted = new ObjectArrayList<>(drops.reference2DoubleEntrySet());
+        sorted.sort(Comparator.comparing(e -> GameRegistryManager.getItemId(e.getKey()).toString()));
+        for (var entry : sorted) {
             if (!first) sb.append(", ");
             first = false;
             sb.append(GameRegistryManager.getItemId(entry.getKey())).append(" x").append(entry.getDoubleValue());

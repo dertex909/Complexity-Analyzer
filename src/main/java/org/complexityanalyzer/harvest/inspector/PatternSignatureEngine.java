@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PatternSignatureEngine {
@@ -43,10 +44,8 @@ public final class PatternSignatureEngine {
     private PatternSignatureEngine() {
     }
 
-    public static ClassProfile profile(Class<?> clazz) {
-        if (clazz == null) throw new IllegalArgumentException("class is null");
-        var existing = PROFILE_CACHE.get(clazz);
-        if (existing != null) return existing;
+    public static @NotNull ClassProfile profile(@NotNull Class<?> clazz) {
+        Objects.requireNonNull(clazz, "class is null");
         return PROFILE_CACHE.computeIfAbsent(clazz, PatternSignatureEngine::buildProfile);
     }
 
@@ -60,35 +59,17 @@ public final class PatternSignatureEngine {
     }
 
     private static ClassProfile buildProfile(Class<?> clazz) {
-        String className = clazz.getName().replace('.', '/');
-
         if (TerminalTypeRegistry.isTerminalType(clazz)) return new ClassProfile(
-                className, clazz, DetectionLevel.UNKNOWN,
-                0, 0, 0,
-                false, false, false,
-                0, 0, 0, 0,
-                0, 0, 0,
-                0, 0, 0,
-                ObjectLists.emptyList(), ObjectLists.emptyList()
+                DetectionLevel.UNKNOWN, 0, 0, false, false, false,
+                0, 0, 0, 0, 0, 0, 0, ObjectLists.emptyList()
         );
 
         var evidence = new ObjectArrayList<String>();
-        var interfaces = new ObjectArrayList<String>();
         int signatureScore = 0;
 
         if (Recipe.class.isAssignableFrom(clazz)) {
             signatureScore = 100;
             evidence.add("SIGNATURE: implements Recipe<?>");
-            interfaces.add("Recipe<?>");
-        }
-
-        var ifaces = clazz.getInterfaces();
-        Arrays.sort(ifaces, Comparator.comparing(Class::getName));
-        for (var iface : ifaces) {
-            String name = iface.getName();
-            if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.")) continue;
-            if (iface == Recipe.class) continue;
-            interfaces.add(name);
         }
 
         int itemStackFields = 0, ingredientFields = 0, fluidStackFields = 0;
@@ -211,28 +192,16 @@ public final class PatternSignatureEngine {
         boolean isCodec = codecRefs > 0 && heuristicScore >= CODEC_THRESHOLD;
 
         return new ClassProfile(
-                className, clazz, level,
-                signatureScore, heuristicScore, signatureScore + heuristicScore,
-                isRecipe, isMachine, isCodec,
-                itemStackFields, ingredientFields, fluidStackFields, collectionFields,
-                itemStackMethods, ingredientMethods, fluidStackMethods,
-                codecRefs, resourceIdFields, tagFields,
-                interfaces, evidence
+                level, heuristicScore, signatureScore + heuristicScore, isRecipe, isMachine, isCodec,
+                itemStackFields, ingredientFields, fluidStackFields, itemStackMethods, ingredientMethods,
+                fluidStackMethods, codecRefs, evidence
         );
     }
 
-    public enum DetectionLevel {
-        SIGNATURE,
-        HEURISTIC,
-        BEHAVIORAL,
-        UNKNOWN
-    }
+    public enum DetectionLevel {SIGNATURE, HEURISTIC, UNKNOWN}
 
     public record ClassProfile(
-            String className,
-            Class<?> clazz,
             DetectionLevel level,
-            int signatureScore,
             int heuristicScore,
             int totalScore,
             boolean isRecipe,
@@ -241,21 +210,11 @@ public final class PatternSignatureEngine {
             int itemStackFields,
             int ingredientFields,
             int fluidStackFields,
-            int collectionFields,
             int itemStackMethods,
             int ingredientMethods,
             int fluidStackMethods,
             int codecRefs,
-            int resourceIdFields,
-            int tagFields,
-            ObjectList<String> interfaces,
             ObjectList<String> evidence
     ) {
-        @Override
-        public @NotNull String toString() {
-            return className + " score=" + totalScore + " recipe=" + isRecipe + " machine=" + isMachine + " codec=" + isCodec + " level=" + level +
-                    " itemF=" + itemStackFields + " ingrF=" + ingredientFields + " fluidF=" + fluidStackFields +
-                    " itemM=" + itemStackMethods + " ingrM=" + ingredientMethods + " fluidM=" + fluidStackMethods + " codec=" + codecRefs;
-        }
     }
 }

@@ -26,6 +26,7 @@ import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public final class CabinReader {
 
@@ -81,9 +82,7 @@ public final class CabinReader {
     }
 
     public Section getSection(byte id) {
-        var s = sectionsById.get(id);
-        if (s == null) throw new IllegalArgumentException("Section not found: 0x" + Integer.toHexString(id & 0xFF));
-        return s;
+        return Objects.requireNonNull(sectionsById.get(id), () -> "Section not found: 0x" + Integer.toHexString(id & 0xFF));
     }
 
     public byte[] readSection(byte id) throws IOException {

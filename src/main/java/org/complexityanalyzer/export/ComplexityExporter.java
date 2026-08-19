@@ -46,6 +46,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.Objects;
 
 import static java.util.Locale.ROOT;
 
@@ -178,8 +179,7 @@ public class ComplexityExporter {
         if (item == Items.AIR && !itemId.equals(AIR_LOCATION)) {
             throw new IllegalArgumentException("Item not found: " + itemIdString);
         }
-        var complexity = engine.getComplexityResult(item);
-        if (complexity == null) throw new IllegalStateException("Failed to analyze item: " + itemIdString);
+        var complexity = Objects.requireNonNull(engine.getComplexityResult(item), () -> "Failed to analyze item: " + itemIdString);
         var itemData = buildItemData(item, itemId, complexity, engine);
         var exportFile = ModFileManager.resolve(server, "export", "items", itemId.getNamespace() + "_" + itemId.getPath() + ".json");
         ModFileManager.writeStringAtomic(exportFile, GSON.toJson(itemData));
@@ -203,20 +203,14 @@ public class ComplexityExporter {
             throws IOException {
         var mobId = ResourceLocation.parse(mobIdString);
         var mobType = GameRegistryManager.getEntityType(mobId);
-        var mobData = buildMobData(mobType, engine);
-        if (mobData == null) throw new IllegalStateException("Failed to analyze mob: " + mobIdString);
+        var mobData = Objects.requireNonNull(buildMobData(mobType, engine), () -> "Failed to analyze mob: " + mobIdString);
         var exportFile = ModFileManager.resolve(server, "export", "mobs", mobId.getNamespace() + "_" + mobId.getPath() + ".json");
         ModFileManager.writeStringAtomic(exportFile, GSON.toJson(mobData));
         return exportFile;
     }
 
     private static boolean checkIfHardcoded(Item item) {
-        try {
-            var registry = HardcodedSource.getRegistry();
-            return registry.isRegistered(item);
-        } catch (IllegalStateException e) {
-            return false;
-        }
+        return HardcodedSource.isInitialized() && HardcodedSource.getRegistry().isRegistered(item);
     }
 
     private static ExportData.ItemData buildItemData(Item item, ResourceLocation itemId, ItemComplexity complexity,

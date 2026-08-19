@@ -35,6 +35,7 @@ import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.geoscan.worldgen.ChunkGeneratorService;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkBatchProcessor {
@@ -52,20 +53,15 @@ public class ChunkBatchProcessor {
 
     private BiomeContext getBiomeContext(ResourceKey<Level> dimension) {
         return biomeContexts.computeIfAbsent(dimension, dim -> {
-            var level = server.getLevel(dim);
-            if (level == null) throw new IllegalStateException("Level not found: " + dim);
-            return new BiomeContext(
-                    level.getChunkSource().getGenerator().getBiomeSource(),
-                    level.getChunkSource().randomState().sampler(),
-                    level.getSeaLevel()
-            );
+            var level = Objects.requireNonNull(server.getLevel(dim), () -> "Level not found: " + dim);
+            var chunkSource = level.getChunkSource();
+            return new BiomeContext(chunkSource.getGenerator().getBiomeSource(), chunkSource.randomState().sampler(), level.getSeaLevel());
         });
     }
 
     private ChunkGeneratorService getGenerator(ResourceKey<Level> dimension) {
         return generators.computeIfAbsent(dimension, dim -> {
-            var level = server.getLevel(dim);
-            if (level == null) throw new IllegalStateException("Level not found: " + dim);
+            var level = Objects.requireNonNull(server.getLevel(dim), () -> "Level not found: " + dim);
             return new ChunkGeneratorService(level);
         });
     }

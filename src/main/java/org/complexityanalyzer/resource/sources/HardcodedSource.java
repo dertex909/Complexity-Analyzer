@@ -29,6 +29,7 @@ import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
 import java.util.concurrent.locks.StampedLock;
 
 import static java.util.Locale.ROOT;
@@ -49,8 +50,11 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     }
 
     public static IHardcodedSourceRegistry getRegistry() {
-        if (INSTANCE == null) throw new IllegalStateException("HardcodedSource not initialized yet!");
-        return INSTANCE;
+        return Objects.requireNonNull(INSTANCE, "HardcodedSource not initialized yet!");
+    }
+
+    public static boolean isInitialized() {
+        return INSTANCE != null;
     }
 
     @Override

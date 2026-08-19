@@ -103,7 +103,7 @@ public class RecipeNode {
             var s2 = list2.get(i);
             if (s1 == s2) continue;
             if (s1 == null || s2 == null) return false;
-            if (!ItemStackIdentity.sameItemDataAndCount(s1, s2)) return false;
+            if (!ItemStackIdentity.sameItemDataAndCount(s1, s2, null)) return false;
         }
         return true;
     }

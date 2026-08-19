@@ -58,12 +58,10 @@ public final class ItemStackIdentity {
         return Objects.equals(serializedAttachments(a, provider), serializedAttachments(b, provider));
     }
 
-    public static boolean sameItemDataAndCount(ItemStack a, ItemStack b) {
-        return sameItemDataAndCount(a, b, null);
-    }
-
     public static boolean sameItemDataAndCount(ItemStack a, ItemStack b, HolderLookup.Provider provider) {
-        return sameItemData(a, b, provider) && a.getCount() == b.getCount();
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        return a.getCount() == b.getCount() && sameItemData(a, b, provider);
     }
 
     public static boolean hasStackData(ItemStack stack, HolderLookup.Provider provider) {
@@ -73,26 +71,19 @@ public final class ItemStackIdentity {
         return attachments != null && !attachments.isEmpty();
     }
 
-    public static int hashItemDataAndCount(ItemStack stack) {
-        return hashItemDataAndCount(stack, null);
-    }
-
     public static int hashItemData(ItemStack stack) {
         return hashItemData(stack, null);
     }
 
     public static int hashItemData(ItemStack stack, HolderLookup.Provider provider) {
         if (stack == null || stack.isEmpty()) return 0;
-        int result = ItemStack.hashItemAndComponents(stack);
         var attachments = serializedAttachments(stack, provider);
-        return 31 * result + (attachments != null ? attachments.hashCode() : 0);
+        return 31 * ItemStack.hashItemAndComponents(stack) + (attachments != null ? attachments.hashCode() : 0);
     }
 
-    public static int hashItemDataAndCount(ItemStack stack, HolderLookup.Provider provider) {
+    public static int hashItemDataAndCount(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return 0;
-        int result = hashItemData(stack, provider);
-        result = 31 * result + stack.getCount();
-        return result;
+        return 31 * hashItemData(stack) + stack.getCount();
     }
 
     public static String dataKey(ItemStack stack, HolderLookup.Provider provider) {

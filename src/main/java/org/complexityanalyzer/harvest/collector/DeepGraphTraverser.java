@@ -22,17 +22,22 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
+import org.complexityanalyzer.harvest.inspector.TerminalTypeRegistry;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
 public final class DeepGraphTraverser {
 
+    private static final int MAX_DEPTH = 8;
+    private static final int SMALL_COLLECTION = 50;
+
     private DeepGraphTraverser() {
     }
 
     public static void traverse(Object obj, int depth, ReferenceOpenHashSet<Object> visited, Visitor visitor) {
-        if (obj == null || depth > 8) return;
+        if (obj == null || depth > MAX_DEPTH) return;
         if (visitor.visit(obj, depth)) return;
 
         switch (obj) {
@@ -54,26 +59,25 @@ public final class DeepGraphTraverser {
                 }
                 return;
             }
-            case Iterable<?> coll when HarvestUtility.isTooSmall(coll) -> {
+            case Iterable<?> coll when !(coll instanceof Collection<?> c) || c.size() <= SMALL_COLLECTION -> {
                 if (visited.add(coll)) for (var item : coll) traverse(item, depth + 1, visited, visitor);
                 return;
             }
-            case Map<?, ?> map when HarvestUtility.isTooSmall(map) -> {
+            case Map<?, ?> map when map.size() <= SMALL_COLLECTION -> {
                 if (visited.add(map)) for (var e : map.entrySet()) {
                     traverse(e.getKey(), depth + 1, visited, visitor);
                     traverse(e.getValue(), depth + 1, visited, visitor);
                 }
                 return;
             }
-            case Object[] arr when arr.length <= 50 -> {
+            case Object[] arr when arr.length <= SMALL_COLLECTION -> {
                 if (visited.add(arr)) for (var item : arr) traverse(item, depth + 1, visited, visitor);
                 return;
             }
             default -> {
             }
         }
-
-        if (HarvestUtility.isTerminal(obj)) return;
+        if (TerminalTypeRegistry.isTerminalType(obj.getClass())) return;
         if (!visited.add(obj)) return;
 
         var meta = RecipeMetadata.getMeta(obj.getClass());

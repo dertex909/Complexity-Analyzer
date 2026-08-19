@@ -29,13 +29,11 @@ import net.minecraft.world.level.Level;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class RecipeMetadata {
@@ -211,6 +209,16 @@ public final class RecipeMetadata {
         var rt = m.getReturnType();
         if (rt == void.class || rt == Void.class) return null;
         return rt.getName().replace('.', '/');
+    }
+
+    public static boolean isNotEmptyContainer(Object obj) {
+        return switch (obj) {
+            case Collection<?> c -> !c.isEmpty();
+            case Map<?, ?> m -> !m.isEmpty();
+            case Object[] arr -> arr.length > 0;
+            case null -> false;
+            default -> obj.getClass().isArray() && Array.getLength(obj) > 0;
+        };
     }
 
     private static boolean isContainerReturnType(Class<?> type) {

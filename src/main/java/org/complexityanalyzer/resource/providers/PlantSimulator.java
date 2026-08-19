@@ -48,7 +48,6 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -104,11 +103,7 @@ public class PlantSimulator {
             for (var block : blocks) {
                 try {
                     var result = simulate(block, level);
-                    if (result != null) {
-                        results.put(block, result);
-                        var sortedDrops = new ObjectArrayList<>(result.drops().reference2DoubleEntrySet());
-                        sortedDrops.sort(Comparator.comparing(e -> GameRegistryManager.getItemId(e.getKey()).toString()));
-                    }
+                    if (result != null) results.put(block, result);
                 } catch (Throwable t) {
                     ComplexityAnalyzer.LOGGER.warn("[PlantSim] Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
                 }
@@ -155,7 +150,7 @@ public class PlantSimulator {
     }
 
     private void clearEntitiesInsideBox(ServerLevel level) {
-        AABB interiorBox = new AABB(simOriginX - BARRIER_RADIUS, simOriginY - DEPTH_BELOW,
+        var interiorBox = new AABB(simOriginX - BARRIER_RADIUS, simOriginY - DEPTH_BELOW,
                 simOriginZ - BARRIER_RADIUS, simOriginX + BARRIER_RADIUS,
                 simOriginY + HEIGHT_ABOVE, simOriginZ + BARRIER_RADIUS);
 

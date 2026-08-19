@@ -27,7 +27,10 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.harvest.collector.*;
+import org.complexityanalyzer.harvest.collector.DeepFluidCollector;
+import org.complexityanalyzer.harvest.collector.DeepIngredientCollector;
+import org.complexityanalyzer.harvest.collector.DeepItemCollector;
+import org.complexityanalyzer.harvest.collector.DeepUniversalCollector;
 import org.complexityanalyzer.harvest.inspector.*;
 
 import static java.util.Locale.ROOT;
@@ -172,7 +175,7 @@ public final class FastHarvester {
                 for (var acc : accessors.probeAccessors()) {
                     try {
                         var raw = acc.extract(recipe, level);
-                        if (raw != null && !HarvestUtility.isEmptyContainer(raw) && extRaw.add(raw)) {
+                        if (raw != null && RecipeMetadata.isNotEmptyContainer(raw) && extRaw.add(raw)) {
                             String nameLower = acc.name().toLowerCase(ROOT);
                             if (nameLower.contains("output") || nameLower.contains("result")) {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);

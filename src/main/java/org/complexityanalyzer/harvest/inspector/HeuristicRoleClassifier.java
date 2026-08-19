@@ -21,40 +21,50 @@ package org.complexityanalyzer.harvest.inspector;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Set;
 
 public final class HeuristicRoleClassifier {
 
     private static final String METHOD_GET_RESULT_ITEM = MethodRefUtils.getRecipeResultItemName(Recipe::getResultItem);
     private static final String METHOD_GET_INGREDIENTS = MethodRefUtils.getMethodName(Recipe.class, Recipe::getIngredients);
 
+    private static final ObjectList<ClassificationMethod> STANDARD_API_METHOD_LIST = ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API);
+    private static final ObjectList<String> EVIDENCE_OUTPUT = ObjectLists.singleton("Standard output method");
+    private static final ObjectList<String> EVIDENCE_INPUT = ObjectLists.singleton("Standard input method");
+
+    private static final RoleClassification STD_OUTPUT_100 = new RoleClassification(Role.OUTPUT, 100, STANDARD_API_METHOD_LIST, EVIDENCE_OUTPUT);
+    private static final RoleClassification STD_INPUT_100 = new RoleClassification(Role.INPUT, 100, STANDARD_API_METHOD_LIST, EVIDENCE_INPUT);
+    private static final RoleClassification STD_OUTPUT_90 = new RoleClassification(Role.OUTPUT, 90, STANDARD_API_METHOD_LIST, EVIDENCE_OUTPUT);
+    private static final RoleClassification STD_INPUT_90 = new RoleClassification(Role.INPUT, 90, STANDARD_API_METHOD_LIST, EVIDENCE_INPUT);
+
     private HeuristicRoleClassifier() {
     }
 
+    private static RoleClassification classifyStandardRecipeMethod(String methodName, int confidence) {
+        if (METHOD_GET_RESULT_ITEM.equals(methodName)) {
+            return confidence == 100 ? STD_OUTPUT_100 : (confidence == 90 ? STD_OUTPUT_90 : new RoleClassification(Role.OUTPUT, confidence, STANDARD_API_METHOD_LIST, EVIDENCE_OUTPUT));
+        }
+        if (METHOD_GET_INGREDIENTS.equals(methodName)) {
+            return confidence == 100 ? STD_INPUT_100 : (confidence == 90 ? STD_INPUT_90 : new RoleClassification(Role.INPUT, confidence, STANDARD_API_METHOD_LIST, EVIDENCE_INPUT));
+        }
+        return null;
+    }
+
     public static RoleClassification classify(Object recipe, Object raw, String accessorName, String accessorType,
-                                              Item anchorItem, Set<Ingredient> standardInputs) {
+                                              Item anchorItem, ReferenceSet<Ingredient> standardInputs) {
         if (raw == null) return RoleClassification.UNKNOWN;
 
         if (recipe instanceof Recipe<?> && "method".equals(accessorType)) {
-            if (accessorName.equals(METHOD_GET_RESULT_ITEM) || "getResult".equals(accessorName) || "getOutput".equals(accessorName)) {
-                return new RoleClassification(Role.OUTPUT, 100,
-                        ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
-                        ObjectLists.singleton("Standard output method")
-                );
-            }
-            if (accessorName.equals(METHOD_GET_INGREDIENTS) || "getInputs".equals(accessorName)) {
-                return new RoleClassification(Role.INPUT, 100,
-                        ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API),
-                        ObjectLists.singleton("Standard input method")
-                );
-            }
+            var standardClassification = classifyStandardRecipeMethod(accessorName, 100);
+            if (standardClassification != null) return standardClassification;
         }
 
         ObjectArrayList<ClassificationMethod> methods = null;
@@ -109,19 +119,9 @@ public final class HeuristicRoleClassifier {
         return new RoleClassification(Role.UNKNOWN, confidence, methods, evidence);
     }
 
-    public static RoleClassification classifyMethod(java.lang.reflect.Method method) {
-        String name = method.getName();
-        if (name.equals(METHOD_GET_RESULT_ITEM) || "getResult".equals(name) || "getOutput".equals(name)) {
-            return new RoleClassification(Role.OUTPUT, 90,
-                    ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard output")
-            );
-        }
-        if (name.equals(METHOD_GET_INGREDIENTS) || "getInputs".equals(name)) {
-            return new RoleClassification(Role.INPUT, 90,
-                    ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API), ObjectLists.singleton("Standard input")
-            );
-        }
-        return RoleClassification.UNKNOWN;
+    public static RoleClassification classifyMethod(Method method) {
+        var result = classifyStandardRecipeMethod(method.getName(), 90);
+        return result != null ? result : RoleClassification.UNKNOWN;
     }
 
     public enum Role {INPUT, OUTPUT, UNKNOWN}
@@ -131,14 +131,9 @@ public final class HeuristicRoleClassifier {
         TYPE_HEURISTIC, INITIALIZATION_PATTERN, STANDARD_RECIPE_API
     }
 
-    public record RoleClassification(
-            Role role,
-            int confidence,
-            ObjectList<ClassificationMethod> methods,
-            ObjectList<String> evidence
-    ) {
-        public static final RoleClassification UNKNOWN = new RoleClassification(
-                Role.UNKNOWN, 0, ObjectLists.emptyList(), ObjectLists.emptyList()
-        );
+    public record RoleClassification(Role role, int confidence, ObjectList<ClassificationMethod> methods,
+                                     ObjectList<String> evidence) {
+        public static final RoleClassification UNKNOWN =
+                new RoleClassification(Role.UNKNOWN, 0, ObjectLists.emptyList(), ObjectLists.emptyList());
     }
 }

@@ -21,7 +21,6 @@ package org.complexityanalyzer.harvest.inspector;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.attachment.AttachmentHolder;
 
 import java.lang.reflect.Method;
 import java.util.Objects;
@@ -107,18 +106,8 @@ public final class ItemStackIdentity {
     }
 
     private static CompoundTag serializedAttachments(ItemStack stack, HolderLookup.Provider provider) {
-        if (provider == null) return null;
-        return serializedAttachments((Object) stack, provider);
-    }
-
-    private static CompoundTag serializedAttachments(Object holder, HolderLookup.Provider provider) {
-        if (holder instanceof AttachmentHolder attachmentHolder) try {
-            return attachmentHolder.serializeAttachments(provider);
-        } catch (Throwable ignored) {
-            return null;
-        }
-
-        var method = ATTACHMENT_METHOD_CACHE.computeIfAbsent(holder.getClass(), cls -> {
+        if (stack == null || provider == null) return null;
+        var method = ATTACHMENT_METHOD_CACHE.computeIfAbsent(stack.getClass(), cls -> {
             try {
                 var m = cls.getMethod(StandardRecipeMethods.SERIALIZE_ATTACHMENTS, HolderLookup.Provider.class);
                 if (!CompoundTag.class.isAssignableFrom(m.getReturnType())) return NO_METHOD;
@@ -130,7 +119,7 @@ public final class ItemStackIdentity {
         });
         if (method == NO_METHOD) return null;
         try {
-            return (CompoundTag) method.invoke(holder, provider);
+            return (CompoundTag) method.invoke(stack, provider);
         } catch (Throwable ignored) {
             return null;
         }

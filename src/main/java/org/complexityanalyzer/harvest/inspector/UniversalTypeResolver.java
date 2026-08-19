@@ -21,7 +21,6 @@ package org.complexityanalyzer.harvest.inspector;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,7 +34,6 @@ public final class UniversalTypeResolver {
 
     private static final ConcurrentHashMap<Class<?>, ResolvedType> TYPE_CACHE = new ConcurrentHashMap<>(512);
     private static final ThreadLocal<ReferenceSet<Class<?>>> RESOLVING_TYPES = ThreadLocal.withInitial(ReferenceOpenHashSet::new);
-    private static final String METHOD_GET_TOAST_SYMBOL = MethodRefUtils.getMethodName(Recipe.class, Recipe::getToastSymbol);
 
     private UniversalTypeResolver() {
     }
@@ -174,7 +172,7 @@ public final class UniversalTypeResolver {
             if (Modifier.isStatic(m.getModifiers())) continue;
             if (m.getParameterCount() != 0) continue;
             if (m.getDeclaringClass() == Object.class) continue;
-            if (m.getName().equals(METHOD_GET_TOAST_SYMBOL)) continue;
+            if (m.getName().equals(StandardRecipeMethods.GET_TOAST_SYMBOL)) continue;
 
             var returnType = resolve(m.getReturnType());
 

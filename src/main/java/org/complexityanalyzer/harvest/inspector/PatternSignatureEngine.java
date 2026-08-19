@@ -18,9 +18,12 @@
 
 package org.complexityanalyzer.harvest.inspector;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.NotNull;
 
@@ -51,6 +54,11 @@ public final class PatternSignatureEngine {
         PROFILE_CACHE.clear();
     }
 
+    private static boolean isCodecType(Class<?> type) {
+        if (type == null) return false;
+        return Codec.class.isAssignableFrom(type) || MapCodec.class.isAssignableFrom(type) || StreamCodec.class.isAssignableFrom(type);
+    }
+
     private static ClassProfile buildProfile(Class<?> clazz) {
         String className = clazz.getName().replace('.', '/');
 
@@ -77,9 +85,10 @@ public final class PatternSignatureEngine {
         var ifaces = clazz.getInterfaces();
         Arrays.sort(ifaces, Comparator.comparing(Class::getName));
         for (var iface : ifaces) {
-            String name = iface.getSimpleName();
-            if (!name.startsWith("I") && !name.endsWith("able")) continue;
-            interfaces.add(iface.getName().replace('/', '.'));
+            String name = iface.getName();
+            if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.")) continue;
+            if (iface == Recipe.class) continue;
+            interfaces.add(name);
         }
 
         int itemStackFields = 0, ingredientFields = 0, fluidStackFields = 0;
@@ -128,8 +137,7 @@ public final class PatternSignatureEngine {
                         }
                     }
                 }
-                String fieldTypeName = f.getType().getName();
-                if (fieldTypeName.contains("Codec") || fieldTypeName.contains("MapCodec")) codecRefs++;
+                if (isCodecType(f.getType())) codecRefs++;
             }
             scan = scan.getSuperclass();
         }
@@ -174,7 +182,7 @@ public final class PatternSignatureEngine {
                     }
                 }
             }
-            if (returnType.getName().contains("Codec") || returnType.getName().contains("MapCodec")) codecRefs++;
+            if (isCodecType(returnType)) codecRefs++;
         }
 
         int heuristicScore = 0;

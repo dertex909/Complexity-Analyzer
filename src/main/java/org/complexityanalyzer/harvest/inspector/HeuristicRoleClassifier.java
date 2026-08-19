@@ -33,9 +33,6 @@ import java.lang.reflect.Modifier;
 
 public final class HeuristicRoleClassifier {
 
-    private static final String METHOD_GET_RESULT_ITEM = MethodRefUtils.getRecipeResultItemName(Recipe::getResultItem);
-    private static final String METHOD_GET_INGREDIENTS = MethodRefUtils.getMethodName(Recipe.class, Recipe::getIngredients);
-
     private static final ObjectList<ClassificationMethod> STANDARD_API_METHOD_LIST = ObjectLists.singleton(ClassificationMethod.STANDARD_RECIPE_API);
     private static final ObjectList<String> EVIDENCE_OUTPUT = ObjectLists.singleton("Standard output method");
     private static final ObjectList<String> EVIDENCE_INPUT = ObjectLists.singleton("Standard input method");
@@ -49,10 +46,10 @@ public final class HeuristicRoleClassifier {
     }
 
     private static RoleClassification classifyStandardRecipeMethod(String methodName, int confidence) {
-        if (METHOD_GET_RESULT_ITEM.equals(methodName)) {
+        if (StandardRecipeMethods.GET_RESULT_ITEM.equals(methodName)) {
             return confidence == 100 ? STD_OUTPUT_100 : (confidence == 90 ? STD_OUTPUT_90 : new RoleClassification(Role.OUTPUT, confidence, STANDARD_API_METHOD_LIST, EVIDENCE_OUTPUT));
         }
-        if (METHOD_GET_INGREDIENTS.equals(methodName)) {
+        if (StandardRecipeMethods.GET_INGREDIENTS.equals(methodName)) {
             return confidence == 100 ? STD_INPUT_100 : (confidence == 90 ? STD_INPUT_90 : new RoleClassification(Role.INPUT, confidence, STANDARD_API_METHOD_LIST, EVIDENCE_INPUT));
         }
         return null;

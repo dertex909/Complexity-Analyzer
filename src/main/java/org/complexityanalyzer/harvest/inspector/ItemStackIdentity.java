@@ -31,7 +31,6 @@ public final class ItemStackIdentity {
 
     private static final Method NO_METHOD;
     private static final ConcurrentHashMap<Class<?>, Method> ATTACHMENT_METHOD_CACHE = new ConcurrentHashMap<>();
-    private static final String METHOD_SERIALIZE_ATTACHMENTS = MethodRefUtils.getMethodName1(AttachmentHolder.class, AttachmentHolder::serializeAttachments);
 
     static {
         Method m;
@@ -121,7 +120,7 @@ public final class ItemStackIdentity {
 
         var method = ATTACHMENT_METHOD_CACHE.computeIfAbsent(holder.getClass(), cls -> {
             try {
-                var m = cls.getMethod(METHOD_SERIALIZE_ATTACHMENTS, HolderLookup.Provider.class);
+                var m = cls.getMethod(StandardRecipeMethods.SERIALIZE_ATTACHMENTS, HolderLookup.Provider.class);
                 if (!CompoundTag.class.isAssignableFrom(m.getReturnType())) return NO_METHOD;
                 m.setAccessible(true);
                 return m;

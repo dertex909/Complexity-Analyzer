@@ -22,13 +22,16 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.*;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeInput;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.RecipeGraph;
-import org.complexityanalyzer.harvest.inspector.MethodRefUtils;
+import org.complexityanalyzer.harvest.inspector.StandardRecipeMethods;
 import org.complexityanalyzer.util.ParallelUtils;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.NotNull;
@@ -40,8 +43,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicRecipeHarvester {
-
-    private static final String METHOD_ASSEMBLE = MethodRefUtils.getRecipeAssembleName(Recipe::assemble);
 
     private DynamicRecipeHarvester() {
     }
@@ -159,7 +160,7 @@ public final class DynamicRecipeHarvester {
         Class<?> bestParam = null;
         var methods = recipeClass.getMethods();
         for (var m : methods) {
-            if (m.getName().equals(METHOD_ASSEMBLE) && m.getParameterCount() == 2) {
+            if (m.getName().equals(StandardRecipeMethods.ASSEMBLE) && m.getParameterCount() == 2) {
                 var paramType = m.getParameterTypes()[0];
                 if (RecipeInput.class.isAssignableFrom(paramType)) {
                     if (paramType != RecipeInput.class) return paramType;

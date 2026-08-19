@@ -1,57 +1,31 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest.inspector;
+
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 public final class StructuralTypeClassifier {
 
     private StructuralTypeClassifier() {
     }
 
-    public static Kind classifyDescriptor(String descriptor) {
-        if (descriptor == null || descriptor.isEmpty()) return null;
-        return classifyName(descriptor.replace('/', '.'));
+    public static Kind classify(Class<?> type) {
+        if (type == null || type == void.class || type == Void.class) return null;
+        if (ItemStack.class.isAssignableFrom(type)) return Kind.ITEM_STACK;
+        if (Ingredient.class.isAssignableFrom(type)) return Kind.INGREDIENT;
+        if (FluidStack.class.isAssignableFrom(type)) return Kind.FLUID_STACK;
+        if (ResourceLocation.class.isAssignableFrom(type)) return Kind.RESOURCE_ID;
+        if (TagKey.class.isAssignableFrom(type)) return Kind.TAG;
+        if (DataComponentType.class.isAssignableFrom(type)) return Kind.DATA_COMPONENT;
+        if (type.getName().contains("FluidStack")) return Kind.FLUID_STACK;
+        return null;
     }
 
     public static boolean isTerminalType(Class<?> type) {
         return TerminalTypeRegistry.isTerminalType(type);
-    }
-
-    private static Kind classifyName(String name) {
-        if (name == null) return null;
-        String clean = name;
-        if (clean.length() > 2 && clean.charAt(0) == 'L' && clean.charAt(clean.length() - 1) == ';') {
-            clean = clean.substring(1, clean.length() - 1);
-        }
-
-        return switch (clean) {
-            case "net.minecraft.world.item.ItemStack" -> Kind.ITEM_STACK;
-            case "net.minecraft.world.item.crafting.Ingredient" -> Kind.INGREDIENT;
-            case "net.neoforged.neoforge.fluids.FluidStack",
-                 "net.minecraftforge.fluids.FluidStack" -> Kind.FLUID_STACK;
-            case "net.minecraft.resources.ResourceLocation" -> Kind.RESOURCE_ID;
-            case "net.minecraft.tags.TagKey" -> Kind.TAG;
-            case "net.minecraft.core.component.DataComponentType" -> Kind.DATA_COMPONENT;
-            default -> {
-                if (clean.contains("FluidStack")) yield Kind.FLUID_STACK;
-                yield null;
-            }
-        };
     }
 
     public enum Kind {

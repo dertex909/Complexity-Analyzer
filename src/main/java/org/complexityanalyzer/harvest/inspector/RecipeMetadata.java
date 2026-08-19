@@ -41,7 +41,6 @@ public final class RecipeMetadata {
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
     private static final ConcurrentHashMap<Class<?>, FastAccessors> FAST_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
     private static final ConcurrentHashMap<Class<?>, UniversalAccessors> UNIVERSAL_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
-    private static final String METHOD_GET_TOAST_SYMBOL = MethodRefUtils.getMethodName(Recipe.class, Recipe::getToastSymbol);
 
     private RecipeMetadata() {
     }
@@ -72,7 +71,7 @@ public final class RecipeMetadata {
             var m = meta.allMethods[i];
             var h = meta.allHandles[i];
             if (m.getDeclaringClass() == Recipe.class) continue;
-            var kind = StructuralTypeClassifier.classifyDescriptor(descriptorOf(m));
+            var kind = StructuralTypeClassifier.classify(m.getReturnType());
             if (kind != null) {
                 var acc = new MethodAccessor(h, m);
                 switch (kind) {
@@ -102,7 +101,7 @@ public final class RecipeMetadata {
             var f = meta.fields[i];
             if (seenNames.contains(f.getName())) continue;
             var type = f.getType();
-            var kind = StructuralTypeClassifier.classifyDescriptor(type.getName().replace('.', '/'));
+            var kind = StructuralTypeClassifier.classify(type);
             if (kind != null) {
                 var acc = new FieldAccessor(f);
                 switch (kind) {
@@ -203,12 +202,6 @@ public final class RecipeMetadata {
         }
 
         return new UniversalAccessors(inputAcc, outputAcc, unknownAcc, allAcc);
-    }
-
-    private static String descriptorOf(Method m) {
-        var rt = m.getReturnType();
-        if (rt == void.class || rt == Void.class) return null;
-        return rt.getName().replace('.', '/');
     }
 
     public static boolean isNotEmptyContainer(Object obj) {
@@ -405,7 +398,7 @@ public final class RecipeMetadata {
                 for (var m : methods) {
                     if (m.getParameterCount() > 1) continue;
                     if (Modifier.isStatic(m.getModifiers())) continue;
-                    if (m.getName().equals(METHOD_GET_TOAST_SYMBOL)) continue;
+                    if (m.getName().equals(StandardRecipeMethods.GET_TOAST_SYMBOL)) continue;
                     var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;
                     if (rt.isPrimitive()) continue;

@@ -95,7 +95,7 @@ public final class MachineAsmScanner {
         for (var method : cn.methods) {
             if (method.instructions == null) continue;
             for (var insn : method.instructions) {
-                if (insn instanceof FieldInsnNode f && isPotentialRecipeTypeDescriptor(f.desc)) {
+                if (insn.getOpcode() == Opcodes.GETSTATIC && insn instanceof FieldInsnNode f && isPotentialRecipeTypeDescriptor(f.desc)) {
                     tryAddRecipeRef(f.owner, f.name, outRefs);
                 }
             }
@@ -174,10 +174,7 @@ public final class MachineAsmScanner {
     }
 
     private static boolean isPotentialRecipeTypeDescriptor(@Nullable String desc) {
-        if (desc == null) return false;
-        return desc.contains("RecipeType") || desc.contains("Holder") || desc.contains("Supplier")
-                || desc.contains("DeferredHolder") || desc.contains("RegistryObject")
-                || desc.contains("IRecipeTypeInfo") || desc.contains("AllRecipeTypes");
+        return desc != null && desc.startsWith("L");
     }
 
     @Nullable

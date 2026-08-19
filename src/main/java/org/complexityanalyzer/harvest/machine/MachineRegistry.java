@@ -31,6 +31,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.MachineRegistryCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.harvest.debug.MachineRegistryDebugLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;

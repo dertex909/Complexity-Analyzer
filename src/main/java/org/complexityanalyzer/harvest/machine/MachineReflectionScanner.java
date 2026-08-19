@@ -23,6 +23,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import org.complexityanalyzer.harvest.debug.MachineRegistryDebugLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.invoke.MethodHandle;

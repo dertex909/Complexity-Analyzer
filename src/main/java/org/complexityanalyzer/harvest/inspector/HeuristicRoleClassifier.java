@@ -121,16 +121,22 @@ public final class HeuristicRoleClassifier {
         return result != null ? result : RoleClassification.UNKNOWN;
     }
 
-    public enum Role {INPUT, OUTPUT, UNKNOWN}
-
-    public enum ClassificationMethod {
-        STANDARD_INPUT_MATCH, OUTPUT_ANCHOR_MATCH, CROSS_REFERENCE,
-        TYPE_HEURISTIC, INITIALIZATION_PATTERN, STANDARD_RECIPE_API
+    public enum Role {
+        INPUT,
+        OUTPUT,
+        UNKNOWN
     }
 
-    public record RoleClassification(Role role, int confidence, ObjectList<ClassificationMethod> methods,
-                                     ObjectList<String> evidence) {
-        public static final RoleClassification UNKNOWN =
-                new RoleClassification(Role.UNKNOWN, 0, ObjectLists.emptyList(), ObjectLists.emptyList());
+    public enum ClassificationMethod {
+        STANDARD_INPUT_MATCH,
+        OUTPUT_ANCHOR_MATCH,
+        TYPE_HEURISTIC,
+        INITIALIZATION_PATTERN,
+        STANDARD_RECIPE_API
+    }
+
+    public record RoleClassification(Role role, int confidence,
+                                     ObjectList<ClassificationMethod> methods, ObjectList<String> evidence) {
+        public static final RoleClassification UNKNOWN = new RoleClassification(Role.UNKNOWN, 0, ObjectLists.emptyList(), ObjectLists.emptyList());
     }
 }

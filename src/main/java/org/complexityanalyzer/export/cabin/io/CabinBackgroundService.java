@@ -159,7 +159,12 @@ public final class CabinBackgroundService {
         if (f != null && !f.isDone()) f.cancel(false);
     }
 
-    public enum Status {IDLE, BUILDING, READY, FAILED}
+    public enum Status {
+        IDLE,
+        BUILDING,
+        READY,
+        FAILED
+    }
 
     public record Snapshot(byte[] bytes, long fileHash, long generatedAtMs, int itemCount, int mobCount,
                            int recipeCount) {

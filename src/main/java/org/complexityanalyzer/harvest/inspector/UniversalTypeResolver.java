@@ -230,7 +230,14 @@ public final class UniversalTypeResolver {
     }
 
     public enum Kind {
-        ITEM_STACK, INGREDIENT, FLUID_STACK, RESOURCE_ID, TAG, DATA_COMPONENT, NUMBER, COLLECTION, UNKNOWN
+        ITEM_STACK,
+        INGREDIENT,
+        FLUID_STACK,
+        RESOURCE_ID,
+        TAG,
+        NUMBER,
+        COLLECTION,
+        UNKNOWN
     }
 
     public record ResolvedType(

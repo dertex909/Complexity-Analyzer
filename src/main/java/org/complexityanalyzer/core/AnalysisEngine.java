@@ -615,7 +615,12 @@ public class AnalysisEngine {
         return sm.getSourceByType(type);
     }
 
-    public enum State {IDLE, ANALYZING, READY, FAILED}
+    public enum State {
+        IDLE,
+        ANALYZING,
+        READY,
+        FAILED
+    }
 
     private static class InstanceHolder {
         private static final AnalysisEngine INSTANCE = new AnalysisEngine();

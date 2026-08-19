@@ -35,6 +35,5 @@ public final class StructuralTypeClassifier {
         RESOURCE_ID,
         TAG,
         DATA_COMPONENT,
-        NUMBER
     }
 }

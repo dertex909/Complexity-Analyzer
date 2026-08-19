@@ -198,7 +198,11 @@ public final class PatternSignatureEngine {
         );
     }
 
-    public enum DetectionLevel {SIGNATURE, HEURISTIC, UNKNOWN}
+    public enum DetectionLevel {
+        SIGNATURE,
+        HEURISTIC,
+        UNKNOWN
+    }
 
     public record ClassProfile(
             DetectionLevel level,

@@ -260,7 +260,6 @@ public class MachineRegistry {
 
     @Nullable
     public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
-        if (!initialized || type == null) return null;
-        return instanceMapping.get(type);
+        return (initialized && type != null) ? instanceMapping.get(type) : null;
     }
 }

@@ -54,17 +54,14 @@ public final class MachineTypeUnwrapper {
     }
 
     public static boolean curClsValid(@Nullable Class<?> cls) {
-        if (cls == null || cls == Object.class) return false;
-        return curClsValidName(cls.getName());
+        return cls != null && cls != Object.class && curClsValidName(cls.getName());
     }
 
     @Nullable
     public static RecipeType<?> unwrapRecipeType(@Nullable Object obj) {
-        if (obj == null) return null;
         if (obj instanceof RecipeType<?> rt) return rt;
-
-        if (obj instanceof Block || obj instanceof Item || obj instanceof BlockEntity || obj instanceof BlockEntityType<?>
-                || obj instanceof SoundEvent || obj instanceof Fluid || obj instanceof EntityType<?>) return null;
+        if (obj == null || obj instanceof Block || obj instanceof Item || obj instanceof BlockEntity || obj instanceof BlockEntityType
+                || obj instanceof SoundEvent || obj instanceof Fluid || obj instanceof EntityType) return null;
 
         switch (obj) {
             case Holder<?> holder -> {

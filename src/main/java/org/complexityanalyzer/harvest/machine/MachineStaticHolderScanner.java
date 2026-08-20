@@ -94,7 +94,7 @@ public final class MachineStaticHolderScanner {
     @Nullable
     private static <T> T findMemberInObject(@Nullable Object obj, ReferenceSet<Object> visited, Function<Object, T> extractor, Predicate<Class<?>> returnTypeFilter) {
         if (obj == null || !visited.add(obj)) return null;
-        T direct = extractor.apply(obj);
+        var direct = extractor.apply(obj);
         if (direct != null) return direct;
 
         var cls = obj.getClass();

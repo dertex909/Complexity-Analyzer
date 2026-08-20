@@ -141,7 +141,7 @@ public final class MachineAsmScanner {
         if (rt != null && !outRecipes.contains(rt)) outRecipes.add(rt);
     }
 
-    private static @Nullable InputStream getClassInputStream(Class<?> clazz, String className) {
+    public static @Nullable InputStream getClassInputStream(Class<?> clazz, String className) {
         String classPath = className.replace('.', '/') + ".class";
         var is = clazz.getResourceAsStream("/" + classPath);
         if (is != null) return is;

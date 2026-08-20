@@ -124,6 +124,7 @@ public class MachineRegistry {
         }
 
         registeredCount += MachineStaticHolderScanner.scanModStaticHoldersAndRegistries(this::registerDynamicMachine);
+        registeredCount += MachineControllerGraphScanner.scanAndResolveControllers(this::registerDynamicMachine, logger);
         logger.finishAndSave(blocks.size(), entityBlocks, registeredCount, errors);
         return registeredCount;
     }

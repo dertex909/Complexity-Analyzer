@@ -41,7 +41,7 @@ public final class MachineTypeUnwrapper {
     }
 
     public static boolean curClsValidName(String name) {
-        if (name.isEmpty()) return false;
+        if (name == null || name.isEmpty()) return false;
         return switch (name.charAt(0)) {
             case 'j' -> !name.startsWith("java.") && !name.startsWith("javax.") && !name.startsWith("jdk.");
             case 's' -> !name.startsWith("sun.");

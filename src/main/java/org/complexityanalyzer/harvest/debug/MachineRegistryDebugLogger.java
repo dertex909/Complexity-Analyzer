@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.harvest.debug;
 
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -300,6 +302,59 @@ public final class MachineRegistryDebugLogger {
         if (!DEBUG_ENABLED) return;
         dump.append("  [FATAL_BLOCK_ERROR] ").append(t.getClass().getName()).append(": ").append(t.getMessage()).append("\n");
         dump.append("  [FATAL_STACKTRACE]:\n").append(getStackTraceString(t)).append("\n");
+    }
+
+    public void logControllerScanStart() {
+        if (!DEBUG_ENABLED) return;
+        dump.append("\n=================================================================\n");
+        dump.append("CONTROLLER & GRAPH SCANNER (PER-MOD ISOLATED RESOLUTION)\n");
+        dump.append("=================================================================\n");
+    }
+
+    public void logControllerModScope(String modId, String dynamicPrefix, ObjectSet<String> packageRoots, int virtualCount, int physicalCount) {
+        if (!DEBUG_ENABLED) return;
+        dump.append("\n[MOD_SCOPE: ").append(modId).append("]\n")
+                .append("  Dynamic Prefix: \"").append(dynamicPrefix).append("\"\n")
+                .append("  Package Roots: ").append(packageRoots).append("\n")
+                .append("  Virtual Classes (AIR): ").append(virtualCount)
+                .append(" | Physical Classes: ").append(physicalCount).append("\n");
+    }
+
+    public void logControllerDirectRecipe(Class<?> sourceCls, RecipeType<?> rt) {
+        if (!DEBUG_ENABLED) return;
+        dump.append("  [CONTROLLER_RECIPE] ").append(sourceCls.getName())
+                .append(" -> ").append(formatValue(rt)).append("\n");
+    }
+
+    public void logControllerBfsMatch(Class<?> rootClass, Class<?> targetClass, Item item, String path, int depth, int score) {
+        if (!DEBUG_ENABLED) return;
+        dump.append("  [BFS_MATCH] ").append(rootClass.getSimpleName())
+                .append(" -> Best Match: ").append(targetClass.getName())
+                .append(" [Item: ").append(GameRegistryManager.getItemId(item)).append("]")
+                .append(" via [").append(path).append("]")
+                .append(" (depth=").append(depth).append(", score=").append(score).append(")\n");
+    }
+
+    public void logControllerResolved(String modId, Class<?> sourceCls, RecipeType<?> rt, Item item) {
+        if (!DEBUG_ENABLED) return;
+        dump.append("  [RESOLVED] SUCCESS: [").append(modId).append("] ")
+                .append(sourceCls.getSimpleName())
+                .append(" mapped Recipe '").append(GameRegistryManager.getRecipeTypeId(rt))
+                .append("' -> Item '").append(GameRegistryManager.getItemId(item)).append("'\n");
+    }
+
+    public void logControllerUnresolved(String modId, Class<?> sourceCls, ObjectList<RecipeType<?>> recipes) {
+        if (!DEBUG_ENABLED) return;
+        var rts = recipes.stream().map(GameRegistryManager::getRecipeTypeId).toList();
+        dump.append("  [UNRESOLVED] Controller '").append(sourceCls.getSimpleName())
+                .append("' has recipes ").append(rts)
+                .append(" but no physical item found in mod scope [").append(modId).append("]\n");
+    }
+
+    public void logControllerScanFinish(int totalResolved, long elapsedMs) {
+        if (!DEBUG_ENABLED) return;
+        dump.append("\n[CONTROLLER_SCAN_FINISH] Resolved ").append(totalResolved)
+                .append(" controller mapping(s) in ").append(elapsedMs).append(" ms\n");
     }
 
     public void finishAndSave(int totalBlocks, int entityBlocks, int registeredCount, int errors) {

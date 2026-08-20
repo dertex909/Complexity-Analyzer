@@ -30,8 +30,6 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
 import java.net.InetSocketAddress;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static io.netty.channel.ChannelFutureListener.CLOSE;
 import static io.netty.util.CharsetUtil.UTF_8;
+import static java.security.SecureRandom.getSeed;
+import static java.util.Base64.getUrlEncoder;
 
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -97,7 +97,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
             String configuredToken = ComplexityConfig.WEB_SERVER_TOKEN.get().trim();
             if (configuredToken.isEmpty()) {
-                configuredToken = Base64.getUrlEncoder().withoutPadding().encodeToString(generateRandomBytes());
+                configuredToken = getUrlEncoder().withoutPadding().encodeToString(getSeed(32));
                 ComplexityConfig.WEB_SERVER_TOKEN.set(configuredToken);
                 ComplexityConfig.WEB_SERVER_TOKEN.save();
             }
@@ -128,12 +128,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         }
 
         return "http://" + hostname + ":" + port + "/" + getToken() + "/";
-    }
-
-    private static byte[] generateRandomBytes() {
-        byte[] b = new byte[32];
-        new SecureRandom().nextBytes(b);
-        return b;
     }
 
     private static String extractIp(ChannelHandlerContext ctx) {

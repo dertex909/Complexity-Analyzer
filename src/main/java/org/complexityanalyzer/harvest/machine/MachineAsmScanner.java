@@ -28,12 +28,9 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 
 import java.io.InputStream;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Modifier;
 
 public final class MachineAsmScanner {
-
-    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private MachineAsmScanner() {
     }
@@ -60,8 +57,9 @@ public final class MachineAsmScanner {
             if (is != null) {
                 var cn = new ClassNode();
                 new ClassReader(is).accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-                scanStaticFields(cn, outRefs);
-                scanClassMethodBytecode(cn, outRefs);
+                var cl = clazz.getClassLoader();
+                scanStaticFields(cl, cn, outRefs);
+                scanClassMethodBytecode(cl, cn, outRefs);
                 scanReferencedMenus(clazz, cn, visitedClasses, outRefs);
             }
         } catch (Throwable ignored) {
@@ -71,20 +69,20 @@ public final class MachineAsmScanner {
         if (MachineTypeUnwrapper.curClsValid(superCls)) findRecipeTypeReferencesASM(superCls, visitedClasses, outRefs);
     }
 
-    private static void scanStaticFields(ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
+    private static void scanStaticFields(ClassLoader cl, ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
         for (var field : cn.fields) {
             if ((field.access & Modifier.STATIC) != 0 && isPotentialRecipeTypeDescriptor(field.desc)) {
-                tryAddRecipeRef(cn.name, field.name, outRefs);
+                tryAddRecipeRef(cl, cn.name, field.name, outRefs);
             }
         }
     }
 
-    private static void scanClassMethodBytecode(ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
+    private static void scanClassMethodBytecode(ClassLoader cl, ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
         for (var method : cn.methods) {
             if (method.instructions == null) continue;
             for (var insn : method.instructions) {
                 if (insn.getOpcode() == Opcodes.GETSTATIC && insn instanceof FieldInsnNode f && isPotentialRecipeTypeDescriptor(f.desc)) {
-                    tryAddRecipeRef(f.owner, f.name, outRefs);
+                    tryAddRecipeRef(cl, f.owner, f.name, outRefs);
                 }
             }
         }
@@ -98,12 +96,13 @@ public final class MachineAsmScanner {
             for (var insn : method.instructions) collectClassFromInsn(insn, referencedClasses);
         }
 
+        var cl = rootClass.getClassLoader();
         for (var refInternal : referencedClasses) {
             String refClassName = refInternal.replace('/', '.');
             if (!MachineTypeUnwrapper.curClsValidName(refClassName) || visitedClasses.contains(refClassName)) continue;
 
             try {
-                var targetCls = Class.forName(refClassName, false, rootClass.getClassLoader());
+                var targetCls = Class.forName(refClassName, false, cl);
                 if (AbstractContainerMenu.class.isAssignableFrom(targetCls)) {
                     visitedClasses.add(refClassName);
                     scanMenuBytecode(targetCls, refClassName, outRefs);
@@ -115,17 +114,13 @@ public final class MachineAsmScanner {
 
     private static void collectClassFromInsn(AbstractInsnNode insn, ObjectSet<String> out) {
         switch (insn) {
-            case TypeInsnNode t when t.getOpcode() == Opcodes.NEW && isModInternalClass(t.desc) -> out.add(t.desc);
-
-            case MethodInsnNode m when m.getOpcode() == Opcodes.INVOKESPECIAL && "<init>".equals(m.name) && isModInternalClass(m.owner) ->
-                    out.add(m.owner);
-
-            case InvokeDynamicInsnNode dyn -> {
-                for (var arg : dyn.bsmArgs) {
+            case TypeInsnNode tin when tin.getOpcode() == Opcodes.NEW && isModInternalClass(tin.desc) ->
+                    out.add(tin.desc);
+            case InvokeDynamicInsnNode idin -> {
+                for (var arg : idin.bsmArgs) {
                     if (arg instanceof Handle h && isModInternalClass(h.getOwner())) out.add(h.getOwner());
                 }
             }
-
             default -> {
             }
         }
@@ -136,13 +131,13 @@ public final class MachineAsmScanner {
             if (is == null) return;
             var cn = new ClassNode();
             new ClassReader(is).accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-            scanClassMethodBytecode(cn, outRefs);
+            scanClassMethodBytecode(menuClass.getClassLoader(), cn, outRefs);
         } catch (Throwable ignored) {
         }
     }
 
-    private static void tryAddRecipeRef(String owner, String name, ObjectList<RecipeType<?>> outRecipes) {
-        var rt = extractStaticRecipeType(owner, name);
+    private static void tryAddRecipeRef(ClassLoader cl, String owner, String name, ObjectList<RecipeType<?>> outRecipes) {
+        var rt = extractStaticRecipeType(cl, owner, name);
         if (rt != null && !outRecipes.contains(rt)) outRecipes.add(rt);
     }
 
@@ -164,14 +159,13 @@ public final class MachineAsmScanner {
     }
 
     @Nullable
-    public static RecipeType<?> extractStaticRecipeType(String ownerClass, String fieldName) {
+    public static RecipeType<?> extractStaticRecipeType(ClassLoader cl, String ownerClass, String fieldName) {
         try {
-            var cls = Class.forName(ownerClass.replace('/', '.'));
+            var cls = Class.forName(ownerClass.replace('/', '.'), false, cl);
             var f = cls.getDeclaredField(fieldName);
             f.setAccessible(true);
             if (!Modifier.isStatic(f.getModifiers())) return null;
-            var mh = LOOKUP.unreflectGetter(f);
-            return MachineTypeUnwrapper.unwrapRecipeType(mh.invoke());
+            return MachineTypeUnwrapper.unwrapRecipeType(f.get(null));
         } catch (Throwable ignored) {
         }
         return null;

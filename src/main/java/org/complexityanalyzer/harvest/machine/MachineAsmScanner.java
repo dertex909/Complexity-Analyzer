@@ -52,7 +52,7 @@ public final class MachineAsmScanner {
 
     public static void findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, ObjectList<RecipeType<?>> outRefs) {
         if (!MachineTypeUnwrapper.curClsValid(clazz) || !visitedClasses.add(clazz.getName())) return;
-
+//хуй
         try (var is = getClassInputStream(clazz, clazz.getName())) {
             if (is != null) {
                 var cn = new ClassNode();

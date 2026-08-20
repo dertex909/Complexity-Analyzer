@@ -160,7 +160,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         String currentToken = getToken();
         String prefix = "/" + currentToken;
 
-        if (!uri.startsWith(prefix)) {
+        if (!uri.equals(prefix) && !uri.startsWith(prefix + "/")) {
             sendError(ctx, HttpResponseStatus.FORBIDDEN, false);
             return;
         }

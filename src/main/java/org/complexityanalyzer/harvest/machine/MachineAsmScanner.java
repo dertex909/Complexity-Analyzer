@@ -41,31 +41,19 @@ public final class MachineAsmScanner {
     public static Object2ObjectMap<Class<?>, ObjectList<RecipeType<?>>> precomputeAsmResults(ReferenceSet<Class<?>> classes) {
         var results = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
         var visited = new ObjectOpenHashSet<String>();
-        var refsBuffer = new ObjectArrayList<StaticFieldRef>();
 
         for (var clazz : classes) {
             if (!MachineTypeUnwrapper.curClsValid(clazz)) continue;
-            refsBuffer.clear();
             visited.clear();
 
-            findRecipeTypeReferencesASM(clazz, visited, refsBuffer);
-            if (refsBuffer.isEmpty()) continue;
-
             var recipeTypes = new ObjectArrayList<RecipeType<?>>();
-            for (var ref : refsBuffer) {
-                try {
-                    var rt = extractStaticRecipeType(ref.ownerClass(), ref.fieldName());
-                    if (rt != null && !recipeTypes.contains(rt)) recipeTypes.add(rt);
-                } catch (Throwable ignored) {
-                }
-            }
-
+            findRecipeTypeReferencesASM(clazz, visited, recipeTypes);
             if (!recipeTypes.isEmpty()) results.put(clazz, recipeTypes);
         }
         return results;
     }
 
-    public static void findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, ObjectList<StaticFieldRef> outRefs) {
+    public static void findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, ObjectList<RecipeType<?>> outRefs) {
         if (!MachineTypeUnwrapper.curClsValid(clazz) || !visitedClasses.add(clazz.getName())) return;
 
         try (var is = getClassInputStream(clazz, clazz.getName())) {
@@ -83,7 +71,7 @@ public final class MachineAsmScanner {
         if (MachineTypeUnwrapper.curClsValid(superCls)) findRecipeTypeReferencesASM(superCls, visitedClasses, outRefs);
     }
 
-    private static void scanStaticFields(ClassNode cn, ObjectList<StaticFieldRef> outRefs) {
+    private static void scanStaticFields(ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
         for (var field : cn.fields) {
             if ((field.access & Modifier.STATIC) != 0 && isPotentialRecipeTypeDescriptor(field.desc)) {
                 tryAddRecipeRef(cn.name, field.name, outRefs);
@@ -91,7 +79,7 @@ public final class MachineAsmScanner {
         }
     }
 
-    private static void scanClassMethodBytecode(ClassNode cn, ObjectList<StaticFieldRef> outRefs) {
+    private static void scanClassMethodBytecode(ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
         for (var method : cn.methods) {
             if (method.instructions == null) continue;
             for (var insn : method.instructions) {
@@ -102,7 +90,7 @@ public final class MachineAsmScanner {
         }
     }
 
-    private static void scanReferencedMenus(Class<?> rootClass, ClassNode cn, ObjectSet<String> visitedClasses, ObjectList<StaticFieldRef> outRefs) {
+    private static void scanReferencedMenus(Class<?> rootClass, ClassNode cn, ObjectSet<String> visitedClasses, ObjectList<RecipeType<?>> outRefs) {
         var referencedClasses = new ObjectOpenHashSet<String>();
 
         for (var method : cn.methods) {
@@ -143,7 +131,7 @@ public final class MachineAsmScanner {
         }
     }
 
-    private static void scanMenuBytecode(Class<?> menuClass, String menuClassName, ObjectList<StaticFieldRef> outRefs) {
+    private static void scanMenuBytecode(Class<?> menuClass, String menuClassName, ObjectList<RecipeType<?>> outRefs) {
         try (var is = getClassInputStream(menuClass, menuClassName)) {
             if (is == null) return;
             var cn = new ClassNode();
@@ -153,11 +141,9 @@ public final class MachineAsmScanner {
         }
     }
 
-    private static void tryAddRecipeRef(String owner, String name, ObjectList<StaticFieldRef> outRefs) {
-        if (extractStaticRecipeType(owner, name) != null) {
-            var ref = new StaticFieldRef(owner, name);
-            if (!outRefs.contains(ref)) outRefs.add(ref);
-        }
+    private static void tryAddRecipeRef(String owner, String name, ObjectList<RecipeType<?>> outRecipes) {
+        var rt = extractStaticRecipeType(owner, name);
+        if (rt != null && !outRecipes.contains(rt)) outRecipes.add(rt);
     }
 
     private static @Nullable InputStream getClassInputStream(Class<?> clazz, String className) {
@@ -185,13 +171,9 @@ public final class MachineAsmScanner {
             f.setAccessible(true);
             if (!Modifier.isStatic(f.getModifiers())) return null;
             var mh = LOOKUP.unreflectGetter(f);
-            var raw = mh.invoke();
-            return MachineTypeUnwrapper.unwrapRecipeType(raw);
+            return MachineTypeUnwrapper.unwrapRecipeType(mh.invoke());
         } catch (Throwable ignored) {
         }
         return null;
-    }
-
-    public record StaticFieldRef(String ownerClass, String fieldName) {
     }
 }

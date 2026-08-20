@@ -154,7 +154,7 @@ public class MobDropSource implements IResourceSource {
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
         var server = serverLevel.getServer();
 
-        ComplexityAnalyzer.LOGGER.debug("Initializing MobDropSource by simulating mob loot tables on the server thread...");
+        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();
 
         registerSpecialKillDrops(targetMap);
@@ -311,7 +311,7 @@ public class MobDropSource implements IResourceSource {
                     combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(config.methodName, stack.getCount());
                 }
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Exception during loot simulation for {} with method {}",
+                ComplexityAnalyzer.LOGGER.error("[MobDropSource] Exception during loot simulation for {} with method {}",
                         entityInstance.getType().getDescriptionId(), config.methodName, e);
             }
         }
@@ -435,7 +435,7 @@ public class MobDropSource implements IResourceSource {
         registerDrop(targetMap, EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
         count++;
 
-        ComplexityAnalyzer.LOGGER.debug("Registered {} special kill-based drop entries.", count);
+        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Registered {} special kill-based drop entries.", count);
     }
 
     private void registerDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap, EntityType<?> entityType, Item item, double averageYield, String method) {

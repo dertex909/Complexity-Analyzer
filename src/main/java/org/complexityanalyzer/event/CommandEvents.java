@@ -25,7 +25,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.*;
 
-@EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
+@EventBusSubscriber
 public final class CommandEvents {
 
     private CommandEvents() {

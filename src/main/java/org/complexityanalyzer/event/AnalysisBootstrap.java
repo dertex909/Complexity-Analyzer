@@ -29,7 +29,7 @@ import org.complexityanalyzer.core.ComplexityAnalyzerAPIImpl;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.ServerLanguage;
 
-@EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
+@EventBusSubscriber
 public class AnalysisBootstrap {
 
     @SubscribeEvent

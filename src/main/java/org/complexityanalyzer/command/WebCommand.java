@@ -26,6 +26,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.fml.ModList;
+import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
@@ -33,7 +34,6 @@ import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.network.web.StandaloneWebServer;
 import org.complexityanalyzer.util.FormatUtils;
 
-import static org.complexityanalyzer.ComplexityAnalyzer.MODID;
 import static org.complexityanalyzer.config.ComplexityConfig.WEB_SERVER_IP;
 
 public final class WebCommand {
@@ -133,7 +133,7 @@ public final class WebCommand {
             return 0;
         }
         StandaloneWebServer.start();
-        String modVersion = ModList.get().getModContainerById(MODID)
+        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID)
                 .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
 
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));

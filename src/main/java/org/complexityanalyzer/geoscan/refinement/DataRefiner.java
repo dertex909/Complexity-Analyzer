@@ -122,7 +122,7 @@ public class DataRefiner {
                                 if (finData.getChunksScanned() > 0) database.saveBiomeData(dimension, biome, finData);
                                 ComplexityAnalyzer.LOGGER.debug("[Refiner] Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finData.getChunksScanned());
                             } catch (Exception e) {
-                                ComplexityAnalyzer.LOGGER.error("Error refining {} in {}", biome, dimension, e);
+                                ComplexityAnalyzer.LOGGER.error("[Refiner] Error refining {} in {}", biome, dimension, e);
                             }
                         }
                     }

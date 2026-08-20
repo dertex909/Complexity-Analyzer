@@ -52,7 +52,7 @@ public class ServerLanguage {
     }
 
     public static void init() {
-        ComplexityAnalyzer.LOGGER.info("Initializing Server-Side Language Manager...");
+        ComplexityAnalyzer.LOGGER.info("[Language] Initializing Server-Side Language Manager...");
     }
 
     private static Object2ObjectMap<String, String> loadLanguageInternal(String locale) {

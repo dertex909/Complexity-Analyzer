@@ -32,10 +32,9 @@ import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.network.web.StandaloneWebServer;
 
-import static org.complexityanalyzer.ComplexityAnalyzer.MODID;
 import static org.complexityanalyzer.config.ComplexityConfig.SPEC;
 
-@EventBusSubscriber(modid = ComplexityAnalyzer.MODID)
+@EventBusSubscriber
 public final class WebLifecycleEvents {
 
     private WebLifecycleEvents() {
@@ -60,7 +59,7 @@ public final class WebLifecycleEvents {
     public static void onAnalysisComplete(ComplexityAnalysisCompleteEvent event) {
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
-        String modVersion = ModList.get().getModContainerById(MODID).map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
+        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID).map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
         CabinBackgroundService.getInstance().regenerateAsync(server, AnalysisEngine.getInstance(), modVersion);
     }
 

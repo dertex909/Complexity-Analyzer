@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.export.cabin.builder;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
@@ -113,11 +114,22 @@ public final class FluidSectionBuilder {
         int totalRecipes = 0;
 
         var registry = ctx.engine().getMachineRegistry();
+        var solverResult = ctx.engine().getSolverResult();
 
         for (int i = 0; i < n; i++) {
             var fluid = ctx.orderedFluids().get(i);
             var recipes = graph.getFluidRecipes(fluid);
             if (recipes.isEmpty()) continue;
+
+            if (solverResult != null) {
+                var optimalFluidRecipe = solverResult.optimalFluidRecipes().get(fluid);
+                if (optimalFluidRecipe != null) {
+                    var mutableRecipes = new ObjectArrayList<>(recipes);
+                    mutableRecipes.sort((a, b) -> a.equals(optimalFluidRecipe) ? -1 : (b.equals(optimalFluidRecipe) ? 1 : 0));
+                    recipes = mutableRecipes;
+                }
+            }
+
             firstOffset[i] = out.position();
             int written = 0;
             for (var r : recipes) {

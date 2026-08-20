@@ -29,9 +29,8 @@ import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.data.BaseResourceData.ResourceSourceType;
 import org.complexityanalyzer.resource.sources.UniversalLootSource;
-
-import static java.util.Locale.ROOT;
 
 public class LootAnalyzeCommand {
 
@@ -52,16 +51,17 @@ public class LootAnalyzeCommand {
             return 0;
         }
 
+        String tableIdStr = lootTableId.toString();
         var itemsFromTable = new ObjectArrayList<BaseResourceData>();
         for (var typeEntry : Reference2ObjectMaps.fastIterable(uls.getAllLootData())) {
             for (var data : typeEntry.getValue().values()) {
-                if (data.getDetails().contains(lootTableId.toString())) itemsFromTable.add(data);
+                if (tableIdStr.equals(data.getSourceSpecifier())) itemsFromTable.add(data);
             }
         }
 
         if (itemsFromTable.isEmpty()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.loot.no_items"));
-            output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", lootTableId.toString(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
+            output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", tableIdStr, ChatFormatting.GRAY, ChatFormatting.YELLOW);
             output.sendEmptyLine(source);
             output.sendTip(source, "complexityanalyzer.command.loot.no_items_tip");
             return 0;
@@ -75,15 +75,14 @@ public class LootAnalyzeCommand {
 
     private static void displayLootAnalysis(CommandSourceStack source, ResourceLocation lootTableId,
                                             ObjectList<BaseResourceData> items, OutputManager output) {
-        String tableIcon = getLootTableIcon(lootTableId);
-        output.sendEmptyLine(source);
-        output.sendHeader(source, tableIcon, "complexityanalyzer.command.loot.header", ChatFormatting.GOLD);
-        output.sendEmptyLine(source);
+        var sourceType = items.getFirst().getSourceType();
 
-        String tableType = getLootTableType(lootTableId.toString());
+        output.sendEmptyLine(source);
+        output.sendHeader(source, getLootTableIcon(sourceType), "complexityanalyzer.command.loot.header", ChatFormatting.GOLD);
+        output.sendEmptyLine(source);
 
         output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", lootTableId.getPath(), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🏷", "complexityanalyzer.command.loot.type_label", "complexityanalyzer.command.loot.type." + tableType, ChatFormatting.GRAY, getTableTypeColor(tableType));
+        output.sendEntry(source, "🏷", "complexityanalyzer.command.loot.type_label", sourceType.getDisplayName(), ChatFormatting.GRAY, getTableTypeColor(sourceType));
         output.sendEntry(source, "📦", "complexityanalyzer.command.loot.items_found", String.valueOf(items.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         output.sendEmptyLine(source);
@@ -93,13 +92,12 @@ public class LootAnalyzeCommand {
         output.sendFooter(source);
     }
 
-    private static void displayStatistics(CommandSourceStack source, ObjectList<BaseResourceData> items,
-                                          OutputManager output) {
+    private static void displayStatistics(CommandSourceStack source, ObjectList<BaseResourceData> items, OutputManager output) {
         double totalChance = 0.0;
         double highestChance = 0.0;
         double lowestChance = 100.0;
 
-        for (BaseResourceData data : items) {
+        for (var data : items) {
             double chance = extractChance(data);
             totalChance += chance;
             highestChance = Math.max(highestChance, chance);
@@ -115,13 +113,12 @@ public class LootAnalyzeCommand {
         output.sendEmptyLine(source);
     }
 
-    private static void displayItemsByRarity(CommandSourceStack source, ObjectList<BaseResourceData> items,
-                                             OutputManager output) {
-        ObjectList<BaseResourceData> common = new ObjectArrayList<>();
-        ObjectList<BaseResourceData> uncommon = new ObjectArrayList<>();
-        ObjectList<BaseResourceData> rare = new ObjectArrayList<>();
-        ObjectList<BaseResourceData> veryRare = new ObjectArrayList<>();
-        ObjectList<BaseResourceData> legendary = new ObjectArrayList<>();
+    private static void displayItemsByRarity(CommandSourceStack source, ObjectList<BaseResourceData> items, OutputManager output) {
+        var common = new ObjectArrayList<BaseResourceData>();
+        var uncommon = new ObjectArrayList<BaseResourceData>();
+        var rare = new ObjectArrayList<BaseResourceData>();
+        var veryRare = new ObjectArrayList<BaseResourceData>();
+        var legendary = new ObjectArrayList<BaseResourceData>();
 
         for (var data : items) {
             double chance = extractChance(data);
@@ -172,37 +169,25 @@ public class LootAnalyzeCommand {
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
     }
 
-    private static String getLootTableIcon(ResourceLocation lootTableId) {
-        String path = lootTableId.getPath().toLowerCase(ROOT);
 
-        if (path.contains("chest")) return "📦";
-        if (path.contains("entities") || path.contains("mobs")) return "⚔";
-        if (path.contains("fishing")) return "🎣";
-        if (path.contains("gameplay")) return "🎲";
-        if (path.contains("blocks")) return "⛏";
-
-        return "🎁";
-    }
-
-    private static String getLootTableType(String path) {
-        path = path.toLowerCase(ROOT);
-
-        if (path.contains("chests/")) return "chest";
-        if (path.contains("entities/")) return "entity";
-        if (path.contains("gameplay/fishing")) return "fishing";
-        if (path.contains("blocks/")) return "block";
-        if (path.contains("archaeology/")) return "archaeology";
-
-        return "generic";
-    }
-
-    private static ChatFormatting getTableTypeColor(String type) {
+    private static String getLootTableIcon(ResourceSourceType type) {
         return switch (type) {
-            case "chest" -> ChatFormatting.GOLD;
-            case "entity" -> ChatFormatting.RED;
-            case "fishing" -> ChatFormatting.AQUA;
-            case "block" -> ChatFormatting.GRAY;
-            case "archaeology" -> ChatFormatting.YELLOW;
+            case CHEST_LOOT -> "📦";
+            case FISHING -> "🎣";
+            case PIGLIN_BARTERING -> "🐷";
+            case ARCHAEOLOGY -> "🏺";
+            case SHEARING -> "✂";
+            default -> "🎁";
+        };
+    }
+
+    private static ChatFormatting getTableTypeColor(ResourceSourceType type) {
+        return switch (type) {
+            case CHEST_LOOT -> ChatFormatting.GOLD;
+            case FISHING -> ChatFormatting.AQUA;
+            case PIGLIN_BARTERING -> ChatFormatting.YELLOW;
+            case ARCHAEOLOGY -> ChatFormatting.LIGHT_PURPLE;
+            case SHEARING -> ChatFormatting.GREEN;
             default -> ChatFormatting.WHITE;
         };
     }
@@ -217,18 +202,10 @@ public class LootAnalyzeCommand {
 
     private static double extractChance(BaseResourceData data) {
         String chanceMeta = data.getMetadata().get("chance");
-        if (chanceMeta != null) try {
-            return Double.parseDouble(chanceMeta);
-        } catch (NumberFormatException ignored) {
-        }
-
+        if (chanceMeta == null) return 0.0;
         try {
-            String details = data.getDetails();
-            int index = details.indexOf("Chance: ");
-            if (index == -1) return 0.0;
-            String chancePart = details.substring(index + 8);
-            return Double.parseDouble(chancePart.replace("%", "").replace(",", ".").trim());
-        } catch (Exception e) {
+            return Double.parseDouble(chanceMeta);
+        } catch (NumberFormatException e) {
             return 0.0;
         }
     }

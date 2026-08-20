@@ -253,6 +253,12 @@ public final class RecipeSectionBuilder {
             var item = ctx.orderedItems().get(i);
             var recipes = recipesByOutput.get(item);
             if (recipes == null || recipes.isEmpty()) continue;
+
+            var ic = ctx.engine().getComplexityResult(item);
+            var optimalRecipe = ic != null ? ic.getOptimalRecipe() : null;
+            if (optimalRecipe != null) recipes.sort((a, b) ->
+                    a.equals(optimalRecipe) ? -1 : (b.equals(optimalRecipe) ? 1 : 0));
+
             firstOffset[i] = out.position();
             int written = 0;
             for (var r : recipes) {

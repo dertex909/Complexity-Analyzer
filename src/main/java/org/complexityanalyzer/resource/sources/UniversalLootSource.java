@@ -344,29 +344,33 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     @Nullable
     private LootContextDefinition inferContextFromId(ResourceLocation id) {
-        var path = id.getPath();
+        var path = id.getPath().toLowerCase(ROOT);
 
-        if (path.startsWith("shearing/") || path.contains("shearing")) {
+        if (path.startsWith("blocks/") || path.contains("/blocks/") || path.startsWith("entities/") || path.contains("/entities/")) {
+            return null;
+        }
+
+        if (path.startsWith("shearing/") || path.contains("/shearing/")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.SHEARING, 5.0);
         }
 
-        if (path.contains("fishing")) {
+        if (path.startsWith("fishing/") || path.startsWith("gameplay/fishing") || path.contains("/fishing/")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.FISHING, 25.0);
         }
 
-        if (path.contains("piglin_bartering") || path.contains("bartering")) {
+        if (path.startsWith("piglin_bartering/") || path.startsWith("gameplay/piglin_bartering") || path.contains("/piglin_bartering/")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.1);
         }
 
-        if (path.startsWith("chests/") || path.contains("chest")) {
+        if (path.startsWith("chests/") || path.contains("/chests/")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.CHEST_LOOT, 100.0);
         }
 
-        if (path.startsWith("archaeology/") || path.contains("archaeology")) {
+        if (path.startsWith("archaeology/") || path.contains("/archaeology/")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.ARCHAEOLOGY, 15.0);
         }
 
-        if (path.startsWith("gameplay/")) {
+        if (path.startsWith("gameplay/") || path.contains("/gameplay/")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.GENERIC_LOOT, 50.0);
         }
 

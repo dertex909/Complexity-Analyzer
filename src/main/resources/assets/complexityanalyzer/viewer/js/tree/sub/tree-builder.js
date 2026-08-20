@@ -31,7 +31,8 @@ export class TreeBuilder {
 
     async buildRoot(kind, index, autoExpandDepth = 2) {
         this.nodeMap.clear();
-        return await this._buildNode(kind, index, 1.0, 0, "0", new Set(), autoExpandDepth);
+        const initialAmount = kind === "fluid" ? 1000.0 : 1.0;
+        return await this._buildNode(kind, index, initialAmount, 0, "0", new Set(), autoExpandDepth);
     }
 
     async _buildNode(kind, index, neededAmount, depth, uid, parentPath, autoExpandDepth) {
@@ -130,8 +131,17 @@ export class TreeBuilder {
         if (!node.recipe || node.type === NodeType.BASE_RESOURCE || node.type === NodeType.CYCLE) return;
 
         const recipe = node.recipe;
-        const resultCount = recipe.resultCount || 1;
-        const craftOperations = node.neededAmount / resultCount;
+
+        let yieldAmount;
+        if (node.kind === "fluid") {
+            const matchingFluid = recipe.fluidOutputs?.find(f => f.fluidIndex === node.index);
+            yieldAmount = (matchingFluid && matchingFluid.amount > 0) ? matchingFluid.amount : 1000;
+        } else {
+            const matchingItem = recipe.itemOutputs?.find(o => o.itemIndex === node.index);
+            yieldAmount = (matchingItem && matchingItem.count > 0) ? matchingItem.count : (recipe.resultCount || 1);
+        }
+
+        const craftOperations = node.neededAmount / Math.max(1, yieldAmount);
 
         const itemIngredientsMap = this._aggregateSlotIngredients(recipe.ingredients, this.db.items, "count", 1);
         const fluidIngredientsMap = this._aggregateSlotIngredients(recipe.fluidIngredients, this.db.fluids, "amount", 1000);
@@ -207,18 +217,10 @@ export class TreeBuilder {
 
     _resolveOptimalRecipe(recipes, itemIndex, visitedOnPath) {
         if (!recipes?.length) return null;
-
+        const optimal = recipes[0];
+        if (!this._isSelfLoop(optimal, itemIndex) && !this._recipeCreatesCycle(optimal, visitedOnPath)) return optimal;
         const valid = recipes.filter(r => !this._isSelfLoop(r, itemIndex) && !this._recipeCreatesCycle(r, visitedOnPath));
-        const pool = valid.length > 0 ? valid : recipes.filter(r => !this._isSelfLoop(r, itemIndex));
-
-        if (pool.length === 0) return null;
-
-        return [...pool].sort((a, b) => {
-            const costA = this._getRecipeUnitCost(a);
-            const costB = this._getRecipeUnitCost(b);
-            if (Math.abs(costA - costB) > 0.001) return costA - costB;
-            return (b.priority || 0) - (a.priority || 0);
-        })[0];
+        return valid.length > 0 ? valid[0] : null;
     }
 
     _getRecipeUnitCost(rec) {

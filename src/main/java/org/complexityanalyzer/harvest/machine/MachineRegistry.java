@@ -154,7 +154,7 @@ public class MachineRegistry {
                              ReferenceSet<Object> deepVisited,
                              MachineRegistryDebugLogger logger) {
         var targetClass = be != null ? be.getClass() : block.getClass();
-        int matchedCount = scanClassBytecodeASM(targetClass, item, (Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>) asmResults, logger);
+        int matchedCount = scanClassBytecodeASM(targetClass, item, asmResults, logger);
 
         if (be != null) {
             matchedCount += reflectionScanner.scanBlockEntityInstance(be, item, logger);
@@ -176,7 +176,7 @@ public class MachineRegistry {
         return matchedCount;
     }
 
-    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>> classAsmResults, MachineRegistryDebugLogger logger) {
+    private int scanClassBytecodeASM(Class<?> clazz, Item machineItem, Object2ObjectMap<Class<?>, ObjectList<RecipeType<?>>> classAsmResults, MachineRegistryDebugLogger logger) {
         if (!MachineTypeUnwrapper.curClsValid(clazz)) return 0;
 
         var recipeTypes = classAsmResults.get(clazz);

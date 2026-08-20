@@ -28,11 +28,9 @@ import org.complexityanalyzer.harvest.debug.MachineRegistryDebugLogger;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Handle;
-import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.function.BiPredicate;
@@ -72,12 +70,7 @@ public final class MachineControllerGraphScanner {
         return totalResolved;
     }
 
-    private static int processIsolatedMod(
-            String modId,
-            ObjectList<Block> modBlocks,
-            BiPredicate<RecipeType<?>, Item> registrar,
-            MachineRegistryDebugLogger logger) {
-
+    private static int processIsolatedMod(String modId, ObjectList<Block> modBlocks, BiPredicate<RecipeType<?>, Item> registrar, MachineRegistryDebugLogger logger) {
         var classToPhysicalItem = new Reference2ObjectOpenHashMap<Class<?>, Item>();
         var virtualClasses = new ReferenceOpenHashSet<Class<?>>();
         var modPackages = new ObjectOpenHashSet<String>();
@@ -87,14 +80,12 @@ public final class MachineControllerGraphScanner {
             var bCls = block.getClass();
             collectClassMetadata(bCls, item, classToPhysicalItem, virtualClasses, modPackages);
 
-            if (block instanceof EntityBlock eb) {
-                try {
-                    var be = eb.newBlockEntity(ZERO, block.defaultBlockState());
-                    if (be != null) {
-                        collectClassMetadata(be.getClass(), item, classToPhysicalItem, virtualClasses, modPackages);
-                    }
-                } catch (Throwable ignored) {
+            if (block instanceof EntityBlock eb) try {
+                var be = eb.newBlockEntity(ZERO, block.defaultBlockState());
+                if (be != null) {
+                    collectClassMetadata(be.getClass(), item, classToPhysicalItem, virtualClasses, modPackages);
                 }
+            } catch (Throwable ignored) {
             }
         }
 
@@ -152,17 +143,11 @@ public final class MachineControllerGraphScanner {
         }
 
         var pkg = clazz.getPackage();
-        if (pkg != null && !pkg.getName().isEmpty()) {
-            modPackages.add(pkg.getName());
-        }
+        if (pkg != null && !pkg.getName().isEmpty()) modPackages.add(pkg.getName());
     }
 
-    private static @Nullable Item resolvePhysicalItemBfs(
-            Class<?> rootClass,
-            Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph,
-            Reference2ObjectMap<Class<?>, Item> classToPhysicalItem,
-            MachineRegistryDebugLogger logger) {
-
+    private static @Nullable Item resolvePhysicalItemBfs(Class<?> rootClass, Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph,
+                                                         Reference2ObjectMap<Class<?>, Item> classToPhysicalItem, MachineRegistryDebugLogger logger) {
         var directItem = classToPhysicalItem.get(rootClass);
         if (directItem != null && directItem != AIR) return directItem;
 
@@ -188,21 +173,16 @@ public final class MachineControllerGraphScanner {
 
             if (depth < MAX_GRAPH_DEPTH) {
                 var neighbors = graph.get(current);
-                if (neighbors != null) {
-                    for (var neighbor : neighbors) {
-                        if (visited.add(neighbor)) {
-                            queue.add(new BfsStep(neighbor, depth + 1, step.path + " -> " + neighbor.getSimpleName()));
-                        }
+                if (neighbors != null) for (var neighbor : neighbors) {
+                    if (visited.add(neighbor)) {
+                        queue.add(new BfsStep(neighbor, depth + 1, step.path + " -> " + neighbor.getSimpleName()));
                     }
                 }
             }
         }
 
         if (candidates.isEmpty()) return null;
-
-        candidates.sort(Comparator.comparingInt(CandidateResult::score).reversed()
-                .thenComparingInt(CandidateResult::depth));
-
+        candidates.sort(Comparator.comparingInt(CandidateResult::score).reversed().thenComparingInt(CandidateResult::depth));
         var best = candidates.getFirst();
         logger.logControllerBfsMatch(rootClass, best.targetClass, best.item, best.path, best.depth, best.score);
 
@@ -223,14 +203,8 @@ public final class MachineControllerGraphScanner {
         return (commonSegments * 100) - (depth * 10);
     }
 
-    private static void scanModClassBytecode(
-            Class<?> clazz,
-            String modPrefix,
-            ObjectSet<String> allowedRoots,
-            Reference2ObjectMap<Class<?>, ObjectList<RecipeType<?>>> directRecipes,
-            Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph,
-            MachineRegistryDebugLogger logger) {
-
+    private static void scanModClassBytecode(Class<?> clazz, String modPrefix, ObjectSet<String> allowedRoots, Reference2ObjectMap<Class<?>,
+            ObjectList<RecipeType<?>>> directRecipes, Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph, MachineRegistryDebugLogger logger) {
         var current = clazz;
         var visited = new ObjectOpenHashSet<String>();
 
@@ -241,29 +215,21 @@ public final class MachineControllerGraphScanner {
                     new ClassReader(is).accept(cn, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
                     var cl = current.getClassLoader();
 
-                    for (var f : cn.fields) {
-                        if ((f.access & Modifier.STATIC) != 0 && f.desc.startsWith("L")) {
-                            var rt = MachineAsmScanner.extractStaticRecipeType(cl, cn.name, f.name);
-                            if (rt != null) {
-                                addRecipe(clazz, rt, directRecipes);
-                                logger.logControllerDirectRecipe(clazz, rt);
-                            }
-                        }
-                        addClassEdgeFromDesc(cl, f.desc, clazz, modPrefix, allowedRoots, graph);
+                    var recipes = directRecipes.computeIfAbsent(clazz, k -> new ObjectArrayList<>());
+                    int beforeSize = recipes.size();
+                    MachineAsmScanner.scanStaticFields(cl, cn, recipes);
+                    MachineAsmScanner.scanClassMethodBytecode(cl, cn, recipes);
+                    for (int i = beforeSize; i < recipes.size(); i++) {
+                        logger.logControllerDirectRecipe(clazz, recipes.get(i));
                     }
+
+                    for (var f : cn.fields) addClassEdgeFromDesc(cl, f.desc, clazz, modPrefix, allowedRoots, graph);
 
                     for (var method : cn.methods) {
                         if (method.instructions == null) continue;
                         for (var insn : method.instructions) {
                             switch (insn) {
                                 case FieldInsnNode f -> {
-                                    if (f.getOpcode() == Opcodes.GETSTATIC && f.desc.startsWith("L")) {
-                                        var rt = MachineAsmScanner.extractStaticRecipeType(cl, f.owner, f.name);
-                                        if (rt != null) {
-                                            addRecipe(clazz, rt, directRecipes);
-                                            logger.logControllerDirectRecipe(clazz, rt);
-                                        }
-                                    }
                                     addClassEdgeFromInternal(cl, f.owner, clazz, modPrefix, allowedRoots, graph);
                                     addClassEdgeFromDesc(cl, f.desc, clazz, modPrefix, allowedRoots, graph);
                                 }
@@ -277,10 +243,11 @@ public final class MachineControllerGraphScanner {
                                         addClassEdgeFromDesc(cl, t.getDescriptor(), clazz, modPrefix, allowedRoots, graph);
                                 case InvokeDynamicInsnNode idin -> {
                                     for (var arg : idin.bsmArgs) {
-                                        if (arg instanceof Handle h)
+                                        if (arg instanceof Handle h) {
                                             addClassEdgeFromInternal(cl, h.getOwner(), clazz, modPrefix, allowedRoots, graph);
-                                        else if (arg instanceof Type t)
+                                        } else if (arg instanceof Type t) {
                                             addClassEdgeFromDesc(cl, t.getDescriptor(), clazz, modPrefix, allowedRoots, graph);
+                                        }
                                     }
                                 }
                                 default -> {
@@ -297,22 +264,10 @@ public final class MachineControllerGraphScanner {
         }
     }
 
-    private static void addRecipe(Class<?> clazz, RecipeType<?> rt, Reference2ObjectMap<Class<?>, ObjectList<RecipeType<?>>> directRecipes) {
-        var list = directRecipes.computeIfAbsent(clazz, k -> new ObjectArrayList<>());
-        if (!list.contains(rt)) list.add(rt);
-    }
-
-    private static void addClassEdgeFromInternal(
-            ClassLoader cl,
-            @Nullable String internalName,
-            Class<?> source,
-            String modPrefix,
-            ObjectSet<String> allowedRoots,
-            Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph) {
-
+    private static void addClassEdgeFromInternal(ClassLoader cl, @Nullable String internalName, Class<?> source, String modPrefix,
+                                                 ObjectSet<String> allowedRoots, Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph) {
         if (internalName == null || internalName.isEmpty() || internalName.startsWith("[")) return;
         String name = internalName.replace('/', '.');
-
         if (!isClassInModScope(name, modPrefix, allowedRoots)) return;
 
         try {
@@ -325,14 +280,8 @@ public final class MachineControllerGraphScanner {
         }
     }
 
-    private static void addClassEdgeFromDesc(
-            ClassLoader cl,
-            @Nullable String desc,
-            Class<?> source,
-            String modPrefix,
-            ObjectSet<String> allowedRoots,
-            Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph) {
-
+    private static void addClassEdgeFromDesc(ClassLoader cl, @Nullable String desc, Class<?> source, String modPrefix,
+                                             ObjectSet<String> allowedRoots, Reference2ObjectMap<Class<?>, ReferenceSet<Class<?>>> graph) {
         if (desc == null || desc.isEmpty()) return;
         int idx = 0;
         while ((idx = desc.indexOf('L', idx)) != -1) {
@@ -346,9 +295,7 @@ public final class MachineControllerGraphScanner {
     private static boolean isClassInModScope(String className, String modPrefix, ObjectSet<String> allowedRoots) {
         if (className.isEmpty()) return false;
         if (!modPrefix.isEmpty() && className.startsWith(modPrefix)) return true;
-        for (var root : allowedRoots) {
-            if (className.startsWith(root)) return true;
-        }
+        for (var root : allowedRoots) if (className.startsWith(root)) return true;
         return false;
     }
 

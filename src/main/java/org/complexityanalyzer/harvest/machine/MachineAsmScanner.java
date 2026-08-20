@@ -52,7 +52,7 @@ public final class MachineAsmScanner {
 
     public static void findRecipeTypeReferencesASM(Class<?> clazz, ObjectSet<String> visitedClasses, ObjectList<RecipeType<?>> outRefs) {
         if (!MachineTypeUnwrapper.curClsValid(clazz) || !visitedClasses.add(clazz.getName())) return;
-//хуй
+        //хуй
         try (var is = getClassInputStream(clazz, clazz.getName())) {
             if (is != null) {
                 var cn = new ClassNode();
@@ -69,7 +69,7 @@ public final class MachineAsmScanner {
         if (MachineTypeUnwrapper.curClsValid(superCls)) findRecipeTypeReferencesASM(superCls, visitedClasses, outRefs);
     }
 
-    private static void scanStaticFields(ClassLoader cl, ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
+    public static void scanStaticFields(ClassLoader cl, ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
         for (var field : cn.fields) {
             if ((field.access & Modifier.STATIC) != 0 && isPotentialRecipeTypeDescriptor(field.desc)) {
                 tryAddRecipeRef(cl, cn.name, field.name, outRefs);
@@ -77,7 +77,7 @@ public final class MachineAsmScanner {
         }
     }
 
-    private static void scanClassMethodBytecode(ClassLoader cl, ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
+    public static void scanClassMethodBytecode(ClassLoader cl, ClassNode cn, ObjectList<RecipeType<?>> outRefs) {
         for (var method : cn.methods) {
             if (method.instructions == null) continue;
             for (var insn : method.instructions) {
@@ -154,12 +154,12 @@ public final class MachineAsmScanner {
         return MachineTypeUnwrapper.curClsValidName(internalName.replace('/', '.'));
     }
 
-    private static boolean isPotentialRecipeTypeDescriptor(@Nullable String desc) {
+    public static boolean isPotentialRecipeTypeDescriptor(@Nullable String desc) {
         return desc != null && desc.startsWith("L");
     }
 
     @Nullable
-    public static RecipeType<?> extractStaticRecipeType(ClassLoader cl, String ownerClass, String fieldName) {
+    private static RecipeType<?> extractStaticRecipeType(ClassLoader cl, String ownerClass, String fieldName) {
         try {
             var cls = Class.forName(ownerClass.replace('/', '.'), false, cl);
             var f = cls.getDeclaredField(fieldName);

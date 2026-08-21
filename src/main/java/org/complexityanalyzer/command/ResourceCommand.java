@@ -84,7 +84,7 @@ public final class ResourceCommand {
     private static void displayResourceInfo(CommandSourceStack source, Item item, BaseResourceData data,
                                             AnalysisEngine engine, ResourceLocation itemId, OutputManager output) {
         output.sendEmptyLine(source);
-        output.sendHeader(source, getSourceIcon(data.getSourceType()), "complexityanalyzer.command.resource.header", ChatFormatting.GREEN);
+        output.sendHeader(source, data.getSourceType().getIcon(), "complexityanalyzer.command.resource.header", ChatFormatting.GREEN);
         output.sendEmptyLine(source);
         output.sendEntry(source, "🏷", "complexityanalyzer.command.resource.item_label", item.getDescription(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
@@ -97,10 +97,9 @@ public final class ResourceCommand {
     }
 
     private static void displaySourceInfo(CommandSourceStack source, BaseResourceData data, OutputManager output) {
+        var sourceType = data.getSourceType();
         output.sendStatusLine(source, "📍", "complexityanalyzer.command.resource.source_info", ChatFormatting.YELLOW);
-        String sourceIcon = getSourceIcon(data.getSourceType());
-        var sourceColor = getSourceColor(data.getSourceType());
-        output.sendSubEntry(source, sourceIcon, "complexityanalyzer.command.resource.type_label", data.getSourceType().getDisplayName(), ChatFormatting.GRAY, sourceColor);
+        output.sendSubEntry(source, sourceType.getIcon(), "complexityanalyzer.command.resource.type_label", sourceType.getDisplayName(), ChatFormatting.GRAY, sourceType.getColor());
         if (!data.getDetails().isEmpty())
             output.sendSubEntry(source, "complexityanalyzer.command.resource.details_label", data.getDetails(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
@@ -108,12 +107,11 @@ public final class ResourceCommand {
 
     private static void displayBaseFactor(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         double baseFactor = data.getBaseFactor();
-        var factorColor = getFactorColor(baseFactor);
-        String difficultyKey = getFactorDifficultyKey(baseFactor);
+        var tier = BaseResourceData.ResourceDifficultyTier.fromFactor(baseFactor);
         output.sendStatusLine(source, "⚖", "complexityanalyzer.command.resource.base_factor", ChatFormatting.YELLOW);
-        output.sendSubEntry(source, "complexityanalyzer.command.resource.value_label", String.format("%.2f", baseFactor), ChatFormatting.GRAY, factorColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.resource.value_label", String.format("%.2f", baseFactor), ChatFormatting.GRAY, tier.color);
         output.sendValueBar(source, (int) Math.min(100, baseFactor * 4), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-        output.sendSubEntry(source, "complexityanalyzer.command.resource.difficulty_label", difficultyKey, ChatFormatting.GRAY, factorColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.resource.difficulty_label", tier.translationKey, ChatFormatting.GRAY, tier.color);
         output.sendEmptyLine(source);
     }
 
@@ -149,48 +147,5 @@ public final class ResourceCommand {
             output.sendSubEntry(source, "complexityanalyzer.command.resource.type_label", "complexityanalyzer.command.resource.pure_base_resource", ChatFormatting.GRAY, ChatFormatting.GREEN);
         }
         output.sendEmptyLine(source);
-    }
-
-    private static String getSourceIcon(BaseResourceData.ResourceSourceType sourceType) {
-        return switch (sourceType.name()) {
-            case "MINING" -> "⛏";
-            case "MOB_DROP" -> "⚔";
-            case "CHEST_LOOT" -> "📦";
-            case "FISHING" -> "🎣";
-            case "TRADING" -> "💰";
-            case "FARMING" -> "🌾";
-            case "FORAGING" -> "🪓";
-            default -> "📍";
-        };
-    }
-
-    private static ChatFormatting getSourceColor(BaseResourceData.ResourceSourceType sourceType) {
-        return switch (sourceType.name()) {
-            case "MINING" -> ChatFormatting.GRAY;
-            case "MOB_DROP" -> ChatFormatting.RED;
-            case "CHEST_LOOT" -> ChatFormatting.GOLD;
-            case "FISHING" -> ChatFormatting.AQUA;
-            case "TRADING" -> ChatFormatting.GREEN;
-            case "FARMING" -> ChatFormatting.YELLOW;
-            case "FORAGING" -> ChatFormatting.DARK_GREEN;
-            default -> ChatFormatting.WHITE;
-        };
-    }
-
-    private static ChatFormatting getFactorColor(double baseFactor) {
-        if (baseFactor >= 20.0) return ChatFormatting.DARK_RED;
-        if (baseFactor >= 15.0) return ChatFormatting.RED;
-        if (baseFactor >= 10.0) return ChatFormatting.GOLD;
-        if (baseFactor >= 5.0) return ChatFormatting.YELLOW;
-        return ChatFormatting.GREEN;
-    }
-
-    private static String getFactorDifficultyKey(double baseFactor) {
-        if (baseFactor >= 20.0) return "complexityanalyzer.command.resource.difficulty.extreme_hard";
-        if (baseFactor >= 15.0) return "complexityanalyzer.command.resource.difficulty.very_hard";
-        if (baseFactor >= 10.0) return "complexityanalyzer.command.resource.difficulty.hard";
-        if (baseFactor >= 5.0) return "complexityanalyzer.command.resource.difficulty.moderate";
-        if (baseFactor >= 2.0) return "complexityanalyzer.command.resource.difficulty.easy";
-        return "complexityanalyzer.command.resource.difficulty.very_easy";
     }
 }

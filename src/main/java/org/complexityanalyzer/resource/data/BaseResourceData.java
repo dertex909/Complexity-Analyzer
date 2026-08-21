@@ -200,6 +200,30 @@ public class BaseResourceData {
         }
     }
 
+    public enum ResourceDifficultyTier {
+        EXTREME_HARD(20.0, "complexityanalyzer.command.resource.difficulty.extreme_hard", ChatFormatting.DARK_RED),
+        VERY_HARD(15.0, "complexityanalyzer.command.resource.difficulty.very_hard", ChatFormatting.RED),
+        HARD(10.0, "complexityanalyzer.command.resource.difficulty.hard", ChatFormatting.GOLD),
+        MODERATE(5.0, "complexityanalyzer.command.resource.difficulty.moderate", ChatFormatting.YELLOW),
+        EASY(2.0, "complexityanalyzer.command.resource.difficulty.easy", ChatFormatting.GREEN),
+        VERY_EASY(0.0, "complexityanalyzer.command.resource.difficulty.very_easy", ChatFormatting.GREEN);
+
+        public final double minFactor;
+        public final String translationKey;
+        public final ChatFormatting color;
+
+        ResourceDifficultyTier(double minFactor, String translationKey, ChatFormatting color) {
+            this.minFactor = minFactor;
+            this.translationKey = translationKey;
+            this.color = color;
+        }
+
+        public static ResourceDifficultyTier fromFactor(double factor) {
+            for (var tier : values()) if (factor >= tier.minFactor) return tier;
+            return VERY_EASY;
+        }
+    }
+
     /**
      * Fluent builder for {@link BaseResourceData}. Custom {@link IResourceSource}s use it to emit their results.
      */

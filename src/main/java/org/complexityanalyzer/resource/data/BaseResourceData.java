@@ -19,6 +19,7 @@
 package org.complexityanalyzer.resource.data;
 
 import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.ChatFormatting;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.resource.IResourceSource;
 
@@ -137,33 +138,37 @@ public class BaseResourceData {
      * (e.g. a villager trade weighs more than mining the same item).
      */
     public enum ResourceSourceType {
-        OVERRIDE("complexityanalyzer.source_type.override", 0.0),
-        ORE("complexityanalyzer.source_type.ore", 1.0),
-        EMPIRICAL_BLOCK("complexityanalyzer.source_type.empirical_block", 1.0),
-        BLOCK("complexityanalyzer.source_type.block", 1.0),
-        BLOCK_TRANSFORMATION("complexityanalyzer.source_type.block_transformation", 1.0),
-        FARMING("complexityanalyzer.source_type.farming", 0.8),
-        CRAFTING("complexityanalyzer.source_type.crafting", 1.0),
-        RENEWABLE("complexityanalyzer.source_type.renewable", 0.8),
-        SHEARING("complexityanalyzer.source_type.shearing", 0.7),
-        FISHING("complexityanalyzer.source_type.fishing", 1.2),
-        MOB_DROP("complexityanalyzer.source_type.mob_drop", 1.8),
-        VILLAGER_TRADE("complexityanalyzer.source_type.villager_trade", 2.0),
-        PIGLIN_BARTERING("complexityanalyzer.source_type.piglin_bartering", 2.2),
-        CHEST_LOOT("complexityanalyzer.source_type.chest_loot", 3.0),
-        ARCHAEOLOGY("complexityanalyzer.source_type.archaeology", 5.0),
-        SPECIAL_LOOT("complexityanalyzer.source_type.special_loot", 4.0),
-        SPECIAL_ACTION("complexityanalyzer.source_type.special_action", 2.5),
-        GENERIC_LOOT("complexityanalyzer.source_type.generic_loot", 3.0),
-        UNKNOWN("complexityanalyzer.source_type.unknown", 10.0),
-        UNOBTAINABLE("complexityanalyzer.source_type.unobtainable", Double.POSITIVE_INFINITY);
+        OVERRIDE("complexityanalyzer.source_type.override", 0.0, "⚡", ChatFormatting.RED),
+        ORE("complexityanalyzer.source_type.ore", 1.0, "⛏", ChatFormatting.DARK_GRAY),
+        EMPIRICAL_BLOCK("complexityanalyzer.source_type.empirical_block", 1.0, "🧱", ChatFormatting.GRAY),
+        BLOCK("complexityanalyzer.source_type.block", 1.0, "🧱", ChatFormatting.GRAY),
+        BLOCK_TRANSFORMATION("complexityanalyzer.source_type.block_transformation", 1.0, "🔄", ChatFormatting.BLUE),
+        FARMING("complexityanalyzer.source_type.farming", 0.8, "🌾", ChatFormatting.GREEN),
+        CRAFTING("complexityanalyzer.source_type.crafting", 1.0, "⚒", ChatFormatting.YELLOW),
+        RENEWABLE("complexityanalyzer.source_type.renewable", 0.8, "🌱", ChatFormatting.DARK_GREEN),
+        SHEARING("complexityanalyzer.source_type.shearing", 0.7, "✂", ChatFormatting.GREEN),
+        FISHING("complexityanalyzer.source_type.fishing", 1.2, "🎣", ChatFormatting.AQUA),
+        MOB_DROP("complexityanalyzer.source_type.mob_drop", 1.8, "⚔", ChatFormatting.RED),
+        VILLAGER_TRADE("complexityanalyzer.source_type.villager_trade", 2.0, "📜", ChatFormatting.GREEN),
+        PIGLIN_BARTERING("complexityanalyzer.source_type.piglin_bartering", 2.2, "🐷", ChatFormatting.YELLOW),
+        CHEST_LOOT("complexityanalyzer.source_type.chest_loot", 3.0, "📦", ChatFormatting.GOLD),
+        ARCHAEOLOGY("complexityanalyzer.source_type.archaeology", 5.0, "🏺", ChatFormatting.LIGHT_PURPLE),
+        SPECIAL_LOOT("complexityanalyzer.source_type.special_loot", 4.0, "🎁", ChatFormatting.GOLD),
+        SPECIAL_ACTION("complexityanalyzer.source_type.special_action", 2.5, "✨", ChatFormatting.LIGHT_PURPLE),
+        GENERIC_LOOT("complexityanalyzer.source_type.generic_loot", 3.0, "🎁", ChatFormatting.WHITE),
+        UNKNOWN("complexityanalyzer.source_type.unknown", 10.0, "❓", ChatFormatting.GRAY),
+        UNOBTAINABLE("complexityanalyzer.source_type.unobtainable", Double.POSITIVE_INFINITY, "🚫", ChatFormatting.DARK_RED);
 
         private final String translationKey;
         private final double baseMultiplier;
+        private final String icon;
+        private final ChatFormatting color;
 
-        ResourceSourceType(String translationKey, double baseMultiplier) {
+        ResourceSourceType(String translationKey, double baseMultiplier, String icon, ChatFormatting color) {
             this.translationKey = translationKey;
             this.baseMultiplier = baseMultiplier;
+            this.icon = icon;
+            this.color = color;
         }
 
         /**
@@ -178,6 +183,20 @@ public class BaseResourceData {
          */
         public double getBaseMultiplier() {
             return baseMultiplier;
+        }
+
+        /**
+         * @return the icon emoji associated with this source type.
+         */
+        public String getIcon() {
+            return icon;
+        }
+
+        /**
+         * @return the chat formatting color for this source type.
+         */
+        public ChatFormatting getColor() {
+            return color;
         }
     }
 

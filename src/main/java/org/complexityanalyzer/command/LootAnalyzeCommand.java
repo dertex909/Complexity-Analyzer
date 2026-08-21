@@ -29,7 +29,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.resource.data.BaseResourceData.ResourceSourceType;
 import org.complexityanalyzer.resource.sources.UniversalLootSource;
 
 public class LootAnalyzeCommand {
@@ -78,11 +77,11 @@ public class LootAnalyzeCommand {
         var sourceType = items.getFirst().getSourceType();
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, getLootTableIcon(sourceType), "complexityanalyzer.command.loot.header", ChatFormatting.GOLD);
+        output.sendHeader(source, sourceType.getIcon(), "complexityanalyzer.command.loot.header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
 
         output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", lootTableId.getPath(), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🏷", "complexityanalyzer.command.loot.type_label", sourceType.getDisplayName(), ChatFormatting.GRAY, getTableTypeColor(sourceType));
+        output.sendEntry(source, "🏷", "complexityanalyzer.command.loot.type_label", sourceType.getDisplayName(), ChatFormatting.GRAY, sourceType.getColor());
         output.sendEntry(source, "📦", "complexityanalyzer.command.loot.items_found", String.valueOf(items.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         output.sendEmptyLine(source);
@@ -139,28 +138,6 @@ public class LootAnalyzeCommand {
         double chance = extractChance(data);
         output.sendSubEntry(source, itemComponent, String.format("%.2f%%", chance), ChatFormatting.WHITE, Rarity.fromChance(chance).color);
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-    }
-
-    private static String getLootTableIcon(ResourceSourceType type) {
-        return switch (type) {
-            case CHEST_LOOT -> "📦";
-            case FISHING -> "🎣";
-            case PIGLIN_BARTERING -> "🐷";
-            case ARCHAEOLOGY -> "🏺";
-            case SHEARING -> "✂";
-            default -> "🎁";
-        };
-    }
-
-    private static ChatFormatting getTableTypeColor(ResourceSourceType type) {
-        return switch (type) {
-            case CHEST_LOOT -> ChatFormatting.GOLD;
-            case FISHING -> ChatFormatting.AQUA;
-            case PIGLIN_BARTERING -> ChatFormatting.YELLOW;
-            case ARCHAEOLOGY -> ChatFormatting.LIGHT_PURPLE;
-            case SHEARING -> ChatFormatting.GREEN;
-            default -> ChatFormatting.WHITE;
-        };
     }
 
     private static double extractChance(BaseResourceData data) {

@@ -104,9 +104,8 @@ export class TreeBuilder {
 
         const rawRecipes = await this._getRecipes(kind, index);
         const recipe = this._resolveOptimalRecipe(rawRecipes, kind, index, currentPath);
-        const unitCost = recipe ? this._getRecipeUnitCost(recipe, kind, index) : Infinity;
 
-        if (!recipe || (hasBaseSource && complexity > 0 && unitCost > complexity * 1.05)) {
+        if (!recipe || (depth > 0 && hasBaseSource)) {
             node.type = NodeType.BASE_RESOURCE;
             node.collapsed = false;
             node.children = [];

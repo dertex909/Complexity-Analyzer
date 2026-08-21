@@ -30,6 +30,7 @@ import org.complexityanalyzer.api.IBossRegistry;
 import org.complexityanalyzer.api.IRenewableRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.data.MobDifficultyCategory;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,7 +50,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
 
     public static final double POWER_TO_RARITY_COEFFICIENT = 0.05;
 
-    private final ConcurrentHashMap<EntityType<?>, MobProperties> propertiesCache = new ConcurrentHashMap<>(256);
+    private final ConcurrentHashMap<EntityType<?>, MobDifficultyCategory.MobProperties> propertiesCache = new ConcurrentHashMap<>(256);
     private final ConcurrentHashMap.KeySetView<EntityType<?>, Boolean> renewableTypes = ConcurrentHashMap.newKeySet(64);
     private final ConcurrentHashMap<EntityType<?>, BossType> registeredBosses = new ConcurrentHashMap<>(32);
 
@@ -81,26 +82,23 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     }
 
     @Nullable
-    public MobProperties getProperties(EntityType<?> type) {
+    public MobDifficultyCategory.MobProperties getProperties(EntityType<?> type) {
         var cached = propertiesCache.get(type);
         if (cached != null) return cached;
 
         var attributes = getSupplier(type);
         if (attributes == null) return null;
 
-        var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH)
-                ? attributes.getBaseValue(Attributes.MAX_HEALTH)
-                : DEFAULT_MAX_HEALTH;
+        var maxHealth = attributes.hasAttribute(Attributes.MAX_HEALTH) ? attributes.getBaseValue(Attributes.MAX_HEALTH) : DEFAULT_MAX_HEALTH;
+        var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE) ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE) : 0.0;
+        var armor = attributes.hasAttribute(Attributes.ARMOR) ? attributes.getBaseValue(Attributes.ARMOR) : 0.0;
 
-        var attackDamage = attributes.hasAttribute(Attributes.ATTACK_DAMAGE)
-                ? attributes.getBaseValue(Attributes.ATTACK_DAMAGE)
-                : 0.0;
+        double survivability = maxHealth * (1.0 + armor * ARMOR_COEFFICIENT);
+        double threat = 1.0 + Math.log1p(attackDamage);
+        double combatPower = survivability * threat;
 
-        var armor = attributes.hasAttribute(Attributes.ARMOR)
-                ? attributes.getBaseValue(Attributes.ARMOR)
-                : 0.0;
-
-        var props = new MobProperties(maxHealth, attackDamage, armor, type.getCategory());
+        var diffCategory = MobDifficultyCategory.from(isBoss(type), isMiniBoss(type), combatPower);
+        var props = new MobDifficultyCategory.MobProperties(maxHealth, attackDamage, armor, type.getCategory(), diffCategory);
         propertiesCache.put(type, props);
 
         return props;
@@ -155,10 +153,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
 
         if (classification == MobCategory.MONSTER) {
             var props = getProperties(type);
-            if (props != null) {
-                double combatPower = props.calculateCombatPower();
-                baseRarity += combatPower * POWER_TO_RARITY_COEFFICIENT;
-            }
+            if (props != null) baseRarity += props.calculateCombatPower() * POWER_TO_RARITY_COEFFICIENT;
         }
 
         return Math.max(BASE_MIN_RARITY, baseRarity);
@@ -167,24 +162,5 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     public void clearCache() {
         propertiesCache.clear();
         ComplexityAnalyzer.LOGGER.info("MobPropertyProvider cache cleared");
-    }
-
-    public record MobProperties(
-            double maxHealth,
-            double attackDamage,
-            double armor,
-            MobCategory classification
-    ) {
-        public double calculateSurvivability() {
-            return maxHealth * (1.0 + armor * ARMOR_COEFFICIENT);
-        }
-
-        public double calculateThreat() {
-            return 1.0 + Math.log1p(attackDamage);
-        }
-
-        public double calculateCombatPower() {
-            return calculateSurvivability() * calculateThreat();
-        }
     }
 }

@@ -114,50 +114,22 @@ public class LootAnalyzeCommand {
     }
 
     private static void displayItemsByRarity(CommandSourceStack source, ObjectList<BaseResourceData> items, OutputManager output) {
-        var common = new ObjectArrayList<BaseResourceData>();
-        var uncommon = new ObjectArrayList<BaseResourceData>();
-        var rare = new ObjectArrayList<BaseResourceData>();
-        var veryRare = new ObjectArrayList<BaseResourceData>();
-        var legendary = new ObjectArrayList<BaseResourceData>();
-
-        for (var data : items) {
-            double chance = extractChance(data);
-            if (chance > 20.0) {
-                common.add(data);
-            } else if (chance > 10.0) {
-                uncommon.add(data);
-            } else if (chance > 5.0) {
-                rare.add(data);
-            } else if (chance > 1.0) {
-                veryRare.add(data);
-            } else {
-                legendary.add(data);
-            }
-        }
+        @SuppressWarnings("unchecked")
+        ObjectArrayList<BaseResourceData>[] groups = new ObjectArrayList[Rarity.VALUES.length];
+        for (int i = 0; i < groups.length; i++) groups[i] = new ObjectArrayList<>();
+        for (var data : items) groups[Rarity.fromChance(extractChance(data)).ordinal()].add(data);
 
         output.sendStatusLine(source, "💎", "complexityanalyzer.command.loot.rarity_section", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
-        if (!common.isEmpty()) {
-            displayRarityCategory(source, "common", "🟢", ChatFormatting.GREEN, common, output);
-        }
-        if (!uncommon.isEmpty()) {
-            displayRarityCategory(source, "uncommon", "🟡", ChatFormatting.YELLOW, uncommon, output);
-        }
-        if (!rare.isEmpty()) {
-            displayRarityCategory(source, "rare", "🟠", ChatFormatting.GOLD, rare, output);
-        }
-        if (!veryRare.isEmpty()) {
-            displayRarityCategory(source, "very_rare", "🔵", ChatFormatting.AQUA, veryRare, output);
-        }
-        if (!legendary.isEmpty()) {
-            displayRarityCategory(source, "legendary", "🟣", ChatFormatting.LIGHT_PURPLE, legendary, output);
+        for (var rarity : Rarity.VALUES) {
+            var groupItems = groups[rarity.ordinal()];
+            if (!groupItems.isEmpty()) displayRarityCategory(source, rarity, groupItems, output);
         }
     }
 
-    private static void displayRarityCategory(CommandSourceStack source, String rarityKey, String icon,
-                                              ChatFormatting color, ObjectList<BaseResourceData> items, OutputManager output) {
-        output.sendStatusLine(source, icon, Component.translatable("complexityanalyzer.command.loot.rarity." + rarityKey).append(" (" + items.size() + ")"), color);
+    private static void displayRarityCategory(CommandSourceStack source, Rarity rarity, ObjectList<BaseResourceData> items, OutputManager output) {
+        output.sendStatusLine(source, rarity.icon, Component.translatable("complexityanalyzer.command.loot.rarity." + rarity.key).append(" (" + items.size() + ")"), rarity.color);
         for (var data : items) displayItem(source, data, output);
         output.sendEmptyLine(source);
     }
@@ -165,10 +137,9 @@ public class LootAnalyzeCommand {
     private static void displayItem(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         var itemComponent = data.getItem().getDescription();
         double chance = extractChance(data);
-        output.sendSubEntry(source, itemComponent, String.format("%.2f%%", chance), ChatFormatting.WHITE, getChanceColor(chance));
+        output.sendSubEntry(source, itemComponent, String.format("%.2f%%", chance), ChatFormatting.WHITE, Rarity.fromChance(chance).color);
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
     }
-
 
     private static String getLootTableIcon(ResourceSourceType type) {
         return switch (type) {
@@ -192,14 +163,6 @@ public class LootAnalyzeCommand {
         };
     }
 
-    private static ChatFormatting getChanceColor(double chance) {
-        if (chance > 20.0) return ChatFormatting.GREEN;
-        if (chance > 10.0) return ChatFormatting.YELLOW;
-        if (chance > 5.0) return ChatFormatting.GOLD;
-        if (chance > 1.0) return ChatFormatting.AQUA;
-        return ChatFormatting.LIGHT_PURPLE;
-    }
-
     private static double extractChance(BaseResourceData data) {
         String chanceMeta = data.getMetadata().get("chance");
         if (chanceMeta == null) return 0.0;
@@ -207,6 +170,33 @@ public class LootAnalyzeCommand {
             return Double.parseDouble(chanceMeta);
         } catch (NumberFormatException e) {
             return 0.0;
+        }
+    }
+
+    private enum Rarity {
+        COMMON("common", "🟢", ChatFormatting.GREEN, 20.0),
+        UNCOMMON("uncommon", "🟡", ChatFormatting.YELLOW, 10.0),
+        RARE("rare", "🟠", ChatFormatting.GOLD, 5.0),
+        VERY_RARE("very_rare", "🔵", ChatFormatting.AQUA, 1.0),
+        LEGENDARY("legendary", "🟣", ChatFormatting.LIGHT_PURPLE, 0.0);
+
+        private static final Rarity[] VALUES = values();
+
+        final String key;
+        final String icon;
+        final ChatFormatting color;
+        final double minChance;
+
+        Rarity(String key, String icon, ChatFormatting color, double minChance) {
+            this.key = key;
+            this.icon = icon;
+            this.color = color;
+            this.minChance = minChance;
+        }
+
+        static Rarity fromChance(double chance) {
+            for (var rarity : VALUES) if (chance > rarity.minChance) return rarity;
+            return LEGENDARY;
         }
     }
 }

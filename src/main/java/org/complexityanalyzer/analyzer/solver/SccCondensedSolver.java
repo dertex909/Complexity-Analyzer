@@ -646,7 +646,7 @@ public final class SccCondensedSolver {
                                         multiplier, outputBuckets,
                                         shared.itemStart(), shared.itemCount(), shared.fluidStart(), shared.fluidCount(),
                                         machineNode, machineCount, machineMul, machineCount > 0 ? machineFallback : -1.0,
-                                        null);
+                                        recipe);
                                 addEdgesForFormula(formulaId);
                             }
                         } else {

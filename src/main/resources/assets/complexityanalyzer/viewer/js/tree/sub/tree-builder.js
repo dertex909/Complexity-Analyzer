@@ -103,9 +103,10 @@ export class TreeBuilder {
         this.nodeMap.set(uid, node);
 
         const rawRecipes = await this._getRecipes(kind, index);
-        const recipe = this._resolveOptimalRecipe(rawRecipes, index, currentPath);
+        const recipe = this._resolveOptimalRecipe(rawRecipes, kind, index, currentPath);
+        const unitCost = recipe ? this._getRecipeUnitCost(recipe, kind, index) : Infinity;
 
-        if (!recipe || (hasBaseSource && complexity > 0 && this._getRecipeUnitCost(recipe) > complexity * 1.05)) {
+        if (!recipe || (hasBaseSource && complexity > 0 && unitCost > complexity * 1.05)) {
             node.type = NodeType.BASE_RESOURCE;
             node.collapsed = false;
             node.children = [];
@@ -124,7 +125,7 @@ export class TreeBuilder {
 
         if (!node.recipe) {
             const rawRecipes = await this._getRecipes(node.kind, node.index);
-            node.recipe = this._resolveOptimalRecipe(rawRecipes, node.index, visitedOnPath);
+            node.recipe = this._resolveOptimalRecipe(rawRecipes, node.kind, node.index, visitedOnPath);
             if (node.recipe) this._attachMachineInfo(node, node.recipe);
         }
 
@@ -215,15 +216,15 @@ export class TreeBuilder {
         }
     }
 
-    _resolveOptimalRecipe(recipes, itemIndex, visitedOnPath) {
+    _resolveOptimalRecipe(recipes, kind, index, visitedOnPath) {
         if (!recipes?.length) return null;
         const optimal = recipes[0];
-        if (!this._isSelfLoop(optimal, itemIndex) && !this._recipeCreatesCycle(optimal, visitedOnPath)) return optimal;
-        const valid = recipes.filter(r => !this._isSelfLoop(r, itemIndex) && !this._recipeCreatesCycle(r, visitedOnPath));
+        if (!this._isSelfLoop(optimal, index, kind) && !this._recipeCreatesCycle(optimal, visitedOnPath)) return optimal;
+        const valid = recipes.filter(r => !this._isSelfLoop(r, index, kind) && !this._recipeCreatesCycle(r, visitedOnPath));
         return valid.length > 0 ? valid[0] : null;
     }
 
-    _getRecipeUnitCost(rec) {
+    _getRecipeUnitCost(rec, kind = "item", index = -1) {
         let total = 0;
         const tax = this.db.meta?.machineTaxMultiplier ?? 0.05;
         const fallbackComplexity = this.db.meta?.machineFallbackComplexity ?? 100.0;
@@ -249,8 +250,15 @@ export class TreeBuilder {
             total += complexity * ((slot.amount || 1000) / 1000);
         }
 
-        const count = rec.resultCount || 1;
-        return total / Math.max(1, count);
+        if (kind === "fluid") {
+            let matchingFluid = rec.fluidOutputs?.find(f => f.fluidIndex === index);
+            const amount = (matchingFluid && matchingFluid.amount > 0) ? matchingFluid.amount : 1000;
+            return (total / amount) * 1000;
+        } else {
+            let matchingItem = rec.itemOutputs?.find(o => o.itemIndex === index);
+            const count = (matchingItem && matchingItem.count > 0) ? matchingItem.count : (rec.resultCount || 1);
+            return total / Math.max(1, count);
+        }
     }
 
     _recipeCreatesCycle(rec, visitedOnPath) {
@@ -269,8 +277,12 @@ export class TreeBuilder {
         return false;
     }
 
-    _isSelfLoop(rec, itemIndex) {
-        return rec.ingredients?.some(slot => slot.variants?.includes(itemIndex)) ?? false;
+    _isSelfLoop(rec, index, kind) {
+        if (kind === "item") {
+            return rec.ingredients?.some(slot => slot.variants?.includes(index)) ?? false;
+        } else {
+            return rec.fluidIngredients?.some(slot => slot.variants?.includes(index)) ?? false;
+        }
     }
 
     _formatAmount(amount, kind) {

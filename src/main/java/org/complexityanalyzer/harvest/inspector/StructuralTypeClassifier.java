@@ -38,8 +38,7 @@ public final class StructuralTypeClassifier {
         if (ResourceLocation.class.isAssignableFrom(type)) return Kind.RESOURCE_ID;
         if (TagKey.class.isAssignableFrom(type)) return Kind.TAG;
         if (DataComponentType.class.isAssignableFrom(type)) return Kind.DATA_COMPONENT;
-        if (type.getName().contains("FluidStack")) return Kind.FLUID_STACK;
-        return null;
+        return type.getName().contains("FluidStack") ? Kind.FLUID_STACK : null;
     }
 
     public static boolean isTerminalType(Class<?> type) {

@@ -143,7 +143,8 @@ Control panel for the world-scanning engine (`GeoAnalysisManager`), used to lear
 resources actually generate.
 
 - **`geoscan start <profile> [chunks] [force]`** 🛡
-  - **`profile`** — scan speed vs. server impact: `normal`, `fast`, `ultra_fast`, `maximum`. Running `start` with no profile lists them with their MSPT limits.
+  - **`profile`** — scan speed vs. server impact: `normal`, `fast`, `aggressive`, `unlimited`. Running `start` with no
+    profile lists them with their MSPT limits.
   - **`chunks`** *(optional, default 32)* — pristine chunks to find per biome.
   - **`force`** *(optional, default `false`)* — `true` skips the countdown and starts immediately (broadcasts a lag warning).
 - **`geoscan stop`** 🛡 — gracefully stops the running or scheduled scan; progress is saved.

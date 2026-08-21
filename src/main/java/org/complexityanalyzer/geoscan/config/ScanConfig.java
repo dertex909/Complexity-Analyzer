@@ -18,7 +18,7 @@
 
 package org.complexityanalyzer.geoscan.config;
 
-import static java.util.Locale.ROOT;
+import net.minecraft.ChatFormatting;
 
 public final class ScanConfig {
 
@@ -34,13 +34,15 @@ public final class ScanConfig {
     }
 
     public enum ScanProfile {
-        NORMAL("normal", "Normal", 30.0f, 4, 16, 4, 2, 3, 128, 128, 128, 2),
-        FAST("fast", "Fast", 40.0f, 6, 24, 8, 4, 6, 256, 512, 512, 2),
-        ULTRA_FAST("ultra_fast", "Ultra Fast", 50.0f, 10, 48, 12, 6, 9, 512, 1024, 1024, 3),
-        MAXIMUM("maximum", "Maximum", -1.0f, 16, 96, 24, 10, 16, 1024, 2048, 2048, 4);
+        NORMAL("normal", "Normal", "🟢", ChatFormatting.GREEN, 30.0f, 4, 16, 4, 2, 3, 128, 128, 128, 2),
+        FAST("fast", "Fast", "🟡", ChatFormatting.YELLOW, 40.0f, 6, 24, 8, 4, 6, 256, 512, 512, 2),
+        AGGRESSIVE("aggressive", "Aggressive", "🟠", ChatFormatting.GOLD, 50.0f, 10, 48, 12, 6, 9, 512, 1024, 1024, 3),
+        UNLIMITED("unlimited", "Unlimited", "🔴", ChatFormatting.RED, -1.0f, 16, 96, 24, 10, 16, 1024, 2048, 2048, 4);
 
         public final String commandName;
         public final String displayName;
+        public final String icon;
+        public final ChatFormatting color;
         public final float msptLimit;
         private final int emptyBatchTolerance;
         private final int stagnantBase;
@@ -52,11 +54,13 @@ public final class ScanConfig {
         private final int budgetFixed;
         private final int maxPendingAnalysisBatches;
 
-        ScanProfile(String commandName, String displayName, float msptLimit, int emptyBatchTolerance,
-                    int stagnantBase, int batchNoLimit, int batch70, int batch50,
+        ScanProfile(String commandName, String displayName, String icon, ChatFormatting color, float msptLimit,
+                    int emptyBatchTolerance, int stagnantBase, int batchNoLimit, int batch70, int batch50,
                     int budgetMin, int budgetMax, int budgetFixed, int maxPendingAnalysisBatches) {
             this.commandName = commandName;
             this.displayName = displayName;
+            this.icon = icon;
+            this.color = color;
             this.msptLimit = msptLimit;
             this.emptyBatchTolerance = emptyBatchTolerance;
             this.stagnantBase = stagnantBase;
@@ -70,18 +74,8 @@ public final class ScanConfig {
         }
 
         public static ScanProfile fromInput(String input) {
-            String normalized = input.toLowerCase(ROOT)
-                    .replace("-", "")
-                    .replace("_", "")
-                    .replace(" ", "");
-
-            return switch (normalized) {
-                case "normal", "quarter" -> NORMAL;
-                case "fast", "half" -> FAST;
-                case "ultrafast", "most" -> ULTRA_FAST;
-                case "maximum", "full", "max" -> MAXIMUM;
-                default -> throw new IllegalArgumentException("Unknown profile: " + input);
-            };
+            for (var profile : values()) if (profile.commandName.equalsIgnoreCase(input)) return profile;
+            throw new IllegalArgumentException("Unknown profile: " + input);
         }
 
         public boolean hasMsptLimit() {

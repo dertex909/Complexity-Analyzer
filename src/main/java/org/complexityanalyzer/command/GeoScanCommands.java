@@ -38,6 +38,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
+import org.complexityanalyzer.util.FormatUtils;
 import org.complexityanalyzer.util.ServerLanguage;
 
 import static java.util.Locale.ROOT;
@@ -45,6 +46,13 @@ import static net.minecraft.commands.SharedSuggestionProvider.suggest;
 import static net.minecraft.network.chat.Style.EMPTY;
 
 public class GeoScanCommands {
+    private static final String[] PROFILE_NAMES;
+
+    static {
+        var profiles = ScanProfile.values();
+        PROFILE_NAMES = new String[profiles.length];
+        for (int i = 0; i < profiles.length; i++) PROFILE_NAMES[i] = profiles[i].commandName;
+    }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("geoscan")
@@ -52,7 +60,7 @@ public class GeoScanCommands {
                         .requires(source -> source.hasPermission(2))
                         .executes(GeoScanCommands::showProfileHelp)
                         .then(Commands.argument("profile", StringArgumentType.word())
-                                .suggests((c, b) -> suggest(new String[]{"normal", "fast", "ultra_fast", "maximum"}, b))
+                                .suggests((c, b) -> suggest(PROFILE_NAMES, b))
                                 .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
                                 .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
                                         .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false))
@@ -77,7 +85,7 @@ public class GeoScanCommands {
         output.sendEmptyLine(source);
 
         for (var profile : ScanProfile.values()) {
-            String icon = getProfileIcon(profile);
+            String icon = profile.icon;
             var msptInfo = profile.hasMsptLimit() ?
                     Component.translatable("complexityanalyzer.command.geoscan.profile.limit_mspt", (int) profile.msptLimit) :
                     Component.translatable("complexityanalyzer.command.geoscan.profile.no_limit");
@@ -120,8 +128,8 @@ public class GeoScanCommands {
             }
 
             String initiatorName = source.getTextName();
-            String icon = getProfileIcon(profile);
-            var color = getProfileColor(profile);
+            String icon = profile.icon;
+            var color = profile.color;
 
             output.sendEmptyLine(source);
             output.sendHeader(source, force ? "⚡" : "📊", force ? "complexityanalyzer.command.geoscan.force_header" : "complexityanalyzer.command.geoscan.scheduled_header", force ? ChatFormatting.RED : ChatFormatting.AQUA);
@@ -138,11 +146,10 @@ public class GeoScanCommands {
 
             output.sendSubEntry(source, "complexityanalyzer.command.geoscan.vanilla_gen", "", ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "👤", "complexityanalyzer.command.geoscan.initiator_label", initiatorName, ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEmptyLine(source);
             output.sendFooter(source);
 
             if (force) {
-                if (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST) {
+                if (profile == ScanProfile.UNLIMITED || profile == ScanProfile.AGGRESSIVE) {
                     output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.force_broadcast"));
                     output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.lag_expected", profile.displayName));
                 } else {
@@ -150,7 +157,7 @@ public class GeoScanCommands {
                 }
                 manager.startScanImmediately(chunks, initiatorName, profile);
             } else {
-                if (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST) {
+                if (profile == ScanProfile.UNLIMITED || profile == ScanProfile.AGGRESSIVE) {
                     output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.scheduled_broadcast", profile.displayName));
                 } else {
                     output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.starting_soon", profile.displayName.toLowerCase(ROOT)));
@@ -222,8 +229,8 @@ public class GeoScanCommands {
     private static void renderActiveStatus(OutputManager output, CommandSourceStack source,
                                            GeoAnalysisManager manager, ScanSession session) {
         var profile = session.getProfile();
-        String icon = getProfileIcon(profile);
-        var color = getProfileColor(profile);
+        String icon = profile.icon;
+        var color = profile.color;
 
         output.sendSubEntry(source, icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, ChatFormatting.GRAY, color);
         output.sendSubEntry(source, "complexityanalyzer.command.geoscan.background_gen", "", ChatFormatting.GRAY, ChatFormatting.AQUA);
@@ -237,7 +244,7 @@ public class GeoScanCommands {
         output.sendSubEntry(source, "complexityanalyzer.command.geoscan.speed_label", Component.translatable("complexityanalyzer.command.geoscan.speed_value", session.getScanSpeed()).getString(), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         long elapsed = session.getElapsedSeconds();
-        output.sendSubEntry(source, "⌛", "complexityanalyzer.command.geoscan.elapsed_label", formatTime(elapsed), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "⌛", "complexityanalyzer.command.geoscan.elapsed_label", FormatUtils.formatDurationSeconds(elapsed), ChatFormatting.GRAY, ChatFormatting.WHITE);
 
         if (profile.hasMsptLimit()) {
             float mspt = manager.getCurrentMspt();
@@ -363,40 +370,6 @@ public class GeoScanCommands {
             output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.cleared_broadcast"));
         }
         return 1;
-    }
-
-    private static String getProfileIcon(ScanProfile profile) {
-        return switch (profile) {
-            case NORMAL -> "🟢";
-            case FAST -> "🟡";
-            case ULTRA_FAST -> "🟠";
-            case MAXIMUM -> "🔴";
-        };
-    }
-
-    private static ChatFormatting getProfileColor(ScanProfile profile) {
-        return switch (profile) {
-            case NORMAL -> ChatFormatting.GREEN;
-            case FAST -> ChatFormatting.YELLOW;
-            case ULTRA_FAST -> ChatFormatting.GOLD;
-            case MAXIMUM -> ChatFormatting.RED;
-        };
-    }
-
-    private static String formatTime(long seconds) {
-        var sSuffix = Component.translatable("complexityanalyzer.unit.time.seconds_short");
-        var mSuffix = Component.translatable("complexityanalyzer.unit.time.minutes_short");
-        var hSuffix = Component.translatable("complexityanalyzer.unit.time.hours_short");
-
-        if (seconds < 60) {
-            return seconds + sSuffix.getString();
-        } else if (seconds < 3600) {
-            return (seconds / 60) + mSuffix.getString() + " " + (seconds % 60) + sSuffix.getString();
-        } else {
-            long hours = seconds / 3600;
-            long mins = (seconds % 3600) / 60;
-            return hours + hSuffix.getString() + " " + mins + mSuffix.getString();
-        }
     }
 
     private static Component formatDimensionName(ResourceLocation dimId) {

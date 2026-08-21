@@ -190,7 +190,7 @@ public class GeoAnalysisManager {
     private void broadcastForcedScanAlert(String initiator, ScanProfile profile) {
         if ("Server".equals(initiator)) return;
 
-        Component message = (profile == ScanProfile.MAXIMUM || profile == ScanProfile.ULTRA_FAST)
+        Component message = (profile == ScanProfile.UNLIMITED || profile == ScanProfile.AGGRESSIVE)
                 ? Component.translatable("complexityanalyzer.geoscan.notification.forced_warning",
                 Component.translatable("complexityanalyzer.geoscan.profile." + profile.commandName))
                 : Component.translatable("complexityanalyzer.geoscan.notification.forced_lag");

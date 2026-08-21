@@ -30,25 +30,25 @@ import static java.util.Locale.ROOT;
  * <p>Use {@link #fromComplexity(double)} to bucket a raw score.
  */
 public enum ComplexityCategory {
-    ABSOLUTE(0, "Absolute", ChatFormatting.WHITE),
-    TRIVIAL(10, "Trivial", ChatFormatting.GRAY),
-    SIMPLE(100, "Simple", ChatFormatting.GREEN),
-    MODERATE(1_000, "Moderate", ChatFormatting.YELLOW),
-    COMPLEX(10_000, "Complex", ChatFormatting.GOLD),
-    DIFFICULT(100_000, "Difficult", ChatFormatting.RED),
-    EXPERT(1_000_000, "Expert", ChatFormatting.DARK_RED),
-    MASTER(10_000_000, "Master", ChatFormatting.DARK_GREEN),
-    MYTHICAL(100_000_000, "Mythical", ChatFormatting.AQUA),
-    TRANSCENDENT(1_000_000_000L, "Transcendent", ChatFormatting.DARK_AQUA),
-    CELESTIAL(10_000_000_000L, "Celestial", ChatFormatting.BLUE),
-    ASTRAL(100_000_000_000L, "Astral", ChatFormatting.DARK_BLUE),
-    ETERNAL(1_000_000_000_000L, "Eternal", ChatFormatting.LIGHT_PURPLE),
-    PRIMORDIAL(10_000_000_000_000L, "Primordial", ChatFormatting.DARK_PURPLE),
-    SINGULARITY(100_000_000_000_000L, "Singularity", ChatFormatting.DARK_AQUA),
-    INCONCEIVABLE(1_000_000_000_000_000L, "Inconceivable", ChatFormatting.LIGHT_PURPLE),
-    BOUNDLESS(10_000_000_000_000_000L, "Boundless", ChatFormatting.AQUA),
-    UNOBTAINABLE(Double.POSITIVE_INFINITY, "Unobtainable", ChatFormatting.BLACK),
-    UNCALCULABLE(-1, "Uncalculable", ChatFormatting.DARK_GRAY);
+    ABSOLUTE(0, "Absolute", ChatFormatting.WHITE, "⚪"),
+    TRIVIAL(10, "Trivial", ChatFormatting.GRAY, "⬜"),
+    SIMPLE(100, "Simple", ChatFormatting.GREEN, "🟩"),
+    MODERATE(1_000, "Moderate", ChatFormatting.YELLOW, "🟨"),
+    COMPLEX(10_000, "Complex", ChatFormatting.GOLD, "🟧"),
+    DIFFICULT(100_000, "Difficult", ChatFormatting.RED, "🟥"),
+    EXPERT(1_000_000, "Expert", ChatFormatting.DARK_RED, "🟪"),
+    MASTER(10_000_000, "Master", ChatFormatting.DARK_GREEN, "⭐"),
+    MYTHICAL(100_000_000, "Mythical", ChatFormatting.AQUA, "💎"),
+    TRANSCENDENT(1_000_000_000L, "Transcendent", ChatFormatting.DARK_AQUA, "👑"),
+    CELESTIAL(10_000_000_000L, "Celestial", ChatFormatting.BLUE, "✨"),
+    ASTRAL(100_000_000_000L, "Astral", ChatFormatting.DARK_BLUE, "🌌"),
+    ETERNAL(1_000_000_000_000L, "Eternal", ChatFormatting.LIGHT_PURPLE, "⏳"),
+    PRIMORDIAL(10_000_000_000_000L, "Primordial", ChatFormatting.DARK_PURPLE, "🪐"),
+    SINGULARITY(100_000_000_000_000L, "Singularity", ChatFormatting.DARK_AQUA, "🌀"),
+    INCONCEIVABLE(1_000_000_000_000_000L, "Inconceivable", ChatFormatting.LIGHT_PURPLE, "🔮"),
+    BOUNDLESS(10_000_000_000_000_000L, "Boundless", ChatFormatting.AQUA, "♾️"),
+    UNOBTAINABLE(Double.POSITIVE_INFINITY, "Unobtainable", ChatFormatting.BLACK, "🚫"),
+    UNCALCULABLE(-1, "Uncalculable", ChatFormatting.DARK_GRAY, "❓");
 
     private static final ComplexityCategory[] CALCULABLE_CATEGORIES;
     private static final double[] UPPER_BOUNDS;
@@ -74,11 +74,13 @@ public enum ComplexityCategory {
     private final double maxComplexity;
     private final String displayName;
     private final ChatFormatting color;
+    private final String icon;
 
-    ComplexityCategory(double max, String displayName, ChatFormatting color) {
+    ComplexityCategory(double max, String displayName, ChatFormatting color, String icon) {
         this.maxComplexity = max;
         this.displayName = displayName;
         this.color = color;
+        this.icon = icon;
     }
 
     /**
@@ -138,5 +140,12 @@ public enum ComplexityCategory {
      */
     public ChatFormatting getColor() {
         return color;
+    }
+
+    /**
+     * @return the icon emoji associated with the tier.
+     */
+    public String getIcon() {
+        return icon;
     }
 }

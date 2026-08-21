@@ -35,7 +35,6 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 
@@ -117,8 +116,8 @@ public final class AnalyzeCommand {
         var category = optimal.getCategory();
         double complexity = optimal.getComplexity();
         output.sendStatusLine(source, "⚙", "complexityanalyzer.command.analyze.complexity_section", ChatFormatting.YELLOW);
-        output.sendSubEntry(source, getCategoryIcon(category), "complexityanalyzer.command.analyze.category_label", category.getTranslationKey(), ChatFormatting.GRAY, category.getColor());
-        var valueColor = getComplexityColor(complexity);
+        output.sendSubEntry(source, category.getIcon(), "complexityanalyzer.command.analyze.category_label", category.getTranslationKey(), ChatFormatting.GRAY, category.getColor());
+        var valueColor = category.getColor();
         String valueString;
         if (complexity < 0) {
             valueString = "—";
@@ -171,7 +170,7 @@ public final class AnalyzeCommand {
 
             sortedSources.sort(Comparator.comparingDouble(SourceWithCost::fullCost));
             for (var swc : sortedSources) {
-                String icon = getSourceIcon(swc.data().getSourceType());
+                String icon = swc.data().getSourceType().getIcon();
                 String costString = Double.isInfinite(swc.fullCost()) ? "∞" : String.format("%.2f", swc.fullCost());
 
                 var costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED
@@ -196,48 +195,6 @@ public final class AnalyzeCommand {
 
         if (optimal.getErrorMessage() != null)
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.error_label", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);
-    }
-
-    private static String getCategoryIcon(ComplexityCategory category) {
-        return switch (category.name()) {
-            case "TRIVIAL" -> "⬜";
-            case "SIMPLE" -> "🟩";
-            case "MODERATE" -> "🟨";
-            case "COMPLEX" -> "🟧";
-            case "DIFFICULT" -> "🟥";
-            case "EXPERT" -> "🟪";
-            case "MASTER" -> "⭐";
-            case "MYTHICAL" -> "💎";
-            case "TRANSCENDENT" -> "👑";
-            case "CELESTIAL" -> "✨";
-            case "ASTRAL" -> "🌌";
-            case "ETERNAL" -> "⏳";
-            case "PRIMORDIAL" -> "🪐";
-            case "SINGULARITY" -> "🌀";
-            case "INCONCEIVABLE" -> "🔮";
-            case "BOUNDLESS" -> "♾️";
-            case "UNOBTAINABLE" -> "🚫";
-            default -> "❓";
-        };
-    }
-
-    private static ChatFormatting getComplexityColor(double complexity) {
-        if (complexity < 10) return ChatFormatting.GREEN;
-        if (complexity < 30) return ChatFormatting.YELLOW;
-        if (complexity < 50) return ChatFormatting.GOLD;
-        if (complexity < 100) return ChatFormatting.RED;
-        return ChatFormatting.DARK_RED;
-    }
-
-    private static String getSourceIcon(BaseResourceData.ResourceSourceType sourceType) {
-        return switch (sourceType.name()) {
-            case "MOB_DROP" -> "⚔";
-            case "CHEST_LOOT" -> "📦";
-            case "FISHING" -> "🎣";
-            case "MINING" -> "⛏";
-            case "TRADING" -> "💰";
-            default -> "•";
-        };
     }
 
     private record SourceWithCost(BaseResourceData data, double fullCost) {

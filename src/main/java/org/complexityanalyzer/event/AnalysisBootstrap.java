@@ -41,6 +41,7 @@ public class AnalysisBootstrap {
         ComplexityAnalyzerAPI.Holder.install(new ComplexityAnalyzerAPIImpl(engine));
 
         ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
+        // Я ни дня не проживу. Не сказавши пу-пу-пу.
         engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete."));
     }
 

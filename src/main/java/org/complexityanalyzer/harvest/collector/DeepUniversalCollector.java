@@ -31,7 +31,6 @@ import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.engine.FastHarvester;
 import org.complexityanalyzer.harvest.engine.HarvestedItems;
 
@@ -70,19 +69,21 @@ public final class DeepUniversalCollector {
 
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    routeItem(GameRegistryManager.getFirstItemByTag(tagKey), inputItems, outputItems, apiResultItem);
+                    var item = CollectorHelper.extractItem(tagKey);
+                    if (item != null) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case ItemStack stack -> {
-                    routeItemStack(stack, inputItems, outputItems, apiResultItem);
+                    if (!stack.isEmpty()) routeItemStack(stack, inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Item item -> {
-                    routeItem(item, inputItems, outputItems, apiResultItem);
+                    if (item != AIR) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Block block -> {
-                    routeItem(block.asItem(), inputItems, outputItems, apiResultItem);
+                    var item = block.asItem();
+                    if (item != AIR) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Holder<?> holder -> {
@@ -90,25 +91,27 @@ public final class DeepUniversalCollector {
                             inputFluids, d + 1, visited, apiResultItem, level, transitionalItems);
                     return true;
                 }
-                case SizedIngredient si when si.count() > 0 -> {
-                    var ing = si.ingredient();
-                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
-                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
+                case SizedIngredient si -> {
+                    if (si.count() > 0) {
+                        var ing = si.ingredient();
+                        if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
+                            inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
+                        }
                     }
                     return true;
                 }
                 case SizedFluidIngredient sfi -> {
-                    for (FluidStack fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
+                    for (var fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
                     return true;
                 }
-                case Ingredient ing when !ing.isEmpty() -> {
-                    if (FastHarvester.visitIngredient(ing)) {
+                case Ingredient ing -> {
+                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
                         inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                     }
                     return true;
                 }
-                case FluidStack fs when !fs.isEmpty() -> {
-                    inputFluids.add(fs.copy());
+                case FluidStack fs -> {
+                    if (!fs.isEmpty()) inputFluids.add(fs.copy());
                     return true;
                 }
                 default -> {
@@ -135,9 +138,5 @@ public final class DeepUniversalCollector {
         } else {
             inputItems.add(stack.copy());
         }
-    }
-
-    private static void routeItem(Item item, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems, Item apiResultItem) {
-        if (item != null && item != AIR) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
     }
 }

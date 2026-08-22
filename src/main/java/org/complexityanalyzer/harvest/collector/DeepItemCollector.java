@@ -28,9 +28,6 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.crafting.SizedIngredient;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.core.GameRegistryManager;
-
-import static net.minecraft.world.item.Items.AIR;
 
 public final class DeepItemCollector {
 
@@ -41,12 +38,12 @@ public final class DeepItemCollector {
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    var firstItem = GameRegistryManager.getFirstItemByTag(tagKey);
-                    if (firstItem != AIR) acc.add(new ItemStack(firstItem));
+                    var item = CollectorHelper.extractItem(tagKey);
+                    if (item != null) acc.add(new ItemStack(item));
                     return true;
                 }
                 case SizedIngredient si when si.count() > 0 -> {
-                    ItemStack[] stacks = si.ingredient().getItems();
+                    var stacks = si.ingredient().getItems();
                     if (stacks.length > 0) {
                         var stack = stacks[0].copy();
                         stack.setCount(si.count());
@@ -59,12 +56,13 @@ public final class DeepItemCollector {
                     return true;
                 }
                 case Item item -> {
-                    if (item != AIR) acc.add(new ItemStack(item));
+                    var it = CollectorHelper.extractItem(item);
+                    if (it != null) acc.add(new ItemStack(it));
                     return true;
                 }
                 case Block block -> {
-                    var item = block.asItem();
-                    if (item != AIR) acc.add(new ItemStack(item));
+                    var it = CollectorHelper.extractItem(block);
+                    if (it != null) acc.add(new ItemStack(it));
                     return true;
                 }
                 case Holder<?> holder -> {

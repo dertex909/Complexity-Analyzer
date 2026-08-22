@@ -25,7 +25,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 public final class DeepFluidCollector {
@@ -35,23 +34,14 @@ public final class DeepFluidCollector {
 
     public static void collect(Object obj, ObjectList<FluidStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
-            switch (node) {
-                case TagKey<?> tagKey -> {
-                    var firstFluid = GameRegistryManager.getFirstFluidByTag(tagKey);
-                    if (firstFluid != Fluids.EMPTY) acc.add(new FluidStack(firstFluid, 1000));
-                    return true;
-                }
-                case SizedFluidIngredient sfi -> {
-                    for (var fs : sfi.getFluids()) if (!fs.isEmpty()) acc.add(fs.copy());
-                    return true;
-                }
-                case FluidStack fs when !fs.isEmpty() -> {
-                    acc.add(fs.copy());
-                    return true;
-                }
-                default -> {
-                }
+            if (node instanceof TagKey<?> tagKey) {
+                var firstFluid = GameRegistryManager.getFirstFluidByTag(tagKey);
+                if (firstFluid != Fluids.EMPTY) acc.add(new FluidStack(firstFluid, 1000));
+                return true;
             }
+
+            if (CollectorHelper.extractFluids(node, acc)) return true;
+
             return node instanceof ItemStack || node instanceof Ingredient;
         });
     }

@@ -42,21 +42,10 @@ public final class DeepUniversalCollector {
     private DeepUniversalCollector() {
     }
 
-    private static void addOrUpdateOutput(ObjectList<ItemStack> outputItems, ItemStack stack, Item apiResultItem) {
-        for (var existing : outputItems) {
-            if (existing.getItem() == apiResultItem) {
-                if (stack.getCount() > existing.getCount()) existing.setCount(stack.getCount());
-                return;
-            }
-        }
-        outputItems.add(stack.copy());
-    }
-
     public static void collect(Object obj, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems,
                                ObjectList<HarvestedItems.HarvestedIngredient> inputIngredients, ObjectList<FluidStack> inputFluids,
                                int depth, ReferenceOpenHashSet<Object> visited, Item apiResultItem, Level level,
                                ReferenceOpenHashSet<Item> transitionalItems) {
-
         DeepGraphTraverser.traverse(obj, depth, visited, (node, d) -> {
             if (d > 0 && node instanceof Recipe<?> subRecipe && level != null) {
                 try {
@@ -81,52 +70,24 @@ public final class DeepUniversalCollector {
 
             switch (node) {
                 case TagKey<?> tagKey -> {
-                    var firstItem = GameRegistryManager.getFirstItemByTag(tagKey);
-                    if (firstItem != AIR) {
-                        var stack = new ItemStack(firstItem);
-                        if (apiResultItem != null && firstItem == apiResultItem) {
-                            addOrUpdateOutput(outputItems, stack, apiResultItem);
-                        } else {
-                            inputItems.add(stack);
-                        }
-                    }
+                    routeItem(GameRegistryManager.getFirstItemByTag(tagKey), inputItems, outputItems, apiResultItem);
                     return true;
                 }
-                case ItemStack stack when !stack.isEmpty() -> {
-                    if (apiResultItem != null && stack.getItem() == apiResultItem) {
-                        addOrUpdateOutput(outputItems, stack, apiResultItem);
-                    } else {
-                        inputItems.add(stack.copy());
-                    }
+                case ItemStack stack -> {
+                    routeItemStack(stack, inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Item item -> {
-                    if (item != AIR) {
-                        var stack = new ItemStack(item);
-                        if (apiResultItem != null && item == apiResultItem) {
-                            addOrUpdateOutput(outputItems, stack, apiResultItem);
-                        } else {
-                            inputItems.add(stack);
-                        }
-                    }
+                    routeItem(item, inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Block block -> {
-                    var item = block.asItem();
-                    if (item != AIR) {
-                        var stack = new ItemStack(item);
-                        if (apiResultItem != null && item == apiResultItem) {
-                            addOrUpdateOutput(outputItems, stack, apiResultItem);
-                        } else {
-                            inputItems.add(stack);
-                        }
-                    }
+                    routeItem(block.asItem(), inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Holder<?> holder -> {
-                    if (visited.add(holder)) {
-                        collect(holder.value(), inputItems, outputItems, inputIngredients, inputFluids, d + 1, visited, apiResultItem, level, transitionalItems);
-                    }
+                    if (visited.add(holder)) collect(holder.value(), inputItems, outputItems, inputIngredients,
+                            inputFluids, d + 1, visited, apiResultItem, level, transitionalItems);
                     return true;
                 }
                 case SizedIngredient si when si.count() > 0 -> {
@@ -155,5 +116,28 @@ public final class DeepUniversalCollector {
             }
             return false;
         });
+    }
+
+    private static void addOrUpdateOutput(ObjectList<ItemStack> outputItems, ItemStack stack, Item apiResultItem) {
+        for (var existing : outputItems) {
+            if (existing.getItem() == apiResultItem) {
+                if (stack.getCount() > existing.getCount()) existing.setCount(stack.getCount());
+                return;
+            }
+        }
+        outputItems.add(stack.copy());
+    }
+
+    private static void routeItemStack(ItemStack stack, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems, Item apiResultItem) {
+        if (stack == null || stack.isEmpty() || stack.getItem() == AIR) return;
+        if (apiResultItem != null && stack.getItem() == apiResultItem) {
+            addOrUpdateOutput(outputItems, stack, apiResultItem);
+        } else {
+            inputItems.add(stack.copy());
+        }
+    }
+
+    private static void routeItem(Item item, ObjectList<ItemStack> inputItems, ObjectList<ItemStack> outputItems, Item apiResultItem) {
+        if (item != null && item != AIR) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
     }
 }

@@ -149,6 +149,20 @@ public final class ModFileManager {
         Files.write(target, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 
+    public static void copy(@NotNull Path source, @NotNull Path target) throws IOException {
+        requireNonNull(source, "Source path cannot be null");
+        requireNonNull(target, "Target path cannot be null");
+        ensureParentExists(target);
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    public static void move(@NotNull Path source, @NotNull Path target) throws IOException {
+        requireNonNull(source, "Source path cannot be null");
+        requireNonNull(target, "Target path cannot be null");
+        ensureParentExists(target);
+        moveAtomic(source, target);
+    }
+
     public static boolean exists(@Nullable Path path) {
         return path != null && Files.exists(path);
     }

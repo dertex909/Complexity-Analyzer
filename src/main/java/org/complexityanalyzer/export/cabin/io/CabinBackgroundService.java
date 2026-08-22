@@ -30,6 +30,7 @@ import org.complexityanalyzer.util.ModFileManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
@@ -37,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class CabinBackgroundService {
 
     private static final CabinBackgroundService INSTANCE = new CabinBackgroundService();
+    private static final int MAX_HISTORY_FILES = 5;
     private final AtomicReference<Snapshot> current = new AtomicReference<>(null);
     private final AtomicReference<Status> status = new AtomicReference<>(Status.IDLE);
     private final AtomicReference<CompletableFuture<Snapshot>> inflight = new AtomicReference<>(null);
@@ -48,6 +50,10 @@ public final class CabinBackgroundService {
 
     public static CabinBackgroundService getInstance() {
         return INSTANCE;
+    }
+
+    private static Path cabinPath(MinecraftServer server, String fileName) {
+        return ModFileManager.resolve(server, "cabin", fileName);
     }
 
     private static Snapshot parseHeader(byte[] bytes, long hash) {
@@ -146,8 +152,27 @@ public final class CabinBackgroundService {
     }
 
     private void persistToFile(MinecraftServer server, byte[] bytes) throws IOException {
-        var target = ModFileManager.resolve(server, "cabin", "latest.cabin");
-        ModFileManager.writeBytesAtomic(target, bytes);
+        rotateCabinHistory(server);
+        ModFileManager.writeBytesAtomic(cabinPath(server, "latest.cabin"), bytes);
+    }
+
+    private void rotateCabinHistory(MinecraftServer server) {
+        try {
+            var latest = cabinPath(server, "latest.cabin");
+            if (!ModFileManager.exists(latest)) return;
+
+            ModFileManager.delete(cabinPath(server, "history_" + MAX_HISTORY_FILES + ".cabin"));
+
+            for (int i = MAX_HISTORY_FILES - 1; i >= 1; i--) {
+                var src = cabinPath(server, "history_" + i + ".cabin");
+                var dst = cabinPath(server, "history_" + (i + 1) + ".cabin");
+                if (ModFileManager.exists(src)) ModFileManager.move(src, dst);
+            }
+
+            ModFileManager.move(latest, cabinPath(server, "history_1.cabin"));
+        } catch (Throwable t) {
+            ComplexityAnalyzer.LOGGER.warn("[Cabin] Failed to rotate history backups: {}", t.getMessage());
+        }
     }
 
     public void clear() {

@@ -27,10 +27,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.harvest.collector.DeepFluidCollector;
-import org.complexityanalyzer.harvest.collector.DeepIngredientCollector;
-import org.complexityanalyzer.harvest.collector.DeepItemCollector;
-import org.complexityanalyzer.harvest.collector.DeepUniversalCollector;
 import org.complexityanalyzer.harvest.inspector.*;
 
 import static java.util.Locale.ROOT;
@@ -112,7 +108,7 @@ public final class FastHarvester {
                         var raw = acc.extract(recipe, level);
                         if (raw != null && extRaw.add(raw)) {
                             var tempItems = new ObjectArrayList<ItemStack>();
-                            DeepItemCollector.collect(raw, tempItems, 0, visited);
+                            DeepCollector.collectItems(raw, tempItems, 0, visited);
                             for (var stack : tempItems) {
                                 if (stack.isEmpty() || stack.getItem() == AIR) continue;
                                 if (apiResultItem != null && stack.getItem() == apiResultItem) {
@@ -144,7 +140,7 @@ public final class FastHarvester {
                                 inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                             }
                         } else if (raw != null && extRaw.add(raw)) {
-                            DeepIngredientCollector.collect(raw, inputIngredients, 0, visited);
+                            DeepCollector.collectIngredients(raw, inputIngredients, 0, visited);
                         }
                     } catch (Throwable ignored) {
                     }
@@ -159,13 +155,13 @@ public final class FastHarvester {
                             if (extRaw.add(raw)) {
                                 var visitedSecondary = session.visitedSecondary;
                                 visitedSecondary.clear();
-                                DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
+                                DeepCollector.collectFluids(raw, outputFluids, 0, visitedSecondary);
                             }
                         } else {
                             if (raw instanceof FluidStack fs && !fs.isEmpty()) {
                                 inputFluids.add(fs.copy());
                             } else if (extRaw.add(raw)) {
-                                DeepFluidCollector.collect(raw, inputFluids, 0, visited);
+                                DeepCollector.collectFluids(raw, inputFluids, 0, visited);
                             }
                         }
                     } catch (Throwable ignored) {
@@ -181,12 +177,12 @@ public final class FastHarvester {
                                 var tempItems = new ObjectArrayList<ItemStack>(8);
                                 var visitedSecondary = session.visitedSecondary;
                                 visitedSecondary.clear();
-                                DeepItemCollector.collect(raw, tempItems, 0, visitedSecondary);
+                                DeepCollector.collectItems(raw, tempItems, 0, visitedSecondary);
                                 containerOutputs.addAll(tempItems);
                                 visitedSecondary.clear();
-                                DeepFluidCollector.collect(raw, outputFluids, 0, visitedSecondary);
+                                DeepCollector.collectFluids(raw, outputFluids, 0, visitedSecondary);
                             } else {
-                                DeepUniversalCollector.collect(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
+                                DeepCollector.collectUniversal(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
                             }
                         }
                     } catch (Throwable ignored) {
@@ -200,7 +196,7 @@ public final class FastHarvester {
 
                 if (inputItems.isEmpty() && outputItems.isEmpty() && inputIngredients.isEmpty() && inputFluids.isEmpty() && outputFluids.isEmpty()) {
                     visited.clear();
-                    DeepUniversalCollector.collect(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
+                    DeepCollector.collectUniversal(recipe, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
                 }
             }
 

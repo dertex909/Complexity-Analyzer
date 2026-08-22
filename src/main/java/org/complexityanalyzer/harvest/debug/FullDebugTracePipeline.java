@@ -35,7 +35,7 @@ import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.harvest.collector.DeepItemCollector;
+import org.complexityanalyzer.harvest.engine.DeepCollector;
 import org.complexityanalyzer.harvest.engine.HarvestedItems;
 import org.complexityanalyzer.harvest.inspector.*;
 import org.complexityanalyzer.util.ModFileManager;
@@ -376,7 +376,7 @@ public final class FullDebugTracePipeline {
                     if (raw != null && RecipeMetadata.isNotEmptyContainer(raw)) {
                         var tempItems = new ObjectArrayList<ItemStack>();
                         visited.clear();
-                        DeepItemCollector.collect(raw, tempItems, 0, visited);
+                        DeepCollector.collectItems(raw, tempItems, 0, visited);
 
                         var label = acc.type() + ":" + acc.name() + " (" + hexIdentity(raw) + ")";
                         recordedContainers.put(label, tempItems);

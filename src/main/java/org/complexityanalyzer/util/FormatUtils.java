@@ -24,7 +24,6 @@ import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.core.GameRegistryManager;
 
 import java.time.Duration;
-import java.util.Locale;
 
 public final class FormatUtils {
 
@@ -52,20 +51,23 @@ public final class FormatUtils {
     }
 
     public static String humanBytes(long bytes) {
-        if (bytes < 1024) return bytes + " " + Component.translatable("complexityanalyzer.unit.size.bytes").getString();
+        if (bytes < 1024) {
+            var b = Component.translatable("complexityanalyzer.unit.size.bytes").getString();
+            return "%d %s".formatted(bytes, b);
+        }
 
         if (bytes < (1L << 20)) {
             var kb = Component.translatable("complexityanalyzer.unit.size.kilobytes").getString();
-            return String.format(Locale.US, "%.1f %s", bytes / 1024.0, kb);
+            return "%.1f %s".formatted(bytes / 1024.0, kb);
         }
 
         if (bytes < (1L << 30)) {
             var mb = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
-            return String.format(Locale.US, "%.1f %s", bytes / (1024.0 * 1024.0), mb);
+            return "%.1f %s".formatted(bytes / (1024.0 * 1024.0), mb);
         }
 
         var gb = Component.translatable("complexityanalyzer.unit.size.gigabytes").getString();
-        return String.format(Locale.US, "%.2f %s", bytes / (1024.0 * 1024.0 * 1024.0), gb);
+        return "%.2f %s".formatted(bytes / (1024.0 * 1024.0 * 1024.0), gb);
     }
 
     public static String formatDurationSeconds(long seconds) {

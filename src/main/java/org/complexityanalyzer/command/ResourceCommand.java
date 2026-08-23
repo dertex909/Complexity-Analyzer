@@ -109,7 +109,7 @@ public final class ResourceCommand {
         double baseFactor = data.getBaseFactor();
         var tier = BaseResourceData.ResourceDifficultyTier.fromFactor(baseFactor);
         output.sendStatusLine(source, "⚖", "complexityanalyzer.command.resource.base_factor", ChatFormatting.YELLOW);
-        output.sendSubEntry(source, "complexityanalyzer.command.resource.value_label", String.format("%.2f", baseFactor), ChatFormatting.GRAY, tier.color);
+        output.sendSubEntry(source, "complexityanalyzer.command.resource.value_label", "%.2f".formatted(baseFactor), ChatFormatting.GRAY, tier.color);
         output.sendValueBar(source, (int) Math.min(100, baseFactor * 4), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
         output.sendSubEntry(source, "complexityanalyzer.command.resource.difficulty_label", tier.translationKey, ChatFormatting.GRAY, tier.color);
         output.sendEmptyLine(source);
@@ -123,9 +123,8 @@ public final class ResourceCommand {
             var sourceItem = entry.getKey();
             double amount = entry.getDoubleValue();
             var sourceItemName = sourceItem.getDescription();
-            String value = "x" + String.format("%.1f", amount);
             var result = engine.getComplexityResult(sourceItem);
-            if (result != null) value += String.format(" (%.2f)", result.getComplexity());
+            String value = result != null ? "x%.1f (%.2f)".formatted(amount, result.getComplexity()) : "x%.1f".formatted(amount);
             output.sendSubEntry(source, "📦", sourceItemName, value, ChatFormatting.WHITE, ChatFormatting.YELLOW);
         }
         output.sendEmptyLine(source);

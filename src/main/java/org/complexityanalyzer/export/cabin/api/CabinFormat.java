@@ -50,7 +50,6 @@ public final class CabinFormat {
     public static final int MOB_RECORD_SIZE = 80;
     public static final int FLUID_RECORD_SIZE = 30;
     public static final int ITEM_FLAG_HAS_RECIPE = 0x01;
-    public static final int ITEM_FLAG_HAS_CYCLE = 0x02;
     public static final int ITEM_FLAG_IS_HARDCODED = 0x04;
     public static final int ITEM_FLAG_IS_VALID = 0x08;
     public static final int ITEM_FLAG_IS_INFINITE = 0x10;

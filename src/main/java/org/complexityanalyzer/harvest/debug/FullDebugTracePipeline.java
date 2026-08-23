@@ -45,7 +45,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static java.util.Locale.ROOT;
 import static net.minecraft.world.item.Items.AIR;
 
 public final class FullDebugTracePipeline {
@@ -200,7 +199,7 @@ public final class FullDebugTracePipeline {
         if (!recipeTypeStats.isEmpty()) {
             buffer.append("Recipe types distribution:\n");
             for (var entry : recipeTypeStats.entrySet()) {
-                buffer.append(String.format(ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
+                buffer.append("  %-50s: %d\n".formatted(entry.getKey(), entry.getValue()));
             }
             buffer.append('\n');
         }
@@ -208,7 +207,7 @@ public final class FullDebugTracePipeline {
         if (!rejectReasons.isEmpty()) {
             buffer.append("Reject reasons:\n");
             for (var entry : rejectReasons.entrySet()) {
-                buffer.append(String.format(ROOT, "  %-50s: %d\n", entry.getKey(), entry.getValue()));
+                buffer.append("  %-50s: %d\n".formatted(entry.getKey(), entry.getValue()));
             }
         }
 
@@ -271,19 +270,18 @@ public final class FullDebugTracePipeline {
                     var valStr = formatValueDetailed(val);
                     var role = HeuristicRoleClassifier.classifyField(f);
 
-                    sb.append(String.format(ROOT,
-                            "  [%s] %-32s : %-35s = %s\n",
+                    sb.append("  [%s] %-32s : %-35s = %s\n".formatted(
                             role.role().name().substring(0, 4),
                             f.getName(),
                             f.getType().getSimpleName(),
                             valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(ROOT,
-                            "  [ERR] %-32s : %-35s (error: %s: %s)\n",
+                    sb.append("  [ERR] %-32s : %-35s (error: %s: %s)\n".formatted(
                             f.getName(),
                             f.getType().getSimpleName(),
                             t.getClass().getSimpleName(),
-                            t.getMessage()));
+                            t.getMessage()
+                    ));
                 }
             }
         }
@@ -316,18 +314,17 @@ public final class FullDebugTracePipeline {
                 try {
                     var val = h.invoke(recipe);
                     String valStr = formatValueDetailed(val);
-                    sb.append(String.format(ROOT,
-                            "  [%s] %-32s() → %-35s = %s\n",
+                    sb.append("  [%s] %-32s() → %-35s = %s\n".formatted(
                             role.role().name().substring(0, 4),
                             m.getName(),
                             rt.getSimpleName(),
                             valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(ROOT,
-                            "  [ERR] %-32s() → %-35s (error: %s)\n",
+                    sb.append("  [ERR] %-32s() → %-35s (error: %s)\n".formatted(
                             m.getName(),
                             rt.getSimpleName(),
-                            t.getClass().getSimpleName()));
+                            t.getClass().getSimpleName()
+                    ));
                 }
             }
             sb.append(shown == 0 ? "  (no relevant methods found)\n" : "  (" + shown + " relevant methods shown)\n");
@@ -343,9 +340,9 @@ public final class FullDebugTracePipeline {
                 try {
                     var val = acc.extract(recipe, level);
                     String valStr = formatValueDetailed(val);
-                    sb.append(String.format(ROOT, "  [%s] %-52s = %s\n", acc.type(), acc, valStr));
+                    sb.append("  [%s] %-52s = %s\n".formatted(acc.type(), acc, valStr));
                 } catch (Throwable t) {
-                    sb.append(String.format(ROOT, "  [ERR] %-52s = %s: %s\n", acc, t.getClass().getSimpleName(), t.getMessage()));
+                    sb.append("  [ERR] %-52s = %s: %s\n".formatted(acc, t.getClass().getSimpleName(), t.getMessage()));
                 }
             }
         }

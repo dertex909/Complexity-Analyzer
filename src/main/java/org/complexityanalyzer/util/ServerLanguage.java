@@ -132,7 +132,7 @@ public class ServerLanguage {
                     }
                 }
                 try {
-                    String formatted = translatedArgs.length > 0 ? String.format(pattern, translatedArgs) : pattern;
+                    String formatted = translatedArgs.length > 0 ? pattern.formatted(translatedArgs) : pattern;
                     result = Component.literal(formatted);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.error("[Language] Error formatting key {}: {} (Args: {})", key, e.getMessage(), Arrays.toString(translatedArgs));

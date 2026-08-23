@@ -169,9 +169,7 @@ public class ScanSession {
 
     public ObjectArrayList<ResourceLocation> getDimensionsWithNeeds() {
         var dims = new ObjectOpenHashSet<ResourceLocation>();
-        for (var entry : remainingNeeds.entrySet()) {
-            if (entry.getValue().get() > 0) dims.add(entry.getKey().dim());
-        }
+        for (var entry : remainingNeeds.entrySet()) if (entry.getValue().get() > 0) dims.add(entry.getKey().dim());
         var result = new ObjectArrayList<ResourceLocation>(dims.size());
         result.addAll(dims);
         return result;
@@ -208,8 +206,10 @@ public class ScanSession {
     public String getStatusString() {
         return switch (phase) {
             case IDLE -> "Idle";
-            case RECONNAISSANCE -> String.format("%s scan - %d/%d biomes (%d/%d chunks)", profile.name(),
-                    countCompletedBiomes(), countTotalBiomes(), totalChunksFound.get(), totalChunksNeeded.get());
+            case RECONNAISSANCE -> "%s scan - %d/%d biomes (%d/%d chunks)".formatted(
+                    profile.name(),
+                    countCompletedBiomes(), countTotalBiomes(),
+                    totalChunksFound.get(), totalChunksNeeded.get());
             case REFINING -> "Refining data...";
             case COMPLETE -> "Complete";
         };

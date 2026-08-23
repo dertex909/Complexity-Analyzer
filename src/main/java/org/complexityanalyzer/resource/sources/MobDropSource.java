@@ -383,9 +383,13 @@ public class MobDropSource implements IResourceSource {
         double baseKillComplexity = (victimCombatPower * effectiveRarity) / data.averageYield();
         double finalComplexity = (baseKillComplexity + specialConditionCost) * ComplexityConfig.MOB_DIFFICULTY_SCALER.get();
 
-        var details = String.format("From %s (Yield: %.2f/kill, Rarity: %.1fx%s, Method: %s)",
-                victimMobType.getDescription().getString(), data.averageYield(), victimRarityMultiplier,
-                renewable ? ", renewable" : "", data.killMethod() != null ? data.killMethod() : "Any");
+        var details = "From %s (Yield: %.2f/kill, Rarity: %.1fx%s, Method: %s)".formatted(
+                victimMobType.getDescription().getString(),
+                data.averageYield(),
+                victimRarityMultiplier,
+                renewable ? ", renewable" : "",
+                data.killMethod() != null ? data.killMethod() : "Any"
+        );
 
         return new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.MOB_DROP)

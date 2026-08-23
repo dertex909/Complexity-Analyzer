@@ -28,8 +28,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
 
-import static java.util.Locale.US;
-
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
 
@@ -38,17 +36,13 @@ public final class RegistryHarvestService {
     }
 
     private static @NotNull String getRemaining(long elapsed, int scanned, int totalRecipes) {
-        double avgTimePerRecipe = (double) elapsed / scanned;
-        long estimatedTotal = (long) (avgTimePerRecipe * totalRecipes);
-        long estimatedRemaining = estimatedTotal - elapsed;
-        if (estimatedRemaining <= 0) return "0s";
-        String remainingStr;
-        if (estimatedRemaining > 60000) {
-            remainingStr = String.format(US, "%dm %ds", estimatedRemaining / 60000, (estimatedRemaining % 60000) / 1000);
-        } else {
-            remainingStr = String.format(US, "%ds", estimatedRemaining / 1000);
-        }
-        return remainingStr;
+        if (scanned <= 0 || elapsed <= 0) return "...";
+        if (scanned >= totalRecipes) return "0s";
+        long seconds = ((elapsed * (totalRecipes - scanned)) / scanned) / 1000;
+        if (seconds <= 0) return "0s";
+        long mins = seconds / 60;
+        long secs = seconds % 60;
+        return mins > 0 ? "%dm %ds".formatted(mins, secs) : "%ds".formatted(secs);
     }
 
     public void harvestInto(RecipeGraph graph, Level level, Path worldDir) {
@@ -94,11 +88,11 @@ public final class RegistryHarvestService {
 
             if (scanned % 1000 == 0 || scanned == totalRecipes) {
                 long elapsed = System.currentTimeMillis() - startTime;
-                final var remainingStr = getRemaining(elapsed, scanned, totalRecipes);
+                String remainingStr = getRemaining(elapsed, scanned, totalRecipes);
+                String percent = "%.1f".formatted((scanned * 100.0) / totalRecipes);
 
                 ComplexityAnalyzer.LOGGER.debug("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
-                        scanned, totalRecipes, String.format(US, "%.1f", (scanned * 100.0) / totalRecipes),
-                        remainingStr, harvested, rejected, failed);
+                        scanned, totalRecipes, percent, remainingStr, harvested, rejected, failed);
             }
         }
 

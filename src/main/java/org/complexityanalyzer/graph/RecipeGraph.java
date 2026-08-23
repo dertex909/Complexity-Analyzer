@@ -23,7 +23,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -303,9 +302,5 @@ public class RecipeGraph {
     }
 
     public record GraphStats(int itemsWithRecipes, int totalRecipes, int itemsUsedAsIngredients) {
-        @Override
-        public @NotNull String toString() {
-            return String.format("GraphStats{items=%d, recipes=%d, ingredients=%d}", itemsWithRecipes, totalRecipes, itemsUsedAsIngredients);
-        }
     }
 }

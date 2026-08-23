@@ -149,8 +149,7 @@ public final class SystemCommand {
         var msptColor = mspt <= 40.0 ? ChatFormatting.GREEN : (mspt <= 50.0 ? ChatFormatting.YELLOW : ChatFormatting.RED);
         var runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory() / 1024 / 1024;
-        long allocatedMemory = runtime.totalMemory() / 1024 / 1024;
-        long usedMemory = allocatedMemory - (runtime.freeMemory() / 1024 / 1024);
+        long usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
         double memoryPercent = (double) usedMemory / maxMemory * 100;
 
         var memoryColor = memoryPercent < 60 ? ChatFormatting.GREEN : (memoryPercent < 80 ? ChatFormatting.YELLOW : ChatFormatting.RED);
@@ -158,14 +157,15 @@ public final class SystemCommand {
         output.sendHeader(source, "📈", "complexityanalyzer.command.system.perf_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
         String tpsIcon = finalTps >= 19.0 ? "✓" : finalTps >= 16.0 ? "⚠" : "✗";
-        output.sendSubEntry(source, "complexityanalyzer.command.system.tps_label", String.format("%.2f %s", finalTps, tpsIcon), ChatFormatting.GRAY, tpsColor);
-        output.sendSubEntry(source, "complexityanalyzer.command.system.mspt_label", String.format("%.2f %s", mspt, Component.translatable("complexityanalyzer.unit.time.milliseconds_short").getString()), ChatFormatting.GRAY, msptColor);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.tps_label", "%.2f %s".formatted(finalTps, tpsIcon), ChatFormatting.GRAY, tpsColor);
+        String msShort = Component.translatable("complexityanalyzer.unit.time.milliseconds_short").getString();
+        output.sendSubEntry(source, "complexityanalyzer.command.system.mspt_label", "%.2f %s".formatted(mspt, msShort), ChatFormatting.GRAY, msptColor);
         output.sendValueBar(source, (int) Math.min(100, mspt * 2), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
         output.sendEmptyLine(source);
-        String mbSuffix = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
         output.sendStatusLine(source, "💾", "complexityanalyzer.command.system.memory_usage", ChatFormatting.AQUA);
-        output.sendSubEntry(source, "complexityanalyzer.command.system.used_label", String.format("%d %s / %d %s", usedMemory, mbSuffix, maxMemory, mbSuffix), ChatFormatting.GRAY, memoryColor);
-        output.sendValueBar(source, (int) memoryPercent, ChatFormatting.DARK_GRAY, String.format("%.1f%%", memoryPercent), memoryColor);
+        String mbSuffix = Component.translatable("complexityanalyzer.unit.size.megabytes").getString();
+        output.sendSubEntry(source, "complexityanalyzer.command.system.used_label", "%d %s / %d %s".formatted(usedMemory, mbSuffix, maxMemory, mbSuffix), ChatFormatting.GRAY, memoryColor);
+        output.sendValueBar(source, (int) memoryPercent, ChatFormatting.DARK_GRAY, "%.1f%%".formatted(memoryPercent), memoryColor);
         output.sendEmptyLine(source);
         output.sendFooter(source);
         return 1;

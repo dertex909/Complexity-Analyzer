@@ -77,7 +77,6 @@ public final class ItemSectionBuilder {
                 category = ic.getCategory();
                 int f = 0;
                 if (ic.hasRecipe()) f |= CabinFormat.ITEM_FLAG_HAS_RECIPE;
-                if (ic.hasCycle()) f |= CabinFormat.ITEM_FLAG_HAS_CYCLE;
                 if (ic.isValid()) f |= CabinFormat.ITEM_FLAG_IS_VALID;
                 if (Double.isInfinite(complexity)) f |= CabinFormat.ITEM_FLAG_IS_INFINITE;
                 if (!ic.hasRecipe()) f |= CabinFormat.ITEM_FLAG_NO_RECIPE_RESULT;

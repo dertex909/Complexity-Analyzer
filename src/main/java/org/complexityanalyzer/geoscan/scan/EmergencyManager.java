@@ -96,10 +96,8 @@ public class EmergencyManager {
             if (now - lastLogTime < LOG_COOLDOWN_MS) return;
             lastLogTime = now;
 
-            if (throttled) ComplexityAnalyzer.LOGGER.info("[Mspt] Scan PAUSED — {} > limit {}",
-                    String.format("%.1f", avgMspt), String.format("%.1f", msptLimit));
-            else ComplexityAnalyzer.LOGGER.info("[Mspt] Scan RESUMED — {} < threshold {}",
-                    String.format("%.1f", avgMspt), String.format("%.1f", resumeThreshold));
+            if (throttled) ComplexityAnalyzer.LOGGER.info("[Mspt] Scan PAUSED — {} > limit {}", avgMspt, msptLimit);
+            else ComplexityAnalyzer.LOGGER.info("[Mspt] Scan RESUMED — {} < threshold {}", avgMspt, resumeThreshold);
         }
     }
 }

@@ -106,9 +106,9 @@ public class LootAnalyzeCommand {
         double avgChance = totalChance / items.size();
 
         output.sendStatusLine(source, "📊", "complexityanalyzer.command.loot.stats_section", ChatFormatting.YELLOW);
-        output.sendSubEntry(source, "complexityanalyzer.command.loot.avg_chance", String.format("%.2f%%", avgChance), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
-        output.sendSubEntry(source, "complexityanalyzer.command.loot.highest", String.format("%.2f%%", highestChance), ChatFormatting.DARK_GRAY, ChatFormatting.GREEN);
-        output.sendSubEntry(source, "complexityanalyzer.command.loot.lowest", String.format("%.2f%%", lowestChance), ChatFormatting.DARK_GRAY, ChatFormatting.RED);
+        output.sendSubEntry(source, "complexityanalyzer.command.loot.avg_chance", "%.2f%%".formatted(avgChance), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
+        output.sendSubEntry(source, "complexityanalyzer.command.loot.highest", "%.2f%%".formatted(highestChance), ChatFormatting.DARK_GRAY, ChatFormatting.GREEN);
+        output.sendSubEntry(source, "complexityanalyzer.command.loot.lowest", "%.2f%%".formatted(lowestChance), ChatFormatting.DARK_GRAY, ChatFormatting.RED);
         output.sendEmptyLine(source);
     }
 
@@ -136,7 +136,7 @@ public class LootAnalyzeCommand {
     private static void displayItem(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         var itemComponent = data.getItem().getDescription();
         double chance = extractChance(data);
-        output.sendSubEntry(source, itemComponent, String.format("%.2f%%", chance), ChatFormatting.WHITE, Rarity.fromChance(chance).color);
+        output.sendSubEntry(source, itemComponent, "%.2f%%".formatted(chance), ChatFormatting.WHITE, Rarity.fromChance(chance).color);
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
     }
 

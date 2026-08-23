@@ -133,14 +133,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                 if (outputAmount > 0.0) {
                     String plantItemId = itemId(plantItem);
                     String blockIdStr = blockId(block);
-                    String details;
-                    if (plantItemId.equals(blockIdStr)) {
-                        details = String.format("Plant %s → harvest for %s", plantItemId, itemId(drop));
-                    } else {
-                        details = String.format("Plant %s (becomes %s) → harvest for %s", plantItemId, blockIdStr, itemId(drop));
-                    }
+                    String dropIdStr = itemId(drop);
 
-                    FarmingData data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
+                    String details = plantItemId.equals(blockIdStr) ? "Plant %s → harvest for %s".formatted(plantItemId, dropIdStr) :
+                            "Plant %s (becomes %s) → harvest for %s".formatted(plantItemId, blockIdStr, dropIdStr);
+                    var data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;
                 }

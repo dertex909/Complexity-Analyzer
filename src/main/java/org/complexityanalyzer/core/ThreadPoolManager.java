@@ -290,11 +290,6 @@ public final class ThreadPoolManager implements AutoCloseable {
             int forkJoinActive,
             long forkJoinSteals
     ) {
-        @Override
-        public @NotNull String toString() {
-            return String.format("PoolStats{parallelism=%d, active=%d, completed=%d, queued=%d, fjActive=%d, fjSteals=%d}",
-                    parallelism, activeThreads, completedTasks, queuedTasks, forkJoinActive, forkJoinSteals);
-        }
     }
 
     private record TerminationResult(boolean terminated, boolean interrupted, int cancelledCount) {

@@ -47,6 +47,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 import static java.util.Locale.ROOT;
 
@@ -119,10 +120,7 @@ public class ComplexityExporter {
         }
         allItems.sort(ITEM_DATA_COMPARATOR);
 
-        int topCount = Math.min(count, allItems.size());
-        var topItems = new ObjectArrayList<ExportData.ItemData>(topCount);
-        for (int i = 0; i < topCount; i++) topItems.add(allItems.get(i));
-
+        var topItems = allItems.subList(0, Math.min(count, allItems.size()));
         String json = GSON.toJson(new ExportData(timestamp, topItems.size(), topItems));
         ModFileManager.writeStringAtomic(exportFile, json);
         return exportFile;
@@ -144,7 +142,6 @@ public class ComplexityExporter {
                     c.getDepth(),
                     engine.getUsageCount(item),
                     c.isValid(),
-                    c.hasCycle(),
                     checkIfHardcoded(item)
             ));
         }
@@ -156,18 +153,19 @@ public class ComplexityExporter {
 
     private static String buildItemsCsv(ObjectArrayList<CsvRow> rows) {
         var sb = new StringBuilder(rows.size() * 128);
-        sb.append("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth,Used In Recipes,Is Valid,Has Cycle,Is Hardcoded\n");
+        sb.append("Item ID,Display Name,Complexity,Category,Has Recipe,Crafting Depth,Used In Recipes,Is Valid,Is Hardcoded\n");
         for (var row : rows) {
-            sb.append(row.itemId).append(",\"")
-                    .append(row.displayName.replace("\"", "\"\"")).append("\",")
-                    .append(String.format(ROOT, "%.2f", row.complexity)).append(",")
-                    .append(row.category).append(",")
-                    .append(row.hasRecipe).append(",")
-                    .append(row.craftingDepth).append(",")
-                    .append(row.usedInRecipes).append(",")
-                    .append(row.isValid).append(",")
-                    .append(row.hasCycle).append(",")
-                    .append(row.isHardcoded).append('\n');
+            sb.append("\"%s\",\"%s\",%.2f,\"%s\",%b,%d,%d,%b,%b\n".formatted(
+                    row.itemId,
+                    row.displayName.replace("\"", "\"\""),
+                    row.complexity,
+                    row.category.replace("\"", "\"\""),
+                    row.hasRecipe,
+                    row.craftingDepth,
+                    row.usedInRecipes,
+                    row.isValid,
+                    row.isHardcoded
+            ));
         }
         return sb.toString();
     }
@@ -231,7 +229,6 @@ public class ComplexityExporter {
                 complexity.getDepth(),
                 engine.getUsageCount(item),
                 complexity.isValid(),
-                complexity.hasCycle(),
                 isHardcoded,
                 sources
         );
@@ -289,33 +286,34 @@ public class ComplexityExporter {
     private static String buildMobsCsv(ObjectArrayList<MobData> mobDataList) {
         var sb = new StringBuilder(mobDataList.size() * 256);
         sb.append("Name,ID,Category,Health,Damage,Armor,Survivability,Threat,Combat Power,Rarity,Is Boss,Is MiniBoss,Notable Drops\n");
+
         for (var data : mobDataList) {
             var drops = data.drops();
-
-            sb.append('"').append(data.name()).append("\",")
-                    .append('"').append(data.id()).append("\",")
-                    .append('"').append(data.category()).append("\",")
-                    .append(String.format(ROOT, "%.2f", data.health())).append(",")
-                    .append(String.format(ROOT, "%.2f", data.damage())).append(",")
-                    .append(String.format(ROOT, "%.2f", data.armor())).append(",")
-                    .append(String.format(ROOT, "%.2f", data.survivability())).append(",")
-                    .append(String.format(ROOT, "%.2f", data.threat())).append(",")
-                    .append(String.format(ROOT, "%.2f", data.combatPower())).append(",")
-                    .append(String.format(ROOT, "%.2f", data.rarity())).append(",")
-                    .append(data.isBoss()).append(",")
-                    .append(data.isMiniBoss()).append(",")
-                    .append('"');
+            String dropsStr;
 
             if (drops.isEmpty()) {
-                sb.append("None");
+                dropsStr = "None";
             } else {
-                for (int j = 0; j < drops.size(); j++) {
-                    var d = drops.get(j);
-                    if (j > 0) sb.append("; ");
-                    sb.append(d.itemName()).append(" (").append(String.format(ROOT, "%.2f", d.yieldPerKill())).append(')');
-                }
+                var dropJoiner = new StringJoiner("; ");
+                for (var d : drops) dropJoiner.add("%s (%.2f)".formatted(d.itemName(), d.yieldPerKill()));
+                dropsStr = dropJoiner.toString();
             }
-            sb.append("\"\n");
+
+            sb.append("\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%b,%b,\"%s\"\n".formatted(
+                    data.name().replace("\"", "\"\""),
+                    data.id(),
+                    data.category(),
+                    data.health(),
+                    data.damage(),
+                    data.armor(),
+                    data.survivability(),
+                    data.threat(),
+                    data.combatPower(),
+                    data.rarity(),
+                    data.isBoss(),
+                    data.isMiniBoss(),
+                    dropsStr.replace("\"", "\"\"")
+            ));
         }
         return sb.toString();
     }
@@ -387,7 +385,6 @@ public class ComplexityExporter {
             int craftingDepth,
             int usedInRecipes,
             boolean isValid,
-            boolean hasCycle,
             boolean isHardcoded
     ) {
     }

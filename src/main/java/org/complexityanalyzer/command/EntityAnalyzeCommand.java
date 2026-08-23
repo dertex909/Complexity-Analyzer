@@ -101,27 +101,27 @@ public class EntityAnalyzeCommand {
         output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", ChatFormatting.RED);
 
         double health = props.maxHealth();
-        output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", String.format("%.1f", health), ChatFormatting.GRAY, props.getHealthColor());
+        output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", "%.1f".formatted(health), ChatFormatting.GRAY, props.getHealthColor());
         output.sendValueBar(source, (int) Math.min(100, health), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         double attack = props.attackDamage();
-        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", String.format("%.1f", attack), ChatFormatting.GRAY, props.getAttackColor());
+        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", "%.1f".formatted(attack), ChatFormatting.GRAY, props.getAttackColor());
         output.sendValueBar(source, (int) Math.min(100, attack * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
 
         double armor = props.armor();
-        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", String.format("%.1f", armor), ChatFormatting.GRAY, props.getArmorColor());
-        if (armor > 0)
+        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", "%.1f".formatted(armor), ChatFormatting.GRAY, props.getArmorColor());
+        if (armor > 0) {
             output.sendValueBar(source, (int) Math.min(100, armor * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-
+        }
         output.sendEmptyLine(source);
     }
 
     private static void displayCalculatedFactors(CommandSourceStack source, MobDifficultyCategory.MobProperties props, double survivability, double threat, double combatPower, OutputManager output) {
         output.sendStatusLine(source, "⚡", "complexityanalyzer.command.entity.combat_section", ChatFormatting.GOLD);
 
-        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", String.format("%.2f", survivability), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(survivability, 50.0));
-        output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", String.format("%.2f", threat), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(threat, 5.0));
-        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", String.format("%.2f", combatPower), ChatFormatting.GRAY, props.getCombatPowerColor());
+        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", "%.2f".formatted(survivability), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(survivability, 50.0));
+        output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", "%.2f".formatted(threat), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(threat, 5.0));
+        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", "%.2f".formatted(combatPower), ChatFormatting.GRAY, props.getCombatPowerColor());
 
         output.sendValueBar(source, (int) Math.min(100, combatPower * 0.5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
         output.sendEmptyLine(source);
@@ -151,8 +151,8 @@ public class EntityAnalyzeCommand {
                 double yield = drop.averageYield();
                 var result = engine.getComplexityResult(drop.item());
                 var category = (result != null && result.isValid()) ? result.getCategory() : ComplexityCategory.UNCALCULABLE;
-                output.sendSubEntry(source, category.getIcon(), itemName, Component.translatable("complexityanalyzer.command.entity.per_kill",
-                        String.format("%.2f", yield)), ChatFormatting.WHITE, category.getColor());
+                var perKill = Component.translatable("complexityanalyzer.command.entity.per_kill", "%.2f".formatted(yield));
+                output.sendSubEntry(source, category.getIcon(), itemName, perKill, ChatFormatting.WHITE, category.getColor());
             }
 
             output.sendEmptyLine(source);

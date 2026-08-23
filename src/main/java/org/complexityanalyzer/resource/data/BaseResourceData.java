@@ -115,7 +115,7 @@ public class BaseResourceData {
      * @return {@code true} if this data was registered as a forced override by a mod.
      */
     public boolean isOverride() {
-        return "true".equals(metadata.get("override"));
+        return Boolean.parseBoolean(metadata.get("override"));
     }
 
     /**
@@ -127,9 +127,8 @@ public class BaseResourceData {
 
     @Override
     public String toString() {
-        String base = String.format("BaseResource{item=%s, source=%s, factor=%.2f}", item, sourceType, baseFactor);
-        if (isOverride()) return base + " [OVERRIDE by " + getOverrideModId() + "]";
-        return base;
+        String str = "BaseResource{item=%s, source=%s, factor=%.2f}".formatted(item, sourceType, baseFactor);
+        return isOverride() ? str + " [OVERRIDE by " + getOverrideModId() + "]" : str;
     }
 
     /**

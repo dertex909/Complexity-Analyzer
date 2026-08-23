@@ -67,7 +67,7 @@ public class PassiveProductionSource implements IResourceSource {
         var info = productionMap.get(item);
         var complexity = (info.ticksPerItem() * ComplexityConfig.TIME_COST_MULTIPLIER.get()) + ComplexityConfig.BASE_ACTION_COST.get();
         var sourceName = (info.sourceType() != null) ? info.sourceType().getDescription().getString() : "the environment";
-        var details = String.format("From %s (Avg. ~%d ticks, Method: %s)", sourceName, (int) info.ticksPerItem(), info.method());
+        var details = "From %s (Avg. ~%d ticks, Method: %s)".formatted(sourceName, (int) info.ticksPerItem(), info.method());
 
         return new BaseResourceData.Builder(item, this)
                 .sourceType(BaseResourceData.ResourceSourceType.FARMING)

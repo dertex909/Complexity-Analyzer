@@ -100,14 +100,14 @@ public final class WebCommand {
         output.sendEmptyLine(source);
 
         output.sendEntry(source, "⚙", "complexityanalyzer.command.web.status_label", status.name(), ChatFormatting.GRAY, statusColor(status));
-        output.sendEntry(source, "👥", "complexityanalyzer.command.web.visitors", String.valueOf(CabinNettyHandler.getVisitorCount()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEntry(source, "👥", "complexityanalyzer.command.web.visitors", CabinNettyHandler.getVisitorCount(), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         if (snap != null) {
             long ageMs = System.currentTimeMillis() - snap.generatedAtMs();
             output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", FormatUtils.formatDurationMs(ageMs)), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", String.valueOf(snap.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", String.valueOf(snap.mobCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", String.valueOf(snap.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", snap.itemCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", snap.mobCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", snap.recipeCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         } else {
             output.sendTip(source, "complexityanalyzer.command.web.no_data");
         }

@@ -209,14 +209,14 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                         if (itemsPerAttempt <= 0) continue;
 
                         var baseFactor = (contextDef.baseActionCost / itemsPerAttempt) * contextDef.sourceType.getBaseMultiplier();
-                        var details = String.format("From loot table '%s', Chance: %.3f%%", lootTableId, itemsPerAttempt * 100);
+                        var details = "From loot table '%s', Chance: %.3f%%".formatted(lootTableId, itemsPerAttempt * 100);
 
                         var builder = new BaseResourceData.Builder(item, this)
                                 .sourceType(contextDef.sourceType)
                                 .baseFactor(baseFactor)
                                 .sourceSpecifier(lootTableId.toString())
                                 .details(details)
-                                .addMetadata("chance", String.format(ROOT, "%.6f", itemsPerAttempt * 100));
+                                .addMetadata("chance", "%.6f".formatted(itemsPerAttempt * 100));
 
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
                             builder.baseFactor(contextDef.baseActionCost);

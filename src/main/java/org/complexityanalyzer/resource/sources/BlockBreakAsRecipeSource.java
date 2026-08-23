@@ -171,7 +171,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                 var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                 if (lootTable == LootTable.EMPTY) return;
-                RarityInfo rInfo = null;
+                var rInfo = calculateRarityFactor(blockToMine);
+                double rarityFactor = rInfo.factor();
 
                 for (var toolStack : candidates) {
                     try {
@@ -183,8 +184,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                         boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
 
                         double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
-                        if (rInfo == null) rInfo = calculateRarityFactor(blockToMine);
-                        double rarityFactor = rInfo.factor();
 
                         double enchantCost = 0;
                         var enchants = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
@@ -409,8 +408,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                         if (factor < bestRarity) {
                             bestRarity = factor;
                             double chance = (double) count / total * 100.0;
-                            String chanceStr = chance < 0.01 ? String.format("%.4f%%", chance) : String.format("%.2f%%", chance);
-                            bestLocation = String.format("in %s (%s)", biomeEntry.getKey().getPath(), chanceStr);
+                            String chanceStr = (chance < 0.01 ? "%.4f%%" : "%.2f%%").formatted(chance);
+                            bestLocation = "in %s (%s)".formatted(biomeEntry.getKey().getPath(), chanceStr);
                         }
                     }
                 }
@@ -439,9 +438,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     }
 
     private String formatAverage(double value) {
-        if (value < 0.0001) return String.format("%.6f", value);
-        if (value < 0.01) return String.format("%.4f", value);
-        return String.format("%.2f", value);
+        if (value < 0.0001) return "%.6f".formatted(value);
+        if (value < 0.01) return "%.4f".formatted(value);
+        return "%.2f".formatted(value);
     }
 
     @Override

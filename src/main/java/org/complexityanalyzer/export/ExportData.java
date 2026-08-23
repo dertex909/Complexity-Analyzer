@@ -35,7 +35,6 @@ public record ExportData(
             int craftingDepth,
             int usedInRecipes,
             boolean isValid,
-            boolean hasCycle,
             boolean isHardcoded,
             ObjectList<SourceData> alternativeSources
     ) {

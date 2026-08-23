@@ -123,7 +123,7 @@ public final class AnalyzeCommand {
             valueString = "—";
             valueColor = ChatFormatting.DARK_GRAY;
         } else {
-            valueString = String.format("%.2f", complexity);
+            valueString = "%.2f".formatted(complexity);
         }
         output.sendSubEntry(source, "complexityanalyzer.command.analyze.value_label", valueString, ChatFormatting.GRAY, valueColor);
         if (complexity >= 0) {
@@ -140,7 +140,7 @@ public final class AnalyzeCommand {
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.has_recipe", "complexityanalyzer.command.analyze.yes", ChatFormatting.GRAY, ChatFormatting.WHITE);
             int depth = optimal.getDepth();
             var depthColor = depth <= 2 ? ChatFormatting.GREEN : depth <= 4 ? ChatFormatting.YELLOW : ChatFormatting.RED;
-            output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.depth")), String.valueOf(depth), ChatFormatting.DARK_GRAY, depthColor);
+            output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.depth")), depth, ChatFormatting.DARK_GRAY, depthColor);
             int usageCount = engine.getUsageCount(item);
             output.sendSubEntry(source, Component.literal("  ").append(Component.translatable("complexityanalyzer.command.analyze.used_in")), Component.translatable("complexityanalyzer.command.analyze.used_in_count", usageCount), ChatFormatting.DARK_GRAY, ChatFormatting.AQUA);
         } else {
@@ -171,7 +171,7 @@ public final class AnalyzeCommand {
             sortedSources.sort(Comparator.comparingDouble(SourceWithCost::fullCost));
             for (var swc : sortedSources) {
                 String icon = swc.data().getSourceType().getIcon();
-                String costString = Double.isInfinite(swc.fullCost()) ? "∞" : String.format("%.2f", swc.fullCost());
+                String costString = Double.isInfinite(swc.fullCost()) ? "∞" : "%.2f".formatted(swc.fullCost());
 
                 var costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED
                         : swc.fullCost() < 10 ? ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
@@ -189,9 +189,6 @@ public final class AnalyzeCommand {
 
         boolean isValid = optimal.isValid();
         output.sendSubEntry(source, "complexityanalyzer.command.analyze.valid_label", isValid ? "complexityanalyzer.command.analyze.yes" : "complexityanalyzer.command.analyze.no", ChatFormatting.GRAY, isValid ? ChatFormatting.GREEN : ChatFormatting.RED);
-
-        if (optimal.hasCycle())
-            output.sendSubEntry(source, "complexityanalyzer.command.analyze.warning_label", "complexityanalyzer.command.analyze.cyclic_dependency", ChatFormatting.YELLOW, ChatFormatting.RED);
 
         if (optimal.getErrorMessage() != null)
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.error_label", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);

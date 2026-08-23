@@ -23,9 +23,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -252,13 +249,10 @@ public class GeoScanCommands {
             var msptLine = Component.literal("  MSPT: ").withStyle(ChatFormatting.GRAY);
 
             if (manager.isThrottled()) {
-                msptLine.append(Component.literal(String.format("%.1f", mspt)).withStyle(ChatFormatting.RED))
-                        .append(Component.translatable("complexityanalyzer.command.geoscan.throttled").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+                msptLine.append(Component.literal("%.1f".formatted(mspt)).withStyle(ChatFormatting.RED)).append(Component.translatable("complexityanalyzer.command.geoscan.throttled").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
             } else {
-                ChatFormatting msptColor = mspt < profile.msptLimit * 0.7f ? ChatFormatting.GREEN :
-                        mspt < profile.msptLimit ? ChatFormatting.YELLOW : ChatFormatting.RED;
-                msptLine.append(Component.literal(String.format("%.1f", mspt)).withStyle(msptColor))
-                        .append(Component.literal("/" + (int) profile.msptLimit).withStyle(ChatFormatting.DARK_GRAY));
+                var msptColor = mspt < profile.msptLimit * 0.7f ? ChatFormatting.GREEN : mspt < profile.msptLimit ? ChatFormatting.YELLOW : ChatFormatting.RED;
+                msptLine.append(Component.literal("%.1f".formatted(mspt)).withStyle(msptColor)).append(Component.literal("/" + (int) profile.msptLimit).withStyle(ChatFormatting.DARK_GRAY));
             }
 
             output.sendInfo(source, msptLine);
@@ -272,8 +266,7 @@ public class GeoScanCommands {
             biomeStatus.append(Component.literal(" "));
 
             biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details")
-                    .withStyle(EMPTY.withColor(ChatFormatting.DARK_AQUA).withItalic(true)
-                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
+                    .withStyle(EMPTY.withColor(ChatFormatting.DARK_AQUA).withItalic(true).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
 
             output.sendInfo(source, biomeStatus);
         }
@@ -282,65 +275,51 @@ public class GeoScanCommands {
     private static MutableComponent buildBiomeTooltip(ScanSession session) {
         var progress = session.getBiomeProgress();
 
-        var incompleteProgress = new Object2ObjectLinkedOpenHashMap<ResourceLocation, ObjectArrayList<Object2ObjectMap.Entry<ResourceLocation, int[]>>>();
         int totalIncomplete = 0;
-
-        for (var dimEntry : progress.object2ObjectEntrySet()) {
-            var dimId = dimEntry.getKey();
-            var incompleteBiomes = new ObjectArrayList<Object2ObjectMap.Entry<ResourceLocation, int[]>>();
-
-            for (var biomeEntry : dimEntry.getValue().object2ObjectEntrySet()) {
-                int[] stats = biomeEntry.getValue();
-                int scanned = stats[0];
-                int needed = stats[1];
-                if (scanned < needed) {
-                    incompleteBiomes.add(biomeEntry);
-                    totalIncomplete++;
-                }
-            }
-            if (!incompleteBiomes.isEmpty()) incompleteProgress.put(dimId, incompleteBiomes);
+        for (var dimMap : progress.values()) {
+            for (var stats : dimMap.values()) if (stats[0] < stats[1]) totalIncomplete++;
         }
 
         if (totalIncomplete == 0) return null;
-        var tooltip = Component.empty();
 
+        var tooltip = Component.empty();
         tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
         int biomesShown = 0;
-        int maxBiomes = 25;
+        final int maxBiomes = 25;
 
-        for (var dimEntry : incompleteProgress.object2ObjectEntrySet()) {
+        for (var dimEntry : progress.object2ObjectEntrySet()) {
             var dimId = dimEntry.getKey();
-            var biomes = dimEntry.getValue();
+            var biomeMap = dimEntry.getValue();
 
-            tooltip.append(Component.literal("\n").append(Component.literal("▸ ")
-                    .append(formatDimensionName(dimId)).append("\n").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)));
+            boolean dimHeaderAdded = false;
 
-            for (var biomeEntry : biomes) {
-                if (biomesShown >= maxBiomes) {
-                    int remaining = totalIncomplete - biomesShown;
-                    if (remaining > 0) tooltip.append(Component
-                            .translatable("complexityanalyzer.command.geoscan.more_biomes", remaining)
-                            .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    return tooltip;
-                }
-
-                var biomeId = biomeEntry.getKey();
+            for (var biomeEntry : biomeMap.object2ObjectEntrySet()) {
                 int[] stats = biomeEntry.getValue();
                 int scanned = stats[0];
                 int needed = stats[1];
 
-                var biomeLine = Component.literal("  ");
+                if (scanned >= needed) continue;
 
+                if (biomesShown >= maxBiomes) {
+                    int remaining = totalIncomplete - biomesShown;
+                    if (remaining > 0) {
+                        tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.more_biomes", remaining).withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+                    }
+                    return tooltip;
+                }
+
+                if (!dimHeaderAdded) {
+                    tooltip.append(Component.literal("\n")).append(Component.literal("▸ ").append(formatDimensionName(dimId)).append("\n").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+                    dimHeaderAdded = true;
+                }
+
+                var biomeId = biomeEntry.getKey();
                 int biomePercent = needed > 0 ? (scanned * 100 / needed) : 0;
-                ChatFormatting biomeColor = biomePercent >= 75 ? ChatFormatting.YELLOW : biomePercent >= 50 ? ChatFormatting.GOLD : ChatFormatting.WHITE;
+                var biomeColor = biomePercent >= 75 ? ChatFormatting.YELLOW : biomePercent >= 50 ? ChatFormatting.GOLD : ChatFormatting.WHITE;
 
-                biomeLine.append(Component.literal("○ ").withStyle(ChatFormatting.GRAY));
-                biomeLine.append(Component.literal(biomeId.getPath()).withStyle(biomeColor));
-                biomeLine.append(Component.literal(" (" + scanned + "/" + needed + ")").withStyle(ChatFormatting.GRAY));
+                tooltip.append(Component.literal("  ○ ").withStyle(ChatFormatting.GRAY)).append(Component.literal(biomeId.getPath()).withStyle(biomeColor)).append(Component.literal(" (%d/%d)\n".formatted(scanned, needed)).withStyle(ChatFormatting.GRAY));
 
-                tooltip.append(biomeLine);
-                tooltip.append(Component.literal("\n"));
                 biomesShown++;
             }
         }

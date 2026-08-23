@@ -36,7 +36,6 @@ public class ItemComplexity {
     private final int depth;
     private final int totalIngredients;
     private final ComplexityCategory category;
-    private final boolean hasCycle;
     private final boolean hasRecipe;
     private final String errorMessage;
     private final RecipeNode optimalRecipe;
@@ -47,7 +46,6 @@ public class ItemComplexity {
         this.depth = builder.depth;
         this.totalIngredients = builder.totalIngredients;
         this.category = builder.category != null ? builder.category : ComplexityCategory.fromComplexity(builder.complexity);
-        this.hasCycle = builder.hasCycle;
         this.hasRecipe = builder.hasRecipe;
         this.errorMessage = builder.errorMessage;
         this.optimalRecipe = builder.optimalRecipe;
@@ -105,13 +103,6 @@ public class ItemComplexity {
     }
 
     /**
-     * @return {@code true} if a dependency cycle was detected while resolving this item.
-     */
-    public boolean hasCycle() {
-        return hasCycle;
-    }
-
-    /**
      * @return {@code true} if the item is produced by at least one recipe (vs. only raw sources).
      */
     public boolean hasRecipe() {
@@ -137,13 +128,12 @@ public class ItemComplexity {
      * @return {@code true} if the result is usable (no error, no cycle, non-negative score).
      */
     public boolean isValid() {
-        return errorMessage == null && !hasCycle && complexity >= 0;
+        return errorMessage == null && complexity >= 0 && !Double.isInfinite(complexity);
     }
 
     @Override
     public String toString() {
-        return String.format("ItemComplexity{item=%s, complexity=%.2f, depth=%d, category=%s}",
-                item, complexity, depth, category);
+        return "ItemComplexity{item=%s, complexity=%.2f, depth=%d, category=%s}".formatted(item, complexity, depth, category);
     }
 
     /**
@@ -151,7 +141,6 @@ public class ItemComplexity {
      */
     public static class Builder {
         private final Item item;
-        private final boolean hasCycle = false;
         private double complexity = 0;
         private int depth = 0;
         private int totalIngredients = 0;
@@ -194,11 +183,9 @@ public class ItemComplexity {
             return this;
         }
 
-        public void optimalRecipe(RecipeNode recipe) {
+        public Builder optimalRecipe(RecipeNode recipe) {
             this.optimalRecipe = recipe;
-        }
-
-        public void baseData() {
+            return this;
         }
 
         public ItemComplexity build() {

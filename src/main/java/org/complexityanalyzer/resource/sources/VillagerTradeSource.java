@@ -129,8 +129,7 @@ public class VillagerTradeSource implements IResourceSource {
         }
 
         long phase1Time = System.currentTimeMillis() - totalStartTime;
-        ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)",
-                phase1Time, fastParsed, totalTrades, skippedSlow);
+        ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)", phase1Time, fastParsed, totalTrades, skippedSlow);
 
         if (!pendingTrades.isEmpty()) {
             long phase2Start = System.currentTimeMillis();
@@ -166,18 +165,15 @@ public class VillagerTradeSource implements IResourceSource {
             villager.discard();
 
             long phase2Time = System.currentTimeMillis() - phase2Start;
-            ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 complete in {}ms: {}/{} trades",
-                    phase2Time, entityParsed, pendingTrades.size());
+            ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 complete in {}ms: {}/{} trades", phase2Time, entityParsed, pendingTrades.size());
         }
 
         long totalTime = System.currentTimeMillis() - totalStartTime;
+        String successPercent = "%.1f".formatted((fastParsed + entityParsed) * 100.0 / totalTrades);
 
         ComplexityAnalyzer.LOGGER.debug("[VTS] ===== Initialization complete in {}ms =====", totalTime);
-        ComplexityAnalyzer.LOGGER.debug("[VTS] Results: {} items, {}/{} trades ({}% success)",
-                tradesByResult.size(), fastParsed + entityParsed, totalTrades,
-                String.format("%.1f", (fastParsed + entityParsed) * 100.0 / totalTrades));
-        ComplexityAnalyzer.LOGGER.debug("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}",
-                fastParsed, entityParsed, skippedSlow, failedTrades);
+        ComplexityAnalyzer.LOGGER.debug("[VTS] Results: {} items, {}/{} trades ({}% success)", tradesByResult.size(), fastParsed + entityParsed, totalTrades, successPercent);
+        ComplexityAnalyzer.LOGGER.debug("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}", fastParsed, entityParsed, skippedSlow, failedTrades);
 
         if (!skippedByType.isEmpty()) {
             ComplexityAnalyzer.LOGGER.debug("[VTS] Skipped slow trade types:");
@@ -223,7 +219,7 @@ public class VillagerTradeSource implements IResourceSource {
                 .baseFactor(LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0))
                 .sourceItems(sourceItems)
                 .sourceSpecifier("Lvl " + bestTrade.level())
-                .details(String.format("Trade with Lvl %d Villager", bestTrade.level()))
+                .details("Trade with Lvl %d Villager".formatted(bestTrade.level()))
                 .build();
     }
 

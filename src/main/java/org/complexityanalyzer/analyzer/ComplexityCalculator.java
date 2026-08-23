@@ -79,7 +79,6 @@ public class ComplexityCalculator {
         if (Double.isInfinite(complexity) || complexity < 0) complexity = -1.0;
 
         var optimalRecipe = solverResult.optimalRecipes().get(item);
-
         boolean hasRecipe = graph.hasRecipe(item);
         int depth = depthAnalyzer.getDepth(item);
 
@@ -93,14 +92,12 @@ public class ComplexityCalculator {
             }
         }
 
-        var builder = new ItemComplexity.Builder(item).complexity(complexity).depth(depth).totalIngredients(ingredients).hasRecipe(hasRecipe);
-
-        if (optimalRecipe != null) {
-            builder.optimalRecipe(optimalRecipe);
-        } else if (baseData != null) {
-            builder.baseData();
-        }
-
-        return builder.build();
+        return new ItemComplexity.Builder(item)
+                .complexity(complexity)
+                .depth(depth)
+                .totalIngredients(ingredients)
+                .hasRecipe(hasRecipe)
+                .optimalRecipe(optimalRecipe)
+                .build();
     }
 }

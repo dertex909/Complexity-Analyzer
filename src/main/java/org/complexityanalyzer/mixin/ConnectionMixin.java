@@ -30,7 +30,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Connection.class)
 public abstract class ConnectionMixin {
-
     @Inject(method = "configureSerialization", at = @At("HEAD"))
     private static void onConfigureSerialization(ChannelPipeline pipeline, PacketFlow flow, boolean isClient, BandwidthDebugMonitor monitor, CallbackInfo ci) {
         if (flow == PacketFlow.SERVERBOUND && !isClient) {

@@ -28,7 +28,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerChunkCache.class)
 public abstract class ServerChunkCacheMixin {
-
     @Inject(method = "getChunk", at = @At("HEAD"), cancellable = true)
     private void onGetChunk(CallbackInfoReturnable<ChunkAccess> cir) {
         if (ThreadPoolManager.isComplexityThread()) cir.setReturnValue(null);

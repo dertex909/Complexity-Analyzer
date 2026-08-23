@@ -40,6 +40,7 @@ public class AnalysisBootstrap {
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
+        Locale.setDefault(Locale.ROOT);
         ServerLanguage.init();
         var server = event.getServer();
         GameRegistryManager.initialize();

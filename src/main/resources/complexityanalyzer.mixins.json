@@ -15,7 +15,8 @@
   "required": true,
   "setSourceFile": true,
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 1,
+    "defaultGroup": "complexity_analyzer"
   },
   "overwrites": {
     "requireAnnotations": true

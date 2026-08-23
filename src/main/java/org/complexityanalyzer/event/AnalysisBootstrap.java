@@ -29,8 +29,14 @@ import org.complexityanalyzer.core.ComplexityAnalyzerAPIImpl;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.ServerLanguage;
 
+import java.util.Locale;
+
 @EventBusSubscriber
 public class AnalysisBootstrap {
+
+    static {
+        Locale.setDefault(Locale.ROOT);
+    }
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {

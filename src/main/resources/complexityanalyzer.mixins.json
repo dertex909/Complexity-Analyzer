@@ -4,16 +4,15 @@
     "ConnectionMixin",
     "LevelMixin",
     "ServerChunkCacheMixin",
-    "ServerLevelMixin",
-    "SmithingTransformRecipeAccessor"
+    "ServerLevelMixin"
   ],
   "client": [],
   "server": [],
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8.7",
-  "required": true,
   "package": "org.complexityanalyzer.mixin",
   "refmap": "complexity_analyzer.refmap.json",
+  "required": true,
   "setSourceFile": true,
   "injectors": {
     "defaultRequire": 1

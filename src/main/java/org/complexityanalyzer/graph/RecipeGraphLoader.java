@@ -25,15 +25,17 @@ import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.harvest.engine.RegistryHarvestService;
 
-public class GraphBuilder {
+public final class RecipeGraphLoader {
+    private RecipeGraphLoader() {
+    }
 
     public static RecipeGraph buildFromWorld(Level level) {
-        var recipeManager = level.getRecipeManager();
-        var cacheFile = ComplexityConfig.ENABLE_CACHE.get() ? RecipeGraphCache.INSTANCE.file(level.getServer()) : null;
-        RecipeGraphCache.Fingerprint fingerprint = null;
-        if (cacheFile != null) {
-            fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager, level.registryAccess());
-            var cached = RecipeGraphCache.INSTANCE.tryLoad(cacheFile, fingerprint, level);
+        var cache = RecipeGraphCache.INSTANCE;
+        var file = ComplexityConfig.ENABLE_CACHE.get() ? cache.file(level.getServer()) : null;
+        var fp = file != null ? cache.computeFingerprint(level.getRecipeManager(), level.registryAccess()) : null;
+
+        if (file != null) {
+            var cached = cache.tryLoad(file, fp, level);
             if (cached != null) {
                 ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).", cached.getTotalRecipeCount());
                 return cached;
@@ -42,7 +44,7 @@ public class GraphBuilder {
 
         var graph = new RecipeGraph();
         new RegistryHarvestService().harvestInto(graph, level, level.getServer().getWorldPath(LevelResource.ROOT));
-        if (cacheFile != null) RecipeGraphCache.INSTANCE.save(graph, cacheFile, fingerprint, level);
+        if (file != null) cache.save(graph, file, fp, level);
         return graph;
     }
 }

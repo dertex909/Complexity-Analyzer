@@ -41,8 +41,8 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
-import org.complexityanalyzer.graph.GraphBuilder;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeGraphLoader;
 import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.SourceManager;
@@ -205,7 +205,7 @@ public class AnalysisEngine {
         this.machineRegistry.initialize(level.getServer());
 
         ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
-        this.graph = GraphBuilder.buildFromWorld(level);
+        this.graph = RecipeGraphLoader.buildFromWorld(level);
     }
 
     private void startGeoScanIfNeeded() {

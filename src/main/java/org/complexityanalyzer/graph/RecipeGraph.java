@@ -79,38 +79,44 @@ public class RecipeGraph {
     }
 
     public void addRecipe(RecipeNode node) {
-        var result = node.getResultItem();
-        if (result == AIR) return;
+        var outputs = node.getItemOutputs();
+        var primaryResult = node.getResultItem();
+        var allOutputItems = new ReferenceOpenHashSet<Item>();
+
+        if (primaryResult != null && primaryResult != AIR) allOutputItems.add(primaryResult);
+        for (var stack : outputs) if (!stack.isEmpty() && stack.getItem() != AIR) allOutputItems.add(stack.getItem());
+        if (allOutputItems.isEmpty() && !node.isPlaceholder()) return;
 
         boolean[] isDuplicate = {false};
-        recipesByItem.compute(result, (item, list) -> {
-            if (list == null) list = new ObjectArrayList<>();
-            int dupIdx = list.indexOf(node);
-            if (dupIdx != -1) {
-                isDuplicate[0] = true;
-                var existing = list.get(dupIdx);
-                boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
-                        || node.getItemOutputs().size() > existing.getItemOutputs().size()
-                        || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
-                if (nodeIsBetter) {
+        for (var outItem : allOutputItems) {
+            recipesByItem.compute(outItem, (item, list) -> {
+                if (list == null) list = new ObjectArrayList<>();
+                int dupIdx = list.indexOf(node);
+                if (dupIdx != -1) {
+                    isDuplicate[0] = true;
+                    var existing = list.get(dupIdx);
+                    boolean nodeIsBetter = node.getFluidIngredients().size() > existing.getFluidIngredients().size()
+                            || node.getItemOutputs().size() > existing.getItemOutputs().size()
+                            || node.getFluidOutputs().size() > existing.getFluidOutputs().size();
+                    if (nodeIsBetter) {
+                        var newList = new ObjectArrayList<>(list);
+                        newList.set(dupIdx, node);
+                        replaceOrAddInAllRecipes(existing, node);
+                        registerFluidIngredientsUsage(node, outItem);
+                        registerFluidOutputs(node);
+                        bestRecipeCache.remove(outItem);
+                        return newList;
+                    }
+                    return list;
+                } else {
                     var newList = new ObjectArrayList<>(list);
-                    newList.set(dupIdx, node);
-                    replaceOrAddInAllRecipes(existing, node);
-                    registerFluidIngredientsUsage(node, result);
-                    registerFluidOutputs(node);
-                    bestRecipeCache.remove(result);
+                    newList.add(node);
                     return newList;
                 }
-                return list;
-            } else {
-                var newList = new ObjectArrayList<>(list);
-                newList.add(node);
-                return newList;
-            }
-        });
+            });
+        }
 
         if (isDuplicate[0]) return;
-
         if (node.isPlaceholder() && node.getPlaceholderId() != null && !node.getPlaceholderId().isEmpty()) try {
             var fluidId = ResourceLocation.parse(node.getPlaceholderId());
             boolean[] isPlaceholderDuplicate = {false};
@@ -140,10 +146,12 @@ public class RecipeGraph {
         }
 
         appendToAllRecipes(node);
-        registerItemIngredientsUsage(node, result);
-        registerFluidIngredientsUsage(node, result);
+        for (var outItem : allOutputItems) {
+            registerItemIngredientsUsage(node, outItem);
+            registerFluidIngredientsUsage(node, outItem);
+            bestRecipeCache.remove(outItem);
+        }
         registerFluidOutputs(node);
-        bestRecipeCache.remove(result);
     }
 
     private void registerFluidOutputs(RecipeNode node) {

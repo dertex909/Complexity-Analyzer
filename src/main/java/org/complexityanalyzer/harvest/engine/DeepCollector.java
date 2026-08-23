@@ -323,6 +323,8 @@ public final class DeepCollector {
         if (stack == null || stack.isEmpty() || stack.getItem() == AIR) return;
         if (apiResultItem != null && stack.getItem() == apiResultItem) {
             addOrUpdateOutput(outputItems, stack, apiResultItem);
+        } else if (apiResultItem != null) {
+            outputItems.add(stack.copy());
         } else {
             inputItems.add(stack.copy());
         }

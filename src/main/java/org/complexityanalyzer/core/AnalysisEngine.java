@@ -516,7 +516,7 @@ public class AnalysisEngine {
         initializeAsync(serverLevel, () -> ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational."));
     }
 
-    public void shutdown() {
+    private void shutdownInternal(boolean permanent) {
         if (!isShuttingDown.compareAndSet(false, true)) {
             ComplexityAnalyzer.LOGGER.debug("Shutdown already in progress");
             return;
@@ -556,11 +556,15 @@ public class AnalysisEngine {
             stateLock.unlock();
         }
 
-        isShuttingDown.set(false);
+        if (!permanent) isShuttingDown.set(false);
+    }
+
+    public void shutdown() {
+        shutdownInternal(false);
     }
 
     public void shutdownCompletely() {
-        shutdown();
+        shutdownInternal(true);
         ThreadPoolManager.getInstance().shutdown();
         ComplexityAnalyzer.LOGGER.info("AnalysisEngine and ThreadPoolManager fully shutdown.");
     }

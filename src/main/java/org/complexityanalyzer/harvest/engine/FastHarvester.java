@@ -65,7 +65,7 @@ public final class FastHarvester {
                 var type = r.getType();
                 if (type == RecipeType.CRAFTING || type == RecipeType.SMELTING || type == RecipeType.BLASTING
                         || type == RecipeType.SMOKING || type == RecipeType.CAMPFIRE_COOKING
-                        || type == RecipeType.STONECUTTING || type == RecipeType.SMITHING) isVanillaRecipe = true;
+                        || type == RecipeType.STONECUTTING) isVanillaRecipe = true;
 
                 for (var ing : r.getIngredients()) {
                     if (ing != null && !ing.isEmpty()) {

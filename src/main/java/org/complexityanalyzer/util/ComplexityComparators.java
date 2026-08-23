@@ -18,13 +18,11 @@
 
 package org.complexityanalyzer.util;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 
 import java.util.Comparator;
 
@@ -36,9 +34,5 @@ public final class ComplexityComparators {
     public static final Comparator<FluidStack> FLUID_STACK_BY_ID_AND_AMOUNT = Comparator.comparing(FluidStack::getFluid, FLUID_BY_ID).thenComparingInt(FluidStack::getAmount);
 
     private ComplexityComparators() {
-    }
-
-    public static Comparator<ItemStack> createDeepItemStackComparator(HolderLookup.Provider provider) {
-        return ITEM_STACK_BY_ID.thenComparing(stack -> ItemStackIdentity.dataKey(stack, provider));
     }
 }

@@ -18,37 +18,20 @@
 
 package org.complexityanalyzer.graph;
 
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMaps;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.harvest.engine.RegistryHarvestService;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
-import org.complexityanalyzer.mixin.SmithingTransformRecipeAccessor;
-import org.complexityanalyzer.util.ComplexityComparators;
-import org.complexityanalyzer.util.ParallelUtils;
-
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static net.minecraft.world.item.Items.AIR;
 
 public class GraphBuilder {
 
     public static RecipeGraph buildFromWorld(Level level) {
         var recipeManager = level.getRecipeManager();
-        var cacheFile = RecipeGraphCache.INSTANCE.file(level.getServer());
-        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
+        var cacheFile = ComplexityConfig.ENABLE_CACHE.get() ? RecipeGraphCache.INSTANCE.file(level.getServer()) : null;
         RecipeGraphCache.Fingerprint fingerprint = null;
-        if (cacheEnabled && cacheFile != null) {
+        if (cacheFile != null) {
             fingerprint = RecipeGraphCache.INSTANCE.computeFingerprint(recipeManager, level.registryAccess());
             var cached = RecipeGraphCache.INSTANCE.tryLoad(cacheFile, fingerprint, level);
             if (cached != null) {
@@ -57,131 +40,9 @@ public class GraphBuilder {
             }
         }
 
-        var allRecipes = new ObjectArrayList<>(recipeManager.getRecipes());
-        var processedCount = new AtomicInteger(0);
-        var skippedCount = new AtomicInteger(0);
-        var processedNodes = new ConcurrentLinkedQueue<RecipeNode>();
-
-        int recipeCount = allRecipes.size();
-
-        if (recipeCount == 1) {
-            processSingleRecipe(allRecipes.getFirst(), level, processedNodes, processedCount, skippedCount);
-        } else if (recipeCount > 1) {
-            ParallelUtils.forRange(0, recipeCount, 16, i -> processSingleRecipe(allRecipes.get(i), level, processedNodes, processedCount, skippedCount));
-        }
-
         var graph = new RecipeGraph();
-
-        RecipeNode node;
-        while ((node = processedNodes.poll()) != null) graph.addRecipe(node);
-
-        ComplexityAnalyzer.LOGGER.info("Recipe graph built: {} recipes processed, {} skipped", processedCount.get(), skippedCount.get());
         new RegistryHarvestService().harvestInto(graph, level, level.getServer().getWorldPath(LevelResource.ROOT));
-
-        if (cacheEnabled && cacheFile != null) RecipeGraphCache.INSTANCE.save(graph, cacheFile, fingerprint, level);
+        if (cacheFile != null) RecipeGraphCache.INSTANCE.save(graph, cacheFile, fingerprint, level);
         return graph;
-    }
-
-    private static void processSingleRecipe(RecipeHolder<?> holder, Level level,
-                                            ConcurrentLinkedQueue<RecipeNode> processedNodes,
-                                            AtomicInteger processedCount, AtomicInteger skippedCount) {
-        try {
-            var node = buildNode(holder.value(), level);
-            if (node != null) {
-                processedNodes.add(node);
-                processedCount.incrementAndGet();
-            } else {
-                skippedCount.incrementAndGet();
-            }
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("Failed to process recipe {}: {}", holder.id(), e.getMessage());
-            skippedCount.incrementAndGet();
-        }
-    }
-
-    private static RecipeNode buildSmithingNode(SmithingTransformRecipe recipe, ItemStack resultStack) {
-        var resultItem = resultStack.getItem();
-        var accessor = (SmithingTransformRecipeAccessor) recipe;
-        var template = accessor.getTemplate();
-        var base = accessor.getBase();
-        var addition = accessor.getAddition();
-
-        if (template == null || base == null || addition == null) return null;
-
-        var builder = new RecipeNode.Builder(resultItem).recipeType(RecipeType.SMITHING).resultCount(1).rawRecipe();
-        builder.itemOutputs(ObjectArrayList.of(ItemStackCanonicalizer.canonicalize(resultStack)));
-
-        addSmithingIngredient(builder, template);
-        addSmithingIngredient(builder, base);
-        addSmithingIngredient(builder, addition);
-
-        return builder.build();
-    }
-
-    private static void addSmithingIngredient(RecipeNode.Builder builder, Ingredient ingredient) {
-        if (ingredient != null && !ingredient.isEmpty()) {
-            var variants = extractVariants(ingredient);
-            if (!variants.isEmpty()) builder.addIngredient(variants, 1);
-        }
-    }
-
-    private static ObjectList<ItemStack> extractVariants(Ingredient ingredient) {
-        var items = new ObjectArrayList<ItemStack>();
-        if (ingredient == null || ingredient.isEmpty()) return items;
-        var stacks = ingredient.getItems();
-        for (var stack : stacks) {
-            if (stack == null || stack.isEmpty() || stack.getItem() == AIR) continue;
-            if (!containsSameStackData(items, stack)) items.add(ItemStackCanonicalizer.canonicalize(stack));
-        }
-        return items;
-    }
-
-    private static RecipeNode buildNode(Recipe<?> recipe, Level level) {
-        var resultStack = recipe.getResultItem(level.registryAccess());
-        if (resultStack.isEmpty()) return null;
-
-        var resultItem = resultStack.getItem();
-        if (recipe instanceof SmithingTransformRecipe smithing) return buildSmithingNode(smithing, resultStack);
-        var ingredients = recipe.getIngredients();
-        if (ingredients.isEmpty()) return null;
-
-        if (isUnprocessable(recipe, resultItem, ingredients)) return null;
-
-        var builder = new RecipeNode.Builder(resultItem)
-                .recipeType(recipe.getType())
-                .resultCount(resultStack.getCount())
-                .rawRecipe();
-        builder.itemOutputs(ObjectArrayList.of(ItemStackCanonicalizer.canonicalize(resultStack)));
-
-        var merged = new Object2IntLinkedOpenHashMap<ObjectList<ItemStack>>();
-        int limit = ComplexityConfig.MAX_INGREDIENT_VARIANTS.get();
-        var comparator = ComplexityComparators.createDeepItemStackComparator(level.registryAccess());
-
-        for (var ingredient : ingredients) {
-            var variants = extractVariants(ingredient);
-            if (!variants.isEmpty()) {
-                if (variants.size() > 1) variants.sort(comparator);
-                if (variants.size() > limit) variants.removeElements(limit, variants.size());
-                merged.addTo(variants, 1);
-            }
-        }
-
-        for (var entry : Object2IntMaps.fastIterable(merged)) {
-            builder.addIngredient(entry.getKey(), entry.getIntValue());
-        }
-        return builder.build();
-    }
-
-    private static boolean containsSameStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
-        for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return true;
-        return false;
-    }
-
-    private static boolean isUnprocessable(Recipe<?> recipe, Item resultItem, Iterable<Ingredient> ingredients) {
-        if (resultItem.getDefaultInstance().isDamageableItem()) for (var ing : ingredients) {
-            var stacks = ing.getItems();
-            for (var stack : stacks) if (stack.getItem() == resultItem) return true;
-        }
-        return recipe instanceof TippedArrowRecipe || recipe instanceof MapCloningRecipe || recipe instanceof ArmorDyeRecipe || recipe instanceof BannerDuplicateRecipe;
     }
 }

@@ -53,26 +53,31 @@ public final class StandardRecipeMethods {
     }
 
     @FunctionalInterface
+    @SuppressWarnings("unused")
     private interface RecipeGetResultItemRef extends Serializable {
         ItemStack ignored(Recipe<?> instance, HolderLookup.Provider provider);
     }
 
     @FunctionalInterface
+    @SuppressWarnings("unused")
     private interface RecipeGetIngredientsRef extends Serializable {
         NonNullList<Ingredient> ignored(Recipe<?> instance);
     }
 
     @FunctionalInterface
+    @SuppressWarnings("unused")
     private interface RecipeGetToastSymbolRef extends Serializable {
         ItemStack ignored(Recipe<?> instance);
     }
 
     @FunctionalInterface
+    @SuppressWarnings("unused")
     private interface RecipeAssembleRef extends Serializable {
         ItemStack ignored(Recipe<RecipeInput> instance, RecipeInput input, HolderLookup.Provider provider);
     }
 
     @FunctionalInterface
+    @SuppressWarnings("unused")
     private interface AttachmentHolderSerializeRef extends Serializable {
         CompoundTag ignored(AttachmentHolder instance, HolderLookup.Provider provider);
     }

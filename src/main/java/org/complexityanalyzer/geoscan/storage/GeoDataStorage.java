@@ -83,7 +83,7 @@ public class GeoDataStorage {
         fileLockMarkers.compute(file, (k, v) -> {
             try {
                 var lines = new ObjectArrayList<String>(newSnapshots.size());
-                for (ChunkSnapshot newSnapshot : newSnapshots) lines.add(GSON.toJson(newSnapshot));
+                for (var newSnapshot : newSnapshots) lines.add(GSON.toJson(newSnapshot));
                 ModFileManager.appendLines(file, lines);
             } catch (IOException e) {
                 ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);

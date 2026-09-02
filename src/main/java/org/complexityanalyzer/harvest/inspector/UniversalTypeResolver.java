@@ -185,7 +185,7 @@ public final class UniversalTypeResolver {
             try {
                 var genericReturn = m.getGenericReturnType();
                 if (genericReturn instanceof ParameterizedType pt) {
-                    Type[] args = pt.getActualTypeArguments();
+                    var args = pt.getActualTypeArguments();
                     if (args.length > 0 && args[0] instanceof Class<?> innerClass) {
                         var inner = resolve(innerClass);
                         switch (inner.kind()) {

@@ -29,11 +29,8 @@ import org.complexityanalyzer.util.ServerLanguage;
 
 public class OutputManager {
 
-    private static final Component SEPARATOR = Component.literal("═══════════════════════════════")
-            .withStyle(ChatFormatting.DARK_GRAY);
-    private static final Component THIN_SEPARATOR = Component.literal("  ─────────────────────────────")
-            .withStyle(ChatFormatting.DARK_GRAY);
-
+    private static final Component SEPARATOR = Component.literal("═══════════════════════════════").withStyle(ChatFormatting.DARK_GRAY);
+    private static final Component THIN_SEPARATOR = Component.literal("  ─────────────────────────────").withStyle(ChatFormatting.DARK_GRAY);
     private static final String[] BARS = {"[░░░░░░░░░░]", "[█░░░░░░░░░]", "[██░░░░░░░░]", "[███░░░░░░░]", "[████░░░░░░]", "[█████░░░░░]", "[██████░░░░]", "[███████░░░]", "[████████░░]", "[█████████░]", "[██████████]"};
 
     private final MinecraftServer server;

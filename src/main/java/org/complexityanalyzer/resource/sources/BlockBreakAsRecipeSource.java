@@ -62,6 +62,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     private static final double TIME_COST_MULTIPLIER = 1.0;
     private static final int LOGIC_VERSION = 1;
     private static final int EMPTY_HAND_HASH = "empty_hand".hashCode();
+    private static final RarityInfo DEFAULT_RARITY = new RarityInfo(Double.POSITIVE_INFINITY, "");
 
     private static final Comparator<BaseResourceData> PATH_COMPARATOR = (a, b) -> {
         int typeCompare = Double.compare(a.getSourceType().getBaseMultiplier(), b.getSourceType().getBaseMultiplier());
@@ -148,6 +149,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         }
 
         int totalBlocks = blocksToProcess.size();
+        var rarityCache = precomputeRarityMap();
 
         ParallelUtils.forRange(0, totalBlocks, 16, j -> {
             var blockToMine = blocksToProcess.get(j);
@@ -171,7 +173,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                 var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                 if (lootTable == LootTable.EMPTY) return;
-                var rInfo = calculateRarityFactor(blockToMine);
+                var rInfo = rarityCache.getOrDefault(blockToMine, DEFAULT_RARITY);
                 double rarityFactor = rInfo.factor();
 
                 for (var toolStack : candidates) {
@@ -245,6 +247,43 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                 getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
         if (cacheFile != null) ResourceCache.BLOCK_BREAK.save(cacheFile, fingerprint,
                 ResourceCache::writeResourceData, allPaths);
+    }
+
+    private Reference2ObjectMap<Block, RarityInfo> precomputeRarityMap() {
+        var rarityMap = new Reference2ObjectOpenHashMap<Block, RarityInfo>();
+        if (this.geoDatabase == null || !this.geoDatabase.isLoaded()) return rarityMap;
+        var allDims = this.geoDatabase.getAllDimensionData();
+
+        for (var dimEntry : Object2ObjectMaps.fastIterable(allDims)) {
+            for (var biomeEntry : Object2ObjectMaps.fastIterable(dimEntry.getValue())) {
+                var biomeData = biomeEntry.getValue();
+                long total = biomeData.getTotalBlocks();
+                if (total <= 0) continue;
+
+                var biomePath = biomeEntry.getKey().getPath();
+                var counts = biomeData.getInternalBlockCounts();
+
+                var it = counts.reference2LongEntrySet().fastIterator();
+                while (it.hasNext()) {
+                    var entry = it.next();
+                    var block = entry.getKey();
+                    if (block == null) continue;
+                    long count = entry.getLongValue();
+                    if (count <= 0) continue;
+
+                    double factor = Math.pow((double) total / count, 0.85) * 0.15;
+
+                    var currentBest = rarityMap.get(block);
+                    if (currentBest == null || factor < currentBest.factor()) {
+                        double chance = (double) count / total * 100.0;
+                        String chanceStr = (chance < 0.01 ? "%.4f%%" : "%.2f%%").formatted(chance);
+                        String location = "in %s (%s)".formatted(biomePath, chanceStr);
+                        rarityMap.put(block, new RarityInfo(factor, location));
+                    }
+                }
+            }
+        }
+        return rarityMap;
     }
 
     private long[] computeFingerprint(long worldSeed) {
@@ -392,32 +431,6 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         }
 
         return sourceItems;
-    }
-
-    private RarityInfo calculateRarityFactor(Block block) {
-        boolean isGeoLoaded = this.geoDatabase != null && this.geoDatabase.isLoaded();
-        if (isGeoLoaded) {
-            double bestRarity = Double.POSITIVE_INFINITY;
-            String bestLocation = "";
-            for (var dimEntry : Object2ObjectMaps.fastIterable(this.geoDatabase.getAllDimensionData())) {
-                for (var biomeEntry : Object2ObjectMaps.fastIterable(dimEntry.getValue())) {
-                    long total = biomeEntry.getValue().getTotalBlocks();
-                    long count = biomeEntry.getValue().getBlockCount(block);
-                    if (total > 0 && count > 0) {
-                        double factor = Math.pow((double) total / count, 0.85) * 0.15;
-                        if (factor < bestRarity) {
-                            bestRarity = factor;
-                            double chance = (double) count / total * 100.0;
-                            String chanceStr = (chance < 0.01 ? "%.4f%%" : "%.2f%%").formatted(chance);
-                            bestLocation = "in %s (%s)".formatted(biomeEntry.getKey().getPath(), chanceStr);
-                        }
-                    }
-                }
-            }
-            if (bestRarity != Double.POSITIVE_INFINITY) return new RarityInfo(bestRarity, bestLocation);
-        }
-
-        return new RarityInfo(Double.POSITIVE_INFINITY, "");
     }
 
     private long generateStableSeed(long worldSeed, Block block, ItemStack tool) {

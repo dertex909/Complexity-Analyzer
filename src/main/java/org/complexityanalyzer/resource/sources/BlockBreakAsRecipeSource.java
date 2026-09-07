@@ -22,6 +22,8 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -95,6 +97,16 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
         var it = map.values().iterator();
         while (it.hasNext()) sum += it.nextDouble();
         return sum;
+    }
+
+    @Nullable
+    private static TagKey<Item> getToolTag(ItemStack tool) {
+        if (tool.is(ItemTags.PICKAXES)) return ItemTags.PICKAXES;
+        if (tool.is(ItemTags.AXES)) return ItemTags.AXES;
+        if (tool.is(ItemTags.SHOVELS)) return ItemTags.SHOVELS;
+        if (tool.is(ItemTags.HOES)) return ItemTags.HOES;
+        if (tool.is(ItemTags.SWORDS)) return ItemTags.SWORDS;
+        return null;
     }
 
     @Override
@@ -173,23 +185,33 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
                 var lootTable = server.reloadableRegistries().getLootTable(blockToMine.getLootTable());
                 if (lootTable == LootTable.EMPTY) return;
+
                 var rInfo = rarityCache.getOrDefault(blockToMine, DEFAULT_RARITY);
                 double rarityFactor = rInfo.factor();
 
+                var blockDropCache = new Object2ObjectOpenHashMap<DropCacheKey, Reference2DoubleMap<Item>>();
+
                 for (var toolStack : candidates) {
                     try {
-                        long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
-                        var averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, stableSeed);
+                        boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
+                        var enchantments = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+                        var toolTag = getToolTag(toolStack);
+                        var cacheKey = new DropCacheKey(toolTag, (toolTag == null) ? toolStack.getItem() : null, isCorrect, enchantments);
+
+                        var averageDrop = blockDropCache.get(cacheKey);
+                        if (averageDrop == null) {
+                            long stableSeed = generateStableSeed(serverLevel.getSeed(), blockToMine, toolStack);
+                            averageDrop = getStableDrop(lootTable, serverLevel, defaultState, toolStack, stableSeed);
+                            blockDropCache.put(cacheKey, averageDrop);
+                        }
+
                         if (averageDrop.isEmpty()) continue;
 
                         float speed = toolStack.getDestroySpeed(defaultState);
-                        boolean isCorrect = toolStack.isCorrectToolForDrops(defaultState);
-
                         double timeTaken = (hardness * (isCorrect ? 1.5 : 5.0)) / speed;
 
                         double enchantCost = 0;
-                        var enchants = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-                        if (!enchants.isEmpty()) enchantCost = enchants.size() * 20.0;
+                        if (!enchantments.isEmpty()) enchantCost = enchantments.size() * 20.0;
 
                         double miningBaseFactor = rarityFactor + (timeTaken * TIME_COST_MULTIPLIER) + enchantCost;
                         if (miningBaseFactor >= Double.POSITIVE_INFINITY) continue;
@@ -208,8 +230,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
                                 details.append(" with Hand");
                             } else {
                                 details.append(" with ").append(toolStack.getHoverName().getString());
-                                var enchs = toolStack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-                                if (!enchs.isEmpty()) details.append(" (Enchanted)");
+                                if (!enchantments.isEmpty()) details.append(" (Enchanted)");
                             }
                             details.append(" (avg: ").append(formatAverage(itemsPerAction)).append(")");
 
@@ -490,5 +511,9 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     }
 
     private record RarityInfo(double factor, String location) {
+    }
+
+    private record DropCacheKey(@Nullable TagKey<Item> toolTag, @Nullable Item specificItem, boolean isCorrect,
+                                ItemEnchantments enchantments) {
     }
 }

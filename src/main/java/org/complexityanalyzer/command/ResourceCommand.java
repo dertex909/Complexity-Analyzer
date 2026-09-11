@@ -42,8 +42,8 @@ public final class ResourceCommand {
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return Commands.literal("resource").then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
-                .executes(cmd -> ResourceCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item"))));
+        return Commands.literal("resource")
+                .then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM).executes(cmd -> ResourceCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item"))));
     }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {

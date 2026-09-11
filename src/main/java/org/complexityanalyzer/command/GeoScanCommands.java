@@ -53,24 +53,13 @@ public class GeoScanCommands {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("geoscan")
-                .then(Commands.literal("start")
-                        .requires(source -> source.hasPermission(2))
-                        .executes(GeoScanCommands::showProfileHelp)
-                        .then(Commands.argument("profile", StringArgumentType.word())
-                                .suggests((c, b) -> suggest(PROFILE_NAMES, b))
-                                .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
-                                .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
-                                        .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false))
-                                        .then(Commands.argument("force", BoolArgumentType.bool())
-                                                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force")))))))
-                .then(Commands.literal("stop")
-                        .requires(source -> source.hasPermission(2))
-                        .executes(GeoScanCommands::executeStop))
-                .then(Commands.literal("status")
-                        .executes(GeoScanCommands::executeStatus))
-                .then(Commands.literal("clear")
-                        .requires(source -> source.hasPermission(2))
-                        .executes(GeoScanCommands::executeClear));
+                .then(Commands.literal("start").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::showProfileHelp)
+                        .then(Commands.argument("profile", StringArgumentType.word()).suggests((c, b) -> suggest(PROFILE_NAMES, b)).executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
+                                .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE)).executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false))
+                                        .then(Commands.argument("force", BoolArgumentType.bool()).executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force")))))))
+                .then(Commands.literal("stop").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::executeStop))
+                .then(Commands.literal("status").executes(GeoScanCommands::executeStatus))
+                .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::executeClear));
     }
 
     private static int showProfileHelp(CommandContext<CommandSourceStack> context) {

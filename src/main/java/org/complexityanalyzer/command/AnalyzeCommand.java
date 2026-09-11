@@ -46,11 +46,14 @@ public final class AnalyzeCommand {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("analyze")
-                .then(Commands.literal("item").then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
+                .then(Commands.literal("item")
+                        .then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
                         .executes(cmd -> AnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item")))))
-                .then(Commands.literal("entity").then(Commands.argument("entity", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY)
+                .then(Commands.literal("entity")
+                        .then(Commands.argument("entity", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY)
                         .executes(cmd -> EntityAnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "entity")))))
-                .then(Commands.literal("loot").then(Commands.argument("loot_table", ResourceLocationArgument.id()).suggests(SharedSuggestions.LOOT_TABLE)
+                .then(Commands.literal("loot")
+                        .then(Commands.argument("loot_table", ResourceLocationArgument.id()).suggests(SharedSuggestions.LOOT_TABLE)
                         .executes(ctx -> LootAnalyzeCommand.execute(ctx, ResourceLocationArgument.getId(ctx, "loot_table")))));
     }
 

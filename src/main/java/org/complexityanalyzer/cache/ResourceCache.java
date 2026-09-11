@@ -195,13 +195,12 @@ public final class ResourceCache implements ManagedCache {
             for (long v : fingerprint) buf.writeLong(v);
 
             buf.writeVarInt(map.size());
-            for (var entry : map.reference2ObjectEntrySet()) {
-                var itemId = GameRegistryManager.getItemId(entry.getKey());
+            map.forEach((item, list) -> {
+                var itemId = GameRegistryManager.getItemId(item);
                 buf.writeResourceLocation(itemId != null ? itemId : ResourceLocation.withDefaultNamespace("air"));
-                var list = entry.getValue();
                 buf.writeVarInt(list.size());
                 for (var element : list) writer.write(buf, element);
-            }
+            });
 
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);

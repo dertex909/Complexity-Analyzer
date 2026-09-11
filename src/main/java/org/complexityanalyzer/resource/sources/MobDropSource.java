@@ -166,14 +166,12 @@ public class MobDropSource implements IResourceSource {
 
         try {
             Runnable simulationRunnable = () -> {
-                ObjectList<DamageSourceConfig> damageConfigs = null;
-                try {
-                    var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
-                    var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
-                    damageConfigs = createDamageSources(serverLevel, fakePlayer);
+                var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
+                var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
+                var damageConfigs = createDamageSources(serverLevel, fakePlayer);
 
+                try {
                     int processedEntities = 0;
-                    final var finalConfigs = damageConfigs;
 
                     for (var entityType : entityTypes) {
                         if (SPECIAL_KILL_ENTITIES.contains(entityType)) continue;
@@ -203,7 +201,7 @@ public class MobDropSource implements IResourceSource {
                         }
 
                         var v = new Victim(entityType, entityInstance, lootTable);
-                        mergeDrops(entityType, sampleVictim(serverLevel, v, finalConfigs), targetMap);
+                        mergeDrops(entityType, sampleVictim(serverLevel, v, damageConfigs), targetMap);
                         processedEntities++;
 
                         if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
@@ -214,7 +212,7 @@ public class MobDropSource implements IResourceSource {
                     ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, targetMap.size(), duration);
 
                 } finally {
-                    if (damageConfigs != null) for (DamageSourceConfig config : damageConfigs) {
+                    for (var config : damageConfigs) {
                         if (config.attackingEntity != null) config.attackingEntity.discard();
                     }
                 }
@@ -327,11 +325,11 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void mergeDrops(EntityType<?> type, Reference2ObjectMap<Item, DropStatistics> combinedDrops, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        for (var entry : combinedDrops.reference2ObjectEntrySet()) {
-            var stats = entry.getValue();
-            if (stats.totalDropped > 0) targetMap.computeIfAbsent(entry.getKey(), k -> new ObjectArrayList<>())
-                    .add(new MobDropData(entry.getKey(), type, stats.getAverageYield(), stats.getBestMethod()));
-        }
+        combinedDrops.forEach((item, stats) -> {
+            if (stats.totalDropped > 0) {
+                targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(new MobDropData(item, type, stats.getAverageYield(), stats.getBestMethod()));
+            }
+        });
     }
 
     @Override
@@ -457,10 +455,16 @@ public class MobDropSource implements IResourceSource {
     private static class DropStatistics {
         private final Object2IntMap<String> dropsByMethod = new Object2IntOpenHashMap<>();
         private int totalDropped = 0;
+        private String bestMethod = "Unknown";
+        private int maxCount = -1;
 
         public void addDrop(String method, int count) {
-            dropsByMethod.mergeInt(method, count, Integer::sum);
+            int newCount = dropsByMethod.mergeInt(method, count, Integer::sum);
             totalDropped += count;
+            if (newCount > maxCount) {
+                maxCount = newCount;
+                bestMethod = method;
+            }
         }
 
         public double getAverageYield() {
@@ -469,14 +473,6 @@ public class MobDropSource implements IResourceSource {
         }
 
         public String getBestMethod() {
-            var bestMethod = "Unknown";
-            var maxCount = -1;
-            for (var entry : dropsByMethod.object2IntEntrySet()) {
-                if (entry.getIntValue() > maxCount) {
-                    maxCount = entry.getIntValue();
-                    bestMethod = entry.getKey();
-                }
-            }
             return bestMethod;
         }
     }

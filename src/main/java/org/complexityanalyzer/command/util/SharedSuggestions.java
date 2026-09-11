@@ -50,10 +50,9 @@ public final class SharedSuggestions {
     private static void refreshEntities() {
         var temp = new ObjectArrayList<ResourceLocation>();
         for (var type : GameRegistryManager.getAllEntityTypes()) {
-            if (type.getCategory() != MobCategory.MISC) {
-                var id = GameRegistryManager.getEntityTypeId(type);
-                if (id != null) temp.add(id);
-            }
+            if (type.getCategory() == MobCategory.MISC) continue;
+            var id = GameRegistryManager.getEntityTypeId(type);
+            if (id != null) temp.add(id);
         }
         CACHED_ENTITIES = temp;
     }
@@ -67,10 +66,11 @@ public final class SharedSuggestions {
         for (var map : uls.getAllLootData().values()) {
             if (map == null) continue;
             for (var data : map.values()) {
-                if (data != null && data.getSourceSpecifier() != null && !data.getSourceSpecifier().isEmpty()) {
-                    var loc = ResourceLocation.tryParse(data.getSourceSpecifier());
-                    if (loc != null) unique.add(loc);
-                }
+                if (data == null) continue;
+                var specifier = data.getSourceSpecifier();
+                if (specifier == null || specifier.isEmpty()) continue;
+                var loc = ResourceLocation.tryParse(specifier);
+                if (loc != null) unique.add(loc);
             }
         }
 

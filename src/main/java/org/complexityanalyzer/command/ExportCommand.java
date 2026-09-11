@@ -26,6 +26,8 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -38,7 +40,9 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.data.ComplexityCategory;
-import org.complexityanalyzer.export.ComplexityExporter;
+import org.complexityanalyzer.export.format.ComplexityExporter;
+import org.complexityanalyzer.export.format.ExportFormats;
+import org.complexityanalyzer.export.format.IExportFormat;
 
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -46,77 +50,71 @@ import java.util.concurrent.CompletableFuture;
 import static java.util.Locale.ROOT;
 
 public final class ExportCommand {
+
+    private static final ObjectList<String> CATEGORY_SUGGESTIONS;
+    private static final ObjectList<String> MOB_CATEGORY_SUGGESTIONS;
+
+    static {
+        var catList = new ObjectArrayList<String>();
+        for (var category : ComplexityCategory.values()) catList.add(category.getDisplayName());
+        CATEGORY_SUGGESTIONS = ObjectLists.unmodifiable(catList);
+        var mobCategories = MobCategory.values();
+        var mobList = new ObjectArrayList<String>(mobCategories.length);
+        for (var mobCategory : mobCategories) mobList.add(mobCategory.getName());
+        MOB_CATEGORY_SUGGESTIONS = ObjectLists.unmodifiable(mobList);
+    }
+
     private ExportCommand() {
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return Commands.literal("export")
-                .requires(source -> source.hasPermission(2))
+        return Commands.literal("export").requires(source -> source.hasPermission(2))
                 .then(buildItemsBranch())
                 .then(buildMobsBranch());
     }
 
     private static ArgumentBuilder<CommandSourceStack, ?> buildItemsBranch() {
         return Commands.literal("items")
-                .then(Commands.literal("all")
-                        .executes(ExportCommand::executeAllItems))
-                .then(Commands.literal("category")
-                        .then(Commands.argument("category_name", StringArgumentType.word())
-                                .suggests(ExportCommand::suggestCategories)
-                                .executes(ctx -> executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
-                .then(Commands.literal("top")
-                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
-                                .executes(ctx -> executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
-                .then(Commands.literal("single")
-                        .then(Commands.argument("item_id", ResourceLocationArgument.id())
-                                .suggests(SharedSuggestions.ITEM)
-                                .executes(ctx -> executeSingleItem(ctx, ResourceLocationArgument.getId(ctx, "item_id").toString()))))
-                .then(Commands.literal("csv")
-                        .executes(ExportCommand::executeItemsCSV));
+                .then(Commands.argument("format", StringArgumentType.word()).suggests(ExportCommand::suggestFormats)
+                        .then(Commands.literal("all").executes(ExportCommand::executeAllItems))
+                        .then(Commands.literal("category")
+                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(ExportCommand::suggestCategories).executes(ctx -> executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
+                        .then(Commands.literal("top")
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000)).executes(ctx -> executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
+                        .then(Commands.literal("single")
+                                .then(Commands.argument("item_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM).executes(ctx -> executeSingleItem(ctx, ResourceLocationArgument.getId(ctx, "item_id").toString())))));
     }
 
     private static ArgumentBuilder<CommandSourceStack, ?> buildMobsBranch() {
         return Commands.literal("mobs")
-                .then(Commands.literal("all")
-                        .executes(ctx -> executeAllMobs(ctx, "json")))
-                .then(Commands.literal("format")
-                        .then(Commands.argument("format_type", StringArgumentType.word())
-                                .suggests(ExportCommand::suggestFormats)
-                                .executes(ctx -> executeAllMobs(ctx, StringArgumentType.getString(ctx, "format_type")))))
-                .then(Commands.literal("category")
-                        .then(Commands.argument("category_name", StringArgumentType.word())
-                                .suggests(ExportCommand::suggestMobCategories)
-                                .executes(ctx -> executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
-                .then(Commands.literal("top")
-                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000))
-                                .executes(ctx -> executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
-                .then(Commands.literal("single")
-                        .then(Commands.argument("mob_id", ResourceLocationArgument.id())
-                                .suggests(SharedSuggestions.ENTITY)
-                                .executes(ctx -> executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString()))))
-                .then(Commands.literal("csv")
-                        .executes(ctx -> executeAllMobs(ctx, "csv")));
-    }
-
-    private static CompletableFuture<Suggestions> suggestCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        var catList = new ObjectArrayList<String>();
-        for (var category : ComplexityCategory.values()) {
-            if (category != ComplexityCategory.UNCALCULABLE && category != ComplexityCategory.ABSOLUTE) {
-                catList.add(category.getDisplayName());
-            }
-        }
-        return SharedSuggestionProvider.suggest(catList, builder);
-    }
-
-    private static CompletableFuture<Suggestions> suggestMobCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        var mobCategories = MobCategory.values();
-        var list = new ObjectArrayList<String>(mobCategories.length);
-        for (var mobCategory : mobCategories) list.add(mobCategory.getName());
-        return SharedSuggestionProvider.suggest(list, builder);
+                .then(Commands.argument("format", StringArgumentType.word()).suggests(ExportCommand::suggestFormats)
+                        .then(Commands.literal("all").executes(ExportCommand::executeAllMobs))
+                        .then(Commands.literal("category")
+                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(ExportCommand::suggestMobCategories).executes(ctx -> executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
+                        .then(Commands.literal("top")
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000)).executes(ctx -> executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
+                        .then(Commands.literal("single")
+                                .then(Commands.argument("mob_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY).executes(ctx -> executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString())))));
     }
 
     private static CompletableFuture<Suggestions> suggestFormats(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(new String[]{"csv", "json"}, builder);
+        return SharedSuggestionProvider.suggest(ExportFormats.getAvailableFormatIds(), builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        return SharedSuggestionProvider.suggest(CATEGORY_SUGGESTIONS, builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestMobCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        return SharedSuggestionProvider.suggest(MOB_CATEGORY_SUGGESTIONS, builder);
+    }
+
+    private static IExportFormat getFormatOrReport(CommandContext<CommandSourceStack> context, OutputManager output) {
+        String formatId = StringArgumentType.getString(context, "format");
+        var format = ExportFormats.get(formatId);
+        if (format == null) output.sendFailure(context.getSource(),
+                Component.translatable("complexityanalyzer.command.export.invalid_format", formatId));
+        return format;
     }
 
     public static int executeAllItems(CommandContext<CommandSourceStack> context) {
@@ -125,6 +123,8 @@ public final class ExportCommand {
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
 
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
         output.sendEmptyLine(source);
         output.sendHeader(source, "💾", "complexityanalyzer.command.export.full_item_header", ChatFormatting.AQUA);
         output.sendEmptyLine(source);
@@ -132,8 +132,8 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportAllItems(source.getServer(), engine);
-            sendSuccess(output, source, "Full item export", exportPath);
+            var exportPath = ComplexityExporter.exportAllItems(source.getServer(), engine, format);
+            sendSuccess(output, source, "Full item export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "full item", e);
@@ -146,6 +146,8 @@ public final class ExportCommand {
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📦", "complexityanalyzer.command.export.item_category_header", ChatFormatting.GOLD);
@@ -155,8 +157,8 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportItemsByCategory(source.getServer(), engine, categoryName);
-            sendSuccess(output, source, "Item category export", exportPath);
+            var exportPath = ComplexityExporter.exportItemsByCategory(source.getServer(), engine, format, categoryName);
+            sendSuccess(output, source, "Item category export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "item category", e);
@@ -169,6 +171,8 @@ public final class ExportCommand {
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "🏆", "complexityanalyzer.command.export.top_items_header", ChatFormatting.GOLD);
@@ -178,33 +182,11 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportTopItems(source.getServer(), engine, count);
-            sendSuccess(output, source, "Top items export", exportPath);
+            var exportPath = ComplexityExporter.exportTopItems(source.getServer(), engine, format, count);
+            sendSuccess(output, source, "Top items export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "top items", e);
-            return 0;
-        }
-    }
-
-    public static int executeItemsCSV(CommandContext<CommandSourceStack> context) {
-        var source = context.getSource();
-        var output = new OutputManager(source.getServer());
-        var engine = AnalysisEngine.getInstance();
-        if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
-
-        output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "complexityanalyzer.command.export.items_csv_header", ChatFormatting.GREEN);
-        output.sendEmptyLine(source);
-        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
-        output.sendEmptyLine(source);
-
-        try {
-            var exportPath = ComplexityExporter.exportItemsCSV(source.getServer(), engine);
-            sendSuccess(output, source, "Items CSV export", exportPath);
-            return 1;
-        } catch (Exception e) {
-            sendFailure(output, source, "items CSV", e);
             return 0;
         }
     }
@@ -214,6 +196,8 @@ public final class ExportCommand {
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📄", "complexityanalyzer.command.export.single_item_header", ChatFormatting.AQUA);
@@ -223,8 +207,8 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportSingleItem(source.getServer(), engine, itemId);
-            sendSuccess(output, source, "Single item export", exportPath);
+            var exportPath = ComplexityExporter.exportSingleItem(source.getServer(), engine, format, itemId);
+            sendSuccess(output, source, "Single item export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "single item", e);
@@ -232,27 +216,24 @@ public final class ExportCommand {
         }
     }
 
-    public static int executeAllMobs(CommandContext<CommandSourceStack> context, String format) {
+    public static int executeAllMobs(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
-
-        if (!"csv".equalsIgnoreCase(format) && !"json".equalsIgnoreCase(format)) {
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.invalid_format", format));
-            return 0;
-        }
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "🧟", "complexityanalyzer.command.export.all_mobs_header", ChatFormatting.RED);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📋", "complexityanalyzer.command.export.format_label", format.toUpperCase(ROOT), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEntry(source, "📋", "complexityanalyzer.command.export.format_label", format.getId().toUpperCase(ROOT), ChatFormatting.GRAY, ChatFormatting.AQUA);
         output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.exporting", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
 
         try {
             var exportPath = ComplexityExporter.exportAllMobs(source.getServer(), engine, format);
-            sendSuccess(output, source, "All mobs export", exportPath);
+            sendSuccess(output, source, "All mobs export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "all mobs", e);
@@ -265,6 +246,8 @@ public final class ExportCommand {
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📦", "complexityanalyzer.command.export.mob_category_header", ChatFormatting.GOLD);
@@ -274,8 +257,8 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportMobsByCategory(source.getServer(), engine, categoryName);
-            sendSuccess(output, source, "Mob category export", exportPath);
+            var exportPath = ComplexityExporter.exportMobsByCategory(source.getServer(), engine, format, categoryName);
+            sendSuccess(output, source, "Mob category export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "mob category", e);
@@ -288,6 +271,8 @@ public final class ExportCommand {
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "🏆", "complexityanalyzer.command.export.top_mobs_header", ChatFormatting.GOLD);
@@ -297,8 +282,8 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportTopMobs(source.getServer(), engine, count);
-            sendSuccess(output, source, "Top mobs export", exportPath);
+            var exportPath = ComplexityExporter.exportTopMobs(source.getServer(), engine, format, count);
+            sendSuccess(output, source, "Top mobs export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "top mobs", e);
@@ -311,6 +296,8 @@ public final class ExportCommand {
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
+        var format = getFormatOrReport(context, output);
+        if (format == null) return 0;
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📄", "complexityanalyzer.command.export.single_mob_header", ChatFormatting.AQUA);
@@ -320,8 +307,8 @@ public final class ExportCommand {
         output.sendEmptyLine(source);
 
         try {
-            var exportPath = ComplexityExporter.exportSingleMob(source.getServer(), engine, mobId);
-            sendSuccess(output, source, "Single mob export", exportPath);
+            var exportPath = ComplexityExporter.exportSingleMob(source.getServer(), engine, format, mobId);
+            sendSuccess(output, source, "Single mob export (" + format.getId().toUpperCase(ROOT) + ")", exportPath);
             return 1;
         } catch (Exception e) {
             sendFailure(output, source, "single mob", e);

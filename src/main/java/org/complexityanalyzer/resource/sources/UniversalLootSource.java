@@ -114,11 +114,11 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         if (restored < 0) return false;
 
         targetMap.clear();
-        for (var entry : flat.reference2ObjectEntrySet()) {
-            for (var data : entry.getValue()) {
-                targetMap.computeIfAbsent(data.getSourceType(), k -> new Reference2ObjectOpenHashMap<>()).put(entry.getKey(), data);
+        flat.forEach((item, list) -> {
+            for (var data : list) {
+                targetMap.computeIfAbsent(data.getSourceType(), k -> new Reference2ObjectOpenHashMap<>()).put(item, data);
             }
-        }
+        });
         int items = 0;
         for (var map : targetMap.values()) items += map.size();
         ComplexityAnalyzer.LOGGER.info("[ULS] Loaded {} loot paths for {} items from cache (loot-table scan skipped).", restored, items);
@@ -128,9 +128,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     private Reference2ObjectMap<Item, ObjectList<BaseResourceData>> flattenLootData(Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
         var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
         for (var typeMap : targetMap.values()) {
-            for (var e : typeMap.reference2ObjectEntrySet()) {
-                flat.computeIfAbsent(e.getKey(), k -> new ObjectArrayList<>()).add(e.getValue());
-            }
+            typeMap.forEach((item, data) -> flat.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(data));
         }
         return flat;
     }
@@ -203,7 +201,10 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                 for (var r : results) {
                     var lootTableId = r.id();
                     var contextDef = r.def();
-                    for (var itemEntry : r.counts().reference2IntEntrySet()) {
+
+                    var it = r.counts().reference2IntEntrySet().fastIterator();
+                    while (it.hasNext()) {
+                        var itemEntry = it.next();
                         var item = itemEntry.getKey();
                         var itemsPerAttempt = (double) itemEntry.getIntValue() / SIMULATION_COUNT;
                         if (itemsPerAttempt <= 0) continue;
@@ -253,9 +254,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             ComplexityAnalyzer.LOGGER.debug("[ULS] PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
                     tablesProcessed, threads, SIMULATION_COUNT, (long) tablesProcessed * SIMULATION_COUNT, sampleWallMs, duration);
 
-            for (var entry : targetMap.reference2ObjectEntrySet()) {
-                ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", entry.getKey().getDisplayName(), entry.getValue().size());
-            }
+            targetMap.forEach((sourceType, map) -> ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", sourceType.getDisplayName(), map.size()));
         }
     }
 

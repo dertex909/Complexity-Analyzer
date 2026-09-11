@@ -30,9 +30,11 @@ public class ComplexityAnalyzer {
     public static final String MODID = "complexityanalyzer";
     public static final String MOD_NAME = "Complexity Analyzer";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
+    public static String VERSION;
 
     public ComplexityAnalyzer(ModContainer modContainer) {
-        LOGGER.info("=== {} v{} ===", MOD_NAME, modContainer.getModInfo().getVersion());
+        VERSION = String.valueOf(modContainer.getModInfo().getVersion());
+        LOGGER.info("=== {} v{} ===", MOD_NAME, VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ComplexityConfig.SPEC);
     }
 }

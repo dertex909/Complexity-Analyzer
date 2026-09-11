@@ -19,7 +19,6 @@
 package org.complexityanalyzer.event;
 
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -59,8 +58,7 @@ public final class WebLifecycleEvents {
     public static void onAnalysisComplete(ComplexityAnalysisCompleteEvent event) {
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
-        String modVersion = ModList.get().getModContainerById(ComplexityAnalyzer.MODID).map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
-        CabinBackgroundService.getInstance().regenerateAsync(server, AnalysisEngine.getInstance(), modVersion);
+        CabinBackgroundService.getInstance().regenerateAsync(server, AnalysisEngine.getInstance(), ComplexityAnalyzer.VERSION);
     }
 
     @SubscribeEvent

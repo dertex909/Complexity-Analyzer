@@ -52,7 +52,7 @@ public final class ResourceCommand {
         var engine = AnalysisEngine.getInstance();
 
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.tree.not_ready"));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.not_ready"));
             return 0;
         }
 

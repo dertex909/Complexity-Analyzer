@@ -18,10 +18,24 @@
 
 package org.complexityanalyzer.command;
 
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+
 public final class ComplexityCommand {
-    public static final String BASE = "complexity";
+    private static final String BASE = "complexity";
     public static final String ROOT = "/" + BASE;
 
     private ComplexityCommand() {
+    }
+
+    public static LiteralArgumentBuilder<CommandSourceStack> register() {
+        return Commands.literal(BASE)
+                .then(SystemCommand.register())
+                .then(AnalyzeCommand.register())
+                .then(ExportCommand.register())
+                .then(WebCommand.register())
+                .then(ResourceCommand.register())
+                .then(GeoScanCommands.register());
     }
 }

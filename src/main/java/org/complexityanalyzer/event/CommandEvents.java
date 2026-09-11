@@ -18,12 +18,11 @@
 
 package org.complexityanalyzer.event;
 
-import net.minecraft.commands.Commands;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.command.*;
+import org.complexityanalyzer.command.ComplexityCommand;
 
 @EventBusSubscriber
 public final class CommandEvents {
@@ -33,17 +32,7 @@ public final class CommandEvents {
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
-        var dispatcher = event.getDispatcher();
-
-        dispatcher.register(Commands.literal(ComplexityCommand.BASE)
-                .then(SystemCommand.register())
-                .then(AnalyzeCommand.register())
-                .then(ExportCommand.register())
-                .then(WebCommand.register())
-                .then(ResourceCommand.register())
-                .then(GeoScanCommands.register())
-        );
-
+        event.getDispatcher().register(ComplexityCommand.register());
         ComplexityAnalyzer.LOGGER.info("Registered '{}' command", ComplexityCommand.ROOT);
     }
 }

@@ -192,8 +192,7 @@ public class ComplexityExporter {
                 }
             }
         }
-        return new SourceData(data.getSourceType().getDisplayName(), data.getBaseFactor(), fullCost,
-                data.getDetails(), ingredients);
+        return new SourceData(data.getSourceType().getDisplayName(), data.getBaseFactor(), fullCost, data.getDetails(), ingredients);
     }
 
     private static MobData buildMobData(EntityType<?> type, AnalysisEngine engine) {

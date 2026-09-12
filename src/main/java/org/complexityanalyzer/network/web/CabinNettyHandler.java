@@ -30,7 +30,6 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,7 +42,7 @@ import static java.util.Base64.getUrlEncoder;
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
-    private static final Set<String> uniqueVisitors = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Set<String> uniqueVisitors = ConcurrentHashMap.newKeySet();
     private static final Map<String, String> MIME_TYPES = new ConcurrentHashMap<>();
     private static volatile String cachedToken = null;
 

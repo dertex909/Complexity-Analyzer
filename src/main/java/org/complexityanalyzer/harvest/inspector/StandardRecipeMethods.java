@@ -20,12 +20,10 @@ package org.complexityanalyzer.harvest.inspector;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeInput;
-import net.neoforged.neoforge.attachment.AttachmentHolder;
 
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
@@ -36,7 +34,6 @@ public final class StandardRecipeMethods {
     public static final String GET_INGREDIENTS = extract((RecipeGetIngredientsRef) Recipe::getIngredients);
     public static final String GET_TOAST_SYMBOL = extract((RecipeGetToastSymbolRef) Recipe::getToastSymbol);
     public static final String ASSEMBLE = extract((RecipeAssembleRef) Recipe::assemble);
-    public static final String SERIALIZE_ATTACHMENTS = extract((AttachmentHolderSerializeRef) AttachmentHolder::serializeAttachments);
 
     private StandardRecipeMethods() {
     }
@@ -74,11 +71,5 @@ public final class StandardRecipeMethods {
     @SuppressWarnings("unused")
     private interface RecipeAssembleRef extends Serializable {
         ItemStack ignored(Recipe<RecipeInput> instance, RecipeInput input, HolderLookup.Provider provider);
-    }
-
-    @FunctionalInterface
-    @SuppressWarnings("unused")
-    private interface AttachmentHolderSerializeRef extends Serializable {
-        CompoundTag ignored(AttachmentHolder instance, HolderLookup.Provider provider);
     }
 }

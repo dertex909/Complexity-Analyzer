@@ -21,7 +21,6 @@ package org.complexityanalyzer.export.cabin.builder;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.complexityanalyzer.core.GameRegistryManager;
@@ -74,13 +73,12 @@ public final class RecipeSectionBuilder {
         return list;
     }
 
-    private static ObjectList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots,
-                                                               HolderLookup.Provider ra) {
+    private static ObjectList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots) {
         var order = new ObjectArrayList<MergedSlot>(slots.size());
         var sigToPos = new Object2IntOpenHashMap<String>(slots.size());
         sigToPos.defaultReturnValue(-1);
         for (var slot : slots) {
-            String sig = slotSignature(ctx, slot, ra);
+            String sig = slotSignature(ctx, slot);
             int pos = sigToPos.getInt(sig);
             if (pos < 0) {
                 sigToPos.put(sig, order.size());
@@ -93,11 +91,11 @@ public final class RecipeSectionBuilder {
         return order;
     }
 
-    private static String slotSignature(SectionBuilderContext ctx, IngredientSlot slot, HolderLookup.Provider ra) {
+    private static String slotSignature(SectionBuilderContext ctx, IngredientSlot slot) {
         var sb = new StringBuilder(24);
         for (var v : slot.getVariants()) {
             sb.append(ctx.itemIndex().getInt(v.getItem()));
-            if (!v.isComponentsPatchEmpty()) sb.append('#').append(ItemStackIdentity.dataKey(v, ra));
+            if (!v.isComponentsPatchEmpty()) sb.append('#').append(ItemStackIdentity.dataKey(v));
             sb.append(',');
         }
         return sb.toString();
@@ -123,8 +121,7 @@ public final class RecipeSectionBuilder {
         buf.u8(mc);
         for (int k = 0; k < mc; k++) buf.i32(machineIdxs.getInt(k));
 
-        var registryAccess = ctx.registryAccess();
-        var mergedSlots = mergeIngredientSlots(ctx, r.getIngredients(), registryAccess);
+        var mergedSlots = mergeIngredientSlots(ctx, r.getIngredients());
         buf.u8(Math.min(mergedSlots.size(), 0xFF));
         for (int s = 0; s < Math.min(mergedSlots.size(), 0xFF); s++) {
             var slot = mergedSlots.get(s);
@@ -135,7 +132,7 @@ public final class RecipeSectionBuilder {
             for (int v = 0; v < vc; v++) {
                 var variant = variants.get(v);
                 buf.i32(ctx.itemIndex().getInt(variant.getItem()));
-                writeVariantStrings(buf, ctx, variant, registryAccess);
+                writeVariantStrings(buf, ctx, variant);
 
                 int remainingIdx = -1;
                 if (variant.hasCraftingRemainingItem()) {
@@ -178,7 +175,7 @@ public final class RecipeSectionBuilder {
 
             int keyRef = ctx.dataKeyIdCache().getInt(stack);
             if (keyRef < 0) {
-                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(stack, registryAccess));
+                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(stack));
                 ctx.dataKeyIdCache().put(stack, keyRef);
             }
             buf.i32(keyRef);
@@ -203,8 +200,7 @@ public final class RecipeSectionBuilder {
         return stack.getItem().getDescription().getString();
     }
 
-    private static void writeVariantStrings(LeBuf buf, SectionBuilderContext ctx, ItemStack variant,
-                                            HolderLookup.Provider registryAccess) {
+    private static void writeVariantStrings(LeBuf buf, SectionBuilderContext ctx, ItemStack variant) {
         int hoverRef, keyRef;
         if (variant.isComponentsPatchEmpty()) {
             var item = variant.getItem();
@@ -215,7 +211,7 @@ public final class RecipeSectionBuilder {
             }
             keyRef = ctx.plainDataKeyByItem().getInt(item);
             if (keyRef < 0) {
-                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(variant, registryAccess));
+                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(variant));
                 ctx.plainDataKeyByItem().put(item, keyRef);
             }
         } else {
@@ -226,7 +222,7 @@ public final class RecipeSectionBuilder {
             }
             keyRef = ctx.dataKeyIdCache().getInt(variant);
             if (keyRef < 0) {
-                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(variant, registryAccess));
+                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(variant));
                 ctx.dataKeyIdCache().put(variant, keyRef);
             }
         }

@@ -23,8 +23,6 @@ import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
@@ -46,6 +44,8 @@ import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class HarvestedRecipeConverter {
 
+    private static final ItemStackComparator ITEM_COMPARATOR = new ItemStackComparator();
+
     private HarvestedRecipeConverter() {
     }
 
@@ -55,8 +55,6 @@ public final class HarvestedRecipeConverter {
 
     public static RecipeNode convert(HarvestedItems harvested, Level level) {
         if (harvested == null || harvested.isEmpty()) return null;
-        var registryAccess = level != null ? level.registryAccess() : null;
-
         var declaredResult = declaredRecipeResult(harvested.root(), level);
         var inputIngredients = harvested.inputIngredients();
         var inputStacks = harvested.inputItems();
@@ -84,7 +82,7 @@ public final class HarvestedRecipeConverter {
             isPlaceholder = true;
             placeholderId = GameRegistryManager.getFluidId(fluid).toString();
         } else {
-            output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks, registryAccess);
+            output = selectOutput(declaredResult, outputStacks.isEmpty() ? inputStacks : outputStacks);
         }
 
         if ((output.isEmpty() || output.getItem() == AIR) && !isPlaceholder && !inputIngredients.isEmpty()) {
@@ -105,9 +103,7 @@ public final class HarvestedRecipeConverter {
 
         var transitionalItems = harvested.transitionalItems();
         boolean isSeqAss = !transitionalItems.isEmpty();
-
-        final var mergedIngredients = getMergedIngredients(registryAccess);
-        final var itemComparator = new ItemStackComparator(registryAccess);
+        final var mergedIngredients = getMergedIngredients();
 
         for (var hi : inputIngredients) {
             var ingredient = hi.ingredient();
@@ -122,7 +118,7 @@ public final class HarvestedRecipeConverter {
             }
 
             if (!variants.isEmpty()) {
-                if (variants.size() > 1) variants.sort(itemComparator);
+                if (variants.size() > 1) variants.sort(ITEM_COMPARATOR);
                 if (variants.size() > limit) variants.removeElements(limit, variants.size());
                 if (isSeqAss) {
                     mergedIngredients.put(variants, ingredientCount);
@@ -139,14 +135,14 @@ public final class HarvestedRecipeConverter {
                 if (isUniqueStackData(firstKey, transStack))
                     firstKey.add(ItemStackCanonicalizer.canonicalize(transStack));
             }
-            if (firstKey.size() > 1) firstKey.sort(itemComparator);
+            if (firstKey.size() > 1) firstKey.sort(ITEM_COMPARATOR);
         }
 
         for (var stack : inputStacks) {
             if (!isValid(stack)) continue;
             var item = stack.getItem();
             if (!transitionalItems.isEmpty() && transitionalItems.contains(item)) continue;
-            if (!sameStackIdentity(stack, output, registryAccess)) {
+            if (!sameStackIdentity(stack, output)) {
                 var variants = new ObjectArrayList<ItemStack>();
                 variants.add(ItemStackCanonicalizer.canonicalize(stack));
                 mergedIngredients.addTo(variants, Math.max(1, stack.getCount()));
@@ -179,10 +175,11 @@ public final class HarvestedRecipeConverter {
             var deduplicatedOutputs = new ObjectArrayList<ItemStack>();
             for (var stack : mutableOutputStacks) {
                 if (!isValid(stack)) continue;
+                int maxStack = stack.getMaxStackSize();
                 boolean alreadyAdded = false;
                 for (var existing : deduplicatedOutputs) {
-                    if (ItemStackIdentity.sameItemData(existing, stack, registryAccess)) {
-                        if (existing.getCount() + stack.getCount() <= 64) {
+                    if (ItemStackIdentity.sameItemData(existing, stack)) {
+                        if (existing.getCount() + stack.getCount() <= maxStack) {
                             existing.setCount(existing.getCount() + stack.getCount());
                             alreadyAdded = true;
                             break;
@@ -193,7 +190,7 @@ public final class HarvestedRecipeConverter {
                 if (!alreadyAdded) {
                     int remaining = stack.getCount();
                     while (remaining > 0) {
-                        int chunk = Math.min(64, remaining);
+                        int chunk = Math.min(maxStack, remaining);
                         remaining -= chunk;
                         deduplicatedOutputs.add(ItemStackCanonicalizer.canonicalize(stack.copyWithCount(chunk)));
                     }
@@ -214,14 +211,14 @@ public final class HarvestedRecipeConverter {
         return builder.build();
     }
 
-    private static @NotNull Object2IntLinkedOpenCustomHashMap<ObjectList<ItemStack>> getMergedIngredients(RegistryAccess registryAccess) {
+    private static @NotNull Object2IntLinkedOpenCustomHashMap<ObjectList<ItemStack>> getMergedIngredients() {
         var strategy = new Hash.Strategy<ObjectList<ItemStack>>() {
             @Override
             public int hashCode(ObjectList<ItemStack> o) {
                 if (o == null) return 0;
                 int h = 1;
                 for (var stack : o) {
-                    h = 31 * h + (isValid(stack) ? ItemStackIdentity.hashItemData(stack, registryAccess) : 0);
+                    h = 31 * h + (isValid(stack) ? ItemStackIdentity.hashItemData(stack) : 0);
                 }
                 return h;
             }
@@ -232,7 +229,7 @@ public final class HarvestedRecipeConverter {
                 if (a == null || b == null) return false;
                 if (a.size() != b.size()) return false;
                 for (int i = 0; i < a.size(); i++) {
-                    if (!ItemStackIdentity.sameItemData(a.get(i), b.get(i), registryAccess)) return false;
+                    if (!ItemStackIdentity.sameItemData(a.get(i), b.get(i))) return false;
                 }
                 return true;
             }
@@ -282,15 +279,14 @@ public final class HarvestedRecipeConverter {
         return ItemStack.EMPTY;
     }
 
-    private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks,
-                                          HolderLookup.Provider provider) {
+    private static ItemStack selectOutput(ItemStack declaredResult, ObjectList<ItemStack> stacks) {
         if (!declaredResult.isEmpty()) {
             var best = declaredResult;
             for (var stack : stacks) {
                 if (stack.isEmpty() || stack.getItem() == AIR || stack.getItem() != declaredResult.getItem()) continue;
                 if (stack.getCount() > best.getCount()) {
                     best = stack;
-                } else if (!ItemStackIdentity.hasStackData(best, provider) && ItemStackIdentity.hasStackData(stack, provider)) {
+                } else if (!ItemStackIdentity.hasStackData(best) && ItemStackIdentity.hasStackData(stack)) {
                     best = stack;
                 }
             }
@@ -309,8 +305,8 @@ public final class HarvestedRecipeConverter {
         return ItemStackCanonicalizer.canonicalize(best);
     }
 
-    private static boolean sameStackIdentity(ItemStack a, ItemStack b, HolderLookup.Provider provider) {
-        return ItemStackIdentity.sameItemDataAndCount(a, b, provider);
+    private static boolean sameStackIdentity(ItemStack a, ItemStack b) {
+        return ItemStackIdentity.sameItemDataAndCount(a, b);
     }
 
     private static boolean isUniqueStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
@@ -318,15 +314,14 @@ public final class HarvestedRecipeConverter {
         return true;
     }
 
-    private record ItemStackComparator(HolderLookup.Provider provider) implements Comparator<ItemStack> {
-
+    private static final class ItemStackComparator implements Comparator<ItemStack> {
         @Override
         public int compare(ItemStack a, ItemStack b) {
             var idA = GameRegistryManager.getItemId(a.getItem());
             var idB = GameRegistryManager.getItemId(b.getItem());
             int byId = idA.compareTo(idB);
             if (byId != 0) return byId;
-            return ItemStackIdentity.dataKey(a, provider).compareTo(ItemStackIdentity.dataKey(b, provider));
+            return ItemStackIdentity.dataKey(a).compareTo(ItemStackIdentity.dataKey(b));
         }
     }
 }

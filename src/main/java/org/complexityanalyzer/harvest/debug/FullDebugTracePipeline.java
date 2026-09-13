@@ -387,11 +387,10 @@ public final class FullDebugTracePipeline {
                 }
             }
 
-            var provider = level != null ? level.registryAccess() : null;
             if (!apiResult.isEmpty() && apiResult.getItem() != AIR) {
                 for (var entry : recordedContainers.entrySet()) {
                     for (var stack : entry.getValue()) {
-                        if (ItemStackIdentity.sameItemData(stack, apiResult, provider)) {
+                        if (ItemStackIdentity.sameItemData(stack, apiResult)) {
                             sb.append("    ⚠️ [OVERLAP DETECTED] Container '").append(entry.getKey())
                                     .append("' contains ").append(formatItemStack(stack))
                                     .append(", which is identical to apiResult (").append(formatItemStack(apiResult)).append(")!\n")
@@ -410,7 +409,7 @@ public final class FullDebugTracePipeline {
                     var listA = recordedContainers.get(keyA);
                     var listB = recordedContainers.get(keyB);
 
-                    if (isSameContent(listA, listB, provider)) {
+                    if (isSameContent(listA, listB)) {
                         sb.append("    ⚠️ [DUPLICATE ACCESSORS DETECTED] '").append(keyA)
                                 .append("' and '").append(keyB)
                                 .append("' return the EXACT same payload list!\n")
@@ -420,10 +419,10 @@ public final class FullDebugTracePipeline {
             }
         }
 
-        private boolean isSameContent(ObjectList<ItemStack> a, ObjectList<ItemStack> b, net.minecraft.core.HolderLookup.Provider provider) {
+        private boolean isSameContent(ObjectList<ItemStack> a, ObjectList<ItemStack> b) {
             if (a.size() != b.size()) return false;
             for (int i = 0; i < a.size(); i++) {
-                if (!ItemStackIdentity.sameItemDataAndCount(a.get(i), b.get(i), provider)) return false;
+                if (!ItemStackIdentity.sameItemDataAndCount(a.get(i), b.get(i))) return false;
             }
             return true;
         }

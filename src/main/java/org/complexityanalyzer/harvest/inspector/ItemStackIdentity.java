@@ -18,67 +18,33 @@
 
 package org.complexityanalyzer.harvest.inspector;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 
-import java.lang.reflect.Method;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-
 public final class ItemStackIdentity {
-
-    private static final Method NO_METHOD;
-    private static final ConcurrentHashMap<Class<?>, Method> ATTACHMENT_METHOD_CACHE = new ConcurrentHashMap<>();
-
-    static {
-        Method m;
-        try {
-            m = ItemStackIdentity.class.getDeclaredMethod("noMethodSentinel");
-        } catch (NoSuchMethodException e) {
-            m = null;
-        }
-        NO_METHOD = m;
-    }
 
     private ItemStackIdentity() {
     }
 
-    private static void noMethodSentinel() {
-    }
-
     public static boolean sameItemData(ItemStack a, ItemStack b) {
-        return sameItemData(a, b, null);
-    }
-
-    public static boolean sameItemData(ItemStack a, ItemStack b, HolderLookup.Provider provider) {
         if (a == b) return true;
         if (a == null || b == null || a.isEmpty() || b.isEmpty()) return false;
-        if (!ItemStack.isSameItemSameComponents(a, b)) return false;
-        return Objects.equals(serializedAttachments(a, provider), serializedAttachments(b, provider));
+        return ItemStack.isSameItemSameComponents(a, b);
     }
 
-    public static boolean sameItemDataAndCount(ItemStack a, ItemStack b, HolderLookup.Provider provider) {
+    public static boolean sameItemDataAndCount(ItemStack a, ItemStack b) {
         if (a == b) return true;
         if (a == null || b == null) return false;
-        return a.getCount() == b.getCount() && sameItemData(a, b, provider);
+        return ItemStack.matches(a, b);
     }
 
-    public static boolean hasStackData(ItemStack stack, HolderLookup.Provider provider) {
+    public static boolean hasStackData(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
-        if (!stack.isComponentsPatchEmpty()) return true;
-        var attachments = serializedAttachments(stack, provider);
-        return attachments != null && !attachments.isEmpty();
+        return !stack.isComponentsPatchEmpty();
     }
 
     public static int hashItemData(ItemStack stack) {
-        return hashItemData(stack, null);
-    }
-
-    public static int hashItemData(ItemStack stack, HolderLookup.Provider provider) {
         if (stack == null || stack.isEmpty()) return 0;
-        var attachments = serializedAttachments(stack, provider);
-        return 31 * ItemStack.hashItemAndComponents(stack) + (attachments != null ? attachments.hashCode() : 0);
+        return ItemStack.hashItemAndComponents(stack);
     }
 
     public static int hashItemDataAndCount(ItemStack stack) {
@@ -86,33 +52,8 @@ public final class ItemStackIdentity {
         return 31 * hashItemData(stack) + stack.getCount();
     }
 
-    public static String dataKey(ItemStack stack, HolderLookup.Provider provider) {
+    public static String dataKey(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "";
-        var key = new StringBuilder();
-        key.append("item=").append(stack.getItem());
-        key.append(";components=").append(stack.getComponentsPatch());
-        var attachments = serializedAttachments(stack, provider);
-        if (attachments != null && !attachments.isEmpty()) key.append(";attachments=").append(attachments);
-        return key.toString();
-    }
-
-    private static CompoundTag serializedAttachments(ItemStack stack, HolderLookup.Provider provider) {
-        if (stack == null || provider == null) return null;
-        var method = ATTACHMENT_METHOD_CACHE.computeIfAbsent(stack.getClass(), cls -> {
-            try {
-                var m = cls.getMethod(StandardRecipeMethods.SERIALIZE_ATTACHMENTS, HolderLookup.Provider.class);
-                if (!CompoundTag.class.isAssignableFrom(m.getReturnType())) return NO_METHOD;
-                m.setAccessible(true);
-                return m;
-            } catch (Throwable ignored) {
-                return NO_METHOD;
-            }
-        });
-        if (method == NO_METHOD) return null;
-        try {
-            return (CompoundTag) method.invoke(stack, provider);
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return "item=" + stack.getItem() + ";components=" + stack.getComponentsPatch();
     }
 }

@@ -1,3 +1,21 @@
+<!--
+  - Complexity Analyzer
+  - Copyright (C) 2025-2026 dertex909
+  -
+  - This program is free software; you can redistribute it and/or modify
+  - it under the terms of the GNU Lesser General Public License as published by
+  - the Free Software Foundation; either version 3 of the License, or
+  - (at your option) any later version.
+  -
+  - This program is distributed in the hope that it will be useful,
+  - but WITHOUT ANY WARRANTY; without even the implied warranty of
+  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  - GNU Lesser General Public License for more details.
+  -
+  - You should have received a copy of the GNU Lesser General Public License
+  - along with this program. If not, see <https://www.gnu.org/licenses/>.
+  -->
+
 <svg xmlns="http://www.w3.org/2000/svg" width="52.916668mm" height="52.916672mm" viewBox="0 0 52.916668 52.916672">
     <g transform="translate(-78.581253,-121.97292)">
         <path fill="#f0b24e"

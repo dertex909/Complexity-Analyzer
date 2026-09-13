@@ -229,13 +229,12 @@ public final class FastHarvester {
                 });
             }
 
-            var registryAccess = level != null ? level.registryAccess() : null;
             if (!inputItems.isEmpty()) {
                 var uniqueInputItems = new ObjectArrayList<ItemStack>();
                 for (var stack : inputItems) {
                     boolean isDup = false;
                     for (var existing : uniqueInputItems) {
-                        if (ItemStackIdentity.sameItemData(stack, existing, registryAccess)) {
+                        if (ItemStackIdentity.sameItemData(stack, existing)) {
                             isDup = true;
                             break;
                         }
@@ -249,16 +248,14 @@ public final class FastHarvester {
             if (!inputIngredients.isEmpty()) inputItems.removeIf(stack -> {
                 for (var hi : inputIngredients) {
                     for (var ingStack : hi.ingredient().getItems()) {
-                        if (ItemStackIdentity.sameItemData(ingStack, stack, registryAccess)) return true;
+                        if (ItemStackIdentity.sameItemData(ingStack, stack)) return true;
                     }
                 }
                 return false;
             });
 
             if (!outputItems.isEmpty()) inputItems.removeIf(stack -> {
-                for (var outStack : outputItems) {
-                    if (ItemStackIdentity.sameItemData(stack, outStack, registryAccess)) return true;
-                }
+                for (var outStack : outputItems) if (ItemStackIdentity.sameItemData(stack, outStack)) return true;
                 return false;
             });
 

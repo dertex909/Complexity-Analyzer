@@ -18,7 +18,8 @@
 
 package org.complexityanalyzer.harvest.inspector;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -40,7 +41,7 @@ public final class UniversalTypeResolver {
 
     public static ResolvedType resolve(Class<?> clazz) {
         if (clazz == null) return ResolvedType.UNKNOWN_TYPE;
-        if (isTerminalType(clazz)) {
+        if (TerminalTypeRegistry.isTerminalType(clazz)) {
             if (clazz.isPrimitive() || Number.class.isAssignableFrom(clazz)) return ResolvedType.NUMBER_TYPE;
             return ResolvedType.UNKNOWN_TYPE;
         }
@@ -65,10 +66,6 @@ public final class UniversalTypeResolver {
         return type.isArray() || Iterable.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type) || type.isRecord();
     }
 
-    public static boolean isTerminalType(Class<?> type) {
-        return TerminalTypeRegistry.isTerminalType(type);
-    }
-
     public static Class<?> extractInnerType(Field field) {
         try {
             return extractInnerTypeFromGeneric(field.getGenericType());
@@ -87,7 +84,7 @@ public final class UniversalTypeResolver {
 
     private static Class<?> extractInnerTypeFromGeneric(Type generic) {
         if (generic instanceof ParameterizedType pt) {
-            Type[] args = pt.getActualTypeArguments();
+            var args = pt.getActualTypeArguments();
             if (args.length > 0 && args[0] instanceof Class<?> c) return c;
         }
         if (generic instanceof Class<?> c && c.isArray()) return c.getComponentType();
@@ -99,22 +96,16 @@ public final class UniversalTypeResolver {
     }
 
     private static ResolvedType resolveUncached(Class<?> clazz) {
-        var evidence = new ObjectArrayList<String>();
 
         if (ItemStack.class.isAssignableFrom(clazz)) {
-            return new ResolvedType(Kind.ITEM_STACK, false, false, null, 100,
-                    ObjectLists.singleton("extends/implements ItemStack"));
+            return new ResolvedType(Kind.ITEM_STACK, false, false);
         }
         if (Ingredient.class.isAssignableFrom(clazz)) {
-            return new ResolvedType(Kind.INGREDIENT, false, false, null, 100,
-                    ObjectLists.singleton("extends/implements Ingredient"));
+            return new ResolvedType(Kind.INGREDIENT, false, false);
         }
         if (FluidStack.class.isAssignableFrom(clazz)) {
-            return new ResolvedType(Kind.FLUID_STACK, false, false, null, 100,
-                    ObjectLists.singleton("extends/implements FluidStack"));
+            return new ResolvedType(Kind.FLUID_STACK, false, false);
         }
-
-        evidence.add("Dynamic reflection evaluation");
 
         int itemFields = 0, ingrFields = 0, fluidFields = 0;
         int itemMethods = 0, ingrMethods = 0, fluidMethods = 0;
@@ -126,23 +117,12 @@ public final class UniversalTypeResolver {
             Arrays.sort(fields, Comparator.comparing(Field::getName));
             for (var f : fields) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
-
                 var fieldType = resolve(f.getType());
-                String fieldDesc = "field " + f.getName() + ": " + f.getType().getSimpleName();
 
                 switch (fieldType.kind()) {
-                    case ITEM_STACK -> {
-                        itemFields++;
-                        evidence.add(fieldDesc);
-                    }
-                    case INGREDIENT -> {
-                        ingrFields++;
-                        evidence.add(fieldDesc);
-                    }
-                    case FLUID_STACK -> {
-                        fluidFields++;
-                        evidence.add(fieldDesc);
-                    }
+                    case ITEM_STACK -> itemFields++;
+                    case INGREDIENT -> ingrFields++;
+                    case FLUID_STACK -> fluidFields++;
                 }
 
                 if (fieldType.isCollection()) {
@@ -199,34 +179,11 @@ public final class UniversalTypeResolver {
             }
         }
 
-        int score = 0;
-        score += itemFields * 8;
-        score += ingrFields * 10;
-        score += fluidFields * 8;
-        score += itemMethods * 5;
-        score += ingrMethods * 7;
-        score += fluidMethods * 5;
-        score = Math.min(score, 100);
-
-        if (ingrFields > 0 || ingrMethods > 0) {
-            return new ResolvedType(Kind.INGREDIENT, false, hasWrapper, null, score, evidence);
-        }
-        if (itemFields > 0 || itemMethods > 0) {
-            return new ResolvedType(Kind.ITEM_STACK, false, hasWrapper, null, score, evidence);
-        }
-        if (fluidFields > 0 || fluidMethods > 0) {
-            return new ResolvedType(Kind.FLUID_STACK, false, hasWrapper, null, score, evidence);
-        }
-
-        if (isContainerType(clazz)) {
-            return new ResolvedType(Kind.COLLECTION, true, false, null, 30, evidence);
-        }
-
-        if (clazz.isPrimitive() || Number.class.isAssignableFrom(clazz)) {
-            return ResolvedType.NUMBER_TYPE;
-        }
-
-        return new ResolvedType(Kind.UNKNOWN, false, false, null, 0, evidence);
+        if (ingrFields > 0 || ingrMethods > 0) return new ResolvedType(Kind.INGREDIENT, false, hasWrapper);
+        if (itemFields > 0 || itemMethods > 0) return new ResolvedType(Kind.ITEM_STACK, false, hasWrapper);
+        if (fluidFields > 0 || fluidMethods > 0) return new ResolvedType(Kind.FLUID_STACK, false, hasWrapper);
+        if (isContainerType(clazz)) return new ResolvedType(Kind.COLLECTION, true, false);
+        return new ResolvedType(Kind.UNKNOWN, false, false);
     }
 
     public enum Kind {
@@ -240,26 +197,13 @@ public final class UniversalTypeResolver {
         UNKNOWN
     }
 
-    public record ResolvedType(
-            Kind kind,
-            boolean isCollection,
-            boolean isWrapper,
-            Class<?> innerType,
-            int confidence,
-            ObjectList<String> evidence
-    ) {
-        public static final ResolvedType UNKNOWN_TYPE = new ResolvedType(
-                Kind.UNKNOWN, false, false, null, 0, ObjectLists.emptyList()
-        );
-
-        public static final ResolvedType NUMBER_TYPE = new ResolvedType(
-                Kind.NUMBER, false, false, null, 90, ObjectLists.singleton("Primitive or boxed number")
-        );
+    public record ResolvedType(Kind kind, boolean isCollection, boolean isWrapper) {
+        public static final ResolvedType UNKNOWN_TYPE = new ResolvedType(Kind.UNKNOWN, false, false);
+        public static final ResolvedType NUMBER_TYPE = new ResolvedType(Kind.NUMBER, false, false);
 
         @Override
         public @NotNull String toString() {
-            return kind + (isCollection ? "_LIST" : "") + (isWrapper ? "_WRAPPER" : "")
-                    + (innerType != null ? "<" + innerType.getSimpleName() + ">" : "") + " conf=" + confidence;
+            return kind + (isCollection ? "_LIST" : "") + (isWrapper ? "_WRAPPER" : "");
         }
     }
 }

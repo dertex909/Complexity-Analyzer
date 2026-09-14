@@ -150,7 +150,7 @@ public final class RecipeMetadata {
 
             var returnType = m.getReturnType();
             if (returnType == void.class || returnType == Void.class) continue;
-            if (UniversalTypeResolver.isTerminalType(returnType)) continue;
+            if (TerminalTypeRegistry.isTerminalType(returnType)) continue;
 
             var acc = new MethodAccessor(h, m);
             HeuristicRoleClassifier.RoleClassification role;
@@ -176,8 +176,7 @@ public final class RecipeMetadata {
 
         for (var f : meta.fields) {
             var fieldType = f.getType();
-            if (fieldType.isPrimitive() || fieldType == String.class || fieldType.isEnum()) continue;
-            if (UniversalTypeResolver.isTerminalType(fieldType)) continue;
+            if (TerminalTypeRegistry.isTerminalType(fieldType)) continue;
 
             var acc = new FieldAccessor(f);
             HeuristicRoleClassifier.RoleClassification role;
@@ -388,7 +387,7 @@ public final class RecipeMetadata {
             while (idx < queue.size()) {
                 var current = queue.get(idx++);
                 if (current == null || current == Object.class) continue;
-                if (StructuralTypeClassifier.isTerminalType(current)) continue;
+                if (TerminalTypeRegistry.isTerminalType(current)) continue;
                 var methods = current.getDeclaredMethods();
                 Arrays.sort(methods, Comparator.comparing(Method::getName)
                         .thenComparingInt(Method::getParameterCount)
@@ -401,10 +400,7 @@ public final class RecipeMetadata {
                     if (m.getName().equals(StandardRecipeMethods.GET_TOAST_SYMBOL)) continue;
                     var rt = m.getReturnType();
                     if (rt == void.class || rt == Void.class) continue;
-                    if (rt.isPrimitive()) continue;
-                    if (rt == String.class || rt == Boolean.class || Number.class.isAssignableFrom(rt) || rt == Character.class)
-                        continue;
-                    if (StructuralTypeClassifier.isTerminalType(rt)) continue;
+                    if (TerminalTypeRegistry.isTerminalType(rt)) continue;
                     if (!seenMethods.add(m.getName())) continue;
 
                     mList.add(m);
@@ -446,9 +442,7 @@ public final class RecipeMetadata {
 
             var sList = new ObjectArrayList<Field>();
             for (var f : fList) {
-                var type = f.getType();
-                if (type.isPrimitive() || type == String.class || type.isEnum()) continue;
-                if (StructuralTypeClassifier.isTerminalType(type)) continue;
+                if (TerminalTypeRegistry.isTerminalType(f.getType())) continue;
                 sList.add(f);
             }
             this.scanFields = sList.toArray(new Field[0]);

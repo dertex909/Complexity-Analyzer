@@ -35,25 +35,17 @@ public final class TerminalTypeRegistry {
         while (type.isArray()) type = type.getComponentType();
         if (type.isPrimitive() || type == String.class || type.isEnum() || type == Boolean.class
                 || type == Character.class || Number.class.isAssignableFrom(type)) return true;
-
         if (Either.class.isAssignableFrom(type) || Pair.class.isAssignableFrom(type)) return false;
-
-        Boolean cached = CACHE.get(type);
-        if (cached != null) return cached;
-
-        boolean result = computeIsTerminal(type);
-        CACHE.put(type, result);
-        return result;
+        return CACHE.computeIfAbsent(type, TerminalTypeRegistry::computeIsTerminal);
     }
 
     private static boolean computeIsTerminal(Class<?> c) {
         String name = c.getName();
         if (name.isEmpty()) return true;
 
-        if (name.contains(".client.") || name.contains(".client") || name.contains(".gui.")
+        if (name.contains(".client") || name.contains(".gui.")
                 || name.contains(".renderer.") || name.contains(".render.") || name.contains(".screens.")
-                || name.contains(".sound.") || name.contains(".sounds.") || name.contains("net.minecraft.client")
-                || name.contains("net/minecraft/client/") || name.contains("KeyMapping") || name.contains("VarHandle")
+                || name.contains(".sound") || name.contains("KeyMapping") || name.contains("VarHandle")
                 || name.contains("ModelResourceLocation") || name.contains("RecipeType")
                 || name.contains("RecipeBuilder") || name.contains("RecipeSerializer") || name.contains("EnergyStack")
                 || name.contains("$$Lambda$") || name.contains("MethodHandle")) return true;

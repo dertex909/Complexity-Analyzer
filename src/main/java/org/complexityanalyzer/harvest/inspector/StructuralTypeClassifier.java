@@ -37,12 +37,7 @@ public final class StructuralTypeClassifier {
         if (FluidStack.class.isAssignableFrom(type)) return Kind.FLUID_STACK;
         if (ResourceLocation.class.isAssignableFrom(type)) return Kind.RESOURCE_ID;
         if (TagKey.class.isAssignableFrom(type)) return Kind.TAG;
-        if (DataComponentType.class.isAssignableFrom(type)) return Kind.DATA_COMPONENT;
-        return type.getName().contains("FluidStack") ? Kind.FLUID_STACK : null;
-    }
-
-    public static boolean isTerminalType(Class<?> type) {
-        return TerminalTypeRegistry.isTerminalType(type);
+        return DataComponentType.class.isAssignableFrom(type) ? Kind.DATA_COMPONENT : null;
     }
 
     public enum Kind {

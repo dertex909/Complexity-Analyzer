@@ -27,7 +27,9 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.harvest.inspector.*;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
+import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
+import org.complexityanalyzer.harvest.inspector.TerminalTypeRegistry;
 
 import static java.util.Locale.ROOT;
 import static net.minecraft.world.item.Items.AIR;
@@ -274,9 +276,6 @@ public final class FastHarvester {
 
     public void clearCaches() {
         RecipeMetadata.clearCaches();
-        AntivirusStyleDetector.clearCache();
-        PatternSignatureEngine.clearCache();
-        UniversalTypeResolver.clearCache();
         TerminalTypeRegistry.clearCache();
     }
 }

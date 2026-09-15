@@ -37,7 +37,8 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.engine.DeepCollector;
 import org.complexityanalyzer.harvest.engine.HarvestedItems;
-import org.complexityanalyzer.harvest.inspector.*;
+import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
+import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 import org.complexityanalyzer.util.ModFileManager;
 
 import java.nio.file.Path;
@@ -136,18 +137,12 @@ public final class FullDebugTracePipeline {
     }
 
     private static String buildRejectReason(HarvestedItems items) {
-        var sb = new StringBuilder("No structural recipe node: ");
-        sb.append("inputItems=").append(items.inputItems().size());
-        sb.append(" outputItems=").append(items.outputItems().size());
-        sb.append(" inputIngredients=").append(items.inputIngredients().size());
-        sb.append(" inputFluids=").append(items.inputFluids().size());
-        sb.append(" outputFluids=").append(items.outputFluids().size());
-        sb.append(" rootType=").append(items.root() != null ? items.root().getClass().getSimpleName() : "null");
-        if (items.root() != null) {
-            var detection = AntivirusStyleDetector.detect(items.root().getClass());
-            sb.append(" antivirus=").append(detection.verdict());
-        }
-        return sb.toString();
+        return "No structural recipe node: " + "inputItems=" + items.inputItems().size() +
+                " outputItems=" + items.outputItems().size() +
+                " inputIngredients=" + items.inputIngredients().size() +
+                " inputFluids=" + items.inputFluids().size() +
+                " outputFluids=" + items.outputFluids().size() +
+                " rootType=" + (items.root() != null ? items.root().getClass().getSimpleName() : "null");
     }
 
     public void traceHarvested(ResourceLocation recipeId, Object recipe, Level level, HarvestedItems items) {
@@ -249,13 +244,6 @@ public final class FullDebugTracePipeline {
             if (clazz.getSuperclass() != null && clazz.getSuperclass() != Object.class) {
                 sb.append("  extends ").append(clazz.getSuperclass().getName()).append('\n');
             }
-
-            var profile = PatternSignatureEngine.profile(clazz);
-            sb.append("SIGNATURE:   level=").append(profile.level())
-                    .append(" score=").append(profile.totalScore())
-                    .append(" isRecipe=").append(profile.isRecipe())
-                    .append(" isMachine=").append(profile.isMachine())
-                    .append('\n');
         }
 
         public void fields() {
@@ -268,10 +256,8 @@ public final class FullDebugTracePipeline {
                 try {
                     var val = f.get(recipe);
                     var valStr = formatValueDetailed(val);
-                    var role = HeuristicRoleClassifier.classifyField(f);
 
-                    sb.append("  [%s] %-32s : %-35s = %s\n".formatted(
-                            role.role().name().substring(0, 4),
+                    sb.append("  %-32s : %-35s = %s\n".formatted(
                             f.getName(),
                             f.getType().getSimpleName(),
                             valStr));
@@ -300,22 +286,15 @@ public final class FullDebugTracePipeline {
                 var rt = m.getReturnType();
                 if (rt == void.class || rt == Void.class) continue;
 
-                var role = HeuristicRoleClassifier.classifyMethod(m);
-
-                if (role.role() == HeuristicRoleClassifier.Role.UNKNOWN
-                        && !UniversalTypeResolver.isContainerType(rt)
-                        && !ItemStack.class.isAssignableFrom(rt)
-                        && !Ingredient.class.isAssignableFrom(rt)
-                        && !FluidStack.class.isAssignableFrom(rt)) {
-                    continue;
-                }
+                boolean isContainer = rt.isArray() || Iterable.class.isAssignableFrom(rt) || Map.class.isAssignableFrom(rt);
+                if (!isContainer && !ItemStack.class.isAssignableFrom(rt) && !Ingredient.class.isAssignableFrom(rt)
+                        && !FluidStack.class.isAssignableFrom(rt)) continue;
 
                 shown++;
                 try {
                     var val = h.invoke(recipe);
                     String valStr = formatValueDetailed(val);
-                    sb.append("  [%s] %-32s() → %-35s = %s\n".formatted(
-                            role.role().name().substring(0, 4),
+                    sb.append("  %-32s() → %-35s = %s\n".formatted(
                             m.getName(),
                             rt.getSimpleName(),
                             valStr));
@@ -334,9 +313,14 @@ public final class FullDebugTracePipeline {
             sb.append(MINOR_SEP).append('\n');
             sb.append("ACCESSOR EXTRACTION & EVALUATION:\n");
 
-            var accessors = RecipeMetadata.getUniversalAccessors(recipe, level);
+            var fast = RecipeMetadata.getFastAccessors(recipe.getClass());
+            var allAcc = new ObjectArrayList<RecipeMetadata.Accessor>();
+            allAcc.addAll(fast.itemAccessors());
+            allAcc.addAll(fast.ingredientAccessors());
+            allAcc.addAll(fast.fluidAccessors());
+            allAcc.addAll(fast.probeAccessors());
 
-            for (var acc : accessors.allAccessors()) {
+            for (var acc : allAcc) {
                 try {
                     var val = acc.extract(recipe, level);
                     String valStr = formatValueDetailed(val);
@@ -354,7 +338,7 @@ public final class FullDebugTracePipeline {
             var fastAccessors = RecipeMetadata.getFastAccessors(recipe.getClass());
             var visited = new ReferenceOpenHashSet<>();
 
-            ItemStack apiResult = ItemStack.EMPTY;
+            var apiResult = ItemStack.EMPTY;
             if (recipe instanceof Recipe<?> r && level != null) {
                 try {
                     apiResult = r.getResultItem(level.registryAccess());

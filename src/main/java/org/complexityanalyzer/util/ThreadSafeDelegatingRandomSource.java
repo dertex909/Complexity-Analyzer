@@ -33,8 +33,7 @@ public class ThreadSafeDelegatingRandomSource implements RandomSource {
     }
 
     private RandomSource getDelegate() {
-        if (ThreadPoolManager.isComplexityThread()) return this.threadLocalRandom.get();
-        return this.original;
+        return ThreadPoolManager.isComplexityThread() ? this.threadLocalRandom.get() : this.original;
     }
 
     @Override

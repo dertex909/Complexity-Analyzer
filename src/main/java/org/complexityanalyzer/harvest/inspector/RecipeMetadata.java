@@ -18,11 +18,11 @@
 
 package org.complexityanalyzer.harvest.inspector;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 
@@ -40,7 +40,6 @@ public final class RecipeMetadata {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final ConcurrentHashMap<Class<?>, ClassMeta> META_CACHE = new ConcurrentHashMap<>(256);
     private static final ConcurrentHashMap<Class<?>, FastAccessors> FAST_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
-    private static final ConcurrentHashMap<Class<?>, UniversalAccessors> UNIVERSAL_ACCESSORS_CACHE = new ConcurrentHashMap<>(256);
 
     private RecipeMetadata() {
     }
@@ -52,7 +51,6 @@ public final class RecipeMetadata {
     public static void clearCaches() {
         META_CACHE.clear();
         FAST_ACCESSORS_CACHE.clear();
-        UNIVERSAL_ACCESSORS_CACHE.clear();
     }
 
     public static FastAccessors getFastAccessors(Class<?> clazz) {
@@ -118,91 +116,6 @@ public final class RecipeMetadata {
         return new FastAccessors(itemAcc, ingredientAcc, fluidAcc, probeAcc);
     }
 
-    public static UniversalAccessors getUniversalAccessors(Object recipe, Level level) {
-        if (recipe == null) return UniversalAccessors.EMPTY;
-        return UNIVERSAL_ACCESSORS_CACHE.computeIfAbsent(recipe.getClass(), c -> resolveUniversalAccessors(c, recipe, level));
-    }
-
-    private static UniversalAccessors resolveUniversalAccessors(Class<?> clazz, Object recipe, Level level) {
-        var meta = getMeta(clazz);
-
-        ReferenceSet<Ingredient> standardInputs = ReferenceSets.emptySet();
-        Item anchorItem = null;
-
-        if (recipe instanceof Recipe<?> r && level != null) {
-            standardInputs = new ReferenceOpenHashSet<>();
-            for (var ing : r.getIngredients()) if (ing != null && !ing.isEmpty()) standardInputs.add(ing);
-            try {
-                var result = r.getResultItem(level.registryAccess());
-                if (!result.isEmpty()) anchorItem = result.getItem();
-            } catch (Throwable ignored) {
-            }
-        }
-
-        var inputAcc = new ObjectArrayList<Accessor>(8);
-        var outputAcc = new ObjectArrayList<Accessor>(8);
-        var unknownAcc = new ObjectArrayList<Accessor>(8);
-        var allAcc = new ObjectArrayList<Accessor>(16);
-
-        for (int i = 0; i < meta.allMethods.length; i++) {
-            var m = meta.allMethods[i];
-            var h = meta.allHandles[i];
-
-            var returnType = m.getReturnType();
-            if (returnType == void.class || returnType == Void.class) continue;
-            if (TerminalTypeRegistry.isTerminalType(returnType)) continue;
-
-            var acc = new MethodAccessor(h, m);
-            HeuristicRoleClassifier.RoleClassification role;
-            if (recipe != null) {
-                try {
-                    var raw = acc.extract(recipe, level);
-                    role = HeuristicRoleClassifier.classify(recipe, raw, m.getName(), "method", anchorItem, standardInputs);
-                } catch (Throwable e) {
-                    role = HeuristicRoleClassifier.classifyMethod(m);
-                }
-            } else {
-                role = HeuristicRoleClassifier.classifyMethod(m);
-            }
-
-            acc.setRoleClassification(role);
-            allAcc.add(acc);
-            switch (role.role()) {
-                case INPUT -> inputAcc.add(acc);
-                case OUTPUT -> outputAcc.add(acc);
-                default -> unknownAcc.add(acc);
-            }
-        }
-
-        for (var f : meta.fields) {
-            var fieldType = f.getType();
-            if (TerminalTypeRegistry.isTerminalType(fieldType)) continue;
-
-            var acc = new FieldAccessor(f);
-            HeuristicRoleClassifier.RoleClassification role;
-            if (recipe != null) {
-                try {
-                    var raw = acc.extract(recipe, level);
-                    role = HeuristicRoleClassifier.classify(recipe, raw, f.getName(), "field", anchorItem, standardInputs);
-                } catch (Throwable e) {
-                    role = HeuristicRoleClassifier.classifyField(f);
-                }
-            } else {
-                role = HeuristicRoleClassifier.classifyField(f);
-            }
-
-            acc.setRoleClassification(role);
-            allAcc.add(acc);
-            switch (role.role()) {
-                case INPUT -> inputAcc.add(acc);
-                case OUTPUT -> outputAcc.add(acc);
-                default -> unknownAcc.add(acc);
-            }
-        }
-
-        return new UniversalAccessors(inputAcc, outputAcc, unknownAcc, allAcc);
-    }
-
     public static boolean isNotEmptyContainer(Object obj) {
         return switch (obj) {
             case Collection<?> c -> !c.isEmpty();
@@ -238,26 +151,10 @@ public final class RecipeMetadata {
     ) {
     }
 
-    public record UniversalAccessors(
-            ObjectList<Accessor> inputAccessors,
-            ObjectList<Accessor> outputAccessors,
-            ObjectList<Accessor> unknownAccessors,
-            ObjectList<Accessor> allAccessors
-    ) {
-        public static final UniversalAccessors EMPTY = new UniversalAccessors(
-                ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList(), ObjectLists.emptyList()
-        );
-
-        public boolean isEmpty() {
-            return allAccessors.isEmpty();
-        }
-    }
-
     public static final class MethodAccessor implements Accessor {
         private final MethodHandle noArgHandle;
         private final MethodHandle fullHandle;
         private final Method method;
-        private HeuristicRoleClassifier.RoleClassification roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
 
         public MethodAccessor(MethodHandle handle, Method method) {
             this.method = method;
@@ -276,10 +173,6 @@ public final class RecipeMetadata {
             }
         }
 
-        public void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
-            this.roleClass = rc;
-        }
-
         @Override
         public String type() {
             return "method";
@@ -292,7 +185,7 @@ public final class RecipeMetadata {
 
         @Override
         public String toString() {
-            return method.getDeclaringClass().getSimpleName() + "." + method.getName() + "() → " + method.getReturnType().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
+            return method.getDeclaringClass().getSimpleName() + "." + method.getName() + "() → " + method.getReturnType().getSimpleName();
         }
 
         @Override
@@ -340,14 +233,9 @@ public final class RecipeMetadata {
 
     public static final class FieldAccessor implements Accessor {
         private final Field field;
-        private HeuristicRoleClassifier.RoleClassification roleClass = HeuristicRoleClassifier.RoleClassification.UNKNOWN;
 
         public FieldAccessor(Field field) {
             this.field = field;
-        }
-
-        public void setRoleClassification(HeuristicRoleClassifier.RoleClassification rc) {
-            this.roleClass = rc;
         }
 
         @Override
@@ -362,7 +250,7 @@ public final class RecipeMetadata {
 
         @Override
         public String toString() {
-            return field.getDeclaringClass().getSimpleName() + "." + field.getName() + " : " + field.getType().getSimpleName() + " [" + roleClass.role() + " conf=" + roleClass.confidence() + "]";
+            return field.getDeclaringClass().getSimpleName() + "." + field.getName() + " : " + field.getType().getSimpleName();
         }
 
         @Override

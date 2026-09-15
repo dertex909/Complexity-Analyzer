@@ -21,7 +21,6 @@ package org.complexityanalyzer.resource.sources;
 import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -78,18 +77,18 @@ public class MobDropSource implements IResourceSource {
 
     private static void writeData(FriendlyByteBuf buf, MobDropData data) {
         var mobId = GameRegistryManager.getEntityTypeId(data.sourceMob());
-        buf.writeResourceLocation(mobId != null ? mobId : ResourceLocation.withDefaultNamespace("pig"));
+        buf.writeNullable(mobId, FriendlyByteBuf::writeResourceLocation);
         buf.writeDouble(data.averageYield());
-        boolean hasMethod = data.killMethod() != null;
-        buf.writeBoolean(hasMethod);
-        if (hasMethod) buf.writeUtf(data.killMethod());
+        buf.writeNullable(data.killMethod(), FriendlyByteBuf::writeUtf);
     }
 
     @Nullable
     private static MobDropData readData(FriendlyByteBuf buf, Item item) {
-        var mob = GameRegistryManager.getEntityType(buf.readResourceLocation());
+        var mobId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
+        if (mobId == null) return null;
+        var mob = GameRegistryManager.getEntityType(mobId);
         double yield = buf.readDouble();
-        String killMethod = buf.readBoolean() ? buf.readUtf() : null;
+        String killMethod = buf.readNullable(FriendlyByteBuf::readUtf);
         return (mob == null) ? null : new MobDropData(item, mob, yield, killMethod);
     }
 
@@ -413,23 +412,20 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void registerSpecialDrops(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        targetMap.computeIfAbsent(Items.NETHER_STAR, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.NETHER_STAR, EntityType.WITHER, 1.0, "Boss Kill"));
-        targetMap.computeIfAbsent(Items.DRAGON_EGG, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.DRAGON_EGG, EntityType.ENDER_DRAGON, 1.0, "Boss Kill"));
+        addSpecialDrop(targetMap, Items.NETHER_STAR, EntityType.WITHER, "Boss Kill");
+        addSpecialDrop(targetMap, Items.DRAGON_EGG, EntityType.ENDER_DRAGON, "Boss Kill");
 
-        targetMap.computeIfAbsent(Items.ZOMBIE_HEAD, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.ZOMBIE_HEAD, EntityType.ZOMBIE, 1.0, "Charged Creeper"));
-        targetMap.computeIfAbsent(Items.SKELETON_SKULL, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.SKELETON_SKULL, EntityType.SKELETON, 1.0, "Charged Creeper"));
-        targetMap.computeIfAbsent(Items.CREEPER_HEAD, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.CREEPER_HEAD, EntityType.CREEPER, 1.0, "Charged Creeper"));
-        targetMap.computeIfAbsent(Items.PIGLIN_HEAD, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.PIGLIN_HEAD, EntityType.PIGLIN, 1.0, "Charged Creeper"));
-        targetMap.computeIfAbsent(Items.WITHER_SKELETON_SKULL, k -> new ObjectArrayList<>())
-                .add(new MobDropData(Items.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON, 1.0, "Charged Creeper"));
+        addSpecialDrop(targetMap, Items.ZOMBIE_HEAD, EntityType.ZOMBIE, "Charged Creeper");
+        addSpecialDrop(targetMap, Items.SKELETON_SKULL, EntityType.SKELETON, "Charged Creeper");
+        addSpecialDrop(targetMap, Items.CREEPER_HEAD, EntityType.CREEPER, "Charged Creeper");
+        addSpecialDrop(targetMap, Items.PIGLIN_HEAD, EntityType.PIGLIN, "Charged Creeper");
+        addSpecialDrop(targetMap, Items.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON, "Charged Creeper");
 
         ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Registered special hardcoded drops (bosses & mob heads).");
+    }
+
+    private void addSpecialDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> map, Item item, EntityType<?> type, String method) {
+        map.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(new MobDropData(item, type, 1.0, method));
     }
 
     private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {

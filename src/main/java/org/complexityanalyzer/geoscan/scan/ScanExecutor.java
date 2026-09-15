@@ -94,7 +94,7 @@ public class ScanExecutor {
         var oldCtx = sessionRef.get();
         if (oldCtx != null) {
             oldCtx.session().invalidate();
-            unparkAllWorkers();
+            for (var worker : workerThreads.keySet()) LockSupport.unpark(worker);
         }
 
         long waitStart = System.currentTimeMillis();
@@ -154,10 +154,6 @@ public class ScanExecutor {
     public float getCurrentMspt() {
         var ctx = sessionRef.get();
         return ctx != null ? ctx.monitor().getCurrentMspt() : -1;
-    }
-
-    private void unparkAllWorkers() {
-        for (var worker : workerThreads.keySet()) LockSupport.unpark(worker);
     }
 
     private void startWorker(SessionContext ctx) {
@@ -430,9 +426,7 @@ public class ScanExecutor {
         var ctx = sessionRef.get();
         if (ctx == null) return 1;
         var monitor = ctx.monitor();
-        boolean limited = monitor.hasLimit();
-        float mspt = monitor.getCurrentMspt();
-        return ctx.session().getProfile().policy(ctx.session().getChunksPerBiome(), mspt, limited).batchSize();
+        return ctx.session().getProfile().getBatchSize(monitor.getCurrentMspt(), monitor.hasLimit());
     }
 
     private void tryComplete(SessionContext myCtx) {
@@ -570,11 +564,7 @@ public class ScanExecutor {
             this.biomeId = biomeId;
             foundByBiome.defaultReturnValue(0);
 
-            var monitor = myCtx.monitor();
-            boolean limited = monitor.hasLimit();
-            float mspt = monitor.getCurrentMspt();
-
-            var policy = mySession.getProfile().policy(mySession.getChunksPerBiome(), mspt, limited);
+            var policy = mySession.getProfile().policy(mySession.getChunksPerBiome());
             this.maxScannedBudget = policy.maxScannedBudget();
             this.emptyBatchTolerance = policy.emptyBatchTolerance();
             this.stagnantBatchTolerance = policy.stagnantBatchTolerance();

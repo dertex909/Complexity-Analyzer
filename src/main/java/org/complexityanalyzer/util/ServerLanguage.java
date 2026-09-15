@@ -76,13 +76,7 @@ public class ServerLanguage {
 
     public static String get(String key, String locale) {
         String cleanLocale = isValidLocale(locale) ? locale.toLowerCase(ROOT) : DEFAULT_LOCALE;
-
-        var map = LANGUAGES.get(cleanLocale);
-        if (map == null) {
-            map = loadLanguageInternal(cleanLocale);
-            var existing = LANGUAGES.putIfAbsent(cleanLocale, map);
-            if (existing != null) map = existing;
-        }
+        var map = LANGUAGES.computeIfAbsent(cleanLocale, ServerLanguage::loadLanguageInternal);
 
         String val = map.get(key);
         if (val == null && !cleanLocale.equals(DEFAULT_LOCALE)) {
@@ -164,7 +158,6 @@ public class ServerLanguage {
         result.withStyle(style);
 
         for (var sibling : component.getSiblings()) result.append(translate(sibling, locale));
-
         return result;
     }
 

@@ -82,39 +82,30 @@ public final class ScanConfig {
             return msptLimit > 0;
         }
 
-        public ScanPolicy policy(int chunksPerBiome, float currentMspt, boolean msptLimitEnabled) {
-            int stagnantExtra = Math.clamp(chunksPerBiome / 32, 0, 256);
-            int stagnantBatchTolerance = stagnantBase + stagnantExtra;
-            int batchSize = getBatchSize(currentMspt, msptLimitEnabled);
-            int maxScannedBudget = getMaxScannedBudget(chunksPerBiome);
-
+        public ScanPolicy policy(int chunksPerBiome) {
             return new ScanPolicy(
-                    batchSize,
                     emptyBatchTolerance,
-                    stagnantBatchTolerance,
-                    maxScannedBudget,
+                    stagnantBase + Math.min(chunksPerBiome >> 5, 256),
+                    getMaxScannedBudget(chunksPerBiome),
                     maxPendingAnalysisBatches
             );
         }
 
-        private int getBatchSize(float currentMspt, boolean msptLimitEnabled) {
+        public int getBatchSize(float currentMspt, boolean msptLimitEnabled) {
             if (!msptLimitEnabled || msptLimit <= 0) return batchNoLimit;
-            float limit = msptLimit;
-            if (currentMspt > limit * 0.9f) return 2;
-            if (currentMspt > limit * 0.7f) return batch70;
-            if (currentMspt > limit * 0.5f) return batch50;
+            if (currentMspt > msptLimit * 0.9f) return 2;
+            if (currentMspt > msptLimit * 0.7f) return batch70;
+            if (currentMspt > msptLimit * 0.5f) return batch50;
             return batchNoLimit;
         }
 
         private int getMaxScannedBudget(int chunksPerBiome) {
-            int chunks = Math.max(1, chunksPerBiome);
             if (this == NORMAL) return budgetFixed;
-            long scaled = (long) chunks * 2L;
+            long scaled = (long) Math.max(1, chunksPerBiome) * 2L;
             return Math.clamp(scaled, budgetMin, budgetMax);
         }
 
         public record ScanPolicy(
-                int batchSize,
                 int emptyBatchTolerance,
                 int stagnantBatchTolerance,
                 int maxScannedBudget,

@@ -39,8 +39,8 @@ public class ScanSession {
     private final long sessionId;
     private final ScanProfile profile;
     private final int chunksPerBiome;
-    private final AtomicLong totalChunksScanned = new AtomicLong(0);
     private final long startTimeMs = System.currentTimeMillis();
+    private final AtomicLong totalChunksScanned = new AtomicLong(0);
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
@@ -60,8 +60,7 @@ public class ScanSession {
 
     public float getScanSpeed() {
         long elapsedMs = System.currentTimeMillis() - startTimeMs;
-        if (elapsedMs < 1000) return 0;
-        return totalChunksScanned.get() / (elapsedMs / 1000f);
+        return (elapsedMs < 1000) ? 0 : totalChunksScanned.get() / (elapsedMs / 1000f);
     }
 
     public long getTotalChunksScanned() {
@@ -74,7 +73,7 @@ public class ScanSession {
 
     public int getTotalChunksNeeded() {
         int remaining = 0;
-        for (AtomicInteger need : remainingNeeds.values()) remaining += need.get();
+        for (var need : remainingNeeds.values()) remaining += need.get();
         return remaining + (int) totalChunksScanned.get();
     }
 
@@ -84,8 +83,7 @@ public class ScanSession {
 
     public int getProgressPercent() {
         int totalNeeded = remainingNeeds.size() * chunksPerBiome;
-        if (totalNeeded == 0) return 100;
-        return (int) (totalChunksScanned.get() * 100 / totalNeeded);
+        return (totalNeeded == 0) ? 100 : (int) (totalChunksScanned.get() * 100 / totalNeeded);
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> getBiomeProgress() {
@@ -93,9 +91,7 @@ public class ScanSession {
 
         for (var entry : remainingNeeds.entrySet()) {
             var key = entry.getKey();
-            int remaining = entry.getValue().get();
-            int scanned = Math.max(0, chunksPerBiome - remaining);
-
+            int scanned = Math.max(0, chunksPerBiome - entry.getValue().get());
             var inner = result.computeIfAbsent(key.dim(), k -> new Object2ObjectOpenHashMap<>());
             inner.put(key.biome(), new int[]{scanned, chunksPerBiome});
         }
@@ -158,13 +154,10 @@ public class ScanSession {
 
     public ResourceLocation getRandomNeededBiome(ResourceLocation dim) {
         var needed = new ObjectArrayList<ResourceLocation>();
-
         for (var entry : remainingNeeds.entrySet()) {
             if (entry.getKey().dim().equals(dim) && entry.getValue().get() > 0) needed.add(entry.getKey().biome());
         }
-
-        if (needed.isEmpty()) return null;
-        return needed.get(ThreadLocalRandom.current().nextInt(needed.size()));
+        return (needed.isEmpty()) ? null : needed.get(ThreadLocalRandom.current().nextInt(needed.size()));
     }
 
     public ObjectArrayList<ResourceLocation> getDimensionsWithNeeds() {
@@ -182,7 +175,7 @@ public class ScanSession {
 
     public int countCompletedBiomes() {
         int completed = 0;
-        for (AtomicInteger remaining : remainingNeeds.values()) if (remaining.get() <= 0) completed++;
+        for (var remaining : remainingNeeds.values()) if (remaining.get() <= 0) completed++;
         return completed;
     }
 
@@ -207,8 +200,7 @@ public class ScanSession {
         return switch (phase) {
             case IDLE -> "Idle";
             case RECONNAISSANCE -> "%s scan - %d/%d biomes (%d/%d chunks)".formatted(
-                    profile.name(),
-                    countCompletedBiomes(), countTotalBiomes(),
+                    profile.name(), countCompletedBiomes(), countTotalBiomes(),
                     totalChunksFound.get(), totalChunksNeeded.get());
             case REFINING -> "Refining data...";
             case COMPLETE -> "Complete";

@@ -20,22 +20,21 @@ package org.complexityanalyzer.resource.sources;
 
 import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.damagesource.DamageEffects;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Skeleton;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -67,13 +66,8 @@ import static org.complexityanalyzer.cache.ResourceCache.MOB_DROP;
 import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 
 public class MobDropSource implements IResourceSource {
-    private static final int SIMULATION_COUNT = 100;
-    private static final int LOGIC_VERSION = 1;
-    private static final ReferenceSet<EntityType<?>> SPECIAL_KILL_ENTITIES = new ReferenceOpenHashSet<>(new EntityType<?>[]{
-            EntityType.WITHER,
-            EntityType.ENDER_DRAGON,
-            EntityType.SHULKER
-    });
+    private static final int SIMULATION_COUNT = 500;
+    private static final int LOGIC_VERSION = 2;
     private final MobPropertyProvider mobProvider;
 
     private volatile Reference2ObjectMap<Item, ObjectList<MobDropData>> dropMap = Reference2ObjectMaps.emptyMap();
@@ -96,8 +90,7 @@ public class MobDropSource implements IResourceSource {
         var mob = GameRegistryManager.getEntityType(buf.readResourceLocation());
         double yield = buf.readDouble();
         String killMethod = buf.readBoolean() ? buf.readUtf() : null;
-        if (mob == null) return null;
-        return new MobDropData(item, mob, yield, killMethod);
+        return (mob == null) ? null : new MobDropData(item, mob, yield, killMethod);
     }
 
     @Override
@@ -156,8 +149,7 @@ public class MobDropSource implements IResourceSource {
 
         ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();
-
-        registerSpecialKillDrops(targetMap);
+        registerSpecialDrops(targetMap);
 
         var filter = new LootLogFilter();
         var rootLogger = (Logger) LogManager.getRootLogger();
@@ -168,14 +160,12 @@ public class MobDropSource implements IResourceSource {
             Runnable simulationRunnable = () -> {
                 var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
                 var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
-                var damageConfigs = createDamageSources(serverLevel, fakePlayer);
+                var damageSources = createDamageSources(serverLevel, fakePlayer);
 
                 try {
                     int processedEntities = 0;
 
                     for (var entityType : entityTypes) {
-                        if (SPECIAL_KILL_ENTITIES.contains(entityType)) continue;
-
                         var lootTableKey = entityType.getDefaultLootTable();
                         var lootTable = server.reloadableRegistries().getLootTable(lootTableKey);
                         if (lootTable == LootTable.EMPTY) continue;
@@ -201,7 +191,7 @@ public class MobDropSource implements IResourceSource {
                         }
 
                         var v = new Victim(entityType, entityInstance, lootTable);
-                        mergeDrops(entityType, sampleVictim(serverLevel, v, damageConfigs), targetMap);
+                        mergeDrops(entityType, sampleVictim(serverLevel, v, damageSources), targetMap);
                         processedEntities++;
 
                         if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
@@ -212,8 +202,12 @@ public class MobDropSource implements IResourceSource {
                     ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, targetMap.size(), duration);
 
                 } finally {
-                    for (var config : damageConfigs) {
-                        if (config.attackingEntity != null) config.attackingEntity.discard();
+                    fakePlayer.discard();
+                    for (var ds : damageSources) {
+                        var e = ds.getEntity();
+                        if (e != null && e != fakePlayer) e.discard();
+                        var d = ds.getDirectEntity();
+                        if (d != null && d != fakePlayer) d.discard();
                     }
                 }
             };
@@ -235,8 +229,9 @@ public class MobDropSource implements IResourceSource {
         }
     }
 
-    private ObjectList<DamageSourceConfig> createDamageSources(ServerLevel level, ServerPlayer player) {
-        var configs = new ObjectArrayList<DamageSourceConfig>();
+    private ObjectList<DamageSource> createDamageSources(ServerLevel level, ServerPlayer player) {
+        var sources = new ObjectArrayList<DamageSource>();
+        var ds = level.damageSources();
 
         var spawnPos = level.getSharedSpawnPos();
         double sx = spawnPos.getX() + 0.5;
@@ -245,88 +240,89 @@ public class MobDropSource implements IResourceSource {
 
         player.setPos(sx, sy, sz);
 
-        configs.add(new DamageSourceConfig("Player Attack", level.damageSources().playerAttack(player), false, player, null));
-        configs.add(new DamageSourceConfig("Fire", level.damageSources().onFire(), true, player, null));
-        configs.add(new DamageSourceConfig("Lava", level.damageSources().lava(), true, player, null));
-        configs.add(new DamageSourceConfig("Magic", level.damageSources().magic(), false, player, null));
-        configs.add(new DamageSourceConfig("Fall Damage", level.damageSources().fall(), false, null, null));
-
-        var chargedCreeper = new Creeper(EntityType.CREEPER, level);
-        chargedCreeper.setPos(sx, sy, sz);
-        var creeperNBT = new CompoundTag();
-        creeperNBT.putBoolean("powered", true);
-        chargedCreeper.readAdditionalSaveData(creeperNBT);
-        var damageTypeRegistry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
-        var explosionHolder = damageTypeRegistry.getHolderOrThrow(DamageTypes.EXPLOSION);
-        var creeperOnlyExplosion = new DamageSource(explosionHolder, chargedCreeper, chargedCreeper);
-        configs.add(new DamageSourceConfig("Charged Creeper", creeperOnlyExplosion, false,
-                null, chargedCreeper));
+        sources.add(ds.playerAttack(player));
+        sources.add(ds.onFire());
+        sources.add(ds.lava());
+        sources.add(ds.freeze());
+        sources.add(ds.drown());
+        sources.add(ds.lightningBolt());
+        sources.add(ds.magic());
+        sources.add(ds.fall());
 
         var skeleton = new Skeleton(EntityType.SKELETON, level);
         skeleton.setPos(sx, sy, sz);
         var arrow = new Arrow(EntityType.ARROW, level);
         arrow.setPos(sx, sy, sz);
         arrow.setOwner(skeleton);
-        configs.add(new DamageSourceConfig("Skeleton Arrow", level.damageSources().arrow(arrow, skeleton),
-                false, null, skeleton));
+        sources.add(ds.arrow(arrow, skeleton));
 
-        return configs;
+        return sources;
     }
 
     private void simulateKillMethod(ServerLevel level, Entity entityInstance, LootTable lootTable,
-                                    DamageSourceConfig config, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
+                                    DamageSource ds, Reference2ObjectMap<Item, DropStatistics> combinedDrops) {
+        var causing = ds.getEntity();
+        var direct = ds.getDirectEntity();
+
+        boolean isFire = ds.is(DamageTypeTags.IS_FIRE) || ds.type().effects() == DamageEffects.BURNING;
+        boolean isFreezing = ds.is(DamageTypeTags.IS_FREEZING) || ds.type().effects() == DamageEffects.FREEZING;
+        String methodName = ds.getEntity() instanceof Skeleton ? "Skeleton Arrow" : ds.getMsgId();
         var entityTypeId = GameRegistryManager.getEntityTypeId(entityInstance.getType());
         long entityHash = entityTypeId != null ? entityTypeId.hashCode() : 0;
-        long baseSeed = entityHash ^ ((long) config.methodName.hashCode() << 16);
+        long baseSeed = entityHash ^ ((long) methodName.hashCode() << 16);
+
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
                 var builder = new LootParams.Builder(level)
                         .withParameter(LootContextParams.THIS_ENTITY, entityInstance)
                         .withParameter(LootContextParams.ORIGIN, entityInstance.position())
-                        .withParameter(LootContextParams.DAMAGE_SOURCE, config.damageSource);
-                if (config.killerPlayer != null)
-                    builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, config.killerPlayer);
-                if (config.attackingEntity != null) {
-                    builder.withParameter(LootContextParams.ATTACKING_ENTITY, config.attackingEntity);
-                    if (config.damageSource.getDirectEntity() != null) {
-                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.damageSource.getDirectEntity());
-                    } else {
-                        builder.withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, config.attackingEntity);
+                        .withParameter(LootContextParams.DAMAGE_SOURCE, ds);
+
+                if (causing != null) {
+                    builder.withParameter(LootContextParams.ATTACKING_ENTITY, causing);
+                    if (causing instanceof Player player) {
+                        builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, player);
                     }
                 }
+
+                if (direct != null) builder.withParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, direct);
                 var lootParams = builder.create(LootContextParamSets.ENTITY);
                 var context = new LootContext.Builder(lootParams)
                         .withOptionalRandomSource(RandomSource.create(baseSeed + i)).create(Optional.empty());
 
                 var drops = new ObjectArrayList<ItemStack>();
-                if (config.isOnFire) entityInstance.setRemainingFireTicks(100);
+                if (isFire) entityInstance.setRemainingFireTicks(100);
+                if (isFreezing) entityInstance.setTicksFrozen(300);
+
                 try {
                     lootTable.getRandomItems(context, drops::add);
                 } finally {
-                    if (config.isOnFire) entityInstance.clearFire();
+                    if (isFire) entityInstance.clearFire();
+                    if (isFreezing) entityInstance.setTicksFrozen(0);
                 }
+
                 for (var stack : drops) {
-                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(config.methodName, stack.getCount());
+                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(methodName, stack.getCount());
                 }
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("[MobDropSource] Exception during loot simulation for {} with method {}",
-                        entityInstance.getType().getDescriptionId(), config.methodName, e);
+                        entityInstance.getType().getDescriptionId(), methodName, e);
             }
         }
     }
 
-    private Reference2ObjectMap<Item, DropStatistics> sampleVictim(ServerLevel level, Victim v, ObjectList<DamageSourceConfig> configs) {
+    private Reference2ObjectMap<Item, DropStatistics> sampleVictim(ServerLevel level, Victim v, ObjectList<DamageSource> sources) {
         var combinedDrops = new Reference2ObjectOpenHashMap<Item, DropStatistics>();
-        for (var config : configs) {
-            if (config.methodName.equals("Skeleton Arrow") && v.type() != EntityType.CREEPER) continue;
-            simulateKillMethod(level, v.entity(), v.lootTable(), config, combinedDrops);
+        for (var ds : sources) {
+            if (ds.getEntity() instanceof Skeleton && v.type() != EntityType.CREEPER) continue;
+            simulateKillMethod(level, v.entity(), v.lootTable(), ds, combinedDrops);
         }
         return combinedDrops;
     }
 
     private void mergeDrops(EntityType<?> type, Reference2ObjectMap<Item, DropStatistics> combinedDrops, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
         combinedDrops.forEach((item, stats) -> {
-            if (stats.totalDropped > 0) {
+            if (stats.hasDrops()) {
                 targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(new MobDropData(item, type, stats.getAverageYield(), stats.getBestMethod()));
             }
         });
@@ -368,7 +364,7 @@ public class MobDropSource implements IResourceSource {
         double victimRarityMultiplier = mobProvider.getRarity(victimMobType);
 
         double specialConditionCost = 0.0;
-        if ("Killed by Charged Creeper".equals(data.killMethod())) {
+        if ("Charged Creeper".equals(data.killMethod())) {
             var creeperProps = mobProvider.getProperties(EntityType.CREEPER);
             if (creeperProps != null) {
                 specialConditionCost = creeperProps.calculateCombatPower() * mobProvider.getRarity(EntityType.CREEPER);
@@ -416,60 +412,49 @@ public class MobDropSource implements IResourceSource {
         return "MobDropSource";
     }
 
-    private void registerSpecialKillDrops(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        int count = 0;
+    private void registerSpecialDrops(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
+        targetMap.computeIfAbsent(Items.NETHER_STAR, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.NETHER_STAR, EntityType.WITHER, 1.0, "Boss Kill"));
+        targetMap.computeIfAbsent(Items.DRAGON_EGG, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.DRAGON_EGG, EntityType.ENDER_DRAGON, 1.0, "Boss Kill"));
 
-        registerDrop(targetMap, EntityType.ZOMBIE, Items.ZOMBIE_HEAD, 1.0, "Killed by Charged Creeper");
-        count++;
-        registerDrop(targetMap, EntityType.SKELETON, Items.SKELETON_SKULL, 1.0, "Killed by Charged Creeper");
-        count++;
-        registerDrop(targetMap, EntityType.CREEPER, Items.CREEPER_HEAD, 1.0, "Killed by Charged Creeper");
-        count++;
-        registerDrop(targetMap, EntityType.PIGLIN, Items.PIGLIN_HEAD, 1.0, "Killed by Charged Creeper");
-        count++;
+        targetMap.computeIfAbsent(Items.ZOMBIE_HEAD, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.ZOMBIE_HEAD, EntityType.ZOMBIE, 1.0, "Charged Creeper"));
+        targetMap.computeIfAbsent(Items.SKELETON_SKULL, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.SKELETON_SKULL, EntityType.SKELETON, 1.0, "Charged Creeper"));
+        targetMap.computeIfAbsent(Items.CREEPER_HEAD, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.CREEPER_HEAD, EntityType.CREEPER, 1.0, "Charged Creeper"));
+        targetMap.computeIfAbsent(Items.PIGLIN_HEAD, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.PIGLIN_HEAD, EntityType.PIGLIN, 1.0, "Charged Creeper"));
+        targetMap.computeIfAbsent(Items.WITHER_SKELETON_SKULL, k -> new ObjectArrayList<>())
+                .add(new MobDropData(Items.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON, 1.0, "Charged Creeper"));
 
-        registerDrop(targetMap, EntityType.WITHER, Items.NETHER_STAR, 1.0, "Boss Kill");
-        count++;
-        registerDrop(targetMap, EntityType.ENDER_DRAGON, Items.DRAGON_EGG, 1.0, "Boss Kill");
-        count++;
-        registerDrop(targetMap, EntityType.ENDER_DRAGON, Items.DRAGON_HEAD, 1.0, "End Ship Loot");
-        count++;
-        registerDrop(targetMap, EntityType.SHULKER, Items.SHULKER_SHELL, 0.5, "End City Mob");
-        count++;
-
-        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Registered {} special kill-based drop entries.", count);
-    }
-
-    private void registerDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap, EntityType<?> entityType, Item item, double averageYield, String method) {
-        var dropData = new MobDropData(item, entityType, averageYield, method);
-        targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(dropData);
+        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Registered special hardcoded drops (bosses & mob heads).");
     }
 
     private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {
     }
 
-    private record DamageSourceConfig(String methodName, DamageSource damageSource, boolean isOnFire,
-                                      ServerPlayer killerPlayer, Entity attackingEntity) {
-    }
-
     private static class DropStatistics {
         private final Object2IntMap<String> dropsByMethod = new Object2IntOpenHashMap<>();
-        private int totalDropped = 0;
         private String bestMethod = "Unknown";
-        private int maxCount = -1;
+        private int maxCount = 0;
 
         public void addDrop(String method, int count) {
             int newCount = dropsByMethod.mergeInt(method, count, Integer::sum);
-            totalDropped += count;
             if (newCount > maxCount) {
                 maxCount = newCount;
                 bestMethod = method;
             }
         }
 
+        public boolean hasDrops() {
+            return maxCount > 0;
+        }
+
         public double getAverageYield() {
             if (SIMULATION_COUNT == 0) return 0.0;
-            return (double) totalDropped / SIMULATION_COUNT;
+            return (double) maxCount / SIMULATION_COUNT;
         }
 
         public String getBestMethod() {

@@ -119,9 +119,7 @@ public final class DynamicRecipeHarvester {
         var allItems = ctx.allItems();
         for (var allItem : allItems) {
             var recipes = getRecipesFor(allItem, creator, type, ctx);
-            for (var holder : recipes) {
-                if (!ctx.known().contains(holder.id())) harvestAndAdd(holder, ctx);
-            }
+            for (var holder : recipes) if (!ctx.known().contains(holder.id())) harvestAndAdd(holder, ctx);
         }
     }
 

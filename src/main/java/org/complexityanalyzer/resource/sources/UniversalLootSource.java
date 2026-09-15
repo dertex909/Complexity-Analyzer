@@ -405,8 +405,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         public LootParams createLootParams(ServerLevel level) {
             var spawnPos = level.getSharedSpawnPos();
             var originVec = new Vec3(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
-            var builder = new LootParams.Builder(level)
-                    .withParameter(LootContextParams.ORIGIN, originVec);
+            var builder = new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, originVec);
 
             if (sourceType == BaseResourceData.ResourceSourceType.FISHING) {
                 builder.withParameter(LootContextParams.TOOL, new ItemStack(Items.FISHING_ROD));

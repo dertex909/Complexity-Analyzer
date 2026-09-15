@@ -85,10 +85,10 @@ public class MobDropSource implements IResourceSource {
     @Nullable
     private static MobDropData readData(FriendlyByteBuf buf, Item item) {
         var mobId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
-        if (mobId == null) return null;
-        var mob = GameRegistryManager.getEntityType(mobId);
         double yield = buf.readDouble();
         String killMethod = buf.readNullable(FriendlyByteBuf::readUtf);
+        if (mobId == null) return null;
+        var mob = GameRegistryManager.getEntityType(mobId);
         return (mob == null) ? null : new MobDropData(item, mob, yield, killMethod);
     }
 

@@ -18,7 +18,9 @@
 
 package org.complexityanalyzer.resource.sources;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
+import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -30,7 +32,7 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
-import java.util.concurrent.locks.StampedLock;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Locale.ROOT;
 
@@ -40,10 +42,8 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     private static final int OVERRIDE_PRIORITY = 1000;
     private static HardcodedSource INSTANCE;
 
-    private final Reference2ObjectMap<Item, SourceRule> normalSources = new Reference2ObjectOpenHashMap<>();
-    private final Reference2ObjectMap<Item, SourceRule> overrideSources = new Reference2ObjectOpenHashMap<>();
-
-    private final StampedLock lock = new StampedLock();
+    private final ConcurrentHashMap<Item, SourceRule> normalSources = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Item, SourceRule> overrideSources = new ConcurrentHashMap<>();
 
     public HardcodedSource() {
         INSTANCE = this;
@@ -60,20 +60,8 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     @Override
     public void initialize(Level level) {
         ComplexityAnalyzer.LOGGER.info("[{}] Initializing hardcoded sources...", getName());
-
         registerVanillaSources();
-
-        long stamp = lock.readLock();
-        int normalSize;
-        int overrideSize;
-        try {
-            normalSize = normalSources.size();
-            overrideSize = overrideSources.size();
-        } finally {
-            lock.unlockRead(stamp);
-        }
-
-        ComplexityAnalyzer.LOGGER.debug("[{}] Registered {} normal + {} override sources", getName(), normalSize, overrideSize);
+        ComplexityAnalyzer.LOGGER.debug("[{}] Registered {} normal + {} override sources", getName(), normalSources.size(), overrideSources.size());
     }
 
     @Override
@@ -82,102 +70,34 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
         var ingredients = new Reference2DoubleOpenHashMap<Item>();
         ingredients.put(input, 1.0);
         if (toolWear != null) ingredients.putAll(toolWear);
-
-        var modId = getCallingModId();
-        var rule = new SourceRule(
-                ingredients,
-                baseCost,
-                BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION,
-                description,
-                modId
-        );
-
-        long stamp = lock.writeLock();
-        try {
-            normalSources.put(result, rule);
-        } finally {
-            lock.unlockWrite(stamp);
-        }
+        normalSources.put(result, new SourceRule(ingredients, baseCost, BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION, description, getCallingModId()));
     }
 
     @Override
     public void registerComplexSource(Item result, Reference2DoubleMap<Item> ingredients, double baseCost,
                                       BaseResourceData.ResourceSourceType type, String description) {
-        var modId = getCallingModId();
-        var rule = new SourceRule(
-                new Reference2DoubleOpenHashMap<>(ingredients),
-                baseCost,
-                type,
-                description,
-                modId
-        );
-
-        long stamp = lock.writeLock();
-        try {
-            normalSources.put(result, rule);
-        } finally {
-            lock.unlockWrite(stamp);
-        }
+        normalSources.put(result, new SourceRule(new Reference2DoubleOpenHashMap<>(ingredients), baseCost, type, description, getCallingModId()));
     }
 
     @Override
     public void registerOverride(Item result, Reference2DoubleMap<Item> ingredients, double baseCost, String description) {
         var modId = getCallingModId();
-        var rule = new SourceRule(
-                new Reference2DoubleOpenHashMap<>(ingredients),
-                baseCost,
-                BaseResourceData.ResourceSourceType.CRAFTING,
-                "[OVERRIDE by " + modId + "] " + description,
-                modId
-        );
-
-        long stamp = lock.writeLock();
-        try {
-            overrideSources.put(result, rule);
-        } finally {
-            lock.unlockWrite(stamp);
-        }
-
+        overrideSources.put(result, new SourceRule(new Reference2DoubleOpenHashMap<>(ingredients), baseCost,
+                BaseResourceData.ResourceSourceType.CRAFTING, "[OVERRIDE by " + modId + "] " + description, modId));
         ComplexityAnalyzer.LOGGER.warn("[{}] Mod {} OVERRIDING analysis for {}: {}", getName(), modId, result, description);
     }
 
     @Override
     public void registerUnobtainable(Item item, String reason) {
         var modId = getCallingModId();
-        var rule = new SourceRule(
-                Reference2DoubleMaps.emptyMap(),
-                Double.POSITIVE_INFINITY,
-                BaseResourceData.ResourceSourceType.UNOBTAINABLE,
-                "[UNOBTAINABLE by " + modId + "] " + reason,
-                modId
-        );
-
-        long stamp = lock.writeLock();
-        try {
-            overrideSources.put(item, rule);
-        } finally {
-            lock.unlockWrite(stamp);
-        }
-
+        overrideSources.put(item, new SourceRule(Reference2DoubleMaps.emptyMap(), Double.POSITIVE_INFINITY,
+                BaseResourceData.ResourceSourceType.UNOBTAINABLE, "[UNOBTAINABLE by " + modId + "] " + reason, modId));
         ComplexityAnalyzer.LOGGER.info("[{}] Mod {} marked {} as unobtainable: {}", getName(), modId, item, reason);
     }
 
     @Override
     public boolean isRegistered(Item item) {
-        long stamp = lock.tryOptimisticRead();
-        boolean hasNormal = normalSources.containsKey(item);
-        boolean hasOverride = overrideSources.containsKey(item);
-
-        if (!lock.validate(stamp)) {
-            stamp = lock.readLock();
-            try {
-                hasNormal = normalSources.containsKey(item);
-                hasOverride = overrideSources.containsKey(item);
-            } finally {
-                lock.unlockRead(stamp);
-            }
-        }
-        return hasNormal || hasOverride;
+        return overrideSources.containsKey(item) || normalSources.containsKey(item);
     }
 
     @Override
@@ -188,24 +108,9 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     @Override
     @Nullable
     public BaseResourceData analyze(Item item) {
-        long stamp = lock.tryOptimisticRead();
         var rule = overrideSources.get(item);
-        boolean isOverride = rule != null;
-
-        if (rule == null) rule = normalSources.get(item);
-
-        if (!lock.validate(stamp)) {
-            stamp = lock.readLock();
-            try {
-                rule = overrideSources.get(item);
-                isOverride = rule != null;
-                if (rule == null) rule = normalSources.get(item);
-            } finally {
-                lock.unlockRead(stamp);
-            }
-        }
-
-        if (rule == null) return null;
+        var isOverride = rule != null;
+        if (!isOverride && (rule = normalSources.get(item)) == null) return null;
 
         var builder = new BaseResourceData.Builder(item, this)
                 .sourceType(rule.type)
@@ -224,18 +129,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
 
     @Override
     public int getPriority() {
-        long stamp = lock.tryOptimisticRead();
-        boolean empty = overrideSources.isEmpty();
-
-        if (!lock.validate(stamp)) {
-            stamp = lock.readLock();
-            try {
-                empty = overrideSources.isEmpty();
-            } finally {
-                lock.unlockRead(stamp);
-            }
-        }
-        return empty ? NORMAL_PRIORITY : OVERRIDE_PRIORITY;
+        return overrideSources.isEmpty() ? NORMAL_PRIORITY : OVERRIDE_PRIORITY;
     }
 
     @Override
@@ -260,7 +154,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
             if (parts.length > 0) {
                 int index = 0;
                 while (index < parts.length - 1) {
-                    String segment = parts[index];
+                    var segment = parts[index];
                     if (segment.equals("com") || segment.equals("net") || segment.equals("org") || segment.equals("io") ||
                             segment.equals("me") || segment.equals("ru") || segment.equals("github") || segment.equals("git")) {
                         index++;
@@ -422,22 +316,17 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
 
     private void registerSpecialLoot() {
         registerComplexSource(Items.ELYTRA, Reference2DoubleMaps.emptyMap(),
-                1000.0, BaseResourceData.ResourceSourceType.SPECIAL_LOOT,
-                "End Ship treasure (extremely rare)");
+                1000.0, BaseResourceData.ResourceSourceType.SPECIAL_LOOT, "End Ship treasure (extremely rare)");
 
         registerComplexSource(Items.FLOW_POTTERY_SHERD, Reference2DoubleMaps.emptyMap(),
-                150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY,
-                "Trial Chambers archaeology");
+                150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY, "Trial Chambers archaeology");
         registerComplexSource(Items.GUSTER_POTTERY_SHERD, Reference2DoubleMaps.emptyMap(),
-                150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY,
-                "Trial Chambers archaeology");
+                150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY, "Trial Chambers archaeology");
         registerComplexSource(Items.SCRAPE_POTTERY_SHERD, Reference2DoubleMaps.emptyMap(),
-                150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY,
-                "Trial Chambers archaeology");
+                150.0, BaseResourceData.ResourceSourceType.ARCHAEOLOGY, "Trial Chambers archaeology");
 
         registerComplexSource(Items.OMINOUS_TRIAL_KEY, Reference2DoubleMaps.singleton(Items.TRIAL_KEY, 1.0),
-                200.0, BaseResourceData.ResourceSourceType.SPECIAL_LOOT,
-                "Ominous Vault drop");
+                200.0, BaseResourceData.ResourceSourceType.SPECIAL_LOOT, "Ominous Vault drop");
     }
 
     private void registerSpecialCrafts() {
@@ -459,8 +348,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
 
     private void registerDragonItems() {
         registerComplexSource(Items.DRAGON_BREATH, Reference2DoubleMaps.singleton(Items.GLASS_BOTTLE, 1.0),
-                100.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION,
-                "Collecting dragon breath");
+                100.0, BaseResourceData.ResourceSourceType.SPECIAL_ACTION, "Collecting dragon breath");
 
         var lingerIng = new Reference2DoubleOpenHashMap<Item>();
         lingerIng.put(Items.DRAGON_BREATH, 1.0);

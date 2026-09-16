@@ -18,7 +18,9 @@
 
 package org.complexityanalyzer.resource;
 
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
@@ -27,15 +29,14 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.StampedLock;
 
 public class SourceManager {
+    private static final Object NULL_SENTINEL = new Object();
     private final ObjectList<IResourceSource> sources;
-
-    private final Reference2ObjectMap<Item, BaseResourceData> cache = new Reference2ObjectOpenHashMap<>();
-    private final StampedLock lock = new StampedLock();
+    private final ConcurrentHashMap<Item, Object> cache = new ConcurrentHashMap<>();
 
     public SourceManager(ObjectList<IResourceSource> initialSources) {
         var sorted = new ObjectArrayList<>(initialSources);
@@ -100,32 +101,11 @@ public class SourceManager {
 
     @Nullable
     public BaseResourceData analyze(Item item) {
-        long stamp = lock.tryOptimisticRead();
-        boolean contains = cache.containsKey(item);
-        var cachedValue = contains ? cache.get(item) : null;
-
-        if (!lock.validate(stamp)) {
-            stamp = lock.readLock();
-            try {
-                contains = cache.containsKey(item);
-                cachedValue = contains ? cache.get(item) : null;
-            } finally {
-                lock.unlockRead(stamp);
-            }
-        }
-
-        if (contains) return cachedValue;
-        var result = performAnalysis(item);
-
-        stamp = lock.writeLock();
-        try {
-            if (cache.containsKey(item)) return cache.get(item);
-            cache.put(item, result);
-        } finally {
-            lock.unlockWrite(stamp);
-        }
-
-        return result;
+        var cached = cache.computeIfAbsent(item, k -> {
+            var res = performAnalysis(k);
+            return res != null ? res : NULL_SENTINEL;
+        });
+        return cached == NULL_SENTINEL ? null : (BaseResourceData) cached;
     }
 
     @Nullable

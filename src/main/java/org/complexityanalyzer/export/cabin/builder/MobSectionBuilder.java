@@ -75,7 +75,7 @@ public final class MobSectionBuilder {
                         dropsBuf.i32(itIdx);
                         dropsBuf.i32(ctx.strings().intern(itName));
                         dropsBuf.f64(drop.averageYield());
-                        dropsBuf.i32(ctx.strings().intern(drop.killMethod() != null ? drop.killMethod() : ""));
+                        dropsBuf.i32(ctx.strings().intern(drop.condition().getDisplayName()));
                         dropsBuf.i32(ctx.strings().intern(itIdStr));
                         written++;
                         totalDrops++;

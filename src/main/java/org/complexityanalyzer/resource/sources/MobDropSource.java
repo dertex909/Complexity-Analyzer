@@ -52,6 +52,7 @@ import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.resource.data.KillCondition;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.util.LootLogFilter;
@@ -79,17 +80,17 @@ public class MobDropSource implements IResourceSource {
         var mobId = GameRegistryManager.getEntityTypeId(data.sourceMob());
         buf.writeNullable(mobId, FriendlyByteBuf::writeResourceLocation);
         buf.writeDouble(data.averageYield());
-        buf.writeNullable(data.killMethod(), FriendlyByteBuf::writeUtf);
+        buf.writeEnum(data.condition());
     }
 
     @Nullable
     private static MobDropData readData(FriendlyByteBuf buf, Item item) {
         var mobId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
         double yield = buf.readDouble();
-        String killMethod = buf.readNullable(FriendlyByteBuf::readUtf);
+        var condition = buf.readEnum(KillCondition.class);
         if (mobId == null) return null;
         var mob = GameRegistryManager.getEntityType(mobId);
-        return (mob == null) ? null : new MobDropData(item, mob, yield, killMethod);
+        return (mob == null) ? null : new MobDropData(item, mob, yield, condition);
     }
 
     @Override
@@ -265,10 +266,11 @@ public class MobDropSource implements IResourceSource {
 
         boolean isFire = ds.is(DamageTypeTags.IS_FIRE) || ds.type().effects() == DamageEffects.BURNING;
         boolean isFreezing = ds.is(DamageTypeTags.IS_FREEZING) || ds.type().effects() == DamageEffects.FREEZING;
-        String methodName = ds.getEntity() instanceof Skeleton ? "Skeleton Arrow" : ds.getMsgId();
+
+        var condition = ds.getEntity() instanceof Skeleton ? KillCondition.SKELETON_ARROW : KillCondition.NORMAL;
         var entityTypeId = GameRegistryManager.getEntityTypeId(entityInstance.getType());
         long entityHash = entityTypeId != null ? entityTypeId.hashCode() : 0;
-        long baseSeed = entityHash ^ ((long) methodName.hashCode() << 16);
+        long baseSeed = entityHash ^ ((long) ds.getMsgId().hashCode() << 16);
 
         for (int i = 0; i < SIMULATION_COUNT; i++) {
             try {
@@ -301,11 +303,11 @@ public class MobDropSource implements IResourceSource {
                 }
 
                 for (var stack : drops) {
-                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(methodName, stack.getCount());
+                    combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(condition, stack.getCount());
                 }
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("[MobDropSource] Exception during loot simulation for {} with method {}",
-                        entityInstance.getType().getDescriptionId(), methodName, e);
+                ComplexityAnalyzer.LOGGER.error("[MobDropSource] Exception during loot simulation for {} with damage source {}",
+                        entityInstance.getType().getDescriptionId(), ds.getMsgId(), e);
             }
         }
     }
@@ -321,9 +323,8 @@ public class MobDropSource implements IResourceSource {
 
     private void mergeDrops(EntityType<?> type, Reference2ObjectMap<Item, DropStatistics> combinedDrops, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
         combinedDrops.forEach((item, stats) -> {
-            if (stats.hasDrops()) {
-                targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(new MobDropData(item, type, stats.getAverageYield(), stats.getBestMethod()));
-            }
+            if (stats.hasDrops()) targetMap.computeIfAbsent(item, k -> new ObjectArrayList<>())
+                    .add(new MobDropData(item, type, stats.getAverageYield(), stats.getBestCondition()));
         });
     }
 
@@ -361,15 +362,7 @@ public class MobDropSource implements IResourceSource {
         if (victimProps == null) return null;
         double victimCombatPower = victimProps.calculateCombatPower();
         double victimRarityMultiplier = mobProvider.getRarity(victimMobType);
-
-        double specialConditionCost = 0.0;
-        if ("Charged Creeper".equals(data.killMethod())) {
-            var creeperProps = mobProvider.getProperties(EntityType.CREEPER);
-            if (creeperProps != null) {
-                specialConditionCost = creeperProps.calculateCombatPower() * mobProvider.getRarity(EntityType.CREEPER);
-            }
-        }
-
+        double specialConditionCost = data.condition().calculateExtraCost(mobProvider);
         boolean renewable = mobProvider.isRenewable(victimMobType);
         double effectiveRarity = renewable ? 1.0 : victimRarityMultiplier;
 
@@ -381,7 +374,7 @@ public class MobDropSource implements IResourceSource {
                 data.averageYield(),
                 victimRarityMultiplier,
                 renewable ? ", renewable" : "",
-                data.killMethod() != null ? data.killMethod() : "Any"
+                data.condition().getDisplayName()
         );
 
         return new BaseResourceData.Builder(item, this)
@@ -412,35 +405,35 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void registerSpecialDrops(Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        addSpecialDrop(targetMap, Items.NETHER_STAR, EntityType.WITHER, "Boss Kill");
-        addSpecialDrop(targetMap, Items.DRAGON_EGG, EntityType.ENDER_DRAGON, "Boss Kill");
+        addSpecialDrop(targetMap, Items.NETHER_STAR, EntityType.WITHER, KillCondition.BOSS_KILL);
+        addSpecialDrop(targetMap, Items.DRAGON_EGG, EntityType.ENDER_DRAGON, KillCondition.BOSS_KILL);
 
-        addSpecialDrop(targetMap, Items.ZOMBIE_HEAD, EntityType.ZOMBIE, "Charged Creeper");
-        addSpecialDrop(targetMap, Items.SKELETON_SKULL, EntityType.SKELETON, "Charged Creeper");
-        addSpecialDrop(targetMap, Items.CREEPER_HEAD, EntityType.CREEPER, "Charged Creeper");
-        addSpecialDrop(targetMap, Items.PIGLIN_HEAD, EntityType.PIGLIN, "Charged Creeper");
-        addSpecialDrop(targetMap, Items.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON, "Charged Creeper");
+        addSpecialDrop(targetMap, Items.ZOMBIE_HEAD, EntityType.ZOMBIE, KillCondition.CHARGED_CREEPER);
+        addSpecialDrop(targetMap, Items.SKELETON_SKULL, EntityType.SKELETON, KillCondition.CHARGED_CREEPER);
+        addSpecialDrop(targetMap, Items.CREEPER_HEAD, EntityType.CREEPER, KillCondition.CHARGED_CREEPER);
+        addSpecialDrop(targetMap, Items.PIGLIN_HEAD, EntityType.PIGLIN, KillCondition.CHARGED_CREEPER);
+        addSpecialDrop(targetMap, Items.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON, KillCondition.CHARGED_CREEPER);
 
         ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Registered special hardcoded drops (bosses & mob heads).");
     }
 
-    private void addSpecialDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> map, Item item, EntityType<?> type, String method) {
-        map.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(new MobDropData(item, type, 1.0, method));
+    private void addSpecialDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> map, Item item, EntityType<?> type, KillCondition condition) {
+        map.computeIfAbsent(item, k -> new ObjectArrayList<>()).add(new MobDropData(item, type, 1.0, condition));
     }
 
     private record Victim(EntityType<?> type, Entity entity, LootTable lootTable) {
     }
 
     private static class DropStatistics {
-        private final Object2IntMap<String> dropsByMethod = new Object2IntOpenHashMap<>();
-        private String bestMethod = "Unknown";
+        private final Reference2IntMap<KillCondition> dropsByCondition = new Reference2IntOpenHashMap<>();
+        private KillCondition bestCondition = KillCondition.NORMAL;
         private int maxCount = 0;
 
-        public void addDrop(String method, int count) {
-            int newCount = dropsByMethod.mergeInt(method, count, Integer::sum);
+        public void addDrop(KillCondition condition, int count) {
+            int newCount = dropsByCondition.mergeInt(condition, count, Integer::sum);
             if (newCount > maxCount) {
                 maxCount = newCount;
-                bestMethod = method;
+                bestCondition = condition;
             }
         }
 
@@ -449,12 +442,11 @@ public class MobDropSource implements IResourceSource {
         }
 
         public double getAverageYield() {
-            if (SIMULATION_COUNT == 0) return 0.0;
             return (double) maxCount / SIMULATION_COUNT;
         }
 
-        public String getBestMethod() {
-            return bestMethod;
+        public KillCondition getBestCondition() {
+            return bestCondition;
         }
     }
 }

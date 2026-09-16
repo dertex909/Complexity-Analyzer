@@ -26,7 +26,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
@@ -62,23 +61,20 @@ public final class CabinBuilder {
     private final String serverName;
     private final String modVersion;
     private final long timestampEpochMs;
-    private final HolderLookup.Provider registryAccess;
 
     private final StringPool strings = new StringPool(8192);
 
     private ObjectList<Item> orderedItems;
     private Reference2IntOpenHashMap<Item> itemIndex;
     private ObjectList<EntityType<?>> orderedMobs;
-    private Reference2IntOpenHashMap<EntityType<?>> mobIndex;
     private ObjectList<Fluid> orderedFluids;
     private Reference2IntOpenHashMap<Fluid> fluidIndex;
 
-    public CabinBuilder(AnalysisEngine engine, String serverName, String modVersion, HolderLookup.Provider registryAccess) {
+    public CabinBuilder(AnalysisEngine engine, String serverName, String modVersion) {
         this.engine = engine;
         this.serverName = serverName != null ? serverName : "unknown";
         this.modVersion = modVersion != null ? modVersion : "unknown";
         this.timestampEpochMs = System.currentTimeMillis();
-        this.registryAccess = registryAccess;
     }
 
     private static IHardcodedSourceRegistry tryGetHardcodedRegistry() {
@@ -96,7 +92,7 @@ public final class CabinBuilder {
         long t0 = System.currentTimeMillis();
         prepareIndices();
 
-        var ctx = new SectionBuilderContext(engine, strings, orderedItems, itemIndex, orderedMobs, mobIndex, orderedFluids, fluidIndex, registryAccess);
+        var ctx = new SectionBuilderContext(engine, strings, orderedItems, itemIndex, orderedMobs, orderedFluids, fluidIndex);
 
         var itemBuilder = new ItemSectionBuilder(ctx);
         var recipeBuilder = new RecipeSectionBuilder(ctx);
@@ -177,9 +173,6 @@ public final class CabinBuilder {
             mobs.add(t);
         }
         this.orderedMobs = mobs;
-        this.mobIndex = new Reference2IntOpenHashMap<>(mobs.size());
-        this.mobIndex.defaultReturnValue(-1);
-        for (int i = 0; i < mobs.size(); i++) mobIndex.put(mobs.get(i), i);
 
         var fluids = new ObjectArrayList<Fluid>();
         var seenFluids = new ReferenceOpenHashSet<Fluid>();

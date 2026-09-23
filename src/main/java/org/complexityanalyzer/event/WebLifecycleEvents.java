@@ -58,7 +58,7 @@ public final class WebLifecycleEvents {
     public static void onAnalysisComplete(ComplexityAnalysisCompleteEvent event) {
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
-        CabinBackgroundService.getInstance().regenerateAsync(server, AnalysisEngine.getInstance(), ComplexityAnalyzer.VERSION);
+        CabinBackgroundService.getInstance().regenerateAsync(server, AnalysisEngine.getInstance());
     }
 
     @SubscribeEvent

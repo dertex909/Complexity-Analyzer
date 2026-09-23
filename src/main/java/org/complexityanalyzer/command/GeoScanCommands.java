@@ -51,6 +51,9 @@ public class GeoScanCommands {
         for (int i = 0; i < profiles.length; i++) PROFILE_NAMES[i] = profiles[i].commandName;
     }
 
+    private GeoScanCommands() {
+    }
+
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("geoscan")
                 .then(Commands.literal("start").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::showProfileHelp)

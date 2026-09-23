@@ -32,6 +32,8 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.UniversalLootSource;
 
 public class LootAnalyzeCommand {
+    private LootAnalyzeCommand() {
+    }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation lootTableId) {
         var source = context.getSource();

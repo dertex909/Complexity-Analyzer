@@ -59,7 +59,6 @@ public final class CabinBuilder {
 
     private final AnalysisEngine engine;
     private final String serverName;
-    private final String modVersion;
     private final long timestampEpochMs;
 
     private final StringPool strings = new StringPool(8192);
@@ -70,10 +69,9 @@ public final class CabinBuilder {
     private ObjectList<Fluid> orderedFluids;
     private Reference2IntOpenHashMap<Fluid> fluidIndex;
 
-    public CabinBuilder(AnalysisEngine engine, String serverName, String modVersion) {
+    public CabinBuilder(AnalysisEngine engine, String serverName) {
         this.engine = engine;
         this.serverName = serverName != null ? serverName : "unknown";
-        this.modVersion = modVersion != null ? modVersion : "unknown";
         this.timestampEpochMs = System.currentTimeMillis();
     }
 
@@ -386,8 +384,8 @@ public final class CabinBuilder {
     private byte[] buildMeta(ItemSectionBuilder.ItemSectionResult itemResult, MobSectionBuilder.MobsResult mobsResult,
                              RecipeSectionBuilder.RecipesResult recipes, byte[] machineIndexBytes, byte[] modSummaryBytes) {
         var buf = new LeBuf(512);
-        buf.i32(strings.intern("complexityanalyzer"));
-        buf.i32(strings.intern(modVersion));
+        buf.i32(strings.intern(ComplexityAnalyzer.MODID));
+        buf.i32(strings.intern(ComplexityAnalyzer.VERSION));
         buf.i32(strings.intern(serverName));
         buf.i32(strings.intern(Instant.ofEpochMilli(timestampEpochMs).toString()));
         buf.i64(timestampEpochMs);

@@ -25,7 +25,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
@@ -134,7 +133,7 @@ public final class WebCommand {
         StandaloneWebServer.start();
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));
 
-        CabinBackgroundService.getInstance().regenerateAsync(server, engine, ComplexityAnalyzer.VERSION).whenComplete((snap, err) -> {
+        CabinBackgroundService.getInstance().regenerateAsync(server, engine).whenComplete((snap, err) -> {
             MutableComponent done;
             if (err != null) {
                 done = Component.translatable("complexityanalyzer.command.web.reload_failed", err.getMessage()).withStyle(ChatFormatting.RED);

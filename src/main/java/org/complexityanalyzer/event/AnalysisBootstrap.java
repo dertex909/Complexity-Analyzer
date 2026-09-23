@@ -38,6 +38,9 @@ public class AnalysisBootstrap {
         Locale.setDefault(Locale.ROOT);
     }
 
+    private AnalysisBootstrap() {
+    }
+
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         Locale.setDefault(Locale.ROOT);

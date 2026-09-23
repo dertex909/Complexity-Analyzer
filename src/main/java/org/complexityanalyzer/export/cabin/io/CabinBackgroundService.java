@@ -86,7 +86,7 @@ public final class CabinBackgroundService {
         return lastError.get();
     }
 
-    public CompletableFuture<Snapshot> regenerateAsync(MinecraftServer server, AnalysisEngine engine, String modVersion) {
+    public CompletableFuture<Snapshot> regenerateAsync(MinecraftServer server, AnalysisEngine engine) {
         var existing = inflight.get();
         if (existing != null && !existing.isDone()) {
             rebuildPending = true;
@@ -109,7 +109,7 @@ public final class CabinBackgroundService {
 
         pool.execute(() -> {
             try {
-                var snap = doBuild(server, engine, modVersion);
+                var snap = doBuild(server, engine);
                 current.set(snap);
                 status.set(Status.READY);
                 lastError.set(null);
@@ -124,20 +124,19 @@ public final class CabinBackgroundService {
                 inflight.set(null);
                 if (rebuildPending) {
                     rebuildPending = false;
-                    regenerateAsync(server, engine, modVersion);
+                    regenerateAsync(server, engine);
                 }
             }
         });
         return future;
     }
 
-    private Snapshot doBuild(MinecraftServer server, AnalysisEngine engine, String modVersion) throws IOException {
+    private Snapshot doBuild(MinecraftServer server, AnalysisEngine engine) throws IOException {
         long t0 = System.currentTimeMillis();
-        String serverName = server.getServerModName();
         String motd = server.getMotd();
-        String name = !motd.isEmpty() ? motd : serverName;
+        String name = !motd.isEmpty() ? motd : server.getServerModName();
 
-        var builder = new CabinBuilder(engine, name, modVersion);
+        var builder = new CabinBuilder(engine, name);
         var sections = builder.build();
         byte[] bytes = CabinWriter.writeToBytes(sections);
         long hash = LeBuf.readI64(bytes, 24);
@@ -146,8 +145,7 @@ public final class CabinBackgroundService {
 
         long elapsed = System.currentTimeMillis() - t0;
         var snap = parseHeader(bytes, hash);
-        ComplexityAnalyzer.LOGGER.info("[Cabin] Wrote {} bytes (hash={}) in {} ms",
-                bytes.length, Long.toHexString(hash), elapsed);
+        ComplexityAnalyzer.LOGGER.info("[Cabin] Wrote {} bytes (hash={}) in {} ms", bytes.length, Long.toHexString(hash), elapsed);
         return snap;
     }
 

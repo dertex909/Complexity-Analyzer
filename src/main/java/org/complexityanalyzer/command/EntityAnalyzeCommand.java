@@ -36,6 +36,8 @@ import org.complexityanalyzer.resource.data.MobDropData;
 import java.util.Comparator;
 
 public class EntityAnalyzeCommand {
+    private EntityAnalyzeCommand() {
+    }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation entityId) {
         var source = context.getSource();

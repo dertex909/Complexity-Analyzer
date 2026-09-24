@@ -471,12 +471,11 @@ public class PlantSimulator {
                             var state = level.getBlockState(mutablePos);
                             if (state.isAir() || isManagedPlatformBlock(state)) continue;
 
-                            var pos = mutablePos.immutable();
-                            if (pos.asLong() != groundPosLong) {
+                            if (mutablePos.asLong() != groundPosLong) {
                                 foundBlocks = true;
-                                if (shouldCollectDrops) collectDropsAt(level, pos, state, drops, blockSeed);
+                                if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops, blockSeed);
                             }
-                            level.setBlock(pos, air, FLAG_NO_UPDATE);
+                            level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
                         } catch (Throwable ignored) {
                         }
                     }

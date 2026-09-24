@@ -574,7 +574,9 @@ input[type="search"] {
     display: inline-block;
 }
 
-.panel#tab-items, .panel#tab-fluids, .panel#tab-mobs, .panel#tab-sources {
+.panel#tab-items, .panel#tab-fluids, .panel#tab-mobs, .panel#tab-sources,
+.panel#tab-item-recipes, .panel#tab-item-machine-recipes, .panel#tab-item-uses,
+.panel#tab-item-base-sources, .panel#tab-fluid-recipes, .panel#tab-fluid-uses, .panel#tab-mob-drops {
     padding: 0 !important;
     gap: 0 !important;
     overflow: hidden !important;
@@ -595,6 +597,50 @@ input[type="search"] {
 .panel#tab-sources .virtual-viewport {
     border: none !important;
     border-radius: 0 !important;
+}
+
+.sub-tab-panel-header {
+    flex: 0 0 auto;
+    padding: 16px 20px 0 20px;
+    margin-bottom: 12px !important;
+}
+
+.sub-tab-content-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px 16px 20px;
+    overflow-y: auto;
+}
+
+.sub-tab-content-body:has(.virtual-viewport), .sub-tab-content-body.has-virtual {
+    overflow: hidden !important;
+}
+
+.sub-tab-content-body .recipes-virtual-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.sub-tab-content-body .virtual-viewport {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding-right: 4px;
+}
+
+.virtual-recipe-row {
+    width: 100%;
+    box-sizing: border-box;
+    padding-bottom: 8px;
+}
+
+.virtual-recipe-row .recipe-card {
+    margin-top: 0 !important;
 }
 
 .flag {

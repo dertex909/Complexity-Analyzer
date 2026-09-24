@@ -16,8 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {escapeHtml, fmt, formatComplexity} from "../../core/utils.js";
+import {debounce, escapeHtml, fmt, formatComplexity} from "../../core/utils.js";
 import {setState, state} from "../../core/state.js";
+import {mountVirtualList} from "../../components/virtual-list.js";
 
 function saveScrollPositions(elem) {
     const scrollPositions = [];
@@ -322,26 +323,42 @@ export function sortRecipes(recipes, db, sortType) {
     return sorted;
 }
 
-export function renderRecipeControlsHtml(activeSort, recipeCount) {
+export function renderRecipeControlsHtml(activeSort, filteredCount, totalCount = filteredCount, searchQuery = "") {
+    const isFiltered = filteredCount !== totalCount;
+    const countText = isFiltered ? `${filteredCount} / ${totalCount} recipe(s)` : `${totalCount} recipe(s)`;
+
     return `
-        <div class="controls" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center; background: var(--bg-panel); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;">
-            <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 500; letter-spacing: 1px;">Sort recipes by:</span>
-            <select id="recipes-sort" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
-                <option value="optimal" ${activeSort === "optimal" ? "selected" : ""}>Optimal (Primary first, sorted by cost)</option>
-                <option value="cheapest" ${activeSort === "cheapest" ? "selected" : ""}>Cheapest first (Absolute Cost)</option>
-            </select>
+        <div class="controls" style="margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--bg-panel); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; flex-shrink: 0;">
+            <input type="search" id="recipes-search" placeholder="Filter recipes by name or ID…" value="${escapeHtml(searchQuery)}" autocomplete="off" style="min-width: 200px; flex: 1 1 200px; max-width: 380px; padding: 5px 10px; font-size: 12px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 500; letter-spacing: 1px;">Sort:</span>
+                <select id="recipes-sort" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
+                    <option value="optimal" ${activeSort === "optimal" ? "selected" : ""}>Optimal (Primary first)</option>
+                    <option value="cheapest" ${activeSort === "cheapest" ? "selected" : ""}>Cheapest first</option>
+                </select>
+            </div>
             <span class="flex-grow"></span>
-            <span class="chip" style="font-size: 11px; padding: 2px 8px;">${recipeCount} recipe(s)</span>
+            <span class="chip" style="font-size: 11px; padding: 2px 8px;">${countText}</span>
         </div>
     `;
 }
 
-export function wireRecipeSortListener(container, callback) {
+export function wireRecipeControls(container, onReRender) {
     const select = container.querySelector("#recipes-sort");
     if (select) select.addEventListener("change", (e) => {
         localStorage.setItem("recipes-sort", e.target.value);
-        callback();
+        onReRender();
     });
+
+    const searchInput = container.querySelector("#recipes-search");
+    if (searchInput) {
+        const onSearch = debounce((val) => {
+            if (container && container._customState) container._customState.searchQuery = val;
+            onReRender();
+        }, 150);
+
+        searchInput.addEventListener("input", (e) => onSearch(e.target.value));
+    }
 }
 
 export function wireRecipeLinks(container) {
@@ -359,15 +376,106 @@ export function wireRecipeLinks(container) {
     });
 }
 
+export function wireRecipeEventsDelegated(listContainer, body, onSortChange) {
+    listContainer.addEventListener("click", (e) => {
+        const itemLink = e.target.closest(".ingredient-link, .item-link");
+        if (itemLink) {
+            e.stopPropagation();
+            setState({tab: "item-recipes", selectedItem: parseInt(itemLink.dataset.index, 10)});
+            return;
+        }
+
+        const fluidLink = e.target.closest(".fluid-link");
+        if (fluidLink) {
+            e.stopPropagation();
+            setState({tab: "fluid-recipes", selectedItem: parseInt(fluidLink.dataset.index, 10)});
+            return;
+        }
+
+        const machineLink = e.target.closest(".machine-link");
+        if (machineLink) {
+            e.stopPropagation();
+            setState({tab: "item-machine-recipes", selectedItem: parseInt(machineLink.dataset.index, 10)});
+            return;
+        }
+
+        const trigger = e.target.closest(".variant-trigger");
+        if (trigger) {
+            e.stopPropagation();
+            const grp = trigger.closest(".variant-group");
+            if (!grp) return;
+
+            const isActive = grp.classList.contains("active");
+
+            listContainer.querySelectorAll(".variant-group.active").forEach(g => {
+                if (g !== grp) g.classList.remove("active");
+            });
+
+            if (!isActive) {
+                grp.classList.add("active");
+                const onDocClick = (de) => {
+                    if (!grp.contains(de.target)) {
+                        grp.classList.remove("active");
+                        document.removeEventListener("click", onDocClick);
+                    }
+                };
+                setTimeout(() => {
+                    document.addEventListener("click", onDocClick);
+                }, 0);
+            } else {
+                grp.classList.remove("active");
+            }
+            return;
+        }
+
+        const machineSub = e.target.closest(".variant-machine-substitute");
+        if (machineSub) {
+            e.stopPropagation();
+            const recipeKey = machineSub.dataset.recipeKey;
+            const machineKey = machineSub.dataset.machineKey || recipeKey;
+            const machineIndex = parseInt(machineSub.dataset.machineIndex, 10);
+            if (body && body._customState) body._customState.selectedMachines.set(machineKey, machineIndex);
+            onSortChange();
+            return;
+        }
+
+        const itemSub = e.target.closest(".variant-item-substitute");
+        if (itemSub) {
+            e.stopPropagation();
+            const recipeKey = itemSub.dataset.recipeKey;
+            const slotIndex = parseInt(itemSub.dataset.slotIndex, 10);
+            const variantIndex = parseInt(itemSub.dataset.variantIndex, 10);
+            if (body && body._customState) body._customState.selectedIngredients.set(`${recipeKey}_ing_${slotIndex}`, variantIndex);
+            onSortChange();
+            return;
+        }
+
+        const fluidSub = e.target.closest(".variant-fluid-substitute");
+        if (fluidSub) {
+            e.stopPropagation();
+            const recipeKey = fluidSub.dataset.recipeKey;
+            const slotIndex = parseInt(fluidSub.dataset.slotIndex, 10);
+            const variantIndex = parseInt(fluidSub.dataset.variantIndex, 10);
+            if (body && body._customState) body._customState.selectedIngredients.set(`${recipeKey}_fluid_${slotIndex}`, variantIndex);
+            onSortChange();
+        }
+    });
+}
+
 export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage) {
     const scrollState = saveScrollPositions(body);
 
-    if (!body._customState) {
-        body._customState = {
-            selectedMachines: new Map(),
-            selectedIngredients: new Map()
-        };
+    if (body._activeVList) {
+        body._activeVList.destroy();
+        body._activeVList = null;
     }
+    body.classList.remove("has-virtual");
+
+    if (!body._customState) body._customState = {
+        selectedMachines: new Map(),
+        selectedIngredients: new Map(),
+        searchQuery: ""
+    };
 
     const merged = mergeDuplicateRecipes(sorted);
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
@@ -381,10 +489,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
         }
 
         const activeMachineIdx = resolveBestMachine(r, db, body);
-
-        if (!machineToRecipes.has(activeMachineIdx)) {
-            machineToRecipes.set(activeMachineIdx, []);
-        }
+        if (!machineToRecipes.has(activeMachineIdx)) machineToRecipes.set(activeMachineIdx, []);
         machineToRecipes.get(activeMachineIdx).push(r);
     }
 
@@ -474,8 +579,11 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
         `;
     }).join("");
 
-    body.innerHTML = renderRecipeControlsHtml(activeSort, merged.length) + `
-        <div class="recipes-grouped-list">
+    body.innerHTML = `
+        <div style="flex: 0 0 auto;">
+            ${renderRecipeControlsHtml(activeSort, merged.length, merged.length, "")}
+        </div>
+        <div class="recipes-grouped-list" style="flex: 1 1 auto; overflow-y: auto; padding-right: 4px;">
             ${groupsHtml}
         </div>
     `;
@@ -487,7 +595,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
     });
 
     wireRecipeLinks(body);
-    wireRecipeSortListener(body, onSortChange);
+    wireRecipeControls(body, onSortChange);
     wireRecipeDropdowns(body, onSortChange);
 
     restoreScrollPositions(scrollState);
@@ -497,33 +605,102 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
 }
 
 export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machineOverride = null) {
-    const scrollState = saveScrollPositions(body);
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
 
-    if (!body._customState) {
-        body._customState = {
-            selectedMachines: new Map(),
-            selectedIngredients: new Map()
-        };
+    if (!body._customState) body._customState = {
+        selectedMachines: new Map(),
+        selectedIngredients: new Map(),
+        searchQuery: ""
+    };
+
+    const prevScrollTop = body._activeVList ? body._activeVList.getScrollTop() : 0;
+    if (body._activeVList) {
+        body._activeVList.destroy();
+        body._activeVList = null;
     }
+
+    body.classList.add("has-virtual");
 
     const merged = mergeDuplicateRecipes(recipes);
     const sorted = sortRecipes(merged, db, activeSort);
 
-    body.innerHTML = renderRecipeControlsHtml(activeSort, merged.length) + `
-        <div class="flat-recipes-list" style="display: flex; flex-direction: column; gap: 8px;">
-            ${sorted.map(r => renderRecipeRow(r, db, body, machineOverride)).join("")}
-        </div>
+    const q = (body._customState.searchQuery || "").trim().toLowerCase();
+    let displayRecipes = sorted;
+
+    if (q) {
+        displayRecipes = sorted.filter(r => {
+            if (r.itemOutputs) {
+                for (const o of r.itemOutputs) {
+                    const it = db.items.get(o.itemIndex);
+                    if (it && ((it.name || "").toLowerCase().includes(q) || (it.id || "").toLowerCase().includes(q))) return true;
+                }
+            }
+            if (r.fluidOutputs) {
+                for (const o of r.fluidOutputs) {
+                    const fl = db.fluids.get(o.fluidIndex);
+                    if (fl && ((fl.name || "").toLowerCase().includes(q) || (fl.id || "").toLowerCase().includes(q))) return true;
+                }
+            }
+            if (r.outputItemIndex >= 0) {
+                const it = db.items.get(r.outputItemIndex);
+                if (it && ((it.name || "").toLowerCase().includes(q) || (it.id || "").toLowerCase().includes(q))) return true;
+            }
+            if (r.ingredients) for (const slot of r.ingredients) {
+                if (slot.variants) for (const v of slot.variants) {
+                    const it = db.items.get(v);
+                    if (it && ((it.name || "").toLowerCase().includes(q) || (it.id || "").toLowerCase().includes(q))) return true;
+                }
+            }
+            if (r.fluidIngredients) for (const slot of r.fluidIngredients) {
+                if (slot.variants) for (const v of slot.variants) {
+                    const fl = db.fluids.get(v);
+                    if (fl && ((fl.name || "").toLowerCase().includes(q) || (fl.id || "").toLowerCase().includes(q))) return true;
+                }
+            }
+            if (r.recipeType && r.recipeType.toLowerCase().includes(q)) return true;
+            if (r.machineItemIndex >= 0) {
+                const m = db.items.get(r.machineItemIndex);
+                if (m && ((m.name || "").toLowerCase().includes(q) || (m.id || "").toLowerCase().includes(q))) return true;
+            }
+            return false;
+        });
+    }
+
+    body.innerHTML = `
+        ${renderRecipeControlsHtml(activeSort, displayRecipes.length, merged.length, body._customState.searchQuery || "")}
+        <div class="recipes-virtual-container"></div>
     `;
 
-    wireRecipeLinks(body);
-    wireRecipeSortListener(body, onSortChange);
-    wireRecipeDropdowns(body, onSortChange);
+    wireRecipeControls(body, onSortChange);
 
-    restoreScrollPositions(scrollState);
-    requestAnimationFrame(() => {
-        restoreScrollPositions(scrollState);
+    const listContainer = body.querySelector(".recipes-virtual-container");
+    if (!listContainer) return;
+
+    if (displayRecipes.length === 0) {
+        listContainer.innerHTML = `
+            <div class="empty-state" style="padding: 40px 0;">
+                <div class="icon">∅</div>
+                <div class="message">${q ? "No recipes match your search." : "No recipes found."}</div>
+            </div>`;
+        return;
+    }
+
+    body._activeVList = mountVirtualList(listContainer, {
+        itemCount: displayRecipes.length,
+        itemHeight: 90,
+        dynamicHeight: true,
+        overscan: 5,
+        initialScrollTop: prevScrollTop,
+        renderRow: (index) => {
+            const r = displayRecipes[index];
+            const rowWrapper = document.createElement("div");
+            rowWrapper.className = "virtual-recipe-row";
+            rowWrapper.innerHTML = renderRecipeRow(r, db, body, machineOverride);
+            return rowWrapper;
+        }
     });
+
+    wireRecipeEventsDelegated(listContainer, body, onSortChange);
 }
 
 export function wireRecipeDropdowns(container, onReRender) {
@@ -543,9 +720,11 @@ export function wireRecipeDropdowns(container, onReRender) {
             if (!isActive) {
                 grp.classList.add("active");
 
-                const onDocClick = () => {
-                    grp.classList.remove("active");
-                    document.removeEventListener("click", onDocClick);
+                const onDocClick = (de) => {
+                    if (!grp.contains(de.target)) {
+                        grp.classList.remove("active");
+                        document.removeEventListener("click", onDocClick);
+                    }
                 };
 
                 setTimeout(() => {
@@ -878,7 +1057,6 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
         }
     }
 
-
     const possibleByproducts = new Map();
     if (r.ingredients) r.ingredients.forEach((slot, slotIdx) => {
         if (slot.variantRemainingItemIndexes) slot.variantRemainingItemIndexes.forEach((remIdx, varIdx) => {
@@ -1047,7 +1225,7 @@ export function renderRecipeRow(r, db, body = null, machineOverride = null) {
     }
 
     return `
-        <div class="recipe-card primary" style="margin-top: 6px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+        <div class="recipe-card primary" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
             <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
                 <span style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Ingredients</span>
                 <div class="ingredient-list" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">

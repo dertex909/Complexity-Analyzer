@@ -124,12 +124,12 @@ public final class WebCommand {
     public static int executeReload(CommandContext<CommandSourceStack> ctx) {
         var source = ctx.getSource();
         var output = new OutputManager(source.getServer());
-        var server = source.getServer();
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
             return 0;
         }
+        var server = source.getServer();
         StandaloneWebServer.start();
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));
 
@@ -152,7 +152,7 @@ public final class WebCommand {
             case READY -> ChatFormatting.GREEN;
             case BUILDING -> ChatFormatting.AQUA;
             case FAILED -> ChatFormatting.RED;
-            default -> ChatFormatting.GRAY;
+            case IDLE -> ChatFormatting.GRAY;
         };
     }
 }

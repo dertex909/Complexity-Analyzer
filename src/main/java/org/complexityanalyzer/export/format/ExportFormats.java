@@ -24,12 +24,10 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Map;
-
 import static java.util.Locale.ROOT;
 
 public final class ExportFormats {
-    private static final Map<String, IExportFormat> FORMATS = new Object2ObjectLinkedOpenHashMap<>();
+    private static final Object2ObjectLinkedOpenHashMap<String, IExportFormat> FORMATS = new Object2ObjectLinkedOpenHashMap<>();
     private static ObjectList<String> CACHED_IDS = ObjectLists.emptyList();
 
     static {
@@ -47,8 +45,7 @@ public final class ExportFormats {
 
     @Nullable
     public static IExportFormat get(String id) {
-        if (id == null) return null;
-        return FORMATS.get(id.toLowerCase(ROOT));
+        return id == null ? null : FORMATS.get(id.toLowerCase(ROOT));
     }
 
     public static ObjectList<String> getAvailableFormatIds() {

@@ -177,7 +177,7 @@ public class ComplexityConfig {
     public static int getMaxThreads() {
         if (resolvedMaxThreads >= 0) return resolvedMaxThreads;
         int configValue = MAX_THREADS.get();
-        return resolvedMaxThreads = (configValue <= 0) ? Math.max(1, Runtime.getRuntime().availableProcessors() - 2) : configValue;
+        return resolvedMaxThreads = configValue <= 0 ? Math.max(1, Runtime.getRuntime().availableProcessors() - 2) : configValue;
     }
 
     public static void resetThreadCache() {

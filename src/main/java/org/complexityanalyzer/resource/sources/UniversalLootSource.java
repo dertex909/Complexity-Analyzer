@@ -48,6 +48,7 @@ import org.complexityanalyzer.util.LootLogFilter;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.Future;
@@ -107,7 +108,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         };
     }
 
-    private boolean tryLoadCache(java.nio.file.Path cacheFile, long[] fingerprint, Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
+    private boolean tryLoadCache(Path cacheFile, long[] fingerprint, Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
         var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
         int restored = ResourceCache.UNIVERSAL_LOOT.load(cacheFile, fingerprint, (buf, item) ->
                 ResourceCache.readResourceData(buf, item, this), flat);

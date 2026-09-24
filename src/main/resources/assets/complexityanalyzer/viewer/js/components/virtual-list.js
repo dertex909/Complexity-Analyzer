@@ -47,16 +47,22 @@ export function mountVirtualList(container, options) {
 
     spacer.style.height = (itemCount * itemHeight) + "px";
 
-    let scheduled = false;
+    let rafId = 0;
+    let prevFirst = -1;
+    let prevLast = -1;
+
     const render = () => {
-        if (scheduled) return;
-        scheduled = true;
-        requestAnimationFrame(() => {
-            scheduled = false;
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+            rafId = 0;
             const top = viewport.scrollTop;
             const h = viewport.clientHeight;
+            if (h === 0) return;
             const first = Math.max(0, Math.floor(top / itemHeight) - 4);
             const last = Math.min(itemCount, Math.ceil((top + h) / itemHeight) + 4);
+            if (first === prevFirst && last === prevLast) return;
+            prevFirst = first;
+            prevLast = last;
             rows.style.transform = `translateY(${first * itemHeight}px)`;
             rows.innerHTML = "";
             const frag = document.createDocumentFragment();
@@ -72,11 +78,15 @@ export function mountVirtualList(container, options) {
     };
 
     viewport.addEventListener("scroll", render, {passive: true});
+    const ro = new ResizeObserver(render);
+    ro.observe(viewport);
     render();
 
     return {
         destroy: () => {
+            if (rafId) cancelAnimationFrame(rafId);
             viewport.removeEventListener("scroll", render);
+            ro.disconnect();
         }
     };
 }

@@ -39,7 +39,8 @@ export function saveScrollPositions(elem) {
 
 export function restoreScrollPositions(saved) {
     if (!saved) return;
-    for (const p of saved.scrollPositions) {
+    for (let i = 0; i < saved.scrollPositions.length; i++) {
+        const p = saved.scrollPositions[i];
         p.element.scrollTop = p.top;
         p.element.scrollLeft = p.left;
     }
@@ -61,12 +62,12 @@ export function wireRecipeLinks(container) {
     });
 }
 
-export function wireRecipeControls(container, onReRender) {
+export function wireRecipeControls(container, onSortChange, onSearchChange = null) {
     const select = container.querySelector("#recipes-sort");
     if (select) {
         select.addEventListener("change", (e) => {
             localStorage.setItem("recipes-sort", e.target.value);
-            onReRender();
+            if (onSortChange) onSortChange(e.target.value);
         });
     }
 
@@ -76,8 +77,12 @@ export function wireRecipeControls(container, onReRender) {
             if (container && container._customState) {
                 container._customState.searchQuery = val;
             }
-            onReRender();
-        }, 150);
+            if (onSearchChange) {
+                onSearchChange(val);
+            } else if (onSortChange) {
+                onSortChange();
+            }
+        }, 100);
 
         searchInput.addEventListener("input", (e) => onSearch(e.target.value));
     }

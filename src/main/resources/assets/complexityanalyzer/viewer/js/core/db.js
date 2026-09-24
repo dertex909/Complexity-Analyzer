@@ -44,11 +44,13 @@ export class CabinDatabase {
     constructor(url) {
         this.file = new CabinFile(url);
         this.machineIndexSet = new Set();
+        this._machineRecipesCache = new Map();
     }
 
     async open(opt = {}) {
         this._sB = this._bB = this._rB = this._frB = this._dB = null;
         this._u = this._fu = null;
+        this._machineRecipesCache = new Map();
         await this.file.open(opt);
         const [sB, iB, mB, meB, cB, rIB, flB, miB, stiB, msB, flRIB, rB] = await Promise.all([
             SEC.STRINGS, SEC.ITEMS, SEC.MOBS, SEC.META, SEC.CATEGORIES, SEC.IDX_RECIPES, SEC.FLUIDS,
@@ -205,6 +207,18 @@ export class CabinDatabase {
         return this[key];
     }
 
+    async ensureRecipesLoaded() {
+        await this._ensure('_rB', SEC.RECIPES);
+        return this._rB;
+    }
+
+    getItemRecipesSync(i) {
+        if (!this._rB) return [];
+        const ref = this.recipeIndex.get(i);
+        if (!ref || ref.offset === 0xFFFFFFFF || ref.count <= 0) return [];
+        return readRecipesAt(this._rB, this.strings, ref.offset, ref.count);
+    }
+
     async getItemSources(i) {
         const it = this.items.get(i);
         return it ? readSourcesForItem(await this._ensure('_sB', SEC.SOURCES), this.strings, it.sourcesOffset, it.sourceCount) : [];
@@ -241,29 +255,46 @@ export class CabinDatabase {
     }
 
     async getRecipesByMachine(machineItemIndex) {
+        if (!this._machineRecipesCache) this._machineRecipesCache = new Map();
+        if (this._machineRecipesCache.has(machineItemIndex)) return this._machineRecipesCache.get(machineItemIndex);
+
         const machine = this.machines.find(m => m.itemIndex === machineItemIndex);
         if (!machine) return [];
 
+        const rB = await this.ensureRecipesLoaded();
         const rawRecipes = [];
 
-        for (const itemIdx of machine.items) {
-            try {
-                const itemRecipes = await this.getItemRecipes(itemIdx);
-                rawRecipes.push(...itemRecipes);
-            } catch (e) {
-                console.error("Error loading item recipes:", e);
+        for (let i = 0; i < machine.items.length; i++) {
+            const itemIdx = machine.items[i];
+            const ref = this.recipeIndex.get(itemIdx);
+            if (ref && ref.offset !== 0xFFFFFFFF && ref.count > 0) {
+                try {
+                    const itemRecipes = readRecipesAt(rB, this.strings, ref.offset, ref.count);
+                    for (let j = 0; j < itemRecipes.length; j++) rawRecipes.push(itemRecipes[j]);
+                } catch (e) {
+                    console.error("Error loading item recipes:", e);
+                }
             }
         }
 
+        const frB = await this._ensure('_frB', SEC.FLUID_RECIPES);
         for (let i = 0; i < this.fluids.count; i++) {
-            try {
-                const fluidRecipes = await this.getFluidRecipes(i);
-                for (const r of fluidRecipes) if ((r.allMachineIndexes && r.allMachineIndexes.includes(machineItemIndex)) || r.machineItemIndex === machineItemIndex) rawRecipes.push(r);
+            const ref = this.fluidRecipeIndex.get(i);
+            if (ref && ref.offset !== 0xFFFFFFFF && ref.count > 0) try {
+                const fluidRecipes = readRecipesAt(frB, this.strings, ref.offset, ref.count);
+                for (let j = 0; j < fluidRecipes.length; j++) {
+                    const r = fluidRecipes[j];
+                    if ((r.allMachineIndexes && r.allMachineIndexes.includes(machineItemIndex)) || r.machineItemIndex === machineItemIndex) {
+                        rawRecipes.push(r);
+                    }
+                }
             } catch (e) {
             }
         }
 
-        return mergeDuplicateRecipes(rawRecipes);
+        const result = mergeDuplicateRecipes(rawRecipes);
+        this._machineRecipesCache.set(machineItemIndex, result);
+        return result;
     }
 
     deduplicateRecipes(recipes) {

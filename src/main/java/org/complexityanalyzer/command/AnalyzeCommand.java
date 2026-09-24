@@ -48,13 +48,13 @@ public final class AnalyzeCommand {
         return Commands.literal("analyze")
                 .then(Commands.literal("item")
                         .then(Commands.argument("item", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM)
-                        .executes(cmd -> AnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item")))))
+                                .executes(cmd -> AnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "item")))))
                 .then(Commands.literal("entity")
                         .then(Commands.argument("entity", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY)
-                        .executes(cmd -> EntityAnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "entity")))))
+                                .executes(cmd -> EntityAnalyzeCommand.execute(cmd, ResourceLocationArgument.getId(cmd, "entity")))))
                 .then(Commands.literal("loot")
                         .then(Commands.argument("loot_table", ResourceLocationArgument.id()).suggests(SharedSuggestions.LOOT_TABLE)
-                        .executes(ctx -> LootAnalyzeCommand.execute(ctx, ResourceLocationArgument.getId(ctx, "loot_table")))));
+                                .executes(ctx -> LootAnalyzeCommand.execute(ctx, ResourceLocationArgument.getId(ctx, "loot_table")))));
     }
 
     public static int execute(CommandContext<CommandSourceStack> context, ResourceLocation itemId) {

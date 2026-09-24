@@ -79,23 +79,25 @@ export async function renderFluidUsesView(container) {
             return;
         }
 
+        await db.ensureRecipesLoaded();
         const rawRecipes = [];
 
-        for (const prodIdx of usage) {
-            try {
-                const itemRecipes = await db.getItemRecipes(prodIdx);
-                for (const r of itemRecipes) {
-                    let usesFluid = false;
-                    if (r.fluidIngredients) for (const slot of r.fluidIngredients) {
+        for (let i = 0; i < usage.length; i++) {
+            const prodIdx = usage[i];
+            const itemRecipes = db.getItemRecipesSync(prodIdx);
+            for (let j = 0; j < itemRecipes.length; j++) {
+                const r = itemRecipes[j];
+                let usesFluid = false;
+                if (r.fluidIngredients) {
+                    for (let s = 0; s < r.fluidIngredients.length; s++) {
+                        const slot = r.fluidIngredients[s];
                         if (slot.variants && slot.variants.includes(fluidIndex)) {
                             usesFluid = true;
                             break;
                         }
                     }
-                    if (usesFluid) rawRecipes.push(r);
                 }
-            } catch (e) {
-                console.error("Error loading fluid usage recipes:", e);
+                if (usesFluid) rawRecipes.push(r);
             }
         }
 

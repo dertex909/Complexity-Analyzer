@@ -85,6 +85,11 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         return id != null ? id.toString() : "minecraft:air";
     }
 
+    private static String blockId(Block block) {
+        var id = GameRegistryManager.getBlockId(block);
+        return id != null ? id.toString() : "minecraft:air";
+    }
+
     private long[] computeFingerprint(long worldSeed) {
         return new long[]{
                 Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION),
@@ -117,11 +122,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     private double calculateCost(double growthTicks, double outputAmount) {
         return calculateCost(growthTicks) / outputAmount;
-    }
-
-    private static String blockId(Block block) {
-        var id = GameRegistryManager.getBlockId(block);
-        return id != null ? id.toString() : "minecraft:air";
     }
 
     @Override

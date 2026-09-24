@@ -120,23 +120,25 @@ export async function renderItemUsesView(container) {
             return;
         }
 
+        await db.ensureRecipesLoaded();
         const rawRecipes = [];
 
-        for (const prodIdx of usage) {
-            try {
-                const itemRecipes = await db.getItemRecipes(prodIdx);
-                for (const r of itemRecipes) {
-                    let usesItem = false;
-                    if (r.ingredients) for (const slot of r.ingredients) {
+        for (let i = 0; i < usage.length; i++) {
+            const prodIdx = usage[i];
+            const itemRecipes = db.getItemRecipesSync(prodIdx);
+            for (let j = 0; j < itemRecipes.length; j++) {
+                const r = itemRecipes[j];
+                let usesItem = false;
+                if (r.ingredients) {
+                    for (let s = 0; s < r.ingredients.length; s++) {
+                        const slot = r.ingredients[s];
                         if (slot.variants && slot.variants.includes(itemIndex)) {
                             usesItem = true;
                             break;
                         }
                     }
-                    if (usesItem) rawRecipes.push(r);
                 }
-            } catch (e) {
-                console.error("Error loading usage recipes:", e);
+                if (usesItem) rawRecipes.push(r);
             }
         }
 

@@ -19,6 +19,7 @@
 import {escapeHtml, formatComplexity} from "../../core/utils.js";
 import {mountVirtualList} from "../../components/virtual-list.js";
 import {
+    getRecipeSearchString,
     getRecipeUnitCost,
     getSelectedOutputComplexity,
     mergeDuplicateRecipes,
@@ -52,12 +53,46 @@ export function renderRecipeControlsHtml(activeSort, filteredCount, totalCount =
                 </select>
             </div>
             <span class="flex-grow"></span>
-            <span class="chip" style="font-size: 11px; padding: 2px 8px;">${countText}</span>
+            <span class="chip" id="recipes-count-chip" style="font-size: 11px; padding: 2px 8px;">${countText}</span>
         </div>
     `;
 }
 
-export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage) {
+export function ensureRecipeLayout(body, activeSort, filteredCount, totalCount, searchQuery, onSortChange, onSearchChange) {
+    let controlsWrapper = body.querySelector(".recipe-controls-wrapper");
+    let resultsWrapper = body.querySelector(".recipe-results-wrapper");
+
+    const isFiltered = filteredCount !== totalCount;
+    const countText = isFiltered ? `${filteredCount} / ${totalCount} recipe(s)` : `${totalCount} recipe(s)`;
+
+    if (!controlsWrapper || !resultsWrapper) {
+        body.innerHTML = `
+            <div class="recipe-controls-wrapper" style="flex: 0 0 auto;">
+                ${renderRecipeControlsHtml(activeSort, filteredCount, totalCount, searchQuery)}
+            </div>
+            <div class="recipe-results-wrapper" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;"></div>
+        `;
+        controlsWrapper = body.querySelector(".recipe-controls-wrapper");
+        resultsWrapper = body.querySelector(".recipe-results-wrapper");
+
+        wireRecipeControls(controlsWrapper, onSortChange, onSearchChange);
+    } else {
+        const countChip = controlsWrapper.querySelector("#recipes-count-chip");
+        if (countChip) countChip.textContent = countText;
+
+        const searchInput = controlsWrapper.querySelector("#recipes-search");
+        if (searchInput && document.activeElement !== searchInput && searchInput.value !== searchQuery) {
+            searchInput.value = searchQuery;
+        }
+
+        const sortSelect = controlsWrapper.querySelector("#recipes-sort");
+        if (sortSelect && sortSelect.value !== activeSort) sortSelect.value = activeSort;
+    }
+
+    return resultsWrapper;
+}
+
+export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, emptyMessage = "No crafting recipes found.") {
     const scrollState = saveScrollPositions(body);
 
     if (body._activeVList) {
@@ -78,90 +113,134 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
     const activeSort = localStorage.getItem("recipes-sort") || "optimal";
     const resorted = sortRecipes(merged, db, activeSort);
 
-    const machineToRecipes = new Map();
-    for (const r of resorted) {
-        const activeMachineIdx = resolveBestMachine(r, db, body);
-        if (!machineToRecipes.has(activeMachineIdx)) machineToRecipes.set(activeMachineIdx, []);
-        machineToRecipes.get(activeMachineIdx).push(r);
-    }
+    const updateGroupedView = (shouldResetScroll = false) => {
+        const q = (body._customState.searchQuery || "").trim().toLowerCase();
+        let displayRecipes = resorted;
+        if (q) displayRecipes = resorted.filter(r => getRecipeSearchString(r, db).includes(q));
 
-    if (machineToRecipes.size === 0) {
-        body.innerHTML = `<div class="empty-state"><div class="icon">∅</div><div class="message">${escapeHtml(emptyMessage)}</div></div>`;
-        return;
-    }
+        const isFiltered = displayRecipes.length !== merged.length;
+        const countText = isFiltered ? `${displayRecipes.length} / ${merged.length} recipe(s)` : `${merged.length} recipe(s)`;
 
-    const getMinMetric = (recipes, metricFn) => {
-        let minVal = Infinity;
-        for (const r of recipes) {
-            const v = metricFn(r);
-            if (v < minVal) minVal = v;
-        }
-        return minVal;
-    };
+        const countChip = body.querySelector("#recipes-count-chip");
+        if (countChip) countChip.textContent = countText;
 
-    const sortedMachines = Array.from(machineToRecipes.keys()).sort((a, b) => {
-        const itemComp = getSelectedOutputComplexity(db);
+        const resultsWrapper = body.querySelector(".recipe-results-wrapper");
+        if (!resultsWrapper) return;
 
-        if (activeSort === "optimal" && itemComp !== null) {
-            const diffA = getMinMetric(machineToRecipes.get(a) || [], r => Math.abs(getRecipeUnitCost(r, db, null) - itemComp));
-            const diffB = getMinMetric(machineToRecipes.get(b) || [], r => Math.abs(getRecipeUnitCost(r, db, null) - itemComp));
-            if (Math.abs(diffA - diffB) > 0.001) return diffA - diffB;
-        } else if (activeSort === "cheapest") {
-            const costA = getMinMetric(machineToRecipes.get(a) || [], r => getRecipeUnitCost(r, db, null));
-            const costB = getMinMetric(machineToRecipes.get(b) || [], r => getRecipeUnitCost(r, db, null));
-            if (Math.abs(costA - costB) > 0.001) return costA - costB;
+        if (displayRecipes.length === 0) {
+            resultsWrapper.innerHTML = `
+                <div class="empty-state" style="padding: 40px 0;">
+                    <div class="icon">🔍</div>
+                    <div class="message">${q ? "No recipes match your search." : escapeHtml(emptyMessage)}</div>
+                </div>`;
+            return;
         }
 
-        const itemA = a >= 0 ? db.items.get(a) : null;
-        const itemB = b >= 0 ? db.items.get(b) : null;
-        if (!itemA && itemB) return 1;
-        if (itemA && !itemB) return -1;
-        return a - b;
-    });
-
-    const groupsHtml = sortedMachines.map(mi => {
-        const mItem = mi >= 0 ? db.items.get(mi) : null;
-        const mRecipes = machineToRecipes.get(mi);
-        const isRaw = !mItem;
-
-        let nameHtml;
-        if (mItem) {
-            const isMUncalc = (mItem.flags & 0x10) || mItem.categoryName === "Uncalculable";
-            const mComp = mItem.complexity;
-            const mTooltip = `Complexity: ${isMUncalc || mComp === -1 || !isFinite(mComp) ? 'Uncalculable' : (typeof formatComplexity === 'function' ? formatComplexity(mComp) : mComp)}`;
-            const mStyle = isMUncalc ? "color: #fca5a5 !important;" : "color:var(--accent);";
-            nameHtml = `<strong style="${mStyle} cursor:pointer;" class="machine-link" data-index="${mi}" title="${mTooltip}">${escapeHtml(mItem.name)}</strong>`;
-        } else {
-            nameHtml = `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;
+        const machineToRecipes = new Map();
+        for (let i = 0; i < displayRecipes.length; i++) {
+            const r = displayRecipes[i];
+            const activeMachineIdx = resolveBestMachine(r, db, body);
+            if (!machineToRecipes.has(activeMachineIdx)) machineToRecipes.set(activeMachineIdx, []);
+            machineToRecipes.get(activeMachineIdx).push(r);
         }
 
-        const idHtml = mItem ? `<span class="mono-code" style="font-size:11px;">${escapeHtml(mItem.id)}</span>` : ``;
+        const getMinMetric = (recipes, metricFn) => {
+            let minVal = Infinity;
+            for (let i = 0; i < recipes.length; i++) {
+                const v = metricFn(recipes[i]);
+                if (v < minVal) minVal = v;
+            }
+            return minVal;
+        };
 
-        return `
-            <div class="detail-card ${isRaw ? 'raw-craft-card' : ''}" style="margin-bottom: 16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid ${isRaw ? 'rgba(239, 68, 68, 0.2)' : 'var(--border)'}; padding-bottom: 8px; margin-bottom: 8px;">
-                    <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        ${nameHtml}
-                        ${idHtml}
-                    </span>
-                    <span class="chip" style="${isRaw ? 'background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);' : ''}">${mRecipes.length} recipe(s)</span>
+        const sortedMachines = Array.from(machineToRecipes.keys()).sort((a, b) => {
+            const itemComp = getSelectedOutputComplexity(db);
+
+            if (activeSort === "optimal" && itemComp !== null) {
+                const diffA = getMinMetric(machineToRecipes.get(a) || [], r => Math.abs(getRecipeUnitCost(r, db, null) - itemComp));
+                const diffB = getMinMetric(machineToRecipes.get(b) || [], r => Math.abs(getRecipeUnitCost(r, db, null) - itemComp));
+                if (Math.abs(diffA - diffB) > 0.001) return diffA - diffB;
+            } else if (activeSort === "cheapest") {
+                const costA = getMinMetric(machineToRecipes.get(a) || [], r => getRecipeUnitCost(r, db, null));
+                const costB = getMinMetric(machineToRecipes.get(b) || [], r => getRecipeUnitCost(r, db, null));
+                if (Math.abs(costA - costB) > 0.001) return costA - costB;
+            }
+
+            const itemA = a >= 0 ? db.items.get(a) : null;
+            const itemB = b >= 0 ? db.items.get(b) : null;
+            if (!itemA && itemB) return 1;
+            if (itemA && !itemB) return -1;
+            return a - b;
+        });
+
+        const groupsHtml = sortedMachines.map(mi => {
+            const mItem = mi >= 0 ? db.items.get(mi) : null;
+            const mRecipes = machineToRecipes.get(mi);
+            const isRaw = !mItem;
+
+            let nameHtml;
+            if (mItem) {
+                const isMUncalc = (mItem.flags & 0x10) || mItem.categoryName === "Uncalculable";
+                const mComp = mItem.complexity;
+                const mTooltip = `Complexity: ${isMUncalc || mComp === -1 || !isFinite(mComp) ? 'Uncalculable' : formatComplexity(mComp)}`;
+                const mStyle = isMUncalc ? "color: #fca5a5 !important;" : "color:var(--accent);";
+                nameHtml = `<strong style="${mStyle} cursor:pointer;" class="machine-link" data-index="${mi}" title="${mTooltip}">${escapeHtml(mItem.name)}</strong>`;
+            } else {
+                nameHtml = `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;
+            }
+
+            const idHtml = mItem ? `<span class="mono-code" style="font-size:11px;">${escapeHtml(mItem.id)}</span>` : ``;
+
+            return `
+                <div class="detail-card ${isRaw ? 'raw-craft-card' : ''}" style="margin-bottom: 16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid ${isRaw ? 'rgba(239, 68, 68, 0.2)' : 'var(--border)'}; padding-bottom: 8px; margin-bottom: 8px;">
+                        <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            ${nameHtml}
+                            ${idHtml}
+                        </span>
+                        <span class="chip" style="${isRaw ? 'background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);' : ''}">${mRecipes.length} recipe(s)</span>
+                    </div>
+                    ${mRecipes.map(r => renderRecipeRow(r, db, body)).join("")}
                 </div>
-                ${mRecipes.map(r => renderRecipeRow(r, db, body)).join("")}
+            `;
+        }).join("");
+
+        resultsWrapper.innerHTML = `
+            <div class="recipes-grouped-list" style="flex: 1 1 auto; overflow-y: auto; padding-right: 4px;">
+                ${groupsHtml}
             </div>
         `;
-    }).join("");
 
-    body.innerHTML = `
-        <div style="flex: 0 0 auto;">
-            ${renderRecipeControlsHtml(activeSort, merged.length, merged.length, "")}
-        </div>
-        <div class="recipes-grouped-list" style="flex: 1 1 auto; overflow-y: auto; padding-right: 4px;">
-            ${groupsHtml}
-        </div>
-    `;
+        if (shouldResetScroll) {
+            const listEl = resultsWrapper.querySelector(".recipes-grouped-list");
+            if (listEl) listEl.scrollTop = 0;
+        }
+    };
 
-    wireRecipeControls(body, onSortChange);
-    wireRecipeEventsDelegated(body, body, onSortChange);
+    ensureRecipeLayout(
+        body,
+        activeSort,
+        merged.length,
+        merged.length,
+        body._customState.searchQuery || "",
+        () => {
+            onSortChange();
+        },
+        (newQuery) => {
+            body._customState.searchQuery = newQuery;
+            updateGroupedView(true);
+        }
+    );
+
+    updateGroupedView(false);
+
+    if (!body._hasRecipeEvents) {
+        body._hasRecipeEvents = true;
+        wireRecipeEventsDelegated(body, body, () => {
+            if (typeof body._onSortChangeRef === 'function') body._onSortChangeRef();
+        });
+    }
+    body._onSortChangeRef = onSortChange;
 
     restoreScrollPositions(scrollState);
     requestAnimationFrame(() => {
@@ -175,103 +254,104 @@ export function renderAndWireFlatRecipes(body, recipes, db, onSortChange, machin
     if (!body._customState) body._customState = {
         selectedMachines: new Map(),
         selectedIngredients: new Map(),
-        searchQuery: ""
+        searchQuery: "",
+        sortedCache: null,
+        lastSortType: null,
+        lastRecipesRef: null
     };
-
-    const prevScrollTop = body._activeVList ? body._activeVList.getScrollTop() : 0;
-    if (body._activeVList) {
-        body._activeVList.destroy();
-        body._activeVList = null;
-    }
 
     body.classList.add("has-virtual");
 
-    const merged = mergeDuplicateRecipes(recipes);
-    const sorted = sortRecipes(merged, db, activeSort);
+    let sorted = body._customState.sortedCache;
+    if (!sorted || body._customState.lastSortType !== activeSort || body._customState.lastRecipesRef !== recipes) {
+        const merged = mergeDuplicateRecipes(recipes);
+        sorted = sortRecipes(merged, db, activeSort);
+        body._customState.sortedCache = sorted;
+        body._customState.lastSortType = activeSort;
+        body._customState.lastRecipesRef = recipes;
+    }
 
-    const q = (body._customState.searchQuery || "").trim().toLowerCase();
-    let displayRecipes = sorted;
+    const updateFlatView = (shouldResetScroll = false) => {
+        const q = (body._customState.searchQuery || "").trim().toLowerCase();
+        let displayRecipes = sorted;
+        if (q) displayRecipes = sorted.filter(r => getRecipeSearchString(r, db).includes(q));
 
-    if (q) {
-        displayRecipes = sorted.filter(r => {
-            if (r.itemOutputs) {
-                for (const o of r.itemOutputs) {
-                    const it = db.items.get(o.itemIndex);
-                    if (it && ((it.name || "").toLowerCase().includes(q) || (it.id || "").toLowerCase().includes(q))) return true;
-                }
+        const isFiltered = displayRecipes.length !== sorted.length;
+        const countText = isFiltered ? `${displayRecipes.length} / ${sorted.length} recipe(s)` : `${sorted.length} recipe(s)`;
+
+        const countChip = body.querySelector("#recipes-count-chip");
+        if (countChip) countChip.textContent = countText;
+
+        const resultsWrapper = body.querySelector(".recipe-results-wrapper");
+        if (!resultsWrapper) return;
+
+        let listContainer = resultsWrapper.querySelector(".recipes-virtual-container");
+        if (!listContainer) {
+            resultsWrapper.innerHTML = `<div class="recipes-virtual-container" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; position: relative;"></div>`;
+            listContainer = resultsWrapper.querySelector(".recipes-virtual-container");
+        }
+
+        if (displayRecipes.length === 0) {
+            if (body._activeVList) {
+                body._activeVList.destroy();
+                body._activeVList = null;
             }
-            if (r.fluidOutputs) {
-                for (const o of r.fluidOutputs) {
-                    const fl = db.fluids.get(o.fluidIndex);
-                    if (fl && ((fl.name || "").toLowerCase().includes(q) || (fl.id || "").toLowerCase().includes(q))) return true;
-                }
+            listContainer.innerHTML = `
+                <div class="empty-state" style="padding: 40px 0;">
+                    <div class="icon">∅</div>
+                    <div class="message">${q ? "No recipes match your search." : "No recipes found."}</div>
+                </div>`;
+            return;
+        }
+
+        const prevScrollTop = (!shouldResetScroll && body._activeVList) ? body._activeVList.getScrollTop() : 0;
+        if (body._activeVList) {
+            body._activeVList.destroy();
+            body._activeVList = null;
+        }
+
+        body._activeVList = mountVirtualList(listContainer, {
+            itemCount: displayRecipes.length,
+            itemHeight: 90,
+            dynamicHeight: true,
+            overscan: 5,
+            initialScrollTop: shouldResetScroll ? 0 : prevScrollTop,
+            renderRow: (index) => {
+                const r = displayRecipes[index];
+                const rowWrapper = document.createElement("div");
+                rowWrapper.className = "virtual-recipe-row";
+                rowWrapper.innerHTML = renderRecipeRow(r, db, body, machineOverride);
+                return rowWrapper;
             }
-            if (r.outputItemIndex >= 0) {
-                const it = db.items.get(r.outputItemIndex);
-                if (it && ((it.name || "").toLowerCase().includes(q) || (it.id || "").toLowerCase().includes(q))) return true;
+        });
+    };
+
+    ensureRecipeLayout(
+        body,
+        activeSort,
+        sorted.length,
+        sorted.length,
+        body._customState.searchQuery || "",
+        () => {
+            body._customState.sortedCache = null;
+            onSortChange();
+        },
+        (newQuery) => {
+            body._customState.searchQuery = newQuery;
+            updateFlatView(true);
+        }
+    );
+
+    updateFlatView(false);
+
+    if (!body._hasRecipeEvents) {
+        body._hasRecipeEvents = true;
+        wireRecipeEventsDelegated(body, body, () => {
+            if (typeof body._onSortChangeRef === 'function') {
+                if (body._customState) body._customState.sortedCache = null;
+                body._onSortChangeRef();
             }
-            if (r.ingredients) {
-                for (const slot of r.ingredients) {
-                    if (slot.variants) {
-                        for (const v of slot.variants) {
-                            const it = db.items.get(v);
-                            if (it && ((it.name || "").toLowerCase().includes(q) || (it.id || "").toLowerCase().includes(q))) return true;
-                        }
-                    }
-                }
-            }
-            if (r.fluidIngredients) {
-                for (const slot of r.fluidIngredients) {
-                    if (slot.variants) {
-                        for (const v of slot.variants) {
-                            const fl = db.fluids.get(v);
-                            if (fl && ((fl.name || "").toLowerCase().includes(q) || (fl.id || "").toLowerCase().includes(q))) return true;
-                        }
-                    }
-                }
-            }
-            if (r.recipeType && r.recipeType.toLowerCase().includes(q)) return true;
-            if (r.machineItemIndex >= 0) {
-                const m = db.items.get(r.machineItemIndex);
-                if (m && ((m.name || "").toLowerCase().includes(q) || (m.id || "").toLowerCase().includes(q))) return true;
-            }
-            return false;
         });
     }
-
-    body.innerHTML = `
-        ${renderRecipeControlsHtml(activeSort, displayRecipes.length, merged.length, body._customState.searchQuery || "")}
-        <div class="recipes-virtual-container"></div>
-    `;
-
-    wireRecipeControls(body, onSortChange);
-
-    const listContainer = body.querySelector(".recipes-virtual-container");
-    if (!listContainer) return;
-
-    if (displayRecipes.length === 0) {
-        listContainer.innerHTML = `
-            <div class="empty-state" style="padding: 40px 0;">
-                <div class="icon">∅</div>
-                <div class="message">${q ? "No recipes match your search." : "No recipes found."}</div>
-            </div>`;
-        return;
-    }
-
-    body._activeVList = mountVirtualList(listContainer, {
-        itemCount: displayRecipes.length,
-        itemHeight: 90,
-        dynamicHeight: true,
-        overscan: 5,
-        initialScrollTop: prevScrollTop,
-        renderRow: (index) => {
-            const r = displayRecipes[index];
-            const rowWrapper = document.createElement("div");
-            rowWrapper.className = "virtual-recipe-row";
-            rowWrapper.innerHTML = renderRecipeRow(r, db, body, machineOverride);
-            return rowWrapper;
-        }
-    });
-
-    wireRecipeEventsDelegated(listContainer, body, onSortChange);
+    body._onSortChangeRef = onSortChange;
 }

@@ -23,6 +23,8 @@ export function isEntityCalculable(entity) {
 }
 
 export function getRecipeIdentityKey(r) {
+    if (r._idKey !== undefined) return r._idKey;
+
     const ingPart = r.ingredients ? r.ingredients.map(ing => {
         const vars = ing.variants ? [...ing.variants].sort().join(",") : "";
         return `${vars}:${ing.count}`;
@@ -36,13 +38,15 @@ export function getRecipeIdentityKey(r) {
     const itemOutPart = r.itemOutputs ? [...r.itemOutputs].sort((a, b) => a.itemIndex - b.itemIndex).map(out => `${out.itemIndex}:${out.count}`).join(",") : "";
     const fluidOutPart = r.fluidOutputs ? [...r.fluidOutputs].sort((a, b) => a.fluidIndex - b.fluidIndex).map(out => `${out.fluidIndex}:${out.amount}`).join(",") : "";
 
-    return `${r.recipeType || "minecraft:custom"}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
+    r._idKey = `${r.recipeType || "minecraft:custom"}_${ingPart}_${fluidIngPart}_${itemOutPart}_${fluidOutPart}`;
+    return r._idKey;
 }
 
 export function mergeDuplicateRecipes(recipes) {
     const unique = [];
     const keyToRecipe = new Map();
-    for (const r of recipes) {
+    for (let i = 0; i < recipes.length; i++) {
+        const r = recipes[i];
         const idKey = getRecipeIdentityKey(r);
         if (!keyToRecipe.has(idKey)) {
             const rCopy = {
@@ -59,7 +63,8 @@ export function mergeDuplicateRecipes(recipes) {
         } else {
             const existing = keyToRecipe.get(idKey);
             if (r.allMachineIndexes) {
-                for (const mi of r.allMachineIndexes) {
+                for (let k = 0; k < r.allMachineIndexes.length; k++) {
+                    const mi = r.allMachineIndexes[k];
                     if (mi !== undefined && mi >= 0 && !existing.allMachineIndexes.includes(mi)) {
                         existing.allMachineIndexes.push(mi);
                     }
@@ -97,7 +102,8 @@ export function resolveBestMachine(r, db, body = null) {
     if (allMs.length > 0) {
         let minMachineCost = Infinity;
         let bestMachineIdx = allMs[0];
-        for (const mi of allMs) {
+        for (let i = 0; i < allMs.length; i++) {
+            const mi = allMs[i];
             const mItem = db.items.get(mi);
             const costVal = getMachineAmortizationCost(mItem, db);
             if (costVal < minMachineCost) {
@@ -135,17 +141,14 @@ function calculateSlotCost(slot, dbMap, stateKey, body, qty, isFluid = false) {
 
     if (activeVariant !== -1) {
         const entity = dbMap.get(activeVariant);
-        if (isEntityCalculable(entity)) {
-            return count * entity.complexity;
-        }
+        if (isEntityCalculable(entity)) return count * entity.complexity;
     }
 
     let minComp = Infinity;
-    for (const v of slot.variants) {
+    for (let i = 0; i < slot.variants.length; i++) {
+        const v = slot.variants[i];
         const entity = dbMap.get(v);
-        if (isEntityCalculable(entity) && entity.complexity < minComp) {
-            minComp = entity.complexity;
-        }
+        if (isEntityCalculable(entity) && entity.complexity < minComp) minComp = entity.complexity;
     }
     return minComp !== Infinity ? count * minComp : 0;
 }
@@ -175,11 +178,12 @@ export function getRecipeCost(r, db, body = null) {
 
 export function isRecipeCalculable(r, db) {
     if (r.ingredients) {
-        for (const slot of r.ingredients) {
+        for (let s = 0; s < r.ingredients.length; s++) {
+            const slot = r.ingredients[s];
             if (slot.variants && slot.variants.length > 0) {
                 let hasCalc = false;
-                for (const v of slot.variants) {
-                    const item = db.items.get(v);
+                for (let vIdx = 0; vIdx < slot.variants.length; vIdx++) {
+                    const item = db.items.get(slot.variants[vIdx]);
                     if (item && item.complexity !== -1 && !(item.flags & 0x10)) {
                         hasCalc = true;
                         break;
@@ -190,11 +194,12 @@ export function isRecipeCalculable(r, db) {
         }
     }
     if (r.fluidIngredients) {
-        for (const slot of r.fluidIngredients) {
+        for (let s = 0; s < r.fluidIngredients.length; s++) {
+            const slot = r.fluidIngredients[s];
             if (slot.variants && slot.variants.length > 0) {
                 let hasCalc = false;
-                for (const v of slot.variants) {
-                    const fl = db.fluids.get(v);
+                for (let vIdx = 0; vIdx < slot.variants.length; vIdx++) {
+                    const fl = db.fluids.get(slot.variants[vIdx]);
                     if (fl && fl.complexity !== -1 && !(fl.flags & 0x10)) {
                         hasCalc = true;
                         break;
@@ -250,47 +255,138 @@ export function getSelectedOutputComplexity(db) {
 }
 
 export function sortRecipes(recipes, db, sortType) {
-    const sorted = [...recipes];
-    sorted.sort((a, b) => {
-        const calcA = isRecipeCalculable(a, db);
-        const calcB = isRecipeCalculable(b, db);
-        if (calcA !== calcB) return calcA ? -1 : 1;
+    if (!recipes || recipes.length <= 1) return recipes ? [...recipes] : [];
 
-        const bestMachineIdxA = resolveBestMachine(a, db);
-        const bestMachineIdxB = resolveBestMachine(b, db);
-        const machineA = db.items.get(bestMachineIdxA);
-        const machineB = db.items.get(bestMachineIdxB);
+    const itemComp = getSelectedOutputComplexity(db);
 
-        const craftableA = bestMachineIdxA < 0 || (machineA ? !!((machineA.flags & 0x01) && machineA.complexity > 0 && !(machineA.flags & 0x10)) : false);
-        const craftableB = bestMachineIdxB < 0 || (machineB ? !!((machineB.flags & 0x01) && machineB.complexity > 0 && !(machineB.flags & 0x10)) : false);
-        if (craftableA !== craftableB) return craftableA ? -1 : 1;
+    const decorated = recipes.map(r => {
+        const isCalc = isRecipeCalculable(r, db);
+        const bestMachineIdx = resolveBestMachine(r, db);
+        const machine = db.items.get(bestMachineIdx);
+        const craftable = bestMachineIdx < 0 || (machine ? !!((machine.flags & 0x01) && machine.complexity > 0 && !(machine.flags & 0x10)) : false);
+        const cost = getRecipeUnitCost(r, db, null);
+        return {
+            r,
+            isCalc,
+            craftable,
+            cost,
+            diffOptimal: itemComp !== null ? Math.abs(cost - itemComp) : 0,
+            priority: r.priority || 0
+        };
+    });
 
-        const costA = getRecipeUnitCost(a, db, null);
-        const costB = getRecipeUnitCost(b, db, null);
+    decorated.sort((a, b) => {
+        if (a.isCalc !== b.isCalc) return a.isCalc ? -1 : 1;
+        if (a.craftable !== b.craftable) return a.craftable ? -1 : 1;
 
         if (sortType === "optimal") {
-            const itemComp = getSelectedOutputComplexity(db);
             if (itemComp !== null) {
-                const diffA = Math.abs(costA - itemComp);
-                const diffB = Math.abs(costB - itemComp);
-                if (Math.abs(diffA - diffB) > 0.001) return diffA - diffB;
+                if (Math.abs(a.diffOptimal - b.diffOptimal) > 0.001) return a.diffOptimal - b.diffOptimal;
             }
         }
 
         if (sortType === "cheapest") {
-            if (Math.abs(costA - costB) > 0.001) return costA - costB;
+            if (Math.abs(a.cost - b.cost) > 0.001) return a.cost - b.cost;
             return b.priority - a.priority;
         }
 
-        const diff = costA - costB;
-        const threshold = Math.max(10.0, 0.15 * Math.min(costA, costB));
+        const diff = a.cost - b.cost;
+        const threshold = Math.max(10.0, 0.15 * Math.min(a.cost, b.cost));
         if (Math.abs(diff) > threshold) return diff;
 
         if (a.priority !== b.priority) return b.priority - a.priority;
         if (Math.abs(diff) > 0.001) return diff;
         return 0;
     });
-    return sorted;
+
+    return decorated.map(d => d.r);
+}
+
+export function getRecipeSearchString(r, db) {
+    if (r._searchString !== undefined) return r._searchString;
+
+    const parts = [];
+    if (r.recipeType) parts.push(r.recipeType);
+
+    if (r.itemOutputs && r.itemOutputs.length > 0) {
+        for (let i = 0; i < r.itemOutputs.length; i++) {
+            const o = r.itemOutputs[i];
+            if (o.hoverName) parts.push(o.hoverName);
+            const it = db.items.get(o.itemIndex);
+            if (it) {
+                if (it.name) parts.push(it.name);
+                if (it.id) parts.push(it.id);
+            }
+        }
+    } else if (r.outputItemIndex >= 0) {
+        const it = db.items.get(r.outputItemIndex);
+        if (it) {
+            if (it.name) parts.push(it.name);
+            if (it.id) parts.push(it.id);
+        }
+    }
+
+    if (r.fluidOutputs) {
+        for (let i = 0; i < r.fluidOutputs.length; i++) {
+            const o = r.fluidOutputs[i];
+            const fl = db.fluids.get(o.fluidIndex);
+            if (fl) {
+                if (fl.name) parts.push(fl.name);
+                if (fl.id) parts.push(fl.id);
+            }
+        }
+    }
+
+    if (r.ingredients) {
+        for (let s = 0; s < r.ingredients.length; s++) {
+            const slot = r.ingredients[s];
+            if (slot.variantNames) {
+                for (let v = 0; v < slot.variantNames.length; v++) {
+                    const vn = slot.variantNames[v];
+                    if (vn) parts.push(vn);
+                }
+            }
+            if (slot.variants) {
+                for (let v = 0; v < slot.variants.length; v++) {
+                    const it = db.items.get(slot.variants[v]);
+                    if (it) {
+                        if (it.name) parts.push(it.name);
+                        if (it.id) parts.push(it.id);
+                    }
+                }
+            }
+        }
+    }
+
+    if (r.fluidIngredients) {
+        for (let s = 0; s < r.fluidIngredients.length; s++) {
+            const slot = r.fluidIngredients[s];
+            if (slot.variants) {
+                for (let v = 0; v < slot.variants.length; v++) {
+                    const fl = db.fluids.get(slot.variants[v]);
+                    if (fl) {
+                        if (fl.name) parts.push(fl.name);
+                        if (fl.id) parts.push(fl.id);
+                    }
+                }
+            }
+        }
+    }
+
+    const machineIdxs = r.allMachineIndexes && r.allMachineIndexes.length > 0
+        ? r.allMachineIndexes
+        : (r.machineItemIndex >= 0 ? [r.machineItemIndex] : []);
+    for (let m = 0; m < machineIdxs.length; m++) {
+        const mi = machineIdxs[m];
+        const machineItem = db.items.get(mi);
+        if (machineItem) {
+            if (machineItem.name) parts.push(machineItem.name);
+            if (machineItem.id) parts.push(machineItem.id);
+        }
+    }
+
+    r._searchString = parts.join(" ").toLowerCase();
+    return r._searchString;
 }
 
 export function resolveActiveByproducts(r, db, body, recipeKey) {

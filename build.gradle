@@ -79,9 +79,10 @@ dependencies {
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     String computedNeoVersionRange = "[${neo_version},)"
+    String computedMinecraftVersionRange = "[${minecraft_version}]"
 
     var replaceProperties = [minecraft_version      : minecraft_version,
-                             minecraft_version_range: minecraft_version_range,
+                             minecraft_version_range: computedMinecraftVersionRange,
                              neo_version            : neo_version,
                              neo_version_range      : computedNeoVersionRange,
                              loader_version_range   : loader_version_range,

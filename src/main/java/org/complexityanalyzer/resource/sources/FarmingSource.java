@@ -20,7 +20,6 @@ package org.complexityanalyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -37,40 +36,92 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.providers.PlantSimulator;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
-
 import static org.complexityanalyzer.cache.ResourceCache.FARMING;
 
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     private static final double RENEWABLE_DISCOUNT = 0.3;
     private static final double BASE_TICKS_PER_STAGE = 1200;
-    private static final int LOGIC_VERSION = 1;
+    private static final int LOGIC_VERSION = 2;
 
     private final Reference2ObjectMap<Item, ObjectList<FarmingData>> productionMap = new Reference2ObjectOpenHashMap<>();
     private final PlantSimulator simulator = new PlantSimulator();
 
     private static void writeData(FriendlyByteBuf buf, FarmingData data) {
         var plantId = GameRegistryManager.getItemId(data.plantItem());
-        var blockIdRl = GameRegistryManager.getBlockId(data.plantBlock());
-        buf.writeResourceLocation(plantId != null ? plantId : ResourceLocation.withDefaultNamespace("air"));
-        buf.writeResourceLocation(blockIdRl != null ? blockIdRl : ResourceLocation.withDefaultNamespace("air"));
+        var blockId = GameRegistryManager.getBlockId(data.plantBlock());
+        buf.writeNullable(plantId, FriendlyByteBuf::writeResourceLocation);
+        buf.writeNullable(blockId, FriendlyByteBuf::writeResourceLocation);
         buf.writeDouble(data.avgGrowthTicks());
         buf.writeDouble(data.outputAmount());
-        buf.writeUtf(data.dropsSummary());
-        buf.writeUtf(data.details());
     }
 
     @Nullable
     private static FarmingData readData(FriendlyByteBuf buf, Item dropItem) {
-        var plantItem = GameRegistryManager.getItem(buf.readResourceLocation());
-        var plantBlock = GameRegistryManager.getBlock(buf.readResourceLocation());
+        var plantId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
+        var blockId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
         double growthTicks = buf.readDouble();
         double outputAmount = buf.readDouble();
-        String dropsSummary = buf.readUtf();
-        String details = buf.readUtf();
+        if (plantId == null || blockId == null) return null;
+        var plantItem = GameRegistryManager.getItem(plantId);
+        var plantBlock = GameRegistryManager.getBlock(blockId);
         if (plantItem == null || plantItem == Items.AIR || plantBlock == null) return null;
-        return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, dropsSummary, details);
+        String details = buildDetails(plantItem, plantBlock, dropItem);
+        return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, details);
+    }
+
+    private static String buildDetails(Item plantItem, Block plantBlock, Item dropItem) {
+        String plantItemId = itemId(plantItem);
+        String blockIdStr = blockId(plantBlock);
+        String dropIdStr = itemId(dropItem);
+
+        return plantItemId.equals(blockIdStr)
+                ? "Plant %s → harvest for %s".formatted(plantItemId, dropIdStr)
+                : "Plant %s (becomes %s) → harvest for %s".formatted(plantItemId, blockIdStr, dropIdStr);
+    }
+
+    private static String itemId(Item item) {
+        var id = GameRegistryManager.getItemId(item);
+        return id != null ? id.toString() : "minecraft:air";
+    }
+
+    private long[] computeFingerprint(long worldSeed) {
+        return new long[]{
+                Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION),
+                Fingerprints.hashAllBlocks(),
+                Fingerprints.hashAllItems(),
+                Fingerprints.hashMods(),
+                worldSeed
+        };
+    }
+
+    private boolean itemPlacesBlock(Item item, Block targetBlock) {
+        return item instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock;
+    }
+
+    @Nullable
+    private Item findPlantItem(Block targetBlock) {
+        var direct = targetBlock.asItem();
+        if (direct != Items.AIR) return direct;
+
+        for (var candidate : GameRegistryManager.getAllItems()) {
+            if (candidate instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock) return candidate;
+        }
+        return null;
+    }
+
+    private double calculateCost(double growthTicks) {
+        double timeCost = growthTicks * ComplexityConfig.FARMING_TIME_COST_MULTIPLIER.get();
+        return (timeCost + ComplexityConfig.BASE_ACTION_COST.get()) * RENEWABLE_DISCOUNT;
+    }
+
+    private double calculateCost(double growthTicks, double outputAmount) {
+        return calculateCost(growthTicks) / outputAmount;
+    }
+
+    private static String blockId(Block block) {
+        var id = GameRegistryManager.getBlockId(block);
+        return id != null ? id.toString() : "minecraft:air";
     }
 
     @Override
@@ -125,19 +176,13 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
             int stages = simResult.growthStages();
             double growthTicks = stages * BASE_TICKS_PER_STAGE;
-            String dropsSummary = formatDrops(simResult.drops());
 
             for (var dropEntry : simResult.drops().reference2DoubleEntrySet()) {
                 var drop = dropEntry.getKey();
                 double outputAmount = dropEntry.getDoubleValue();
                 if (outputAmount > 0.0) {
-                    String plantItemId = itemId(plantItem);
-                    String blockIdStr = blockId(block);
-                    String dropIdStr = itemId(drop);
-
-                    String details = plantItemId.equals(blockIdStr) ? "Plant %s → harvest for %s".formatted(plantItemId, dropIdStr) :
-                            "Plant %s (becomes %s) → harvest for %s".formatted(plantItemId, blockIdStr, dropIdStr);
-                    var data = new FarmingData(plantItem, block, growthTicks, outputAmount, dropsSummary, details);
+                    String details = buildDetails(plantItem, block, drop);
+                    var data = new FarmingData(plantItem, block, growthTicks, outputAmount, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;
                 }
@@ -146,64 +191,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
         ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
         if (cacheFile != null) FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
-    }
-
-    private long[] computeFingerprint(long worldSeed) {
-        return new long[]{
-                Fingerprints.fnvLong(Fingerprints.FNV_OFFSET, LOGIC_VERSION),
-                Fingerprints.hashAllBlocks(),
-                Fingerprints.hashAllItems(),
-                Fingerprints.hashMods(),
-                worldSeed
-        };
-    }
-
-    private boolean itemPlacesBlock(Item item, Block targetBlock) {
-        return item instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock;
-    }
-
-    @Nullable
-    private Item findPlantItem(Block targetBlock) {
-        var direct = targetBlock.asItem();
-        if (direct != Items.AIR) return direct;
-
-        for (var candidate : GameRegistryManager.getAllItems()) {
-            if (candidate instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock) return candidate;
-        }
-        return null;
-    }
-
-    private double calculateCost(double growthTicks) {
-        double timeCost = growthTicks * ComplexityConfig.FARMING_TIME_COST_MULTIPLIER.get();
-        return (timeCost + ComplexityConfig.BASE_ACTION_COST.get()) * RENEWABLE_DISCOUNT;
-    }
-
-    private double calculateCost(double growthTicks, double outputAmount) {
-        return calculateCost(growthTicks) / outputAmount;
-    }
-
-    private String itemId(Item item) {
-        var id = GameRegistryManager.getItemId(item);
-        return id != null ? id.toString() : "minecraft:air";
-    }
-
-    private String blockId(Block block) {
-        var id = GameRegistryManager.getBlockId(block);
-        return id != null ? id.toString() : "minecraft:air";
-    }
-
-    private String formatDrops(Reference2DoubleMap<Item> drops) {
-        if (drops.isEmpty()) return "[]";
-        var sb = new StringBuilder("[");
-        boolean first = true;
-        var sorted = new ObjectArrayList<>(drops.reference2DoubleEntrySet());
-        sorted.sort(Comparator.comparing(e -> GameRegistryManager.getItemId(e.getKey()).toString()));
-        for (var entry : sorted) {
-            if (!first) sb.append(", ");
-            first = false;
-            sb.append(GameRegistryManager.getItemId(entry.getKey())).append(" x").append(entry.getDoubleValue());
-        }
-        return sb.append(']').toString();
     }
 
     @Override
@@ -282,6 +269,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     }
 
     private record FarmingData(Item plantItem, Block plantBlock, double avgGrowthTicks, double outputAmount,
-                               String dropsSummary, String details) {
+                               String details) {
     }
 }

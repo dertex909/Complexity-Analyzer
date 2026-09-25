@@ -174,7 +174,7 @@ public class RecipeGraph {
         for (var slot : node.getFluidIngredients()) {
             for (var variant : slot.getFluidVariants()) {
                 var normalized = normalize(variant);
-                if (normalized != EMPTY) addFluidUsage(normalized, result);
+                if (normalized != EMPTY) addUsage(fluidUsageMap, normalized, result);
             }
         }
     }
@@ -184,7 +184,7 @@ public class RecipeGraph {
         for (var slot : node.getIngredients()) {
             for (var ingredientStack : slot.getVariants()) {
                 var ingredient = ingredientStack.getItem();
-                if (ingredient != AIR) addItemUsage(ingredient, result);
+                if (ingredient != AIR) addUsage(usageMap, ingredient, result);
             }
         }
     }
@@ -203,14 +203,6 @@ public class RecipeGraph {
             }
             return set;
         });
-    }
-
-    private void addItemUsage(Item ingredient, Item result) {
-        addUsage(usageMap, ingredient, result);
-    }
-
-    private void addFluidUsage(Fluid fluid, Item result) {
-        addUsage(fluidUsageMap, fluid, result);
     }
 
     public ObjectList<RecipeNode> getRecipes(Item item) {

@@ -45,7 +45,8 @@ public final class ThreadPoolManager implements AutoCloseable {
                 var current = INSTANCE.get();
                 if (current != null) current.shutdown();
             }, "Complexity-JVM-Shutdown-Hook"));
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("Failed to register JVM shutdown hook! Graceful cleanup on exit might fail", e);
         }
     }
 

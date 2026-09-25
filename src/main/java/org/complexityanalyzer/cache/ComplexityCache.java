@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ComplexityCache {
 
     private final ConcurrentHashMap<Item, SoftReference<ItemComplexity>> cache = new ConcurrentHashMap<>(4096);
-
     private final ConcurrentHashMap<Item, SoftReference<ComplexityCategory>> categoryCache = new ConcurrentHashMap<>(4096);
 
     private final AtomicLong hits = new AtomicLong(0);

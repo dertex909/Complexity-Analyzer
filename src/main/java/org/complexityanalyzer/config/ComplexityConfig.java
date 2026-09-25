@@ -162,8 +162,7 @@ public class ComplexityConfig {
     }
 
     public static double getMachineTaxMultiplier() {
-        if (!MACHINE_TAX_ENABLED.get()) return 0.0;
-        return MACHINE_TAX_PERCENTAGE.get() / 100.0;
+        return !MACHINE_TAX_ENABLED.get() ? 0.0 : MACHINE_TAX_PERCENTAGE.get() / 100.0;
     }
 
     public static double getFluidNormalizationFactor() {

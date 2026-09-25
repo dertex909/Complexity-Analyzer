@@ -155,6 +155,12 @@ public class BaseResourceData {
         SPECIAL_LOOT("complexityanalyzer.source_type.special_loot", 4.0, "🎁", ChatFormatting.GOLD),
         SPECIAL_ACTION("complexityanalyzer.source_type.special_action", 2.5, "✨", ChatFormatting.LIGHT_PURPLE),
         GENERIC_LOOT("complexityanalyzer.source_type.generic_loot", 3.0, "🎁", ChatFormatting.WHITE),
+        SNIFFER_DIGGING("complexityanalyzer.source_type.sniffer_digging", 1.5, "👃", ChatFormatting.DARK_GREEN),
+        CAT_MORNING_GIFT("complexityanalyzer.source_type.cat_morning_gift", 1.2, "🐱", ChatFormatting.GOLD),
+        PANDA_SNEEZE("complexityanalyzer.source_type.panda_sneeze", 2.0, "🐼", ChatFormatting.GREEN),
+        HERO_OF_THE_VILLAGE("complexityanalyzer.source_type.hero_of_the_village", 2.5, "🎖", ChatFormatting.DARK_PURPLE),
+        TRIAL_SPAWNER("complexityanalyzer.source_type.trial_spawner", 2.0, "🗝", ChatFormatting.GOLD),
+        TRIAL_POT("complexityanalyzer.source_type.trial_pot", 1.2, "🏺", ChatFormatting.YELLOW),
         UNKNOWN("complexityanalyzer.source_type.unknown", 10.0, "❓", ChatFormatting.GRAY),
         UNOBTAINABLE("complexityanalyzer.source_type.unobtainable", Double.POSITIVE_INFINITY, "🚫", ChatFormatting.DARK_RED);
 

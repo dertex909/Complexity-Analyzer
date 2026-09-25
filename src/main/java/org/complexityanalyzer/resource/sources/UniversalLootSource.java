@@ -346,7 +346,9 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     private LootContextDefinition inferContextFromId(ResourceLocation id) {
         var path = id.getPath().toLowerCase(ROOT);
 
-        if (path.startsWith("blocks/") || path.contains("/blocks/") || path.startsWith("entities/") || path.contains("/entities/")) {
+        if (path.startsWith("blocks/") || path.contains("/blocks/") ||
+                path.startsWith("entities/") || path.contains("/entities/") ||
+                path.startsWith("equipment/") || path.contains("/equipment/")) {
             return null;
         }
 
@@ -354,12 +356,28 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.SHEARING, 5.0);
         }
 
-        if (path.startsWith("fishing/") || path.startsWith("gameplay/fishing") || path.contains("/fishing/")) {
+        if (path.startsWith("fishing/") || path.startsWith("gameplay/fishing") || path.contains("/fishing")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.FISHING, 25.0);
         }
 
-        if (path.startsWith("piglin_bartering/") || path.startsWith("gameplay/piglin_bartering") || path.contains("/piglin_bartering/")) {
+        if (path.startsWith("piglin_bartering/") || path.startsWith("gameplay/piglin_bartering") || path.contains("/piglin_bartering")) {
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.PIGLIN_BARTERING, 0.1);
+        }
+
+        if (path.contains("sniffer_digging")) {
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.SNIFFER_DIGGING, 40.0);
+        }
+
+        if (path.contains("cat_morning_gift")) {
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.CAT_MORNING_GIFT, 30.0);
+        }
+
+        if (path.contains("panda_sneeze")) {
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.PANDA_SNEEZE, 80.0);
+        }
+
+        if (path.contains("hero_of_the_village")) {
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.HERO_OF_THE_VILLAGE, 150.0);
         }
 
         if (path.startsWith("chests/") || path.contains("/chests/")) {
@@ -370,8 +388,12 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             return new LootContextDefinition(BaseResourceData.ResourceSourceType.ARCHAEOLOGY, 15.0);
         }
 
-        if (path.startsWith("gameplay/") || path.contains("/gameplay/")) {
-            return new LootContextDefinition(BaseResourceData.ResourceSourceType.GENERIC_LOOT, 50.0);
+        if (path.startsWith("spawners/") || path.contains("trial_chamber")) {
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.TRIAL_SPAWNER, 60.0);
+        }
+
+        if (path.startsWith("pots/") || path.contains("/pots/")) {
+            return new LootContextDefinition(BaseResourceData.ResourceSourceType.TRIAL_POT, 20.0);
         }
 
         return null;

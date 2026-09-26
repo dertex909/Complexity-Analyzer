@@ -19,12 +19,11 @@
 package org.complexityanalyzer.resource.sources.hardcoded;
 
 import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-
-import static net.minecraft.world.item.Items.AIR;
 
 public final class AxeStrippingModule {
 
@@ -41,11 +40,12 @@ public final class AxeStrippingModule {
                 var originalItem = block.asItem();
                 var strippedItem = strippedBlock.asItem();
 
-                if (originalItem != AIR && strippedItem != AIR && originalItem != strippedItem) {
+                if (originalItem != Items.AIR && strippedItem != Items.AIR && originalItem != strippedItem) {
                     var data = new BaseResourceData.Builder(strippedItem)
                             .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
                             .baseFactor(1.0)
                             .addSourceItem(originalItem, 1.0)
+                            .addSourceItem(Items.WOODEN_AXE, 0.01)
                             .details("Stripping with Axe")
                             .build();
 

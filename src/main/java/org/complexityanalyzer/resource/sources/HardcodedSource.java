@@ -32,7 +32,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistry {
 
@@ -40,7 +39,6 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     private static HardcodedSource INSTANCE;
 
     private final ConcurrentHashMap<Item, BaseResourceData> staticSources = new ConcurrentHashMap<>();
-    private final ObjectList<Function<Item, BaseResourceData>> dynamicResolvers = new ObjectArrayList<>();
     private final ObjectList<BiConsumer<Level, IHardcodedSourceRegistry>> initializers = new ObjectArrayList<>();
 
     public HardcodedSource() {
@@ -62,11 +60,6 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
 
     public static boolean isInitialized() {
         return INSTANCE != null;
-    }
-
-    @Override
-    public synchronized void register(Function<Item, BaseResourceData> resolver) {
-        if (resolver != null) dynamicResolvers.add(resolver);
     }
 
     @Override
@@ -93,47 +86,23 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Initialized in {}ms. Static entries: {}, Dynamic resolvers: {}",
-                getName(), System.currentTimeMillis() - start, staticSources.size(), dynamicResolvers.size());
+        ComplexityAnalyzer.LOGGER.info("[{}] Initialized in {}ms. Static entries: {}", getName(), System.currentTimeMillis() - start, staticSources.size());
     }
 
     @Override
     public boolean isRegistered(Item item) {
-        return canProvide(item);
+        return staticSources.containsKey(item);
     }
 
     @Override
     public boolean canProvide(Item item) {
-        if (staticSources.containsKey(item)) return true;
-        for (var resolver : dynamicResolvers) {
-            try {
-                if (resolver.apply(item) != null) return true;
-            } catch (Throwable ignored) {
-            }
-        }
-        return false;
+        return staticSources.containsKey(item);
     }
 
     @Override
     @Nullable
     public BaseResourceData analyze(Item item) {
-        var staticData = staticSources.get(item);
-        if (staticData != null && staticData.isOverride()) return staticData;
-
-        var best = staticData;
-        for (var resolver : dynamicResolvers) {
-            try {
-                var result = resolver.apply(item);
-                if (result != null) {
-                    if (result.isOverride()) return result;
-                    if (best == null || result.getBaseFactor() < best.getBaseFactor()) best = result;
-                }
-            } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.error("[{}] Resolver threw error for item {}", getName(), item, t);
-            }
-        }
-
-        return best;
+        return staticSources.get(item);
     }
 
     @Override

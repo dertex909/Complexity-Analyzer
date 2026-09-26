@@ -30,26 +30,23 @@ import java.util.function.Predicate;
 
 public class FastBiomeFinder {
 
-    private static final ThreadLocal<CachedSamplers> SAMPLER_CACHE = new ThreadLocal<>();
+    public static BlockPos findBiome(ServerLevel level, Predicate<Holder<Biome>> biomePredicate, BlockPos origin, int maxRadius) {
+        var samplers = new Samplers(level.getChunkSource().getGenerator().getBiomeSource(), level.getChunkSource().randomState().sampler());
 
-    private static CachedSamplers getSamplers(ServerLevel level) {
-        var cached = SAMPLER_CACHE.get();
-        if (cached != null && cached.level == level) return cached;
-        var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
-        var sampler = level.getChunkSource().randomState().sampler();
-        var newCache = new CachedSamplers(level, biomeSource, sampler);
-        SAMPLER_CACHE.set(newCache);
-        return newCache;
-    }
-
-    public static BlockPos findBiome(ServerLevel level, Predicate<Holder<Biome>> biomePredicate,
-                                     BlockPos origin, int maxRadius) {
-        var samplers = getSamplers(level);
         int minY = level.getMinBuildHeight();
         int maxY = level.getMaxBuildHeight();
         int totalHeight = maxY - minY;
-        int coarseYStep = Math.max(32, totalHeight / 32);
-        int coarseStep = Math.max(256, maxRadius / 25);
+        int coarseYStep = Math.max(24, totalHeight / 32);
+
+        var match = checkColumn(samplers, biomePredicate, origin.getX(), origin.getZ(), minY, maxY, coarseYStep);
+        if (match != null) return refineToCenter(samplers, biomePredicate, match, minY, maxY);
+
+        if ((origin.getX() != 0 || origin.getZ() != 0) && Math.hypot(origin.getX(), origin.getZ()) <= maxRadius) {
+            match = checkColumn(samplers, biomePredicate, 0, 0, minY, maxY, coarseYStep);
+            if (match != null) return refineToCenter(samplers, biomePredicate, match, minY, maxY);
+        }
+
+        int coarseStep = Math.clamp(maxRadius / 40, 64, 192);
         var coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(), minY, maxY, coarseYStep, maxRadius, coarseStep);
 
         if (coarseMatch == null) {
@@ -57,25 +54,21 @@ public class FastBiomeFinder {
             if (coarseMatch == null) return null;
         }
 
-        return refinePosition(samplers, biomePredicate, coarseMatch, minY, maxY, coarseYStep);
+        return refineToCenter(samplers, biomePredicate, coarseMatch, minY, maxY);
     }
 
-    private static BlockPos gridSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                       int centerX, int centerZ, int minY, int maxY, int yStep,
-                                       int maxRadius, int step) {
-        var match = checkColumn(samplers, predicate, centerX, centerZ, minY, maxY, yStep);
-        if (match != null) return match;
-
+    private static BlockPos gridSearch(Samplers samplers, Predicate<Holder<Biome>> predicate, int centerX, int centerZ,
+                                       int minY, int maxY, int yStep, int maxRadius, int step) {
         for (int distance = step; distance <= maxRadius; distance += step) {
             for (int offset = -distance; offset <= distance; offset += step) {
-                match = checkColumn(samplers, predicate, centerX + offset, centerZ - distance, minY, maxY, yStep);
+                var match = checkColumn(samplers, predicate, centerX + offset, centerZ - distance, minY, maxY, yStep);
                 if (match != null) return match;
                 match = checkColumn(samplers, predicate, centerX + offset, centerZ + distance, minY, maxY, yStep);
                 if (match != null) return match;
             }
 
             for (int offset = -distance + step; offset < distance; offset += step) {
-                match = checkColumn(samplers, predicate, centerX - distance, centerZ + offset, minY, maxY, yStep);
+                var match = checkColumn(samplers, predicate, centerX - distance, centerZ + offset, minY, maxY, yStep);
                 if (match != null) return match;
                 match = checkColumn(samplers, predicate, centerX + distance, centerZ + offset, minY, maxY, yStep);
                 if (match != null) return match;
@@ -85,13 +78,14 @@ public class FastBiomeFinder {
         return null;
     }
 
-    private static BlockPos fastRandomSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+    private static BlockPos fastRandomSearch(Samplers samplers, Predicate<Holder<Biome>> predicate,
                                              BlockPos origin, int maxRadius, int minY, int maxY, int yStep) {
         var random = ThreadLocalRandom.current();
 
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 2500; i++) {
             double angle = random.nextDouble() * Math.PI * 2;
-            double distance = Math.sqrt(random.nextDouble()) * maxRadius;
+            double distanceFactor = (i < 1000) ? random.nextDouble() : Math.sqrt(random.nextDouble());
+            double distance = distanceFactor * maxRadius;
             int x = origin.getX() + (int) (Math.cos(angle) * distance);
             int z = origin.getZ() + (int) (Math.sin(angle) * distance);
             var match = checkColumn(samplers, predicate, x, z, minY, maxY, yStep);
@@ -101,40 +95,68 @@ public class FastBiomeFinder {
         return null;
     }
 
-    private static BlockPos refinePosition(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                           BlockPos rough, int minY, int maxY, int coarseYStep) {
-        int bestX = rough.getX();
-        int bestZ = rough.getZ();
-        int bestY = rough.getY();
+    private static BlockPos refineToCenter(Samplers samplers, Predicate<Holder<Biome>> predicate, BlockPos rough,
+                                           int minY, int maxY) {
+        int x = rough.getX();
+        int y = rough.getY();
+        int z = rough.getZ();
 
-        int startY = Math.max(minY, rough.getY() - coarseYStep);
-        int endY = Math.min(maxY, rough.getY() + coarseYStep);
+        int minX = findBoundary(samplers, predicate, x, y, z, -1, 0);
+        int maxX = findBoundary(samplers, predicate, x, y, z, 1, 0);
+        int centerX = (minX + maxX) / 2;
 
-        for (int y = startY; y < endY; y += 4) {
-            if (checkBiomeFast(samplers, predicate, bestX, y, bestZ)) {
-                bestY = y;
-                break;
-            }
-        }
+        int minZ = findBoundary(samplers, predicate, centerX, y, z, 0, -1);
+        int maxZ = findBoundary(samplers, predicate, centerX, y, z, 0, 1);
+        int centerZ = (minZ + maxZ) / 2;
 
-        for (int step = 32; step >= 16; step /= 2) {
-            for (int dx = -step; dx <= step; dx += step) {
-                for (int dz = -step; dz <= step; dz += step) {
-                    if (dx == 0 && dz == 0) continue;
-                    int testX = bestX + dx;
-                    int testZ = bestZ + dz;
-                    if (checkBiomeFast(samplers, predicate, testX, bestY, testZ)) {
-                        bestX = testX;
-                        bestZ = testZ;
-                    }
-                }
-            }
-        }
+        int bottomY = findVerticalBoundary(samplers, predicate, centerX, centerZ, y, -1, minY);
+        int topY = findVerticalBoundary(samplers, predicate, centerX, centerZ, y, 1, maxY);
+        int centerY = (bottomY + topY) / 2;
 
-        return new BlockPos(bestX, bestY, bestZ);
+        return (checkBiomeFast(samplers, predicate, centerX, centerY, centerZ)) ? new BlockPos(centerX, centerY, centerZ) : rough;
     }
 
-    private static BlockPos checkColumn(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+    private static int findBoundary(Samplers samplers, Predicate<Holder<Biome>> predicate, int startX, int y,
+                                    int startZ, int dx, int dz) {
+        int currX = startX;
+        int currZ = startZ;
+        int step = 16;
+        int limit = 1500;
+
+        for (int i = 0; i < limit; i += step) {
+            currX += dx * step;
+            currZ += dz * step;
+            if (!checkBiomeFast(samplers, predicate, currX, y, currZ)) {
+                int low = 0;
+                int high = step;
+                while (high - low > 4) {
+                    int mid = (low + high) / 2;
+                    int testX = currX - dx * (step - mid);
+                    int testZ = currZ - dz * (step - mid);
+                    if (checkBiomeFast(samplers, predicate, testX, y, testZ)) {
+                        low = mid;
+                    } else {
+                        high = mid;
+                    }
+                }
+                return (dx != 0) ? (currX - dx * (step - low)) : (currZ - dz * (step - low));
+            }
+        }
+        return (dx != 0) ? currX : currZ;
+    }
+
+    private static int findVerticalBoundary(Samplers samplers, Predicate<Holder<Biome>> predicate, int x, int z,
+                                            int startY, int dir, int clampY) {
+        int y = startY;
+        while ((dir > 0 ? y < clampY : y > clampY)) {
+            int nextY = y + dir * 4;
+            if (!checkBiomeFast(samplers, predicate, x, nextY, z)) return y;
+            y = nextY;
+        }
+        return y;
+    }
+
+    private static BlockPos checkColumn(Samplers samplers, Predicate<Holder<Biome>> predicate,
                                         int x, int z, int minY, int maxY, int yStep) {
         for (int y = minY; y < maxY; y += yStep) {
             if (checkBiomeFast(samplers, predicate, x, y, z)) return new BlockPos(x, y, z);
@@ -142,15 +164,14 @@ public class FastBiomeFinder {
         return null;
     }
 
-    private static boolean checkBiomeFast(CachedSamplers samplers, Predicate<Holder<Biome>> predicate, int x, int y, int z) {
+    private static boolean checkBiomeFast(Samplers samplers, Predicate<Holder<Biome>> predicate, int x, int y, int z) {
         try {
-            var biome = samplers.biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, samplers.sampler);
-            return predicate.test(biome);
+            return predicate.test(samplers.biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, samplers.sampler));
         } catch (Exception e) {
             return false;
         }
     }
 
-    private record CachedSamplers(ServerLevel level, BiomeSource biomeSource, Climate.Sampler sampler) {
+    private record Samplers(BiomeSource biomeSource, Climate.Sampler sampler) {
     }
 }

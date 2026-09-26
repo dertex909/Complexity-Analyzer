@@ -45,37 +45,40 @@ public class FastBiomeFinder {
     public static BlockPos findBiome(ServerLevel level, Predicate<Holder<Biome>> biomePredicate,
                                      BlockPos origin, int maxRadius) {
         var samplers = getSamplers(level);
-        int searchY = level.getSeaLevel();
+        int minY = level.getMinBuildHeight();
+        int maxY = level.getMaxBuildHeight();
+        int totalHeight = maxY - minY;
+        int coarseYStep = Math.max(32, totalHeight / 32);
         int coarseStep = Math.max(256, maxRadius / 25);
-        var coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(), searchY, maxRadius, coarseStep);
+        var coarseMatch = gridSearch(samplers, biomePredicate, origin.getX(), origin.getZ(), minY, maxY, coarseYStep, maxRadius, coarseStep);
+
         if (coarseMatch == null) {
-            coarseMatch = fastRandomSearch(samplers, biomePredicate, origin, maxRadius, searchY);
+            coarseMatch = fastRandomSearch(samplers, biomePredicate, origin, maxRadius, minY, maxY, coarseYStep);
             if (coarseMatch == null) return null;
         }
-        return refinePosition(samplers, biomePredicate, coarseMatch, searchY);
+
+        return refinePosition(samplers, biomePredicate, coarseMatch, minY, maxY, coarseYStep);
     }
 
     private static BlockPos gridSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                       int centerX, int centerZ, int y, int maxRadius, int step) {
-        if (checkBiomeFast(samplers, predicate, centerX, y, centerZ)) return new BlockPos(centerX, y, centerZ);
+                                       int centerX, int centerZ, int minY, int maxY, int yStep,
+                                       int maxRadius, int step) {
+        var match = checkColumn(samplers, predicate, centerX, centerZ, minY, maxY, yStep);
+        if (match != null) return match;
 
         for (int distance = step; distance <= maxRadius; distance += step) {
             for (int offset = -distance; offset <= distance; offset += step) {
-                if (checkBiomeFast(samplers, predicate, centerX + offset, y, centerZ - distance)) {
-                    return new BlockPos(centerX + offset, y, centerZ - distance);
-                }
-                if (checkBiomeFast(samplers, predicate, centerX + offset, y, centerZ + distance)) {
-                    return new BlockPos(centerX + offset, y, centerZ + distance);
-                }
+                match = checkColumn(samplers, predicate, centerX + offset, centerZ - distance, minY, maxY, yStep);
+                if (match != null) return match;
+                match = checkColumn(samplers, predicate, centerX + offset, centerZ + distance, minY, maxY, yStep);
+                if (match != null) return match;
             }
 
             for (int offset = -distance + step; offset < distance; offset += step) {
-                if (checkBiomeFast(samplers, predicate, centerX - distance, y, centerZ + offset)) {
-                    return new BlockPos(centerX - distance, y, centerZ + offset);
-                }
-                if (checkBiomeFast(samplers, predicate, centerX + distance, y, centerZ + offset)) {
-                    return new BlockPos(centerX + distance, y, centerZ + offset);
-                }
+                match = checkColumn(samplers, predicate, centerX - distance, centerZ + offset, minY, maxY, yStep);
+                if (match != null) return match;
+                match = checkColumn(samplers, predicate, centerX + distance, centerZ + offset, minY, maxY, yStep);
+                if (match != null) return match;
             }
         }
 
@@ -83,7 +86,7 @@ public class FastBiomeFinder {
     }
 
     private static BlockPos fastRandomSearch(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                             BlockPos origin, int maxRadius, int y) {
+                                             BlockPos origin, int maxRadius, int minY, int maxY, int yStep) {
         var random = ThreadLocalRandom.current();
 
         for (int i = 0; i < 500; i++) {
@@ -91,19 +94,23 @@ public class FastBiomeFinder {
             double distance = Math.sqrt(random.nextDouble()) * maxRadius;
             int x = origin.getX() + (int) (Math.cos(angle) * distance);
             int z = origin.getZ() + (int) (Math.sin(angle) * distance);
-            if (checkBiomeFast(samplers, predicate, x, y, z)) return new BlockPos(x, y, z);
+            var match = checkColumn(samplers, predicate, x, z, minY, maxY, yStep);
+            if (match != null) return match;
         }
 
         return null;
     }
 
     private static BlockPos refinePosition(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
-                                           BlockPos rough, int defaultY) {
+                                           BlockPos rough, int minY, int maxY, int coarseYStep) {
         int bestX = rough.getX();
         int bestZ = rough.getZ();
-        int bestY = defaultY;
+        int bestY = rough.getY();
 
-        for (int y = 64; y <= 200; y += 32) {
+        int startY = Math.max(minY, rough.getY() - coarseYStep);
+        int endY = Math.min(maxY, rough.getY() + coarseYStep);
+
+        for (int y = startY; y < endY; y += 4) {
             if (checkBiomeFast(samplers, predicate, bestX, y, bestZ)) {
                 bestY = y;
                 break;
@@ -125,6 +132,14 @@ public class FastBiomeFinder {
         }
 
         return new BlockPos(bestX, bestY, bestZ);
+    }
+
+    private static BlockPos checkColumn(CachedSamplers samplers, Predicate<Holder<Biome>> predicate,
+                                        int x, int z, int minY, int maxY, int yStep) {
+        for (int y = minY; y < maxY; y += yStep) {
+            if (checkBiomeFast(samplers, predicate, x, y, z)) return new BlockPos(x, y, z);
+        }
+        return null;
     }
 
     private static boolean checkBiomeFast(CachedSamplers samplers, Predicate<Holder<Biome>> predicate, int x, int y, int z) {

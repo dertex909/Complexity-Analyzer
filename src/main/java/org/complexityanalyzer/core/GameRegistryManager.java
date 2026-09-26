@@ -143,8 +143,9 @@ public class GameRegistryManager {
     }
 
     public static Item getFirstItemByTag(TagKey<?> tagKey) {
-        if (tagKey == null || !tagKey.isFor(Registries.ITEM)) return AIR;
-        var itemTag = TagKey.create(Registries.ITEM, tagKey.location());
+        if (tagKey == null) return AIR;
+        var itemTag = tagKey.cast(Registries.ITEM).orElse(null);
+        if (itemTag == null) return AIR;
         var optionalTag = BuiltInRegistries.ITEM.getTag(itemTag);
         if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
             var item = holder.value();
@@ -154,8 +155,9 @@ public class GameRegistryManager {
     }
 
     public static Fluid getFirstFluidByTag(TagKey<?> tagKey) {
-        if (tagKey == null || !tagKey.isFor(Registries.FLUID)) return Fluids.EMPTY;
-        var fluidTag = TagKey.create(Registries.FLUID, tagKey.location());
+        if (tagKey == null) return Fluids.EMPTY;
+        var fluidTag = tagKey.cast(Registries.FLUID).orElse(null);
+        if (fluidTag == null) return Fluids.EMPTY;
         var optionalTag = BuiltInRegistries.FLUID.getTag(fluidTag);
         if (optionalTag.isPresent()) for (var holder : optionalTag.get()) {
             var fluid = holder.value();

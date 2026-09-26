@@ -100,10 +100,6 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         };
     }
 
-    private boolean itemPlacesBlock(Item item, Block targetBlock) {
-        return item instanceof BlockItem blockItem && blockItem.getBlock() == targetBlock;
-    }
-
     @Nullable
     private Item findPlantItem(Block targetBlock) {
         var direct = targetBlock.asItem();
@@ -165,7 +161,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
             Item plantItem = null;
             for (var drop : simResult.drops().keySet()) {
-                if (itemPlacesBlock(drop, block)) {
+                if (drop instanceof BlockItem blockItem && blockItem.getBlock() == block) {
                     plantItem = drop;
                     break;
                 }

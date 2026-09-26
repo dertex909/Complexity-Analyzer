@@ -264,8 +264,7 @@ public final class DeepCollector {
         switch (node) {
             case TagKey<?> tagKey -> {
                 if (tagKey.isFor(ITEM)) {
-                    var itemTag = TagKey.create(ITEM, tagKey.location());
-                    var ing = Ingredient.of(itemTag);
+                    var ing = Ingredient.of(tagKey.cast(ITEM).orElseThrow());
                     if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
                         acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
                     }

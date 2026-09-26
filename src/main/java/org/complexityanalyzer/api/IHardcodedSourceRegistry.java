@@ -18,73 +18,92 @@
 
 package org.complexityanalyzer.api;
 
-import it.unimi.dsi.fastutil.objects.Reference2DoubleMap;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+
 /**
- * Registry for manually defined acquisition sources and value overrides. Use it when the automatic analysis
- * cannot see how an item is obtained, or when you want to force a specific cost.
+ * Universal registry for custom acquisition sources, dynamic item pricing logic, and manual overrides.
  *
- * <p>There are two tiers:
+ * <p>Unlike rigid recipe registrations, this interface allows arbitrary acquisition logic to participate
+ * directly in the analysis pipeline without subclassing or bytecode manipulation.
+ *
+ * <p><b>Registration styles supported:</b>
  * <ul>
- *   <li><b>Normal sources</b> ({@link #registerTransformation}, {@link #registerComplexSource}) participate
- *       alongside discovered sources — the cheapest path still wins.</li>
- *   <li><b>Overrides</b> ({@link #registerOverride}, {@link #registerUnobtainable}) take precedence over
- *       everything else for that item, regardless of cheaper discovered paths.</li>
+ *   <li><b>Dynamic resolvers:</b> {@link #register(Function)} lets you evaluate items on the fly using
+ *       arbitrary predicates, dynamic math, tags, or mod integrations.</li>
+ *   <li><b>Direct bindings:</b> {@link #register(Item, BaseResourceData)} pairs a specific {@link Item}
+ *       with precomputed resource metadata.</li>
+ *   <li><b>World scanners:</b> {@link #register(BiConsumer)} schedules a scanning routine executed during
+ *       pipeline initialization with full access to the server's {@link Level} and registries (e.g. block
+ *       transformations, coral drying, fluid interactions).</li>
  * </ul>
  *
- * <p>The calling mod id is captured automatically for attribution/logging. Register during
- * {@link org.complexityanalyzer.api.event.ComplexityRegistrationEvent}.
+ * <p><b>Addon usage:</b> Subscribe to
+ * {@link org.complexityanalyzer.api.event.ComplexityRegistrationEvent} (fired on {@code NeoForge.EVENT_BUS}
+ * before each build pass) and contribute via {@link org.complexityanalyzer.api.event.ComplexityRegistrationEvent#hardcodedSources()}:
+ * <pre>{@code
+ * @SubscribeEvent
+ * public static void onRegister(ComplexityRegistrationEvent event) {
+ *     // Register an on-the-fly resolver
+ *     event.hardcodedSources().register(item -> {
+ *         if (item.toString().contains("magic_essence")) {
+ *             return new BaseResourceData.Builder(item)
+ *                     .baseFactor(25.0)
+ *                     .details("Harvested via mana siphon")
+ *                     .build();
+ *         }
+ *         return null;
+ *     });
+ *
+ *     // Register a batch scanner that reads the world
+ *     event.hardcodedSources().register((level, registry) -> {
+ *         // Custom world scanning logic here
+ *     });
+ * }
+ * }</pre>
  */
 public interface IHardcodedSourceRegistry {
 
     /**
-     * Registers a simple one-input transformation (e.g. a custom processing step producing {@code result}
-     * from {@code input}).
+     * Registers a dynamic resolution function invoked on-demand when the engine queries an item's base cost.
      *
-     * @param result      the produced item
-     * @param input       the single consumed item (counted as 1 per output)
-     * @param toolWear    optional per-output tool/catalyst wear amounts ({@code null} for none)
-     * @param baseCost    flat cost added on top of the ingredient costs
-     * @param description human-readable explanation shown in tooltips/details
+     * <p>The function should inspect the provided item and return a populated {@link BaseResourceData},
+     * or {@code null} if the item is not handled by this resolver.
+     *
+     * @param resolver functional resolver mapping an {@link Item} to its {@link BaseResourceData} (or {@code null})
      */
-    void registerTransformation(Item result, Item input, Reference2DoubleMap<Item> toolWear, double baseCost,
-                                String description);
+    void register(Function<Item, BaseResourceData> resolver);
 
     /**
-     * Registers a multi-ingredient source with an explicit source type.
+     * Directly associates an item with a predefined {@link BaseResourceData} instance.
      *
-     * @param result      the produced item
-     * @param ingredients consumed items mapped to their per-output amounts
-     * @param baseCost    flat cost added on top of the ingredient costs
-     * @param type        the {@link BaseResourceData.ResourceSourceType} to classify this source as
-     * @param description human-readable explanation
+     * <p>Useful for static item prices, custom drops, or overrides where no complex calculation is required.
+     *
+     * @param item the target item
+     * @param data the acquisition metadata for this item
      */
-    void registerComplexSource(Item result, Reference2DoubleMap<Item> ingredients, double baseCost,
-                               BaseResourceData.ResourceSourceType type, String description);
+    void register(Item item, BaseResourceData data);
 
     /**
-     * Registers a forced override that wins over all discovered sources for {@code result}.
+     * Registers a deferred world-aware initializer called once per engine analysis pass (at server start
+     * and on every reload).
      *
-     * @param result      the item whose cost is being overridden
-     * @param ingredients consumed items mapped to their per-output amounts
-     * @param baseCost    flat cost added on top of the ingredient costs
-     * @param description human-readable explanation
+     * <p>Use this for heavy operations such as scanning {@link net.minecraft.core.registries.BuiltInRegistries#BLOCK},
+     * inspecting biome structures, or registering transformations derived from game world state.
+     *
+     * @param initializer consumer receiving the active server {@link Level} and this {@link IHardcodedSourceRegistry}
      */
-    void registerOverride(Item result, Reference2DoubleMap<Item> ingredients, double baseCost, String description);
+    void register(BiConsumer<Level, IHardcodedSourceRegistry> initializer);
 
     /**
-     * Marks an item as unobtainable (infinite complexity), overriding any discovered source — e.g. creative-only
-     * or debug items that should never be priced as craftable.
+     * Checks whether an acquisition source or dynamic provider is available for the given item.
      *
-     * @param item   the unobtainable item
-     * @param reason human-readable reason shown in details
-     */
-    void registerUnobtainable(Item item, String reason);
-
-    /**
-     * @return {@code true} if a normal source or override has been registered for the item.
+     * @param item the item to test
+     * @return {@code true} if this registry can supply data for {@code item}
      */
     boolean isRegistered(Item item);
 }

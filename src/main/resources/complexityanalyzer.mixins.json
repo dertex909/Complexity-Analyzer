@@ -4,7 +4,13 @@
     "ConnectionMixin",
     "LevelMixin",
     "ServerChunkCacheMixin",
-    "ServerLevelMixin"
+    "ServerLevelMixin",
+    "accessors.ConcretePowderBlockAccessor",
+    "accessors.CoralBlockAccessor",
+    "accessors.CoralFanBlockAccessor",
+    "accessors.CoralPlantBlockAccessor",
+    "accessors.CoralWallFanBlockAccessor",
+    "accessors.MobBucketItemAccessor"
   ],
   "client": [],
   "server": [],

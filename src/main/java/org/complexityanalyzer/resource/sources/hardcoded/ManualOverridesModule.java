@@ -41,6 +41,9 @@ public final class ManualOverridesModule {
 
         rule(registry, Items.DRAGON_BREATH, 100.0, SPECIAL_ACTION, "Collecting dragon breath with bottle", Items.GLASS_BOTTLE, 1.0);
         rule(registry, Items.LINGERING_POTION, 1.0, CRAFTING, "Lingering potion brewing", Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0);
+
+        rule(registry, Items.CARVED_PUMPKIN, 1.0, BLOCK_TRANSFORMATION, "Carving pumpkin with shears", Items.PUMPKIN, 1.0, Items.SHEARS, 0.01);
+        rule(registry, Items.PUMPKIN_SEEDS, 0.25, BLOCK_TRANSFORMATION, "Seeds from carving pumpkin", Items.PUMPKIN, 0.25);
     }
 
     private static void rule(IHardcodedSourceRegistry registry, Item result, double baseCost, BaseResourceData.ResourceSourceType type, String details) {

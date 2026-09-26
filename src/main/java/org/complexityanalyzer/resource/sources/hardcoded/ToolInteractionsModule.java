@@ -39,11 +39,6 @@ public final class ToolInteractionsModule {
     }
 
     public static void register(Level level, IHardcodedSourceRegistry registry) {
-        registerTilling(level, registry);
-        registerPumpkinCarving(registry);
-    }
-
-    private static void registerTilling(Level level, IHardcodedSourceRegistry registry) {
         var hitResult = new BlockHitResult(Vec3.atCenterOf(ZERO), UP, ZERO, false);
         var context = new UseOnContext(level, null, MAIN_HAND, new ItemStack(Items.WOODEN_HOE), hitResult);
 
@@ -69,22 +64,5 @@ public final class ToolInteractionsModule {
                 }
             }
         }
-    }
-
-    private static void registerPumpkinCarving(IHardcodedSourceRegistry registry) {
-        registry.register(Items.CARVED_PUMPKIN, new BaseResourceData.Builder(Items.CARVED_PUMPKIN)
-                .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                .baseFactor(1.0)
-                .addSourceItem(Items.PUMPKIN, 1.0)
-                .addSourceItem(Items.SHEARS, 0.01)
-                .details("Carving pumpkin with shears")
-                .build());
-
-        registry.register(Items.PUMPKIN_SEEDS, new BaseResourceData.Builder(Items.PUMPKIN_SEEDS)
-                .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                .baseFactor(0.25)
-                .addSourceItem(Items.PUMPKIN, 0.25)
-                .details("Seeds from carving pumpkin")
-                .build());
     }
 }

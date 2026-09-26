@@ -19,7 +19,6 @@
 package org.complexityanalyzer.resource.sources;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -39,7 +38,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     private static HardcodedSource INSTANCE;
 
     private final ConcurrentHashMap<Item, BaseResourceData> staticSources = new ConcurrentHashMap<>();
-    private final ObjectList<BiConsumer<Level, IHardcodedSourceRegistry>> initializers = new ObjectArrayList<>();
+    private final ObjectArrayList<BiConsumer<Level, IHardcodedSourceRegistry>> initializers = new ObjectArrayList<>();
 
     public HardcodedSource() {
         INSTANCE = this;

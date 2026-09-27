@@ -1,0 +1,51 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package org.complexityanalyzer.resource.sources.hardcoded;
+
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BonemealableBlock;
+import org.complexityanalyzer.api.IHardcodedSourceRegistry;
+import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.resource.data.BaseResourceData;
+
+public final class TallFlowerDuplicationModule {
+
+    private TallFlowerDuplicationModule() {
+    }
+
+    public static void register(Level ignored, IHardcodedSourceRegistry registry) {
+        for (var block : GameRegistryManager.getAllBlocks()) {
+            var state = block.defaultBlockState();
+            if (!state.is(BlockTags.TALL_FLOWERS) || !(block instanceof BonemealableBlock)) continue;
+            var flowerItem = block.asItem();
+            if (flowerItem == Items.AIR) continue;
+
+            var data = new BaseResourceData.Builder(flowerItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.FARMING)
+                    .baseFactor(1.0)
+                    .addSourceItem(Items.BONE_MEAL, 1.0)
+                    .details("Duplicated by using Bone Meal directly on tall flower")
+                    .build();
+
+            registry.register(flowerItem, data);
+        }
+    }
+}

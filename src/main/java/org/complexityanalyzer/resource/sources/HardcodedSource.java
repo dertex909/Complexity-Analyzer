@@ -51,6 +51,8 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
         register(MossVegetationModule::register);
         register(BucketInteractionsModule::register);
         register(ManualOverridesModule::register);
+        register(GrassBonemealModule::register);
+        register(TallFlowerDuplicationModule::register);
     }
 
     public static IHardcodedSourceRegistry getRegistry() {

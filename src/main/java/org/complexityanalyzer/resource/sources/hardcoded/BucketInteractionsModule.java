@@ -19,7 +19,6 @@
 package org.complexityanalyzer.resource.sources.hardcoded;
 
 import it.unimi.dsi.fastutil.objects.ObjectLists;
-import it.unimi.dsi.fastutil.objects.Reference2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -71,25 +70,20 @@ public final class BucketInteractionsModule {
             var item = holder.value();
 
             if (item instanceof SolidBucketItem solidBucket) {
-                var ingredients = new Reference2DoubleOpenHashMap<Item>();
-                ingredients.put(Items.BUCKET, 1.0);
-                var blockItem = solidBucket.getBlock().asItem();
-                if (blockItem != Items.AIR) ingredients.put(blockItem, 1.0);
-
-                registry.register(item, new BaseResourceData.Builder(item)
+                var data = new BaseResourceData.Builder(item)
                         .sourceType(BaseResourceData.ResourceSourceType.SPECIAL_ACTION)
                         .baseFactor(1.0)
-                        .sourceItems(ingredients)
+                        .addSourceItem(Items.BUCKET, 1.0)
                         .details("Scooping " + solidBucket.getBlock().getName().getString() + " with empty bucket")
-                        .build());
+                        .build();
+
+                registry.register(item, data);
                 continue;
             }
 
             if (item instanceof MobBucketItem mobBucket) {
                 var entityType = ((MobBucketItemAccessor) mobBucket).getType();
                 if (entityType == null) continue;
-                var ingredients = new Reference2DoubleOpenHashMap<Item>();
-                ingredients.put(Items.WATER_BUCKET, 1.0);
 
                 double catchDifficulty = 5.0;
                 if (mobProvider != null) {
@@ -99,12 +93,14 @@ public final class BucketInteractionsModule {
                     catchDifficulty = Math.max(1.0, combatPower * rarity * ComplexityConfig.MOB_DIFFICULTY_SCALER.get());
                 }
 
-                registry.register(item, new BaseResourceData.Builder(item)
+                var data = new BaseResourceData.Builder(item)
                         .sourceType(BaseResourceData.ResourceSourceType.SPECIAL_ACTION)
                         .baseFactor(catchDifficulty)
-                        .sourceItems(ingredients)
+                        .addSourceItem(Items.WATER_BUCKET, 1.0)
                         .details("Catching " + entityType.getDescription().getString() + " with water bucket (Bucketable)")
-                        .build());
+                        .build();
+
+                registry.register(item, data);
             }
         }
     }

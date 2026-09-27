@@ -24,7 +24,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.features.CaveFeatures;
 import net.minecraft.data.worldgen.features.TreeFeatures;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -51,15 +50,12 @@ public final class MossVegetationModule {
             if (dirtItem != Items.AIR && dirtBlock != Blocks.DIRT) {
                 double avgBonemeal = 1.0 / 0.45;
 
-                var ingredients = new Reference2DoubleOpenHashMap<Item>();
-                ingredients.put(Items.AZALEA, 1.0);
-                ingredients.put(Items.DIRT, 1.0);
-                ingredients.put(Items.BONE_MEAL, Math.round(avgBonemeal * 100.0) / 100.0);
-
                 registry.register(dirtItem, new BaseResourceData.Builder(dirtItem)
                         .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
                         .baseFactor(avgBonemeal)
-                        .sourceItems(ingredients)
+                        .addSourceItem(Items.AZALEA, 1.0)
+                        .addSourceItem(Items.DIRT, 1.0)
+                        .addSourceItem(Items.BONE_MEAL, Math.round(avgBonemeal * 100.0) / 100.0)
                         .details("Formed under azalea tree via " + TreeFeatures.AZALEA_TREE.location())
                         .build());
             }
@@ -75,9 +71,7 @@ public final class MossVegetationModule {
             for (int i = 0; i < samples; i++) {
                 var state = stateProvider.getState(random, BlockPos.ZERO);
                 var block = state.getBlock();
-                if (block != Blocks.SHORT_GRASS && block != Blocks.TALL_GRASS) {
-                    sampleCounts.put(block, sampleCounts.getDouble(block) + 1.0);
-                }
+                if (block != Blocks.SHORT_GRASS && block != Blocks.TALL_GRASS) sampleCounts.addTo(block, 1.0);
             }
 
             for (var entry : sampleCounts.reference2DoubleEntrySet()) {
@@ -89,14 +83,11 @@ public final class MossVegetationModule {
                 if (probability <= 0.0) continue;
                 double attemptsPerItem = 1.0 / probability;
 
-                var ingredients = new Reference2DoubleOpenHashMap<Item>();
-                ingredients.put(Items.MOSS_BLOCK, 1.0);
-                ingredients.put(Items.BONE_MEAL, Math.round(attemptsPerItem * 100.0) / 100.0);
-
                 registry.register(item, new BaseResourceData.Builder(item)
                         .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
                         .baseFactor(attemptsPerItem)
-                        .sourceItems(ingredients)
+                        .addSourceItem(Items.MOSS_BLOCK, 1.0)
+                        .addSourceItem(Items.BONE_MEAL, Math.round(attemptsPerItem * 100.0) / 100.0)
                         .details("Sprouted from moss via " + CaveFeatures.MOSS_VEGETATION.location())
                         .build());
             }

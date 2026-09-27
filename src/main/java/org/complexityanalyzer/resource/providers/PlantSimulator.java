@@ -125,25 +125,20 @@ public class PlantSimulator {
     }
 
     public boolean isPlant(Block block) {
+        if (block == null || block == Blocks.AIR) return false;
         try {
             var state = block.defaultBlockState();
-            if (state.isAir() || block == Blocks.AIR) return false;
-            if (block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) return false;
+            if (state.isAir() || state.is(BlockTags.FLOWERS)) return false;
             if (state.is(BlockTags.CROPS) || state.is(BlockTags.SAPLINGS)) return true;
-            float hardness;
-            try {
-                hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-            } catch (Throwable t) {
-                return false;
-            }
-            if (hardness > 0.5f || hardness < 0.0f) return false;
-            if (!(block instanceof BonemealableBlock) && !state.isRandomlyTicking() && findAgeProperty(block) == null)
-                return false;
-            try {
-                return !state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-            } catch (Throwable t) {
-                return false;
-            }
+            if (block == Blocks.FIRE || block == Blocks.SNOW || block == Blocks.TURTLE_EGG) return false;
+
+            var hardness = state.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+            if (hardness < 0.0f || hardness > 0.5f) return false;
+
+            var hasGrowth = block instanceof BonemealableBlock || state.isRandomlyTicking() || findAgeProperty(block) != null;
+            if (!hasGrowth) return false;
+
+            return !state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
         } catch (Throwable t) {
             return false;
         }
@@ -287,8 +282,9 @@ public class PlantSimulator {
             mutablePos.setWithOffset(plantPos, dir);
             for (var b : blocks) {
                 if (b instanceof EntityBlock || b.defaultBlockState().hasBlockEntity()) continue;
-                if (tryGroundWithSetBlock(b.defaultBlockState(), plantState, level, mutablePos, plantPos))
+                if (tryGroundWithSetBlock(b.defaultBlockState(), plantState, level, mutablePos, plantPos)) {
                     return new GroundResult(b, dir);
+                }
             }
         }
         return null;
@@ -321,17 +317,14 @@ public class PlantSimulator {
             if (current.getBlock() != plantBlock) break;
 
             boolean canUseBonemeal = bm != null && bonemealUses < MAX_BONEMEAL;
-            if (canUseBonemeal && bm.isValidBonemealTarget(level, plantPos, current)) {
-                try {
+            try {
+                if (canUseBonemeal && bm.isValidBonemealTarget(level, plantPos, current)) {
                     bm.performBonemeal(level, random, plantPos, current);
                     bonemealUses++;
-                } catch (Throwable ignored) {
-                }
-            } else if (current.isRandomlyTicking()) {
-                try {
+                } else if (current.isRandomlyTicking()) {
                     current.randomTick(level, plantPos, random);
-                } catch (Throwable ignored) {
                 }
+            } catch (Throwable ignored) {
             }
 
             var after = level.getBlockState(plantPos);
@@ -371,7 +364,7 @@ public class PlantSimulator {
         int chunkRadius = (SEARCH_RADIUS >> 4) + 1;
         for (int cx = -chunkRadius; cx <= chunkRadius; cx++) {
             for (int cz = -chunkRadius; cz <= chunkRadius; cz++) {
-                ChunkPos cp = new ChunkPos(originChunkX + cx, originChunkZ + cz);
+                var cp = new ChunkPos(originChunkX + cx, originChunkZ + cz);
                 level.getChunkSource().addRegionTicket(TicketType.FORCED, cp, 2, cp);
             }
         }
@@ -380,35 +373,37 @@ public class PlantSimulator {
         int maxY = Math.min(level.getMaxBuildHeight() - 1, simOriginY + HEIGHT_ABOVE);
         int baseY = simOriginY - DEPTH_BELOW;
 
+        var barrier = Blocks.BARRIER.defaultBlockState();
+        var light = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
+        var air = Blocks.AIR.defaultBlockState();
+
         for (int y = baseY; y <= maxY; y++) {
-            boolean isBaseLayer = y == baseY, isLightLayer = y == maxY;
+            boolean isFloor = y == baseY;
+            boolean isCeiling = y == maxY;
 
             for (int x = -range; x <= BARRIER_RADIUS; x++) {
-                boolean isXBoundary = x == -range | x == BARRIER_RADIUS;
+                boolean isWallX = x == -range || x == BARRIER_RADIUS;
                 int worldX = simOriginX + x;
 
                 for (int z = -range; z <= BARRIER_RADIUS; z++) {
-                    boolean isZBoundary = z == -range | z == BARRIER_RADIUS;
+                    boolean isWallZ = z == -range || z == BARRIER_RADIUS;
                     mutablePos.set(worldX, y, simOriginZ + z);
 
                     try {
                         var current = level.getBlockState(mutablePos);
-                        if (isBaseLayer | isXBoundary | isZBoundary) {
-                            if (!current.is(Blocks.BARRIER)) {
-                                level.setBlock(mutablePos, Blocks.BARRIER.defaultBlockState(), 3);
-                            }
-                        } else if (isLightLayer) {
-                            if (!current.is(Blocks.LIGHT)) {
-                                level.setBlock(mutablePos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
-                            }
+                        if (isFloor || isWallX || isWallZ) {
+                            if (!current.is(Blocks.BARRIER)) level.setBlock(mutablePos, barrier, 3);
+                        } else if (isCeiling) {
+                            if (!current.is(Blocks.LIGHT)) level.setBlock(mutablePos, light, 3);
                         } else if (!current.isAir()) {
-                            level.setBlock(mutablePos, Blocks.AIR.defaultBlockState(), 3);
+                            level.setBlock(mutablePos, air, 3);
                         }
                     } catch (Throwable ignored) {
                     }
                 }
             }
         }
+
         collectAndKillEntities(level, null);
         platformReady = true;
     }

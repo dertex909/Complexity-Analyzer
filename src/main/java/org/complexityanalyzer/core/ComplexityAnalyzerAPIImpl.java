@@ -36,7 +36,6 @@ import java.util.*;
 public final class ComplexityAnalyzerAPIImpl implements ComplexityAnalyzerAPI {
 
     private final AnalysisEngine engine;
-
     private final ComplexityQuery items = new Items();
     private final RecipeData recipes = new Recipes();
     private final MobData mobs = new Mobs();

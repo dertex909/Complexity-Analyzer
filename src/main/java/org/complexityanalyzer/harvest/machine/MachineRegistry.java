@@ -19,7 +19,6 @@
 package org.complexityanalyzer.harvest.machine;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
@@ -29,7 +28,6 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.MachineRegistryCache;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.debug.MachineRegistryDebugLogger;
 import org.jetbrains.annotations.Nullable;
@@ -37,7 +35,8 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.file.Path;
 
 import static net.minecraft.core.BlockPos.ZERO;
-import static net.minecraft.world.item.Items.AIR;
+import static net.minecraft.world.item.Items.*;
+import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 
 public class MachineRegistry {
 
@@ -51,7 +50,7 @@ public class MachineRegistry {
         if (initialized) return;
         registerVanilla();
 
-        var cacheFile = ComplexityConfig.ENABLE_CACHE.get() ? MachineRegistryCache.INSTANCE.file(server) : null;
+        var cacheFile = ENABLE_CACHE.get() ? MachineRegistryCache.INSTANCE.file(server) : null;
         var fingerprint = cacheFile != null ? MachineRegistryCache.INSTANCE.computeFingerprint() : null;
 
         if (cacheFile != null && tryRestoreCache(cacheFile, fingerprint)) {
@@ -63,8 +62,51 @@ public class MachineRegistry {
         ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Total registered {} machines", dynamic);
 
         if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, idMapping);
-
         initialized = true;
+    }
+
+    public boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
+        if (item == AIR) return false;
+
+        boolean added = false;
+        var instList = instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>());
+        if (!instList.contains(item)) {
+            instList.add(item);
+            added = true;
+        }
+
+        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
+        if (typeId != null) {
+            var list = idMapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
+            if (!list.contains(item)) {
+                list.add(item);
+                added = true;
+                ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
+            }
+        }
+        return added;
+    }
+
+    @Nullable
+    public Item getMachineForRecipe(RecipeType<?> type) {
+        var list = getMachinesForRecipe(type);
+        return (list != null && !list.isEmpty()) ? list.getFirst() : null;
+    }
+
+    @Nullable
+    public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
+        return (initialized && type != null) ? instanceMapping.get(type) : null;
+    }
+
+    private void registerVanilla() {
+        registerDynamicMachine(RecipeType.CRAFTING, CRAFTING_TABLE);
+        registerDynamicMachine(RecipeType.SMELTING, FURNACE);
+        registerDynamicMachine(RecipeType.BLASTING, BLAST_FURNACE);
+        registerDynamicMachine(RecipeType.SMOKING, SMOKER);
+        registerDynamicMachine(RecipeType.CAMPFIRE_COOKING, CAMPFIRE);
+        registerDynamicMachine(RecipeType.CAMPFIRE_COOKING, SOUL_CAMPFIRE);
+        registerDynamicMachine(RecipeType.STONECUTTING, STONECUTTER);
+        registerDynamicMachine(RecipeType.SMITHING, SMITHING_TABLE);
     }
 
     private boolean tryRestoreCache(Path cacheFile, MachineRegistryCache.Fingerprint fingerprint) {
@@ -72,7 +114,7 @@ public class MachineRegistry {
         if (restored < 0) return false;
 
         for (var entry : idMapping.object2ObjectEntrySet()) {
-            var rt = BuiltInRegistries.RECIPE_TYPE.get(entry.getKey());
+            var rt = GameRegistryManager.getRecipeType(entry.getKey());
             if (rt == null) continue;
 
             var instList = instanceMapping.computeIfAbsent(rt, k -> new ObjectArrayList<>());
@@ -197,70 +239,5 @@ public class MachineRegistry {
             }
         }
         return count;
-    }
-
-    public boolean registerDynamicMachine(RecipeType<?> recipeType, Item item) {
-        if (item == AIR) return false;
-
-        boolean added = false;
-        var instList = instanceMapping.computeIfAbsent(recipeType, k -> new ObjectArrayList<>());
-        if (!instList.contains(item)) {
-            instList.add(item);
-            added = true;
-        }
-
-        var typeId = GameRegistryManager.getRecipeTypeId(recipeType);
-        if (typeId != null) {
-            var list = idMapping.computeIfAbsent(typeId, k -> new ObjectArrayList<>());
-            if (!list.contains(item)) {
-                list.add(item);
-                added = true;
-                ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
-            }
-        }
-        return added;
-    }
-
-    private void registerVanilla() {
-        register("minecraft:crafting", "minecraft:crafting_table");
-        register("minecraft:smelting", "minecraft:furnace");
-        register("minecraft:blasting", "minecraft:blast_furnace");
-        register("minecraft:smoking", "minecraft:smoker");
-        register("minecraft:campfire_cooking", "minecraft:campfire");
-        register("minecraft:stonecutting", "minecraft:stonecutter");
-        register("minecraft:smithing", "minecraft:smithing_table");
-    }
-
-    private void register(String recipeTypeId, String itemId) {
-        var typeRL = ResourceLocation.parse(recipeTypeId);
-        var itemRL = ResourceLocation.parse(itemId);
-        var item = GameRegistryManager.getItem(itemRL);
-
-        if (item == null || item == AIR) {
-            ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to register machine: {} -> {} (item not found)", recipeTypeId, itemId);
-            return;
-        }
-
-        var list = idMapping.computeIfAbsent(typeRL, k -> new ObjectArrayList<>());
-        if (!list.contains(item)) list.add(item);
-
-        var rt = GameRegistryManager.getRecipeType(typeRL);
-        if (rt != null) {
-            var instList = instanceMapping.computeIfAbsent(rt, k -> new ObjectArrayList<>());
-            if (!instList.contains(item)) instList.add(item);
-        }
-
-        ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Mapped vanilla machine: '{}' -> '{}'", recipeTypeId, itemId);
-    }
-
-    @Nullable
-    public Item getMachineForRecipe(RecipeType<?> type) {
-        var list = getMachinesForRecipe(type);
-        return (list != null && !list.isEmpty()) ? list.getFirst() : null;
-    }
-
-    @Nullable
-    public ObjectList<Item> getMachinesForRecipe(RecipeType<?> type) {
-        return (initialized && type != null) ? instanceMapping.get(type) : null;
     }
 }

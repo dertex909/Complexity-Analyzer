@@ -53,8 +53,6 @@ public interface ComplexityAnalyzerAPI {
      */
     String API_VERSION = "1.0.0";
 
-    // ---- Accessors --------------------------------------------------------------------------------------
-
     /**
      * @return the live API instance.
      * @throws IllegalStateException if accessed before the mod has installed it (i.e. before server start).
@@ -82,14 +80,10 @@ public interface ComplexityAnalyzerAPI {
         return Holder.instance != null;
     }
 
-    // ---- Lifecycle --------------------------------------------------------------------------------------
-
     /**
      * @return {@code true} once a full analysis pass has completed and all queries return real data.
      */
     boolean isReady();
-
-    // ---- Read views -------------------------------------------------------------------------------------
 
     /**
      * Computed item complexities and difficulty categories.
@@ -115,8 +109,6 @@ public interface ComplexityAnalyzerAPI {
      * Machine-per-recipe-type registry.
      */
     MachineData machines();
-
-    // ---- Live registries (also exposed via the registration event) --------------------------------------
 
     /**
      * Register/query bosses. Changes take effect on the next analysis build.

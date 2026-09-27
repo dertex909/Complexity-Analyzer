@@ -21,6 +21,7 @@ package org.complexityanalyzer.api;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.function.BiConsumer;
 
@@ -39,6 +40,7 @@ import java.util.function.BiConsumer;
  *       transformations, coral drying, fluid interactions).</li>
  * </ul>
  */
+@ApiStatus.NonExtendable
 public interface IHardcodedSourceRegistry {
 
     /**

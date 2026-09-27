@@ -57,7 +57,6 @@ public class PlantSimulator {
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
     private static final int BARRIER_RADIUS = 16;
     private static final int SEARCH_RADIUS = 32;
-    private static final int CLEAR_EMPTY_SHELL_GAP = 8;
     private static final int DEPTH_BELOW = 30;
     private static final int HEIGHT_ABOVE = 30;
     private static final int MAX_TICKS = 50;
@@ -109,7 +108,7 @@ public class PlantSimulator {
                 }
             }
 
-            collectAndClear(level, null, null, 0L);
+            collectAndClear(level, null, null, 0L, true);
             clearEntitiesInsideBox(level);
             releasePlatform(level);
             fakePlayer = null;
@@ -144,6 +143,17 @@ public class PlantSimulator {
         }
     }
 
+    private boolean hasTallGrowth(ServerLevel level, BlockPos plantPos) {
+        int py = plantPos.getY() + 3;
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                mutablePos.set(plantPos.getX() + dx, py, plantPos.getZ() + dz);
+                if (!level.getBlockState(mutablePos).isAir()) return true;
+            }
+        }
+        return false;
+    }
+
     private void clearEntitiesInsideBox(ServerLevel level) {
         var interiorBox = new AABB(simOriginX - BARRIER_RADIUS, simOriginY - DEPTH_BELOW,
                 simOriginZ - BARRIER_RADIUS, simOriginX + BARRIER_RADIUS,
@@ -160,7 +170,7 @@ public class PlantSimulator {
         level.random.setSeed(blockSeed);
 
         collectAndKillEntities(level, null);
-        collectAndClear(level, null, null, blockSeed);
+        collectAndClear(level, null, null, blockSeed, false);
 
         var ground = findSuitableGround(plantBlock, level);
         if (ground == null) return null;
@@ -176,8 +186,9 @@ public class PlantSimulator {
         var matureLoot = simulateMatureLoot(plantBlock, level, ground, blockSeed);
         addDrops(drops, matureLoot);
 
+        boolean isBig = hasTallGrowth(level, plantPos);
         var worldDrops = new Reference2DoubleOpenHashMap<Item>();
-        collectAndClear(level, worldDrops, groundPos, blockSeed);
+        collectAndClear(level, worldDrops, groundPos, blockSeed, isBig);
         collectAndKillEntities(level, worldDrops);
 
         for (var e : worldDrops.reference2DoubleEntrySet()) {
@@ -369,7 +380,7 @@ public class PlantSimulator {
             }
         }
 
-        int range = BARRIER_RADIUS + 1;
+        int r = BARRIER_RADIUS;
         int maxY = Math.min(level.getMaxBuildHeight() - 1, simOriginY + HEIGHT_ABOVE);
         int baseY = simOriginY - DEPTH_BELOW;
 
@@ -379,21 +390,22 @@ public class PlantSimulator {
 
         for (int y = baseY; y <= maxY; y++) {
             boolean isFloor = y == baseY;
-            boolean isCeiling = y == maxY;
+            boolean isRoof = y == maxY;
+            boolean isLightLayer = y == maxY - 1;
 
-            for (int x = -range; x <= BARRIER_RADIUS; x++) {
-                boolean isWallX = x == -range || x == BARRIER_RADIUS;
+            for (int x = -r; x <= r; x++) {
+                boolean isWallX = x == -r || x == r;
                 int worldX = simOriginX + x;
 
-                for (int z = -range; z <= BARRIER_RADIUS; z++) {
-                    boolean isWallZ = z == -range || z == BARRIER_RADIUS;
+                for (int z = -r; z <= r; z++) {
+                    boolean isWallZ = z == -r || z == r;
                     mutablePos.set(worldX, y, simOriginZ + z);
 
                     try {
                         var current = level.getBlockState(mutablePos);
-                        if (isFloor || isWallX || isWallZ) {
+                        if (isFloor || isRoof || isWallX || isWallZ) {
                             if (!current.is(Blocks.BARRIER)) level.setBlock(mutablePos, barrier, 3);
-                        } else if (isCeiling) {
+                        } else if (isLightLayer) {
                             if (!current.is(Blocks.LIGHT)) level.setBlock(mutablePos, light, 3);
                         } else if (!current.isAir()) {
                             level.setBlock(mutablePos, air, 3);
@@ -432,53 +444,31 @@ public class PlantSimulator {
         }
     }
 
-    private void collectAndClear(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops, @Nullable BlockPos groundPos, long blockSeed) {
+    private void collectAndClear(ServerLevel level, @Nullable Reference2DoubleMap<Item> drops, @Nullable BlockPos groundPos, long blockSeed, boolean fullBox) {
         long groundPosLong = groundPos != null ? groundPos.asLong() : BlockPos.asLong(simOriginX, simOriginY - 1, simOriginZ);
-        int minY = simOriginY - DEPTH_BELOW;
-        int maxY = Math.min(level.getMaxBuildHeight() - 1, simOriginY + HEIGHT_ABOVE);
-        boolean shouldCollectDrops = drops != null;
         var air = Blocks.AIR.defaultBlockState();
+        boolean shouldCollectDrops = drops != null;
 
-        for (int y = minY; y <= maxY; y++) {
-            mutablePos.set(simOriginX, y, simOriginZ);
-            try {
-                var state = level.getBlockState(mutablePos);
-                if (state.isAir() || isManagedPlatformBlock(state) || mutablePos.asLong() == groundPosLong) continue;
-                if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops, blockSeed);
-                level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
-            } catch (Throwable ignored) {
-            }
-        }
+        int r = fullBox ? BARRIER_RADIUS : 2;
+        int minY = fullBox ? (simOriginY - DEPTH_BELOW) : (simOriginY - 1);
+        int maxY = fullBox ? Math.min(level.getMaxBuildHeight() - 1, simOriginY + HEIGHT_ABOVE) : (simOriginY + 4);
 
-        int radius = 1;
-        int lastFoundRadius = 1;
-        while (radius <= SEARCH_RADIUS) {
-            boolean foundBlocks = false;
-            int prevRadius = radius - 2;
-            for (int y = minY; y <= maxY; y++) {
-                for (int x = -radius; x <= radius; x++) {
-                    int worldX = simOriginX + x;
-                    for (int z = -radius; z <= radius; z++) {
-                        boolean isOnBoundary = Math.abs(x) == radius || Math.abs(z) == radius || Math.abs(y - simOriginY) == radius;
-                        if (prevRadius > 0 && !isOnBoundary) continue;
-                        mutablePos.set(worldX, y, simOriginZ + z);
-                        try {
-                            var state = level.getBlockState(mutablePos);
-                            if (state.isAir() || isManagedPlatformBlock(state)) continue;
+        for (int y = minY + 1; y < maxY; y++) {
+            for (int x = -r + 1; x < r; x++) {
+                int worldX = simOriginX + x;
+                for (int z = -r + 1; z < r; z++) {
+                    mutablePos.set(worldX, y, simOriginZ + z);
+                    if (mutablePos.asLong() == groundPosLong) continue;
 
-                            if (mutablePos.asLong() != groundPosLong) {
-                                foundBlocks = true;
-                                if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops, blockSeed);
-                            }
-                            level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
-                        } catch (Throwable ignored) {
-                        }
+                    try {
+                        var state = level.getBlockState(mutablePos);
+                        if (state.isAir() || isManagedPlatformBlock(state)) continue;
+                        if (shouldCollectDrops) collectDropsAt(level, mutablePos, state, drops, blockSeed);
+                        level.setBlock(mutablePos, air, FLAG_NO_UPDATE);
+                    } catch (Throwable ignored) {
                     }
                 }
             }
-            if (foundBlocks) lastFoundRadius = radius;
-            else if (radius - lastFoundRadius >= CLEAR_EMPTY_SHELL_GAP) break;
-            radius += 2;
         }
     }
 

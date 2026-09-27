@@ -154,12 +154,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return HttpHeaderValues.APPLICATION_OCTET_STREAM.toString();
     }
 
-    public static boolean isSupportedExtension(String fileName) {
-        if (fileName == null) return false;
-        int dot = fileName.lastIndexOf(DOT);
-        return dot != -1 && MIME_TYPES.containsKey(fileName.substring(dot).toLowerCase());
-    }
-
     private static boolean isSafePath(String path) {
         if (path == null) return false;
         return !path.contains("..")

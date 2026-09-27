@@ -21,10 +21,7 @@ package org.complexityanalyzer.network.web;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.*;
 
 public final class ViewerWatcher {
 
@@ -36,26 +33,26 @@ public final class ViewerWatcher {
 
     public static synchronized void start() {
         var devDir = CabinResourceResolver.findDevDir();
-        if (devDir == null || running) return;
+        var packsDir = CabinResourceResolver.getActivePacksDir();
+
+        if (devDir == null && packsDir == null) return;
+        if (running) return;
         running = true;
 
         watcherThread = Thread.ofVirtual().name("Complexity-Viewer-Watcher").start(() -> {
             try (var watchService = FileSystems.getDefault().newWatchService()) {
 
-                try (var stream = Files.walk(devDir)) {
-                    stream.filter(Files::isDirectory).forEach(dir -> {
-                        try {
-                            dir.register(watchService,
-                                    StandardWatchEventKinds.ENTRY_MODIFY,
-                                    StandardWatchEventKinds.ENTRY_CREATE,
-                                    StandardWatchEventKinds.ENTRY_DELETE);
-                        } catch (IOException ignored) {
-                        }
-                    });
+                if (devDir != null && Files.isDirectory(devDir)) {
+                    registerTree(devDir, watchService);
+                    ComplexityAnalyzer.LOGGER.info("[WebDev] Watching dev UI directory: {}", devDir);
+                }
+
+                if (packsDir != null && Files.isDirectory(packsDir)) {
+                    registerTree(packsDir, watchService);
+                    ComplexityAnalyzer.LOGGER.info("[WebDev] Watching custom packs directory: {}", packsDir);
                 }
 
                 long lastReload = 0;
-                ComplexityAnalyzer.LOGGER.info("[WebDev] Live reload watcher active on: {} (Virtual Thread)", devDir);
 
                 while (running && !Thread.currentThread().isInterrupted()) {
                     var key = watchService.take();
@@ -69,16 +66,12 @@ public final class ViewerWatcher {
                         var fullPath = dir.resolve(context);
 
                         if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && Files.isDirectory(fullPath)) {
-                            try {
-                                fullPath.register(watchService,
-                                        StandardWatchEventKinds.ENTRY_MODIFY,
-                                        StandardWatchEventKinds.ENTRY_CREATE,
-                                        StandardWatchEventKinds.ENTRY_DELETE);
-                            } catch (IOException ignored) {
-                            }
+                            registerTree(fullPath, watchService);
+                            shouldReload = true;
                         }
 
-                        if (CabinNettyHandler.isSupportedExtension(context.toString())) shouldReload = true;
+                        String name = context.toString();
+                        if (!name.startsWith(".") && !name.endsWith("~") && !name.endsWith(".tmp")) shouldReload = true;
                     }
 
                     long now = System.currentTimeMillis();
@@ -95,6 +88,21 @@ public final class ViewerWatcher {
                 ComplexityAnalyzer.LOGGER.error("[WebDev] Watcher error", e);
             }
         });
+    }
+
+    private static void registerTree(Path root, WatchService watchService) {
+        try (var stream = Files.walk(root)) {
+            stream.filter(Files::isDirectory).forEach(dir -> {
+                try {
+                    dir.register(watchService,
+                            StandardWatchEventKinds.ENTRY_MODIFY,
+                            StandardWatchEventKinds.ENTRY_CREATE,
+                            StandardWatchEventKinds.ENTRY_DELETE);
+                } catch (IOException ignored) {
+                }
+            });
+        } catch (Exception ignored) {
+        }
     }
 
     public static synchronized void stop() {

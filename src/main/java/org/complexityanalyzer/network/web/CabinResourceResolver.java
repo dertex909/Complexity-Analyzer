@@ -56,6 +56,7 @@ public final class CabinResourceResolver {
 
     private static final String PACKS_DIR_NAME = "complexity_packs";
     private static final Path PACKS_DIR = Path.of(PACKS_DIR_NAME);
+    private static final Path RUN_PACKS_DIR = Path.of("run", PACKS_DIR_NAME);
     private static final Path DEV_PACKS_DIR = Path.of("..", PACKS_DIR_NAME);
 
     private static final String SRC_DIR = "src/main/resources" + VIEWER_BASE;
@@ -157,8 +158,9 @@ public final class CabinResourceResolver {
         return modifiedHtml.getBytes(StandardCharsets.UTF_8);
     }
 
-    private static Path getActivePacksDir() {
+    public static Path getActivePacksDir() {
         if (Files.isDirectory(PACKS_DIR)) return PACKS_DIR;
+        if (Files.isDirectory(RUN_PACKS_DIR)) return RUN_PACKS_DIR;
         if (Files.isDirectory(DEV_PACKS_DIR)) return DEV_PACKS_DIR;
 
         try {
@@ -283,6 +285,10 @@ public final class CabinResourceResolver {
             }
 
             if (!obj.has(PROP_ORDER)) obj.addProperty(PROP_ORDER, DEFAULT_TAB_ORDER);
+
+            ComplexityAnalyzer.LOGGER.info("[WebTabs] Discovered tab: {} [{}] from namespace: {}",
+                    obj.get("id"), obj.get("title"), namespace);
+
             return obj;
         } catch (Exception e) {
             return null;

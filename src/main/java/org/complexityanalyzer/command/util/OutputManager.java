@@ -42,7 +42,7 @@ public class OutputManager {
     private static MutableComponent toMutableComponent(Object obj) {
         if (obj instanceof Component c) return c.copy();
         if (obj instanceof String s) {
-            if (s.indexOf('.') != -1 && s.indexOf(' ') == -1) return Component.translatable(s);
+            if (s.contains(".") && !s.contains(" ")) return Component.translatable(s);
             return Component.literal(s);
         }
         return Component.literal(String.valueOf(obj));

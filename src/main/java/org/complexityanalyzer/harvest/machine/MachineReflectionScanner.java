@@ -56,13 +56,8 @@ public final class MachineReflectionScanner {
     }
 
     private static boolean isCandidateMethodName(String name) {
-        if (name.length() < 3) return false;
-        return switch (name.charAt(0)) {
-            case 'g' -> name.startsWith("get");
-            case 'r' -> name.startsWith("recipe");
-            case 't' -> name.startsWith("type");
-            default -> false;
-        };
+        if (name == null || name.length() < 3) return false;
+        return name.startsWith("get") || name.startsWith("recipe") || name.startsWith("type");
     }
 
     public int scanBlockEntityInstance(BlockEntity be, Item machineItem, MachineRegistryDebugLogger logger) {

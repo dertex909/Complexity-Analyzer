@@ -1,63 +1,52 @@
 plugins {
-    id 'java-library'
-    id 'maven-publish'
-    id 'idea'
-    id 'net.neoforged.moddev' version '2.0.144'
-    id 'me.modmuss50.mod-publish-plugin' version '2.2.0'
+    id("java-library")
+    id("maven-publish")
+    id("idea")
+    id("net.neoforged.moddev").version("2.0.144")
+    id("me.modmuss50.mod-publish-plugin").version("2.2.0")
+}
+
+repositories {
+    maven { url = "https://maven.blamejared.com/" }
 }
 
 version = mod_version
 group = mod_group_id
-
-repositories {
-    maven {
-        name = "Jared's maven"
-        url = "https://maven.blamejared.com/"
-    }
-}
-
-base {
-    archivesName = mod_id
-}
-
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
-    withSourcesJar()
-}
+base.archivesName = mod_id
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.withSourcesJar()
+idea.module.downloadSources = true
+idea.module.downloadJavadoc = true
+sourceSets.main.resources.srcDir("src/generated/resources")
 
 neoForge {
     version = project.neo_version
+    mods.create(mod_id).sourceSet(sourceSets.main)
 
     runs {
-        client {
-            client()
-        }
+        client.client()
 
         server {
             server()
-            programArgument '--nogui'
+            programArgument("--nogui")
         }
 
-        gameTestServer {
-            type = "gameTestServer"
-        }
+        gameTestServer.type = "gameTestServer"
 
         data {
             data()
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            programArguments.addAll(
+                    "--mod", project.mod_id, "--all",
+                    "--output", file("src/generated/resources/").path,
+                    "--existing", file("src/main/resources/").path
+            )
         }
 
         configureEach {
-            systemProperty('forge.logging.markers', 'REGISTRIES')
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty("forge.logging.markers", "REGISTRIES")
+            systemProperty("neoforge.enabledGameTestNamespaces", project.mod_id)
             logLevel = org.slf4j.event.Level.DEBUG
             additionalRuntimeClasspathConfiguration.extendsFrom(project.configurations.implementation)
-        }
-    }
-
-    mods {
-        "${mod_id}" {
-            sourceSet(sourceSets.main)
         }
     }
 }
@@ -77,19 +66,14 @@ dependencies {
     runtimeOnly(jei)
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
 processResources {
-    exclude '**/*.py'
-
-    String computedNeoVersionRange = "[${neo_version},)"
-    String computedMinecraftVersionRange = "[${minecraft_version}]"
+    exclude("**/*.py")
 
     var replaceProperties = [
             minecraft_version      : minecraft_version,
-            minecraft_version_range: computedMinecraftVersionRange,
+            minecraft_version_range: "[${minecraft_version}]",
             neo_version            : neo_version,
-            neo_version_range      : computedNeoVersionRange,
+            neo_version_range      : "[${neo_version},)",
             loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
@@ -98,16 +82,9 @@ processResources {
             mod_authors            : mod_authors,
             mod_description        : mod_description
     ]
-    inputs.properties replaceProperties
+    inputs.properties(replaceProperties)
 
-    filesMatching('META-INF/neoforge.mods.toml') { expand replaceProperties }
-}
-
-idea {
-    module {
-        downloadSources = true
-        downloadJavadoc = true
-    }
+    filesMatching("META-INF/neoforge.mods.toml") { expand(replaceProperties) }
 }
 
 publishMods {

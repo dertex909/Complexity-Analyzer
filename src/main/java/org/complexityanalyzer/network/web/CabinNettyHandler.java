@@ -39,9 +39,10 @@ import static java.util.Base64.getUrlEncoder;
 
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
-    private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
+    public static final String PREFIX = "u";
     private static final ConcurrentHashMap.KeySetView<String, Boolean> uniqueVisitors = ConcurrentHashMap.newKeySet();
     private static final ConcurrentHashMap<String, String> MIME_TYPES = new ConcurrentHashMap<>();
+    private static final String PREFIX_PATH = "/" + PREFIX + "/";
     private static volatile String cachedToken = null;
 
     static {
@@ -144,6 +145,20 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return "application/octet-stream";
     }
 
+    public static boolean isSupportedExtension(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        return dot != -1 && MIME_TYPES.containsKey(fileName.substring(dot).toLowerCase());
+    }
+
+    private static boolean isSafePath(String path) {
+        if (path == null) return false;
+        return !path.contains("..")
+                && !path.contains("//")
+                && !path.contains("\\")
+                && !path.contains(":")
+                && !path.contains("\0");
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
         boolean keepAlive = HttpUtil.isKeepAlive(request);
@@ -170,12 +185,57 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
         if (path.isEmpty() || path.equals("/")) path = "/index.html";
 
+        if (!isSafePath(path)) {
+            sendError(ctx, HttpResponseStatus.BAD_REQUEST, keepAlive);
+            return;
+        }
+
         if (path.equals("/api/meta")) {
             handleMeta(ctx, keepAlive);
         } else if (path.equals("/api/cabin")) {
             handleCabin(ctx, keepAlive);
+        } else if (path.startsWith(PREFIX_PATH)) {
+            handleExternalResource(ctx, path.substring(PREFIX_PATH.length()), keepAlive);
         } else {
             serveResource(ctx, path, getMimeType(path), keepAlive);
+        }
+    }
+
+    private void handleExternalResource(ChannelHandlerContext ctx, String extPath, boolean keepAlive) {
+        int slash = extPath.indexOf('/');
+        if (slash == -1) {
+            sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
+            return;
+        }
+
+        String namespace = extPath.substring(0, slash);
+        String subpath = extPath.substring(slash + 1);
+
+        var data = CabinResourceResolver.resolveExternal(namespace, subpath);
+        if (data == null) {
+            sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
+            return;
+        }
+
+        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, getMimeType(subpath));
+        finish(ctx, response, keepAlive);
+    }
+
+    private void serveResource(ChannelHandlerContext ctx, String path, String mimeType, boolean keepAlive) {
+        try {
+            var data = CabinResourceResolver.resolveInternal(path);
+            if (data == null) {
+                sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
+                return;
+            }
+
+            if (path.equals("/index.html")) data = CabinResourceResolver.injectIndexHtml(data, getToken());
+            var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
+            response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
+            finish(ctx, response, keepAlive);
+        } catch (Exception e) {
+            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
         }
     }
 
@@ -228,27 +288,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 
         finish(ctx, response, keepAlive);
-    }
-
-    private void serveResource(ChannelHandlerContext ctx, String path, String mimeType, boolean keepAlive) {
-        if (path.contains("..") || path.contains("//")) {
-            sendError(ctx, HttpResponseStatus.BAD_REQUEST, keepAlive);
-            return;
-        }
-
-        try (var in = getClass().getResourceAsStream(VIEWER_BASE + path)) {
-            if (in == null) {
-                sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
-                return;
-            }
-
-            byte[] data = in.readAllBytes();
-            var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
-            response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
-            finish(ctx, response, keepAlive);
-        } catch (Exception e) {
-            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
-        }
     }
 
     private void sendResponse(ChannelHandlerContext ctx, String content, boolean keepAlive) {

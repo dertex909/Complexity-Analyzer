@@ -30,6 +30,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.network.web.StandaloneWebServer;
+import org.complexityanalyzer.network.web.ViewerWatcher;
 
 import static org.complexityanalyzer.config.ComplexityConfig.SPEC;
 
@@ -43,10 +44,12 @@ public final class WebLifecycleEvents {
     public static void onServerStarted(ServerStartedEvent event) {
         CabinNettyHandler.resetToken();
         StandaloneWebServer.start();
+        ViewerWatcher.start();
     }
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        ViewerWatcher.stop();
         StandaloneWebServer.stop();
         try {
             CabinBackgroundService.getInstance().clear();

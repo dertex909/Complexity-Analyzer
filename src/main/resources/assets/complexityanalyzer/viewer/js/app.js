@@ -38,6 +38,43 @@ import {
 import {renderFluidRecipesView, renderFluidUsesView} from "./views/sub/fluid-sub-views.js";
 import {renderCraftTreeView} from "./tree/craft-tree.js";
 
+const GLOBAL_KEY = {
+    TABS: "__COMPLEXITY_TABS__",
+    TOKEN: "__COMPLEXITY_TOKEN__"
+};
+
+const TAB_PROP = {
+    ID: "id",
+    TITLE: "title",
+    SCRIPT_URL: "scriptUrl",
+    STYLES: "styles",
+    MODULE: "_module",
+    NAVIGATE: "navigate",
+    ON_OPEN: "onOpen",
+    ON_CLOSE: "onClose"
+};
+
+const WS_EVENT = {
+    RELOAD: "reload"
+};
+
+const TAB = {
+    OVERVIEW: "overview",
+    ITEMS: "items",
+    FLUIDS: "fluids",
+    MOBS: "mobs",
+    SOURCES: "sources",
+    GRAPH: "graph",
+    CRAFT_TREE: "craft-tree",
+    ITEM_RECIPES: "item-recipes",
+    ITEM_MACHINE_RECIPES: "item-machine-recipes",
+    ITEM_USES: "item-uses",
+    ITEM_BASE_SOURCES: "item-base-sources",
+    FLUID_RECIPES: "fluid-recipes",
+    FLUID_USES: "fluid-uses",
+    MOB_DROPS: "mob-drops"
+};
+
 const fmtInt = new Intl.NumberFormat("en-US");
 
 function setStatus(cls, text) {
@@ -48,46 +85,134 @@ function setStatus(cls, text) {
 }
 
 const VIEW_RENDERERS = {
-    overview: renderOverview,
-    items: renderItems,
-    fluids: renderFluids,
-    mobs: renderMobs,
-    sources: renderSources,
-    graph: renderGraph,
-    "craft-tree": renderCraftTreeView,
-    "item-recipes": renderItemRecipesView,
-    "item-machine-recipes": renderItemMachineRecipesView,
-    "item-uses": renderItemUsesView,
-    "item-base-sources": renderItemBaseSourcesView,
-    "fluid-recipes": renderFluidRecipesView,
-    "fluid-uses": renderFluidUsesView,
-    "mob-drops": renderMobDropsView,
+    [TAB.OVERVIEW]: renderOverview,
+    [TAB.ITEMS]: renderItems,
+    [TAB.FLUIDS]: renderFluids,
+    [TAB.MOBS]: renderMobs,
+    [TAB.SOURCES]: renderSources,
+    [TAB.GRAPH]: renderGraph,
+    [TAB.CRAFT_TREE]: renderCraftTreeView,
+    [TAB.ITEM_RECIPES]: renderItemRecipesView,
+    [TAB.ITEM_MACHINE_RECIPES]: renderItemMachineRecipesView,
+    [TAB.ITEM_USES]: renderItemUsesView,
+    [TAB.ITEM_BASE_SOURCES]: renderItemBaseSourcesView,
+    [TAB.FLUID_RECIPES]: renderFluidRecipesView,
+    [TAB.FLUID_USES]: renderFluidUsesView,
+    [TAB.MOB_DROPS]: renderMobDropsView,
 };
 
 const SELECTION_DEPENDENT_TABS = new Set([
-    "item-recipes",
-    "item-machine-recipes",
-    "item-uses",
-    "item-base-sources",
-    "fluid-recipes",
-    "fluid-uses",
-    "mob-drops"
+    TAB.ITEM_RECIPES,
+    TAB.ITEM_MACHINE_RECIPES,
+    TAB.ITEM_USES,
+    TAB.ITEM_BASE_SOURCES,
+    TAB.FLUID_RECIPES,
+    TAB.FLUID_USES,
+    TAB.MOB_DROPS
 ]);
 
 let lastRenderedTab = null;
 let lastRenderedItem = null;
 let lastRenderedMob = null;
+let activeCustomPlugin = null;
+
+const CUSTOM_TABS_MAP = new Map();
+
+function initCustomTabs() {
+    const tabs = window[GLOBAL_KEY.TABS];
+    if (!Array.isArray(tabs) || tabs.length === 0) return;
+
+    const nav = document.getElementById("main-tabs");
+    const main = document.getElementById("main-content");
+    if (!nav || !main) return;
+
+    for (const tab of tabs) {
+        if (!tab || !tab[TAB_PROP.ID] || !tab[TAB_PROP.SCRIPT_URL]) continue;
+        const tabId = tab[TAB_PROP.ID];
+        const tabTitle = tab[TAB_PROP.TITLE] || tabId;
+        CUSTOM_TABS_MAP.set(tabId, tab);
+
+        const btn = document.createElement("button");
+        btn.className = "tab custom-tab";
+        btn.dataset.tab = tabId;
+        btn.setAttribute("role", "tab");
+        btn.textContent = tabTitle;
+        nav.appendChild(btn);
+
+        const panel = document.createElement("section");
+        panel.className = "panel custom-tab-panel";
+        panel.hidden = true;
+        panel.id = "tab-" + tabId;
+        main.appendChild(panel);
+
+        VIEW_RENDERERS[tabId] = (container) => renderCustomTab(tab, container);
+    }
+}
+
+async function renderCustomTab(tab, container) {
+    const tabId = tab[TAB_PROP.ID];
+    const scriptUrl = tab[TAB_PROP.SCRIPT_URL];
+    const styles = tab[TAB_PROP.STYLES];
+
+    try {
+        let shadow = container.shadowRoot;
+        if (!shadow) {
+            shadow = container.attachShadow({mode: "open"});
+
+            if (Array.isArray(styles)) {
+                for (const styleUrl of styles) {
+                    const link = document.createElement("link");
+                    link.rel = "stylesheet";
+                    link.href = styleUrl;
+                    shadow.appendChild(link);
+                }
+            }
+        }
+
+        if (!tab[TAB_PROP.MODULE]) {
+            tab[TAB_PROP.MODULE] = await import(scriptUrl);
+        }
+
+        const mod = tab[TAB_PROP.MODULE];
+        const plugin = (mod && mod.default) || mod;
+
+        const context = {
+            db: state.db,
+            state: state,
+            token: window[GLOBAL_KEY.TOKEN] || "",
+            [TAB_PROP.NAVIGATE]: (id) => setState({tab: id})
+        };
+
+        const onOpenFn = plugin && plugin[TAB_PROP.ON_OPEN];
+        if (typeof onOpenFn === "function") {
+            onOpenFn.call(plugin, shadow, context);
+            activeCustomPlugin = {plugin, tabId: tabId};
+        }
+    } catch (err) {
+        console.error(`Failed to load tab [${tabId}]:`, err);
+        container.innerHTML = `<div style="padding: 24px; color: var(--err, #ef4444)">Failed to load tab: ${err.message}</div>`;
+    }
+}
 
 function renderCurrentTab(force = false) {
     const tab = state.tab;
     const item = state.selectedItem;
     const mob = state.selectedMob;
 
+    if (activeCustomPlugin && activeCustomPlugin.tabId !== tab) {
+        try {
+            const onCloseFn = activeCustomPlugin.plugin && activeCustomPlugin.plugin[TAB_PROP.ON_CLOSE];
+            if (typeof onCloseFn === "function") onCloseFn.call(activeCustomPlugin.plugin);
+        } catch (e) {
+            console.warn("Error during plugin onClose:", e);
+        }
+        activeCustomPlugin = null;
+    }
+
     let needsRender = force || (tab !== lastRenderedTab);
-    if (!needsRender && SELECTION_DEPENDENT_TABS.has(tab)) if (tab === "mob-drops") {
-        if (mob !== lastRenderedMob) needsRender = true;
-    } else {
-        if (item !== lastRenderedItem) needsRender = true;
+
+    if (!needsRender && SELECTION_DEPENDENT_TABS.has(tab)) {
+        needsRender = tab === TAB.MOB_DROPS ? mob !== lastRenderedMob : item !== lastRenderedItem;
     }
 
     if (!needsRender) return;
@@ -111,25 +236,25 @@ store.addEventListener("change", () => {
 function syncDetailModals() {
     const itemModal = document.getElementById("item-modal");
     if (itemModal) {
-        if (state.tab === "items" && state.selectedItem >= 0 && state.db) renderItemDetail(null, state.selectedItem);
+        if (state.tab === TAB.ITEMS && state.selectedItem >= 0 && state.db) renderItemDetail(null, state.selectedItem);
         else itemModal.hidden = true;
     }
 
     const fluidModal = document.getElementById("fluid-modal");
     if (fluidModal) {
-        if (state.tab === "fluids" && state.selectedItem >= 0 && state.db) renderFluidDetail(null, state.selectedItem);
+        if (state.tab === TAB.FLUIDS && state.selectedItem >= 0 && state.db) renderFluidDetail(null, state.selectedItem);
         else fluidModal.hidden = true;
     }
 
     const mobModal = document.getElementById("mob-modal");
     if (mobModal) {
-        if (state.tab === "mobs" && state.selectedMob >= 0 && state.db) void renderMobDetail(null, state.selectedMob);
+        if (state.tab === TAB.MOBS && state.selectedMob >= 0 && state.db) void renderMobDetail(null, state.selectedMob);
         else mobModal.hidden = true;
     }
 }
 
 store.addEventListener("selectItem", () => {
-    if (state.selectedItem >= 0) if (["fluids", "fluid-recipes", "fluid-uses"].includes(state.tab)) {
+    if (state.selectedItem >= 0 && [TAB.FLUIDS, TAB.FLUID_RECIPES, TAB.FLUID_USES].includes(state.tab)) {
         renderFluidDetail(null, state.selectedItem);
     } else {
         renderItemDetail(null, state.selectedItem);
@@ -137,7 +262,7 @@ store.addEventListener("selectItem", () => {
 });
 
 store.addEventListener("selectMob", async () => {
-    if (state.tab === "mobs") await renderMobs(document.getElementById("tab-mobs"));
+    if (state.tab === TAB.MOBS) await renderMobs(document.getElementById("tab-mobs"));
 });
 
 async function main() {
@@ -160,6 +285,7 @@ async function main() {
     const fl = document.getElementById("footer-left");
     if (fl) fl.textContent = `${db.meta.modId} ${db.meta.modVersion} · file 0x${db.file.fileHash.toString(16)}`;
 
+    initCustomTabs();
     initRouter();
     initSidebarResizer();
     initSidebarToggle();
@@ -316,7 +442,13 @@ function startLiveUpdates(token) {
 
         ws.onopen = () => setStatus("ready", "ready");
         ws.onmessage = (ev) => {
-            void applyServerHash(String(ev.data));
+            const msg = String(ev.data).trim();
+            if (msg === WS_EVENT.RELOAD) {
+                console.log("⚡ [Dev] Reloading page from WebSocket event...");
+                location.reload();
+                return;
+            }
+            void applyServerHash(msg);
         };
         ws.onclose = () => {
             setStatus("error", "offline");

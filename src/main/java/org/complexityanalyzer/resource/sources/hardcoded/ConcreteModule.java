@@ -22,7 +22,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.ConcretePowderBlock;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.mixin.accessors.ConcretePowderBlockAccessor;
+import org.complexityanalyzer.mixin.Accessors.ConcretePowderBlockAccessor;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import static net.minecraft.world.item.Items.AIR;

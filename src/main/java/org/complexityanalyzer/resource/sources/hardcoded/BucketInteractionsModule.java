@@ -29,7 +29,7 @@ import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.mixin.accessors.MobBucketItemAccessor;
+import org.complexityanalyzer.mixin.Accessors.MobBucketItemAccessor;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 
 public final class BucketInteractionsModule {

@@ -22,10 +22,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.*;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.mixin.accessors.CoralBlockAccessor;
-import org.complexityanalyzer.mixin.accessors.CoralFanBlockAccessor;
-import org.complexityanalyzer.mixin.accessors.CoralPlantBlockAccessor;
-import org.complexityanalyzer.mixin.accessors.CoralWallFanBlockAccessor;
+import org.complexityanalyzer.mixin.Accessors.CoralBlockAccessor;
+import org.complexityanalyzer.mixin.Accessors.CoralFanBlockAccessor;
+import org.complexityanalyzer.mixin.Accessors.CoralPlantBlockAccessor;
+import org.complexityanalyzer.mixin.Accessors.CoralWallFanBlockAccessor;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
 

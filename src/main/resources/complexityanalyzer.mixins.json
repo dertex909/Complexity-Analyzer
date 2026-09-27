@@ -1,16 +1,16 @@
 {
   "mixins": [
+    "Accessors$ConcretePowderBlockAccessor",
+    "Accessors$CoralBlockAccessor",
+    "Accessors$CoralFanBlockAccessor",
+    "Accessors$CoralPlantBlockAccessor",
+    "Accessors$CoralWallFanBlockAccessor",
+    "Accessors$MobBucketItemAccessor",
     "ChunkGeneratorMixin",
     "ConnectionMixin",
     "LevelMixin",
     "ServerChunkCacheMixin",
-    "ServerLevelMixin",
-    "accessors.ConcretePowderBlockAccessor",
-    "accessors.CoralBlockAccessor",
-    "accessors.CoralFanBlockAccessor",
-    "accessors.CoralPlantBlockAccessor",
-    "accessors.CoralWallFanBlockAccessor",
-    "accessors.MobBucketItemAccessor"
+    "ServerLevelMixin"
   ],
   "client": [],
   "server": [],

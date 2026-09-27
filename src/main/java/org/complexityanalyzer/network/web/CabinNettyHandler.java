@@ -25,6 +25,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
+import io.netty.util.AsciiString;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
@@ -38,11 +39,19 @@ import static java.security.SecureRandom.getSeed;
 import static java.util.Base64.getUrlEncoder;
 
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
-
     public static final String PREFIX = "u";
+    public static final String PREFIX_PATH = "/" + PREFIX + "/";
+    private static final String ROUTE_META = "/api/meta";
+    private static final String ROUTE_CABIN = "/api/cabin";
+    private static final String ROUTE_INDEX = "/index.html";
+    private static final String SCHEME_HTTP = "http://";
+    private static final String CORS_WILDCARD = "*";
+    private static final String ROOT_PATH = "/";
+    private static final char DOT = '.';
+    private static final AsciiString TEXT_PLAIN_UTF8 = AsciiString.cached("text/plain; charset=UTF-8");
+
     private static final ConcurrentHashMap.KeySetView<String, Boolean> uniqueVisitors = ConcurrentHashMap.newKeySet();
     private static final ConcurrentHashMap<String, String> MIME_TYPES = new ConcurrentHashMap<>();
-    private static final String PREFIX_PATH = "/" + PREFIX + "/";
     private static volatile String cachedToken = null;
 
     static {
@@ -125,7 +134,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             hostname = "127.0.0.1";
         }
 
-        return "http://" + hostname + ":" + port + "/" + getToken() + "/";
+        return SCHEME_HTTP + hostname + ":" + port + "/" + getToken() + "/";
     }
 
     private static String extractIp(ChannelHandlerContext ctx) {
@@ -135,18 +144,19 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     public static String getMimeType(String path) {
-        if (path == null) return "application/octet-stream";
-        int dotIndex = path.lastIndexOf('.');
+        if (path == null) return HttpHeaderValues.APPLICATION_OCTET_STREAM.toString();
+        int dotIndex = path.lastIndexOf(DOT);
         if (dotIndex != -1) {
             String ext = path.substring(dotIndex).toLowerCase();
             String mime = MIME_TYPES.get(ext);
             if (mime != null) return mime;
         }
-        return "application/octet-stream";
+        return HttpHeaderValues.APPLICATION_OCTET_STREAM.toString();
     }
 
     public static boolean isSupportedExtension(String fileName) {
-        int dot = fileName.lastIndexOf('.');
+        if (fileName == null) return false;
+        int dot = fileName.lastIndexOf(DOT);
         return dot != -1 && MIME_TYPES.containsKey(fileName.substring(dot).toLowerCase());
     }
 
@@ -183,16 +193,16 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         int queryIndex = rawPath.indexOf('?');
         String path = queryIndex != -1 ? rawPath.substring(0, queryIndex) : rawPath;
 
-        if (path.isEmpty() || path.equals("/")) path = "/index.html";
+        if (path.isEmpty() || path.equals(ROOT_PATH)) path = ROUTE_INDEX;
 
         if (!isSafePath(path)) {
             sendError(ctx, HttpResponseStatus.BAD_REQUEST, keepAlive);
             return;
         }
 
-        if (path.equals("/api/meta")) {
+        if (path.equals(ROUTE_META)) {
             handleMeta(ctx, keepAlive);
-        } else if (path.equals("/api/cabin")) {
+        } else if (path.equals(ROUTE_CABIN)) {
             handleCabin(ctx, keepAlive);
         } else if (path.startsWith(PREFIX_PATH)) {
             handleExternalResource(ctx, path.substring(PREFIX_PATH.length()), keepAlive);
@@ -230,7 +240,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
                 return;
             }
 
-            if (path.equals("/index.html")) data = CabinResourceResolver.injectIndexHtml(data, getToken());
+            if (path.equals(ROUTE_INDEX)) data = CabinResourceResolver.injectIndexHtml(data, getToken());
             var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
             finish(ctx, response, keepAlive);
@@ -283,25 +293,21 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         }
 
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(snap.bytes()));
-
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
-        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_OCTET_STREAM);
+        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, CORS_WILDCARD);
         finish(ctx, response, keepAlive);
     }
 
     private void sendResponse(ChannelHandlerContext ctx, String content, boolean keepAlive) {
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(content, UTF_8));
-
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
-        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
+        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, CORS_WILDCARD);
         finish(ctx, response, keepAlive);
     }
 
     private void sendError(ChannelHandlerContext ctx, HttpResponseStatus status, boolean keepAlive) {
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.copiedBuffer("Failure: " + status + "\r\n", UTF_8));
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, TEXT_PLAIN_UTF8);
         finish(ctx, response, keepAlive);
     }
 

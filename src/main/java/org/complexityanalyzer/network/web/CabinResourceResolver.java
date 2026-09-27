@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.network.web;
 
 import com.google.gson.JsonArray;
@@ -15,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.List;
 import java.util.zip.ZipFile;
 
 public final class CabinResourceResolver {
@@ -24,6 +41,7 @@ public final class CabinResourceResolver {
     private static final String TABS = "tabs";
     private static final String VIEWER_EXTERNAL_PREFIX = "viewer/";
     private static final String TABS_DIR = VIEWER_EXTERNAL_PREFIX + TABS;
+    private static final String TABS_ZIP_PREFIX = TABS + "/";
     private static final String TAB_FILE_SUFFIX = ".tab.json";
     private static final String ZIP_SUFFIX = ".zip";
 
@@ -40,17 +58,19 @@ public final class CabinResourceResolver {
     private static final Path PACKS_DIR = Path.of(PACKS_DIR_NAME);
     private static final Path DEV_PACKS_DIR = Path.of("..", PACKS_DIR_NAME);
 
+    private static final String SRC_DIR = "src/main/resources" + VIEWER_BASE;
+
+    private static final Path[] DEV_SEARCH_PATHS = {
+            Path.of(SRC_DIR),
+            Path.of("..", SRC_DIR)
+    };
+
     private static final String INJECTION_TEMPLATE = """
             <script>
               window.__COMPLEXITY_TOKEN__ = "%s";
               window.__COMPLEXITY_TABS__ = %s;
             </script>
             """;
-
-    private static final List<Path> DEV_SEARCH_PATHS = List.of(
-            Path.of("src/main/resources" + VIEWER_BASE),
-            Path.of("../src/main/resources" + VIEWER_BASE)
-    );
 
     private static Path cachedDevDir = null;
     private static boolean devDirChecked = false;
@@ -204,7 +224,7 @@ public final class CabinResourceResolver {
         if (ModFileManager.isRegularFile(zipPath)) {
             try (var zip = new ZipFile(zipPath.toFile())) {
                 var entry = zip.getEntry(subpath);
-                if (entry == null) entry = zip.getEntry(TABS + "/" + subpath);
+                if (entry == null) entry = zip.getEntry(TABS_ZIP_PREFIX + subpath);
                 if (entry != null) try (var in = zip.getInputStream(entry)) {
                     return in.readAllBytes();
                 }
@@ -215,7 +235,7 @@ public final class CabinResourceResolver {
         var folderPath = dir.resolve(namespace);
         if (Files.isDirectory(folderPath)) {
             var target = folderPath.resolve(subpath);
-            if (!ModFileManager.isRegularFile(target)) target = folderPath.resolve(TABS + "/" + subpath);
+            if (!ModFileManager.isRegularFile(target)) target = folderPath.resolve(TABS).resolve(subpath);
             if (ModFileManager.isRegularFile(target)) try {
                 return Files.readAllBytes(target);
             } catch (Exception ignored) {

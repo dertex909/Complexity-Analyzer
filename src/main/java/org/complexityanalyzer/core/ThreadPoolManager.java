@@ -53,7 +53,6 @@ public final class ThreadPoolManager implements AutoCloseable {
     private final int parallelism;
     private final ThreadPoolExecutor computePool;
     private final ForkJoinPool forkJoinPool;
-    private final AtomicInteger computeThreadCounter = new AtomicInteger(0);
     private final AtomicReference<State> state = new AtomicReference<>(State.RUNNING);
 
     private ThreadPoolManager() {
@@ -61,6 +60,7 @@ public final class ThreadPoolManager implements AutoCloseable {
         ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with parallelism = {}", parallelism);
 
         var pluginClassLoader = getClass().getClassLoader();
+        var threadCounter = new AtomicInteger();
 
         this.computePool = new ThreadPoolExecutor(
                 parallelism,
@@ -68,7 +68,7 @@ public final class ThreadPoolManager implements AutoCloseable {
                 KEEP_ALIVE_SECONDS, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                 r -> {
-                    var thread = new ComplexityComputeThread(this, r, "Complexity-Compute-" + computeThreadCounter.incrementAndGet(), pluginClassLoader);
+                    var thread = new ComplexityComputeThread(this, r, "Complexity-Compute-" + threadCounter.incrementAndGet(), pluginClassLoader);
                     thread.setDaemon(true);
                     thread.setPriority(Thread.MIN_PRIORITY);
                     return thread;

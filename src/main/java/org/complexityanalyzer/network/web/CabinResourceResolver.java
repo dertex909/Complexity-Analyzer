@@ -22,9 +22,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.Resource;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.util.ModFileManager;
 
@@ -33,39 +31,30 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipFile;
 
 public final class CabinResourceResolver {
 
-    private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
-    private static final String TABS = "tabs";
-    private static final String VIEWER_EXTERNAL_PREFIX = "viewer/";
-    private static final String TABS_DIR = VIEWER_EXTERNAL_PREFIX + TABS;
-    private static final String TABS_ZIP_PREFIX = TABS + "/";
+    private static final int DEFAULT_TAB_ORDER = 100;
+    private static final String PACKS_DIR_NAME = "complexity-web-packs";
     private static final String TAB_FILE_SUFFIX = ".tab.json";
     private static final String ZIP_SUFFIX = ".zip";
 
+    private static final String PROP_ID = "id";
+    private static final String PROP_NAMESPACE = "namespace";
+    private static final String PROP_TITLE = "title";
     private static final String PROP_ENTRYPOINT = "entrypoint";
     private static final String PROP_SCRIPT_URL = "scriptUrl";
     private static final String PROP_STYLES = "styles";
     private static final String PROP_ORDER = "order";
-    private static final int DEFAULT_TAB_ORDER = 100;
+
+    private static final String VIEWER_BASE = "/assets/complexityanalyzer/viewer";
+    private static final String DEV_RESOURCES = "src/main/resources";
 
     private static final String SCRIPT_TAG_MARKER = "<script src=\"js/app.js\"";
     private static final String HEAD_CLOSE_TAG = "</head>";
-
-    private static final String PACKS_DIR_NAME = "complexity_packs";
-    private static final Path PACKS_DIR = Path.of(PACKS_DIR_NAME);
-    private static final Path RUN_PACKS_DIR = Path.of("run", PACKS_DIR_NAME);
-    private static final Path DEV_PACKS_DIR = Path.of("..", PACKS_DIR_NAME);
-
-    private static final String SRC_DIR = "src/main/resources" + VIEWER_BASE;
-
-    private static final Path[] DEV_SEARCH_PATHS = {
-            Path.of(SRC_DIR),
-            Path.of("..", SRC_DIR)
-    };
-
     private static final String INJECTION_TEMPLATE = """
             <script>
               window.__COMPLEXITY_TOKEN__ = "%s";
@@ -75,21 +64,48 @@ public final class CabinResourceResolver {
 
     private static Path cachedDevDir = null;
     private static boolean devDirChecked = false;
+    private static volatile TabRegistry cachedRegistry = null;
 
     private CabinResourceResolver() {
+    }
+
+    public static synchronized void invalidateCache() {
+        cachedRegistry = null;
     }
 
     public static synchronized Path findDevDir() {
         if (devDirChecked) return cachedDevDir;
         devDirChecked = true;
 
-        for (var path : DEV_SEARCH_PATHS) {
-            if (Files.isDirectory(path)) {
-                cachedDevDir = path.toAbsolutePath().normalize();
-                ComplexityAnalyzer.LOGGER.info("[WebDev] Found dev directory at: {}", cachedDevDir);
-                return cachedDevDir;
-            }
+        var direct = Path.of(DEV_RESOURCES + VIEWER_BASE);
+        if (ModFileManager.isDirectory(direct)) return cachedDevDir = direct.toAbsolutePath().normalize();
+
+        var parent = Path.of("..", DEV_RESOURCES + VIEWER_BASE);
+        if (ModFileManager.isDirectory(parent)) return cachedDevDir = parent.toAbsolutePath().normalize();
+
+        return null;
+    }
+
+    public static Path getActivePacksDir() {
+        var runDir = Path.of("run", PACKS_DIR_NAME);
+        if (ModFileManager.isDirectory(runDir)) return runDir;
+
+        var rootDir = Path.of(PACKS_DIR_NAME);
+        if (ModFileManager.isDirectory(rootDir)) return rootDir;
+
+        try {
+            return Files.createDirectories(ModFileManager.isDirectory(Path.of("run")) ? runDir : rootDir);
+        } catch (Exception ignored) {
+            return rootDir;
         }
+    }
+
+    private static Path findDevPacksDir() {
+        var direct = Path.of(DEV_RESOURCES, PACKS_DIR_NAME);
+        if (ModFileManager.isDirectory(direct)) return direct.toAbsolutePath().normalize();
+
+        var parent = Path.of("..", DEV_RESOURCES, PACKS_DIR_NAME);
+        if (ModFileManager.isDirectory(parent)) return parent.toAbsolutePath().normalize();
 
         return null;
     }
@@ -113,34 +129,17 @@ public final class CabinResourceResolver {
     }
 
     public static byte[] resolveExternal(String namespace, String subpath) {
-        var packData = resolveFromCustomPacks(namespace, subpath);
-        if (packData != null) return packData;
-
-        var server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return null;
-
-        var loc = ResourceLocation.fromNamespaceAndPath(namespace, VIEWER_EXTERNAL_PREFIX + subpath);
-        var resource = server.getResourceManager().getResource(loc).orElse(null);
-        return readResourceBytes(resource);
+        if (namespace == null || namespace.isEmpty() || subpath == null || subpath.isEmpty()) return null;
+        var registry = getOrBuildRegistry(CabinNettyHandler.getToken());
+        var source = registry.sources().get(namespace);
+        if (source == null) return null;
+        return source.read(subpath);
     }
 
     public static String buildTabsJson(String token) {
-        var tabs = new ObjectArrayList<JsonObject>();
-        scanCustomPacks(tabs, token);
-
-        var server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null) {
-            var resources = server.getResourceManager().listResources(TABS_DIR, id -> id.getPath().endsWith(TAB_FILE_SUFFIX));
-            for (var entry : resources.entrySet()) {
-                var tab = parseTabDescriptor(entry.getKey().getNamespace(), entry.getValue(), token);
-                if (tab != null) tabs.add(tab);
-            }
-        }
-
-        tabs.sort(Comparator.comparingInt(tab -> tab.has(PROP_ORDER) ? tab.get(PROP_ORDER).getAsInt() : DEFAULT_TAB_ORDER));
-
+        var registry = getOrBuildRegistry(token);
         var arr = new JsonArray();
-        for (var tab : tabs) arr.add(tab);
+        for (var tab : registry.tabs()) arr.add(tab);
         return arr.toString();
     }
 
@@ -158,147 +157,222 @@ public final class CabinResourceResolver {
         return modifiedHtml.getBytes(StandardCharsets.UTF_8);
     }
 
-    public static Path getActivePacksDir() {
-        if (Files.isDirectory(PACKS_DIR)) return PACKS_DIR;
-        if (Files.isDirectory(RUN_PACKS_DIR)) return RUN_PACKS_DIR;
-        if (Files.isDirectory(DEV_PACKS_DIR)) return DEV_PACKS_DIR;
+    private static TabRegistry getOrBuildRegistry(String token) {
+        var reg = cachedRegistry;
+        if (reg != null) return reg;
 
-        try {
-            return Files.createDirectories(PACKS_DIR);
-        } catch (Exception ignored) {
-            return PACKS_DIR;
+        synchronized (CabinResourceResolver.class) {
+            if (cachedRegistry != null) return cachedRegistry;
+
+            var tabs = new ObjectArrayList<JsonObject>();
+            var sources = new ConcurrentHashMap<String, WebResourceSource>();
+            var seenTabIds = new HashSet<String>();
+
+            scanDirectory(getActivePacksDir(), tabs, sources, seenTabIds, token);
+            var devPacks = findDevPacksDir();
+            if (devPacks != null) scanDirectory(devPacks, tabs, sources, seenTabIds, token);
+            scanLoadedMods(tabs, sources, seenTabIds, token);
+            tabs.sort(Comparator.comparingInt(tab -> tab.has(PROP_ORDER) ? tab.get(PROP_ORDER).getAsInt() : DEFAULT_TAB_ORDER));
+
+            cachedRegistry = new TabRegistry(tabs, sources);
+            return cachedRegistry;
         }
     }
 
-    private static void scanCustomPacks(ObjectArrayList<JsonObject> tabs, String token) {
-        var dir = getActivePacksDir();
-
+    private static void scanDirectory(Path dir, ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, HashSet<String> seenTabIds, String token) {
+        if (!ModFileManager.isDirectory(dir)) return;
         try {
-            var files = ModFileManager.list(dir);
-            for (var file : files) {
-                String fileName = file.getFileName().toString();
-                String namespace = fileName.replace(ZIP_SUFFIX, "").toLowerCase().replaceAll("[^a-z0-9_-]", "_");
+            for (var packPath : ModFileManager.list(dir)) {
+                var fileName = packPath.getFileName().toString();
+                if (fileName.startsWith(".")) continue;
 
-                if (fileName.endsWith(ZIP_SUFFIX) && ModFileManager.isRegularFile(file)) {
-                    try (var zip = new ZipFile(file.toFile())) {
-                        var entries = zip.entries();
-                        while (entries.hasMoreElements()) {
-                            var entry = entries.nextElement();
-                            if (entry.getName().endsWith(TAB_FILE_SUFFIX)) {
-                                try (var in = zip.getInputStream(entry)) {
-                                    var tab = parseTabStream(namespace, in, token);
-                                    if (tab != null) tabs.add(tab);
-                                }
+                if (fileName.endsWith(ZIP_SUFFIX) && ModFileManager.isRegularFile(packPath)) {
+                    scanZipPack(packPath, tabs, sources, seenTabIds, token);
+                } else if (ModFileManager.isDirectory(packPath)) {
+                    scanDirectoryPack(packPath, tabs, sources, seenTabIds, token);
+                }
+            }
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.error("[WebPacks] Error scanning packs directory: {}", dir, e);
+        }
+    }
+
+    private static void scanLoadedMods(ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, HashSet<String> seenTabIds, String token) {
+        try {
+            var modList = ModList.get();
+            if (modList == null) return;
+
+            for (var mod : modList.getMods()) {
+                if (mod.getModId().equals(ComplexityAnalyzer.MODID)) continue;
+
+                try {
+                    var modFile = mod.getOwningFile().getFile();
+                    var packsRoot = modFile.findResource(PACKS_DIR_NAME);
+                    if (!ModFileManager.isDirectory(packsRoot)) continue;
+
+                    for (var packDir : ModFileManager.list(packsRoot)) {
+                        if (ModFileManager.isDirectory(packDir)) {
+                            scanDirectoryPack(packDir, tabs, sources, seenTabIds, token);
+                        }
+                    }
+                } catch (Exception e) {
+                    ComplexityAnalyzer.LOGGER.warn("[WebPacks] Failed to scan mod resources for mod: {}", mod.getModId(), e);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void scanDirectoryPack(Path packDir, ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, HashSet<String> seenTabIds, String token) {
+        try {
+            var defaultNs = packDir.getFileName().toString().toLowerCase().replaceAll("[^a-z0-9_-]", "_");
+            for (var file : ModFileManager.list(packDir)) {
+                if (ModFileManager.isRegularFile(file) && file.getFileName().toString().endsWith(TAB_FILE_SUFFIX)) {
+                    try (var in = Files.newInputStream(file)) {
+                        var tab = parseTabStream(in, defaultNs, token);
+                        if (tab != null) {
+                            var id = tab.get(PROP_ID).getAsString();
+                            var ns = tab.get(PROP_NAMESPACE).getAsString();
+                            if (seenTabIds.add(id)) {
+                                sources.putIfAbsent(ns, new PathSource(packDir));
+                                tabs.add(tab);
                             }
                         }
-                    } catch (Exception e) {
-                        ComplexityAnalyzer.LOGGER.warn("Failed to read pack zip: {}", file, e);
                     }
-                } else if (Files.isDirectory(file)) {
-                    scanFolderForTabs(file, namespace, tabs, token);
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[WebPacks] Error scanning directory pack: {}", packDir, e);
         }
     }
 
-    private static void scanFolderForTabs(Path folder, String namespace, ObjectArrayList<JsonObject> tabs, String token) {
-        try {
-            for (var p : ModFileManager.list(folder)) {
-                if (ModFileManager.isRegularFile(p) && p.toString().endsWith(TAB_FILE_SUFFIX)) {
-                    try (var in = Files.newInputStream(p)) {
-                        var tab = parseTabStream(namespace, in, token);
-                        if (tab != null) tabs.add(tab);
+    private static void scanZipPack(Path zipPath, ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, HashSet<String> seenTabIds, String token) {
+        try (var zip = new ZipFile(zipPath.toFile())) {
+            var entries = zip.entries();
+            var defaultNs = zipPath.getFileName().toString().replace(ZIP_SUFFIX, "").toLowerCase().replaceAll("[^a-z0-9_-]", "_");
+
+            while (entries.hasMoreElements()) {
+                var entry = entries.nextElement();
+                var name = entry.getName();
+                if (!entry.isDirectory() && name.endsWith(TAB_FILE_SUFFIX) && !name.contains("/")) {
+                    try (var in = zip.getInputStream(entry)) {
+                        var tab = parseTabStream(in, defaultNs, token);
+                        if (tab != null) {
+                            var id = tab.get(PROP_ID).getAsString();
+                            var ns = tab.get(PROP_NAMESPACE).getAsString();
+                            if (seenTabIds.add(id)) {
+                                sources.putIfAbsent(ns, new ZipFileSource(zipPath));
+                                tabs.add(tab);
+                            }
+                        }
                     }
-                } else if (Files.isDirectory(p)) {
-                    scanFolderForTabs(p, namespace, tabs, token);
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[WebPacks] Failed to read pack zip: {}", zipPath, e);
         }
     }
 
-    private static byte[] resolveFromCustomPacks(String namespace, String subpath) {
-        var dir = getActivePacksDir();
-        if (!Files.isDirectory(dir)) return null;
-
-        var zipPath = dir.resolve(namespace + ZIP_SUFFIX);
-        if (ModFileManager.isRegularFile(zipPath)) {
-            try (var zip = new ZipFile(zipPath.toFile())) {
-                var entry = zip.getEntry(subpath);
-                if (entry == null) entry = zip.getEntry(TABS_ZIP_PREFIX + subpath);
-                if (entry != null) try (var in = zip.getInputStream(entry)) {
-                    return in.readAllBytes();
-                }
-            } catch (Exception ignored) {
-            }
-        }
-
-        var folderPath = dir.resolve(namespace);
-        if (Files.isDirectory(folderPath)) {
-            var target = folderPath.resolve(subpath);
-            if (!ModFileManager.isRegularFile(target)) target = folderPath.resolve(TABS).resolve(subpath);
-            if (ModFileManager.isRegularFile(target)) try {
-                return Files.readAllBytes(target);
-            } catch (Exception ignored) {
-            }
-        }
-
-        return null;
-    }
-
-    private static byte[] readResourceBytes(Resource resource) {
-        if (resource == null) return null;
-        try (var in = resource.open()) {
-            return in.readAllBytes();
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private static JsonObject parseTabDescriptor(String namespace, Resource resource, String token) {
-        try (var in = resource.open()) {
-            return parseTabStream(namespace, in, token);
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private static JsonObject parseTabStream(String namespace, InputStream in, String token) {
+    private static JsonObject parseTabStream(InputStream in, String defaultNamespace, String token) {
         try {
             var content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             var obj = JsonParser.parseString(content).getAsJsonObject();
-            var basePath = "/%s/%s/%s/%s/".formatted(token, CabinNettyHandler.PREFIX, namespace, TABS);
+
+            var namespace = obj.has(PROP_NAMESPACE) && !obj.get(PROP_NAMESPACE).getAsString().isBlank()
+                    ? obj.get(PROP_NAMESPACE).getAsString().trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_")
+                    : defaultNamespace;
+            obj.addProperty(PROP_NAMESPACE, namespace);
+
+            if (!obj.has(PROP_ID) || obj.get(PROP_ID).getAsString().isBlank()) obj.addProperty(PROP_ID, namespace);
+            if (!obj.has(PROP_TITLE) || obj.get(PROP_TITLE).getAsString().isBlank())
+                obj.addProperty(PROP_TITLE, obj.get(PROP_ID).getAsString());
+            if (!obj.has(PROP_ORDER)) obj.addProperty(PROP_ORDER, DEFAULT_TAB_ORDER);
+
+            var basePath = "/%s/%s/%s/".formatted(token, CabinNettyHandler.PREFIX, namespace);
 
             if (obj.has(PROP_ENTRYPOINT)) {
-                var entry = cleanLeadingSlash(obj.get(PROP_ENTRYPOINT).getAsString());
-                obj.addProperty(PROP_SCRIPT_URL, basePath + entry);
+                var cleanEntry = cleanPath(obj.get(PROP_ENTRYPOINT).getAsString());
+                obj.addProperty(PROP_SCRIPT_URL, basePath + cleanEntry);
             }
 
             if (obj.has(PROP_STYLES) && obj.get(PROP_STYLES).isJsonArray()) {
                 var resolvedStyles = new JsonArray();
-                for (var style : obj.getAsJsonArray(PROP_STYLES)) {
-                    var cleanStyle = cleanLeadingSlash(style.getAsString());
+                for (var styleElem : obj.getAsJsonArray(PROP_STYLES)) {
+                    var cleanStyle = cleanPath(styleElem.getAsString());
                     resolvedStyles.add(basePath + cleanStyle);
                 }
                 obj.add(PROP_STYLES, resolvedStyles);
             }
 
-            if (!obj.has(PROP_ORDER)) obj.addProperty(PROP_ORDER, DEFAULT_TAB_ORDER);
-
-            ComplexityAnalyzer.LOGGER.info("[WebTabs] Discovered tab: {} [{}] from namespace: {}",
-                    obj.get("id"), obj.get("title"), namespace);
+            ComplexityAnalyzer.LOGGER.info("[WebPacks] Discovered tab: {} [{}] under namespace: {}",
+                    obj.get(PROP_ID).getAsString(), obj.get(PROP_TITLE).getAsString(), namespace);
 
             return obj;
         } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.warn("[WebPacks] Malformed .tab.json descriptor encountered", e);
             return null;
         }
     }
 
-    private static String cleanLeadingSlash(String path) {
-        if (path == null) return "";
-        int i = 0;
-        while (i < path.length() && path.charAt(i) == '/') i++;
-        return path.substring(i);
+    private static String cleanPath(String path) {
+        if (path == null || path.isEmpty()) return "";
+        var normalized = path.replace('\\', '/');
+        var i = 0;
+        while (i < normalized.length() && normalized.charAt(i) == '/') i++;
+        return normalized.substring(i);
+    }
+
+    public sealed interface WebResourceSource permits PathSource, ZipFileSource {
+        byte[] read(String subpath);
+    }
+
+    public static final class PathSource implements WebResourceSource {
+        private final Path root;
+
+        public PathSource(Path root) {
+            this.root = root.toAbsolutePath().normalize();
+        }
+
+        @Override
+        public byte[] read(String subpath) {
+            try {
+                var clean = cleanPath(subpath);
+                if (clean.isEmpty()) return null;
+                var target = this.root.resolve(clean).normalize();
+                if (!target.startsWith(this.root) || !ModFileManager.isRegularFile(target)) return null;
+                return Files.readAllBytes(target);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+    public static final class ZipFileSource implements WebResourceSource {
+        private final Path zipPath;
+
+        public ZipFileSource(Path zipPath) {
+            this.zipPath = zipPath.toAbsolutePath().normalize();
+        }
+
+        @Override
+        public byte[] read(String subpath) {
+            var clean = cleanPath(subpath);
+            if (clean.isEmpty() || !ModFileManager.isRegularFile(this.zipPath)) return null;
+            try (var zip = new ZipFile(this.zipPath.toFile())) {
+                var entry = zip.getEntry(clean);
+                if (entry == null || entry.isDirectory()) return null;
+                try (var in = zip.getInputStream(entry)) {
+                    return in.readAllBytes();
+                }
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+    private record TabRegistry(
+            ObjectArrayList<JsonObject> tabs,
+            ConcurrentHashMap<String, WebResourceSource> sources
+    ) {
     }
 }

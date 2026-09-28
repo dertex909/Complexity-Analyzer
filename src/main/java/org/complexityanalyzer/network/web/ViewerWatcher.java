@@ -77,7 +77,8 @@ public final class ViewerWatcher {
                     long now = System.currentTimeMillis();
                     if (shouldReload && (now - lastReload > 250)) {
                         lastReload = now;
-                        ComplexityAnalyzer.LOGGER.info("[WebDev] Change detected, reloading browser...");
+                        ComplexityAnalyzer.LOGGER.info("[WebDev] Change detected, invalidating cache and reloading browser...");
+                        CabinResourceResolver.invalidateCache();
                         CabinWsHub.broadcast("reload");
                     }
 

@@ -17,8 +17,10 @@
  */
 
 import {CabinDatabase} from "./core/db.js";
-import {selectItem, selectMob, setState, state, store} from "./core/state.js";
+import {setState, state, store} from "./core/state.js";
 import {initRouter, renderTabs} from "./core/router.js";
+import {initCustomTabs, isCustomTabActive, unmountActivePlugin} from "./core/custom-tabs.js";
+import {initSidebar} from "./components/sidebar.js";
 import {renderOverview} from "./views/overview.js";
 import {renderItems} from "./views/items.js";
 import {renderFluids} from "./views/fluids.js";
@@ -37,22 +39,6 @@ import {
 } from "./views/sub/item-sub-views.js";
 import {renderFluidRecipesView, renderFluidUsesView} from "./views/sub/fluid-sub-views.js";
 import {renderCraftTreeView} from "./tree/craft-tree.js";
-
-const GLOBAL_KEY = {
-    TABS: "__COMPLEXITY_TABS__",
-    TOKEN: "__COMPLEXITY_TOKEN__"
-};
-
-const TAB_PROP = {
-    ID: "id",
-    TITLE: "title",
-    SCRIPT_URL: "scriptUrl",
-    STYLES: "styles",
-    MODULE: "_module",
-    NAVIGATE: "navigate",
-    ON_OPEN: "onOpen",
-    ON_CLOSE: "onClose"
-};
 
 const WS_EVENT = {
     RELOAD: "reload"
@@ -77,13 +63,6 @@ const TAB = {
 
 const fmtInt = new Intl.NumberFormat("en-US");
 
-function setStatus(cls, text) {
-    const dot = document.getElementById("status-dot");
-    if (dot) dot.className = "dot " + cls;
-    const st = document.getElementById("status-text");
-    if (st) st.textContent = text;
-}
-
 const VIEW_RENDERERS = {
     [TAB.OVERVIEW]: renderOverview,
     [TAB.ITEMS]: renderItems,
@@ -98,7 +77,7 @@ const VIEW_RENDERERS = {
     [TAB.ITEM_BASE_SOURCES]: renderItemBaseSourcesView,
     [TAB.FLUID_RECIPES]: renderFluidRecipesView,
     [TAB.FLUID_USES]: renderFluidUsesView,
-    [TAB.MOB_DROPS]: renderMobDropsView,
+    [TAB.MOB_DROPS]: renderMobDropsView
 };
 
 const SELECTION_DEPENDENT_TABS = new Set([
@@ -114,84 +93,12 @@ const SELECTION_DEPENDENT_TABS = new Set([
 let lastRenderedTab = null;
 let lastRenderedItem = null;
 let lastRenderedMob = null;
-let activeCustomPlugin = null;
 
-const CUSTOM_TABS_MAP = new Map();
-
-function initCustomTabs() {
-    const tabs = window[GLOBAL_KEY.TABS];
-    if (!Array.isArray(tabs) || tabs.length === 0) return;
-
-    const nav = document.getElementById("main-tabs");
-    const main = document.getElementById("main-content");
-    if (!nav || !main) return;
-
-    for (const tab of tabs) {
-        if (!tab || !tab[TAB_PROP.ID] || !tab[TAB_PROP.SCRIPT_URL]) continue;
-        const tabId = tab[TAB_PROP.ID];
-        const tabTitle = tab[TAB_PROP.TITLE] || tabId;
-        CUSTOM_TABS_MAP.set(tabId, tab);
-
-        const btn = document.createElement("button");
-        btn.className = "tab custom-tab";
-        btn.dataset.tab = tabId;
-        btn.setAttribute("role", "tab");
-        btn.textContent = tabTitle;
-        nav.appendChild(btn);
-
-        const panel = document.createElement("section");
-        panel.className = "panel custom-tab-panel";
-        panel.hidden = true;
-        panel.id = "tab-" + tabId;
-        main.appendChild(panel);
-
-        VIEW_RENDERERS[tabId] = (container) => renderCustomTab(tab, container);
-    }
-}
-
-async function renderCustomTab(tab, container) {
-    const tabId = tab[TAB_PROP.ID];
-    const scriptUrl = tab[TAB_PROP.SCRIPT_URL];
-    const styles = tab[TAB_PROP.STYLES];
-
-    try {
-        let shadow = container.shadowRoot;
-        if (!shadow) {
-            shadow = container.attachShadow({mode: "open"});
-
-            if (Array.isArray(styles)) {
-                for (const styleUrl of styles) {
-                    const link = document.createElement("link");
-                    link.rel = "stylesheet";
-                    link.href = styleUrl;
-                    shadow.appendChild(link);
-                }
-            }
-        }
-
-        if (!tab[TAB_PROP.MODULE]) {
-            tab[TAB_PROP.MODULE] = await import(scriptUrl);
-        }
-
-        const mod = tab[TAB_PROP.MODULE];
-        const plugin = (mod && mod.default) || mod;
-
-        const context = {
-            db: state.db,
-            state: state,
-            token: window[GLOBAL_KEY.TOKEN] || "",
-            [TAB_PROP.NAVIGATE]: (id) => setState({tab: id})
-        };
-
-        const onOpenFn = plugin && plugin[TAB_PROP.ON_OPEN];
-        if (typeof onOpenFn === "function") {
-            onOpenFn.call(plugin, shadow, context);
-            activeCustomPlugin = {plugin, tabId: tabId};
-        }
-    } catch (err) {
-        console.error(`Failed to load tab [${tabId}]:`, err);
-        container.innerHTML = `<div style="padding: 24px; color: var(--err, #ef4444)">Failed to load tab: ${err.message}</div>`;
-    }
+function setStatus(cls, text) {
+    const dot = document.getElementById("status-dot");
+    if (dot) dot.className = "dot " + cls;
+    const st = document.getElementById("status-text");
+    if (st) st.textContent = text;
 }
 
 function renderCurrentTab(force = false) {
@@ -199,18 +106,9 @@ function renderCurrentTab(force = false) {
     const item = state.selectedItem;
     const mob = state.selectedMob;
 
-    if (activeCustomPlugin && activeCustomPlugin.tabId !== tab) {
-        try {
-            const onCloseFn = activeCustomPlugin.plugin && activeCustomPlugin.plugin[TAB_PROP.ON_CLOSE];
-            if (typeof onCloseFn === "function") onCloseFn.call(activeCustomPlugin.plugin);
-        } catch (e) {
-            console.warn("Error during plugin onClose:", e);
-        }
-        activeCustomPlugin = null;
-    }
+    if (isCustomTabActive(tab)) unmountActivePlugin();
 
     let needsRender = force || (tab !== lastRenderedTab);
-
     if (!needsRender && SELECTION_DEPENDENT_TABS.has(tab)) {
         needsRender = tab === TAB.MOB_DROPS ? mob !== lastRenderedMob : item !== lastRenderedItem;
     }
@@ -277,7 +175,6 @@ async function main() {
     }
 
     const db = await openWhenReady(token);
-
     setState({db});
     hideLoadingOverlay();
 
@@ -285,10 +182,9 @@ async function main() {
     const fl = document.getElementById("footer-left");
     if (fl) fl.textContent = `${db.meta.modId} ${db.meta.modVersion} · file 0x${db.file.fileHash.toString(16)}`;
 
-    initCustomTabs();
+    initCustomTabs(VIEW_RENDERERS);
     initRouter();
-    initSidebarResizer();
-    initSidebarToggle();
+    initSidebar();
     renderTabs();
     renderCurrentTab();
     startLiveUpdates(token);
@@ -312,11 +208,7 @@ async function openWhenReady(token) {
 
         if (networkError) {
             setStatus("error", "reconnecting…");
-            showLoadingOverlay(
-                "Waiting for the server…",
-                "Can’t reach the server right now. This page is retrying automatically — just keep it open and it will connect when the server is back.",
-                false
-            );
+            showLoadingOverlay("Waiting for the server…", "Can’t reach the server right now. Retrying automatically…", false);
             await sleep(4000);
             continue;
         }
@@ -327,7 +219,7 @@ async function openWhenReady(token) {
             showLoadingOverlay(
                 "Connecting…",
                 badTokenStreak >= 3
-                    ? "The server responded but this link may be outdated. Try running /complexity web url again to get a fresh link."
+                    ? "The server responded but this link may be outdated. Try running /complexity web url again."
                     : "Reaching the server… retrying automatically.",
                 false
             );
@@ -339,7 +231,7 @@ async function openWhenReady(token) {
         let meta = null;
         try {
             meta = await resp.json();
-        } catch (e) {
+        } catch (ignored) {
         }
 
         if (meta && meta.hasCabin) {
@@ -351,23 +243,14 @@ async function openWhenReady(token) {
                 return db;
             } catch (e) {
                 console.warn("cabin open failed, will retry:", e);
-                showLoadingOverlay(
-                    "Finishing up…",
-                    "The data file is being written. This page will open it automatically in a moment.",
-                    true
-                );
+                showLoadingOverlay("Finishing up…", "The data file is being written. Retrying in a moment…", true);
                 await sleep(2000);
                 continue;
             }
         }
 
         setStatus("loading", "generating…");
-        showLoadingOverlay(
-            "Generating analysis data…",
-            "The server is still building the complexity database. On large modpacks this can take a little while. " +
-            "This page will load automatically as soon as it’s ready — no need to refresh.",
-            true
-        );
+        showLoadingOverlay("Generating analysis data…", "Building the complexity database…", true);
         await sleep(2500);
     }
 }
@@ -457,88 +340,12 @@ function startLiveUpdates(token) {
         ws.onerror = () => {
             try {
                 ws.close();
-            } catch (e) {
+            } catch (ignored) {
             }
         };
     }
 
     connect();
-}
-
-function initSidebarResizer() {
-    const resizer = document.getElementById("sidebar-resizer");
-    const sidebar = document.querySelector(".sidebar-left");
-    if (!resizer || !sidebar) return;
-
-    const savedWidth = localStorage.getItem("sidebarWidth");
-    if (savedWidth) document.documentElement.style.setProperty("--sidebar-width", savedWidth + "px");
-
-    resizer.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        resizer.classList.add("dragging");
-        resizer.setPointerCapture(e.pointerId);
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-
-        const onPointerMove = (moveEvent) => {
-            let newWidth = moveEvent.clientX;
-            if (newWidth < 185) newWidth = 185;
-            if (newWidth > 500) newWidth = 500;
-            document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
-            localStorage.setItem("sidebarWidth", newWidth);
-            window.dispatchEvent(new Event('resize'));
-        };
-
-        const onPointerUp = (upEvent) => {
-            resizer.classList.remove("dragging");
-            try {
-                resizer.releasePointerCapture(upEvent.pointerId);
-            } catch (err) {
-            }
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-            resizer.removeEventListener("pointermove", onPointerMove);
-            resizer.removeEventListener("pointerup", onPointerUp);
-        };
-
-        resizer.addEventListener("pointermove", onPointerMove);
-        resizer.addEventListener("pointerup", onPointerUp);
-    });
-}
-
-function initSidebarToggle() {
-    const hideBtn = document.getElementById("sidebar-hide-btn");
-    const showBtn = document.getElementById("sidebar-show-btn");
-    if (!hideBtn || !showBtn) return;
-
-    const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-    if (isCollapsed) document.body.classList.add("collapsed");
-
-    const setCollapsed = (collapsed) => {
-        if (collapsed) {
-            document.body.classList.add("collapsed");
-            localStorage.setItem("sidebarCollapsed", "true");
-        } else {
-            document.body.classList.remove("collapsed");
-            localStorage.setItem("sidebarCollapsed", "false");
-        }
-
-        window.dispatchEvent(new Event('resize'));
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        }, 150);
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        }, 360);
-    };
-
-    hideBtn.addEventListener("click", () => {
-        setCollapsed(true);
-    });
-
-    showBtn.addEventListener("click", () => {
-        setCollapsed(false);
-    });
 }
 
 main().catch(err => console.error("Bootstrap failed:", err));

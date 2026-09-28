@@ -74,7 +74,6 @@ public final class ModFileManager {
         }
 
         path = path.toAbsolutePath().normalize();
-
         if (!path.startsWith(baseDir)) throw new IllegalArgumentException("Path traversal attempt detected: " + path);
         return path;
     }
@@ -133,7 +132,7 @@ public final class ModFileManager {
 
     public static @NotNull ObjectArrayList<String> readLines(@Nullable Path source) throws IOException {
         var lines = new ObjectArrayList<String>();
-        if (source == null || !Files.isRegularFile(source)) return lines;
+        if (!isRegularFile(source)) return lines;
 
         try (var reader = Files.newBufferedReader(source, StandardCharsets.UTF_8)) {
             String line;
@@ -171,6 +170,10 @@ public final class ModFileManager {
         return path != null && Files.isRegularFile(path);
     }
 
+    public static boolean isDirectory(@Nullable Path path) {
+        return path != null && Files.isDirectory(path);
+    }
+
     public static long getSize(@NotNull Path path) throws IOException {
         requireNonNull(path, "Path cannot be null");
         return Files.size(path);
@@ -183,7 +186,7 @@ public final class ModFileManager {
 
     public static @NotNull ObjectArrayList<Path> list(@Nullable Path dir) throws IOException {
         var paths = new ObjectArrayList<Path>();
-        if (dir == null || !Files.isDirectory(dir)) return paths;
+        if (!isDirectory(dir)) return paths;
 
         try (var ds = Files.newDirectoryStream(dir)) {
             for (var p : ds) paths.add(p);
@@ -197,9 +200,8 @@ public final class ModFileManager {
             if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
                 Files.walkFileTree(path, DELETE_VISITOR);
                 return true;
-            } else {
-                return Files.deleteIfExists(path);
             }
+            return Files.deleteIfExists(path);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("Failed to delete path: {}", path, e);
             return false;
@@ -210,7 +212,7 @@ public final class ModFileManager {
         var parent = target.getParent();
         if (parent == null) parent = Path.of("");
         var fileName = target.getFileName();
-        String prefix = (fileName != null ? fileName.toString() : "file") + ".tmp.";
+        var prefix = (fileName != null ? fileName.toString() : "file") + ".tmp.";
         return Files.createTempFile(parent, prefix, null);
     }
 

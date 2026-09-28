@@ -16,9 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.complexityanalyzer.network.web;
+package org.complexityanalyzer.network.web.dev;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.network.web.pack.CabinResourceResolver;
+import org.complexityanalyzer.network.web.pack.WebPackPaths;
+import org.complexityanalyzer.network.web.ws.CabinWsHub;
 import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
@@ -33,7 +36,7 @@ public final class ViewerWatcher {
     }
 
     public static synchronized void start() {
-        var watchDirs = CabinResourceResolver.getWatchDirectories();
+        var watchDirs = WebPackPaths.getWatchDirectories();
         if (watchDirs.isEmpty() || running) return;
         running = true;
 

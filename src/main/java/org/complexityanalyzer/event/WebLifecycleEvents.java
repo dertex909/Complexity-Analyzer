@@ -30,7 +30,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.network.web.StandaloneWebServer;
-import org.complexityanalyzer.network.web.ViewerWatcher;
+import org.complexityanalyzer.network.web.dev.ViewerWatcher;
 
 import static org.complexityanalyzer.config.ComplexityConfig.SPEC;
 

@@ -29,6 +29,8 @@ import io.netty.util.AsciiString;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
+import org.complexityanalyzer.network.web.pack.CabinResourceResolver;
+import org.complexityanalyzer.network.web.ws.CabinWsHub;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;

@@ -62,8 +62,6 @@ public final class CabinResourceResolver {
             </script>
             """;
 
-    private static Path cachedDevDir = null;
-    private static boolean devDirChecked = false;
     private static volatile TabRegistry cachedRegistry = null;
 
     private CabinResourceResolver() {
@@ -73,48 +71,54 @@ public final class CabinResourceResolver {
         cachedRegistry = null;
     }
 
-    public static synchronized Path findDevDir() {
-        if (devDirChecked) return cachedDevDir;
-        devDirChecked = true;
-
-        var direct = Path.of(DEV_RESOURCES + VIEWER_BASE);
-        if (ModFileManager.isDirectory(direct)) return cachedDevDir = direct.toAbsolutePath().normalize();
-
-        var parent = Path.of("..", DEV_RESOURCES + VIEWER_BASE);
-        if (ModFileManager.isDirectory(parent)) return cachedDevDir = parent.toAbsolutePath().normalize();
-
+    private static Path getDevRoot() {
+        if (ModFileManager.isDirectory(Path.of(DEV_RESOURCES))) return Path.of("");
+        if (ModFileManager.isDirectory(Path.of("..", DEV_RESOURCES))) return Path.of("..");
         return null;
+    }
+
+    private static Path getDevDir(String subPath) {
+        var root = getDevRoot();
+        if (root == null) return null;
+        var path = root.resolve(DEV_RESOURCES).resolve(cleanPath(subPath)).toAbsolutePath().normalize();
+        return ModFileManager.isDirectory(path) ? path : null;
     }
 
     public static Path getActivePacksDir() {
         var runDir = Path.of("run", PACKS_DIR_NAME);
-        if (ModFileManager.isDirectory(runDir)) return runDir;
+        if (ModFileManager.isDirectory(runDir)) return runDir.toAbsolutePath().normalize();
 
         var rootDir = Path.of(PACKS_DIR_NAME);
-        if (ModFileManager.isDirectory(rootDir)) return rootDir;
+        if (ModFileManager.isDirectory(rootDir)) return rootDir.toAbsolutePath().normalize();
 
+        var target = ModFileManager.isDirectory(Path.of("run")) ? runDir : rootDir;
         try {
-            return Files.createDirectories(ModFileManager.isDirectory(Path.of("run")) ? runDir : rootDir);
+            return Files.createDirectories(target).toAbsolutePath().normalize();
         } catch (Exception ignored) {
-            return rootDir;
+            return target.toAbsolutePath().normalize();
         }
     }
 
-    private static Path findDevPacksDir() {
-        var direct = Path.of(DEV_RESOURCES, PACKS_DIR_NAME);
-        if (ModFileManager.isDirectory(direct)) return direct.toAbsolutePath().normalize();
+    public static ObjectArrayList<Path> getWatchDirectories() {
+        var list = new ObjectArrayList<Path>();
 
-        var parent = Path.of("..", DEV_RESOURCES, PACKS_DIR_NAME);
-        if (ModFileManager.isDirectory(parent)) return parent.toAbsolutePath().normalize();
+        var uiDir = getDevDir(VIEWER_BASE);
+        if (uiDir != null) list.add(uiDir);
 
-        return null;
+        var devPacks = getDevDir(PACKS_DIR_NAME);
+        if (devPacks != null) list.add(devPacks);
+
+        var diskPacks = getActivePacksDir();
+        if (ModFileManager.isDirectory(diskPacks) && !list.contains(diskPacks)) list.add(diskPacks);
+
+        return list;
     }
 
     public static byte[] resolveInternal(String path) {
-        var devDir = findDevDir();
+        var devDir = getDevDir(VIEWER_BASE);
         if (devDir != null) {
-            var rel = path.startsWith("/") ? path.substring(1) : path;
-            var diskPath = devDir.resolve(rel).normalize();
+            var clean = cleanPath(path);
+            var diskPath = devDir.resolve(clean).normalize();
             if (ModFileManager.isRegularFile(diskPath)) try {
                 return Files.readAllBytes(diskPath);
             } catch (Exception ignored) {
@@ -169,7 +173,7 @@ public final class CabinResourceResolver {
             var seenTabIds = new HashSet<String>();
 
             scanDirectory(getActivePacksDir(), tabs, sources, seenTabIds, token);
-            var devPacks = findDevPacksDir();
+            var devPacks = getDevDir(PACKS_DIR_NAME);
             if (devPacks != null) scanDirectory(devPacks, tabs, sources, seenTabIds, token);
             scanLoadedMods(tabs, sources, seenTabIds, token);
             tabs.sort(Comparator.comparingInt(tab -> tab.has(PROP_ORDER) ? tab.get(PROP_ORDER).getAsInt() : DEFAULT_TAB_ORDER));

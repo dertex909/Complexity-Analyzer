@@ -19,6 +19,7 @@
 package org.complexityanalyzer.network.web;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.util.ModFileManager;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -32,24 +33,16 @@ public final class ViewerWatcher {
     }
 
     public static synchronized void start() {
-        var devDir = CabinResourceResolver.findDevDir();
-        var packsDir = CabinResourceResolver.getActivePacksDir();
-
-        if (devDir == null && packsDir == null) return;
-        if (running) return;
+        var watchDirs = CabinResourceResolver.getWatchDirectories();
+        if (watchDirs.isEmpty() || running) return;
         running = true;
 
         watcherThread = Thread.ofVirtual().name("Complexity-Viewer-Watcher").start(() -> {
             try (var watchService = FileSystems.getDefault().newWatchService()) {
 
-                if (devDir != null && Files.isDirectory(devDir)) {
-                    registerTree(devDir, watchService);
-                    ComplexityAnalyzer.LOGGER.info("[WebDev] Watching dev UI directory: {}", devDir);
-                }
-
-                if (packsDir != null && Files.isDirectory(packsDir)) {
-                    registerTree(packsDir, watchService);
-                    ComplexityAnalyzer.LOGGER.info("[WebDev] Watching custom packs directory: {}", packsDir);
+                for (var dir : watchDirs) {
+                    registerTree(dir, watchService);
+                    ComplexityAnalyzer.LOGGER.info("[WebDev] Watching directory: {}", dir);
                 }
 
                 long lastReload = 0;
@@ -58,23 +51,23 @@ public final class ViewerWatcher {
                     var key = watchService.take();
                     var dir = (Path) key.watchable();
 
-                    boolean shouldReload = false;
+                    var shouldReload = false;
                     for (var event : key.pollEvents()) {
                         if (event.kind() == StandardWatchEventKinds.OVERFLOW) continue;
                         var context = (Path) event.context();
                         if (context == null) continue;
                         var fullPath = dir.resolve(context);
 
-                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && Files.isDirectory(fullPath)) {
+                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && ModFileManager.isDirectory(fullPath)) {
                             registerTree(fullPath, watchService);
                             shouldReload = true;
                         }
 
-                        String name = context.toString();
+                        var name = context.toString();
                         if (!name.startsWith(".") && !name.endsWith("~") && !name.endsWith(".tmp")) shouldReload = true;
                     }
 
-                    long now = System.currentTimeMillis();
+                    var now = System.currentTimeMillis();
                     if (shouldReload && (now - lastReload > 250)) {
                         lastReload = now;
                         ComplexityAnalyzer.LOGGER.info("[WebDev] Change detected, invalidating cache and reloading browser...");
@@ -93,7 +86,7 @@ public final class ViewerWatcher {
 
     private static void registerTree(Path root, WatchService watchService) {
         try (var stream = Files.walk(root)) {
-            stream.filter(Files::isDirectory).forEach(dir -> {
+            stream.filter(ModFileManager::isDirectory).forEach(dir -> {
                 try {
                     dir.register(watchService,
                             StandardWatchEventKinds.ENTRY_MODIFY,

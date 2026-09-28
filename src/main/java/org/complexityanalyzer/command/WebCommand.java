@@ -29,7 +29,7 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
-import org.complexityanalyzer.network.web.StandaloneWebServer;
+import org.complexityanalyzer.network.web.WebManager;
 import org.complexityanalyzer.util.FormatUtils;
 
 import static org.complexityanalyzer.config.ComplexityConfig.WEB_SERVER_IP;
@@ -129,11 +129,11 @@ public final class WebCommand {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
             return 0;
         }
+
         var server = source.getServer();
-        StandaloneWebServer.start();
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));
 
-        CabinBackgroundService.getInstance().regenerateAsync(server, engine).whenComplete((snap, err) -> {
+        WebManager.reload(server, engine).whenComplete((snap, err) -> {
             MutableComponent done;
             if (err != null) {
                 done = Component.translatable("complexityanalyzer.command.web.reload_failed", err.getMessage()).withStyle(ChatFormatting.RED);
@@ -144,6 +144,7 @@ public final class WebCommand {
             }
             server.execute(() -> source.sendSuccess(() -> done, true));
         });
+
         return 1;
     }
 

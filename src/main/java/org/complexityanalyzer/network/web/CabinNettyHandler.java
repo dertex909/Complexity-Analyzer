@@ -42,13 +42,13 @@ import static java.util.Base64.getUrlEncoder;
 
 public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     public static final String PREFIX = "u";
-    public static final String PREFIX_PATH = "/" + PREFIX + "/";
+    private static final String ROOT_PATH = "/";
+    private static final String PREFIX_PATH = ROOT_PATH + PREFIX + ROOT_PATH;
     private static final String ROUTE_META = "/api/meta";
     private static final String ROUTE_CABIN = "/api/cabin";
     private static final String ROUTE_INDEX = "/index.html";
     private static final String SCHEME_HTTP = "http://";
     private static final String CORS_WILDCARD = "*";
-    private static final String ROOT_PATH = "/";
     private static final char DOT = '.';
     private static final AsciiString TEXT_PLAIN_UTF8 = AsciiString.cached("text/plain; charset=UTF-8");
 
@@ -136,7 +136,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             hostname = "127.0.0.1";
         }
 
-        return SCHEME_HTTP + hostname + ":" + port + "/" + getToken() + "/";
+        return SCHEME_HTTP + hostname + ":" + port + ROOT_PATH + getToken() + ROOT_PATH;
     }
 
     private static String extractIp(ChannelHandlerContext ctx) {
@@ -176,9 +176,9 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
 
         String uri = request.uri();
         String currentToken = getToken();
-        String prefix = "/" + currentToken;
+        String prefix = ROOT_PATH + currentToken;
 
-        if (!uri.equals(prefix) && !uri.startsWith(prefix + "/")) {
+        if (!uri.equals(prefix) && !uri.startsWith(prefix + ROOT_PATH)) {
             sendError(ctx, HttpResponseStatus.FORBIDDEN, false);
             return;
         }

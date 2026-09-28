@@ -25,29 +25,31 @@ public final class WebTabManifest {
     private WebTabManifest() {
     }
 
-    public static String normalizeNamespace(String raw) {
-        return raw.toLowerCase().replaceAll("[^a-z0-9_-]", "_");
+    private static void applySchema(JsonObject obj, String defaultNamespace) {
+        ensure(obj, PROP_NAMESPACE, defaultNamespace);
+        ensure(obj, PROP_ID, obj.get(PROP_NAMESPACE).getAsString());
+        ensure(obj, PROP_TITLE, obj.get(PROP_ID).getAsString());
+        ensure(obj, PROP_ORDER, DEFAULT_TAB_ORDER);
+    }
+
+    private static void resolveWebRoutes(JsonObject obj, String token) {
+        var ns = normalizeNamespace(obj.get(PROP_NAMESPACE).getAsString());
+        var base = "/%s/%s/%s/".formatted(token, CabinNettyHandler.PREFIX, ns);
+        prefixUrl(obj, PROP_SCRIPT_URL, PROP_ENTRYPOINT, base);
+        prefixUrls(obj, PROP_STYLES, base);
     }
 
     public static JsonObject parse(InputStream in, String defaultNamespace, String token) {
-        try {
-            var elem = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+        try (var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+            var elem = JsonParser.parseReader(reader);
             if (elem == null || !elem.isJsonObject()) return null;
             var obj = elem.getAsJsonObject();
-            var namespace = normalizeNamespace(getString(obj, PROP_NAMESPACE, defaultNamespace));
-            var id = getString(obj, PROP_ID, namespace);
-            var title = getString(obj, PROP_TITLE, id);
-            var order = getInt(obj, PROP_ORDER, DEFAULT_TAB_ORDER);
+            applySchema(obj, defaultNamespace);
+            resolveWebRoutes(obj, token);
 
-            obj.addProperty(PROP_NAMESPACE, namespace);
-            obj.addProperty(PROP_ID, id);
-            obj.addProperty(PROP_TITLE, title);
-            obj.addProperty(PROP_ORDER, order);
+            ComplexityAnalyzer.LOGGER.info("[WebPacks] Discovered tab: {} [{}] under namespace: {}",
+                    obj.get(PROP_ID).getAsString(), obj.get(PROP_TITLE).getAsString(), obj.get(PROP_NAMESPACE).getAsString());
 
-            var basePath = "/%s/%s/%s/".formatted(token, CabinNettyHandler.PREFIX, namespace);
-            resolveAssetUrls(obj, basePath);
-
-            ComplexityAnalyzer.LOGGER.info("[WebPacks] Discovered tab: {} [{}] under namespace: {}", id, title, namespace);
             return obj;
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.warn("[WebPacks] Malformed {} descriptor encountered", TAB_FILE_SUFFIX, e);
@@ -55,29 +57,34 @@ public final class WebTabManifest {
         }
     }
 
-    private static String getString(JsonObject obj, String key, String fallback) {
-        if (!obj.has(key)) return fallback;
-        var val = obj.get(key).getAsString();
-        return val.isBlank() ? fallback : val.trim();
+    public static String normalizeNamespace(String raw) {
+        return raw.toLowerCase().replaceAll("[^a-z0-9_-]", "_");
     }
 
-    private static int getInt(JsonObject obj, String key, int fallback) {
-        return obj.has(key) ? obj.get(key).getAsInt() : fallback;
+    private static void ensure(JsonObject obj, String key, String defaultValue) {
+        if (!obj.has(key) || obj.get(key).getAsString().isBlank()) obj.addProperty(key, defaultValue);
     }
 
-    private static void resolveAssetUrls(JsonObject obj, String basePath) {
-        if (obj.has(PROP_ENTRYPOINT)) {
-            var clean = WebPackPaths.cleanPath(obj.get(PROP_ENTRYPOINT).getAsString());
-            obj.addProperty(PROP_SCRIPT_URL, basePath + clean);
+    private static void ensure(JsonObject obj, String key, Number defaultValue) {
+        if (!obj.has(key)) obj.addProperty(key, defaultValue);
+    }
+
+    private static void ensure(JsonObject obj, String key, Boolean defaultValue) {
+        if (!obj.has(key)) obj.addProperty(key, defaultValue);
+    }
+
+    private static void prefixUrl(JsonObject obj, String targetKey, String sourceKey, String base) {
+        if (obj.has(sourceKey)) {
+            var val = obj.get(sourceKey).getAsString().trim();
+            if (!val.isBlank()) obj.addProperty(targetKey, base + WebPackPaths.cleanPath(val));
         }
+    }
 
-        if (obj.has(PROP_STYLES) && obj.get(PROP_STYLES).isJsonArray()) {
-            var resolved = new JsonArray();
-            for (var elem : obj.getAsJsonArray(PROP_STYLES)) {
-                var clean = WebPackPaths.cleanPath(elem.getAsString());
-                resolved.add(basePath + clean);
-            }
-            obj.add(PROP_STYLES, resolved);
+    private static void prefixUrls(JsonObject obj, String key, String base) {
+        if (obj.has(key) && obj.get(key).isJsonArray()) {
+            var arr = new JsonArray();
+            for (var elem : obj.getAsJsonArray(key)) arr.add(base + WebPackPaths.cleanPath(elem.getAsString()));
+            obj.add(key, arr);
         }
     }
 }

@@ -97,6 +97,6 @@ export function selectMob(index) {
     store.dispatchEvent(new CustomEvent("selectMob", {detail: index}));
 }
 
-export function switchTab(tab) {
-    setState({tab, subTab: null, selectedItem: -1, selectedMob: -1});
+export function switchTab(tab, subTab = null) {
+    setState({tab, subTab, selectedItem: -1, selectedMob: -1});
 }

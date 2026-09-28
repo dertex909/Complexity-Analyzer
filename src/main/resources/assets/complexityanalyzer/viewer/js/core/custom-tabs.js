@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {selectItem, selectMob, state, store, switchTab} from "./state.js";
+import {selectItem, selectMob, setState, state, store, switchTab} from "./state.js";
 import {renderErrorOverlay} from "../components/error-overlay.js";
 
 const GLOBAL_KEY = {
@@ -29,15 +29,19 @@ const TAB_PROP = {
     TITLE: "title",
     SCRIPT_URL: "scriptUrl",
     STYLES: "styles",
+    SUBTABS: "subtabs",
     MODULE: "_module",
     MOUNT: "mount",
     UNMOUNT: "unmount",
     ON_OPEN: "onOpen",
-    ON_CLOSE: "onClose"
+    ON_CLOSE: "onClose",
+    ON_SUBTAB_CHANGE: "onSubTabChange"
 };
 
 const CUSTOM_TABS_MAP = new Map();
+const DYNAMIC_SUBTABS_MAP = new Map();
 let activeCustomPlugin = null;
+let lastNotifiedSubTab = null;
 
 export function initCustomTabs(viewRenderers) {
     const tabs = window[GLOBAL_KEY.TABS];
@@ -60,6 +64,12 @@ export function initCustomTabs(viewRenderers) {
         btn.textContent = tabTitle;
         nav.appendChild(btn);
 
+        const subContainer = document.createElement("div");
+        subContainer.className = "sub-tabs-container custom-sub-tabs";
+        subContainer.id = "custom-sub-tabs-" + tabId;
+        subContainer.style.display = "none";
+        nav.appendChild(subContainer);
+
         const panel = document.createElement("section");
         panel.className = "panel custom-tab-panel";
         panel.hidden = true;
@@ -67,6 +77,58 @@ export function initCustomTabs(viewRenderers) {
         main.appendChild(panel);
 
         if (viewRenderers) viewRenderers[tabId] = (container) => renderCustomTab(tab, container);
+    }
+
+    store.addEventListener("change", () => {
+        if (activeCustomPlugin && state.tab === activeCustomPlugin.tabId && state.subTab !== lastNotifiedSubTab) {
+            lastNotifiedSubTab = state.subTab;
+            const {plugin, root, context} = activeCustomPlugin;
+            if (typeof plugin[TAB_PROP.ON_SUBTAB_CHANGE] === "function") {
+                plugin[TAB_PROP.ON_SUBTAB_CHANGE](state.subTab, root, context);
+            }
+        }
+    });
+}
+
+export function setCustomSubTabs(tabId, subtabsList) {
+    if (!Array.isArray(subtabsList) || subtabsList.length === 0) {
+        DYNAMIC_SUBTABS_MAP.delete(tabId);
+    } else {
+        DYNAMIC_SUBTABS_MAP.set(tabId, subtabsList);
+    }
+    renderCustomSubTabsUI();
+}
+
+export function renderCustomSubTabsUI() {
+    for (const [tabId, tab] of CUSTOM_TABS_MAP.entries()) {
+        const subContainer = document.getElementById("custom-sub-tabs-" + tabId);
+        if (!subContainer) continue;
+
+        const isParentActive = state.tab === tabId;
+        const subtabs = DYNAMIC_SUBTABS_MAP.get(tabId) || tab[TAB_PROP.SUBTABS] || [];
+
+        if (isParentActive && subtabs.length > 0) {
+            const firstSubId = typeof subtabs[0] === "string" ? subtabs[0] : (subtabs[0]?.id || "");
+            const activeSub = state.subTab || firstSubId;
+            if (!state.subTab && firstSubId) setTimeout(() => setState({subTab: firstSubId}), 0);
+
+            subContainer.style.display = "flex";
+            subContainer.innerHTML = subtabs.map(st => {
+                const sId = typeof st === "string" ? st : (st.id || st.title);
+                const sTitle = typeof st === "string" ? st : (st.title || st.id);
+                const isActive = activeSub === sId;
+                return `<button class="sub-tab ${isActive ? "active" : ""}" data-sub="${sId}">↳ ${sTitle}</button>`;
+            }).join("");
+
+            subContainer.querySelectorAll(".sub-tab").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    setState({subTab: btn.dataset.sub});
+                });
+            });
+        } else {
+            subContainer.style.display = "none";
+            subContainer.innerHTML = "";
+        }
     }
 }
 
@@ -126,10 +188,17 @@ export async function renderCustomTab(tab, container) {
             state: state,
             token: window[GLOBAL_KEY.TOKEN] || "",
             store: store,
-            ["navigate"]: (id) => switchTab(id),
-            ["selectItem"]: (index) => selectItem(index),
-            ["selectMob"]: (index) => selectMob(index)
+            get subTab() {
+                return state.subTab;
+            },
+            setSubTabs: (subtabs) => setCustomSubTabs(tabId, subtabs),
+            navigate: (id, sub = null) => switchTab(id, sub),
+            navigateSub: (subId) => setState({subTab: subId}),
+            selectItem: (index) => selectItem(index),
+            selectMob: (index) => selectMob(index)
         };
+
+        lastNotifiedSubTab = state.subTab;
 
         if (typeof plugin[TAB_PROP.MOUNT] === "function") {
             plugin[TAB_PROP.MOUNT](root, context);
@@ -158,6 +227,7 @@ export function unmountActivePlugin() {
         console.warn("[WebPacks] Error during plugin unmount:", e);
     }
     activeCustomPlugin = null;
+    lastNotifiedSubTab = null;
 }
 
 export function isCustomTabActive(activeTab) {

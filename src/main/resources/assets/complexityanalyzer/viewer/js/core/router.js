@@ -17,6 +17,7 @@
  */
 
 import {setState, state, store, switchTab} from "./state.js";
+import {renderCustomSubTabsUI} from "./custom-tabs.js";
 
 let suppressHistory = false;
 
@@ -244,6 +245,7 @@ function renderTabs() {
         }
     }
 
+    renderCustomSubTabsUI();
     document.querySelectorAll("#main-content > .panel").forEach(p => {
         p.hidden = p.id !== "tab-" + active;
         if (p.id === "tab-" + active) p.classList.add("active");

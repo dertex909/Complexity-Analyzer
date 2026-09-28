@@ -32,8 +32,8 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
+import org.complexityanalyzer.util.FileManager;
 import org.complexityanalyzer.util.FormatUtils;
-import org.complexityanalyzer.util.ModFileManager;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -219,13 +219,13 @@ public final class SystemCommand {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.no_world", label));
             return 0;
         }
-        if (!ModFileManager.isRegularFile(file)) {
+        if (!FileManager.isRegularFile(file)) {
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.not_built", label));
             return 0;
         }
         try {
-            long size = ModFileManager.getSize(file);
-            var modified = ModFileManager.getLastModifiedTime(file).toInstant();
+            long size = FileManager.getSize(file);
+            var modified = FileManager.getLastModifiedTime(file).toInstant();
             String age = FormatUtils.formatAge(Duration.between(modified, Instant.now()));
             output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.present", label, FormatUtils.humanBytes(size), age, file.toString()));
             return 1;

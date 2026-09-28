@@ -31,7 +31,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.nio.file.Path;
 
@@ -56,7 +56,7 @@ public final class MachineRegistryCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return ModFileManager.resolve(server, "machine_registry.bin");
+            return FileManager.resolve(server, "machine_registry.bin");
         } catch (Throwable t) {
             return null;
         }
@@ -67,11 +67,11 @@ public final class MachineRegistryCache implements ManagedCache {
     }
 
     public int tryLoad(Path file, Fingerprint expected, Object2ObjectMap<ResourceLocation, ObjectList<Item>> target) {
-        if (!ModFileManager.isRegularFile(file)) return -1;
+        if (!FileManager.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
         try {
-            byte[] bytes = ModFileManager.readCompressedBytes(file);
+            byte[] bytes = FileManager.readCompressedBytes(file);
             raw = Unpooled.wrappedBuffer(bytes);
             var buf = new FriendlyByteBuf(raw);
 
@@ -140,7 +140,7 @@ public final class MachineRegistryCache implements ManagedCache {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
 
-            ModFileManager.writeCompressedAtomic(file, bytes, 5);
+            FileManager.writeCompressedAtomic(file, bytes, 5);
             ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());

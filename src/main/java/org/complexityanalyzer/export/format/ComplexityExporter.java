@@ -35,7 +35,7 @@ import org.complexityanalyzer.export.format.ExportData.MobData;
 import org.complexityanalyzer.export.format.ExportData.SourceData;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.HardcodedSource;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -74,8 +74,8 @@ public class ComplexityExporter {
         }
         var complexity = Objects.requireNonNull(engine.getComplexityResult(item), () -> "Failed to analyze item: " + itemIdString);
         var itemData = buildItemData(item, itemId, complexity, engine);
-        var exportFile = ModFileManager.resolve(server, "export", "items", itemId.getNamespace() + "_" + itemId.getPath() + "." + format.getFileExtension());
-        ModFileManager.writeStringAtomic(exportFile, format.formatSingleItem(itemData));
+        var exportFile = FileManager.resolve(server, "export", "items", itemId.getNamespace() + "_" + itemId.getPath() + "." + format.getFileExtension());
+        FileManager.writeStringAtomic(exportFile, format.formatSingleItem(itemData));
         return exportFile;
     }
 
@@ -95,8 +95,8 @@ public class ComplexityExporter {
         var mobId = ResourceLocation.parse(mobIdString);
         var mobType = GameRegistryManager.getEntityType(mobId);
         var mobData = Objects.requireNonNull(buildMobData(mobType, engine), () -> "Failed to analyze mob: " + mobIdString);
-        var exportFile = ModFileManager.resolve(server, "export", "mobs", mobId.getNamespace() + "_" + mobId.getPath() + "." + format.getFileExtension());
-        ModFileManager.writeStringAtomic(exportFile, format.formatSingleMob(mobData));
+        var exportFile = FileManager.resolve(server, "export", "mobs", mobId.getNamespace() + "_" + mobId.getPath() + "." + format.getFileExtension());
+        FileManager.writeStringAtomic(exportFile, format.formatSingleMob(mobData));
         return exportFile;
     }
 
@@ -119,9 +119,9 @@ public class ComplexityExporter {
             items = trimmed;
         }
 
-        var exportFile = ModFileManager.resolve(server, "export", "items_" + fileSuffix + "_" + timestamp + "." + format.getFileExtension());
+        var exportFile = FileManager.resolve(server, "export", "items_" + fileSuffix + "_" + timestamp + "." + format.getFileExtension());
         String content = format.formatItems(new ExportData(timestamp, items.size(), items));
-        ModFileManager.writeStringAtomic(exportFile, content);
+        FileManager.writeStringAtomic(exportFile, content);
         return exportFile;
     }
 
@@ -143,8 +143,8 @@ public class ComplexityExporter {
         }
 
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        var exportPath = ModFileManager.resolve(server, "export", "mobs_" + fileSuffix + "_" + timestamp + "." + format.getFileExtension());
-        ModFileManager.writeStringAtomic(exportPath, format.formatMobs(mobDataList));
+        var exportPath = FileManager.resolve(server, "export", "mobs_" + fileSuffix + "_" + timestamp + "." + format.getFileExtension());
+        FileManager.writeStringAtomic(exportPath, format.formatMobs(mobDataList));
         return exportPath;
     }
 

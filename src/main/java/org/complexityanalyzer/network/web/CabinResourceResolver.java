@@ -24,7 +24,7 @@ import com.google.gson.JsonParser;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -72,8 +72,8 @@ public final class CabinResourceResolver {
     }
 
     private static Path getDevRoot() {
-        if (ModFileManager.isDirectory(Path.of(DEV_RESOURCES))) return Path.of("");
-        if (ModFileManager.isDirectory(Path.of("..", DEV_RESOURCES))) return Path.of("..");
+        if (FileManager.isDirectory(Path.of(DEV_RESOURCES))) return Path.of("");
+        if (FileManager.isDirectory(Path.of("..", DEV_RESOURCES))) return Path.of("..");
         return null;
     }
 
@@ -81,17 +81,17 @@ public final class CabinResourceResolver {
         var root = getDevRoot();
         if (root == null) return null;
         var path = root.resolve(DEV_RESOURCES).resolve(cleanPath(subPath)).toAbsolutePath().normalize();
-        return ModFileManager.isDirectory(path) ? path : null;
+        return FileManager.isDirectory(path) ? path : null;
     }
 
     public static Path getActivePacksDir() {
         var runDir = Path.of("run", PACKS_DIR_NAME);
-        if (ModFileManager.isDirectory(runDir)) return runDir.toAbsolutePath().normalize();
+        if (FileManager.isDirectory(runDir)) return runDir.toAbsolutePath().normalize();
 
         var rootDir = Path.of(PACKS_DIR_NAME);
-        if (ModFileManager.isDirectory(rootDir)) return rootDir.toAbsolutePath().normalize();
+        if (FileManager.isDirectory(rootDir)) return rootDir.toAbsolutePath().normalize();
 
-        var target = ModFileManager.isDirectory(Path.of("run")) ? runDir : rootDir;
+        var target = FileManager.isDirectory(Path.of("run")) ? runDir : rootDir;
         try {
             return Files.createDirectories(target).toAbsolutePath().normalize();
         } catch (Exception ignored) {
@@ -109,7 +109,7 @@ public final class CabinResourceResolver {
         if (devPacks != null) list.add(devPacks);
 
         var diskPacks = getActivePacksDir();
-        if (ModFileManager.isDirectory(diskPacks) && !list.contains(diskPacks)) list.add(diskPacks);
+        if (FileManager.isDirectory(diskPacks) && !list.contains(diskPacks)) list.add(diskPacks);
 
         return list;
     }
@@ -119,7 +119,7 @@ public final class CabinResourceResolver {
         if (devDir != null) {
             var clean = cleanPath(path);
             var diskPath = devDir.resolve(clean).normalize();
-            if (ModFileManager.isRegularFile(diskPath)) try {
+            if (FileManager.isRegularFile(diskPath)) try {
                 return Files.readAllBytes(diskPath);
             } catch (Exception ignored) {
             }
@@ -184,15 +184,15 @@ public final class CabinResourceResolver {
     }
 
     private static void scanDirectory(Path dir, ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, HashSet<String> seenTabIds, String token) {
-        if (!ModFileManager.isDirectory(dir)) return;
+        if (!FileManager.isDirectory(dir)) return;
         try {
-            for (var packPath : ModFileManager.list(dir)) {
+            for (var packPath : FileManager.list(dir)) {
                 var fileName = packPath.getFileName().toString();
                 if (fileName.startsWith(".")) continue;
 
-                if (fileName.endsWith(ZIP_SUFFIX) && ModFileManager.isRegularFile(packPath)) {
+                if (fileName.endsWith(ZIP_SUFFIX) && FileManager.isRegularFile(packPath)) {
                     scanZipPack(packPath, tabs, sources, seenTabIds, token);
-                } else if (ModFileManager.isDirectory(packPath)) {
+                } else if (FileManager.isDirectory(packPath)) {
                     scanDirectoryPack(packPath, tabs, sources, seenTabIds, token);
                 }
             }
@@ -212,10 +212,10 @@ public final class CabinResourceResolver {
                 try {
                     var modFile = mod.getOwningFile().getFile();
                     var packsRoot = modFile.findResource(PACKS_DIR_NAME);
-                    if (!ModFileManager.isDirectory(packsRoot)) continue;
+                    if (!FileManager.isDirectory(packsRoot)) continue;
 
-                    for (var packDir : ModFileManager.list(packsRoot)) {
-                        if (ModFileManager.isDirectory(packDir)) {
+                    for (var packDir : FileManager.list(packsRoot)) {
+                        if (FileManager.isDirectory(packDir)) {
                             scanDirectoryPack(packDir, tabs, sources, seenTabIds, token);
                         }
                     }
@@ -230,8 +230,8 @@ public final class CabinResourceResolver {
     private static void scanDirectoryPack(Path packDir, ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, HashSet<String> seenTabIds, String token) {
         try {
             var defaultNs = packDir.getFileName().toString().toLowerCase().replaceAll("[^a-z0-9_-]", "_");
-            for (var file : ModFileManager.list(packDir)) {
-                if (ModFileManager.isRegularFile(file) && file.getFileName().toString().endsWith(TAB_FILE_SUFFIX)) {
+            for (var file : FileManager.list(packDir)) {
+                if (FileManager.isRegularFile(file) && file.getFileName().toString().endsWith(TAB_FILE_SUFFIX)) {
                     try (var in = Files.newInputStream(file)) {
                         var tab = parseTabStream(in, defaultNs, token);
                         if (tab != null) {
@@ -343,7 +343,7 @@ public final class CabinResourceResolver {
                 var clean = cleanPath(subpath);
                 if (clean.isEmpty()) return null;
                 var target = this.root.resolve(clean).normalize();
-                if (!target.startsWith(this.root) || !ModFileManager.isRegularFile(target)) return null;
+                if (!target.startsWith(this.root) || !FileManager.isRegularFile(target)) return null;
                 return Files.readAllBytes(target);
             } catch (Exception ignored) {
                 return null;
@@ -361,7 +361,7 @@ public final class CabinResourceResolver {
         @Override
         public byte[] read(String subpath) {
             var clean = cleanPath(subpath);
-            if (clean.isEmpty() || !ModFileManager.isRegularFile(this.zipPath)) return null;
+            if (clean.isEmpty() || !FileManager.isRegularFile(this.zipPath)) return null;
             try (var zip = new ZipFile(this.zipPath.toFile())) {
                 var entry = zip.getEntry(clean);
                 if (entry == null || entry.isDirectory()) return null;

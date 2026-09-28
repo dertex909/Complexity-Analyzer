@@ -19,7 +19,7 @@
 package org.complexityanalyzer.network.web;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -58,7 +58,7 @@ public final class ViewerWatcher {
                         if (context == null) continue;
                         var fullPath = dir.resolve(context);
 
-                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && ModFileManager.isDirectory(fullPath)) {
+                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && FileManager.isDirectory(fullPath)) {
                             registerTree(fullPath, watchService);
                             shouldReload = true;
                         }
@@ -86,7 +86,7 @@ public final class ViewerWatcher {
 
     private static void registerTree(Path root, WatchService watchService) {
         try (var stream = Files.walk(root)) {
-            stream.filter(ModFileManager::isDirectory).forEach(dir -> {
+            stream.filter(FileManager::isDirectory).forEach(dir -> {
                 try {
                     dir.register(watchService,
                             StandardWatchEventKinds.ENTRY_MODIFY,

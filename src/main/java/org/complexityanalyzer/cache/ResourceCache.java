@@ -34,7 +34,7 @@ import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -134,18 +134,18 @@ public final class ResourceCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return ModFileManager.resolve(server, fileName);
+            return FileManager.resolve(server, fileName);
         } catch (Throwable t) {
             return null;
         }
     }
 
     public <T> int load(Path file, long[] fingerprint, Reader<T> reader, Reference2ObjectMap<Item, ObjectList<T>> target) {
-        if (!ModFileManager.isRegularFile(file)) return -1;
+        if (!FileManager.isRegularFile(file)) return -1;
 
         ByteBuf raw = null;
         try {
-            raw = Unpooled.wrappedBuffer(ModFileManager.readCompressedBytes(file));
+            raw = Unpooled.wrappedBuffer(FileManager.readCompressedBytes(file));
             var buf = new FriendlyByteBuf(raw);
 
             if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
@@ -205,7 +205,7 @@ public final class ResourceCache implements ManagedCache {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
 
-            ModFileManager.writeCompressedAtomic(file, bytes, 5);
+            FileManager.writeCompressedAtomic(file, bytes, 5);
             ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to save: {}", id, t.toString());

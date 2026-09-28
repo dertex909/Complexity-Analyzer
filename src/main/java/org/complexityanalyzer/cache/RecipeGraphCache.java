@@ -42,7 +42,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -215,7 +215,7 @@ public final class RecipeGraphCache implements ManagedCache {
     public Path file(MinecraftServer server) {
         if (server == null) return null;
         try {
-            return ModFileManager.resolve(server, "recipe_graph.bin");
+            return FileManager.resolve(server, "recipe_graph.bin");
         } catch (Throwable t) {
             return null;
         }
@@ -276,7 +276,7 @@ public final class RecipeGraphCache implements ManagedCache {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
 
-            ModFileManager.writeCompressedAtomic(file, bytes, 5);
+            FileManager.writeCompressedAtomic(file, bytes, 5);
             ComplexityAnalyzer.LOGGER.debug("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
@@ -286,11 +286,11 @@ public final class RecipeGraphCache implements ManagedCache {
     }
 
     public RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
-        if (!ModFileManager.isRegularFile(file)) return null;
+        if (!FileManager.isRegularFile(file)) return null;
 
         ByteBuf raw = null;
         try {
-            byte[] bytes = ModFileManager.readCompressedBytes(file);
+            byte[] bytes = FileManager.readCompressedBytes(file);
             raw = Unpooled.wrappedBuffer(bytes);
             var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
 

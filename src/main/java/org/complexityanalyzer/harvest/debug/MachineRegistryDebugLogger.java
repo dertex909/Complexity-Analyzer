@@ -28,7 +28,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.PrintWriter;
@@ -372,8 +372,8 @@ public final class MachineRegistryDebugLogger {
 
     private void saveDumpToDisk(String content) {
         try {
-            var dumpFile = ModFileManager.resolve(server, "machine_scan_debug.txt");
-            ModFileManager.writeStringAtomic(dumpFile, content);
+            var dumpFile = FileManager.resolve(server, "machine_scan_debug.txt");
+            FileManager.writeStringAtomic(dumpFile, content);
             ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved full scan debug file to: {}", dumpFile.toAbsolutePath());
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error("[MachineRegistry] Failed to write debug dump file: {}", t.getMessage());

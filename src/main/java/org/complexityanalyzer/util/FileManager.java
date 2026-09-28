@@ -35,7 +35,7 @@ import java.nio.file.attribute.FileTime;
 
 import static java.util.Objects.requireNonNull;
 
-public final class ModFileManager {
+public final class FileManager {
 
     private static final FileVisitor<Path> DELETE_VISITOR = new SimpleFileVisitor<>() {
         @Override
@@ -54,7 +54,7 @@ public final class ModFileManager {
 
     private static volatile boolean supportsAtomicMove = true;
 
-    private ModFileManager() {
+    private FileManager() {
         throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 

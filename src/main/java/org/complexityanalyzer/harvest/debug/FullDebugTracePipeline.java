@@ -39,7 +39,7 @@ import org.complexityanalyzer.harvest.engine.DeepCollector;
 import org.complexityanalyzer.harvest.engine.HarvestedItems;
 import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.nio.file.Path;
 import java.util.Collection;
@@ -207,8 +207,8 @@ public final class FullDebugTracePipeline {
         }
 
         try {
-            var file = ModFileManager.resolve(worldDir, "runtime_harvest.txt");
-            ModFileManager.writeStringAtomic(file, buffer.toString());
+            var file = FileManager.resolve(worldDir, "runtime_harvest.txt");
+            FileManager.writeStringAtomic(file, buffer.toString());
             ComplexityAnalyzer.LOGGER.info("[Harvest:Debug] Written {} recipes trace to {}", totalRecipes, file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest:Debug] Failed to write trace: {}", t.getMessage());

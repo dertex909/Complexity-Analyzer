@@ -33,7 +33,7 @@ import org.complexityanalyzer.geoscan.data.BiomeDataMapper;
 import org.complexityanalyzer.geoscan.data.BiomeScanData;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -50,16 +50,16 @@ public class GeoDataStorage {
     private final ConcurrentHashMap<Path, Object> fileLockMarkers = new ConcurrentHashMap<>();
 
     public GeoDataStorage(MinecraftServer server) {
-        this.dataDir = ModFileManager.resolve(server);
-        this.reconDir = ModFileManager.resolve(server, "recon");
-        this.finalDir = ModFileManager.resolve(server, "final");
-        this.metadataFile = ModFileManager.resolve(server, "metadata.json");
+        this.dataDir = FileManager.resolve(server);
+        this.reconDir = FileManager.resolve(server, "recon");
+        this.finalDir = FileManager.resolve(server, "final");
+        this.metadataFile = FileManager.resolve(server, "metadata.json");
     }
 
     public ScanMetadata loadMetadata() {
-        if (!ModFileManager.exists(metadataFile)) return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
+        if (!FileManager.exists(metadataFile)) return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         try {
-            String json = ModFileManager.readString(metadataFile);
+            String json = FileManager.readString(metadataFile);
             var meta = PRETTY_GSON.fromJson(json, ScanMetadata.class);
             return meta != null ? meta : new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         } catch (IOException e) {
@@ -70,7 +70,7 @@ public class GeoDataStorage {
 
     public void saveMetadata(ScanMetadata metadata) {
         try {
-            ModFileManager.writeStringAtomic(metadataFile, PRETTY_GSON.toJson(metadata));
+            FileManager.writeStringAtomic(metadataFile, PRETTY_GSON.toJson(metadata));
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to write metadata file!", e);
         }
@@ -84,7 +84,7 @@ public class GeoDataStorage {
             try {
                 var lines = new ObjectArrayList<String>(newSnapshots.size());
                 for (var newSnapshot : newSnapshots) lines.add(GSON.toJson(newSnapshot));
-                ModFileManager.appendLines(file, lines);
+                FileManager.appendLines(file, lines);
             } catch (IOException e) {
                 ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
             }
@@ -94,16 +94,16 @@ public class GeoDataStorage {
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>> getAllReconFilePaths() {
         var allPaths = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, Path>>();
-        if (!ModFileManager.exists(reconDir)) return allPaths;
+        if (!FileManager.exists(reconDir)) return allPaths;
 
         try {
-            var dimNamespaces = ModFileManager.list(reconDir);
+            var dimNamespaces = FileManager.list(reconDir);
             for (var dimNamespaceDir : dimNamespaces) {
-                if (!ModFileManager.exists(dimNamespaceDir)) continue;
+                if (!FileManager.exists(dimNamespaceDir)) continue;
 
-                var dimPaths = ModFileManager.list(dimNamespaceDir);
+                var dimPaths = FileManager.list(dimNamespaceDir);
                 for (var dimPathDir : dimPaths) {
-                    if (!ModFileManager.exists(dimPathDir)) continue;
+                    if (!FileManager.exists(dimPathDir)) continue;
 
                     var dimensionId = ResourceLocation.fromNamespaceAndPath(
                             dimNamespaceDir.getFileName().toString(),
@@ -111,7 +111,7 @@ public class GeoDataStorage {
                     );
 
                     var biomeFiles = new Object2ObjectOpenHashMap<ResourceLocation, Path>();
-                    var files = ModFileManager.list(dimPathDir);
+                    var files = FileManager.list(dimPathDir);
                     for (var filePath : files) {
                         String fileName = filePath.getFileName().toString();
                         if (!fileName.endsWith(".jsonl")) continue;
@@ -132,9 +132,9 @@ public class GeoDataStorage {
 
     public ObjectArrayList<ChunkSnapshot> readReconFile(Path path) {
         var snapshots = new ObjectArrayList<ChunkSnapshot>();
-        if (!ModFileManager.exists(path)) return snapshots;
+        if (!FileManager.exists(path)) return snapshots;
         try {
-            var lines = ModFileManager.readLines(path);
+            var lines = FileManager.readLines(path);
             for (var line : lines) {
                 try {
                     var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
@@ -171,16 +171,16 @@ public class GeoDataStorage {
     }
 
     public void deleteAllData() {
-        ModFileManager.delete(dataDir);
+        FileManager.delete(dataDir);
     }
 
     public void deleteFinalData() {
-        ModFileManager.delete(finalDir);
+        FileManager.delete(finalDir);
     }
 
     private void saveJson(Path file, Object data) {
         try {
-            ModFileManager.writeStringAtomic(file, GeoDataStorage.PRETTY_GSON.toJson(data));
+            FileManager.writeStringAtomic(file, GeoDataStorage.PRETTY_GSON.toJson(data));
         } catch (IOException e) {
             ComplexityAnalyzer.LOGGER.error("Failed to save JSON to file {}", file, e);
         }
@@ -188,16 +188,16 @@ public class GeoDataStorage {
 
     private <T> Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>> loadDataFromDirectory(Path rootDir, ThrowingFunction<String, T> fromJson) {
         var allData = new Object2ObjectOpenHashMap<ResourceLocation, Object2ObjectMap<ResourceLocation, T>>();
-        if (!ModFileManager.exists(rootDir)) return allData;
+        if (!FileManager.exists(rootDir)) return allData;
 
         try {
-            var dimNamespaces = ModFileManager.list(rootDir);
+            var dimNamespaces = FileManager.list(rootDir);
             for (var dimNamespaceDir : dimNamespaces) {
-                if (!ModFileManager.exists(dimNamespaceDir)) continue;
+                if (!FileManager.exists(dimNamespaceDir)) continue;
 
-                var dimPaths = ModFileManager.list(dimNamespaceDir);
+                var dimPaths = FileManager.list(dimNamespaceDir);
                 for (var dimPathDir : dimPaths) {
-                    if (!ModFileManager.exists(dimPathDir)) continue;
+                    if (!FileManager.exists(dimPathDir)) continue;
 
                     var dimensionId = ResourceLocation.fromNamespaceAndPath(
                             dimNamespaceDir.getFileName().toString(),
@@ -205,13 +205,13 @@ public class GeoDataStorage {
                     );
 
                     var biomeData = new Object2ObjectOpenHashMap<ResourceLocation, T>();
-                    var biomeFiles = ModFileManager.list(dimPathDir);
+                    var biomeFiles = FileManager.list(dimPathDir);
                     for (var biomeFile : biomeFiles) {
                         String fileName = biomeFile.getFileName().toString();
                         if (!fileName.endsWith(".json")) continue;
 
                         try {
-                            String json = ModFileManager.readString(biomeFile);
+                            String json = FileManager.readString(biomeFile);
                             var data = fromJson.apply(json);
                             if (data != null) {
                                 String encodedName = fileName.substring(0, fileName.length() - 5);
@@ -253,9 +253,9 @@ public class GeoDataStorage {
 
     public int countReconChunks(ResourceLocation dimension, ResourceLocation biome) {
         var path = getReconFilePath(dimension, biome);
-        if (!ModFileManager.exists(path)) return 0;
+        if (!FileManager.exists(path)) return 0;
         try {
-            return ModFileManager.readLines(path).size();
+            return FileManager.readLines(path).size();
         } catch (IOException e) {
             return 0;
         }

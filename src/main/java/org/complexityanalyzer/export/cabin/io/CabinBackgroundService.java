@@ -26,7 +26,7 @@ import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
 import org.complexityanalyzer.network.web.CabinWsHub;
-import org.complexityanalyzer.util.ModFileManager;
+import org.complexityanalyzer.util.FileManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ public final class CabinBackgroundService {
     }
 
     private static Path cabinPath(MinecraftServer server, String fileName) {
-        return ModFileManager.resolve(server, "cabin", fileName);
+        return FileManager.resolve(server, "cabin", fileName);
     }
 
     private static Snapshot parseHeader(byte[] bytes, long hash) {
@@ -151,23 +151,23 @@ public final class CabinBackgroundService {
 
     private void persistToFile(MinecraftServer server, byte[] bytes) throws IOException {
         rotateCabinHistory(server);
-        ModFileManager.writeBytesAtomic(cabinPath(server, "latest.cabin"), bytes);
+        FileManager.writeBytesAtomic(cabinPath(server, "latest.cabin"), bytes);
     }
 
     private void rotateCabinHistory(MinecraftServer server) {
         try {
             var latest = cabinPath(server, "latest.cabin");
-            if (!ModFileManager.exists(latest)) return;
+            if (!FileManager.exists(latest)) return;
 
-            ModFileManager.delete(cabinPath(server, "history_" + MAX_HISTORY_FILES + ".cabin"));
+            FileManager.delete(cabinPath(server, "history_" + MAX_HISTORY_FILES + ".cabin"));
 
             for (int i = MAX_HISTORY_FILES - 1; i >= 1; i--) {
                 var src = cabinPath(server, "history_" + i + ".cabin");
                 var dst = cabinPath(server, "history_" + (i + 1) + ".cabin");
-                if (ModFileManager.exists(src)) ModFileManager.move(src, dst);
+                if (FileManager.exists(src)) FileManager.move(src, dst);
             }
 
-            ModFileManager.move(latest, cabinPath(server, "history_1.cabin"));
+            FileManager.move(latest, cabinPath(server, "history_1.cabin"));
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cabin] Failed to rotate history backups: {}", t.getMessage());
         }

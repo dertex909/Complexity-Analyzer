@@ -1,3 +1,21 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.complexityanalyzer.network.web.pack;
 
 import com.google.gson.JsonObject;
@@ -8,6 +26,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.util.FileManager;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
@@ -81,11 +100,14 @@ public final class WebPackScanner {
     }
 
     private static void scanZipPack(Path zipPath, ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources, ObjectOpenHashSet<String> seenTabIds, String token) {
-        try (var zip = new ZipFile(zipPath.toFile())) {
-            var entries = zip.entries();
-            var defaultNs = WebTabManifest.normalizeNamespace(zipPath.getFileName().toString().replace(ZIP_SUFFIX, ""));
+        try (var zip = new ZipFile(zipPath.toFile(), StandardCharsets.UTF_8)) {
+            var fileName = zipPath.getFileName().toString();
+            var baseName = fileName.endsWith(ZIP_SUFFIX) ? fileName.substring(0, fileName.length() - ZIP_SUFFIX.length()) : fileName;
+
+            var defaultNs = WebTabManifest.normalizeNamespace(baseName);
             var source = new WebResourceSource.ZipFileSource(zipPath);
 
+            var entries = zip.entries();
             while (entries.hasMoreElements()) {
                 var entry = entries.nextElement();
                 var name = entry.getName();

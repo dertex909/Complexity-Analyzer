@@ -34,10 +34,10 @@ public final class ScanConfig {
     }
 
     public enum ScanProfile {
-        NORMAL("normal", "Normal", "🟢", ChatFormatting.GREEN, 30.0f, 4, 16, 4, 2, 3, 128, 128, 128, 2),
-        FAST("fast", "Fast", "🟡", ChatFormatting.YELLOW, 40.0f, 6, 24, 8, 4, 6, 256, 512, 512, 2),
-        AGGRESSIVE("aggressive", "Aggressive", "🟠", ChatFormatting.GOLD, 50.0f, 10, 48, 12, 6, 9, 512, 1024, 1024, 3),
-        UNLIMITED("unlimited", "Unlimited", "🔴", ChatFormatting.RED, -1.0f, 16, 96, 24, 10, 16, 1024, 2048, 2048, 4);
+        NORMAL("normal", "Normal", "🟢", ChatFormatting.GREEN, 30.0f, 4, 16, 4, 2, 3, 2),
+        FAST("fast", "Fast", "🟡", ChatFormatting.YELLOW, 40.0f, 6, 24, 8, 4, 6, 2),
+        AGGRESSIVE("aggressive", "Aggressive", "🟠", ChatFormatting.GOLD, 50.0f, 10, 48, 12, 6, 9, 3),
+        UNLIMITED("unlimited", "Unlimited", "🔴", ChatFormatting.RED, -1.0f, 16, 96, 24, 10, 16, 4);
 
         public final String commandName;
         public final String displayName;
@@ -49,14 +49,11 @@ public final class ScanConfig {
         private final int batchNoLimit;
         private final int batch70;
         private final int batch50;
-        private final int budgetMin;
-        private final int budgetMax;
-        private final int budgetFixed;
         private final int maxPendingAnalysisBatches;
 
         ScanProfile(String commandName, String displayName, String icon, ChatFormatting color, float msptLimit,
                     int emptyBatchTolerance, int stagnantBase, int batchNoLimit, int batch70, int batch50,
-                    int budgetMin, int budgetMax, int budgetFixed, int maxPendingAnalysisBatches) {
+                    int maxPendingAnalysisBatches) {
             this.commandName = commandName;
             this.displayName = displayName;
             this.icon = icon;
@@ -67,9 +64,6 @@ public final class ScanConfig {
             this.batchNoLimit = batchNoLimit;
             this.batch70 = batch70;
             this.batch50 = batch50;
-            this.budgetMin = budgetMin;
-            this.budgetMax = budgetMax;
-            this.budgetFixed = budgetFixed;
             this.maxPendingAnalysisBatches = maxPendingAnalysisBatches;
         }
 
@@ -100,9 +94,7 @@ public final class ScanConfig {
         }
 
         private int getMaxScannedBudget(int chunksPerBiome) {
-            if (this == NORMAL) return budgetFixed;
-            long scaled = (long) Math.max(1, chunksPerBiome) * 2L;
-            return Math.clamp(scaled, budgetMin, budgetMax);
+            return (int) Math.max(64L, ((long) Math.max(1, chunksPerBiome) * 2L));
         }
 
         public record ScanPolicy(

@@ -59,14 +59,13 @@ public class ScanExecutor {
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final AtomicInteger activeWorkerCount = new AtomicInteger(0);
 
+    private final AtomicInteger throttlePauseCount = new AtomicInteger(0);
+    private final AtomicLong totalThrottleTimeMs = new AtomicLong(0);
+
     private final AtomicReference<SessionContext> sessionRef = new AtomicReference<>(null);
 
     private final ConcurrentHashMap<Thread, Boolean> workerThreads = new ConcurrentHashMap<>();
-
     private final ConcurrentHashMap<ScanSession.BiomeKey, BufferedSnapshots> resultBuffers = new ConcurrentHashMap<>();
-
-    private final AtomicInteger throttlePauseCount = new AtomicInteger(0);
-    private final AtomicLong totalThrottleTimeMs = new AtomicLong(0);
 
     private final ExecutorService analysisExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final ExecutorService workerExecutor = Executors.newVirtualThreadPerTaskExecutor();

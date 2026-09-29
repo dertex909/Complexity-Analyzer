@@ -23,9 +23,15 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.context.StringRange;
+import com.mojang.brigadier.suggestion.Suggestion;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
@@ -38,8 +44,9 @@ import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.util.FormatUtils;
 import org.complexityanalyzer.util.ServerLanguage;
 
+import java.util.concurrent.CompletableFuture;
+
 import static java.util.Locale.ROOT;
-import static net.minecraft.commands.SharedSuggestionProvider.suggest;
 import static net.minecraft.network.chat.Style.EMPTY;
 
 public class GeoScanCommands {
@@ -56,13 +63,61 @@ public class GeoScanCommands {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("geoscan")
-                .then(Commands.literal("start").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::showProfileHelp)
-                        .then(Commands.argument("profile", StringArgumentType.word()).suggests((c, b) -> suggest(PROFILE_NAMES, b)).executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
-                                .then(Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE)).executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), false))
-                                        .then(Commands.argument("force", BoolArgumentType.bool()).executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"), StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force")))))))
-                .then(Commands.literal("stop").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::executeStop))
-                .then(Commands.literal("status").executes(GeoScanCommands::executeStatus))
-                .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(GeoScanCommands::executeClear));
+                .then(buildStartCommand())
+                .then(buildStopCommand())
+                .then(buildStatusCommand())
+                .then(buildClearCommand());
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> buildStartCommand() {
+        var forceArg = Commands.argument("force", BoolArgumentType.bool())
+                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"),
+                        StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force")));
+
+        var chunksArg = Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
+                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"),
+                        StringArgumentType.getString(ctx, "profile"), false))
+                .then(forceArg);
+
+        var profileArg = Commands.argument("profile", StringArgumentType.word())
+                .suggests((ctx, builder) -> suggestOrderedProfiles(builder))
+                .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
+                .then(chunksArg);
+
+        return Commands.literal("start")
+                .requires(source -> source.hasPermission(2))
+                .executes(GeoScanCommands::showProfileHelp)
+                .then(profileArg);
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> buildStopCommand() {
+        return Commands.literal("stop")
+                .requires(source -> source.hasPermission(2))
+                .executes(GeoScanCommands::executeStop);
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> buildStatusCommand() {
+        return Commands.literal("status")
+                .executes(GeoScanCommands::executeStatus);
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> buildClearCommand() {
+        return Commands.literal("clear")
+                .requires(source -> source.hasPermission(2))
+                .executes(GeoScanCommands::executeClear);
+    }
+
+
+    private static CompletableFuture<Suggestions> suggestOrderedProfiles(SuggestionsBuilder builder) {
+        var remaining = builder.getRemaining().toLowerCase(ROOT);
+        var range = StringRange.between(builder.getStart(), builder.getInput().length());
+        var list = new ObjectArrayList<Suggestion>(PROFILE_NAMES.length);
+
+        for (var name : PROFILE_NAMES) {
+            if (SharedSuggestionProvider.matchesSubStr(remaining, name)) list.add(new Suggestion(range, name));
+        }
+
+        return list.isEmpty() ? Suggestions.empty() : CompletableFuture.completedFuture(new Suggestions(range, list));
     }
 
     private static int showProfileHelp(CommandContext<CommandSourceStack> context) {

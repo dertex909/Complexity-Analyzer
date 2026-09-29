@@ -37,9 +37,9 @@ import java.net.InetSocketAddress;
 
 public final class StandaloneWebServer {
 
-    private static EventLoopGroup bossGroup;
-    private static EventLoopGroup workerGroup;
-    private static Channel serverChannel;
+    private static volatile EventLoopGroup bossGroup;
+    private static volatile EventLoopGroup workerGroup;
+    private static volatile Channel serverChannel;
 
     private StandaloneWebServer() {
     }

@@ -28,7 +28,7 @@ public final class CabinResourceResolver {
     private CabinResourceResolver() {
     }
 
-    public static synchronized void invalidateCache() {
+    public static void invalidateCache() {
         cachedRegistry = null;
     }
 

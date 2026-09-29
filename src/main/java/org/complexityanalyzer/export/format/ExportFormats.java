@@ -24,11 +24,15 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import static java.util.Locale.ROOT;
 
 public final class ExportFormats {
-    private static final Object2ObjectLinkedOpenHashMap<String, IExportFormat> FORMATS = new Object2ObjectLinkedOpenHashMap<>();
-    private static ObjectList<String> CACHED_IDS = ObjectLists.emptyList();
+
+    private static final AtomicReference<Snapshot> SNAPSHOT = new AtomicReference<>(
+            new Snapshot(new Object2ObjectLinkedOpenHashMap<>(), ObjectLists.emptyList())
+    );
 
     static {
         register(new JsonExportFormat());
@@ -38,17 +42,27 @@ public final class ExportFormats {
     private ExportFormats() {
     }
 
-    public static synchronized void register(IExportFormat format) {
-        FORMATS.put(format.getId().toLowerCase(ROOT), format);
-        CACHED_IDS = ObjectLists.unmodifiable(new ObjectArrayList<>(FORMATS.keySet()));
+    public static void register(IExportFormat format) {
+        if (format == null) return;
+        String id = format.getId().toLowerCase(ROOT);
+
+        SNAPSHOT.updateAndGet(current -> {
+            var newMap = new Object2ObjectLinkedOpenHashMap<>(current.map);
+            newMap.put(id, format);
+            var newIds = ObjectLists.unmodifiable(new ObjectArrayList<>(newMap.keySet()));
+            return new Snapshot(newMap, newIds);
+        });
     }
 
     @Nullable
     public static IExportFormat get(String id) {
-        return id == null ? null : FORMATS.get(id.toLowerCase(ROOT));
+        return id == null ? null : SNAPSHOT.get().map.get(id.toLowerCase(ROOT));
     }
 
     public static ObjectList<String> getAvailableFormatIds() {
-        return CACHED_IDS;
+        return SNAPSHOT.get().ids;
+    }
+
+    private record Snapshot(Object2ObjectLinkedOpenHashMap<String, IExportFormat> map, ObjectList<String> ids) {
     }
 }

@@ -17,7 +17,7 @@ public final class WebManager {
         CabinResourceResolver.invalidateCache();
         StandaloneWebServer.start();
         return CabinBackgroundService.getInstance().regenerateAsync(server, engine).whenComplete((snap, err) -> {
-            if (snap != null) CabinWsHub.broadcast("reload");
+            if (snap != null) CabinWsHub.broadcastReload();
         });
     }
 }

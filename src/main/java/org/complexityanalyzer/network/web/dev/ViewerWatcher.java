@@ -26,21 +26,20 @@ import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class ViewerWatcher {
 
-    private static Thread watcherThread;
-    private static volatile boolean running = false;
+    private static final AtomicReference<Thread> watcherRef = new AtomicReference<>();
 
     private ViewerWatcher() {
     }
 
-    public static synchronized void start() {
+    public static void start() {
         var watchDirs = WebPackPaths.getWatchDirectories();
-        if (watchDirs.isEmpty() || running) return;
-        running = true;
+        if (watchDirs.isEmpty() || watcherRef.get() != null) return;
 
-        watcherThread = Thread.ofVirtual().name("Complexity-Viewer-Watcher").start(() -> {
+        var thread = Thread.ofVirtual().name("Complexity-Viewer-Watcher").unstarted(() -> {
             try (var watchService = FileSystems.getDefault().newWatchService()) {
 
                 for (var dir : watchDirs) {
@@ -50,7 +49,7 @@ public final class ViewerWatcher {
 
                 long lastReload = 0;
 
-                while (running && !Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     var key = watchService.take();
                     var dir = (Path) key.watchable();
 
@@ -75,7 +74,7 @@ public final class ViewerWatcher {
                         lastReload = now;
                         ComplexityAnalyzer.LOGGER.info("[WebDev] Change detected, invalidating cache and reloading browser...");
                         CabinResourceResolver.invalidateCache();
-                        CabinWsHub.broadcast("reload");
+                        CabinWsHub.broadcastReload();
                     }
 
                     key.reset();
@@ -85,6 +84,8 @@ public final class ViewerWatcher {
                 ComplexityAnalyzer.LOGGER.error("[WebDev] Watcher error", e);
             }
         });
+
+        if (watcherRef.compareAndSet(null, thread)) thread.start();
     }
 
     private static void registerTree(Path root, WatchService watchService) {
@@ -102,11 +103,8 @@ public final class ViewerWatcher {
         }
     }
 
-    public static synchronized void stop() {
-        running = false;
-        if (watcherThread != null) {
-            watcherThread.interrupt();
-            watcherThread = null;
-        }
+    public static void stop() {
+        var thread = watcherRef.getAndSet(null);
+        if (thread != null) thread.interrupt();
     }
 }

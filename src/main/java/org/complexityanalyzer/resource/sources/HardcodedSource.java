@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.resource.sources;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
@@ -30,15 +29,16 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
 public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistry {
 
     private static final int NORMAL_PRIORITY = 35;
-    private static HardcodedSource INSTANCE;
+    private static volatile HardcodedSource INSTANCE;
 
     private final ConcurrentHashMap<Item, BaseResourceData> staticSources = new ConcurrentHashMap<>();
-    private final ObjectArrayList<BiConsumer<Level, IHardcodedSourceRegistry>> initializers = new ObjectArrayList<>();
+    private final CopyOnWriteArrayList<BiConsumer<Level, IHardcodedSourceRegistry>> initializers = new CopyOnWriteArrayList<>();
 
     public HardcodedSource() {
         INSTANCE = this;
@@ -69,7 +69,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
     }
 
     @Override
-    public synchronized void register(BiConsumer<Level, IHardcodedSourceRegistry> initializer) {
+    public void register(BiConsumer<Level, IHardcodedSourceRegistry> initializer) {
         if (initializer != null) initializers.add(initializer);
     }
 

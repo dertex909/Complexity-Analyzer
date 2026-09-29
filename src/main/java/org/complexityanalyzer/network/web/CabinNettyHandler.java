@@ -116,9 +116,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     public static void resetToken() {
-        synchronized (CabinNettyHandler.class) {
-            cachedToken = null;
-        }
+        cachedToken = null;
     }
 
     @SuppressWarnings("ConstantValue")

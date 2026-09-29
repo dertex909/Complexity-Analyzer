@@ -27,6 +27,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 public final class CabinWsHub {
 
     private static final ChannelGroup CHANNELS = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    private static final String RELOAD = "reload";
 
     private CabinWsHub() {
     }
@@ -38,5 +39,9 @@ public final class CabinWsHub {
     public static void broadcast(String message) {
         if (CHANNELS.isEmpty()) return;
         CHANNELS.writeAndFlush(new TextWebSocketFrame(message));
+    }
+
+    public static void broadcastReload() {
+        broadcast(RELOAD);
     }
 }

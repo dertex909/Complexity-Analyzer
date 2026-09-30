@@ -101,9 +101,9 @@ public final class SystemCommand {
             var stats = engine.getStats();
             output.sendEmptyLine(source);
             output.sendStatusLine(source, "📊", "complexityanalyzer.command.system.data_overview", ChatFormatting.AQUA);
-            output.sendSubEntry(source, "complexityanalyzer.command.system.items_with_recipes", String.valueOf(stats.itemCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
-            output.sendSubEntry(source, "complexityanalyzer.command.system.total_recipes", String.valueOf(stats.recipeCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
-            output.sendSubEntry(source, "complexityanalyzer.command.system.base_resources", String.valueOf(stats.baseResourceCount()), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
+            output.sendSubEntry(source, "complexityanalyzer.command.system.items_with_recipes", stats.itemCount(), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
+            output.sendSubEntry(source, "complexityanalyzer.command.system.total_recipes", stats.recipeCount(), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
+            output.sendSubEntry(source, "complexityanalyzer.command.system.base_resources", stats.baseResourceCount(), ChatFormatting.DARK_GRAY, ChatFormatting.WHITE);
         } else {
             output.sendEmptyLine(source);
             output.sendTip(source, "complexityanalyzer.command.system.stats_unavailable");
@@ -185,10 +185,10 @@ public final class SystemCommand {
         output.sendEmptyLine(source);
         output.sendHeader(source, "📊", "complexityanalyzer.command.system.detailed_stats_header", ChatFormatting.GREEN);
         output.sendEmptyLine(source);
-        output.sendSubEntry(source, "complexityanalyzer.command.system.items_label", String.valueOf(stats.itemCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendSubEntry(source, "complexityanalyzer.command.system.recipes_label", String.valueOf(stats.recipeCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.items_label", stats.itemCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.recipes_label", stats.recipeCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
-        output.sendSubEntry(source, "complexityanalyzer.command.system.cached_items", String.valueOf(stats.baseResourceCount()), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.system.cached_items", stats.baseResourceCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEmptyLine(source);
         output.sendFooter(source);
         return 1;
@@ -202,35 +202,62 @@ public final class SystemCommand {
         var enabledColor = enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW;
         var enabledText = Component.translatable(enabled
                 ? "complexityanalyzer.command.system.cache.enabled"
-                : "complexityanalyzer.command.system.cache.disabled").withStyle(enabledColor);
+                : "complexityanalyzer.command.system.cache.disabled");
 
-        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.header"));
-        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.config").append(enabledText));
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "📦", "complexityanalyzer.command.system.cache.header", ChatFormatting.GOLD);
+        output.sendEmptyLine(source);
+
+        output.sendSubEntry(source, "complexityanalyzer.command.system.cache.config", enabledText, ChatFormatting.GRAY, enabledColor);
+        output.sendEmptyLine(source);
 
         int present = 0;
         for (var cache : ManagedCache.all()) {
             present += reportCacheFile(source, output, cache.id(), cache.file(source.getServer()));
         }
+
+        output.sendEmptyLine(source);
+        output.sendFooter(source);
+
         return present;
     }
 
     private static int reportCacheFile(CommandSourceStack source, OutputManager output, String label, Path file) {
         if (file == null) {
-            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.no_world", label));
+            output.sendSubEntry(source, label,
+                    Component.translatable("complexityanalyzer.command.system.cache.status.no_world"),
+                    ChatFormatting.GRAY, ChatFormatting.RED);
             return 0;
         }
         if (!FileManager.isRegularFile(file)) {
-            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.not_built", label));
+            output.sendSubEntry(source, label,
+                    Component.translatable("complexityanalyzer.command.system.cache.status.not_built"),
+                    ChatFormatting.GRAY, ChatFormatting.YELLOW);
             return 0;
         }
         try {
             long size = FileManager.getSize(file);
             var modified = FileManager.getLastModifiedTime(file).toInstant();
             String age = FormatUtils.formatAge(Duration.between(modified, Instant.now()));
-            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.present", label, FormatUtils.humanBytes(size), age, file.toString()));
+
+            var status = Component.translatable("complexityanalyzer.command.system.cache.status.present").withStyle(ChatFormatting.GREEN);
+            var details = Component.translatable("complexityanalyzer.command.system.cache.status.details", FormatUtils.humanBytes(size), age)
+                    .withStyle(style -> style.withColor(ChatFormatting.GRAY).withBold(false));
+            var path = Component.literal(file.toString()).withStyle(style -> style.withColor(ChatFormatting.DARK_GRAY).withBold(false));
+
+            var fullValue = Component.empty()
+                    .append(status)
+                    .append(" ")
+                    .append(details)
+                    .append(" ")
+                    .append(path);
+
+            output.sendSubEntry(source, label, fullValue, ChatFormatting.GRAY, ChatFormatting.GREEN);
             return 1;
         } catch (Throwable t) {
-            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.unreadable", label, t.getMessage()));
+            output.sendSubEntry(source, label,
+                    Component.translatable("complexityanalyzer.command.system.cache.status.unreadable", t.getMessage()),
+                    ChatFormatting.GRAY, ChatFormatting.RED);
             return 0;
         }
     }
@@ -261,7 +288,7 @@ public final class SystemCommand {
                     Component.translatable("complexityanalyzer.command.system.cache.deleted.hover")
             );
         } else {
-            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
+            output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete").withStyle(ChatFormatting.YELLOW));
         }
         return removed;
     }
@@ -293,7 +320,7 @@ public final class SystemCommand {
             );
             return 1;
         }
-        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete"));
+        output.sendInfo(source, Component.translatable("complexityanalyzer.command.system.cache.nothing_to_delete").withStyle(ChatFormatting.YELLOW));
         return 0;
     }
 
@@ -304,9 +331,9 @@ public final class SystemCommand {
         output.sendEmptyLine(source);
         output.sendHeader(source, "⚙", "complexityanalyzer.command.system.thread_pool_header", ChatFormatting.GOLD);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.parallelism_target", String.valueOf(stats.parallelism()), ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.compute_pool_active", String.valueOf(stats.activeThreads()), ChatFormatting.GRAY, ChatFormatting.YELLOW);
-        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.queued_tasks", String.valueOf(stats.queuedTasks()), ChatFormatting.GRAY, stats.queuedTasks() > 100 ? ChatFormatting.RED : ChatFormatting.GREEN);
+        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.parallelism_target", stats.parallelism(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.compute_pool_active", stats.activeThreads(), ChatFormatting.GRAY, ChatFormatting.YELLOW);
+        output.sendEntry(source, "🔹", "complexityanalyzer.command.system.queued_tasks", stats.queuedTasks(), ChatFormatting.GRAY, stats.queuedTasks() > 100 ? ChatFormatting.RED : ChatFormatting.GREEN);
         output.sendEmptyLine(source);
         output.sendFooter(source);
         return 1;

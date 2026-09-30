@@ -22,18 +22,20 @@ import com.github.luben.zstd.ZstdInputStream;
 import com.github.luben.zstd.ZstdOutputStream;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.storage.LevelResource;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.function.Consumer;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardOpenOption.*;
 import static java.util.Objects.requireNonNull;
+import static net.minecraft.world.level.storage.LevelResource.ROOT;
 
 public final class FileManager {
 
@@ -60,7 +62,7 @@ public final class FileManager {
 
     public static @NotNull Path resolve(@NotNull MinecraftServer server, @Nullable String... relativePath) {
         requireNonNull(server, "MinecraftServer cannot be null for resolving path");
-        return resolve(server.getWorldPath(LevelResource.ROOT), relativePath);
+        return resolve(server.getWorldPath(ROOT), relativePath);
     }
 
     public static @NotNull Path resolve(@NotNull Path worldRoot, @Nullable String... relativePath) {
@@ -86,7 +88,7 @@ public final class FileManager {
         var tmp = createTempFileInSameDir(target);
 
         try {
-            Files.write(tmp, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            Files.write(tmp, bytes, CREATE, TRUNCATE_EXISTING, WRITE);
             moveAtomic(tmp, target);
         } catch (Throwable t) {
             cleanupQuietly(tmp);
@@ -96,7 +98,7 @@ public final class FileManager {
 
     public static void writeStringAtomic(@NotNull Path target, @NotNull String content) throws IOException {
         requireNonNull(content, "Content cannot be null");
-        writeBytesAtomic(target, content.getBytes(StandardCharsets.UTF_8));
+        writeBytesAtomic(target, content.getBytes(UTF_8));
     }
 
     public static void writeCompressedAtomic(@NotNull Path target, byte @NotNull [] uncompressedData, int zstdLevel) throws IOException {
@@ -107,7 +109,7 @@ public final class FileManager {
         var tmp = createTempFileInSameDir(target);
 
         try {
-            try (var os = Files.newOutputStream(tmp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            try (var os = Files.newOutputStream(tmp, CREATE, TRUNCATE_EXISTING, WRITE);
                  var zstdOs = new ZstdOutputStream(os, zstdLevel)) {
                 zstdOs.write(uncompressedData);
             }
@@ -127,14 +129,14 @@ public final class FileManager {
 
     public static @NotNull String readString(@NotNull Path source) throws IOException {
         requireNonNull(source, "Source path cannot be null");
-        return Files.readString(source, StandardCharsets.UTF_8);
+        return Files.readString(source, UTF_8);
     }
 
     public static @NotNull ObjectArrayList<String> readLines(@Nullable Path source) throws IOException {
         var lines = new ObjectArrayList<String>();
         if (!isRegularFile(source)) return lines;
 
-        try (var reader = Files.newBufferedReader(source, StandardCharsets.UTF_8)) {
+        try (var reader = Files.newBufferedReader(source, UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null) lines.add(line);
         }
@@ -145,7 +147,7 @@ public final class FileManager {
         requireNonNull(target, "Target path cannot be null");
         requireNonNull(lines, "Lines cannot be null");
         ensureParentExists(target);
-        Files.write(target, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        Files.write(target, lines, UTF_8, CREATE, APPEND);
     }
 
     public static void copy(@NotNull Path source, @NotNull Path target) throws IOException {
@@ -192,6 +194,28 @@ public final class FileManager {
             for (var p : ds) paths.add(p);
         }
         return paths;
+    }
+
+    public static void walkDirectories(@NotNull Path root, @NotNull Consumer<Path> action) {
+        requireNonNull(root, "Root path cannot be null");
+        requireNonNull(action, "Action cannot be null");
+        if (!isDirectory(root)) return;
+
+        try {
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override
+                public @NotNull FileVisitResult preVisitDirectory(@NotNull Path dir, @NotNull BasicFileAttributes attrs) {
+                    action.accept(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public @NotNull FileVisitResult visitFileFailed(@NotNull Path file, @NotNull IOException exc) {
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException ignored) {
+        }
     }
 
     public static boolean delete(@Nullable Path path) {

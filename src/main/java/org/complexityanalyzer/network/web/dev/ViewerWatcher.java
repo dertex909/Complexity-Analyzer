@@ -25,8 +25,12 @@ import org.complexityanalyzer.network.web.ws.CabinWsHub;
 import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.WatchService;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static java.nio.file.StandardWatchEventKinds.*;
 
 public final class ViewerWatcher {
 
@@ -55,12 +59,12 @@ public final class ViewerWatcher {
 
                     var shouldReload = false;
                     for (var event : key.pollEvents()) {
-                        if (event.kind() == StandardWatchEventKinds.OVERFLOW) continue;
+                        if (event.kind() == OVERFLOW) continue;
                         var context = (Path) event.context();
                         if (context == null) continue;
                         var fullPath = dir.resolve(context);
 
-                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && FileManager.isDirectory(fullPath)) {
+                        if (event.kind() == ENTRY_CREATE && FileManager.isDirectory(fullPath)) {
                             registerTree(fullPath, watchService);
                             shouldReload = true;
                         }
@@ -89,18 +93,12 @@ public final class ViewerWatcher {
     }
 
     private static void registerTree(Path root, WatchService watchService) {
-        try (var stream = Files.walk(root)) {
-            stream.filter(FileManager::isDirectory).forEach(dir -> {
-                try {
-                    dir.register(watchService,
-                            StandardWatchEventKinds.ENTRY_MODIFY,
-                            StandardWatchEventKinds.ENTRY_CREATE,
-                            StandardWatchEventKinds.ENTRY_DELETE);
-                } catch (IOException ignored) {
-                }
-            });
-        } catch (Exception ignored) {
-        }
+        FileManager.walkDirectories(root, dir -> {
+            try {
+                dir.register(watchService, ENTRY_MODIFY, ENTRY_CREATE, ENTRY_DELETE);
+            } catch (IOException ignored) {
+            }
+        });
     }
 
     public static void stop() {

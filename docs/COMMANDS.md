@@ -21,7 +21,7 @@ All command output is **translated to each player's own client language** server
 /complexity
 ├── system                                    (engine & server diagnostics)
 │   ├── status                                👤  engine state + data overview
-│   ├── stats                                 👤  detailed data/thread stats
+│   ├── stats                                 👤  detailed data stats
 │   ├── tps                                   👤  TPS / MSPT / memory
 │   ├── threads                               🛡  thread-pool statistics
 │   ├── reload                                🛡  full re-analysis (laggy)
@@ -34,14 +34,22 @@ All command output is **translated to each player's own client language** server
 │   └── loot   <loot_table_id>                👤  loot-table breakdown
 ├── resource <item_id>                        👤  base-resource origin report
 ├── web
-│   ├── url [link]                            👤  show web dashboard URL
+│   ├── url [link]                            👤  show web dashboard URL (button or raw text)
 │   ├── status                                👤  web backend status
 │   └── reload                                🛡  rebuild web data
 ├── export                                    🛡  (whole group is OP-only)
-│   ├── items  all | csv | top <n> | category <name> | single <item_id>
-│   └── mobs   all [format] | csv | top <n> | category <name> | single <mob_id>
+│   ├── items <format>
+│   │   ├── all                               🛡  export all items
+│   │   ├── category <category_name>          🛡  export items in a category
+│   │   ├── top <count>                       🛡  export top N items
+│   │   └── single <item_id>                  🛡  export single item
+│   └── mobs <format>
+│       ├── all                               🛡  export all mobs
+│       ├── category <category_name>          🛡  export mobs in a category
+│       ├── top <count>                       🛡  export top N mobs
+│       └── single <mob_id>                   🛡  export single mob
 └── geoscan
-    ├── start <profile> [chunks] [force]      🛡  schedule/force a world scan
+    ├── start [<profile>] [chunks] [force]    🛡  show profiles or schedule/force a world scan
     ├── stop                                  🛡  stop the running scan
     ├── status                                👤  scan progress
     └── clear                                 🛡  wipe collected geo-data
@@ -85,10 +93,13 @@ Shows the primary, most efficient way to obtain a base (non-craftable) resource.
 
 Controls the in-game web dashboard (served over your open-to-LAN / server port).
 
-- **`web url`** 👤 — prints the dashboard URL and connection tips. In singleplayer it reminds you to *Open to LAN* first.
-- **`web url link`** 👤 — same, as a clickable `[Open in Browser]` link.
-- **`web status`** 👤 — backend status: active/inactive, visitor count, data file age, and item/mob/recipe counts in the exported file.
-- **`web reload`** 🛡 — rebuilds the web data file in the background from the current analysis.
+- **`web url`** 👤 — prints the dashboard URL formatted as an interactive `[Open in Browser]` button. In singleplayer it
+  reminds you to *Open to LAN* first if not running.
+- **`web url link`** 👤 — prints the clickable raw IP/domain URL string directly in the chat instead of localized button
+  text.
+- **`web status`** 👤 — backend status: active/inactive, visitor count, data snapshot age, and item/mob/recipe counts in
+  the exported file.
+- **`web reload`** 🛡 — rebuilds the web data snapshot in the background from the current engine state.
 
 ---
 
@@ -96,13 +107,19 @@ Controls the in-game web dashboard (served over your open-to-LAN / server port).
 
 Engine and server diagnostics.
 
-- **`system status`** 👤 — engine state (READY / LOADING / ERROR…) and a data overview (items with recipes, total recipes, base resources).
-- **`system stats`** 👤 — detailed statistics: items, recipes, cached items, and thread-pool figures.
-- **`system tps`** 👤 — server performance: TPS, MSPT, and memory usage with colour-coded bars.
-- **`system threads`** 🛡 — thread-pool internals: parallelism target, active compute threads, queued tasks.
-- **`system reload`** 🛡 — forces a full re-analysis of the world. **Warning: causes significant lag** while it runs; broadcasts a warning to players.
-- **`system cache info`** 👤 — reports the on-disk analysis caches (recipe graph, machine registry): whether caching is enabled in config, and for each cache whether it is present, its size and age, or "not built yet".
-- **`system cache clear [<cache_id>]`** 🛡 — deletes all cached files or a specific cache by ID (e.g., `recipe_graph`, `machine_registry`, `block_break`, `universal_loot`, `farming`, `mob_drop`) so the next load rebuilds from scratch. Hint: run `system reload` afterwards to rebuild immediately.
+- **`system status`** 👤 — engine state (`READY`, `ANALYZING`, `FAILED`, `IDLE`) and data overview (items with recipes,
+  total recipes, base resources).
+- **`system stats`** 👤 — detailed statistics: analyzed items count, total recipes count, and registered base resources.
+- **`system tps`** 👤 — server performance: TPS, MSPT, and JVM heap memory usage with colour-coded bars.
+- **`system threads`** 🛡 — thread-pool internals: parallelism target, active compute threads, and queued background
+  tasks.
+- **`system reload`** 🛡 — forces a full background re-analysis of the world. **Warning: causes significant lag** while
+  it runs; broadcasts a warning to players.
+- **`system cache info`** 👤 — reports on-disk analysis caches: whether caching is enabled in config, and for each cache
+  whether it is present, its size and age, or "not built yet".
+- **`system cache clear [<cache_id>]`** 🛡 — deletes all cached files or a specific cache by ID (e.g. `recipe_graph`,
+  `machine_registry`, `block_break`, `universal_loot`, `farming`, `mob_drop`). Hint: run `/complexity system reload`
+  afterwards to rebuild immediately.
 
 > **About the cache:** when `enableCache` is on (config), the harvested recipe graph
 > and machine registry are saved per-world under `<world>/data/complexityanalyzer/`.
@@ -113,27 +130,35 @@ Engine and server diagnostics.
 
 ## 📤 `/complexity export …` 🛡
 
-Bulk-export analysis data to files for use outside Minecraft. **The entire group requires OP.**
+Bulk-export analysis data to files for use outside Minecraft. **The entire group requires OP (level 2).**
+
+All export tasks run asynchronously in background compute threads and write to the server's working directory.
 
 ### Items
-| Command                         | Description                                                            |
-|---------------------------------|------------------------------------------------------------------------|
-| `export items all`              | Full JSON report of every analyzed item.                               |
-| `export items csv`              | Summary of all items as a single CSV.                                  |
-| `export items top <count>`      | Top N most complex items (`count` 1–1000).                             |
-| `export items category <name>`  | All items of one complexity category (e.g. `Mythical`). Tab-completes. |
-| `export items single <item_id>` | Detailed JSON for one item. Tab-completes.                             |
+
+Format is **mandatory** as the first argument after `items` (e.g. `json`, `csv` — tab-completes based on registered
+exporters).
+
+| Command                                          | Description                                                            |
+|--------------------------------------------------|------------------------------------------------------------------------|
+| `export items <format> all`                      | Full report of every analyzed item.                                    |
+| `export items <format> category <category_name>` | All items of one complexity category (e.g. `Mythical`). Tab-completes. |
+| `export items <format> top <count>`              | Top N most complex items (`count` between 1 and 1000).                 |
+| `export items <format> single <item_id>`         | Detailed report for a single item. Tab-completes.                      |
 
 ### Mobs
-| Command                       | Description                                                          |
-|-------------------------------|----------------------------------------------------------------------|
-| `export mobs all [format]`    | All mobs; `format` is `json` (default) or `csv`.                     |
-| `export mobs csv`             | Shortcut for all mobs as CSV.                                        |
-| `export mobs top <count>`     | Top N most powerful mobs (`count` 1–1000).                           |
-| `export mobs category <name>` | All mobs of a vanilla `MobCategory` (e.g. `monster`). Tab-completes. |
-| `export mobs single <mob_id>` | Detailed JSON for one mob. Tab-completes.                            |
 
-Each export prints the output file path on success.
+Format is **mandatory** as the first argument after `mobs` (e.g. `json`, `csv` — tab-completes based on registered
+exporters).
+
+| Command                                         | Description                                                          |
+|-------------------------------------------------|----------------------------------------------------------------------|
+| `export mobs <format> all`                      | Full report of all recognized entities/mobs.                         |
+| `export mobs <format> category <category_name>` | All mobs of a vanilla `MobCategory` (e.g. `monster`). Tab-completes. |
+| `export mobs <format> top <count>`              | Top N most dangerous mobs (`count` between 1 and 1000).              |
+| `export mobs <format> single <mob_id>`          | Detailed report for a single mob. Tab-completes.                     |
+
+Each export announces its completion in admin logs and prints the saved file path directly to the sender.
 
 ---
 
@@ -142,17 +167,23 @@ Each export prints the output file path on success.
 Control panel for the world-scanning engine (`GeoAnalysisManager`), used to learn where
 resources actually generate.
 
+- **`geoscan start`** 🛡 — running `start` with no arguments prints the profile selection menu with MSPT limits and
+  clickable start links.
 - **`geoscan start <profile> [chunks] [force]`** 🛡
-  - **`profile`** — scan speed vs. server impact: `normal`, `fast`, `aggressive`, `unlimited`. Running `start` with no
-    profile lists them with their MSPT limits.
-  - **`chunks`** *(optional, default 32)* — pristine chunks to find per biome.
-  - **`force`** *(optional, default `false`)* — `true` skips the countdown and starts immediately (broadcasts a lag warning).
+  - **`profile`** — scan profile name: `normal`, `fast`, `aggressive`, `unlimited`. Tab-completes.
+  - **`chunks`** *(optional, default 32)* — pristine chunks to find per biome (1 to 2147483647).
+  - **`force`** *(optional, default `false`)* — `true` skips the countdown and starts immediately (broadcasts severe lag
+    warning for heavy profiles).
 - **`geoscan stop`** 🛡 — gracefully stops the running or scheduled scan; progress is saved.
-- **`geoscan status`** 👤 — current scanner state and progress (idle / scanning %, per-biome details on hover, MSPT throttle info).
-- **`geoscan clear`** 🛡 — **destructive.** Deletes all collected geo-data, forcing a full rescan. Cannot run during an active scan (`stop` first).
+- **`geoscan status`** 👤 — current scanner state and progress (speed, chunks scanned, MSPT throttle indicator, and an
+  interactive hover tooltip with per-biome progress).
+- **`geoscan clear`** 🛡 — **destructive.** Deletes all collected geo-data from the database. Cannot run while a scan is
+  active (`stop` first).
 
 ---
 
 ### Notes
-- Tab-completion is available for every item, entity and loot-table id argument.
-- Anything that can lag the server or change/delete data is OP-gated (🛡); pure inspection is open to all players (👤).
+
+- Tab-completion is available for every item, entity, loot-table, cache id, and export format argument.
+- Anything that can lag the server, write files, or delete data is OP-gated (🛡); inspection commands are available to
+  all players (👤).

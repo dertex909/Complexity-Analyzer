@@ -27,14 +27,21 @@ import org.complexityanalyzer.api.IResourceSourceRegistry;
 /**
  * Fired on the NeoForge game bus ({@code NeoForge.EVENT_BUS}) immediately before the analyzer builds its
  * resource-source pipeline — once per analysis build (server start and every reload). Subscribe to contribute
- * data: bosses, renewable mobs, hardcoded sources/overrides and fully custom resource sources.
+ * data: bosses, renewable mobs, hardcoded sources/overrides, and fully custom resource sources.
  *
  * <pre>{@code
  * @SubscribeEvent
  * public static void onRegister(ComplexityRegistrationEvent e) {
+ *     // Tag custom bosses or mini-bosses (affects drop rarity weighting)
  *     e.bosses().registerBoss(MyEntities.DRAGON_LORD.get(), IBossRegistry.BossType.BOSS);
+ *
+ *     // Mark breedable/farmable mobs as renewable (applies renewable drop discount)
  *     e.renewables().markRenewable(MyEntities.MANA_SLIME.get());
- *     e.hardcodedSources().registerUnobtainable(MyItems.DEBUG_WAND.get(), "creative only");
+ *
+ *     // Register hardcoded acquisition metadata directly
+ *     e.hardcodedSources().register(MyItems.SPECIAL_DROP.get(), customResourceData);
+ *
+ *     // Register custom gathering sources
  *     e.resourceSources().register(new MyCustomGatheringSource());
  * }
  * }</pre>
@@ -65,7 +72,7 @@ public class ComplexityRegistrationEvent extends Event {
     }
 
     /**
-     * Register hardcoded acquisition sources, value overrides and unobtainable items.
+     * Register hardcoded acquisition sources, value overrides, and custom acquisition metadata.
      */
     public IHardcodedSourceRegistry hardcodedSources() {
         return hardcodedSources;

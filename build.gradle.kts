@@ -109,7 +109,7 @@ tasks.processResources {
 publishMods {
     file = tasks.named<Jar>("jar").flatMap { it.archiveFile }
     additionalFiles.from(tasks.named<Jar>("sourcesJar").flatMap { it.archiveFile })
-    type = me.modmuss50.mpp.ReleaseType.ALPHA
+    type = ALPHA
     modLoaders.add("neoforge")
     val fullChangelog = providers.fileContents(layout.projectDirectory.file("CHANGELOG.md")).asText
 

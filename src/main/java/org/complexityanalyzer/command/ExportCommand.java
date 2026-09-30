@@ -167,7 +167,7 @@ public final class ExportCommand {
     public static int executeTopItems(CommandContext<CommandSourceStack> context, int count) {
         var source = context.getSource();
         return runAsyncExport(context, "🏆", "complexityanalyzer.command.export.top_items_header", ChatFormatting.GOLD,
-                out -> out.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", String.valueOf(count), ChatFormatting.GRAY, ChatFormatting.AQUA),
+                out -> out.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", count, ChatFormatting.GRAY, ChatFormatting.AQUA),
                 "Top items export",
                 format -> ComplexityExporter.exportTopItems(source.getServer(), AnalysisEngine.getInstance(), format, count));
     }
@@ -202,7 +202,7 @@ public final class ExportCommand {
     public static int executeTopMobs(CommandContext<CommandSourceStack> context, int count) {
         var source = context.getSource();
         return runAsyncExport(context, "🏆", "complexityanalyzer.command.export.top_mobs_header", ChatFormatting.GOLD,
-                out -> out.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", String.valueOf(count), ChatFormatting.GRAY, ChatFormatting.AQUA),
+                out -> out.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", count, ChatFormatting.GRAY, ChatFormatting.AQUA),
                 "Top mobs export",
                 format -> ComplexityExporter.exportTopMobs(source.getServer(), AnalysisEngine.getInstance(), format, count));
     }

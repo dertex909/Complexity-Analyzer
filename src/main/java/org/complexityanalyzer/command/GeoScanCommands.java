@@ -180,10 +180,10 @@ public class GeoScanCommands {
             output.sendEmptyLine(source);
 
             output.sendEntry(source, icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, ChatFormatting.GRAY, color);
-            output.sendEntry(source, "🌍", "complexityanalyzer.command.geoscan.chunks_label", String.valueOf(chunks), ChatFormatting.GRAY, ChatFormatting.AQUA);
+            output.sendEntry(source, "🌍", "complexityanalyzer.command.geoscan.chunks_label", chunks, ChatFormatting.GRAY, ChatFormatting.AQUA);
 
             if (profile.hasMsptLimit()) {
-                output.sendSubEntry(source, "complexityanalyzer.command.geoscan.auto_pause", String.valueOf((int) profile.msptLimit), ChatFormatting.GRAY, ChatFormatting.GREEN);
+                output.sendSubEntry(source, "complexityanalyzer.command.geoscan.auto_pause", (int) profile.msptLimit, ChatFormatting.GRAY, ChatFormatting.GREEN);
             } else {
                 output.sendSubEntry(source, "complexityanalyzer.command.geoscan.no_mspt_limit", "", ChatFormatting.GRAY, ChatFormatting.RED);
             }
@@ -210,7 +210,7 @@ public class GeoScanCommands {
             }
 
             output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.admin_log",
-                    force ? "Force started" : "Scheduled", initiatorName, profile.displayName, String.valueOf(chunks)));
+                    force ? "Force started" : "Scheduled", initiatorName, profile.displayName, chunks));
         } else {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.not_initialized"));
         }

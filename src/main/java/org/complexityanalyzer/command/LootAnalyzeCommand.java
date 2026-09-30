@@ -84,7 +84,7 @@ public class LootAnalyzeCommand {
 
         output.sendEntry(source, "📋", "complexityanalyzer.command.loot.table_label", lootTableId.getPath(), ChatFormatting.GRAY, ChatFormatting.WHITE);
         output.sendEntry(source, "🏷", "complexityanalyzer.command.loot.type_label", sourceType.getDisplayName(), ChatFormatting.GRAY, sourceType.getColor());
-        output.sendEntry(source, "📦", "complexityanalyzer.command.loot.items_found", String.valueOf(items.size()), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEntry(source, "📦", "complexityanalyzer.command.loot.items_found", items.size(), ChatFormatting.GRAY, ChatFormatting.AQUA);
 
         output.sendEmptyLine(source);
         displayStatistics(source, items, output);

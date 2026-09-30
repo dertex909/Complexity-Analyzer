@@ -572,9 +572,9 @@ public final class SccCondensedSolver {
         }
 
         private void compileRecipeFormulas() {
-            double fluidNorm = ComplexityConfig.getFluidNormalizationFactor();
+            double fluidNorm = ComplexityConfig.FLUID_NORMALIZATION_FACTOR.get();
             double machineTax = ComplexityConfig.getMachineTaxMultiplier();
-            double machineFallback = ComplexityConfig.getMachineBaseComplexity();
+            double machineFallback = ComplexityConfig.MACHINE_BASE_COMPLEXITY.get();
 
             for (var recipe : graph.getAllRecipes()) {
                 double multiplier = recipe.getRecipeMultiplier();

@@ -38,7 +38,7 @@ import java.lang.reflect.Method;
 
 public final class MachineRegistryDebugLogger {
 
-    public static final boolean DEBUG_ENABLED = false;
+    private static final boolean DEBUG_ENABLED = false;
 
     static {
         if (DEBUG_ENABLED) {

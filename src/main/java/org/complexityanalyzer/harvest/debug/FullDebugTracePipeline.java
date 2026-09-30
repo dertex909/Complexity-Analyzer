@@ -49,7 +49,7 @@ import java.util.Map;
 import static net.minecraft.world.item.Items.AIR;
 
 public final class FullDebugTracePipeline {
-    public static final boolean DEBUG_ENABLED = false;
+    private static final boolean DEBUG_ENABLED = false;
     private static final String SEP = "═".repeat(60);
     private static final String MINOR_SEP = "─".repeat(60);
 

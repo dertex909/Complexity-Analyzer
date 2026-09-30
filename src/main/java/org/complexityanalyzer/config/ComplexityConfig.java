@@ -165,14 +165,6 @@ public class ComplexityConfig {
         return !MACHINE_TAX_ENABLED.get() ? 0.0 : MACHINE_TAX_PERCENTAGE.get() / 100.0;
     }
 
-    public static double getFluidNormalizationFactor() {
-        return FLUID_NORMALIZATION_FACTOR.get();
-    }
-
-    public static double getMachineBaseComplexity() {
-        return MACHINE_BASE_COMPLEXITY.get();
-    }
-
     public static int getMaxThreads() {
         if (resolvedMaxThreads >= 0) return resolvedMaxThreads;
         int configValue = MAX_THREADS.get();

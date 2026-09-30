@@ -19,9 +19,7 @@
 package org.complexityanalyzer.harvest.inspector;
 
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeInput;
 
@@ -30,8 +28,6 @@ import java.lang.invoke.SerializedLambda;
 
 public final class StandardRecipeMethods {
 
-    public static final String GET_RESULT_ITEM = extract((RecipeGetResultItemRef) Recipe::getResultItem);
-    public static final String GET_INGREDIENTS = extract((RecipeGetIngredientsRef) Recipe::getIngredients);
     public static final String GET_TOAST_SYMBOL = extract((RecipeGetToastSymbolRef) Recipe::getToastSymbol);
     public static final String ASSEMBLE = extract((RecipeAssembleRef) Recipe::assemble);
 
@@ -47,18 +43,6 @@ public final class StandardRecipeMethods {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to extract method name from lambda reference", e);
         }
-    }
-
-    @FunctionalInterface
-    @SuppressWarnings("unused")
-    private interface RecipeGetResultItemRef extends Serializable {
-        ItemStack ignored(Recipe<?> instance, HolderLookup.Provider provider);
-    }
-
-    @FunctionalInterface
-    @SuppressWarnings("unused")
-    private interface RecipeGetIngredientsRef extends Serializable {
-        NonNullList<Ingredient> ignored(Recipe<?> instance);
     }
 
     @FunctionalInterface

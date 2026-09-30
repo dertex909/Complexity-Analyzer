@@ -16,10 +16,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+function escapeHtml(str) {
+    return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
-    const fileName = scriptUrl ? scriptUrl.split("/").pop() : tabId;
-    const errorMsg = err?.message || String(err);
-    const stackTrace = err?.stack || errorMsg;
+    const rawFileName = scriptUrl ? scriptUrl.split("/").pop() : tabId;
+    const fileName = escapeHtml(rawFileName);
+    const errorType = escapeHtml(err?.name || "Plugin Error");
+    const errorMsg = escapeHtml(err?.message || String(err));
+    const stackTrace = escapeHtml(err?.stack || errorMsg);
 
     shadow.innerHTML = `
         <style>
@@ -32,18 +43,18 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 min-height: 480px;
                 padding: 24px;
                 box-sizing: border-box;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             .err-card {
                 position: relative;
                 width: 100%;
-                max-width: 760px;
+                max-width: 780px;
                 background: #14161d;
-                border: 1px solid #ef444455;
+                border: 1px solid rgba(239, 68, 68, 0.35);
                 border-radius: 14px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.65), 0 0 30px rgba(239, 68, 68, 0.12);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(239, 68, 68, 0.12);
                 overflow: hidden;
-                animation: ca-pop .18s ease-out;
+                animation: ca-pop .18s cubic-bezier(0.16, 1, 0.3, 1);
             }
             .err-header {
                 display: flex;
@@ -70,17 +81,22 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
             .err-file {
                 font-size: 12px;
                 color: #9aa0ac;
-                font-family: monospace;
+                font-family: "JetBrains Mono", monospace;
+                background: rgba(255, 255, 255, 0.04);
+                padding: 3px 8px;
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.06);
             }
             .err-body {
                 padding: 20px 24px;
             }
             .err-msg {
                 margin: 0 0 16px;
-                font-size: 16px;
+                font-size: 15px;
                 font-weight: 600;
                 color: #f87171;
-                line-height: 1.45;
+                line-height: 1.5;
+                font-family: "JetBrains Mono", monospace;
             }
             .err-trace {
                 margin: 0;
@@ -88,6 +104,7 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 background: #0c0d12;
                 border: 1px solid #222530;
                 border-radius: 8px;
+                font-family: "JetBrains Mono", monospace;
                 font-size: 12px;
                 line-height: 1.6;
                 color: #d1d5db;
@@ -95,6 +112,17 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 word-break: break-word;
                 max-height: 260px;
                 overflow-y: auto;
+            }
+            .err-trace::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .err-trace::-webkit-scrollbar-thumb {
+                background: #2a2e3d;
+                border-radius: 4px;
+            }
+            .err-trace::-webkit-scrollbar-thumb:hover {
+                background: #3b4256;
             }
             .err-footer {
                 display: flex;
@@ -104,7 +132,11 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 background: #101217;
                 border-top: 1px solid #1e212b;
                 font-size: 12px;
-                color: #717786;
+                color: #8b92a4;
+                line-height: 1.4;
+            }
+            .err-footer b {
+                color: #e2e8f0;
             }
             @keyframes ca-pop {
                 from { opacity: 0; transform: scale(0.97) translateY(8px); }
@@ -113,15 +145,15 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
         </style>
         <div class="err-card">
             <div class="err-header">
-                <span class="err-badge">⚠️ Plugin Build Error</span>
+                <span class="err-badge">⚠️ Build Failed</span>
                 <span class="err-file">${fileName}</span>
             </div>
             <div class="err-body">
-                <div class="err-msg">${err?.name || "Error"}: ${errorMsg}</div>
+                <div class="err-msg">${errorType}: ${errorMsg}</div>
                 <pre class="err-trace">${stackTrace}</pre>
             </div>
             <div class="err-footer">
-                <span>⚡ <b>Hot Reload active:</b> исправь ошибку в коде и нажми Сохранить — дашборд обновится сам.</span>
+                <span>⚡ <b>Hot Reload Active:</b> Resolve the issue in your source file and save changes. The dashboard will automatically recompile and update.</span>
             </div>
         </div>
     `;

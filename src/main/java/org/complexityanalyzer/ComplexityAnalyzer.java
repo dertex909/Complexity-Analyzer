@@ -19,6 +19,7 @@
 package org.complexityanalyzer;
 
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -30,10 +31,9 @@ public class ComplexityAnalyzer {
     public static final String MODID = "complexityanalyzer";
     public static final String MOD_NAME = "Complexity Analyzer";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
-    public static String VERSION;
+    public static final String VERSION = ModList.get().getModFileById(MODID).versionString();
 
     public ComplexityAnalyzer(ModContainer modContainer) {
-        VERSION = String.valueOf(modContainer.getModInfo().getVersion());
         LOGGER.info("=== {} v{} ===", MOD_NAME, VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ComplexityConfig.SPEC);
     }

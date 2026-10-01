@@ -42,22 +42,20 @@ neoForge {
     mods.create(modId).sourceSet(sourceSets.main.get())
 
     runs {
-        create("client").client()
+        create("client") {
+            client()
+            gameDirectory.set(file("run/client"))
+        }
+
+        create("client-second") {
+            client()
+            gameDirectory.set(file("run/client-second"))
+        }
 
         create("server") {
             server()
             programArgument("--nogui")
-        }
-
-        create("gameTestServer").type = "gameTestServer"
-
-        create("data") {
-            data()
-            programArguments.addAll(
-                "--mod", modId, "--all",
-                "--output", file("src/generated/resources/").path,
-                "--existing", file("src/main/resources/").path
-            )
+            gameDirectory.set(file("run/server"))
         }
 
         configureEach {

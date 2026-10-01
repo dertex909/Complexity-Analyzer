@@ -32,7 +32,6 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -56,7 +55,7 @@ public class ServerLanguage {
     }
 
     private static Object2ObjectMap<String, String> loadLanguageInternal(String locale) {
-        String path = "/assets/complexityanalyzer/lang/" + locale + ".json";
+        var path = "/assets/complexityanalyzer/lang/" + locale + ".json";
         try (var is = ComplexityAnalyzer.class.getResourceAsStream(path)) {
             if (is != null) {
                 Map<String, String> rawMap = GSON.fromJson(new InputStreamReader(is, UTF_8), MAP_TYPE);
@@ -75,10 +74,10 @@ public class ServerLanguage {
     }
 
     public static String get(String key, String locale) {
-        String cleanLocale = isValidLocale(locale) ? locale.toLowerCase(ROOT) : DEFAULT_LOCALE;
+        var cleanLocale = isValidLocale(locale) ? locale.toLowerCase(ROOT) : DEFAULT_LOCALE;
         var map = LANGUAGES.computeIfAbsent(cleanLocale, ServerLanguage::loadLanguageInternal);
 
-        String val = map.get(key);
+        var val = map.get(key);
         if (val == null && !cleanLocale.equals(DEFAULT_LOCALE)) {
             var defaultMap = LANGUAGES.get(DEFAULT_LOCALE);
             if (defaultMap != null) val = defaultMap.get(key);
@@ -89,7 +88,7 @@ public class ServerLanguage {
     private static boolean isValidLocale(String locale) {
         if (locale == null || locale.isEmpty() || locale.length() > 16) return false;
         for (int i = 0; i < locale.length(); i++) {
-            char c = locale.charAt(i);
+            var c = locale.charAt(i);
             if (!Character.isLetterOrDigit(c) && c != '_') return false;
         }
         return true;
@@ -108,40 +107,20 @@ public class ServerLanguage {
 
     public static Component translate(Component component, String locale) {
         if (!needsTranslation(component)) return component;
-
         MutableComponent result;
 
         if (component.getContents() instanceof TranslatableContents translatable) {
-            String key = translatable.getKey();
-            Object[] args = translatable.getArgs();
+            var key = translatable.getKey();
+            var args = translatable.getArgs();
 
-            String pattern = get(key, locale);
-            Object[] translatedArgs = new Object[args.length];
-            if (pattern != null) {
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i] instanceof Component c) {
-                        translatedArgs[i] = translate(c, locale).getString();
-                    } else {
-                        translatedArgs[i] = args[i];
-                    }
-                }
-                try {
-                    String formatted = translatedArgs.length > 0 ? pattern.formatted(translatedArgs) : pattern;
-                    result = Component.literal(formatted);
-                } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.error("[Language] Error formatting key {}: {} (Args: {})", key, e.getMessage(), Arrays.toString(translatedArgs));
-                    result = Component.translatable(key, translatedArgs);
-                }
-            } else {
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i] instanceof Component c) {
-                        translatedArgs[i] = translate(c, locale);
-                    } else {
-                        translatedArgs[i] = args[i];
-                    }
-                }
-                result = Component.translatable(key, translatedArgs);
+            var translatedArgs = new Object[args.length];
+            for (int i = 0; i < args.length; i++) {
+                translatedArgs[i] = args[i] instanceof Component c ? translate(c, locale) : args[i];
             }
+
+            var pattern = get(key, locale);
+            result = pattern != null ? Component.translatableWithFallback(key, pattern, translatedArgs)
+                    : Component.translatable(key, translatedArgs);
         } else {
             result = component.copy();
             result.getSiblings().clear();

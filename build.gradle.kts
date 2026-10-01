@@ -12,22 +12,22 @@ repositories {
     maven("https://maven.blamejared.com/")
 }
 
-val mod_version = project.property("mod_version") as String
-val mod_group_id = project.property("mod_group_id") as String
-val mod_id = project.property("mod_id") as String
-val mod_name = project.property("mod_name") as String
-val mod_license = project.property("mod_license") as String
-val mod_authors = project.property("mod_authors") as String
-val mod_description = project.property("mod_description") as String
-val neo_version = project.property("neo_version") as String
-val minecraft_version = project.property("minecraft_version") as String
-val loader_version_range = project.property("loader_version_range") as String
-val netty_codec_http_version = project.property("netty_codec_http_version") as String
-val zstd_jni_version = project.property("zstd_jni_version") as String
+val modVersion = prop("mod_version")
+val modGroupId = prop("mod_group_id")
+val modId = prop("mod_id")
+val modName = prop("mod_name")
+val modLicense = prop("mod_license")
+val modAuthors = prop("mod_authors")
+val modDescription = prop("mod_description")
+val neoVersion = prop("neo_version")
+val minecraftVersion = prop("minecraft_version")
+val loaderVersionRange = prop("loader_version_range")
+val nettyCodecHttpVersion = prop("netty_codec_http_version")
+val zstdJniVersion = prop("zstd_jni_version")
 
-version = mod_version
-group = mod_group_id
-base.archivesName.set(mod_id)
+version = modVersion
+group = modGroupId
+base.archivesName.set(modId)
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 java.withSourcesJar()
 idea.module.isDownloadSources = true
@@ -38,8 +38,8 @@ sourceSets.main {
 }
 
 neoForge {
-    version = neo_version
-    mods.create(mod_id).sourceSet(sourceSets.main.get())
+    version = neoVersion
+    mods.create(modId).sourceSet(sourceSets.main.get())
 
     runs {
         create("client").client()
@@ -54,7 +54,7 @@ neoForge {
         create("data") {
             data()
             programArguments.addAll(
-                "--mod", mod_id, "--all",
+                "--mod", modId, "--all",
                 "--output", file("src/generated/resources/").path,
                 "--existing", file("src/main/resources/").path
             )
@@ -62,23 +62,23 @@ neoForge {
 
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
-            systemProperty("neoforge.enabledGameTestNamespaces", mod_id)
+            systemProperty("neoforge.enabledGameTestNamespaces", modId)
             logLevel = org.slf4j.event.Level.DEBUG
             additionalRuntimeClasspathConfiguration.extendsFrom(configurations.implementation.get())
         }
     }
 }
 
-val http = "io.netty:netty-codec-http:$netty_codec_http_version"
-val zstd = "com.github.luben:zstd-jni:$zstd_jni_version"
-val jei = "mezz.jei:jei-$minecraft_version-neoforge:19.25.0.325"
+val http = "io.netty:netty-codec-http:$nettyCodecHttpVersion"
+val zstd = "com.github.luben:zstd-jni:$zstdJniVersion"
+val jei = "mezz.jei:jei-$minecraftVersion-neoforge:19.25.0.325"
 
 dependencies {
     implementation(http)
-    add("jarJar", http)
+    jarJar(http)
 
     implementation(zstd)
-    add("jarJar", zstd)
+    jarJar(zstd)
 
     runtimeOnly(jei)
 }
@@ -87,17 +87,17 @@ tasks.processResources {
     exclude("**/*.py")
 
     val replaceProperties = mapOf(
-        "minecraft_version" to minecraft_version,
-        "minecraft_version_range" to "[$minecraft_version]",
-        "neo_version" to neo_version,
-        "neo_version_range" to "[$neo_version,)",
-        "loader_version_range" to loader_version_range,
-        "mod_id" to mod_id,
-        "mod_name" to mod_name,
-        "mod_license" to mod_license,
-        "mod_version" to mod_version,
-        "mod_authors" to mod_authors,
-        "mod_description" to mod_description
+        "minecraft_version" to minecraftVersion,
+        "minecraft_version_range" to "[$minecraftVersion]",
+        "neo_version" to neoVersion,
+        "neo_version_range" to "[$neoVersion,)",
+        "loader_version_range" to loaderVersionRange,
+        "mod_id" to modId,
+        "mod_name" to modName,
+        "mod_license" to modLicense,
+        "mod_version" to modVersion,
+        "mod_authors" to modAuthors,
+        "mod_description" to modDescription
     )
     inputs.properties(replaceProperties)
 
@@ -107,16 +107,17 @@ tasks.processResources {
 }
 
 publishMods {
-    file = tasks.named<Jar>("jar").flatMap { it.archiveFile }
+    file.set(tasks.named<Jar>("jar").flatMap { it.archiveFile })
     additionalFiles.from(tasks.named<Jar>("sourcesJar").flatMap { it.archiveFile })
     type = ALPHA
     modLoaders.add("neoforge")
+
     val fullChangelog = providers.fileContents(layout.projectDirectory.file("CHANGELOG.md")).asText
 
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         projectId = "RQjlpUyI"
-        minecraftVersions.add(minecraft_version)
+        minecraftVersions.add(minecraftVersion)
         changelog = fullChangelog
     }
 
@@ -124,7 +125,7 @@ publishMods {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1377875"
         projectSlug = "complexity-analyzer"
-        minecraftVersions.add(minecraft_version)
+        minecraftVersions.add(minecraftVersion)
         server = true
         client = false
         changelog = fullChangelog
@@ -133,9 +134,11 @@ publishMods {
     discord {
         webhookUrl = providers.environmentVariable("DISCORD_WEBHOOK")
         username = "Complexity Analyzer"
-        content = "🚀 **Complexity Analyzer v$mod_version** is out!\n"
+        content = "🚀 **Complexity Analyzer v$modVersion** is out!\n"
         style {
             link = "INLINE"
         }
     }
 }
+
+fun prop(name: String): String = providers.gradleProperty(name).get()

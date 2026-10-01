@@ -1,21 +1,3 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.harvest.machine;
 
 import net.minecraft.core.Holder;
@@ -30,12 +12,53 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class MachineTypeUnwrapper {
+
+    private static final Method[] EMPTY_METHODS = new Method[0];
+    private static final ClassValue<Method[]> CANDIDATE_METHODS = new ClassValue<>() {
+        @Override
+        protected Method[] computeValue(@NotNull Class<?> type) {
+            var all = type.getMethods();
+            int count = 0;
+            for (var m : all) {
+                if (m.getParameterCount() == 0) {
+                    var rt = m.getReturnType();
+                    if (RecipeType.class.isAssignableFrom(rt) || Holder.class.isAssignableFrom(rt)) count++;
+                }
+            }
+
+            if (count == 0) return EMPTY_METHODS;
+
+            var candidates = new Method[count];
+            int idx = 0;
+            for (var m : all) {
+                if (m.getParameterCount() == 0) {
+                    var rt = m.getReturnType();
+                    if (RecipeType.class.isAssignableFrom(rt) || Holder.class.isAssignableFrom(rt)) try {
+                        m.setAccessible(true);
+                        candidates[idx++] = m;
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+
+            if (idx == 0) return EMPTY_METHODS;
+            if (idx < count) {
+                var trimmed = new Method[idx];
+                System.arraycopy(candidates, 0, trimmed, 0, idx);
+                return trimmed;
+            }
+
+            return candidates;
+        }
+    };
 
     private MachineTypeUnwrapper() {
     }
@@ -59,8 +82,9 @@ public final class MachineTypeUnwrapper {
 
     @Nullable
     public static RecipeType<?> unwrapRecipeType(@Nullable Object obj) {
+        if (obj == null) return null;
         if (obj instanceof RecipeType<?> rt) return rt;
-        if (obj == null || obj instanceof Block || obj instanceof Item || obj instanceof BlockEntity || obj instanceof BlockEntityType
+        if (obj instanceof Block || obj instanceof Item || obj instanceof BlockEntity || obj instanceof BlockEntityType
                 || obj instanceof SoundEvent || obj instanceof Fluid || obj instanceof EntityType) return null;
 
         switch (obj) {
@@ -96,21 +120,15 @@ public final class MachineTypeUnwrapper {
             }
         }
 
-        try {
-            for (var m : obj.getClass().getMethods()) {
-                if (m.getParameterCount() != 0) continue;
-
-                var rt = m.getReturnType();
-                if (!RecipeType.class.isAssignableFrom(rt) && !Holder.class.isAssignableFrom(rt)) continue;
-
-                m.setAccessible(true);
-                var res = m.invoke(obj);
+        var methods = CANDIDATE_METHODS.get(obj.getClass());
+        for (var method : methods) {
+            try {
+                var res = method.invoke(obj);
                 if (res == null || res == obj) continue;
-
                 var type = unwrapRecipeType(res);
                 if (type != null) return type;
+            } catch (Throwable ignored) {
             }
-        } catch (Throwable ignored) {
         }
 
         return null;

@@ -273,25 +273,33 @@ public class ScanExecutor {
     }
 
     private void performScan(ScanContext ctx) {
-        while (ctx.canContinue()) {
-            drainCompletedAnalysis(ctx, false);
-            if (waitAndCheckStop(ctx.myCtx)) break;
-            var batch = collectBatch(ctx);
-            if (batch.isEmpty()) {
-                if (handleEmptyBatch(ctx)) break;
-                continue;
+        while (true) {
+            while (ctx.canContinue()) {
+                drainCompletedAnalysis(ctx, false);
+                if (waitAndCheckStop(ctx.myCtx)) break;
+                var batch = collectBatch(ctx);
+                if (batch.isEmpty()) {
+                    if (handleEmptyBatch(ctx)) break;
+                    continue;
+                }
+                ctx.emptyBatches = 0;
+                if (waitAndCheckStop(ctx.myCtx)) break;
+                int useful = enqueueBatchAnalysis(ctx, batch);
+                if (useful > 0) {
+                    ctx.stagnantBatches = 0;
+                } else if (handleStagnantBatch(ctx)) {
+                    break;
+                }
             }
-            ctx.emptyBatches = 0;
-            if (waitAndCheckStop(ctx.myCtx)) break;
-            int useful = enqueueBatchAnalysis(ctx, batch);
-            if (useful > 0) {
-                ctx.stagnantBatches = 0;
-            } else if (handleStagnantBatch(ctx)) {
+
+            drainCompletedAnalysis(ctx, true);
+
+            if (ctx.found > 0 || shouldStop(ctx.myCtx) || ctx.mySession.doesNotNeedBiome(ctx.dimId, ctx.biomeId)) break;
+            if (ctx.relocations >= 5 || relocateSearch(ctx, true)) {
+                ctx.mySession.abandonBiome(ctx.dimId, ctx.biomeId);
                 break;
             }
         }
-
-        drainCompletedAnalysis(ctx, true);
     }
 
     private void drainCompletedAnalysis(ScanContext ctx, boolean waitForAll) {
@@ -572,7 +580,7 @@ public class ScanExecutor {
 
         boolean canContinue() {
             return scanned < maxScannedBudget && mySession.isValid() && sessionRef.get() == myCtx && !isShutdown.get()
-                    && mySession.hasAnyNeeds();
+                    && mySession.hasAnyNeeds() && !mySession.doesNotNeedBiome(dimId, biomeId);
         }
 
         record AnalysisBatchResult(ObjectArrayList<ChunkBatchProcessor.ScanResult> results, int claimed) {

@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.geoscan.scan;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -27,7 +28,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,7 +44,7 @@ public class ScanSession {
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
-    private final ConcurrentHashMap<ResourceLocation, Set<Long>> attemptedChunksByDimension = new ConcurrentHashMap<>();
+    private final Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet> attemptedChunksByDimension = new Object2ObjectOpenHashMap<>();
     private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
     private volatile ScanMetadata.ScanPhase phase = ScanMetadata.ScanPhase.RECONNAISSANCE;
 
@@ -184,13 +184,13 @@ public class ScanSession {
     }
 
     public boolean tryMarkChunkPacked(ResourceLocation dim, long packedPos) {
-        var set = attemptedChunksByDimension.computeIfAbsent(dim, ignored -> ConcurrentHashMap.newKeySet());
+        var set = attemptedChunksByDimension.computeIfAbsent(dim, k -> new LongOpenHashSet());
         return set.add(packedPos);
     }
 
     public void loadAttemptedChunks(Object2ObjectMap<ResourceLocation, LongSet> chunksByDimension) {
         for (var entry : chunksByDimension.object2ObjectEntrySet()) {
-            var set = attemptedChunksByDimension.computeIfAbsent(entry.getKey(), ignored -> ConcurrentHashMap.newKeySet());
+            var set = attemptedChunksByDimension.computeIfAbsent(entry.getKey(), k -> new LongOpenHashSet());
             var it = entry.getValue().iterator();
             while (it.hasNext()) set.add(it.nextLong());
         }

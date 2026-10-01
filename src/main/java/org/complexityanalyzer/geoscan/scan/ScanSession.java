@@ -42,7 +42,6 @@ public class ScanSession {
     private final long startTimeMs = System.currentTimeMillis();
     private final AtomicLong totalChunksScanned = new AtomicLong(0);
     private final AtomicBoolean active = new AtomicBoolean(true);
-    private final AtomicInteger totalChunksNeeded = new AtomicInteger(0);
     private final AtomicInteger totalChunksFound = new AtomicInteger(0);
     private final Object2ObjectOpenHashMap<ResourceLocation, LongOpenHashSet> attemptedChunksByDimension = new Object2ObjectOpenHashMap<>();
     private final ConcurrentHashMap<BiomeKey, AtomicInteger> remainingNeeds = new ConcurrentHashMap<>();
@@ -77,13 +76,9 @@ public class ScanSession {
         return remaining + (int) totalChunksScanned.get();
     }
 
-    public void setTotalChunksNeeded(int total) {
-        totalChunksNeeded.set(total);
-    }
-
     public int getProgressPercent() {
-        int totalNeeded = remainingNeeds.size() * chunksPerBiome;
-        return (totalNeeded == 0) ? 100 : (int) (totalChunksScanned.get() * 100 / totalNeeded);
+        int total = getTotalChunksNeeded();
+        return total > 0 ? (int) Math.min(100, (totalChunksScanned.get() * 100L / total)) : 100;
     }
 
     public Object2ObjectMap<ResourceLocation, Object2ObjectMap<ResourceLocation, int[]>> getBiomeProgress() {
@@ -201,7 +196,7 @@ public class ScanSession {
             case IDLE -> "Idle";
             case RECONNAISSANCE -> "%s scan - %d/%d biomes (%d/%d chunks)".formatted(
                     profile.name(), countCompletedBiomes(), countTotalBiomes(),
-                    totalChunksFound.get(), totalChunksNeeded.get());
+                    totalChunksFound.get(), getTotalChunksNeeded());
             case REFINING -> "Refining data...";
             case COMPLETE -> "Complete";
         };
@@ -210,7 +205,6 @@ public class ScanSession {
     public void clear() {
         attemptedChunksByDimension.clear();
         remainingNeeds.clear();
-        totalChunksNeeded.set(0);
         totalChunksFound.set(0);
     }
 

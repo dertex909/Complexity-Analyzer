@@ -152,7 +152,6 @@ public class ScanCoordinator {
 
     public boolean initializeSession(ScanSession session, ObjectArrayList<ScanTask> tasks, Object2ObjectMap<ResourceLocation, LongSet> existingCoordinates) {
         if (!session.isValid() || tasks.isEmpty()) return false;
-
         database.setScanPhase(ScanMetadata.ScanPhase.RECONNAISSANCE);
 
         int totalChunks = 0;
@@ -162,11 +161,8 @@ public class ScanCoordinator {
             session.setBiomeNeed(task.dimension().location(), task.biome().location(), needed);
         }
 
-        session.setTotalChunksNeeded(totalChunks);
         session.loadAttemptedChunks(existingCoordinates);
-
         notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks));
-
         return true;
     }
 

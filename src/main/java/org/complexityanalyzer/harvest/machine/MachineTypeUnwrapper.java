@@ -44,17 +44,8 @@ public final class MachineTypeUnwrapper {
         @Override
         protected Method[] computeValue(@NotNull Class<?> type) {
             var all = type.getMethods();
-            int count = 0;
-            for (var m : all) {
-                if (m.getParameterCount() == 0) {
-                    var rt = m.getReturnType();
-                    if (RecipeType.class.isAssignableFrom(rt) || Holder.class.isAssignableFrom(rt)) count++;
-                }
-            }
-
-            if (count == 0) return EMPTY_METHODS;
-
-            var candidates = new Method[count];
+            if (all.length == 0) return EMPTY_METHODS;
+            var candidates = new Method[all.length];
             int idx = 0;
             for (var m : all) {
                 if (m.getParameterCount() == 0) {
@@ -68,13 +59,11 @@ public final class MachineTypeUnwrapper {
             }
 
             if (idx == 0) return EMPTY_METHODS;
-            if (idx < count) {
-                var trimmed = new Method[idx];
-                System.arraycopy(candidates, 0, trimmed, 0, idx);
-                return trimmed;
-            }
+            if (idx == all.length) return candidates;
 
-            return candidates;
+            var trimmed = new Method[idx];
+            System.arraycopy(candidates, 0, trimmed, 0, idx);
+            return trimmed;
         }
     };
 

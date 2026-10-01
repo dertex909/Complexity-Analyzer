@@ -31,6 +31,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
@@ -67,8 +68,8 @@ public class ScanExecutor {
     private final ConcurrentHashMap<Thread, Boolean> workerThreads = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<ScanSession.BiomeKey, BufferedSnapshots> resultBuffers = new ConcurrentHashMap<>();
 
-    private final ExecutorService analysisExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private final ExecutorService workerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService analysisExecutor = ThreadPoolManager.getInstance().getForkJoinPool();
+    private final ExecutorService workerExecutor = ThreadPoolManager.getInstance().getComputePool();
 
     public ScanExecutor(
             MinecraftServer server,
@@ -484,8 +485,6 @@ public class ScanExecutor {
             LockSupport.unpark(worker);
             worker.interrupt();
         }
-        analysisExecutor.shutdownNow();
-        workerExecutor.shutdownNow();
         flushAllBuffers();
     }
 

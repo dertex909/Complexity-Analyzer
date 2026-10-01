@@ -21,6 +21,7 @@ package org.complexityanalyzer.geoscan.refinement;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
@@ -28,7 +29,6 @@ import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
 public class DataRefiner {
@@ -37,7 +37,7 @@ public class DataRefiner {
     private final ScanNotifier notifier;
 
     private final ConcurrentHashMap<Thread, Boolean> activeThreads = new ConcurrentHashMap<>();
-    private final ExecutorService refinementExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService refinementExecutor = ThreadPoolManager.getInstance().getComputePool();
 
     public DataRefiner(GeoDatabase database, ScanNotifier notifier) {
         this.database = database;
@@ -172,6 +172,5 @@ public class DataRefiner {
         ComplexityAnalyzer.LOGGER.debug("[Refiner] Shutting down, interrupting {} threads", activeThreads.size());
         for (var thread : activeThreads.keySet()) thread.interrupt();
         activeThreads.clear();
-        refinementExecutor.shutdownNow();
     }
 }

@@ -26,7 +26,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipFile;
 
-public sealed interface WebResourceSource permits WebResourceSource.PathSource, WebResourceSource.ZipFileSource {
+public sealed interface WebResourceSource {
 
     byte[] read(String subpath);
 

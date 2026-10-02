@@ -60,6 +60,27 @@ public final class MachineReflectionScanner {
         return name.startsWith("get") || name.startsWith("recipe") || name.startsWith("type");
     }
 
+    private int scanBeMember(MethodHandle handle, Object member, BlockEntity be, Item machineItem, MachineRegistryDebugLogger logger, boolean isMethod) {
+        try {
+            var raw = handle.invoke(be);
+            var recipeType = MachineTypeUnwrapper.unwrapRecipeType(raw);
+            boolean matched = recipeType != null && registrar.test(recipeType, machineItem);
+            if (isMethod) {
+                logger.logBeMethod((Method) member, raw, recipeType, matched, null);
+            } else {
+                logger.logBeField((Field) member, raw, recipeType, matched, null);
+            }
+            return matched ? 1 : 0;
+        } catch (Throwable t) {
+            if (isMethod) {
+                logger.logBeMethod((Method) member, null, null, false, t);
+            } else {
+                logger.logBeField((Field) member, null, null, false, t);
+            }
+            return 0;
+        }
+    }
+
     public int scanBlockEntityInstance(BlockEntity be, Item machineItem, MachineRegistryDebugLogger logger) {
         int count = 0;
         var beClass = be.getClass();
@@ -67,34 +88,12 @@ public final class MachineReflectionScanner {
 
         logger.logBeMethodScanStart(beClass);
         for (var mInfo : info.recipeMethods()) {
-            try {
-                var raw = mInfo.handle().invoke(be);
-                var recipeType = MachineTypeUnwrapper.unwrapRecipeType(raw);
-                boolean matched = false;
-                if (recipeType != null && registrar.test(recipeType, machineItem)) {
-                    matched = true;
-                    count++;
-                }
-                logger.logBeMethod(mInfo.method(), raw, recipeType, matched, null);
-            } catch (Throwable t) {
-                logger.logBeMethod(mInfo.method(), null, null, false, t);
-            }
+            count += scanBeMember(mInfo.handle(), mInfo.method(), be, machineItem, logger, true);
         }
 
         logger.logBeHierarchyClass(beClass);
         for (var fInfo : info.instanceFields()) {
-            try {
-                var val = fInfo.handle().invoke(be);
-                var recipeType = MachineTypeUnwrapper.unwrapRecipeType(val);
-                boolean matched = false;
-                if (recipeType != null && registrar.test(recipeType, machineItem)) {
-                    matched = true;
-                    count++;
-                }
-                logger.logBeField(fInfo.field(), val, recipeType, matched, null);
-            } catch (Throwable t) {
-                logger.logBeField(fInfo.field(), null, null, false, t);
-            }
+            count += scanBeMember(fInfo.handle(), fInfo.field(), be, machineItem, logger, false);
         }
 
         return count;

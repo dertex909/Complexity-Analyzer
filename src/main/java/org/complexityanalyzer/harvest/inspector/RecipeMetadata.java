@@ -173,6 +173,23 @@ public final class RecipeMetadata {
             }
         }
 
+        private static Object[] resolveArguments(Method method, Level level) {
+            var params = method.getParameterTypes();
+            var args = new Object[params.length];
+            for (int i = 0; i < params.length; i++) {
+                var p = params[i];
+                if (p.isAssignableFrom(Level.class)) {
+                    args[i] = level;
+                } else if (level != null && (p == HolderLookup.Provider.class || p == RegistryAccess.class
+                        || p.isAssignableFrom(level.registryAccess().getClass()))) {
+                    args[i] = level.registryAccess();
+                } else {
+                    return null;
+                }
+            }
+            return args;
+        }
+
         @Override
         public String type() {
             return "method";
@@ -192,42 +209,18 @@ public final class RecipeMetadata {
         public Object extract(Object recipe, Level level) throws Throwable {
             if (noArgHandle != null) return noArgHandle.invokeExact(recipe);
             if (fullHandle != null) {
-                var params = method.getParameterTypes();
-                var args = new Object[params.length];
-                for (int i = 0; i < params.length; i++) {
-                    if (params[i].isAssignableFrom(Level.class)) {
-                        args[i] = level;
-                    } else if (level != null && (params[i] == HolderLookup.Provider.class || params[i] == RegistryAccess.class
-                            || params[i].isAssignableFrom(level.registryAccess().getClass()))) {
-                        args[i] = level.registryAccess();
-                    } else {
-                        return null;
-                    }
-                }
+                var args = resolveArguments(method, level);
+                if (args == null) return null;
+
                 var all = new Object[1 + args.length];
                 all[0] = recipe;
                 System.arraycopy(args, 0, all, 1, args.length);
                 return fullHandle.invokeWithArguments(all);
             }
 
-            int paramCount = method.getParameterCount();
-            if (paramCount == 0) {
-                return method.invoke(recipe);
-            } else {
-                var params = method.getParameterTypes();
-                var args = new Object[params.length];
-                for (int i = 0; i < params.length; i++) {
-                    if (params[i].isAssignableFrom(Level.class)) {
-                        args[i] = level;
-                    } else if (level != null && (params[i] == HolderLookup.Provider.class || params[i] == RegistryAccess.class
-                            || params[i].isAssignableFrom(level.registryAccess().getClass()))) {
-                        args[i] = level.registryAccess();
-                    } else {
-                        return null;
-                    }
-                }
-                return method.invoke(recipe, args);
-            }
+            if (method.getParameterCount() == 0) return method.invoke(recipe);
+            var args = resolveArguments(method, level);
+            return args != null ? method.invoke(recipe, args) : null;
         }
     }
 

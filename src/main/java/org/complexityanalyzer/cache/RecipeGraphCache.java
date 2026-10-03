@@ -52,7 +52,7 @@ public final class RecipeGraphCache implements ManagedCache {
     public static final RecipeGraphCache INSTANCE = new RecipeGraphCache();
 
     private static final int MAGIC = 0x43414331;
-    private static final int VERSION = 4;
+    private static final int VERSION = 5;
     private static final ResourceLocation AIR_ID = ResourceLocation.withDefaultNamespace("air");
     private static final ResourceLocation EMPTY_FLUID_ID = ResourceLocation.withDefaultNamespace("empty");
 
@@ -77,7 +77,7 @@ public final class RecipeGraphCache implements ManagedCache {
             buf.writeVarInt(slot.getCount());
             var variants = slot.getVariants();
             buf.writeVarInt(variants.size());
-            for (var stack : variants) writeItemStack(buf, stack);
+            for (var stack : variants) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
         }
 
         var fluidIngredients = node.getFluidIngredients();
@@ -91,7 +91,7 @@ public final class RecipeGraphCache implements ManagedCache {
 
         var itemOutputs = node.getItemOutputs();
         buf.writeVarInt(itemOutputs.size());
-        for (var stack : itemOutputs) writeItemStack(buf, stack);
+        for (var stack : itemOutputs) ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
 
         var fluidOutputs = node.getFluidOutputs();
         buf.writeVarInt(fluidOutputs.size());
@@ -149,32 +149,14 @@ public final class RecipeGraphCache implements ManagedCache {
         return builder.build();
     }
 
-    private static void writeItemStack(RegistryFriendlyByteBuf buf, ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            buf.writeBoolean(false);
-        } else {
-            buf.writeBoolean(true);
-            try {
-                var tag = stack.save(buf.registryAccess());
-                buf.writeNbt(tag);
-            } catch (Throwable t) {
-                buf.writeNbt(null);
-            }
-        }
-    }
-
     private static ItemStack readItemStack(RegistryFriendlyByteBuf buf) {
-        if (!buf.readBoolean()) return ItemStack.EMPTY;
         try {
-            var tag = buf.readNbt();
-            if (tag != null) {
-                var parsed = ItemStack.parse(buf.registryAccess(), tag).orElse(ItemStack.EMPTY);
-                return ItemStackCanonicalizer.canonicalize(parsed);
-            }
+            var stack = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+            return ItemStackCanonicalizer.canonicalize(stack);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("Failed to load item stack from cache!", t);
+            return ItemStack.EMPTY;
         }
-        return ItemStack.EMPTY;
     }
 
     private static void writeFluidStack(RegistryFriendlyByteBuf buf, FluidStack stack) {

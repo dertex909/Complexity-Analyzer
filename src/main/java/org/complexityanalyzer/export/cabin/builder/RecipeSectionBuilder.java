@@ -29,8 +29,8 @@ import org.complexityanalyzer.export.cabin.util.CabinIndexUtils;
 import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.machine.MachineRegistry;
+import org.complexityanalyzer.util.ItemStackIdentity;
 
 import java.util.Arrays;
 

@@ -37,9 +37,9 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.engine.DeepCollector;
 import org.complexityanalyzer.harvest.engine.HarvestedItems;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 import org.complexityanalyzer.util.FileManager;
+import org.complexityanalyzer.util.ItemStackIdentity;
 
 import java.nio.file.Path;
 import java.util.Collection;

@@ -57,9 +57,7 @@ public class LootOptimizer {
         if (original.size() != modified.size()) return false;
 
         for (int i = 0; i < original.size(); i++) {
-            var s1 = original.get(i);
-            var s2 = modified.get(i);
-            if (!ItemStack.matches(s1, s2) || s1.getCount() != s2.getCount()) return false;
+            if (!ItemStackIdentity.sameItemDataAndCount(original.get(i), modified.get(i))) return false;
         }
         return true;
     }

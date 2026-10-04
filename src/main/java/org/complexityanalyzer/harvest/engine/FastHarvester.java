@@ -27,9 +27,9 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 import org.complexityanalyzer.harvest.inspector.TerminalTypeRegistry;
+import org.complexityanalyzer.util.ItemStackIdentity;
 import org.complexityanalyzer.util.Scope;
 
 import static java.util.Locale.ROOT;

@@ -31,8 +31,8 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeNode;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
+import org.complexityanalyzer.util.ItemStackIdentity;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;

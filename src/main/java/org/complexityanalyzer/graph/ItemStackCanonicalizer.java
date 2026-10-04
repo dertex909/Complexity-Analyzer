@@ -19,7 +19,7 @@
 package org.complexityanalyzer.graph;
 
 import net.minecraft.world.item.ItemStack;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
+import org.complexityanalyzer.util.ItemStackIdentity;
 
 import java.util.concurrent.ConcurrentHashMap;
 

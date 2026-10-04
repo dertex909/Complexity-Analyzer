@@ -27,8 +27,8 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.core.GameRegistryManager;
-import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.util.ComplexityComparators;
+import org.complexityanalyzer.util.ItemStackIdentity;
 
 import java.util.Comparator;
 import java.util.Objects;

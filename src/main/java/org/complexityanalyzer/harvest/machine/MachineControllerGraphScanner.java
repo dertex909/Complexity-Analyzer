@@ -190,11 +190,7 @@ public final class MachineControllerGraphScanner {
         int commonSegments = 0;
         int minLen = Math.min(srcParts.length, tgtParts.length);
 
-        for (int i = 0; i < minLen; i++) {
-            if (srcParts[i].equals(tgtParts[i])) commonSegments++;
-            else break;
-        }
-
+        while (commonSegments < minLen && srcParts[commonSegments].equals(tgtParts[commonSegments])) commonSegments++;
         return (commonSegments * 100) - (depth * 10);
     }
 

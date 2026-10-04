@@ -43,6 +43,7 @@ import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.util.LogFilter;
+import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
@@ -248,7 +249,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     @Nullable
     private Reference2IntOpenHashMap<Item> sampleTable(ServerLevel serverLevel, MinecraftServer server, TableTask task) {
-        try {
+        try (var ignoredOpt = LootOptimizer.open()) {
             var lootTable = server.reloadableRegistries().getLootTable(task.key());
             if (lootTable == LootTable.EMPTY) return null;
 

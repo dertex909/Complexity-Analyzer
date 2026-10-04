@@ -54,6 +54,7 @@ import org.complexityanalyzer.resource.data.KillCondition;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.util.LogFilter;
+import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
@@ -150,7 +151,7 @@ public class MobDropSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         registerSpecialDrops(targetMap);
 
-        try (var ignored = LogFilter.open()) {
+        try (var ignoredLog = LogFilter.open(); var ignoredLoot = LootOptimizer.open()) {
             Runnable simulationRunnable = () -> {
                 var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
                 var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());

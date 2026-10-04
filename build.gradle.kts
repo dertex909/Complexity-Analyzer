@@ -1,3 +1,4 @@
+import me.modmuss50.mpp.platforms.discord.LinkType
 import org.gradle.jvm.tasks.Jar
 
 plugins {
@@ -134,7 +135,7 @@ publishMods {
         username = "Complexity Analyzer"
         content = "🚀 **Complexity Analyzer v$modVersion** is out!\n"
         style {
-            link = "INLINE"
+            link = LinkType.INLINE.name
         }
     }
 }

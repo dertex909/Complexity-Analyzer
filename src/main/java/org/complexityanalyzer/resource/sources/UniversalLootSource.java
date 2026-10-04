@@ -35,8 +35,6 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.ResourceCache;
 import org.complexityanalyzer.cache.util.Fingerprints;
@@ -44,7 +42,7 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-import org.complexityanalyzer.util.LootLogFilter;
+import org.complexityanalyzer.util.LogFilter;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
@@ -135,7 +133,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     }
 
     private void processLootTables(ServerLevel serverLevel, ObjectSet<ResourceKey<LootTable>> allLootTableKeys, Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
-        try (var ignored = ProbeScope.open()) {
+        try (var ignored = ProbeScope.open(); var ignoredScope = LogFilter.open()) {
             var server = serverLevel.getServer();
 
             ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
@@ -145,11 +143,6 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             long sampleWallMs = 0L;
             var pool = ThreadPoolManager.getInstance();
             int threads = pool.getParallelism();
-
-            var filter = new LootLogFilter();
-            var rootLogger = (Logger) LogManager.getRootLogger();
-            filter.start();
-            rootLogger.addFilter(filter);
 
             try {
                 ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
@@ -238,12 +231,6 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
             } catch (Exception e) {
                 ComplexityAnalyzer.LOGGER.error("[ULS] Critical error during auto-scan: ", e);
-            } finally {
-                try {
-                    rootLogger.get().removeFilter(filter);
-                    filter.stop();
-                } catch (Exception ignored1) {
-                }
             }
 
             long duration = System.currentTimeMillis() - startTime;

@@ -44,8 +44,6 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -55,7 +53,7 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.data.KillCondition;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
-import org.complexityanalyzer.util.LootLogFilter;
+import org.complexityanalyzer.util.LogFilter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -151,12 +149,7 @@ public class MobDropSource implements IResourceSource {
         long startTime = System.currentTimeMillis();
         registerSpecialDrops(targetMap);
 
-        var filter = new LootLogFilter();
-        var rootLogger = (Logger) LogManager.getRootLogger();
-        filter.start();
-        rootLogger.addFilter(filter);
-
-        try {
+        try (var ignored = LogFilter.open()) {
             Runnable simulationRunnable = () -> {
                 var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
                 var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
@@ -220,12 +213,6 @@ public class MobDropSource implements IResourceSource {
 
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
-        } finally {
-            try {
-                rootLogger.get().removeFilter(filter);
-                filter.stop();
-            } catch (Exception ignored) {
-            }
         }
     }
 

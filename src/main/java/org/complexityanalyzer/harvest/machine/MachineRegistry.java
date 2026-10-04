@@ -30,6 +30,7 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.cache.MachineRegistryCache;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.debug.MachineRegistryDebugLogger;
+import org.complexityanalyzer.util.LogFilter;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -126,49 +127,51 @@ public class MachineRegistry {
     }
 
     private int registerModdedMachines(MinecraftServer server) {
-        var blocks = GameRegistryManager.getAllBlocks();
-        var logger = new MachineRegistryDebugLogger(server, blocks.size());
+        try (var ignored = LogFilter.open()) {
+            var blocks = GameRegistryManager.getAllBlocks();
+            var logger = new MachineRegistryDebugLogger(server, blocks.size());
 
-        var blockEntityCache = new Reference2ObjectOpenHashMap<Block, BlockEntity>();
-        var uniqueClasses = collectUniqueTargetClasses(blocks, blockEntityCache);
-        var classAsmResults = MachineAsmScanner.precomputeAsmResults(uniqueClasses);
+            var blockEntityCache = new Reference2ObjectOpenHashMap<Block, BlockEntity>();
+            var uniqueClasses = collectUniqueTargetClasses(blocks, blockEntityCache);
+            var classAsmResults = MachineAsmScanner.precomputeAsmResults(uniqueClasses);
 
-        int registeredCount = 0;
-        int entityBlocks = 0;
-        int errors = 0;
-        var classStaticResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
-        var deepScanVisited = new ReferenceOpenHashSet<>();
+            int registeredCount = 0;
+            int entityBlocks = 0;
+            int errors = 0;
+            var classStaticResults = new Object2ObjectOpenHashMap<Class<?>, ObjectList<RecipeType<?>>>();
+            var deepScanVisited = new ReferenceOpenHashSet<>();
 
-        for (var block : blocks) {
-            var machineItem = block.asItem();
-            if (machineItem == AIR) continue;
+            for (var block : blocks) {
+                var machineItem = block.asItem();
+                if (machineItem == AIR) continue;
 
-            var blockId = GameRegistryManager.getBlockId(block);
-            logger.logBlockHeader(blockId, machineItem, block.getClass());
+                var blockId = GameRegistryManager.getBlockId(block);
+                logger.logBlockHeader(blockId, machineItem, block.getClass());
 
-            try {
-                var be = blockEntityCache.get(block);
-                if (block instanceof EntityBlock) {
-                    entityBlocks++;
-                    if (be != null) logger.logBeCreated(be);
-                    else logger.logBeCreateNull();
-                } else {
-                    logger.logNonBeBlock();
+                try {
+                    var be = blockEntityCache.get(block);
+                    if (block instanceof EntityBlock) {
+                        entityBlocks++;
+                        if (be != null) logger.logBeCreated(be);
+                        else logger.logBeCreateNull();
+                    } else {
+                        logger.logNonBeBlock();
+                    }
+
+                    int matched = processBlock(block, machineItem, be, classAsmResults, classStaticResults, deepScanVisited, logger);
+                    registeredCount += matched;
+                    logger.logBlockResult(blockId, matched);
+                } catch (Throwable t) {
+                    errors++;
+                    logger.logFatalBlockError(t);
                 }
-
-                int matched = processBlock(block, machineItem, be, classAsmResults, classStaticResults, deepScanVisited, logger);
-                registeredCount += matched;
-                logger.logBlockResult(blockId, matched);
-            } catch (Throwable t) {
-                errors++;
-                logger.logFatalBlockError(t);
             }
-        }
 
-        registeredCount += MachineStaticHolderScanner.scanModStaticHoldersAndRegistries(this::registerDynamicMachine);
-        registeredCount += MachineControllerGraphScanner.scanAndResolveControllers(this::registerDynamicMachine, logger);
-        logger.finishAndSave(blocks.size(), entityBlocks, registeredCount, errors);
-        return registeredCount;
+            registeredCount += MachineStaticHolderScanner.scanModStaticHoldersAndRegistries(this::registerDynamicMachine);
+            registeredCount += MachineControllerGraphScanner.scanAndResolveControllers(this::registerDynamicMachine, logger);
+            logger.finishAndSave(blocks.size(), entityBlocks, registeredCount, errors);
+            return registeredCount;
+        }
     }
 
     private ReferenceSet<Class<?>> collectUniqueTargetClasses(ObjectList<Block> blocks, Reference2ObjectMap<Block, BlockEntity> beCache) {

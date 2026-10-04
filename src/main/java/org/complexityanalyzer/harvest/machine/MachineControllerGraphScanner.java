@@ -129,13 +129,8 @@ public final class MachineControllerGraphScanner {
         return resolvedCount;
     }
 
-    private static void collectClassMetadata(
-            Class<?> clazz,
-            Item item,
-            Reference2ObjectMap<Class<?>, Item> classToPhysicalItem,
-            ReferenceSet<Class<?>> virtualClasses,
-            ObjectSet<String> modPackages) {
-
+    private static void collectClassMetadata(Class<?> clazz, Item item, Reference2ObjectMap<Class<?>, Item> classToPhysicalItem,
+                                             ReferenceSet<Class<?>> virtualClasses, ObjectSet<String> modPackages) {
         if (item != AIR) {
             classToPhysicalItem.put(clazz, item);
         } else {
@@ -155,7 +150,7 @@ public final class MachineControllerGraphScanner {
         var queue = new ArrayDeque<BfsStep>();
         var candidates = new ObjectArrayList<CandidateResult>();
 
-        queue.add(new BfsStep(rootClass, 0, rootClass.getSimpleName()));
+        queue.add(new BfsStep(rootClass, 0, getSafeSimpleName(rootClass)));
         visited.add(rootClass);
 
         String rootPkg = getPackageName(rootClass);
@@ -175,7 +170,7 @@ public final class MachineControllerGraphScanner {
                 var neighbors = graph.get(current);
                 if (neighbors != null) for (var neighbor : neighbors) {
                     if (visited.add(neighbor)) {
-                        queue.add(new BfsStep(neighbor, depth + 1, step.path + " -> " + neighbor.getSimpleName()));
+                        queue.add(new BfsStep(neighbor, depth + 1, step.path + " -> " + getSafeSimpleName(neighbor)));
                     }
                 }
             }
@@ -334,6 +329,12 @@ public final class MachineControllerGraphScanner {
     private static String getPackageName(Class<?> cls) {
         var pkg = cls.getPackage();
         return pkg != null ? pkg.getName() : "";
+    }
+
+    private static String getSafeSimpleName(Class<?> cls) {
+        String name = cls.getName();
+        int lastDot = name.lastIndexOf('.');
+        return lastDot != -1 ? name.substring(lastDot + 1) : name;
     }
 
     private record BfsStep(Class<?> clazz, int depth, String path) {

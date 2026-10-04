@@ -27,6 +27,7 @@ import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.builder.CabinBuilder;
 import org.complexityanalyzer.network.web.ws.CabinWsHub;
 import org.complexityanalyzer.util.FileManager;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -108,7 +109,13 @@ public final class CabinBackgroundService {
         rebuildPending = false;
 
         pool.execute(() -> {
-            try {
+            try (var ignored = Scope.of(() -> {
+                inflight.set(null);
+                if (rebuildPending) {
+                    rebuildPending = false;
+                    regenerateAsync(server, engine);
+                }
+            })) {
                 var snap = doBuild(server, engine);
                 current.set(snap);
                 status.set(Status.READY);
@@ -120,12 +127,6 @@ public final class CabinBackgroundService {
                 lastError.set(t);
                 ComplexityAnalyzer.LOGGER.error("[Cabin] Background build failed", t);
                 future.completeExceptionally(t);
-            } finally {
-                inflight.set(null);
-                if (rebuildPending) {
-                    rebuildPending = false;
-                    regenerateAsync(server, engine);
-                }
             }
         });
         return future;

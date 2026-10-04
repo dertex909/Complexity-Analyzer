@@ -41,6 +41,7 @@ import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
+import org.complexityanalyzer.util.Scope;
 
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -164,12 +165,10 @@ public class GeoAnalysisManager {
                     return;
                 }
 
-                try {
+                try (var ignored = Scope.of(() -> scanStarting.set(false))) {
                     prepareForNewScan();
                     broadcastForcedScanAlert(initiatorName, profile);
                     startScanInternal(chunksPerBiome, initiatorName, profile);
-                } finally {
-                    scanStarting.set(false);
                 }
             });
         } catch (RejectedExecutionException e) {

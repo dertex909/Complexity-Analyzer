@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.cache;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -35,6 +34,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.util.FileManager;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -143,51 +143,50 @@ public final class ResourceCache implements ManagedCache {
     public <T> int load(Path file, long[] fingerprint, Reader<T> reader, Reference2ObjectMap<Item, ObjectList<T>> target) {
         if (!FileManager.isRegularFile(file)) return -1;
 
-        ByteBuf raw = null;
         try {
-            raw = Unpooled.wrappedBuffer(FileManager.readCompressedBytes(file));
-            var buf = new FriendlyByteBuf(raw);
+            var raw = Unpooled.wrappedBuffer(FileManager.readCompressedBytes(file));
+            try (var ignored = Scope.release(raw)) {
+                var buf = new FriendlyByteBuf(raw);
 
-            if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
-                ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Bad/outdated header, rebuilding.", id);
-                return -1;
-            }
-            if (!fingerprintMatches(buf, fingerprint)) {
-                ComplexityAnalyzer.LOGGER.info("[Cache:{}] Fingerprint changed, rebuilding.", id);
-                return -1;
-            }
-
-            int itemCount = buf.readVarInt();
-            int restored = 0;
-            for (int i = 0; i < itemCount; i++) {
-                var itemId = buf.readResourceLocation();
-                var item = GameRegistryManager.getItem(itemId);
-                boolean keep = item != null && item != Items.AIR;
-                int n = buf.readVarInt();
-                var list = keep ? new ObjectArrayList<T>(n) : null;
-                for (int j = 0; j < n; j++) {
-                    var element = reader.read(buf, item);
-                    if (list != null && element != null) {
-                        list.add(element);
-                        restored++;
-                    }
+                if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
+                    ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Bad/outdated header, rebuilding.", id);
+                    return -1;
                 }
-                if (list != null && !list.isEmpty()) target.put(item, list);
+                if (!fingerprintMatches(buf, fingerprint)) {
+                    ComplexityAnalyzer.LOGGER.info("[Cache:{}] Fingerprint changed, rebuilding.", id);
+                    return -1;
+                }
+
+                int itemCount = buf.readVarInt();
+                int restored = 0;
+                for (int i = 0; i < itemCount; i++) {
+                    var itemId = buf.readResourceLocation();
+                    var item = GameRegistryManager.getItem(itemId);
+                    boolean keep = item != null && item != Items.AIR;
+                    int n = buf.readVarInt();
+                    var list = keep ? new ObjectArrayList<T>(n) : null;
+                    for (int j = 0; j < n; j++) {
+                        var element = reader.read(buf, item);
+                        if (list != null && element != null) {
+                            list.add(element);
+                            restored++;
+                        }
+                    }
+                    if (list != null && !list.isEmpty()) target.put(item, list);
+                }
+                return restored;
             }
-            return restored;
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to load (rebuilding): {}", id, t.toString());
             target.clear();
             return -1;
-        } finally {
-            if (raw != null) raw.release();
         }
     }
 
     public <T> void save(Path file, long[] fingerprint, Writer<T> writer, Reference2ObjectMap<Item, ObjectList<T>> map) {
         if (file == null) return;
         var raw = Unpooled.buffer();
-        try {
+        try (var ignored = Scope.release(raw)) {
             var buf = new FriendlyByteBuf(raw);
             buf.writeInt(MAGIC);
             buf.writeInt(VERSION);
@@ -209,8 +208,6 @@ public final class ResourceCache implements ManagedCache {
             ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to save: {}", id, t.toString());
-        } finally {
-            raw.release();
         }
     }
 

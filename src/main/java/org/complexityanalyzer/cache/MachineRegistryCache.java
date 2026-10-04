@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.cache;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -32,6 +31,7 @@ import org.complexityanalyzer.cache.util.Fingerprints;
 import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.FileManager;
+import org.complexityanalyzer.util.Scope;
 
 import java.nio.file.Path;
 
@@ -69,58 +69,57 @@ public final class MachineRegistryCache implements ManagedCache {
     public int tryLoad(Path file, Fingerprint expected, Object2ObjectMap<ResourceLocation, ObjectList<Item>> target) {
         if (!FileManager.isRegularFile(file)) return -1;
 
-        ByteBuf raw = null;
         try {
             byte[] bytes = FileManager.readCompressedBytes(file);
-            raw = Unpooled.wrappedBuffer(bytes);
-            var buf = new FriendlyByteBuf(raw);
+            var raw = Unpooled.wrappedBuffer(bytes);
+            try (var ignored = Scope.release(raw)) {
+                var buf = new FriendlyByteBuf(raw);
 
-            if (buf.readInt() != MAGIC) {
-                ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Cache has bad header, rebuilding.");
-                return -1;
-            }
-            if (buf.readInt() != VERSION) {
-                ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Cache format outdated, rebuilding.");
-                return -1;
-            }
-
-            var stored = new Fingerprint(buf.readLong(), buf.readLong());
-            if (!stored.equals(expected)) {
-                String diff = (stored.blocks() != expected.blocks() ? "blocks " : "")
-                        + (stored.mods() != expected.mods() ? "mods" : "");
-                ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Block/mod set changed since last run ({}), cache invalidated.", diff.trim());
-                return -1;
-            }
-
-            int typeCount = buf.readVarInt();
-            int restored = 0;
-            for (int i = 0; i < typeCount; i++) {
-                var typeId = buf.readResourceLocation();
-                int itemCount = buf.readVarInt();
-                var list = new ObjectArrayList<Item>(itemCount);
-                for (int j = 0; j < itemCount; j++) {
-                    var itemId = buf.readResourceLocation();
-                    var item = GameRegistryManager.getItem(itemId);
-                    if (item != null && item != AIR) {
-                        list.add(item);
-                        restored++;
-                    }
+                if (buf.readInt() != MAGIC) {
+                    ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Cache has bad header, rebuilding.");
+                    return -1;
                 }
-                if (!list.isEmpty()) target.put(typeId, list);
+                if (buf.readInt() != VERSION) {
+                    ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Cache format outdated, rebuilding.");
+                    return -1;
+                }
+
+                var stored = new Fingerprint(buf.readLong(), buf.readLong());
+                if (!stored.equals(expected)) {
+                    String diff = (stored.blocks() != expected.blocks() ? "blocks " : "")
+                            + (stored.mods() != expected.mods() ? "mods" : "");
+                    ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Block/mod set changed since last run ({}), cache invalidated.", diff.trim());
+                    return -1;
+                }
+
+                int typeCount = buf.readVarInt();
+                int restored = 0;
+                for (int i = 0; i < typeCount; i++) {
+                    var typeId = buf.readResourceLocation();
+                    int itemCount = buf.readVarInt();
+                    var list = new ObjectArrayList<Item>(itemCount);
+                    for (int j = 0; j < itemCount; j++) {
+                        var itemId = buf.readResourceLocation();
+                        var item = GameRegistryManager.getItem(itemId);
+                        if (item != null && item != AIR) {
+                            list.add(item);
+                            restored++;
+                        }
+                    }
+                    if (!list.isEmpty()) target.put(typeId, list);
+                }
+                return restored;
             }
-            return restored;
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to load cache (rebuilding): {}", t.toString());
             return -1;
-        } finally {
-            if (raw != null) raw.release();
         }
     }
 
     public void save(Path file, Fingerprint fingerprint, Object2ObjectMap<ResourceLocation, ObjectList<Item>> mapping) {
         if (file == null) return;
         var raw = Unpooled.buffer();
-        try {
+        try (var ignored = Scope.release(raw)) {
             var buf = new FriendlyByteBuf(raw);
             buf.writeInt(MAGIC);
             buf.writeInt(VERSION);
@@ -144,8 +143,6 @@ public final class MachineRegistryCache implements ManagedCache {
             ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());
-        } finally {
-            raw.release();
         }
     }
 

@@ -30,6 +30,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import org.complexityanalyzer.harvest.inspector.ItemStackIdentity;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
 import org.complexityanalyzer.harvest.inspector.TerminalTypeRegistry;
+import org.complexityanalyzer.util.Scope;
 
 import static java.util.Locale.ROOT;
 import static net.minecraft.world.item.Items.AIR;
@@ -59,7 +60,7 @@ public final class FastHarvester {
 
         var extRaw = new ReferenceOpenHashSet<>(16);
 
-        try {
+        try (var ignored = Scope.of(session::reset)) {
             var apiResult = ItemStack.EMPTY;
             boolean isVanillaRecipe = false;
 
@@ -78,7 +79,7 @@ public final class FastHarvester {
 
                 try {
                     apiResult = r.getResultItem(level.registryAccess());
-                } catch (Throwable ignored) {
+                } catch (Throwable ignoredE) {
                 }
 
                 if (apiResult.isEmpty()) {
@@ -130,7 +131,7 @@ public final class FastHarvester {
                                 }
                             }
                         }
-                    } catch (Throwable ignored) {
+                    } catch (Throwable ignoredE) {
                     }
                 }
 
@@ -144,7 +145,7 @@ public final class FastHarvester {
                         } else if (raw != null && extRaw.add(raw)) {
                             DeepCollector.collectIngredients(raw, inputIngredients, 0, visited);
                         }
-                    } catch (Throwable ignored) {
+                    } catch (Throwable ignoredE) {
                     }
                 }
 
@@ -166,7 +167,7 @@ public final class FastHarvester {
                                 DeepCollector.collectFluids(raw, inputFluids, 0, visited);
                             }
                         }
-                    } catch (Throwable ignored) {
+                    } catch (Throwable ignoredE) {
                     }
                 }
 
@@ -187,7 +188,7 @@ public final class FastHarvester {
                                 DeepCollector.collectUniversal(raw, inputItems, outputItems, inputIngredients, inputFluids, 0, visited, apiResultItem, level, transitional);
                             }
                         }
-                    } catch (Throwable ignored) {
+                    } catch (Throwable ignoredE) {
                     }
                 }
 
@@ -216,7 +217,7 @@ public final class FastHarvester {
                     try {
                         var res = r.getResultItem(level.registryAccess());
                         if (!res.isEmpty() && res.getItem() != AIR) outputItems.add(res.copy());
-                    } catch (Throwable ignored) {
+                    } catch (Throwable ignoredE) {
                     }
                 }
             }
@@ -269,8 +270,6 @@ public final class FastHarvester {
                     outputFluids.isEmpty() ? ObjectLists.emptyList() : new ObjectArrayList<>(outputFluids),
                     recipe, new ReferenceOpenHashSet<>(transitional)
             );
-        } finally {
-            session.reset();
         }
     }
 

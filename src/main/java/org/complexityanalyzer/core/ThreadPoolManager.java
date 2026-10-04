@@ -20,6 +20,7 @@ package org.complexityanalyzer.core;
 
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -116,10 +117,8 @@ public final class ThreadPoolManager implements AutoCloseable {
 
         if (oldManager != null) {
             var asyncShutdown = new Thread(() -> {
-                try {
+                try (var ignored = Scope.of(() -> Thread.currentThread().setContextClassLoader(null))) {
                     oldManager.shutdown();
-                } finally {
-                    Thread.currentThread().setContextClassLoader(null);
                 }
             }, "Complexity-Async-Shutdown");
             asyncShutdown.setDaemon(true);
@@ -339,10 +338,8 @@ public final class ThreadPoolManager implements AutoCloseable {
 
         @Override
         public void run() {
-            try {
+            try (var ignored = Scope.of(() -> setContextClassLoader(null))) {
                 super.run();
-            } finally {
-                setContextClassLoader(null);
             }
         }
     }
@@ -364,10 +361,8 @@ public final class ThreadPoolManager implements AutoCloseable {
 
         @Override
         protected void onTermination(Throwable cause) {
-            try {
+            try (var ignored = Scope.of(() -> setContextClassLoader(null))) {
                 super.onTermination(cause);
-            } finally {
-                setContextClassLoader(null);
             }
         }
     }

@@ -38,6 +38,7 @@ import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.SpiralChunkSearcher;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
+import org.complexityanalyzer.util.Scope;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -174,7 +175,11 @@ public class ScanExecutor {
 
         final var mySession = myCtx.session();
 
-        try {
+        try (var ignored = Scope.of(() -> {
+            workerThreads.remove(self);
+            activeWorkerCount.decrementAndGet();
+            ComplexityAnalyzer.LOGGER.info("[SCAN] Worker stopped");
+        })) {
             while (!isShutdown.get() && !self.isInterrupted()) {
                 var current = sessionRef.get();
                 if (current != myCtx || !mySession.isValid()) {
@@ -213,10 +218,6 @@ public class ScanExecutor {
             }
         } catch (Exception e) {
             if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error("[SCAN] Worker crashed", e);
-        } finally {
-            workerThreads.remove(self);
-            activeWorkerCount.decrementAndGet();
-            ComplexityAnalyzer.LOGGER.info("[SCAN] Worker stopped");
         }
     }
 
@@ -505,7 +506,8 @@ public class ScanExecutor {
         }
 
         private ObjectArrayList<ChunkSnapshot> tryDrain() {
-            if (draining.compareAndSet(false, true)) try {
+            if (!draining.compareAndSet(false, true)) return null;
+            try (var ignored = Scope.of(() -> draining.set(false))) {
                 if (size.get() >= BATCH_SAVE_THRESHOLD) {
                     var result = new ObjectArrayList<ChunkSnapshot>(BATCH_SAVE_THRESHOLD);
                     for (int i = 0; i < BATCH_SAVE_THRESHOLD; i++) {
@@ -517,15 +519,13 @@ public class ScanExecutor {
                     }
                     return result;
                 }
-            } finally {
-                draining.set(false);
+                return null;
             }
-            return null;
         }
 
         ObjectArrayList<ChunkSnapshot> drainAll() {
             while (!draining.compareAndSet(false, true)) Thread.onSpinWait();
-            try {
+            try (var ignored = Scope.of(() -> draining.set(false))) {
                 var result = new ObjectArrayList<ChunkSnapshot>();
                 ChunkSnapshot s;
                 while ((s = queue.poll()) != null) {
@@ -533,8 +533,6 @@ public class ScanExecutor {
                     result.add(s);
                 }
                 return result;
-            } finally {
-                draining.set(false);
             }
         }
     }

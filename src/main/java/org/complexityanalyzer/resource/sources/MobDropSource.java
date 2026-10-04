@@ -54,6 +54,7 @@ import org.complexityanalyzer.resource.data.KillCondition;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.util.LogFilter;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -155,7 +156,15 @@ public class MobDropSource implements IResourceSource {
                 var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
                 var damageSources = createDamageSources(serverLevel, fakePlayer);
 
-                try {
+                try (var ignoredScope = Scope.of(() -> {
+                    fakePlayer.discard();
+                    for (var ds : damageSources) {
+                        var e = ds.getEntity();
+                        if (e != null && e != fakePlayer) e.discard();
+                        var d = ds.getDirectEntity();
+                        if (d != null && d != fakePlayer) d.discard();
+                    }
+                })) {
                     int processedEntities = 0;
 
                     for (var entityType : entityTypes) {
@@ -193,15 +202,6 @@ public class MobDropSource implements IResourceSource {
 
                     long duration = System.currentTimeMillis() - startTime;
                     ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, targetMap.size(), duration);
-
-                } finally {
-                    fakePlayer.discard();
-                    for (var ds : damageSources) {
-                        var e = ds.getEntity();
-                        if (e != null && e != fakePlayer) e.discard();
-                        var d = ds.getDirectEntity();
-                        if (d != null && d != fakePlayer) d.discard();
-                    }
                 }
             };
 
@@ -282,11 +282,11 @@ public class MobDropSource implements IResourceSource {
                 if (isFire) entityInstance.setRemainingFireTicks(100);
                 if (isFreezing) entityInstance.setTicksFrozen(300);
 
-                try {
-                    lootTable.getRandomItems(context, drops::add);
-                } finally {
+                try (var ignoredScope = Scope.of(() -> {
                     if (isFire) entityInstance.clearFire();
                     if (isFreezing) entityInstance.setTicksFrozen(0);
+                })) {
+                    lootTable.getRandomItems(context, drops::add);
                 }
 
                 for (var stack : drops) {

@@ -27,6 +27,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,7 +67,7 @@ public class DepthAnalyzer {
         var visiting = inProgress.get();
         if (!visiting.add(item)) return 0;
 
-        try {
+        try (var ignored = Scope.of(() -> visiting.remove(item))) {
             var recipeToFollow = getRecipeToFollow(item);
             if (recipeToFollow == null) {
                 var source = sourceManager != null ? sourceManager.analyze(item) : null;
@@ -102,8 +103,6 @@ public class DepthAnalyzer {
 
             cache.put(item, finalDepth);
             return finalDepth;
-        } finally {
-            visiting.remove(item);
         }
     }
 

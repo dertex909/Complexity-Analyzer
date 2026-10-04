@@ -50,6 +50,7 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.resource.sources.*;
 import org.complexityanalyzer.util.ProbeScope;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
@@ -124,14 +125,11 @@ public class AnalysisEngine {
 
     private void resetFailedToIdle() {
         if (currentState.get() != State.FAILED) return;
-        stateLock.lock();
-        try {
+        try (var ignored = Scope.lock(stateLock)) {
             if (currentState.get() == State.FAILED) {
                 currentState.set(State.IDLE);
                 ComplexityAnalyzer.LOGGER.info("Reset from FAILED state to IDLE for retry");
             }
-        } finally {
-            stateLock.unlock();
         }
     }
 
@@ -238,8 +236,7 @@ public class AnalysisEngine {
     }
 
     private boolean setStateIfCurrent(long generation, State state, boolean clearData) {
-        stateLock.lock();
-        try {
+        try (var ignored = Scope.lock(stateLock)) {
             long active = analysisGeneration.get();
             if (active != generation) {
                 ComplexityAnalyzer.LOGGER.warn("Discarding superseded analysis task (gen {}, active {}); not transitioning to {}.", generation, active, state);
@@ -248,8 +245,6 @@ public class AnalysisEngine {
             if (clearData) clearDataInternal();
             currentState.set(state);
             return true;
-        } finally {
-            stateLock.unlock();
         }
     }
 
@@ -360,15 +355,12 @@ public class AnalysisEngine {
     public void createGeoManager(MinecraftServer server) {
         if (isShuttingDown.get()) return;
 
-        geoManagerLock.lock();
-        try {
+        try (var ignored = Scope.lock(geoManagerLock)) {
             if (isShuttingDown.get()) return;
             var oldManager = this.geoManager;
             if (oldManager != null) oldManager.shutdown();
             var geoDB = this.geoDatabase;
             if (geoDB != null) this.geoManager = new GeoAnalysisManager(server, geoDB, this);
-        } finally {
-            geoManagerLock.unlock();
         }
     }
 
@@ -481,23 +473,17 @@ public class AnalysisEngine {
         var currentTask = currentAnalysisTask.getAndSet(null);
         if (currentTask != null && !currentTask.isDone()) currentTask.cancel(true);
 
-        geoManagerLock.lock();
-        try {
+        try (var ignored = Scope.lock(geoManagerLock)) {
             var geoMgr = this.geoManager;
             if (geoMgr != null) {
                 geoMgr.shutdown();
                 this.geoManager = null;
             }
-        } finally {
-            geoManagerLock.unlock();
         }
 
-        stateLock.lock();
-        try {
+        try (var ignored = Scope.lock(stateLock)) {
             clearDataInternal();
             currentState.set(State.IDLE);
-        } finally {
-            stateLock.unlock();
         }
 
         clearAllCaches();
@@ -536,24 +522,18 @@ public class AnalysisEngine {
             }
         }
 
-        geoManagerLock.lock();
-        try {
+        try (var ignored = Scope.lock(geoManagerLock)) {
             var geoMgr = this.geoManager;
             if (geoMgr != null) {
                 geoMgr.shutdown();
                 this.geoManager = null;
             }
-        } finally {
-            geoManagerLock.unlock();
         }
 
-        stateLock.lock();
-        try {
+        try (var ignored = Scope.lock(stateLock)) {
             clearDataInternal();
             currentState.set(State.IDLE);
             ComplexityAnalyzer.LOGGER.debug("AnalysisEngine state reset to IDLE.");
-        } finally {
-            stateLock.unlock();
         }
 
         if (!permanent) isShuttingDown.set(false);

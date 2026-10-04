@@ -46,6 +46,7 @@ import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.ProbeScope;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -204,15 +205,16 @@ public class PlantSimulator {
         var drops = new Reference2DoubleOpenHashMap<Item>();
         var lootPos = SIM_ORIGIN;
         var oldState = level.getBlockState(lootPos);
-        BlockPos groundPos = null;
-        BlockState oldGroundState = null;
-        if (ground != null) {
-            groundPos = lootPos.relative(ground.side());
-            oldGroundState = level.getBlockState(groundPos);
-            level.setBlock(groundPos, ground.block().defaultBlockState(), FLAG_NO_UPDATE);
-        }
 
-        try {
+        final BlockPos groundPos = ground != null ? lootPos.relative(ground.side()) : null;
+        final BlockState oldGroundState = groundPos != null ? level.getBlockState(groundPos) : null;
+
+        if (groundPos != null) level.setBlock(groundPos, ground.block().defaultBlockState(), FLAG_NO_UPDATE);
+
+        try (var ignored = Scope.of(() -> {
+            level.setBlock(lootPos, oldState, FLAG_NO_UPDATE);
+            if (groundPos != null) level.setBlock(groundPos, oldGroundState, FLAG_NO_UPDATE);
+        })) {
             var state = block.defaultBlockState();
             var ageProp = findAgeProperty(block);
             if (ageProp != null) {
@@ -263,9 +265,6 @@ public class PlantSimulator {
 
         } catch (Throwable e) {
             ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
-        } finally {
-            level.setBlock(lootPos, oldState, FLAG_NO_UPDATE);
-            if (groundPos != null) level.setBlock(groundPos, oldGroundState, FLAG_NO_UPDATE);
         }
         return drops;
     }

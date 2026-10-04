@@ -25,6 +25,7 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.task.ScanNotifier;
+import org.complexityanalyzer.util.Scope;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +57,10 @@ public class DataRefiner {
                 var currentThread = Thread.currentThread();
                 activeThreads.put(currentThread, Boolean.TRUE);
 
-                try {
+                try (var ignored = Scope.of(() -> {
+                    activeThreads.remove(currentThread);
+                    ComplexityAnalyzer.LOGGER.info("[Refiner] Task FINISHED");
+                })) {
                     var reconPaths = database.getAllReconFilePaths();
                     ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine", reconPaths.size());
 
@@ -136,9 +140,6 @@ public class DataRefiner {
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.error("[Refiner] Unexpected error!", e);
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
-                } finally {
-                    activeThreads.remove(currentThread);
-                    ComplexityAnalyzer.LOGGER.info("[Refiner] Task FINISHED");
                 }
             });
 

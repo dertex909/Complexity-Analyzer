@@ -18,7 +18,6 @@
 
 package org.complexityanalyzer.cache;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.RegistryAccess;
@@ -43,6 +42,7 @@ import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.util.FileManager;
+import org.complexityanalyzer.util.Scope;
 
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -245,7 +245,7 @@ public final class RecipeGraphCache implements ManagedCache {
     public void save(RecipeGraph graph, Path file, Fingerprint fingerprint, Level level) {
         var nodes = graph.getAllRecipes();
         var raw = Unpooled.buffer();
-        try {
+        try (var ignored = Scope.release(raw)) {
             var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
             buf.writeInt(MAGIC);
             buf.writeInt(VERSION);
@@ -262,47 +262,44 @@ public final class RecipeGraphCache implements ManagedCache {
             ComplexityAnalyzer.LOGGER.debug("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
-        } finally {
-            raw.release();
         }
     }
 
     public RecipeGraph tryLoad(Path file, Fingerprint expected, Level level) {
         if (!FileManager.isRegularFile(file)) return null;
 
-        ByteBuf raw = null;
         try {
             byte[] bytes = FileManager.readCompressedBytes(file);
-            raw = Unpooled.wrappedBuffer(bytes);
-            var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
+            var raw = Unpooled.wrappedBuffer(bytes);
+            try (var ignored = Scope.release(raw)) {
+                var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
 
-            if (buf.readInt() != MAGIC) {
-                ComplexityAnalyzer.LOGGER.warn("[Harvest] Recipe graph cache has bad header, rebuilding.");
-                return null;
-            }
-            if (buf.readInt() != VERSION) {
-                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe graph cache format outdated, rebuilding.");
-                return null;
-            }
+                if (buf.readInt() != MAGIC) {
+                    ComplexityAnalyzer.LOGGER.warn("[Harvest] Recipe graph cache has bad header, rebuilding.");
+                    return null;
+                }
+                if (buf.readInt() != VERSION) {
+                    ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe graph cache format outdated, rebuilding.");
+                    return null;
+                }
 
-            var stored = new Fingerprint(buf.readLong(), buf.readLong(), buf.readLong());
-            if (!stored.equals(expected)) {
-                String diff = (stored.recipes() != expected.recipes() ? "recipes " : "")
-                        + (stored.mods() != expected.mods() ? "mods " : "")
-                        + (stored.config() != expected.config() ? "config" : "");
-                ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe set changed since last run ({}), cache invalidated.", diff.trim());
-                return null;
-            }
+                var stored = new Fingerprint(buf.readLong(), buf.readLong(), buf.readLong());
+                if (!stored.equals(expected)) {
+                    String diff = (stored.recipes() != expected.recipes() ? "recipes " : "")
+                            + (stored.mods() != expected.mods() ? "mods " : "")
+                            + (stored.config() != expected.config() ? "config" : "");
+                    ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe set changed since last run ({}), cache invalidated.", diff.trim());
+                    return null;
+                }
 
-            int count = buf.readVarInt();
-            var graph = new RecipeGraph();
-            for (int i = 0; i < count; i++) graph.addRecipe(readNode(buf));
-            return graph;
+                int count = buf.readVarInt();
+                var graph = new RecipeGraph();
+                for (int i = 0; i < count; i++) graph.addRecipe(readNode(buf));
+                return graph;
+            }
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to load recipe graph cache (rebuilding): {}", t.toString());
             return null;
-        } finally {
-            if (raw != null) raw.release();
         }
     }
 

@@ -22,14 +22,13 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class LootOptimizer {
     public static final int PROBE_THRESHOLD = 30;
-    public static final Map<ResourceLocation, TableStatus> STATUS_CACHE = new ConcurrentHashMap<>();
-    public static final Map<ResourceLocation, AtomicInteger> PROBE_COUNTERS = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<ResourceLocation, TableStatus> STATUS_CACHE = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<ResourceLocation, AtomicInteger> PROBE_COUNTERS = new ConcurrentHashMap<>();
     public static final AtomicInteger SKIPPED_CALLS = new AtomicInteger(0);
     public static final AtomicInteger FULL_CALLS = new AtomicInteger(0);
     private static final ThreadLocal<Integer> NESTING_DEPTH = ThreadLocal.withInitial(() -> 0);

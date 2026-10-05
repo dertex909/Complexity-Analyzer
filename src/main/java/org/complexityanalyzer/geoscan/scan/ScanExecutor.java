@@ -270,8 +270,7 @@ public class ScanExecutor {
     }
 
     private boolean waitAndCheckStop(SessionContext myCtx) {
-        if (checkMemoryAndThrottling(myCtx)) return shouldStop(myCtx);
-        return false;
+        return checkMemoryAndThrottling(myCtx) && shouldStop(myCtx);
     }
 
     private void performScan(ScanContext ctx) {

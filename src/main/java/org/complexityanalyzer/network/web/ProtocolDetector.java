@@ -63,11 +63,11 @@ public class ProtocolDetector extends ByteToMessageDecoder {
             } catch (Throwable ignored) {
             }
         }
+        String wsPath = "/" + CabinNettyHandler.getToken() + "/ws";
 
         ctx.pipeline().addAfter(ctx.name(), "http_codec", new HttpServerCodec());
         ctx.pipeline().addAfter("http_codec", "http_aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
         ctx.pipeline().addAfter("http_aggregator", "http_chunked", new ChunkedWriteHandler());
-        String wsPath = "/" + CabinNettyHandler.getToken() + "/ws";
         ctx.pipeline().addAfter("http_chunked", "ws_protocol", new WebSocketServerProtocolHandler(wsPath, null, true));
         ctx.pipeline().addAfter("ws_protocol", "cabin_handler", new CabinNettyHandler());
 

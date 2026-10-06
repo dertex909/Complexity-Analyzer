@@ -31,7 +31,6 @@ group = modGroupId
 base.archivesName.set(modId)
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 java.withSourcesJar()
-idea.module.isDownloadSources = true
 idea.module.isDownloadJavadoc = true
 
 sourceSets.main {
@@ -60,8 +59,6 @@ neoForge {
         }
 
         configureEach {
-            systemProperty("forge.logging.markers", "REGISTRIES")
-            systemProperty("neoforge.enabledGameTestNamespaces", modId)
             logLevel = org.slf4j.event.Level.DEBUG
             additionalRuntimeClasspathConfiguration.extendsFrom(configurations.implementation.get())
         }
@@ -126,7 +123,7 @@ publishMods {
         projectSlug = "complexity-analyzer"
         minecraftVersions.add(minecraftVersion)
         server = true
-        client = false
+        client = true
         changelog = fullChangelog
     }
 

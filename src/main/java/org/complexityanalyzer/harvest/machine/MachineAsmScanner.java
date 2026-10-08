@@ -27,10 +27,23 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class MachineAsmScanner {
+
+    private static final ConcurrentHashMap<String, byte[]> BYTECODE_CACHE = new ConcurrentHashMap<>();
+    private static final byte[] EMPTY_BYTES = new byte[0];
+
+    private static final ConcurrentHashMap<String, RecipeType<?>> STATIC_RECIPE_CACHE = new ConcurrentHashMap<>();
+    private static final RecipeType<?> NO_RECIPE = new RecipeType<>() {
+        @Override
+        public String toString() {
+            return "NO_RECIPE_TYPE";
+        }
+    };
 
     private MachineAsmScanner() {
     }
@@ -142,11 +155,20 @@ public final class MachineAsmScanner {
     }
 
     public static @Nullable InputStream getClassInputStream(Class<?> clazz, String className) {
-        String classPath = className.replace('.', '/') + ".class";
-        var is = clazz.getResourceAsStream("/" + classPath);
-        if (is != null) return is;
-        var cl = clazz.getClassLoader();
-        return cl != null ? cl.getResourceAsStream(classPath) : null;
+        var bytes = BYTECODE_CACHE.computeIfAbsent(className, name -> {
+            String classPath = name.replace('.', '/') + ".class";
+            try (var is = clazz.getResourceAsStream("/" + classPath)) {
+                if (is != null) return is.readAllBytes();
+            } catch (Throwable ignored) {
+            }
+            var cl = clazz.getClassLoader();
+            if (cl != null) try (var is = cl.getResourceAsStream(classPath)) {
+                if (is != null) return is.readAllBytes();
+            } catch (Throwable ignored) {
+            }
+            return EMPTY_BYTES;
+        });
+        return bytes.length > 0 ? new ByteArrayInputStream(bytes) : null;
     }
 
     private static boolean isModInternalClass(@Nullable String internalName) {
@@ -160,13 +182,23 @@ public final class MachineAsmScanner {
 
     @Nullable
     private static RecipeType<?> extractStaticRecipeType(ClassLoader cl, String ownerClass, String fieldName) {
+        String key = ownerClass + "#" + fieldName;
+        var cached = STATIC_RECIPE_CACHE.get(key);
+        if (cached != null) return cached == NO_RECIPE ? null : cached;
+
         try {
             var cls = Class.forName(ownerClass.replace('/', '.'), false, cl);
             var f = cls.getDeclaredField(fieldName);
             f.setAccessible(true);
-            if (!Modifier.isStatic(f.getModifiers())) return null;
-            return MachineTypeUnwrapper.unwrapRecipeType(f.get(null));
+            if (!Modifier.isStatic(f.getModifiers())) {
+                STATIC_RECIPE_CACHE.put(key, NO_RECIPE);
+                return null;
+            }
+            var rt = MachineTypeUnwrapper.unwrapRecipeType(f.get(null));
+            STATIC_RECIPE_CACHE.put(key, rt != null ? rt : NO_RECIPE);
+            return rt;
         } catch (Throwable ignored) {
+            STATIC_RECIPE_CACHE.put(key, NO_RECIPE);
         }
         return null;
     }

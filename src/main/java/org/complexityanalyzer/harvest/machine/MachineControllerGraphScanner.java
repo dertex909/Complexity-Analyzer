@@ -33,6 +33,7 @@ import org.objectweb.asm.tree.*;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 
 import static net.minecraft.core.BlockPos.ZERO;
@@ -41,6 +42,8 @@ import static net.minecraft.world.item.Items.AIR;
 public final class MachineControllerGraphScanner {
 
     private static final int MAX_GRAPH_DEPTH = 3;
+    private static final ConcurrentHashMap<String, Class<?>> CLASS_CACHE = new ConcurrentHashMap<>();
+    private static final Class<?> NOT_FOUND = void.class;
 
     private MachineControllerGraphScanner() {
     }
@@ -261,13 +264,19 @@ public final class MachineControllerGraphScanner {
         String name = internalName.replace('/', '.');
         if (!isClassInModScope(name, modPrefix, allowedRoots)) return;
 
-        try {
-            var target = Class.forName(name, false, cl);
-            if (target != source && target != Object.class) {
-                graph.computeIfAbsent(source, k -> new ReferenceOpenHashSet<>()).add(target);
-                graph.computeIfAbsent(target, k -> new ReferenceOpenHashSet<>()).add(source);
-            }
+        var target = CLASS_CACHE.get(name);
+        if (target == null) try {
+            target = Class.forName(name, false, cl);
+            CLASS_CACHE.put(name, target);
         } catch (Throwable ignored) {
+            CLASS_CACHE.put(name, NOT_FOUND);
+            return;
+        }
+        if (target == NOT_FOUND) return;
+
+        if (target != source && target != Object.class) {
+            graph.computeIfAbsent(source, k -> new ReferenceOpenHashSet<>()).add(target);
+            graph.computeIfAbsent(target, k -> new ReferenceOpenHashSet<>()).add(source);
         }
     }
 

@@ -43,7 +43,6 @@ public final class MachineControllerGraphScanner {
 
     private static final int MAX_GRAPH_DEPTH = 3;
     private static final ConcurrentHashMap<String, Class<?>> CLASS_CACHE = new ConcurrentHashMap<>();
-    private static final Class<?> NOT_FOUND = void.class;
 
     private MachineControllerGraphScanner() {
     }
@@ -269,10 +268,10 @@ public final class MachineControllerGraphScanner {
             target = Class.forName(name, false, cl);
             CLASS_CACHE.put(name, target);
         } catch (Throwable ignored) {
-            CLASS_CACHE.put(name, NOT_FOUND);
+            CLASS_CACHE.put(name, void.class);
             return;
         }
-        if (target == NOT_FOUND) return;
+        if (target == void.class) return;
 
         if (target != source && target != Object.class) {
             graph.computeIfAbsent(source, k -> new ReferenceOpenHashSet<>()).add(target);

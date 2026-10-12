@@ -30,8 +30,8 @@ import org.slf4j.LoggerFactory;
 public class ComplexityAnalyzer {
     public static final String MODID = "complexityanalyzer";
     public static final String MOD_NAME = "Complexity Analyzer";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
     public static final String VERSION = ModList.get().getModFileById(MODID).versionString();
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
     public ComplexityAnalyzer(ModContainer modContainer) {
         LOGGER.info("=== {} v{} ===", MOD_NAME, VERSION);

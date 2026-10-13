@@ -19,7 +19,7 @@
 package org.complexityanalyzer.resource.sources.hardcoded;
 
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.Block;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.mixin.Accessors.CoralBlockAccessor;
@@ -39,30 +39,28 @@ public final class CoralModule {
     public static void register(Level ignored, IHardcodedSourceRegistry registry) {
         for (var block : GameRegistryManager.getAllBlocks()) {
             var deadBlock = getDeadBlock(block);
+            if (deadBlock == null) continue;
 
-            if (deadBlock != null) {
-                var aliveItem = block.asItem();
-                var deadItem = deadBlock.asItem();
+            var aliveItem = block.asItem();
+            var deadItem = deadBlock.asItem();
+            if (aliveItem == AIR || deadItem == AIR || aliveItem == deadItem) continue;
 
-                if (aliveItem != AIR && deadItem != AIR && aliveItem != deadItem) {
-                    var data = new BaseResourceData.Builder(deadItem)
-                            .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                            .baseFactor(1.0)
-                            .addSourceItem(aliveItem, 1.0)
-                            .details("Coral drying out")
-                            .build();
+            var data = new BaseResourceData.Builder(deadItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
+                    .baseFactor(1.0)
+                    .addSourceItem(aliveItem, 1.0)
+                    .details("Coral drying out")
+                    .build();
 
-                    registry.register(deadItem, data);
-                }
-            }
+            registry.register(deadItem, data);
         }
     }
 
     private static @Nullable Block getDeadBlock(Block block) {
-        if (block instanceof CoralBlock b) return ((CoralBlockAccessor) b).getDeadBlock();
-        if (block instanceof CoralPlantBlock b) return ((CoralPlantBlockAccessor) b).getDeadBlock();
-        if (block instanceof CoralFanBlock b) return ((CoralFanBlockAccessor) b).getDeadBlock();
-        if (block instanceof CoralWallFanBlock b) return ((CoralWallFanBlockAccessor) b).getDeadBlock();
+        if (block instanceof CoralBlockAccessor b) return b.getDeadBlock();
+        if (block instanceof CoralPlantBlockAccessor b) return b.getDeadBlock();
+        if (block instanceof CoralFanBlockAccessor b) return b.getDeadBlock();
+        if (block instanceof CoralWallFanBlockAccessor b) return b.getDeadBlock();
         return null;
     }
 }

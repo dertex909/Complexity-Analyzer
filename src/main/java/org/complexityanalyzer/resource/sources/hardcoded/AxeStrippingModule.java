@@ -34,24 +34,21 @@ public final class AxeStrippingModule {
         for (var block : GameRegistryManager.getAllBlocks()) {
             var defaultState = block.defaultBlockState();
             var strippedState = AxeItem.getAxeStrippingState(defaultState);
+            if (strippedState == null) continue;
 
-            if (strippedState != null) {
-                var strippedBlock = strippedState.getBlock();
-                var originalItem = block.asItem();
-                var strippedItem = strippedBlock.asItem();
+            var originalItem = block.asItem();
+            var strippedItem = strippedState.getBlock().asItem();
+            if (originalItem == Items.AIR || strippedItem == Items.AIR || originalItem == strippedItem) continue;
 
-                if (originalItem != Items.AIR && strippedItem != Items.AIR && originalItem != strippedItem) {
-                    var data = new BaseResourceData.Builder(strippedItem)
-                            .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                            .baseFactor(1.0)
-                            .addSourceItem(originalItem, 1.0)
-                            .addSourceItem(Items.WOODEN_AXE, 0.01)
-                            .details("Stripping with Axe")
-                            .build();
+            var data = new BaseResourceData.Builder(strippedItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
+                    .baseFactor(1.0)
+                    .addSourceItem(originalItem, 1.0)
+                    .addSourceItem(Items.WOODEN_AXE, 0.01)
+                    .details("Stripping with Axe")
+                    .build();
 
-                    registry.register(strippedItem, data);
-                }
-            }
+            registry.register(strippedItem, data);
         }
     }
 }

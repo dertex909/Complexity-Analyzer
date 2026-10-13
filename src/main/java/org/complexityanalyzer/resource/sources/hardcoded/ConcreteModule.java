@@ -19,7 +19,6 @@
 package org.complexityanalyzer.resource.sources.hardcoded;
 
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.ConcretePowderBlock;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.mixin.Accessors.ConcretePowderBlockAccessor;
@@ -34,22 +33,20 @@ public final class ConcreteModule {
 
     public static void register(Level ignored, IHardcodedSourceRegistry registry) {
         for (var block : GameRegistryManager.getAllBlocks()) {
-            if (block instanceof ConcretePowderBlock powder) {
-                var concrete = ((ConcretePowderBlockAccessor) powder).getConcrete();
-                var powderItem = block.asItem();
-                var concreteItem = concrete.asItem();
+            if (!(block instanceof ConcretePowderBlockAccessor powder)) continue;
 
-                if (powderItem != AIR && concreteItem != AIR) {
-                    var data = new BaseResourceData.Builder(concreteItem)
-                            .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                            .baseFactor(1.0)
-                            .addSourceItem(powderItem, 1.0)
-                            .details("Hydrating concrete powder with water")
-                            .build();
+            var powderItem = block.asItem();
+            var concreteItem = powder.getConcrete().asItem();
+            if (powderItem == AIR || concreteItem == AIR) continue;
 
-                    registry.register(concreteItem, data);
-                }
-            }
+            var data = new BaseResourceData.Builder(concreteItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
+                    .baseFactor(1.0)
+                    .addSourceItem(powderItem, 1.0)
+                    .details("Hydrating concrete powder with water")
+                    .build();
+
+            registry.register(concreteItem, data);
         }
     }
 }

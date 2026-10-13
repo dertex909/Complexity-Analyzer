@@ -34,27 +34,24 @@ public final class AnvilDegradationModule {
 
     public static void register(Level ignored, IHardcodedSourceRegistry registry) {
         for (var block : GameRegistryManager.getAllBlocks()) {
-            if (block instanceof AnvilBlock || block.defaultBlockState().is(ANVIL)) {
-                var currentState = block.defaultBlockState();
-                var damagedState = AnvilBlock.damage(currentState);
+            var currentState = block.defaultBlockState();
+            if (!(block instanceof AnvilBlock) && !currentState.is(ANVIL)) continue;
 
-                if (damagedState != null) {
-                    var damagedBlock = damagedState.getBlock();
-                    var inputItem = block.asItem();
-                    var resultItem = damagedBlock.asItem();
+            var damagedState = AnvilBlock.damage(currentState);
+            if (damagedState == null) continue;
 
-                    if (inputItem != AIR && resultItem != AIR && inputItem != resultItem) {
-                        var data = new BaseResourceData.Builder(resultItem)
-                                .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                                .baseFactor(1.0)
-                                .addSourceItem(inputItem, 1.0)
-                                .details("Anvil degradation from usage")
-                                .build();
+            var inputItem = block.asItem();
+            var resultItem = damagedState.getBlock().asItem();
+            if (inputItem == AIR || resultItem == AIR || inputItem == resultItem) continue;
 
-                        registry.register(resultItem, data);
-                    }
-                }
-            }
+            var data = new BaseResourceData.Builder(resultItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
+                    .baseFactor(1.0)
+                    .addSourceItem(inputItem, 1.0)
+                    .details("Anvil degradation from usage")
+                    .build();
+
+            registry.register(resultItem, data);
         }
     }
 }

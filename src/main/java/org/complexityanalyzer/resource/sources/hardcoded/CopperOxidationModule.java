@@ -33,21 +33,21 @@ public final class CopperOxidationModule {
 
     public static void register(Level ignored, IHardcodedSourceRegistry registry) {
         for (var block : GameRegistryManager.getAllBlocks()) {
-            WeatheringCopper.getNext(block).ifPresent(nextBlock -> {
-                var inputItem = block.asItem();
-                var resultItem = nextBlock.asItem();
+            var nextBlock = WeatheringCopper.getNext(block).orElse(null);
+            if (nextBlock == null) continue;
 
-                if (inputItem != AIR && resultItem != AIR && inputItem != resultItem) {
-                    var data = new BaseResourceData.Builder(resultItem)
-                            .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                            .baseFactor(1.0)
-                            .addSourceItem(inputItem, 1.0)
-                            .details("Copper oxidation over time")
-                            .build();
+            var inputItem = block.asItem();
+            var resultItem = nextBlock.asItem();
+            if (inputItem == AIR || resultItem == AIR || inputItem == resultItem) continue;
 
-                    registry.register(resultItem, data);
-                }
-            });
+            var data = new BaseResourceData.Builder(resultItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
+                    .baseFactor(1.0)
+                    .addSourceItem(inputItem, 1.0)
+                    .details("Copper oxidation over time")
+                    .build();
+
+            registry.register(resultItem, data);
         }
     }
 }

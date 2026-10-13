@@ -45,24 +45,21 @@ public final class ToolInteractionsModule {
         for (var block : GameRegistryManager.getAllBlocks()) {
             var state = block.defaultBlockState();
             var tilledState = state.getToolModifiedState(context, HOE_TILL, false);
+            if (tilledState == null) continue;
 
-            if (tilledState != null) {
-                var tilledBlock = tilledState.getBlock();
-                var originalItem = block.asItem();
-                var tilledItem = tilledBlock.asItem();
+            var originalItem = block.asItem();
+            var tilledItem = tilledState.getBlock().asItem();
+            if (originalItem == Items.AIR || tilledItem == Items.AIR || originalItem == tilledItem) continue;
 
-                if (originalItem != Items.AIR && tilledItem != Items.AIR && originalItem != tilledItem) {
-                    var data = new BaseResourceData.Builder(tilledItem)
-                            .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
-                            .baseFactor(1.0)
-                            .addSourceItem(originalItem, 1.0)
-                            .addSourceItem(Items.WOODEN_HOE, 0.01)
-                            .details("Tilling with Hoe")
-                            .build();
+            var data = new BaseResourceData.Builder(tilledItem)
+                    .sourceType(BaseResourceData.ResourceSourceType.BLOCK_TRANSFORMATION)
+                    .baseFactor(1.0)
+                    .addSourceItem(originalItem, 1.0)
+                    .addSourceItem(Items.WOODEN_HOE, 0.01)
+                    .details("Tilling with Hoe")
+                    .build();
 
-                    registry.register(tilledItem, data);
-                }
-            }
+            registry.register(tilledItem, data);
         }
     }
 }

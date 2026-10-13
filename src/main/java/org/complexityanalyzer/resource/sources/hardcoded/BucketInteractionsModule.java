@@ -22,7 +22,10 @@ import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.*;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.SolidBucketItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
@@ -50,10 +53,10 @@ public final class BucketInteractionsModule {
         if (graph == null) return;
         var seenBuckets = new ReferenceOpenHashSet<Item>();
 
-        for (var holder : fluidRegistry.holders().toList()) {
-            var fluid = holder.value();
+        for (var fluid : fluidRegistry) {
             var bucket = fluid.getBucket();
             if (bucket == Items.AIR || bucket == Items.BUCKET || !seenBuckets.add(bucket)) continue;
+
             var builder = new RecipeNode.Builder(bucket);
             builder.resultCount(1);
             builder.addIngredient(ObjectLists.singleton(new ItemStack(Items.BUCKET)), 1);
@@ -66,9 +69,7 @@ public final class BucketInteractionsModule {
         var engine = AnalysisEngine.getInstance();
         var mobProvider = engine.getMobPropertyProvider();
 
-        for (var holder : itemRegistry.holders().toList()) {
-            var item = holder.value();
-
+        for (var item : itemRegistry) {
             if (item instanceof SolidBucketItem solidBucket) {
                 var data = new BaseResourceData.Builder(item)
                         .sourceType(BaseResourceData.ResourceSourceType.SPECIAL_ACTION)
@@ -81,27 +82,27 @@ public final class BucketInteractionsModule {
                 continue;
             }
 
-            if (item instanceof MobBucketItem mobBucket) {
-                var entityType = ((MobBucketItemAccessor) mobBucket).getType();
-                if (entityType == null) continue;
+            if (!(item instanceof MobBucketItemAccessor mobBucket)) continue;
 
-                double catchDifficulty = 5.0;
-                if (mobProvider != null) {
-                    double rarity = mobProvider.getRarity(entityType);
-                    var props = mobProvider.getProperties(entityType);
-                    double combatPower = props != null ? props.calculateCombatPower() : 10.0;
-                    catchDifficulty = Math.max(1.0, combatPower * rarity * ComplexityConfig.MOB_DIFFICULTY_SCALER.get());
-                }
+            var entityType = mobBucket.getType();
+            if (entityType == null) continue;
 
-                var data = new BaseResourceData.Builder(item)
-                        .sourceType(BaseResourceData.ResourceSourceType.SPECIAL_ACTION)
-                        .baseFactor(catchDifficulty)
-                        .addSourceItem(Items.WATER_BUCKET, 1.0)
-                        .details("Catching " + entityType.getDescription().getString() + " with water bucket (Bucketable)")
-                        .build();
-
-                registry.register(item, data);
+            double catchDifficulty = 5.0;
+            if (mobProvider != null) {
+                double rarity = mobProvider.getRarity(entityType);
+                var props = mobProvider.getProperties(entityType);
+                double combatPower = props != null ? props.calculateCombatPower() : 10.0;
+                catchDifficulty = Math.max(1.0, combatPower * rarity * ComplexityConfig.MOB_DIFFICULTY_SCALER.get());
             }
+
+            var data = new BaseResourceData.Builder(item)
+                    .sourceType(BaseResourceData.ResourceSourceType.SPECIAL_ACTION)
+                    .baseFactor(catchDifficulty)
+                    .addSourceItem(Items.WATER_BUCKET, 1.0)
+                    .details("Catching " + entityType.getDescription().getString() + " with water bucket (Bucketable)")
+                    .build();
+
+            registry.register(item, data);
         }
     }
 }

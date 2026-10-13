@@ -49,18 +49,14 @@ public abstract class CommonHooksMixin {
         var status = LootOptimizer.STATUS_CACHE.get(lootTableId);
 
         if (status == LootOptimizer.TableStatus.UNMODIFIED) {
-            LootOptimizer.SKIPPED_CALLS.incrementAndGet();
             cir.setReturnValue(generatedLoot);
             return;
         }
 
-        if (status == null || status == LootOptimizer.TableStatus.UNKNOWN) {
-            var copy = new ObjectArrayList<ItemStack>(generatedLoot.size());
-            for (var stack : generatedLoot) copy.add(stack.copy());
-            complexity$snapshot.set(copy);
-        }
-
-        LootOptimizer.FULL_CALLS.incrementAndGet();
+        if (status != null) return;
+        var copy = new ObjectArrayList<ItemStack>(generatedLoot.size());
+        for (var stack : generatedLoot) copy.add(stack.copy());
+        complexity$snapshot.set(copy);
     }
 
     @Inject(
@@ -71,24 +67,22 @@ public abstract class CommonHooksMixin {
                                            LootContext context, CallbackInfoReturnable<ObjectArrayList<ItemStack>> cir) {
         if (LootOptimizer.isIdle() || lootTableId == null) return;
         var status = LootOptimizer.STATUS_CACHE.get(lootTableId);
-        if (status == LootOptimizer.TableStatus.UNMODIFIED) return;
+        if (status == LootOptimizer.TableStatus.UNMODIFIED || status == LootOptimizer.TableStatus.MODIFIED) return;
 
         var originalLoot = complexity$snapshot.get();
         complexity$snapshot.remove();
         if (originalLoot == null) return;
 
-        if (status == null || status == LootOptimizer.TableStatus.UNKNOWN) {
-            var resultLoot = cir.getReturnValue();
+        var resultLoot = cir.getReturnValue();
 
-            if (!LootOptimizer.areListsIdentical(originalLoot, resultLoot)) {
-                LootOptimizer.STATUS_CACHE.put(lootTableId, LootOptimizer.TableStatus.MODIFIED);
-                return;
-            }
+        if (!LootOptimizer.areListsIdentical(originalLoot, resultLoot)) {
+            LootOptimizer.STATUS_CACHE.put(lootTableId, LootOptimizer.TableStatus.MODIFIED);
+            return;
+        }
 
-            var counter = LootOptimizer.PROBE_COUNTERS.computeIfAbsent(lootTableId, k -> new AtomicInteger(0));
-            if (counter.incrementAndGet() >= LootOptimizer.PROBE_THRESHOLD) {
-                LootOptimizer.STATUS_CACHE.put(lootTableId, LootOptimizer.TableStatus.UNMODIFIED);
-            }
+        var counter = LootOptimizer.PROBE_COUNTERS.computeIfAbsent(lootTableId, k -> new AtomicInteger(0));
+        if (counter.incrementAndGet() >= LootOptimizer.PROBE_THRESHOLD) {
+            LootOptimizer.STATUS_CACHE.put(lootTableId, LootOptimizer.TableStatus.UNMODIFIED);
         }
     }
 }

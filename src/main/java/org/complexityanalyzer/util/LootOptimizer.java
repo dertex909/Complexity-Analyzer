@@ -29,8 +29,6 @@ public class LootOptimizer {
     public static final int PROBE_THRESHOLD = 30;
     public static final ConcurrentHashMap<ResourceLocation, TableStatus> STATUS_CACHE = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<ResourceLocation, AtomicInteger> PROBE_COUNTERS = new ConcurrentHashMap<>();
-    public static final AtomicInteger SKIPPED_CALLS = new AtomicInteger(0);
-    public static final AtomicInteger FULL_CALLS = new AtomicInteger(0);
     private static final ThreadLocal<Integer> NESTING_DEPTH = ThreadLocal.withInitial(() -> 0);
 
     public static boolean isIdle() {
@@ -62,7 +60,6 @@ public class LootOptimizer {
     }
 
     public enum TableStatus {
-        UNKNOWN,
         MODIFIED,
         UNMODIFIED
     }

@@ -27,7 +27,7 @@ import org.complexityanalyzer.geoscan.GeoDatabase;
 public final class Fingerprints {
 
     public static final long FNV_OFFSET = 0xcbf29ce484222325L;
-    private static final long FNV_PRIME = 0x100000001b3L;
+    public static final long FNV_PRIME = 0x100000001b3L;
 
     private Fingerprints() {
     }

@@ -39,6 +39,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import static org.complexityanalyzer.cache.util.Fingerprints.FNV_OFFSET;
+import static org.complexityanalyzer.cache.util.Fingerprints.FNV_PRIME;
+
 public class VillagerTradeSource implements IResourceSource {
 
     private static final Int2DoubleMap LEVEL_COST_MAP = new Int2DoubleOpenHashMap();
@@ -63,10 +66,10 @@ public class VillagerTradeSource implements IResourceSource {
     }
 
     private static long stableSeed(String professionId, int level, int index) {
-        long h = 0xcbf29ce484222325L;
-        for (int i = 0; i < professionId.length(); i++) h = (h ^ professionId.charAt(i)) * 0x100000001b3L;
-        h = (h ^ level) * 0x100000001b3L;
-        h = (h ^ index) * 0x100000001b3L;
+        long h = FNV_OFFSET;
+        for (int i = 0; i < professionId.length(); i++) h = (h ^ professionId.charAt(i)) * FNV_PRIME;
+        h = (h ^ level) * FNV_PRIME;
+        h = (h ^ index) * FNV_PRIME;
         return h;
     }
 

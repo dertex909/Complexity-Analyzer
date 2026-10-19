@@ -52,8 +52,7 @@ public final class ParallelUtils {
 
         @Override
         protected void compute() {
-            int length = end - start;
-            if (length <= threshold) {
+            if (end - start <= threshold) {
                 for (int i = start; i < end; i++) action.accept(i);
             } else {
                 int mid = (start + end) >>> 1;

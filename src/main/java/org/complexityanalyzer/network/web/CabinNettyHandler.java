@@ -28,12 +28,14 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.util.AsciiString;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.config.ComplexityConfig;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
 import org.complexityanalyzer.network.web.pack.CabinResourceResolver;
 import org.complexityanalyzer.network.web.ws.CabinWsHub;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
 
 import static io.netty.channel.ChannelFutureListener.CLOSE;
 import static io.netty.util.CharsetUtil.UTF_8;
@@ -198,10 +200,23 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             handleMeta(ctx, keepAlive);
         } else if (path.equals(ROUTE_CABIN)) {
             handleCabin(ctx, keepAlive);
-        } else if (path.startsWith(PREFIX_PATH)) {
-            handleExternalResource(ctx, path.substring(PREFIX_PATH.length()), keepAlive);
         } else {
-            serveResource(ctx, path, getMimeType(path), keepAlive);
+            final String targetPath = path;
+            final boolean finalKeepAlive = keepAlive;
+            final String finalToken = currentToken;
+
+            try {
+                ThreadPoolManager.getInstance().getComputePool().execute(() -> {
+                    if (!ctx.channel().isActive()) return;
+                    if (targetPath.startsWith(PREFIX_PATH)) {
+                        handleExternalResource(ctx, targetPath.substring(PREFIX_PATH.length()), finalKeepAlive);
+                    } else {
+                        serveResource(ctx, targetPath, getMimeType(targetPath), finalToken, finalKeepAlive);
+                    }
+                });
+            } catch (RejectedExecutionException e) {
+                sendError(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, false);
+            }
         }
     }
 
@@ -215,7 +230,14 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         String namespace = extPath.substring(0, slash);
         String subpath = extPath.substring(slash + 1);
 
-        var data = CabinResourceResolver.resolveExternal(namespace, subpath);
+        byte[] data;
+        try {
+            data = CabinResourceResolver.resolveExternal(namespace, subpath);
+        } catch (Throwable t) {
+            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, false);
+            return;
+        }
+
         if (data == null) {
             sendError(ctx, HttpResponseStatus.NOT_FOUND, keepAlive);
             return;
@@ -226,7 +248,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         finish(ctx, response, keepAlive);
     }
 
-    private void serveResource(ChannelHandlerContext ctx, String path, String mimeType, boolean keepAlive) {
+    private void serveResource(ChannelHandlerContext ctx, String path, String mimeType, String token, boolean keepAlive) {
         try {
             var data = CabinResourceResolver.resolveInternal(path);
             if (data == null) {
@@ -234,7 +256,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
                 return;
             }
 
-            if (path.equals(ROUTE_INDEX)) data = CabinResourceResolver.injectIndexHtml(data, getToken());
+            if (path.equals(ROUTE_INDEX)) data = CabinResourceResolver.injectIndexHtml(data, token);
             var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);
             finish(ctx, response, keepAlive);
@@ -306,6 +328,10 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void finish(ChannelHandlerContext ctx, FullHttpResponse response, boolean keepAlive) {
+        if (!ctx.channel().isActive()) {
+            response.release();
+            return;
+        }
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
         response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-store, no-cache, must-revalidate");
         response.headers().set(HttpHeaderNames.PRAGMA, "no-cache");

@@ -138,7 +138,13 @@ public final class WebPackScanner {
         var ns = tab.get(WebTabManifest.PROP_NAMESPACE).getAsString();
 
         if (seenTabIds.add(id)) {
-            sources.putIfAbsent(ns, source);
+            sources.compute(ns, (key, existing) -> {
+                if (existing == null) return source;
+                if (existing.equals(source)) return existing;
+                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Namespace collision for '{}'! Merging sources to prevent 404s.", ns);
+                if (existing instanceof WebResourceSource.CompositeSource composite) return composite.with(source);
+                return new WebResourceSource.CompositeSource(existing, source);
+            });
             tabs.add(tab);
         }
     }

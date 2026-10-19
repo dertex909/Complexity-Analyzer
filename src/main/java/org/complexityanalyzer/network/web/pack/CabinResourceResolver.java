@@ -25,10 +25,11 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.util.FileManager;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CabinResourceResolver {
 
@@ -47,7 +48,15 @@ public final class CabinResourceResolver {
     }
 
     public static void invalidateCache() {
+        var old = cachedRegistry;
         cachedRegistry = null;
+        if (old == null) return;
+        for (var source : old.sources().values()) {
+            try {
+                source.close();
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     public static byte[] resolveInternal(String path) {
@@ -84,7 +93,7 @@ public final class CabinResourceResolver {
     }
 
     public static byte[] injectIndexHtml(byte[] rawHtmlBytes, String token) {
-        var html = new String(rawHtmlBytes, StandardCharsets.UTF_8);
+        var html = new String(rawHtmlBytes, UTF_8);
         var tabsJson = buildTabsJson(token);
         var injection = INJECTION_TEMPLATE.formatted(token, tabsJson);
 
@@ -94,7 +103,7 @@ public final class CabinResourceResolver {
                 ? html.replace(HEAD_CLOSE_TAG, injection + HEAD_CLOSE_TAG)
                 : injection + html;
 
-        return modifiedHtml.getBytes(StandardCharsets.UTF_8);
+        return modifiedHtml.getBytes(UTF_8);
     }
 
     private static TabRegistry getOrBuildRegistry(String token) {
@@ -121,9 +130,6 @@ public final class CabinResourceResolver {
         }
     }
 
-    private record TabRegistry(
-            ObjectArrayList<JsonObject> tabs,
-            ConcurrentHashMap<String, WebResourceSource> sources
-    ) {
+    private record TabRegistry(ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources) {
     }
 }

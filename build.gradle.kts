@@ -129,7 +129,7 @@ publishMods {
 
     discord {
         webhookUrl = providers.environmentVariable("DISCORD_WEBHOOK")
-        username = "Complexity Analyzer"
+        username = modName
         content = "🚀 **Complexity Analyzer v$modVersion** is out!\n"
         style {
             link = LinkType.INLINE.name

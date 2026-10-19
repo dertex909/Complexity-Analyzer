@@ -9,4 +9,4 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "Complexity Analyzer"
+rootProject.name = providers.gradleProperty("mod_name").get()

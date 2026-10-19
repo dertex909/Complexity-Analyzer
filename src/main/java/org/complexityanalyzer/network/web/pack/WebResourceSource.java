@@ -18,17 +18,24 @@
 
 package org.complexityanalyzer.network.web.pack;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import org.complexityanalyzer.util.FileManager;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipFile;
 
 public sealed interface WebResourceSource {
 
     byte[] read(String subpath);
+
+    default void close() {
+    }
 
     final class PathSource implements WebResourceSource {
         private final Path root;
@@ -52,32 +59,110 @@ public sealed interface WebResourceSource {
     }
 
     final class ZipFileSource implements WebResourceSource {
+        private static final int MAX_CACHEABLE_FILE_SIZE = 512 * 1024;
+        private static final long MAX_TOTAL_CACHE_WEIGHT = 8L * 1024L * 1024L;
+
         private final Path zipPath;
-        private final ConcurrentHashMap<String, byte[]> memoryCache = new ConcurrentHashMap<>();
+        private final Object lock = new Object();
+        private final Cache<String, byte[]> memoryCache = CacheBuilder.newBuilder()
+                .maximumWeight(MAX_TOTAL_CACHE_WEIGHT)
+                .weigher((String k, byte[] v) -> v.length)
+                .build();
+        private ZipFile zipFile;
+        private volatile boolean closed = false;
 
         public ZipFileSource(Path zipPath) {
             this.zipPath = zipPath.toAbsolutePath().normalize();
         }
 
+        private ZipFile getOrCreateZip() throws IOException {
+            if (closed) return null;
+            var zf = this.zipFile;
+            if (zf != null) return zf;
+            synchronized (lock) {
+                if (closed) return null;
+                if (this.zipFile == null) {
+                    if (!FileManager.isRegularFile(this.zipPath)) return null;
+                    this.zipFile = new ZipFile(this.zipPath.toFile(), StandardCharsets.UTF_8);
+                }
+                return this.zipFile;
+            }
+        }
+
         @Override
         public byte[] read(String subpath) {
             var clean = WebPackPaths.cleanPath(subpath);
-            if (clean.isEmpty()) return null;
-            var cached = this.memoryCache.get(clean);
+            if (clean.isEmpty() || closed) return null;
+            var cached = this.memoryCache.getIfPresent(clean);
             if (cached != null) return cached;
-            if (!FileManager.isRegularFile(this.zipPath)) return null;
 
-            try (var zip = new ZipFile(this.zipPath.toFile(), StandardCharsets.UTF_8)) {
+            try {
+                var zip = getOrCreateZip();
+                if (zip == null) return null;
                 var entry = zip.getEntry(clean);
                 if (entry == null || entry.isDirectory()) return null;
                 try (var in = zip.getInputStream(entry)) {
                     var bytes = in.readAllBytes();
-                    this.memoryCache.put(clean, bytes);
+                    if (bytes.length <= MAX_CACHEABLE_FILE_SIZE) this.memoryCache.put(clean, bytes);
                     return bytes;
                 }
             } catch (Exception ignored) {
                 return null;
             }
+        }
+
+        @Override
+        public void close() {
+            synchronized (lock) {
+                closed = true;
+                if (zipFile != null) {
+                    try {
+                        zipFile.close();
+                    } catch (IOException ignored) {
+                    }
+                    zipFile = null;
+                }
+                memoryCache.invalidateAll();
+            }
+        }
+    }
+
+    final class CompositeSource implements WebResourceSource {
+        private final ObjectList<WebResourceSource> delegates = new ObjectArrayList<>(2);
+
+        public CompositeSource(WebResourceSource first, WebResourceSource second) {
+            add(first);
+            add(second);
+        }
+
+        public CompositeSource with(WebResourceSource additional) {
+            add(additional);
+            return this;
+        }
+
+        private void add(WebResourceSource s) {
+            if (s instanceof CompositeSource cs) for (var d : cs.delegates) add(d);
+            else if (s != null && !delegates.contains(s)) delegates.add(s);
+        }
+
+        @Override
+        public byte[] read(String subpath) {
+            for (var delegate : delegates) {
+                var bytes = delegate.read(subpath);
+                if (bytes != null) return bytes;
+            }
+            return null;
+        }
+
+        @Override
+        public void close() {
+            for (var delegate : delegates) {
+                try {
+                    delegate.close();
+                } catch (Throwable ignored) {
+                }
+            }
+            delegates.clear();
         }
     }
 }

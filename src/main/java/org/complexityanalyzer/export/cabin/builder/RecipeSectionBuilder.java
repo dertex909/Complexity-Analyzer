@@ -19,7 +19,6 @@
 package org.complexityanalyzer.export.cabin.builder;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -62,7 +61,7 @@ public final class RecipeSectionBuilder {
         return map;
     }
 
-    public static IntList machineIndices(SectionBuilderContext ctx, MachineRegistry registry, RecipeNode r) {
+    public static IntArrayList machineIndices(SectionBuilderContext ctx, MachineRegistry registry, RecipeNode r) {
         var list = new IntArrayList(2);
         var rt = r.getRecipeType();
         var machineItems = (registry != null && rt != null) ? registry.getMachinesForRecipe(rt) : null;
@@ -73,7 +72,22 @@ public final class RecipeSectionBuilder {
         return list;
     }
 
-    private static ObjectList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots) {
+    public static void sortOptimalFirst(ObjectList<RecipeNode> recipes, RecipeNode optimal) {
+        if (optimal == null || recipes.size() <= 1) return;
+        recipes.sort((a, b) -> a.equals(optimal) ? -1 : (b.equals(optimal) ? 1 : 0));
+    }
+
+    public static int writeRecipeGroup(LeBuf buf, SectionBuilderContext ctx, MachineRegistry registry, int outputIndex, ObjectList<RecipeNode> recipes) {
+        int written = 0;
+        for (var r : recipes) {
+            if (written == 0xFFFF) break;
+            writeRecipe(buf, ctx, outputIndex, r, machineIndices(ctx, registry, r));
+            written++;
+        }
+        return written;
+    }
+
+    private static ObjectArrayList<MergedSlot> mergeIngredientSlots(SectionBuilderContext ctx, ObjectList<IngredientSlot> slots) {
         var order = new ObjectArrayList<MergedSlot>(slots.size());
         var sigToPos = new Object2IntOpenHashMap<String>(slots.size());
         sigToPos.defaultReturnValue(-1);
@@ -95,13 +109,31 @@ public final class RecipeSectionBuilder {
         var sb = new StringBuilder(24);
         for (var v : slot.getVariants()) {
             sb.append(ctx.itemIndex().getInt(v.getItem()));
-            if (!v.isComponentsPatchEmpty()) sb.append('#').append(ItemStackIdentity.dataKey(v));
+            if (ItemStackIdentity.hasStackData(v)) sb.append('#').append(ItemStackIdentity.dataKey(v));
             sb.append(',');
         }
         return sb.toString();
     }
 
-    public static void writeRecipe(LeBuf buf, SectionBuilderContext ctx, int outputItemIndex, RecipeNode r, IntList machineIdxs) {
+    private static int internHoverName(SectionBuilderContext ctx, ItemStack stack) {
+        int hoverRef = ctx.hoverNameIdCache().getInt(stack);
+        if (hoverRef < 0) {
+            hoverRef = ctx.strings().intern(safeHoverName(stack));
+            ctx.hoverNameIdCache().put(stack, hoverRef);
+        }
+        return hoverRef;
+    }
+
+    private static int internDataKey(SectionBuilderContext ctx, ItemStack stack) {
+        int keyRef = ctx.dataKeyIdCache().getInt(stack);
+        if (keyRef < 0) {
+            keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(stack));
+            ctx.dataKeyIdCache().put(stack, keyRef);
+        }
+        return keyRef;
+    }
+
+    public static void writeRecipe(LeBuf buf, SectionBuilderContext ctx, int outputItemIndex, RecipeNode r, IntArrayList machineIdxs) {
         buf.i32(outputItemIndex);
         var rt = r.getRecipeType();
         var typeId = GameRegistryManager.getRecipeTypeId(rt);
@@ -165,20 +197,8 @@ public final class RecipeSectionBuilder {
             int idx = ctx.itemIndex().getInt(stack.getItem());
             buf.i32(idx);
             buf.i32(stack.getCount());
-
-            int hoverRef = ctx.hoverNameIdCache().getInt(stack);
-            if (hoverRef < 0) {
-                hoverRef = ctx.strings().intern(safeHoverName(stack));
-                ctx.hoverNameIdCache().put(stack, hoverRef);
-            }
-            buf.i32(hoverRef);
-
-            int keyRef = ctx.dataKeyIdCache().getInt(stack);
-            if (keyRef < 0) {
-                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(stack));
-                ctx.dataKeyIdCache().put(stack, keyRef);
-            }
-            buf.i32(keyRef);
+            buf.i32(internHoverName(ctx, stack));
+            buf.i32(internDataKey(ctx, stack));
         }
 
         var fouts = r.getFluidOutputs();
@@ -202,7 +222,7 @@ public final class RecipeSectionBuilder {
 
     private static void writeVariantStrings(LeBuf buf, SectionBuilderContext ctx, ItemStack variant) {
         int hoverRef, keyRef;
-        if (variant.isComponentsPatchEmpty()) {
+        if (!ItemStackIdentity.hasStackData(variant)) {
             var item = variant.getItem();
             hoverRef = ctx.plainHoverByItem().getInt(item);
             if (hoverRef < 0) {
@@ -215,16 +235,8 @@ public final class RecipeSectionBuilder {
                 ctx.plainDataKeyByItem().put(item, keyRef);
             }
         } else {
-            hoverRef = ctx.hoverNameIdCache().getInt(variant);
-            if (hoverRef < 0) {
-                hoverRef = ctx.strings().intern(safeHoverName(variant));
-                ctx.hoverNameIdCache().put(variant, hoverRef);
-            }
-            keyRef = ctx.dataKeyIdCache().getInt(variant);
-            if (keyRef < 0) {
-                keyRef = ctx.strings().intern(ItemStackIdentity.dataKey(variant));
-                ctx.dataKeyIdCache().put(variant, keyRef);
-            }
+            hoverRef = internHoverName(ctx, variant);
+            keyRef = internDataKey(ctx, variant);
         }
         buf.i32(hoverRef);
         buf.i32(keyRef);
@@ -252,16 +264,9 @@ public final class RecipeSectionBuilder {
 
             var ic = ctx.engine().getComplexityResult(item);
             var optimalRecipe = ic != null ? ic.getOptimalRecipe() : null;
-            if (optimalRecipe != null) recipes.sort((a, b) ->
-                    a.equals(optimalRecipe) ? -1 : (b.equals(optimalRecipe) ? 1 : 0));
-
+            sortOptimalFirst(recipes, optimalRecipe);
             firstOffset[i] = out.position();
-            int written = 0;
-            for (var r : recipes) {
-                if (written == 0xFFFF) break;
-                writeRecipe(out, ctx, i, r, machineIndices(ctx, registry, r));
-                written++;
-            }
+            int written = writeRecipeGroup(out, ctx, registry, i, recipes);
             count[i] = written;
             totalRecipes += written;
         }
@@ -272,42 +277,8 @@ public final class RecipeSectionBuilder {
     }
 
     public byte[] buildUsage(RecipeGraph graph) {
-        int n = ctx.orderedItems().size();
-        if (graph == null) {
-            var empty = new LeBuf(8);
-            empty.i32(n);
-            empty.i32(0);
-            return empty.toByteArray();
-        }
-        int[] firstOffset = new int[n];
-        int[] count = new int[n];
-        var flat = new LeBuf(64 * 1024);
-        for (int i = 0; i < n; i++) {
-            var item = ctx.orderedItems().get(i);
-            var users = graph.getItemsUsingIngredient(item);
-            if (users.isEmpty()) {
-                firstOffset[i] = NULL_OFFSET;
-                continue;
-            }
-            firstOffset[i] = flat.position();
-            int written = 0;
-            for (var u : users) {
-                int ui = ctx.itemIndex().getInt(u);
-                if (ui < 0) continue;
-                flat.i32(ui);
-                written++;
-            }
-            count[i] = written;
-        }
-        var out = new LeBuf(8 + n * 8 + flat.size());
-        out.i32(n);
-        out.i32(flat.size());
-        for (int i = 0; i < n; i++) {
-            out.i32(firstOffset[i]);
-            out.i32(count[i]);
-        }
-        out.bytes(flat.array(), 0, flat.size());
-        return out.toByteArray();
+        return CabinIndexUtils.buildUsageSection(ctx.orderedItems(), ctx.itemIndex(), graph,
+                RecipeGraph::getItemsUsingIngredient, 64 * 1024);
     }
 
     public record RecipesResult(byte[] payload, byte[] outputIndex, int recipeCount) {

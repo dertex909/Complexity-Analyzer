@@ -69,10 +69,12 @@ public final class FluidSectionBuilder {
                 }
             }
 
-            if (ctx.engine().getGraph() != null) if (ctx.engine().getGraph().hasFluidRecipe(fluid)) {
-                flags |= CabinFormat.FLUID_FLAG_HAS_RECIPE;
-            } else {
-                flags |= CabinFormat.FLUID_FLAG_NO_RECIPE_RESULT;
+            if (ctx.engine().getGraph() != null) {
+                if (ctx.engine().getGraph().hasFluidRecipe(fluid)) {
+                    flags |= CabinFormat.FLUID_FLAG_HAS_RECIPE;
+                } else {
+                    flags |= CabinFormat.FLUID_FLAG_NO_RECIPE_RESULT;
+                }
             }
 
             if (fluid == Fluids.WATER || fluid == Fluids.LAVA) flags |= CabinFormat.FLUID_FLAG_IS_PROTECTED;
@@ -125,18 +127,13 @@ public final class FluidSectionBuilder {
                 var optimalFluidRecipe = solverResult.optimalFluidRecipes().get(fluid);
                 if (optimalFluidRecipe != null) {
                     var mutableRecipes = new ObjectArrayList<>(recipes);
-                    mutableRecipes.sort((a, b) -> a.equals(optimalFluidRecipe) ? -1 : (b.equals(optimalFluidRecipe) ? 1 : 0));
+                    RecipeSectionBuilder.sortOptimalFirst(mutableRecipes, optimalFluidRecipe);
                     recipes = mutableRecipes;
                 }
             }
 
             firstOffset[i] = out.position();
-            int written = 0;
-            for (var r : recipes) {
-                if (written == 0xFFFF) break;
-                RecipeSectionBuilder.writeRecipe(out, ctx, i, r, RecipeSectionBuilder.machineIndices(ctx, registry, r));
-                written++;
-            }
+            int written = RecipeSectionBuilder.writeRecipeGroup(out, ctx, registry, i, recipes);
             count[i] = written;
             totalRecipes += written;
         }
@@ -147,42 +144,8 @@ public final class FluidSectionBuilder {
     }
 
     public byte[] buildFluidUsage(RecipeGraph graph) {
-        int n = ctx.orderedFluids().size();
-        if (graph == null) {
-            var empty = new LeBuf(8);
-            empty.i32(n);
-            empty.i32(0);
-            return empty.toByteArray();
-        }
-        int[] firstOffset = new int[n];
-        int[] count = new int[n];
-        var flat = new LeBuf(16 * 1024);
-        for (int i = 0; i < n; i++) {
-            var fluid = ctx.orderedFluids().get(i);
-            var users = graph.getItemsUsingFluid(fluid);
-            if (users.isEmpty()) {
-                firstOffset[i] = CabinFormat.NULL_OFFSET;
-                continue;
-            }
-            firstOffset[i] = flat.position();
-            int written = 0;
-            for (var u : users) {
-                int ui = ctx.itemIndex().getInt(u);
-                if (ui < 0) continue;
-                flat.i32(ui);
-                written++;
-            }
-            count[i] = written;
-        }
-        var out = new LeBuf(8 + n * 8 + flat.size());
-        out.i32(n);
-        out.i32(flat.size());
-        for (int i = 0; i < n; i++) {
-            out.i32(firstOffset[i]);
-            out.i32(count[i]);
-        }
-        out.bytes(flat.array(), 0, flat.size());
-        return out.toByteArray();
+        return CabinIndexUtils.buildUsageSection(ctx.orderedFluids(), ctx.itemIndex(), graph,
+                RecipeGraph::getItemsUsingFluid, 16 * 1024);
     }
 
     public byte[] buildFluidHashIndex() {

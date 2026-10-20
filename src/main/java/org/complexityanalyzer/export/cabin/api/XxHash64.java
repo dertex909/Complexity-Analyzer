@@ -27,6 +27,7 @@ public final class XxHash64 {
     private static final long P3 = 0x165667B19E3779F9L;
     private static final long P4 = 0x85EBCA77C2B2AE63L;
     private static final long P5 = 0x27D4EB2F165667C5L;
+    private static final int[] SHIFTS = {1, 7, 12, 18};
 
     private XxHash64() {
     }
@@ -55,9 +56,8 @@ public final class XxHash64 {
                 }
             } while (p <= limit);
 
-            int[] shifts = {1, 7, 12, 18};
             h64 = 0;
-            for (int i = 0; i < 4; i++) h64 += Long.rotateLeft(v[i], shifts[i]);
+            for (int i = 0; i < 4; i++) h64 += Long.rotateLeft(v[i], SHIFTS[i]);
             for (long val : v) h64 = mergeRound(h64, val);
         } else {
             h64 = seed + P5;

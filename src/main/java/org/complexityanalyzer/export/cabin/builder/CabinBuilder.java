@@ -46,6 +46,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.HardcodedSource;
+import org.complexityanalyzer.resource.sources.MobDropSource;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -99,7 +100,7 @@ public final class CabinBuilder {
         var hardcodedRegistry = tryGetHardcodedRegistry();
         var sourceManager = engine.getSourceManager();
         var mobProvider = engine.getMobPropertyProvider();
-        var mobDropSource = engine.getMobDropSource();
+        var mobDropSource = engine.getSourceByType(MobDropSource.class);
         var solverResult = engine.getSolverResult();
         var graph = engine.getGraph();
 

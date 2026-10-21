@@ -32,6 +32,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.MobDifficultyCategory;
 import org.complexityanalyzer.resource.data.MobDropData;
+import org.complexityanalyzer.resource.sources.MobDropSource;
 
 import java.util.Comparator;
 
@@ -56,7 +57,7 @@ public class EntityAnalyzeCommand {
         }
 
         var mobProvider = engine.getMobPropertyProvider();
-        var mobDropSource = engine.getMobDropSource();
+        var mobDropSource = engine.getSourceByType(MobDropSource.class);
 
         if (mobProvider == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.provider_not_initialized"));

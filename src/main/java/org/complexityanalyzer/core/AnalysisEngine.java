@@ -559,13 +559,6 @@ public class AnalysisEngine {
     }
 
     @Nullable
-    public MobDropSource getMobDropSource() {
-        var sm = this.sourceManager;
-        if (sm == null) return null;
-        return sm.getSourceByType(MobDropSource.class);
-    }
-
-    @Nullable
     public MobPropertyProvider getMobPropertyProvider() {
         return this.mobPropProvider;
     }

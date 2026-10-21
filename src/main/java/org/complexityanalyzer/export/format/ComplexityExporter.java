@@ -35,6 +35,7 @@ import org.complexityanalyzer.export.format.ExportData.MobData;
 import org.complexityanalyzer.export.format.ExportData.SourceData;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.HardcodedSource;
+import org.complexityanalyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
@@ -202,7 +203,7 @@ public class ComplexityExporter {
         if (props == null) return null;
 
         var drops = new ObjectArrayList<ExportData.MobDropData>();
-        var source = engine.getMobDropSource();
+        var source = engine.getSourceByType(MobDropSource.class);
         if (source != null) for (var d : source.getDropsForEntity(type)) {
             drops.add(new ExportData.MobDropData(
                     GameRegistryManager.getItemId(d.item()).toString(),

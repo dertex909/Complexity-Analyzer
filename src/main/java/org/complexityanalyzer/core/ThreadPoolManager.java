@@ -273,13 +273,13 @@ public final class ThreadPoolManager implements AutoCloseable {
         );
     }
 
-    public enum State {
+    private enum State {
         RUNNING,
         SHUTTING_DOWN,
         SHUTDOWN
     }
 
-    public interface ComplexityThread {
+    private interface ComplexityThread {
     }
 
     public record PoolStats(

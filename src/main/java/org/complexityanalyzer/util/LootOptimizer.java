@@ -19,45 +19,31 @@ public class LootOptimizer {
 
     private static volatile ObjectOpenHashSet<ResourceLocation> targetedTables = new ObjectOpenHashSet<>();
     private static volatile boolean hasAnyModifiers = false;
-    private static volatile boolean hasWildcardModifiers = false;
 
     public static boolean hasModifiers(ResourceLocation lootTableId) {
         if (!hasAnyModifiers || lootTableId == null) return false;
-        if (hasWildcardModifiers) return true;
         return targetedTables.contains(lootTableId);
     }
 
     public static void rebuildIndex(Collection<IGlobalLootModifier> modifiers) {
         var newTargetedTables = new ObjectOpenHashSet<ResourceLocation>();
-        boolean wildcardFound = false;
 
         if (modifiers == null || modifiers.isEmpty()) {
             hasAnyModifiers = false;
-            hasWildcardModifiers = false;
             targetedTables = newTargetedTables;
             return;
         }
 
         for (var modifier : modifiers) {
-            if (!(modifier instanceof LootModifier standardModifier)) {
-                wildcardFound = true;
-                continue;
-            }
-
-            var tablesInModifier = new ObjectOpenHashSet<ResourceLocation>();
+            if (!(modifier instanceof LootModifier standardModifier)) continue;
             var conditions = ((LootModifierAccessor) standardModifier).complexity$getConditions();
-            boolean isTargeted = scanAndConditions(conditions, tablesInModifier);
-
-            if (!isTargeted) {
-                wildcardFound = true;
-            } else {
-                newTargetedTables.addAll(tablesInModifier);
-            }
+            if (conditions == null || conditions.length == 0) continue;
+            var tablesInModifier = new ObjectOpenHashSet<ResourceLocation>();
+            if (scanAndConditions(conditions, tablesInModifier)) newTargetedTables.addAll(tablesInModifier);
         }
 
         targetedTables = newTargetedTables;
-        hasWildcardModifiers = wildcardFound;
-        hasAnyModifiers = true;
+        hasAnyModifiers = !newTargetedTables.isEmpty();
     }
 
     private static boolean scanAndConditions(LootItemCondition[] conditions, ObjectOpenHashSet<ResourceLocation> collectedTables) {
@@ -111,6 +97,5 @@ public class LootOptimizer {
     public static void clear() {
         targetedTables = new ObjectOpenHashSet<>();
         hasAnyModifiers = false;
-        hasWildcardModifiers = false;
     }
 }

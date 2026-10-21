@@ -49,7 +49,6 @@ import org.complexityanalyzer.resource.SourceManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.providers.MobPropertyProvider;
 import org.complexityanalyzer.resource.sources.*;
-import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.ProbeScope;
 import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.Nullable;
@@ -554,7 +553,6 @@ public class AnalysisEngine {
         ComplexityAnalyzer.LOGGER.info("Clearing all analysis caches...");
 
         complexityCache.clear();
-        LootOptimizer.clear();
 
         if (mobPropProvider != null) mobPropProvider.clearCache();
         ComplexityAnalyzer.LOGGER.info("All caches cleared.");

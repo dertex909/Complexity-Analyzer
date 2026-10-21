@@ -57,7 +57,6 @@ public final class FileManager {
     private static volatile boolean supportsAtomicMove = true;
 
     private FileManager() {
-        throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 
     public static @NotNull Path resolve(@NotNull MinecraftServer server, @Nullable String... relativePath) {

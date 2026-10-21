@@ -63,4 +63,9 @@ public class LootOptimizer {
         MODIFIED,
         UNMODIFIED
     }
+
+    public static void clear() {
+        STATUS_CACHE.clear();
+        PROBE_COUNTERS.clear();
+    }
 }

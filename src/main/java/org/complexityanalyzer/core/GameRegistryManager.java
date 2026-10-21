@@ -233,8 +233,4 @@ public class GameRegistryManager {
     public static ObjectList<RecipeType<?>> getAllRecipeTypes() {
         return ALL_RECIPE_TYPES;
     }
-
-    public static boolean isInitialized() {
-        return initialized;
-    }
 }

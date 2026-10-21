@@ -27,6 +27,7 @@ import org.complexityanalyzer.api.ComplexityAnalyzerAPI;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ComplexityAnalyzerAPIImpl;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.ServerLanguage;
 
 import java.util.Locale;
@@ -60,6 +61,7 @@ public class AnalysisBootstrap {
         ComplexityAnalyzer.LOGGER.info("Server stopping, shutting down Complexity Analyzer...");
         AnalysisEngine.getInstance().shutdownCompletely();
         GameRegistryManager.clear();
+        LootOptimizer.clear();
         ComplexityAnalyzerAPI.Holder.uninstall();
     }
 }

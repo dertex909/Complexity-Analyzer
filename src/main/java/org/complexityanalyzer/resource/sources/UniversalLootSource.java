@@ -43,7 +43,6 @@ import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.util.LogFilter;
-import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
@@ -249,37 +248,32 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     @Nullable
     private Reference2IntOpenHashMap<Item> sampleTable(ServerLevel serverLevel, MinecraftServer server, TableTask task) {
-        try (var ignoredOpt = LootOptimizer.open()) {
-            var lootTable = server.reloadableRegistries().getLootTable(task.key());
-            if (lootTable == LootTable.EMPTY) return null;
+        var lootTable = server.reloadableRegistries().getLootTable(task.key());
+        if (lootTable == LootTable.EMPTY) return null;
 
-            var lootParams = task.def().createLootParams(serverLevel);
-            if (lootParams == null) return null;
+        var lootParams = task.def().createLootParams(serverLevel);
+        if (lootParams == null) return null;
 
-            var counts = new Reference2IntOpenHashMap<Item>();
-            boolean hasLoggedError = false;
-            long baseSeed = task.id().hashCode();
+        var counts = new Reference2IntOpenHashMap<Item>();
+        boolean hasLoggedError = false;
+        long baseSeed = task.id().hashCode();
 
-            for (int i = 0; i < SIMULATION_COUNT; i++) {
-                try {
-                    var context = new LootContext.Builder(lootParams)
-                            .withOptionalRandomSource(RandomSource.create(baseSeed + i)).create(Optional.empty());
+        for (int i = 0; i < SIMULATION_COUNT; i++) {
+            try {
+                var context = new LootContext.Builder(lootParams)
+                        .withOptionalRandomSource(RandomSource.create(baseSeed + i)).create(Optional.empty());
 
-                    var items = new ObjectArrayList<ItemStack>();
-                    lootTable.getRandomItems(context, items::add);
-                    for (var stack : items) if (!stack.isEmpty()) counts.addTo(stack.getItem(), stack.getCount());
-                } catch (Exception e) {
-                    if (!hasLoggedError) {
-                        ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {} (suppressing further errors)", task.id(), e.getMessage());
-                        hasLoggedError = true;
-                    }
+                var items = new ObjectArrayList<ItemStack>();
+                lootTable.getRandomItems(context, items::add);
+                for (var stack : items) if (!stack.isEmpty()) counts.addTo(stack.getItem(), stack.getCount());
+            } catch (Exception e) {
+                if (!hasLoggedError) {
+                    ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {} (suppressing further errors)", task.id(), e.getMessage());
+                    hasLoggedError = true;
                 }
             }
-            return counts.isEmpty() ? null : counts;
-        } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[ULS] Sampling failed for '{}': {}", task.id(), e.toString());
-            return null;
         }
+        return counts.isEmpty() ? null : counts;
     }
 
     private ObjectSet<ResourceKey<LootTable>> getAllLootTableKeys(MinecraftServer server) {

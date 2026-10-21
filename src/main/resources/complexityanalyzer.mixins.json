@@ -1,15 +1,19 @@
 {
   "mixins": [
+    "Accessors$CompositeLootItemConditionAccessor",
     "Accessors$ConcretePowderBlockAccessor",
     "Accessors$CoralBlockAccessor",
     "Accessors$CoralFanBlockAccessor",
     "Accessors$CoralPlantBlockAccessor",
     "Accessors$CoralWallFanBlockAccessor",
+    "Accessors$LootModifierAccessor",
+    "Accessors$LootTableIdConditionAccessor",
     "Accessors$MobBucketItemAccessor",
     "ChunkGeneratorMixin",
     "CommonHooksMixin",
     "ConnectionMixin",
     "LevelMixin",
+    "LootModifierManagerMixin",
     "ServerChunkCacheMixin",
     "ServerLevelMixin"
   ],

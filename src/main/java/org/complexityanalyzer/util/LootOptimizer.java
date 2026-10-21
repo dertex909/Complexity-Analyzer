@@ -1,71 +1,116 @@
-/*
- * Complexity Analyzer
- * Copyright (C) 2025-2026 dertex909
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package org.complexityanalyzer.util;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.loot.predicates.AllOfCondition;
+import net.minecraft.world.level.storage.loot.predicates.AnyOfCondition;
+import net.minecraft.world.level.storage.loot.predicates.InvertedLootItemCondition;
+import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+import net.neoforged.neoforge.common.loot.IGlobalLootModifier;
+import net.neoforged.neoforge.common.loot.LootModifier;
+import net.neoforged.neoforge.common.loot.LootTableIdCondition;
+import org.complexityanalyzer.mixin.Accessors.CompositeLootItemConditionAccessor;
+import org.complexityanalyzer.mixin.Accessors.LootModifierAccessor;
+import org.complexityanalyzer.mixin.Accessors.LootTableIdConditionAccessor;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collection;
 
 public class LootOptimizer {
-    public static final int PROBE_THRESHOLD = 30;
-    public static final ConcurrentHashMap<ResourceLocation, TableStatus> STATUS_CACHE = new ConcurrentHashMap<>();
-    public static final ConcurrentHashMap<ResourceLocation, AtomicInteger> PROBE_COUNTERS = new ConcurrentHashMap<>();
-    private static final ThreadLocal<Integer> NESTING_DEPTH = ThreadLocal.withInitial(() -> 0);
 
-    public static boolean isIdle() {
-        return NESTING_DEPTH.get() <= 0;
+    private static volatile ObjectOpenHashSet<ResourceLocation> targetedTables = new ObjectOpenHashSet<>();
+    private static volatile boolean hasAnyModifiers = false;
+    private static volatile boolean hasWildcardModifiers = false;
+
+    public static boolean hasModifiers(ResourceLocation lootTableId) {
+        if (!hasAnyModifiers || lootTableId == null) return false;
+        if (hasWildcardModifiers) return true;
+        return targetedTables.contains(lootTableId);
     }
 
-    public static Scope open() {
-        int current = NESTING_DEPTH.get();
-        NESTING_DEPTH.set(current + 1);
+    public static void rebuildIndex(Collection<IGlobalLootModifier> modifiers) {
+        var newTargetedTables = new ObjectOpenHashSet<ResourceLocation>();
+        boolean wildcardFound = false;
 
-        return () -> {
-            int depth = NESTING_DEPTH.get() - 1;
-            if (depth <= 0) {
-                NESTING_DEPTH.remove();
-            } else {
-                NESTING_DEPTH.set(depth);
-            }
-        };
-    }
-
-    public static boolean areListsIdentical(ObjectArrayList<ItemStack> original, ObjectArrayList<ItemStack> modified) {
-        if (original == null || modified == null) return original == modified;
-        if (original.size() != modified.size()) return false;
-
-        for (int i = 0; i < original.size(); i++) {
-            if (!ItemStackIdentity.sameItemDataAndCount(original.get(i), modified.get(i))) return false;
+        if (modifiers == null || modifiers.isEmpty()) {
+            hasAnyModifiers = false;
+            hasWildcardModifiers = false;
+            targetedTables = newTargetedTables;
+            return;
         }
+
+        for (var modifier : modifiers) {
+            if (!(modifier instanceof LootModifier standardModifier)) {
+                wildcardFound = true;
+                continue;
+            }
+
+            var tablesInModifier = new ObjectOpenHashSet<ResourceLocation>();
+            var conditions = ((LootModifierAccessor) standardModifier).complexity$getConditions();
+            boolean isTargeted = scanAndConditions(conditions, tablesInModifier);
+
+            if (!isTargeted) {
+                wildcardFound = true;
+            } else {
+                newTargetedTables.addAll(tablesInModifier);
+            }
+        }
+
+        targetedTables = newTargetedTables;
+        hasWildcardModifiers = wildcardFound;
+        hasAnyModifiers = true;
+    }
+
+    private static boolean scanAndConditions(LootItemCondition[] conditions, ObjectOpenHashSet<ResourceLocation> collectedTables) {
+        if (conditions == null || conditions.length == 0) return false;
+        boolean foundTableRestriction = false;
+
+        for (var condition : conditions) {
+            if (condition instanceof InvertedLootItemCondition) continue;
+
+            if (condition instanceof LootTableIdCondition tableCondition) {
+                var id = ((LootTableIdConditionAccessor) tableCondition).complexity$getTargetLootTableId();
+                if (id != null) {
+                    collectedTables.add(id);
+                    foundTableRestriction = true;
+                }
+            } else if (condition instanceof AnyOfCondition anyOf) {
+                var terms = ((CompositeLootItemConditionAccessor) anyOf).complexity$getTerms();
+                if (terms != null && scanOrConditions(terms.toArray(new LootItemCondition[0]), collectedTables)) {
+                    foundTableRestriction = true;
+                }
+            } else if (condition instanceof AllOfCondition allOf) {
+                var terms = ((CompositeLootItemConditionAccessor) allOf).complexity$getTerms();
+                if (terms != null && scanAndConditions(terms.toArray(new LootItemCondition[0]), collectedTables)) {
+                    foundTableRestriction = true;
+                }
+            } else if (condition instanceof CompositeLootItemConditionAccessor composite) {
+                var terms = composite.complexity$getTerms();
+                if (terms != null && scanAndConditions(terms.toArray(new LootItemCondition[0]), collectedTables)) {
+                    foundTableRestriction = true;
+                }
+            }
+        }
+
+        return foundTableRestriction;
+    }
+
+    private static boolean scanOrConditions(LootItemCondition[] terms, ObjectOpenHashSet<ResourceLocation> collectedTables) {
+        if (terms == null || terms.length == 0) return false;
+        var branchTables = new ObjectOpenHashSet<ResourceLocation>();
+
+        for (var term : terms) {
+            var singleBranchTables = new ObjectOpenHashSet<ResourceLocation>();
+            if (!scanAndConditions(new LootItemCondition[]{term}, singleBranchTables)) return false;
+            branchTables.addAll(singleBranchTables);
+        }
+
+        collectedTables.addAll(branchTables);
         return true;
     }
 
-    public enum TableStatus {
-        MODIFIED,
-        UNMODIFIED
-    }
-
     public static void clear() {
-        STATUS_CACHE.clear();
-        PROBE_COUNTERS.clear();
+        targetedTables = new ObjectOpenHashSet<>();
+        hasAnyModifiers = false;
+        hasWildcardModifiers = false;
     }
 }

@@ -72,18 +72,18 @@ public interface Accessors {
     @Mixin(LootTableIdCondition.class)
     interface LootTableIdConditionAccessor {
         @Accessor("targetLootTableId")
-        ResourceLocation complexity$getTargetLootTableId();
+        ResourceLocation getTargetLootTableId();
     }
 
     @Mixin(CompositeLootItemCondition.class)
     interface CompositeLootItemConditionAccessor {
         @Accessor("terms")
-        List<LootItemCondition> complexity$getTerms();
+        List<LootItemCondition> getTerms();
     }
 
     @Mixin(LootModifier.class)
     interface LootModifierAccessor {
         @Accessor("conditions")
-        LootItemCondition[] complexity$getConditions();
+        LootItemCondition[] getConditions();
     }
 }

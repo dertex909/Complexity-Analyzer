@@ -54,7 +54,7 @@ public class LootOptimizer {
 
         for (var modifier : modifiers) {
             if (!(modifier instanceof LootModifier standardModifier)) continue;
-            var conditions = ((LootModifierAccessor) standardModifier).complexity$getConditions();
+            var conditions = ((LootModifierAccessor) standardModifier).getConditions();
             if (conditions == null || conditions.length == 0) continue;
             var tablesInModifier = new ObjectOpenHashSet<ResourceLocation>();
             if (scanAndConditions(conditions, tablesInModifier)) newTargetedTables.addAll(tablesInModifier);
@@ -72,23 +72,23 @@ public class LootOptimizer {
             if (condition instanceof InvertedLootItemCondition) continue;
 
             if (condition instanceof LootTableIdCondition tableCondition) {
-                var id = ((LootTableIdConditionAccessor) tableCondition).complexity$getTargetLootTableId();
+                var id = ((LootTableIdConditionAccessor) tableCondition).getTargetLootTableId();
                 if (id != null) {
                     collectedTables.add(id);
                     foundTableRestriction = true;
                 }
             } else if (condition instanceof AnyOfCondition anyOf) {
-                var terms = ((CompositeLootItemConditionAccessor) anyOf).complexity$getTerms();
+                var terms = ((CompositeLootItemConditionAccessor) anyOf).getTerms();
                 if (terms != null && scanOrConditions(terms.toArray(new LootItemCondition[0]), collectedTables)) {
                     foundTableRestriction = true;
                 }
             } else if (condition instanceof AllOfCondition allOf) {
-                var terms = ((CompositeLootItemConditionAccessor) allOf).complexity$getTerms();
+                var terms = ((CompositeLootItemConditionAccessor) allOf).getTerms();
                 if (terms != null && scanAndConditions(terms.toArray(new LootItemCondition[0]), collectedTables)) {
                     foundTableRestriction = true;
                 }
             } else if (condition instanceof CompositeLootItemConditionAccessor composite) {
-                var terms = composite.complexity$getTerms();
+                var terms = composite.getTerms();
                 if (terms != null && scanAndConditions(terms.toArray(new LootItemCondition[0]), collectedTables)) {
                     foundTableRestriction = true;
                 }

@@ -30,7 +30,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(value = CommonHooks.class, priority = 500, remap = false)
+@Mixin(value = CommonHooks.class, priority = 500)
 public abstract class CommonHooksMixin {
 
     @Inject(

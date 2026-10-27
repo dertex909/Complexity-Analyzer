@@ -67,8 +67,11 @@ public final class WebPackPaths {
         var uiDir = getDevDir(VIEWER_BASE);
         if (uiDir != null) list.add(uiDir);
 
-        var devPacks = getDevDir(PACKS_DIR_NAME);
-        if (devPacks != null && !list.contains(devPacks)) list.add(devPacks);
+        var devRoot = getDevRoot();
+        if (devRoot != null) {
+            var devPacks = devRoot.resolve(DEV_RESOURCES).resolve(PACKS_DIR_NAME).toAbsolutePath().normalize();
+            if (!list.contains(devPacks)) list.add(devPacks);
+        }
 
         var diskPacks = getActivePacksDir();
         if (FileManager.isDirectory(diskPacks) && !list.contains(diskPacks)) list.add(diskPacks);

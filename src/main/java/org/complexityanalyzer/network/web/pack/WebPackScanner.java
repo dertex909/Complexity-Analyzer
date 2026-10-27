@@ -26,12 +26,13 @@ import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.util.FileManager;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 public final class WebPackScanner {
     private static final String ZIP_SUFFIX = ".zip";
@@ -129,21 +130,24 @@ public final class WebPackScanner {
             ObjectOpenHashSet<String> seenTabIds,
             String token
     ) {
-        try (var zip = new ZipFile(zipPath.toFile(), StandardCharsets.UTF_8)) {
+        try {
+            var archiveBytes = Files.readAllBytes(zipPath);
             var fileName = zipPath.getFileName().toString();
             var baseName = fileName.endsWith(ZIP_SUFFIX) ? fileName.substring(0, fileName.length() - ZIP_SUFFIX.length()) : fileName;
 
             var defaultNs = WebTabManifest.normalizeNamespace(baseName);
-            var source = new WebResourceSource.ZipFileSource(zipPath);
+            var source = new WebResourceSource.ZipFileSource(zipPath, archiveBytes);
 
-            var entries = zip.entries();
-            while (entries.hasMoreElements()) {
-                var entry = entries.nextElement();
-                var name = entry.getName();
-                if (!entry.isDirectory() && name.endsWith(WebTabManifest.TAB_FILE_SUFFIX) && !name.contains("/")) {
-                    try (var in = zip.getInputStream(entry)) {
-                        tryRegisterTab(in, defaultNs, token, source, tabs, sources, mimeTypesByNamespace, seenTabIds);
+            try (var zip = new ZipInputStream(new ByteArrayInputStream(archiveBytes), StandardCharsets.UTF_8)) {
+                var entry = zip.getNextEntry();
+                while (entry != null) {
+                    var name = entry.getName();
+                    if (!entry.isDirectory() && name.endsWith(WebTabManifest.TAB_FILE_SUFFIX) && !name.contains("/")) {
+                        var manifestBytes = zip.readAllBytes();
+                        tryRegisterTab(new ByteArrayInputStream(manifestBytes), defaultNs, token, source,
+                                tabs, sources, mimeTypesByNamespace, seenTabIds);
                     }
+                    entry = zip.getNextEntry();
                 }
             }
         } catch (Exception e) {

@@ -24,11 +24,11 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import org.complexityanalyzer.util.FileManager;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 public sealed interface WebResourceSource {
 
@@ -62,68 +62,48 @@ public sealed interface WebResourceSource {
         private static final int MAX_CACHEABLE_FILE_SIZE = 512 * 1024;
         private static final long MAX_TOTAL_CACHE_WEIGHT = 8L * 1024L * 1024L;
 
-        private final Path zipPath;
-        private final Object lock = new Object();
+        private final String archiveFileName;
         private final Cache<String, byte[]> memoryCache = CacheBuilder.newBuilder()
                 .maximumWeight(MAX_TOTAL_CACHE_WEIGHT)
                 .weigher((String k, byte[] v) -> v.length)
                 .build();
-        private ZipFile zipFile;
-        private volatile boolean closed = false;
+        private volatile byte[] archiveBytes;
 
-        public ZipFileSource(Path zipPath) {
-            this.zipPath = zipPath.toAbsolutePath().normalize();
-        }
-
-        private ZipFile getOrCreateZip() throws IOException {
-            if (closed) return null;
-            var zf = this.zipFile;
-            if (zf != null) return zf;
-            synchronized (lock) {
-                if (closed) return null;
-                if (this.zipFile == null) {
-                    if (!FileManager.isRegularFile(this.zipPath)) return null;
-                    this.zipFile = new ZipFile(this.zipPath.toFile(), StandardCharsets.UTF_8);
-                }
-                return this.zipFile;
-            }
+        public ZipFileSource(Path zipPath, byte[] archiveBytes) {
+            var normalizedPath = zipPath.toAbsolutePath().normalize();
+            this.archiveFileName = normalizedPath.getFileName().toString();
+            this.archiveBytes = archiveBytes;
         }
 
         @Override
         public byte[] read(String subpath) {
             var clean = WebPackPaths.cleanPath(subpath);
-            if (clean.isEmpty() || closed) return null;
+            var archive = this.archiveBytes;
+            if (clean.isEmpty() || archive == null) return null;
+            if (clean.equals(this.archiveFileName)) return archive.clone();
+
             var cached = this.memoryCache.getIfPresent(clean);
             if (cached != null) return cached;
 
-            try {
-                var zip = getOrCreateZip();
-                if (zip == null) return null;
-                var entry = zip.getEntry(clean);
-                if (entry == null || entry.isDirectory()) return null;
-                try (var in = zip.getInputStream(entry)) {
-                    var bytes = in.readAllBytes();
-                    if (bytes.length <= MAX_CACHEABLE_FILE_SIZE) this.memoryCache.put(clean, bytes);
-                    return bytes;
+            try (var zip = new ZipInputStream(new ByteArrayInputStream(archive), StandardCharsets.UTF_8)) {
+                var entry = zip.getNextEntry();
+                while (entry != null) {
+                    if (!entry.isDirectory() && clean.equals(entry.getName())) {
+                        var bytes = zip.readAllBytes();
+                        if (bytes.length <= MAX_CACHEABLE_FILE_SIZE) this.memoryCache.put(clean, bytes);
+                        return bytes;
+                    }
+                    entry = zip.getNextEntry();
                 }
             } catch (Exception ignored) {
-                return null;
             }
+            return null;
         }
 
         @Override
         public void close() {
-            synchronized (lock) {
-                closed = true;
-                if (zipFile != null) {
-                    try {
-                        zipFile.close();
-                    } catch (IOException ignored) {
-                    }
-                    zipFile = null;
-                }
-                memoryCache.invalidateAll();
-            }
+            this.archiveBytes = null;
+            memoryCache.invalidateAll();
         }
     }
 

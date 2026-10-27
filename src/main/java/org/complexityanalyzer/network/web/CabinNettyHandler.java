@@ -244,7 +244,7 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         }
 
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, getMimeType(subpath));
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, CabinResourceResolver.getExternalMimeType(namespace, subpath));
         finish(ctx, response, keepAlive);
     }
 

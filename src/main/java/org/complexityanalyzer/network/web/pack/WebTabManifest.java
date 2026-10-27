@@ -21,12 +21,14 @@ package org.complexityanalyzer.network.web.pack;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public final class WebTabManifest {
     public static final int DEFAULT_TAB_ORDER = 100;
@@ -39,6 +41,7 @@ public final class WebTabManifest {
     public static final String PROP_SCRIPT_URL = "scriptUrl";
     public static final String PROP_STYLES = "styles";
     public static final String PROP_ORDER = "order";
+    public static final String PROP_MIME_TYPES = "mimeTypes";
 
     private WebTabManifest() {
     }
@@ -57,22 +60,70 @@ public final class WebTabManifest {
         prefixUrls(obj, PROP_STYLES, base);
     }
 
-    public static JsonObject parse(InputStream in, String defaultNamespace, String token) {
+    public static ParsedTab parse(InputStream in, String defaultNamespace, String token) {
         try (var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
             var elem = JsonParser.parseReader(reader);
             if (elem == null || !elem.isJsonObject()) return null;
             var obj = elem.getAsJsonObject();
             applySchema(obj, defaultNamespace);
+            var mimeTypes = parseMimeTypes(obj);
+            obj.remove(PROP_MIME_TYPES);
             resolveWebRoutes(obj, token);
 
             ComplexityAnalyzer.LOGGER.info("[WebPacks] Discovered tab: {} [{}] under namespace: {}",
                     obj.get(PROP_ID).getAsString(), obj.get(PROP_TITLE).getAsString(), obj.get(PROP_NAMESPACE).getAsString());
 
-            return obj;
+            return new ParsedTab(obj, mimeTypes);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.warn("[WebPacks] Malformed {} descriptor encountered", TAB_FILE_SUFFIX, e);
             return null;
         }
+    }
+
+    private static Object2ObjectOpenHashMap<String, String> parseMimeTypes(JsonObject obj) {
+        var mimeTypes = new Object2ObjectOpenHashMap<String, String>();
+        var element = obj.get(PROP_MIME_TYPES);
+        if (element == null) return mimeTypes;
+        if (!element.isJsonObject()) {
+            ComplexityAnalyzer.LOGGER.warn("[WebPacks] '{}' in {} must be a JSON object", PROP_MIME_TYPES, TAB_FILE_SUFFIX);
+            return mimeTypes;
+        }
+
+        for (var entry : element.getAsJsonObject().entrySet()) {
+            var extension = normalizeExtension(entry.getKey());
+            var value = entry.getValue();
+            if (extension == null || value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Ignoring invalid MIME type entry '{}' in {}", entry.getKey(), TAB_FILE_SUFFIX);
+                continue;
+            }
+
+            var mimeType = value.getAsString().trim();
+            int slash = mimeType.indexOf('/');
+            if (slash <= 0 || slash == mimeType.length() - 1 || mimeType.indexOf('\r') >= 0 || mimeType.indexOf('\n') >= 0) {
+                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Ignoring invalid MIME type '{}' for extension '{}'", mimeType, extension);
+                continue;
+            }
+
+            var previous = mimeTypes.putIfAbsent(extension, mimeType);
+            if (previous != null && !previous.equals(mimeType)) {
+                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Conflicting MIME types for extension '{}'; keeping '{}'", extension, previous);
+            }
+        }
+
+        return mimeTypes;
+    }
+
+    private static String normalizeExtension(String extension) {
+        if (extension == null) return null;
+        var normalized = extension.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.startsWith(".")) normalized = "." + normalized;
+        if (normalized.length() < 2) return null;
+
+        for (int i = 1; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+            if (!Character.isLetterOrDigit(c) && c != '.' && c != '-' && c != '_' && c != '+') return null;
+        }
+        return normalized;
     }
 
     public static String normalizeNamespace(String raw) {
@@ -84,10 +135,6 @@ public final class WebTabManifest {
     }
 
     private static void ensure(JsonObject obj, String key, Number defaultValue) {
-        if (!obj.has(key)) obj.addProperty(key, defaultValue);
-    }
-
-    private static void ensure(JsonObject obj, String key, Boolean defaultValue) {
         if (!obj.has(key)) obj.addProperty(key, defaultValue);
     }
 
@@ -104,5 +151,8 @@ public final class WebTabManifest {
             for (var elem : obj.getAsJsonArray(key)) arr.add(base + WebPackPaths.cleanPath(elem.getAsString()));
             obj.add(key, arr);
         }
+    }
+
+    public record ParsedTab(JsonObject tab, Object2ObjectOpenHashMap<String, String> mimeTypes) {
     }
 }

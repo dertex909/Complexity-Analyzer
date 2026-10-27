@@ -20,6 +20,7 @@ package org.complexityanalyzer.network.web.pack;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
@@ -27,6 +28,7 @@ import org.complexityanalyzer.util.FileManager;
 
 import java.nio.file.Files;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -85,6 +87,28 @@ public final class CabinResourceResolver {
         return source.read(subpath);
     }
 
+    public static String getExternalMimeType(String namespace, String subpath) {
+        var registry = getOrBuildRegistry(CabinNettyHandler.getToken());
+        var mimeTypes = registry.mimeTypesByNamespace().get(namespace);
+        if (mimeTypes != null) {
+            var normalizedPath = subpath.toLowerCase(Locale.ROOT);
+            String matchedExtension = null;
+            String matchedMimeType = null;
+
+            for (var entry : mimeTypes.object2ObjectEntrySet()) {
+                var extension = entry.getKey();
+                if (normalizedPath.endsWith(extension) && (matchedExtension == null || extension.length() > matchedExtension.length())) {
+                    matchedExtension = extension;
+                    matchedMimeType = entry.getValue();
+                }
+            }
+
+            if (matchedMimeType != null) return matchedMimeType;
+        }
+
+        return CabinNettyHandler.getMimeType(subpath);
+    }
+
     public static String buildTabsJson(String token) {
         var registry = getOrBuildRegistry(token);
         var arr = new JsonArray();
@@ -115,21 +139,28 @@ public final class CabinResourceResolver {
 
             var tabs = new ObjectArrayList<JsonObject>();
             var sources = new ConcurrentHashMap<String, WebResourceSource>();
+            var mimeTypesByNamespace = new Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>>();
             var seenTabIds = new ObjectOpenHashSet<String>();
 
-            WebPackScanner.scanDirectory(WebPackPaths.getActivePacksDir(), tabs, sources, seenTabIds, token);
+            WebPackScanner.scanDirectory(WebPackPaths.getActivePacksDir(), tabs, sources, mimeTypesByNamespace, seenTabIds, token);
             var devPacks = WebPackPaths.getDevDir(WebPackPaths.PACKS_DIR_NAME);
-            if (devPacks != null) WebPackScanner.scanDirectory(devPacks, tabs, sources, seenTabIds, token);
-            WebPackScanner.scanLoadedMods(tabs, sources, seenTabIds, token);
+            if (devPacks != null) {
+                WebPackScanner.scanDirectory(devPacks, tabs, sources, mimeTypesByNamespace, seenTabIds, token);
+            }
+            WebPackScanner.scanLoadedMods(tabs, sources, mimeTypesByNamespace, seenTabIds, token);
 
             tabs.sort(Comparator.comparingInt(tab -> tab.has(WebTabManifest.PROP_ORDER)
                     ? tab.get(WebTabManifest.PROP_ORDER).getAsInt() : WebTabManifest.DEFAULT_TAB_ORDER));
 
-            cachedRegistry = new TabRegistry(tabs, sources);
+            cachedRegistry = new TabRegistry(tabs, sources, mimeTypesByNamespace);
             return cachedRegistry;
         }
     }
 
-    private record TabRegistry(ObjectArrayList<JsonObject> tabs, ConcurrentHashMap<String, WebResourceSource> sources) {
+    private record TabRegistry(
+            ObjectArrayList<JsonObject> tabs,
+            ConcurrentHashMap<String, WebResourceSource> sources,
+            Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace
+    ) {
     }
 }

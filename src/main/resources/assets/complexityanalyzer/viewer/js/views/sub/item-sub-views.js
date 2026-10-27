@@ -188,8 +188,16 @@ export async function renderItemBaseSourcesView(container) {
             `;
 
         if (sources.length > 0) {
+            const sortedSources = [...sources].sort((a, b) => {
+                const aHasCost = Number.isFinite(a.estimatedCost);
+                const bHasCost = Number.isFinite(b.estimatedCost);
+                if (aHasCost !== bHasCost) return aHasCost ? -1 : 1;
+                if (!aHasCost) return 0;
+                return a.estimatedCost - b.estimatedCost;
+            });
+
             html += `<h3 style="font-size:14px; margin-bottom: 10px; color:var(--text-dim);">Additional Extraction / Drop Channels (${sources.length})</h3>`;
-            for (const s of sources) {
+            for (const s of sortedSources) {
                 html += `
                     <div class="detail-card" style="margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">

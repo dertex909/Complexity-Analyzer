@@ -69,6 +69,7 @@ public final class WebPackScanner {
                     var packsRoot = modFile.findResource(WebPackPaths.PACKS_DIR_NAME);
                     if (!FileManager.isDirectory(packsRoot)) continue;
 
+                    ComplexityAnalyzer.LOGGER.debug("[WebPacks] Found mod pack resources for '{}': {}", mod.getModId(), packsRoot);
                     for (var packDir : FileManager.list(packsRoot)) {
                         if (FileManager.isDirectory(packDir)) {
                             scanDirectoryPack(packDir, tabs, sources, seenTabIds, token);

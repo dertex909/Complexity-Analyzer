@@ -35,6 +35,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -46,10 +47,6 @@ import static org.complexityanalyzer.cache.util.Fingerprints.FNV_PRIME;
 public class VillagerTradeSource implements IResourceSource, IMultiSourceProvider {
 
     private static final Int2DoubleMap LEVEL_COST_MAP = new Int2DoubleOpenHashMap();
-    private static final ObjectSet<String> SKIP_TRADE_TYPES = new ObjectOpenHashSet<>(new String[]{
-            "TreasureMapForEmeralds",
-            "EnchantedItemForEmeralds"
-    });
 
     static {
         LEVEL_COST_MAP.put(1, 1.2);
@@ -84,6 +81,12 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
 
     @Override
     public void initialize(Level level) {
+        try (var ignored = ProbeScope.open()) {
+            initializeInProbeScope(level);
+        }
+    }
+
+    private void initializeInProbeScope(Level level) {
         ComplexityAnalyzer.LOGGER.info("[VTS] Starting VillagerTradeSource initialization...");
 
         long totalStartTime = System.currentTimeMillis();
@@ -91,11 +94,9 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
         int totalTrades = 0;
         int fastParsed = 0;
         int entityParsed = 0;
-        int skippedSlow = 0;
         int failedTrades = 0;
 
         var pendingTrades = new ObjectArrayList<PendingTrade>();
-        var skippedByType = new Object2IntOpenHashMap<String>();
 
         var professions = new ObjectArrayList<>(VillagerTrades.TRADES.entrySet());
         professions.sort(Comparator.comparing(e -> professionId(e.getKey())));
@@ -114,12 +115,6 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
                     totalTrades++;
                     String tradeType = listing.getClass().getSimpleName();
 
-                    if (SKIP_TRADE_TYPES.contains(tradeType)) {
-                        skippedSlow++;
-                        skippedByType.addTo(tradeType, 1);
-                        continue;
-                    }
-
                     long seed = stableSeed(profId, tradeLevel, index);
                     try {
                         var offer = listing.getOffer(null, RandomSource.create(seed));
@@ -129,6 +124,8 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
                             addTrade(offer, profId, tradeLevel, index, tradeType);
                         } else {
                             failedTrades++;
+                            ComplexityAnalyzer.LOGGER.trace("[VTS] Trade returned no offer without entity ({} {} L{} #{})",
+                                    tradeType, profId, tradeLevel, index + 1);
                         }
 
                     } catch (NullPointerException e) {
@@ -141,7 +138,8 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
         }
 
         long phase1Time = System.currentTimeMillis() - totalStartTime;
-        ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 1 complete in {}ms: {}/{} trades (skipped {} slow types)", phase1Time, fastParsed, totalTrades, skippedSlow);
+        ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 1 complete in {}ms: {} parsed, {} queued for entity, {} failed out of {} trades",
+                phase1Time, fastParsed, pendingTrades.size(), failedTrades, totalTrades);
 
         if (!pendingTrades.isEmpty()) {
             long phase2Start = System.currentTimeMillis();
@@ -166,6 +164,8 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
                         addTrade(offer, pending.professionId, pending.level, pending.index, pending.type);
                     } else {
                         failedTrades++;
+                        ComplexityAnalyzer.LOGGER.trace("[VTS] Entity trade returned no offer in probe scope ({} {} L{} #{})",
+                                pending.type, pending.professionId, pending.level, pending.index + 1);
                     }
 
                 } catch (Exception e) {
@@ -185,14 +185,7 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
 
         ComplexityAnalyzer.LOGGER.debug("[VTS] ===== Initialization complete in {}ms =====", totalTime);
         ComplexityAnalyzer.LOGGER.debug("[VTS] Results: {} items, {}/{} trades ({}% success)", tradesByResult.size(), fastParsed + entityParsed, totalTrades, successPercent);
-        ComplexityAnalyzer.LOGGER.debug("[VTS]   Fast: {}, Entity: {}, Skipped: {}, Failed: {}", fastParsed, entityParsed, skippedSlow, failedTrades);
-
-        if (!skippedByType.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.debug("[VTS] Skipped slow trade types:");
-            for (var entry : skippedByType.object2IntEntrySet()) {
-                ComplexityAnalyzer.LOGGER.info("[VTS]   {} - {} times", entry.getKey(), entry.getIntValue());
-            }
-        }
+        ComplexityAnalyzer.LOGGER.debug("[VTS]   Fast: {}, Entity: {}, Failed: {}", fastParsed, entityParsed, failedTrades);
     }
 
     private void addTrade(MerchantOffer offer, String professionId, int level, int index, String tradeType) {

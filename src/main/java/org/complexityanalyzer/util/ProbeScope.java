@@ -22,10 +22,11 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 
 public final class ProbeScope implements AutoCloseable {
 
-    private static final ThreadLocal<Boolean> PROBING = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Integer> PROBE_DEPTH = ThreadLocal.withInitial(() -> 0);
+    private boolean closed;
 
     private ProbeScope() {
-        PROBING.set(true);
+        PROBE_DEPTH.set(PROBE_DEPTH.get() + 1);
     }
 
     public static ProbeScope open() {
@@ -33,11 +34,16 @@ public final class ProbeScope implements AutoCloseable {
     }
 
     public static boolean isProbing() {
-        return PROBING.get() || ThreadPoolManager.isComplexityThread();
+        return PROBE_DEPTH.get() > 0 || ThreadPoolManager.isComplexityThread();
     }
 
     @Override
     public void close() {
-        PROBING.remove();
+        if (closed) return;
+        closed = true;
+
+        int depth = PROBE_DEPTH.get();
+        if (depth <= 1) PROBE_DEPTH.remove();
+        else PROBE_DEPTH.set(depth - 1);
     }
 }

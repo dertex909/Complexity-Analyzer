@@ -108,11 +108,6 @@ public final class DeepCollector {
     public static void collectItems(Object obj, ObjectList<ItemStack> acc, int depth, ReferenceOpenHashSet<Object> visited) {
         traverse(obj, depth, visited, (node, d) -> {
             switch (node) {
-                case TagKey<?> tagKey -> {
-                    var item = extractItem(tagKey);
-                    if (item != null) acc.add(new ItemStack(item));
-                    return true;
-                }
                 case SizedIngredient si when si.count() > 0 -> {
                     var stacks = si.ingredient().getItems();
                     if (stacks.length > 0) {
@@ -126,20 +121,17 @@ public final class DeepCollector {
                     acc.add(stack.copy());
                     return true;
                 }
-                case Item item -> {
-                    if (item != AIR) acc.add(new ItemStack(item));
-                    return true;
-                }
-                case Block block -> {
-                    var item = block.asItem();
-                    if (item != AIR) acc.add(new ItemStack(item));
-                    return true;
-                }
                 case Holder<?> holder -> {
                     if (visited.add(holder)) collectItems(holder.value(), acc, d + 1, visited);
                     return true;
                 }
                 default -> {
+                    var item = extractItem(node);
+                    if (item != null) {
+                        acc.add(new ItemStack(item));
+                        return true;
+                    }
+                    if (node instanceof TagKey<?>) return true;
                 }
             }
             return node instanceof FluidStack || node instanceof Ingredient;
@@ -178,26 +170,26 @@ public final class DeepCollector {
                     }
 
                     var subIngs = subRecipe.getIngredients();
-                    if (subIngs.size() > 1) {
-                        var toolIng = subIngs.get(1);
-                        if (!toolIng.isEmpty() && FastHarvester.visitIngredient(toolIng)) {
-                            inputIngredients.add(new HarvestedItems.HarvestedIngredient(toolIng, 1));
-                        }
-                    }
-
+                    if (subIngs.size() > 1) addIngredient(subIngs.get(1), 1, inputIngredients);
                     collectFluids(subRecipe, inputFluids, 0, visited);
                 } catch (Throwable ignored) {
                 }
                 return true;
             }
+
             switch (node) {
+                case ItemStack stack -> {
+                    if (!stack.isEmpty()) routeItemStack(stack, inputItems, outputItems, apiResultItem);
+                    return true;
+                }
+                case Holder<?> holder -> {
+                    if (visited.add(holder)) collectUniversal(holder.value(), inputItems, outputItems, inputIngredients,
+                            inputFluids, d + 1, visited, apiResultItem, level, transitionalItems);
+                    return true;
+                }
                 case TagKey<?> tagKey -> {
                     var item = extractItem(tagKey);
                     if (item != null) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
-                    return true;
-                }
-                case ItemStack stack -> {
-                    if (!stack.isEmpty()) routeItemStack(stack, inputItems, outputItems, apiResultItem);
                     return true;
                 }
                 case Item item -> {
@@ -209,38 +201,12 @@ public final class DeepCollector {
                     if (item != AIR) routeItemStack(new ItemStack(item), inputItems, outputItems, apiResultItem);
                     return true;
                 }
-                case Holder<?> holder -> {
-                    if (visited.add(holder)) collectUniversal(holder.value(), inputItems, outputItems, inputIngredients,
-                            inputFluids, d + 1, visited, apiResultItem, level, transitionalItems);
-                    return true;
-                }
-                case SizedIngredient si -> {
-                    if (si.count() > 0) {
-                        var ing = si.ingredient();
-                        if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
-                            inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
-                        }
-                    }
-                    return true;
-                }
-                case SizedFluidIngredient sfi -> {
-                    for (var fs : sfi.getFluids()) if (!fs.isEmpty()) inputFluids.add(fs);
-                    return true;
-                }
-                case Ingredient ing -> {
-                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
-                        inputIngredients.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                    }
-                    return true;
-                }
-                case FluidStack fs -> {
-                    if (!fs.isEmpty()) inputFluids.add(fs.copy());
-                    return true;
-                }
                 default -> {
                 }
             }
-            return false;
+
+            if (extractFluids(node, inputFluids)) return true;
+            return extractIngredient(node, inputIngredients);
         });
     }
 
@@ -260,30 +226,26 @@ public final class DeepCollector {
         };
     }
 
+    private static void addIngredient(Ingredient ing, int count, ObjectList<HarvestedItems.HarvestedIngredient> acc) {
+        if (count > 0 && !ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
+            acc.add(new HarvestedItems.HarvestedIngredient(ing, count));
+        }
+    }
+
     private static boolean extractIngredient(Object node, ObjectList<HarvestedItems.HarvestedIngredient> acc) {
         switch (node) {
             case TagKey<?> tagKey -> {
                 if (tagKey.isFor(ITEM)) {
-                    var ing = Ingredient.of(tagKey.cast(ITEM).orElseThrow());
-                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
-                        acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                    }
+                    tagKey.cast(ITEM).ifPresent(key -> addIngredient(Ingredient.of(key), 1, acc));
                 }
                 return true;
             }
             case SizedIngredient si -> {
-                if (si.count() > 0) {
-                    var ing = si.ingredient();
-                    if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
-                        acc.add(new HarvestedItems.HarvestedIngredient(ing, si.count()));
-                    }
-                }
+                addIngredient(si.ingredient(), si.count(), acc);
                 return true;
             }
             case Ingredient ing -> {
-                if (!ing.isEmpty() && FastHarvester.visitIngredient(ing)) {
-                    acc.add(new HarvestedItems.HarvestedIngredient(ing, 1));
-                }
+                addIngredient(ing, 1, acc);
                 return true;
             }
             default -> {

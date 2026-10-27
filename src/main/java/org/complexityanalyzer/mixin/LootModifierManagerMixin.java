@@ -36,7 +36,7 @@ public abstract class LootModifierManagerMixin {
 
     @Inject(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At("TAIL"))
     private void onApplyTail(Map<ResourceLocation, JsonElement> resourceList, ResourceManager resourceManagerIn, ProfilerFiller profilerIn, CallbackInfo ci) {
-        LootModifierManager manager = (LootModifierManager) (Object) this;
+        var manager = (LootModifierManager) (Object) this;
         LootOptimizer.rebuildIndex(manager.getAllLootMods());
     }
 }

@@ -50,10 +50,12 @@ public interface IResourceSource {
     boolean canProvide(Item item);
 
     /**
-     * Computes the cheapest acquisition data this source offers for the item.
+     * Computes one representative acquisition path this source offers for the item. Sources that provide multiple
+     * alternatives can implement {@link IMultiSourceProvider}; consumers such as the complexity solver use that
+     * interface to compare every path against the full dependency graph.
      *
      * @param item the item to price
-     * @return the resource data, or {@code null} if this source does not provide the item
+     * @return a representative resource path, or {@code null} if this source does not provide the item
      */
     @Nullable
     BaseResourceData analyze(Item item);

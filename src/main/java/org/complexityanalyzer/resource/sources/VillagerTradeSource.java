@@ -32,6 +32,7 @@ import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.jetbrains.annotations.Nullable;
@@ -42,7 +43,7 @@ import java.util.Comparator;
 import static org.complexityanalyzer.cache.util.Fingerprints.FNV_OFFSET;
 import static org.complexityanalyzer.cache.util.Fingerprints.FNV_PRIME;
 
-public class VillagerTradeSource implements IResourceSource {
+public class VillagerTradeSource implements IResourceSource, IMultiSourceProvider {
 
     private static final Int2DoubleMap LEVEL_COST_MAP = new Int2DoubleOpenHashMap();
     private static final ObjectSet<String> SKIP_TRADE_TYPES = new ObjectOpenHashSet<>(new String[]{
@@ -71,6 +72,14 @@ public class VillagerTradeSource implements IResourceSource {
         h = (h ^ level) * FNV_PRIME;
         h = (h ^ index) * FNV_PRIME;
         return h;
+    }
+
+    private static void addNormalizedCost(Reference2DoubleOpenHashMap<Item> sourceItems, ItemStack cost, double outputCount) {
+        if (!cost.isEmpty()) sourceItems.addTo(cost.getItem(), cost.getCount() / outputCount);
+    }
+
+    private static String formatStack(ItemStack stack) {
+        return stack.isEmpty() ? "none" : "%dx %s".formatted(stack.getCount(), stack.getItem());
     }
 
     @Override
@@ -117,13 +126,13 @@ public class VillagerTradeSource implements IResourceSource {
 
                         if (offer != null && !offer.getResult().isEmpty()) {
                             fastParsed++;
-                            addTrade(offer, tradeLevel);
+                            addTrade(offer, profId, tradeLevel, index, tradeType);
                         } else {
                             failedTrades++;
                         }
 
                     } catch (NullPointerException e) {
-                        pendingTrades.add(new PendingTrade(listing, tradeLevel, tradeType, seed));
+                        pendingTrades.add(new PendingTrade(listing, profId, tradeLevel, index, tradeType, seed));
                     } catch (Exception e) {
                         failedTrades++;
                     }
@@ -154,7 +163,7 @@ public class VillagerTradeSource implements IResourceSource {
 
                     if (offer != null && !offer.getResult().isEmpty()) {
                         entityParsed++;
-                        addTrade(offer, pending.level);
+                        addTrade(offer, pending.professionId, pending.level, pending.index, pending.type);
                     } else {
                         failedTrades++;
                     }
@@ -186,11 +195,12 @@ public class VillagerTradeSource implements IResourceSource {
         }
     }
 
-    private void addTrade(MerchantOffer offer, int level) {
+    private void addTrade(MerchantOffer offer, String professionId, int level, int index, String tradeType) {
         var resultItem = offer.getResult().getItem();
 
         tradesByResult.computeIfAbsent(resultItem, k -> new ObjectArrayList<>(2))
-                .add(new TradeInfo(offer.getResult().copy(), offer.getBaseCostA().copy(), offer.getCostB().copy(), level));
+                .add(new TradeInfo(offer.getResult().copy(), offer.getBaseCostA().copy(), offer.getCostB().copy(),
+                        professionId, level, index, tradeType));
     }
 
     @Override
@@ -203,26 +213,37 @@ public class VillagerTradeSource implements IResourceSource {
     public BaseResourceData analyze(Item item) {
         var trades = tradesByResult.get(item);
         if (trades == null || trades.isEmpty()) return null;
+        return toResourceData(item, trades.getFirst());
+    }
 
-        var bestTrade = trades.getFirst();
-        for (int i = 1; i < trades.size(); i++) {
-            if (trades.get(i).level() < bestTrade.level()) bestTrade = trades.get(i);
-        }
+    @Override
+    public ObjectList<BaseResourceData> findAllSources(Item item) {
+        var trades = tradesByResult.get(item);
+        if (trades == null || trades.isEmpty()) return ObjectLists.emptyList();
 
+        var sources = new ObjectArrayList<BaseResourceData>(trades.size());
+        for (var trade : trades) sources.add(toResourceData(item, trade));
+        return sources;
+    }
+
+    private BaseResourceData toResourceData(Item item, TradeInfo trade) {
         var sourceItems = new Reference2DoubleOpenHashMap<Item>(2);
+        double outputCount = Math.max(1, trade.result().getCount());
 
-        if (!bestTrade.costA().isEmpty()) sourceItems.put(bestTrade.costA().getItem(),
-                (double) bestTrade.costA().getCount() / bestTrade.result().getCount());
+        addNormalizedCost(sourceItems, trade.costA(), outputCount);
+        addNormalizedCost(sourceItems, trade.costB(), outputCount);
 
-        if (!bestTrade.costB().isEmpty()) sourceItems.put(bestTrade.costB().getItem(),
-                (double) bestTrade.costB().getCount() / bestTrade.result().getCount());
+        String specifier = "%s L%d #%d (%s)".formatted(
+                trade.professionId(), trade.level(), trade.index() + 1, trade.type());
+        String details = "Villager trade: %s + %s -> %s".formatted(
+                formatStack(trade.costA()), formatStack(trade.costB()), formatStack(trade.result()));
 
         return new BaseResourceData.Builder(item, this)
                 .sourceType(getSourceType())
-                .baseFactor(LEVEL_COST_MAP.getOrDefault(bestTrade.level(), 1.0))
+                .baseFactor(LEVEL_COST_MAP.getOrDefault(trade.level(), 1.0))
                 .sourceItems(sourceItems)
-                .sourceSpecifier("Lvl " + bestTrade.level())
-                .details("Trade with Lvl %d Villager".formatted(bestTrade.level()))
+                .sourceSpecifier(specifier)
+                .details(details)
                 .build();
     }
 
@@ -241,9 +262,11 @@ public class VillagerTradeSource implements IResourceSource {
         return BaseResourceData.ResourceSourceType.VILLAGER_TRADE;
     }
 
-    private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, int level) {
+    private record TradeInfo(ItemStack result, ItemStack costA, ItemStack costB, String professionId,
+                             int level, int index, String type) {
     }
 
-    private record PendingTrade(VillagerTrades.ItemListing listing, int level, String type, long seed) {
+    private record PendingTrade(VillagerTrades.ItemListing listing, String professionId, int level,
+                                int index, String type, long seed) {
     }
 }

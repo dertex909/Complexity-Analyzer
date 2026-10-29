@@ -22,12 +22,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.util.FileManager;
 
 import java.nio.file.Files;
-import java.util.Comparator;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -136,28 +134,17 @@ public final class CabinResourceResolver {
 
         synchronized (CabinResourceResolver.class) {
             if (cachedRegistry != null) return cachedRegistry;
-
-            var tabs = new ObjectArrayList<JsonObject>();
-            var sources = new ConcurrentHashMap<String, WebResourceSource>();
-            var mimeTypesByNamespace = new Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>>();
-            var seenTabIds = new ObjectOpenHashSet<String>();
-
-            WebPackScanner.scanDirectory(WebPackPaths.getActivePacksDir(), tabs, sources, mimeTypesByNamespace, seenTabIds, token);
+            var ctx = new WebPackScanContext(token);
+            WebPackScanner.scanDirectory(WebPackPaths.getActivePacksDir(), ctx);
             var devPacks = WebPackPaths.getDevDir(WebPackPaths.PACKS_DIR_NAME);
-            if (devPacks != null) {
-                WebPackScanner.scanDirectory(devPacks, tabs, sources, mimeTypesByNamespace, seenTabIds, token);
-            }
-            WebPackScanner.scanLoadedMods(tabs, sources, mimeTypesByNamespace, seenTabIds, token);
-
-            tabs.sort(Comparator.comparingInt(tab -> tab.has(WebTabManifest.PROP_ORDER)
-                    ? tab.get(WebTabManifest.PROP_ORDER).getAsInt() : WebTabManifest.DEFAULT_TAB_ORDER));
-
-            cachedRegistry = new TabRegistry(tabs, sources, mimeTypesByNamespace);
+            if (devPacks != null) WebPackScanner.scanDirectory(devPacks, ctx);
+            WebPackScanner.scanLoadedMods(ctx);
+            cachedRegistry = ctx.buildRegistry();
             return cachedRegistry;
         }
     }
 
-    private record TabRegistry(
+    record TabRegistry(
             ObjectArrayList<JsonObject> tabs,
             ConcurrentHashMap<String, WebResourceSource> sources,
             Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace

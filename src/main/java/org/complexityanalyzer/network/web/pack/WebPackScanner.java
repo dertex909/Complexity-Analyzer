@@ -18,10 +18,7 @@
 
 package org.complexityanalyzer.network.web.pack;
 
-import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.util.FileManager;
@@ -31,7 +28,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipInputStream;
 
 public final class WebPackScanner {
@@ -40,44 +36,23 @@ public final class WebPackScanner {
     private WebPackScanner() {
     }
 
-    public static void scanDirectory(
-            Path dir,
-            ObjectArrayList<JsonObject> tabs,
-            ConcurrentHashMap<String, WebResourceSource> sources,
-            Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace,
-            ObjectOpenHashSet<String> seenTabIds,
-            String token
-    ) {
+    public static void scanDirectory(Path dir, WebPackScanContext ctx) {
         if (!FileManager.isDirectory(dir)) return;
         try {
-            for (var packPath : FileManager.list(dir)) {
-                var fileName = packPath.getFileName().toString();
-                if (fileName.startsWith(".")) continue;
-
-                if (fileName.endsWith(ZIP_SUFFIX) && FileManager.isRegularFile(packPath)) {
-                    scanZipPack(packPath, tabs, sources, mimeTypesByNamespace, seenTabIds, token);
-                } else if (FileManager.isDirectory(packPath)) {
-                    scanDirectoryPack(packPath, tabs, sources, mimeTypesByNamespace, seenTabIds, token);
-                }
-            }
+            scanPacksInDir(dir, ctx);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[WebPacks] Error scanning packs directory: {}", dir, e);
         }
     }
 
-    public static void scanLoadedMods(
-            ObjectArrayList<JsonObject> tabs,
-            ConcurrentHashMap<String, WebResourceSource> sources,
-            Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace,
-            ObjectOpenHashSet<String> seenTabIds,
-            String token
-    ) {
+    public static void scanLoadedMods(WebPackScanContext ctx) {
         try {
             var modList = ModList.get();
             if (modList == null) return;
+            var isDev = WebPackPaths.getDevRoot() != null;
 
             for (var mod : modList.getMods()) {
-                if (mod.getModId().equals(ComplexityAnalyzer.MODID)) continue;
+                if (isDev && mod.getModId().equals(ComplexityAnalyzer.MODID)) continue;
 
                 try {
                     var modFile = mod.getOwningFile().getFile();
@@ -85,11 +60,7 @@ public final class WebPackScanner {
                     if (!FileManager.isDirectory(packsRoot)) continue;
 
                     ComplexityAnalyzer.LOGGER.debug("[WebPacks] Found mod pack resources for '{}': {}", mod.getModId(), packsRoot);
-                    for (var packDir : FileManager.list(packsRoot)) {
-                        if (FileManager.isDirectory(packDir)) {
-                            scanDirectoryPack(packDir, tabs, sources, mimeTypesByNamespace, seenTabIds, token);
-                        }
-                    }
+                    scanPacksInDir(packsRoot, ctx);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.warn("[WebPacks] Failed to scan mod resources for mod: {}", mod.getModId(), e);
                 }
@@ -98,14 +69,20 @@ public final class WebPackScanner {
         }
     }
 
-    private static void scanDirectoryPack(
-            Path packDir,
-            ObjectArrayList<JsonObject> tabs,
-            ConcurrentHashMap<String, WebResourceSource> sources,
-            Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace,
-            ObjectOpenHashSet<String> seenTabIds,
-            String token
-    ) {
+    private static void scanPacksInDir(Path rootDir, WebPackScanContext ctx) throws Exception {
+        for (var packPath : FileManager.list(rootDir)) {
+            var fileName = packPath.getFileName().toString();
+            if (fileName.startsWith(".")) continue;
+
+            if (fileName.endsWith(ZIP_SUFFIX) && FileManager.isRegularFile(packPath)) {
+                scanZipPack(packPath, ctx);
+            } else if (FileManager.isDirectory(packPath)) {
+                scanDirectoryPack(packPath, ctx);
+            }
+        }
+    }
+
+    private static void scanDirectoryPack(Path packDir, WebPackScanContext ctx) {
         try {
             var defaultNs = WebTabManifest.normalizeNamespace(packDir.getFileName().toString());
             var source = new WebResourceSource.PathSource(packDir);
@@ -113,7 +90,7 @@ public final class WebPackScanner {
             for (var file : FileManager.list(packDir)) {
                 if (FileManager.isRegularFile(file) && file.getFileName().toString().endsWith(WebTabManifest.TAB_FILE_SUFFIX)) {
                     try (var in = Files.newInputStream(file)) {
-                        tryRegisterTab(in, defaultNs, token, source, tabs, sources, mimeTypesByNamespace, seenTabIds);
+                        tryRegisterTab(in, defaultNs, source, ctx);
                     }
                 }
             }
@@ -122,14 +99,7 @@ public final class WebPackScanner {
         }
     }
 
-    private static void scanZipPack(
-            Path zipPath,
-            ObjectArrayList<JsonObject> tabs,
-            ConcurrentHashMap<String, WebResourceSource> sources,
-            Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace,
-            ObjectOpenHashSet<String> seenTabIds,
-            String token
-    ) {
+    private static void scanZipPack(Path zipPath, WebPackScanContext ctx) {
         try {
             var archiveBytes = Files.readAllBytes(zipPath);
             var fileName = zipPath.getFileName().toString();
@@ -144,8 +114,7 @@ public final class WebPackScanner {
                     var name = entry.getName();
                     if (!entry.isDirectory() && name.endsWith(WebTabManifest.TAB_FILE_SUFFIX) && !name.contains("/")) {
                         var manifestBytes = zip.readAllBytes();
-                        tryRegisterTab(new ByteArrayInputStream(manifestBytes), defaultNs, token, source,
-                                tabs, sources, mimeTypesByNamespace, seenTabIds);
+                        tryRegisterTab(new ByteArrayInputStream(manifestBytes), defaultNs, source, ctx);
                     }
                     entry = zip.getNextEntry();
                 }
@@ -155,33 +124,24 @@ public final class WebPackScanner {
         }
     }
 
-    private static void tryRegisterTab(
-            InputStream in,
-            String defaultNs,
-            String token,
-            WebResourceSource source,
-            ObjectArrayList<JsonObject> tabs,
-            ConcurrentHashMap<String, WebResourceSource> sources,
-            Object2ObjectOpenHashMap<String, Object2ObjectOpenHashMap<String, String>> mimeTypesByNamespace,
-            ObjectOpenHashSet<String> seenTabIds
-    ) {
-        var parsed = WebTabManifest.parse(in, defaultNs, token);
+    private static void tryRegisterTab(InputStream in, String defaultNs, WebResourceSource source, WebPackScanContext ctx) {
+        var parsed = WebTabManifest.parse(in, defaultNs, ctx.token);
         if (parsed == null) return;
         var tab = parsed.tab();
 
         var id = tab.get(WebTabManifest.PROP_ID).getAsString();
         var ns = tab.get(WebTabManifest.PROP_NAMESPACE).getAsString();
 
-        if (seenTabIds.add(id)) {
-            sources.compute(ns, (key, existing) -> {
+        if (ctx.seenTabIds.add(id)) {
+            ctx.sources.compute(ns, (key, existing) -> {
                 if (existing == null) return source;
                 if (existing.equals(source)) return existing;
                 ComplexityAnalyzer.LOGGER.warn("[WebPacks] Namespace collision for '{}'! Merging sources to prevent 404s.", ns);
                 if (existing instanceof WebResourceSource.CompositeSource composite) return composite.with(source);
                 return new WebResourceSource.CompositeSource(existing, source);
             });
-            registerMimeTypes(ns, parsed.mimeTypes(), mimeTypesByNamespace);
-            tabs.add(tab);
+            registerMimeTypes(ns, parsed.mimeTypes(), ctx.mimeTypesByNamespace);
+            ctx.tabs.add(tab);
         }
     }
 

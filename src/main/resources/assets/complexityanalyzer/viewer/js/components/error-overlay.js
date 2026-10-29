@@ -25,12 +25,32 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
+function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+        // noinspection JSDeprecatedSymbols
+        document.execCommand("copy");
+    } finally {
+        ta.remove();
+    }
+    return Promise.resolve();
+}
+
 export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
     const rawFileName = scriptUrl ? scriptUrl.split("/").pop() : tabId;
     const fileName = escapeHtml(rawFileName);
     const errorType = escapeHtml(err?.name || "Plugin Error");
     const errorMsg = escapeHtml(err?.message || String(err));
-    const stackTrace = escapeHtml(err?.stack || errorMsg);
+    const rawStackTrace = err?.stack || errorMsg;
+    const stackTrace = escapeHtml(rawStackTrace);
 
     shadow.innerHTML = `
         <style>
@@ -50,9 +70,9 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 width: 100%;
                 max-width: 780px;
                 background: #14161d;
-                border: 1px solid rgba(239, 68, 68, 0.35);
-                border-radius: 14px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(239, 68, 68, 0.12);
+                border: 1px solid rgba(239, 68, 68, 0.45);
+                border-radius: 0;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(239, 68, 68, 0.15);
                 overflow: hidden;
                 animation: ca-pop .18s cubic-bezier(0.16, 1, 0.3, 1);
             }
@@ -73,7 +93,7 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 1px;
-                border-radius: 20px;
+                border-radius: 0;
                 background: rgba(239, 68, 68, 0.15);
                 border: 1px solid rgba(239, 68, 68, 0.35);
                 color: #ef4444;
@@ -84,7 +104,7 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 font-family: "JetBrains Mono", monospace;
                 background: rgba(255, 255, 255, 0.04);
                 padding: 3px 8px;
-                border-radius: 6px;
+                border-radius: 0;
                 border: 1px solid rgba(255, 255, 255, 0.06);
             }
             .err-body {
@@ -98,12 +118,15 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 line-height: 1.5;
                 font-family: "JetBrains Mono", monospace;
             }
+            .err-trace-container {
+                position: relative;
+            }
             .err-trace {
                 margin: 0;
-                padding: 16px;
+                padding: 16px 70px 16px 16px;
                 background: #0c0d12;
                 border: 1px solid #222530;
-                border-radius: 8px;
+                border-radius: 0;
                 font-family: "JetBrains Mono", monospace;
                 font-size: 12px;
                 line-height: 1.6;
@@ -112,6 +135,39 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 word-break: break-word;
                 max-height: 260px;
                 overflow-y: auto;
+                cursor: pointer;
+                transition: border-color 0.15s, background-color 0.15s;
+            }
+            .err-trace:hover {
+                border-color: #3b4256;
+                background: #0f1117;
+            }
+            .err-copy-hint {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                padding: 3px 6px;
+                background: #1c1f28;
+                border: 1px solid #282c37;
+                border-radius: 0;
+                color: #8b92a4;
+                pointer-events: none;
+                transition: all 0.15s;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
+            .err-trace:hover + .err-copy-hint,
+            .err-copy-hint:hover {
+                color: #e2e8f0;
+                border-color: #4b5563;
+            }
+            .err-copy-hint.copied {
+                color: #4ade80 !important;
+                border-color: rgba(74, 222, 128, 0.4) !important;
+                background: rgba(74, 222, 128, 0.12) !important;
             }
             .err-trace::-webkit-scrollbar {
                 width: 8px;
@@ -119,7 +175,7 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
             }
             .err-trace::-webkit-scrollbar-thumb {
                 background: #2a2e3d;
-                border-radius: 4px;
+                border-radius: 0;
             }
             .err-trace::-webkit-scrollbar-thumb:hover {
                 background: #3b4256;
@@ -150,11 +206,31 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
             </div>
             <div class="err-body">
                 <div class="err-msg">${errorType}: ${errorMsg}</div>
-                <pre class="err-trace">${stackTrace}</pre>
+                <div class="err-trace-container">
+                    <pre class="err-trace" title="Click to copy stack trace">${stackTrace}</pre>
+                    <span class="err-copy-hint">Copy</span>
+                </div>
             </div>
             <div class="err-footer">
                 <span>⚡ <b>Hot Reload Active:</b> Resolve the issue in your source file and save changes. The dashboard will automatically recompile and update.</span>
             </div>
         </div>
     `;
+
+    const traceEl = shadow.querySelector(".err-trace");
+    const hintEl = shadow.querySelector(".err-copy-hint");
+
+    if (traceEl) traceEl.addEventListener("click", () => {
+        copyToClipboard(rawStackTrace).then(() => {
+            if (hintEl) {
+                hintEl.textContent = "Copied!";
+                hintEl.classList.add("copied");
+                setTimeout(() => {
+                    hintEl.textContent = "Copy";
+                    hintEl.classList.remove("copied");
+                }, 1400);
+            }
+        });
+    });
+
 }

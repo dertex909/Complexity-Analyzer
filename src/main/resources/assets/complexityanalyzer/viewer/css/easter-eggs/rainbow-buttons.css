@@ -1,0 +1,49 @@
+/*
+ * Complexity Analyzer
+ * Copyright (C) 2025-2026 dertex909
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+html.rainbow-easter-egg .rainbow-easter-target {
+    color: #fff;
+    text-shadow: 0 1px 2px #000;
+    background-image: linear-gradient(90deg, #ff1744, #ff9100, #ffee00, #00e676, #00c8ff, #651fff, #ff1744);
+    background-size: 300% 100%;
+    border-color: rgba(255, 255, 255, 0.5);
+    animation: rainbow-easter-flow 22s cubic-bezier(0.45, 0, 0.55, 1) 0s infinite alternate,
+    rainbow-easter-breathe 7.5s cubic-bezier(0.45, 0, 0.55, 1) 0s infinite;
+}
+
+@keyframes rainbow-easter-flow {
+    from {
+        background-position: 0 50%;
+    }
+    to {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes rainbow-easter-breathe {
+    0%, 100% {
+        box-shadow: 0 0 6px 1px #ff1744;
+        filter: brightness(1.02);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 11px 3px #00e5ff;
+        filter: brightness(1.12);
+        transform: scale(1.012);
+    }
+}

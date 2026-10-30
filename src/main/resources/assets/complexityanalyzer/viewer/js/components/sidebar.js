@@ -16,9 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import {initRainbowButtonEasterEgg} from "../easter-eggs/rainbow-buttons.js";
+
 export function initSidebar() {
     initSidebarResizer();
     initSidebarToggle();
+    initRainbowButtonEasterEgg();
 }
 
 function initSidebarResizer() {

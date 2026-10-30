@@ -59,6 +59,10 @@ const DEFAULT_FILTERS = {
         flagsFilter: [],
         modsFilter: []
     },
+    mods: {
+        query: "",
+        sort: "id-asc"
+    },
 };
 
 export const state = {
@@ -72,6 +76,7 @@ export const state = {
         fluids: {...DEFAULT_FILTERS.fluids},
         mobs: {...DEFAULT_FILTERS.mobs},
         sources: {...DEFAULT_FILTERS.sources},
+        mods: {...DEFAULT_FILTERS.mods},
     },
     graphZoom: 1,
     graphPan: {x: 0, y: 0}

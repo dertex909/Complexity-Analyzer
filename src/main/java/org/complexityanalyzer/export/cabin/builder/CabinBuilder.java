@@ -22,14 +22,12 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
+import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.analyzer.solver.SolverResult;
 import org.complexityanalyzer.api.IHardcodedSourceRegistry;
@@ -50,7 +48,6 @@ import org.complexityanalyzer.resource.sources.MobDropSource;
 
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import static net.minecraft.world.entity.MobCategory.MISC;
 import static net.minecraft.world.item.Items.AIR;
@@ -347,7 +344,11 @@ public final class CabinBuilder {
     }
 
     private byte[] buildModSummary(RecipeGraph graph) {
-        var stats = new HashMap<String, ModStats>();
+        var stats = new Object2ObjectOpenHashMap<String, ModStats>();
+        for (var mod : ModList.get().getMods()) {
+            var modStats = stats.computeIfAbsent(mod.getModId(), k -> new ModStats());
+            modStats.version = mod.getVersion().toString();
+        }
         int n = orderedItems.size();
         for (var item : orderedItems) {
             var id = GameRegistryManager.getItemId(item);
@@ -369,12 +370,13 @@ public final class CabinBuilder {
             var s = stats.get(modId);
             if (s != null) s.recipeCount += recipes.size();
         }
-        var out = new LeBuf(4 + stats.size() * 20);
+        var out = new LeBuf(4 + stats.size() * 24);
         out.i32(stats.size());
         for (var e : stats.entrySet()) {
             var s = e.getValue();
             double avg = s.complexityItems > 0 ? s.complexitySum / s.complexityItems : 0.0;
             out.i32(strings.intern(e.getKey()));
+            out.i32(strings.intern(e.getValue().version));
             out.i32(s.itemCount);
             out.i32(s.recipeCount);
             out.f64(avg);
@@ -436,6 +438,7 @@ public final class CabinBuilder {
     }
 
     private static class ModStats {
+        String version = "";
         int itemCount;
         int recipeCount;
         double complexitySum;

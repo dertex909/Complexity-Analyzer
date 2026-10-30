@@ -495,10 +495,14 @@ export function readSourceTypeIndex(bytes) {
 export function readModSummary(bytes, strings) {
     const b = new Buf(bytes);
     const count = b.i32();
+    const hasVersions = bytes.byteLength === 4 + count * 24;
     const mods = [];
     for (let i = 0; i < count; i++) {
+        const modId = strings.get(b.i32());
+        const modVersion = hasVersions ? strings.get(b.i32()) : "";
         mods.push({
-            modId: strings.get(b.i32()),
+            modId,
+            modVersion,
             itemCount: b.i32(),
             recipeCount: b.i32(),
             avgComplexity: b.f64()

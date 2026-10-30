@@ -49,6 +49,16 @@
     margin-top: 4px;
 }
 
+.mod-list-card > summary {
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mod-list-card[open] > summary {
+    margin-bottom: 10px;
+}
+
 .controls {
     display: flex;
     flex-wrap: wrap;
@@ -140,6 +150,18 @@ input[type="search"] {
     gap: 0;
     align-items: stretch;
     width: 100%;
+}
+
+.mods-grid {
+    display: grid;
+    grid-template-columns: var(--mod-col-1, 4%) var(--mod-col-2, 19%) var(--mod-col-3, 17%) var(--mod-col-4, 10%) var(--mod-col-5, 9%) var(--mod-col-6, 9%) var(--mod-col-7, 11%) var(--mod-col-8, 21%);
+    gap: 0;
+    align-items: stretch;
+    width: 100%;
+}
+
+.table-head.mods-grid {
+    border-top: 1px solid var(--border);
 }
 
 .sources-grid {
@@ -380,7 +402,7 @@ input[type="search"] {
 }
 
 @media (max-width: 768px) {
-    .items-grid, #items-head {
+    .items-grid, #items-head, .mods-grid, #mods-head {
         min-width: 850px;
     }
 
@@ -397,7 +419,7 @@ input[type="search"] {
     }
 }
 
-#items-list, #fluids-list, #mobs-list, #sources-list {
+#items-list, #fluids-list, #mobs-list, #sources-list, #mods-list {
     flex: 1;
     display: flex;
     min-height: 0;
@@ -462,6 +484,60 @@ input[type="search"] {
 .row.items-grid > .idx {
     justify-content: flex-end;
     padding-right: 10px;
+}
+
+.row.mods-grid {
+    padding: 0 !important;
+    align-items: stretch !important;
+    height: 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    cursor: default;
+}
+
+.row.mods-grid > * {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    height: 100%;
+}
+
+.row.mods-grid > *:last-child {
+    border-right: none;
+}
+
+.row.mods-grid > .num,
+.row.mods-grid > .idx {
+    justify-content: flex-end;
+}
+
+.mod-count-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.mod-count-link:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.mod-count-link:disabled {
+    color: var(--text-dim);
+    cursor: default;
+}
+
+.row.mods-grid > .mod-count-cell {
+    justify-content: center;
 }
 
 .row.sources-grid {

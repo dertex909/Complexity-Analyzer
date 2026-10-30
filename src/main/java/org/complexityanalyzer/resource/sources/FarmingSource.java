@@ -42,7 +42,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     private static final double RENEWABLE_DISCOUNT = 0.3;
     private static final double BASE_TICKS_PER_STAGE = 1200;
-    private static final int LOGIC_VERSION = 2;
+    private static final int LOGIC_VERSION = 3;
 
     private final Reference2ObjectMap<Item, ObjectList<FarmingData>> productionMap = new Reference2ObjectOpenHashMap<>();
     private final PlantSimulator simulator = new PlantSimulator();

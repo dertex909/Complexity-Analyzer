@@ -262,11 +262,11 @@ function ensureOverlayStyle() {
     s.textContent = `
       #ca-loading-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
         background:color-mix(in srgb, var(--bg, #0e0f13) 92%, transparent);backdrop-filter:blur(3px);}
-      #ca-loading-overlay .ca-box{max-width:560px;text-align:center;padding:30px 34px;border-radius:14px;
+      #ca-loading-overlay .ca-box{max-width:560px;text-align:center;padding:30px 34px;border-radius: 0;
         background:var(--panel, #181a20);border:1px solid var(--border, #2a2d36);box-shadow:0 10px 50px rgba(0,0,0,.45);}
       #ca-loading-overlay h3{margin:18px 0 8px;font-size:19px;color:var(--text,#e6e6e6);}
       #ca-loading-overlay .ca-sub{color:var(--text-dim,#9aa0ac);font-size:13px;line-height:1.55;}
-      #ca-loading-overlay .ca-spinner{width:48px;height:48px;margin:0 auto;border-radius:50%;
+      #ca-loading-overlay .ca-spinner{width:48px;height:48px;margin:0 auto;border-radius: 0;
         border:4px solid var(--border,#2a2d36);border-top-color:var(--accent,#4ea1ff);animation:ca-spin .9s linear infinite;}
       #ca-loading-overlay .ca-spinner.stopped{animation:none;border-top-color:var(--err,#ef4444);opacity:.75;}
       @keyframes ca-spin{to{transform:rotate(360deg)}}

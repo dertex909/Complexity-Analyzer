@@ -101,7 +101,7 @@ export async function renderCraftTreeView(container) {
                             </span>
                         </div>
                         <div class="craft-search-container" style="width: 250px; position: relative; flex: 0 0 auto;">
-                            <input type="text" class="craft-search-input" placeholder="Quick jump..." autocomplete="off" style="font-size: 13px; padding: 6px 12px; border-radius: 6px; background-color: var(--bg-raised); border: 1px solid var(--border); width: 100%; color: var(--text);">
+                            <input type="text" class="craft-search-input" placeholder="Quick jump..." autocomplete="off" style="font-size: 13px; padding: 6px 12px; border-radius: 0; background-color: var(--bg-raised); border: 1px solid var(--border); width: 100%; color: var(--text);">
                             <div class="craft-search-results" id="craft-search-results" hidden style="max-height: 250px; width: 100%;"></div>
                         </div>
                     </div>
@@ -130,7 +130,7 @@ export async function renderCraftTreeView(container) {
                                 </button>
                             </div>
                             
-                            <div id="format-description-box" style="padding: 12px; border-radius: 6px; background-color: rgba(92,217,154,0.03); border: 1px solid rgba(92,217,154,0.1); font-size: 12px; line-height: 1.5; color: var(--text-dim);">
+                            <div id="format-description-box" style="padding: 12px; border-radius: 0; background-color: rgba(92,217,154,0.03); border: 1px solid rgba(92,217,154,0.1); font-size: 12px; line-height: 1.5; color: var(--text-dim);">
                                 ${getFormatDescription(selectedFormat)}
                             </div>
                         </div>

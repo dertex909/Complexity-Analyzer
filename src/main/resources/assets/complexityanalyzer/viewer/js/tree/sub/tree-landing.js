@@ -98,7 +98,7 @@ export function renderLandingHub(container, db, selectedFormat, onSelectRoot, on
                 border: 1px solid var(--border);
                 background: var(--bg-raised);
                 color: var(--text-dim);
-                border-radius: 6px;
+                border-radius: 0;
                 cursor: pointer;
                 transition: all 0.15s ease;
             }
@@ -107,35 +107,35 @@ export function renderLandingHub(container, db, selectedFormat, onSelectRoot, on
                 color: var(--text);
             }
             .format-landing-btn.active {
-                border-color: var(--accent) !important;
-                background: rgba(91, 192, 255, 0.12) !important;
-                color: var(--accent) !important;
+                border-color: var(--accent);
+                background: rgba(91, 192, 255, 0.12);
+                color: var(--accent);
                 box-shadow: 0 0 10px rgba(91, 192, 255, 0.15);
             }
             .landing-search-bar {
                 display: flex;
                 align-items: center;
                 background: var(--bg-panel);
-                border: 1px solid var(--border) !important;
-                border-radius: 6px;
+                border: 1px solid var(--border);
+                border-radius: 0;
                 padding: 0 12px;
-                box-shadow: none !important;
-                outline: none !important;
+                box-shadow: none;
+                outline: none;
                 position: relative;
             }
             .craft-search-input,
             .craft-search-input:focus {
-                border: none !important;
-                outline: none !important;
-                box-shadow: none !important;
-                background: transparent !important;
+                border: none;
+                outline: none;
+                box-shadow: none;
+                background: transparent;
             }
             .landing-recent-pill {
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
                 padding: 4px 10px;
-                border-radius: 6px;
+                border-radius: 0;
                 background: var(--bg-panel);
                 border: 1px solid var(--border);
                 font-size: 11px;
@@ -152,7 +152,7 @@ export function renderLandingHub(container, db, selectedFormat, onSelectRoot, on
                 flex-direction: column;
                 justify-content: space-between;
                 padding: 10px 12px;
-                border-radius: 6px;
+                border-radius: 0;
                 background: var(--bg-panel);
                 border: 1px solid var(--border);
                 gap: 6px;
@@ -188,7 +188,7 @@ export function renderLandingHub(container, db, selectedFormat, onSelectRoot, on
                 font-size: 11px;
                 font-weight: 600;
                 padding: 3px 8px;
-                border-radius: 4px;
+                border-radius: 0;
                 cursor: pointer;
                 transition: background 0.15s;
             }
@@ -210,7 +210,7 @@ export function renderLandingHub(container, db, selectedFormat, onSelectRoot, on
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 6px; align-items: center; background: var(--bg-panel); padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="display: flex; gap: 6px; align-items: center; background: var(--bg-panel); padding: 3px; border-radius: 0; border: 1px solid var(--border);">
                         <button class="btn format-landing-btn ${selectedFormat === 'classic' ? 'active' : ''}" data-format="classic">
                             <span>📋</span> Classic Tree
                         </button>

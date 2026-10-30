@@ -43,7 +43,7 @@ export class TreeUtils {
         const title = `Machine: ${escapedName}${hasAmort ? ` (Amortization: ${amortText})` : ""}`;
 
         return `
-            <div class="node-machine-badge" title="${title}" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; font-size: 11px; max-width: 200px; flex-shrink: 0;">
+            <div class="node-machine-badge" title="${title}" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 0; font-size: 11px; max-width: 200px; flex-shrink: 0;">
                 <span style="font-size: 11px; opacity: 0.7;">🏭</span>
                 <span style="color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${escapedName}</span>
                 ${hasAmort ? `<span style="color: var(--accent); font-family: var(--mono), monospace; font-size: 10px; font-weight: 600; padding-left: 4px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,0.1);">${amortText}</span>` : ""}

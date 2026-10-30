@@ -110,7 +110,7 @@ function renderVariantGroupHtml({
 
     return `
         <div class="variant-group" style="${extraWrapperStyle}">
-            <div style="display: inline-flex; align-items: center; border-radius: 4px; overflow: hidden; border: 1px solid ${themeColor}; background: ${bgColor}; font-family: var(--mono), monospace; font-size: 11px; ${glowShadowStyle}">
+            <div style="display: inline-flex; align-items: center; border-radius: 0; overflow: hidden; border: 1px solid ${themeColor}; background: ${bgColor}; font-family: var(--mono), monospace; font-size: 11px; ${glowShadowStyle}">
                 <span class="${headClass}" data-index="${headDataIndex}" title="${headTooltip}" style="padding: 2px 6px 2px 8px; cursor: pointer; color: ${themeColor}; border-right: 1px solid ${borderRightColor}; font-size: 11px; font-weight: 600; line-height: 1.3; white-space: nowrap;" onmouseover="this.style.color='${hoverColor}'; this.style.background='${hoverBg}';" onmouseout="this.style.color='${themeColor}'; this.style.background='transparent';">
                     ${headLabel}
                 </span>
@@ -269,7 +269,7 @@ function renderOutputsHtml(r, db, recipeKey, activeByproducts, possibleByproduct
             let extraStyle = "";
             let extraClass = "";
             if (isPossibleByproduct) {
-                extraStyle = "border-color: #10b981 !important; color: #10b981 !important; background: rgba(16, 185, 129, 0.08) !important;";
+                extraStyle = "border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.08);";
                 extraClass = " byproduct-highlight";
             }
 

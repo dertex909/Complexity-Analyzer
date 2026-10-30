@@ -165,9 +165,9 @@ export function renderErrorOverlay(shadow, tabId, scriptUrl, err) {
                 border-color: #4b5563;
             }
             .err-copy-hint.copied {
-                color: #4ade80 !important;
-                border-color: rgba(74, 222, 128, 0.4) !important;
-                background: rgba(74, 222, 128, 0.12) !important;
+                color: #4ade80;
+                border-color: rgba(74, 222, 128, 0.4);
+                background: rgba(74, 222, 128, 0.12);
             }
             .err-trace::-webkit-scrollbar {
                 width: 8px;

@@ -143,11 +143,6 @@
 
     --shadow-glow: 0 0 20px var(--accent-glow);
 
-    --radius-sm: 0px;
-    --radius-md: 0px;
-    --radius-lg: 0px;
-    --radius-xl: 0px;
-
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
     --transition-fast: 0.12s var(--ease-out);
@@ -268,7 +263,6 @@
 
 *, *::before, *::after {
     box-sizing: border-box;
-    border-radius: 0 !important;
 }
 
 html, body {
@@ -361,7 +355,7 @@ code {
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms;
+        transition-duration: 0.01ms;
     }
 }

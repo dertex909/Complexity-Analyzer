@@ -39,7 +39,7 @@ export function showLoader(container) {
                 height: 32px;
                 border: 3px solid var(--border-light);
                 border-top-color: var(--accent);
-                border-radius: 50%;
+                border-radius: 0;
                 animation: spin 0.8s linear infinite;
             "></div>
             <div style="font-weight: 500; color: var(--text);">Generating All-Items Graph…</div>
@@ -77,7 +77,7 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
             width: 260px;
             background: rgba(11, 13, 16, 0.92);
             border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
+            border-radius: 0;
             box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
             backdrop-filter: blur(24px);
             transform: translateX(16px);
@@ -131,16 +131,16 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
                 }
                 @media (max-width: 768px) {
                     #graph-side-panel {
-                        top: auto !important;
-                        bottom: 12px !important;
-                        left: 12px !important;
-                        right: 12px !important;
-                        width: auto !important;
-                        max-height: 50vh !important;
-                        transform: translateY(120%) !important;
+                        top: auto;
+                        bottom: 12px;
+                        left: 12px;
+                        right: 12px;
+                        width: auto;
+                        max-height: 50vh;
+                        transform: translateY(120%);
                     }
                     #graph-side-panel[data-active="true"] {
-                        transform: translateY(0) !important;
+                        transform: translateY(0);
                     }
                     #graph-side-panel .gsp-row {
                         padding: 8px 12px;
@@ -155,7 +155,7 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
                         <button id="gsp-minimize" style="
                             background:rgba(255,255,255,0.05);
                             border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4);
-                            cursor:pointer; width:24px; height:24px; border-radius:6px;
+                            cursor:pointer; width:24px; height:24px; border-radius: 0;
                             font-size:12px; display:flex; align-items:center; justify-content:center;
                             transition: all 0.15s;
                         " onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
@@ -163,7 +163,7 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
                         <button id="gsp-close" style="
                             background:rgba(255,255,255,0.05);
                             border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4);
-                            cursor:pointer; width:24px; height:24px; border-radius:6px;
+                            cursor:pointer; width:24px; height:24px; border-radius: 0;
                             font-size:12px; display:flex; align-items:center; justify-content:center;
                             transition: all 0.15s;
                         " onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
@@ -210,7 +210,7 @@ export function updateSidePanel(overlay, node, onClose, onOpenDetails) {
                     color: var(--accent);
                     cursor: pointer;
                     padding: 8px 12px;
-                    border-radius: 8px;
+                    border-radius: 0;
                     font-size: 12px;
                     font-weight: 600;
                     letter-spacing: 0;

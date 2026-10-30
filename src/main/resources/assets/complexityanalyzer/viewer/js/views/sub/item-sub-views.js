@@ -183,7 +183,7 @@ export async function renderItemBaseSourcesView(container) {
                 <div class="detail-card" style="margin-bottom: 16px; border-left: 3px solid var(--accent);">
                     <div style="font-size: 14px; font-weight:600; margin-bottom: 6px;">Baseline Source</div>
                     <div>Source Type: <strong>${escapeHtml(formatSourceTypeName(base.sourceType))}</strong></div>
-                    ${base.details ? `<div style="margin-top: 6px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius:4px; font-family:var(--mono), monospace;" class="mono-code">${escapeHtml(base.details)}</div>` : ""}
+                    ${base.details ? `<div style="margin-top: 6px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 0; font-family:var(--mono), monospace;" class="mono-code">${escapeHtml(base.details)}</div>` : ""}
                 </div>
             `;
 

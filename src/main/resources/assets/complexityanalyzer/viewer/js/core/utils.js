@@ -111,7 +111,7 @@ export function renderSubTabHeader(container, entity, subTabName, backButtonText
     if (backTabName === "items") {
         const flagsHtml = getItemFlags(entity, false);
         metadataHtml = `
-            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 0; border: 1px solid var(--border); font-size: 13px;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Complexity:</span>
                     <strong class="cat-${entity.categoryName || "Uncalculable"}" style="font-size: 14px; font-weight: 600;" title="${formatRawTooltip(entity.complexity)}">${formatComplexityDetail(entity.complexity)}</strong>
@@ -152,14 +152,14 @@ export function renderSubTabHeader(container, entity, subTabName, backButtonText
                 ` : ""}
                 
                 <div style="margin-left: auto; display: flex; align-items: center;">
-                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
+                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
                 </div>
             </div>
         `;
     } else if (backTabName === "fluids") {
         const flagsHtml = getFluidFlags(entity, false);
         metadataHtml = `
-            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 0; border: 1px solid var(--border); font-size: 13px;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Complexity:</span>
                     <strong class="cat-${entity.categoryName || "Uncalculable"}" style="font-size: 14px; font-weight: 600;" title="${formatRawTooltip(entity.complexity)}">${formatComplexityDetail(entity.complexity)}</strong>
@@ -183,14 +183,14 @@ export function renderSubTabHeader(container, entity, subTabName, backButtonText
                 ` : ""}
                 
                 <div style="margin-left: auto; display: flex; align-items: center;">
-                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
+                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
                 </div>
             </div>
         `;
     } else {
         const flagsHtml = getMobFlags(entity, false);
         metadataHtml = `
-            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid var(--border); font-size: 13px;">
+            <div class="header-metadata-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 12px; padding: 10px 16px; background: rgba(255, 255, 255, 0.02); border-radius: 0; border: 1px solid var(--border); font-size: 13px;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="color: var(--text-dim); text-transform: uppercase; font-size: 10px; font-weight: 500; letter-spacing: 1px;">Category:</span>
                     <span class="category-pill cat-${entity.categoryName || "Uncalculable"}" style="font-size: 11px; padding: 2px 8px; margin: 0;">${entity.categoryName || "Mob"}</span>
@@ -204,7 +204,7 @@ export function renderSubTabHeader(container, entity, subTabName, backButtonText
                 ` : ""}
                 
                 <div style="margin-left: auto; display: flex; align-items: center;">
-                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
+                    <span class="sub-tab-label-badge" style="margin: 0; padding: 4px 10px; background: rgba(94, 199, 255, 0.1); color: var(--accent); border: 1px solid rgba(94, 199, 255, 0.2); border-radius: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;">${subTabName}</span>
                 </div>
             </div>
         `;
@@ -216,7 +216,7 @@ export function renderSubTabHeader(container, entity, subTabName, backButtonText
             <div class="header-details" style="display: flex; flex-direction: column; gap: 4px;">
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--text);">${escapeHtml(entity.name)}</h2>
-                    <code class="mono-code" style="font-size: 13px; color: var(--accent); background: rgba(94, 199, 255, 0.05); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(94, 199, 255, 0.15);">${escapeHtml(entity.id)}</code>
+                    <code class="mono-code" style="font-size: 13px; color: var(--accent); background: rgba(94, 199, 255, 0.05); padding: 3px 8px; border-radius: 0; border: 1px solid rgba(94, 199, 255, 0.15);">${escapeHtml(entity.id)}</code>
                 </div>
                 ${metadataHtml}
             </div>

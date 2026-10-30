@@ -160,10 +160,10 @@ export async function renderSources(container) {
                     transform: translateX(0);
                 }
                 .sources-burger {
-                    display: inline-flex !important;
+                    display: inline-flex;
                 }
                 .sources-close-mobile {
-                    display: inline-block !important;
+                    display: inline-block;
                 }
                 .sources-overlay {
                     display: none;
@@ -277,7 +277,7 @@ export async function renderSources(container) {
         catList.innerHTML = types.map(t => `
             <button class="tab ${t.typeEnum === state.filters.sources.sourceType ? "active" : ""}" data-type="${t.typeEnum}" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 10px 14px; font-size:13px; font-weight: 500;">
                 <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;" title="${escapeHtml(t.displayName)}">${escapeHtml(t.displayName)}</span>
-                <span class="chip" style="font-size:10px; padding:1px 6px; background:rgba(255,255,255,0.06); font-family:var(--mono), monospace; color: var(--text-muted); border-radius: 10px;">${t.items.length}</span>
+                <span class="chip" style="font-size:10px; padding:1px 6px; background:rgba(255,255,255,0.06); font-family:var(--mono), monospace; color: var(--text-muted); border-radius: 0;">${t.items.length}</span>
             </button>
         `).join("");
 

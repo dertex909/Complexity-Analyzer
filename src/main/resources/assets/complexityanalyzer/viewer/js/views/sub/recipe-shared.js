@@ -43,11 +43,11 @@ export function renderRecipeControlsHtml(activeSort, filteredCount, totalCount =
     const countText = isFiltered ? `${filteredCount} / ${totalCount} recipe(s)` : `${totalCount} recipe(s)`;
 
     return `
-        <div class="controls" style="margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--bg-panel); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; flex-shrink: 0;">
-            <input type="search" id="recipes-search" placeholder="Filter recipes by name or ID…" value="${escapeHtml(searchQuery)}" autocomplete="off" style="min-width: 200px; flex: 1 1 200px; max-width: 380px; padding: 5px 10px; font-size: 12px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
+        <div class="controls" style="margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--bg-panel); padding: 8px 12px; border: 1px solid var(--border); border-radius: 0; flex-shrink: 0;">
+            <input type="search" id="recipes-search" placeholder="Filter recipes by name or ID…" value="${escapeHtml(searchQuery)}" autocomplete="off" style="min-width: 200px; flex: 1 1 200px; max-width: 380px; padding: 5px 10px; font-size: 12px; border-radius: 0; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 500; letter-spacing: 1px;">Sort:</span>
-                <select id="recipes-sort" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
+                <select id="recipes-sort" style="font-size: 12px; padding: 4px 8px; border-radius: 0; background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);">
                     <option value="optimal" ${activeSort === "optimal" ? "selected" : ""}>Optimal (Primary first)</option>
                     <option value="cheapest" ${activeSort === "cheapest" ? "selected" : ""}>Cheapest first</option>
                 </select>
@@ -183,7 +183,7 @@ export function renderAndWireGroupedRecipes(body, sorted, db, onSortChange, empt
                 const isMUncalc = (mItem.flags & 0x10) || mItem.categoryName === "Uncalculable";
                 const mComp = mItem.complexity;
                 const mTooltip = `Complexity: ${isMUncalc || mComp === -1 || !isFinite(mComp) ? 'Uncalculable' : formatComplexity(mComp)}`;
-                const mStyle = isMUncalc ? "color: #fca5a5 !important;" : "color:var(--accent);";
+                const mStyle = isMUncalc ? "color: #fca5a5;" : "color:var(--accent);";
                 nameHtml = `<strong style="${mStyle} cursor:pointer;" class="machine-link" data-index="${mi}" title="${mTooltip}">${escapeHtml(mItem.name)}</strong>`;
             } else {
                 nameHtml = `<strong style="color:#ef4444; margin-right: 8px;">Unknown Machine (${escapeHtml(mRecipes[0].recipeType || "Code")})</strong>`;

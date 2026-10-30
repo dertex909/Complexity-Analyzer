@@ -54,7 +54,7 @@ export function generateSortControlsHtml(columns, currentSort, idPrefix) {
     const isAsc = currentDir === "asc";
 
     return `
-        <div class="sort-widget" id="${idPrefix}-sort-group" style="display: inline-flex; align-items: center; background: var(--bg-raised, #181d24); border: 1px solid var(--border, #262e3a); border-radius: 6px; height: 32px; box-sizing: border-box; transition: border-color 0.15s, box-shadow 0.15s; position: relative;">
+        <div class="sort-widget" id="${idPrefix}-sort-group" style="display: inline-flex; align-items: center; background: var(--bg-raised, #181d24); border: 1px solid var(--border, #262e3a); border-radius: 0; height: 32px; box-sizing: border-box; transition: border-color 0.15s, box-shadow 0.15s; position: relative;">
             <div style="display: flex; align-items: center; padding-left: 9px; color: var(--text-dim, #9aa8b8); pointer-events: none;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="m3 16 4 4 4-4"/>
@@ -64,7 +64,7 @@ export function generateSortControlsHtml(columns, currentSort, idPrefix) {
                 </svg>
             </div>
             
-            <select id="${idPrefix}-sort-field" title="Sort Column" style="color-scheme: dark; background: transparent !important; border: none !important; outline: none !important; box-shadow: none !important; color: var(--text, #e8edf2); font-family: var(--sans), sans-serif; font-size: 12px; font-weight: 500; padding: 0 24px 0 8px; height: 100%; cursor: pointer; appearance: none; -webkit-appearance: none; margin: 0;">
+            <select id="${idPrefix}-sort-field" title="Sort Column" style="color-scheme: dark; background: transparent; border: none; outline: none; box-shadow: none; color: var(--text, #e8edf2); font-family: var(--sans), sans-serif; font-size: 12px; font-weight: 500; padding: 0 24px 0 8px; height: 100%; cursor: pointer; appearance: none; -webkit-appearance: none; margin: 0;">
                 ${optionsHtml}
             </select>
             
@@ -72,7 +72,7 @@ export function generateSortControlsHtml(columns, currentSort, idPrefix) {
             
             <div style="width: 1px; height: 16px; background: var(--border, #262e3a);"></div>
             
-            <button id="${idPrefix}-sort-dir-btn" class="btn" title="${isAsc ? 'Ascending (lowest first)' : 'Descending (highest first)'}" style="background: transparent; border: none !important; outline: none !important; box-shadow: none !important; color: ${isAsc ? 'var(--accent, #5bc0ff)' : 'var(--text-dim, #9aa8b8)'}; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 100%; padding: 0; border-radius: 0 5px 5px 0; transition: all 0.15s ease;" onmouseover="this.style.background='var(--bg-hover, #202630)';this.style.color='var(--text, #e8edf2)';" onmouseout="this.style.background='transparent';this.style.color='${isAsc ? 'var(--accent, #5bc0ff)' : 'var(--text-dim, #9aa8b8)'}';">
+            <button id="${idPrefix}-sort-dir-btn" class="btn" title="${isAsc ? 'Ascending (lowest first)' : 'Descending (highest first)'}" style="background: transparent; border: none; outline: none; box-shadow: none; color: ${isAsc ? 'var(--accent, #5bc0ff)' : 'var(--text-dim, #9aa8b8)'}; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 100%; padding: 0; border-radius: 0; transition: all 0.15s ease;" onmouseover="this.style.background='var(--bg-hover, #202630)';this.style.color='var(--text, #e8edf2)';" onmouseout="this.style.background='transparent';this.style.color='${isAsc ? 'var(--accent, #5bc0ff)' : 'var(--text-dim, #9aa8b8)'}';">
                 <svg class="sort-arrow-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform: ${isAsc ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
                     <path d="M12 5v14"/>
                     <path d="m19 12-7 7-7-7"/>

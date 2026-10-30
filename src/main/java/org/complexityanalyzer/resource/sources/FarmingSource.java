@@ -61,13 +61,17 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         var plantId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
         var blockId = buf.readNullable(FriendlyByteBuf::readResourceLocation);
         double growthTicks = buf.readDouble();
-        double outputAmount = buf.readDouble();
+        double outputAmount = normalizeOutputAmount(buf.readDouble());
         if (plantId == null || blockId == null) return null;
         var plantItem = GameRegistryManager.getItem(plantId);
         var plantBlock = GameRegistryManager.getBlock(blockId);
         if (plantItem == null || plantItem == Items.AIR || plantBlock == null) return null;
         String details = buildDetails(plantItem, plantBlock, dropItem);
         return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, details);
+    }
+
+    private static double normalizeOutputAmount(double outputAmount) {
+        return Math.round(outputAmount * 100.0) / 100.0;
     }
 
     private static String buildDetails(Item plantItem, Block plantBlock, Item dropItem) {
@@ -175,7 +179,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
             for (var dropEntry : simResult.drops().reference2DoubleEntrySet()) {
                 var drop = dropEntry.getKey();
-                double outputAmount = dropEntry.getDoubleValue();
+                double outputAmount = normalizeOutputAmount(dropEntry.getDoubleValue());
                 if (outputAmount > 0.0) {
                     String details = buildDetails(plantItem, block, drop);
                     var data = new FarmingData(plantItem, block, growthTicks, outputAmount, details);
@@ -191,7 +195,10 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
     @Override
     public boolean canProvide(Item item) {
-        return productionMap.containsKey(item);
+        var list = productionMap.get(item);
+        if (list == null) return false;
+        for (var data : list) if (data.plantItem() != item) return true;
+        return false;
     }
 
     @Override
@@ -200,16 +207,17 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         var lst = productionMap.get(item);
         if (lst == null || lst.isEmpty()) return null;
 
-        var best = lst.getFirst();
-        double bestCost = calculateCost(best.avgGrowthTicks(), best.outputAmount());
-        for (int i = 1; i < lst.size(); i++) {
-            var current = lst.get(i);
+        FarmingData best = null;
+        double bestCost = Double.POSITIVE_INFINITY;
+        for (var current : lst) {
+            if (current.plantItem() == item) continue;
             double currentCost = calculateCost(current.avgGrowthTicks(), current.outputAmount());
             if (currentCost < bestCost) {
                 best = current;
                 bestCost = currentCost;
             }
         }
+        if (best == null) return null;
 
         var sourceItems = new Reference2DoubleOpenHashMap<Item>();
         sourceItems.put(best.plantItem(), 1.0 / best.outputAmount());
@@ -230,6 +238,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
         var results = new ObjectArrayList<BaseResourceData>();
         for (var data : list) {
+            if (data.plantItem() == item) continue;
             var sourceItems = new Reference2DoubleOpenHashMap<Item>();
             sourceItems.put(data.plantItem(), 1.0 / data.outputAmount());
 

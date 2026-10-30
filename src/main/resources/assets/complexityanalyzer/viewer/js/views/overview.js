@@ -21,6 +21,9 @@ import {escapeHtml, fmtInt} from "../core/utils.js";
 import {extractModNamespace} from "../components/item-filter.js";
 import {renderGenericTable} from "../components/generic-table.js";
 
+const MODRINTH_VERSIONS_URL = "https://api.modrinth.com/v2/project/complexity-analyzer/version";
+let updateCheckPromise = null;
+
 const MOD_COLUMNS = [
     {index: 1, label: "№", field: null, sortable: false},
     {index: 2, label: "Mod ID", field: "id", filter: null, sortable: true},
@@ -98,7 +101,7 @@ function openModTable(target, modId) {
 }
 
 function renderModsTable(container, mods) {
-    renderGenericTable(container, {
+    const table = renderGenericTable(container, {
         id: "mods",
         tableType: "mods",
         cssVarPrefix: "--mod-col",
@@ -107,6 +110,9 @@ function renderModsTable(container, mods) {
         searchPlaceholder: "Filter by mod ID or version…",
         entityLabel: "mods",
         getEntities: () => mods,
+        customFilter: (mod, filters) => !filters.contentOnly || mod.itemCount > 0 || mod.mobCount > 0
+            || mod.fluidCount > 0 || mod.machineCount > 0 || mod.recipeCount > 0,
+        controlsSuffixHtml: `<button id="mods-content-only" class="btn content-only-toggle" type="button" title="Hide mods with no indexed content" aria-pressed="${state.filters.mods.contentOnly}">Content only</button>`,
         renderRow: (mod, index) => {
             const row = document.createElement("div");
             row.className = "row mods-grid";
@@ -127,6 +133,75 @@ function renderModsTable(container, mods) {
                 });
             });
             return row;
+        }
+    });
+
+    const contentOnlyButton = container.querySelector("#mods-content-only");
+    contentOnlyButton.addEventListener("click", () => {
+        const enabled = !state.filters.mods.contentOnly;
+        setFilter("mods", {contentOnly: enabled});
+        contentOnlyButton.setAttribute("aria-pressed", String(enabled));
+        table.update();
+    });
+}
+
+function getMinecraftVersion(modVersion) {
+    return String(modVersion || "").match(/-(\d+\.\d+(?:\.\d+)?)$/)?.[1] || null;
+}
+
+async function fetchModrinthUpdate(modVersion) {
+    const minecraftVersion = getMinecraftVersion(modVersion);
+    if (!minecraftVersion) return {state: "unsupported-version", minecraftVersion: null};
+
+    const url = new URL(MODRINTH_VERSIONS_URL);
+    url.searchParams.set("game_versions", JSON.stringify([minecraftVersion]));
+    url.searchParams.set("include_changelog", "false");
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Modrinth responded with HTTP ${response.status}`);
+
+    const data = await response.json();
+    const latest = data[0];
+
+    return {
+        state: latest.version_number === modVersion ? "up-to-date" : "update-available",
+        minecraftVersion,
+        latestVersion: latest.version_number
+    };
+}
+
+export function checkModrinthUpdate(modVersion) {
+    const key = String(modVersion || "");
+    if (!updateCheckPromise) updateCheckPromise = fetchModrinthUpdate(key).catch(error => {
+        console.warn("Modrinth version check failed:", error);
+        return {state: "unavailable", minecraftVersion: getMinecraftVersion(key)};
+    });
+    return updateCheckPromise;
+}
+
+function renderModrinthStatus(container, modVersion) {
+    const status = container.querySelector("#modrinth-update-status");
+    const link = container.querySelector("#modrinth-update-link");
+    const gameVersion = container.querySelector("#mod-minecraft-version");
+    if (!status || !link || !gameVersion) return;
+
+    status.textContent = "Checking Modrinth for compatible updates…";
+    link.href = `https://modrinth.com/mod/complexity-analyzer/version/${encodeURIComponent(modVersion)}`;
+    link.textContent = "View installed version on Modrinth";
+    link.hidden = false;
+    void checkModrinthUpdate(modVersion).then(result => {
+        gameVersion.textContent = result.minecraftVersion || "Unknown";
+        link.classList.toggle("modrinth-update-link--available", result.state === "update-available");
+        if (result.state === "update-available") {
+            status.textContent = `Update available: ${result.latestVersion}`;
+            link.href = `https://modrinth.com/mod/complexity-analyzer/version/${encodeURIComponent(result.latestVersion)}`;
+            link.textContent = "View update on Modrinth";
+        } else if (result.state === "up-to-date") {
+            status.textContent = `You are up to date (${modVersion}).`;
+        } else if (result.state === "unsupported-version") {
+            status.textContent = "Could not determine the Minecraft version for this build.";
+        } else {
+            status.textContent = "Update status is unavailable.";
         }
     });
 }
@@ -156,13 +231,24 @@ export function renderOverview(container) {
                 </div>
             `).join("")}
         </div>
-        <div class="card">
-            <h4>File details</h4>
-            <div class="detail-grid">
-                <dt>Hash</dt><dd><code class="mono-code">0x${db.file.fileHash.toString(16)}</code></dd>
-                <dt>Generated</dt><dd>${m.timestampMs ? new Date(m.timestampMs).toLocaleString() : escapeHtml(m.timestampStr)}</dd>
-                <dt>Format version</dt><dd>0x${Number(db.file.version).toString(16)}</dd>
-                <dt>Server</dt><dd>${escapeHtml(m.serverName)}</dd>
+        <div class="overview-info-grid">
+            <div class="card">
+                <h4>File details</h4>
+                <div class="detail-grid">
+                    <dt>Hash</dt><dd><code class="mono-code">0x${db.file.fileHash.toString(16)}</code></dd>
+                    <dt>Generated</dt><dd>${m.timestampMs ? new Date(m.timestampMs).toLocaleString() : escapeHtml(m.timestampStr)}</dd>
+                    <dt>Format version</dt><dd>0x${Number(db.file.version).toString(16)}</dd>
+                    <dt>Server</dt><dd>${escapeHtml(m.serverName)}</dd>
+                </div>
+            </div>
+            <div class="card mod-info-card">
+                <h4>Complexity Analyzer</h4>
+                <div class="detail-grid">
+                    <dt>Installed version</dt><dd class="notranslate" translate="no">${escapeHtml(m.modVersion)}</dd>
+                    <dt>Minecraft</dt><dd id="mod-minecraft-version">Checking…</dd>
+                </div>
+                <div id="modrinth-update-status" class="modrinth-update-status" role="status" aria-live="polite"></div>
+                <a id="modrinth-update-link" class="modrinth-update-link" href="#" target="_blank" rel="noopener noreferrer" hidden>View update on Modrinth</a>
             </div>
         </div>
         <details class="card mod-list-card">
@@ -171,6 +257,7 @@ export function renderOverview(container) {
         </details>
     `;
 
+    renderModrinthStatus(container, m.modVersion);
     const mods = collectMods(db);
     const modsCategory = container.querySelector(".mod-list-card");
     let tableRendered = false;

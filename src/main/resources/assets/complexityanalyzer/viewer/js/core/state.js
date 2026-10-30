@@ -61,13 +61,14 @@ const DEFAULT_FILTERS = {
     },
     mods: {
         query: "",
-        sort: "id-asc"
+        sort: "id-asc",
+        contentOnly: false
     },
 };
 
 export const state = {
     db: null,
-    tab: "items",
+    tab: "overview",
     subTab: null,
     selectedItem: -1,
     selectedMob: -1,

@@ -271,7 +271,7 @@ function updateUrl() {
 
 function syncFromUrl() {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
-    const tab = params.get("tab") || "items";
+    const tab = params.get("tab") || "overview";
     const item = parseInt(params.get("item") || "-1", 10);
     const mob = parseInt(params.get("mob") || "-1", 10);
     const sub = params.get("sub") || null;

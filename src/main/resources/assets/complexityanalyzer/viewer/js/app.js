@@ -21,7 +21,7 @@ import {setState, state, store} from "./core/state.js";
 import {initRouter, renderTabs} from "./core/router.js";
 import {initCustomTabs, isCustomTabActive, unmountActivePlugin} from "./core/custom-tabs.js";
 import {initSidebar} from "./components/sidebar.js";
-import {renderOverview} from "./views/overview.js";
+import {checkModrinthUpdate, renderOverview} from "./views/overview.js";
 import {renderItems} from "./views/items.js";
 import {renderFluids} from "./views/fluids.js";
 import {renderMobs} from "./views/mobs.js";
@@ -176,6 +176,7 @@ async function main() {
 
     const db = await openWhenReady(token);
     setState({db});
+    void checkModrinthUpdate(db.meta.modVersion);
     hideLoadingOverlay();
 
     setStatus("ready", `${fmtInt.format(db.meta.itemCount)} items, ${fmtInt.format(db.meta.mobCount)} mobs`);

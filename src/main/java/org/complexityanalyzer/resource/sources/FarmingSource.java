@@ -66,7 +66,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         var plantItem = GameRegistryManager.getItem(plantId);
         var plantBlock = GameRegistryManager.getBlock(blockId);
         if (plantItem == null || plantItem == Items.AIR || plantBlock == null) return null;
-        String details = buildDetails(plantItem, plantBlock, dropItem);
+        String details = buildDetails(plantItem, plantBlock, dropItem, outputAmount);
         return new FarmingData(plantItem, plantBlock, growthTicks, outputAmount, details);
     }
 
@@ -74,14 +74,16 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         return Math.round(outputAmount * 100.0) / 100.0;
     }
 
-    private static String buildDetails(Item plantItem, Block plantBlock, Item dropItem) {
+    private static String buildDetails(Item plantItem, Block plantBlock, Item dropItem, double averageOutput) {
         String plantItemId = itemId(plantItem);
         String blockIdStr = blockId(plantBlock);
         String dropIdStr = itemId(dropItem);
+        String amount = "%.2f".formatted(averageOutput);
 
-        return plantItemId.equals(blockIdStr)
-                ? "Plant %s → harvest for %s".formatted(plantItemId, dropIdStr)
-                : "Plant %s (becomes %s) → harvest for %s".formatted(plantItemId, blockIdStr, dropIdStr);
+        String plant = plantItemId.equals(blockIdStr)
+                ? "Plant %s".formatted(plantItemId)
+                : "Plant %s (becomes %s)".formatted(plantItemId, blockIdStr);
+        return "%s → harvest an average of %s %s per planted seed".formatted(plant, amount, dropIdStr);
     }
 
     private static String itemId(Item item) {
@@ -181,7 +183,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
                 var drop = dropEntry.getKey();
                 double outputAmount = normalizeOutputAmount(dropEntry.getDoubleValue());
                 if (outputAmount > 0.0) {
-                    String details = buildDetails(plantItem, block, drop);
+                    String details = buildDetails(plantItem, block, drop, outputAmount);
                     var data = new FarmingData(plantItem, block, growthTicks, outputAmount, details);
                     productionMap.computeIfAbsent(drop, k -> new ObjectArrayList<>()).add(data);
                     found++;

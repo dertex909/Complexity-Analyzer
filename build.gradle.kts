@@ -25,10 +25,11 @@ val minecraftVersion = prop("minecraft_version")
 val loaderVersionRange = prop("loader_version_range")
 val nettyCodecHttpVersion = prop("netty_codec_http_version")
 val zstdJniVersion = prop("zstd_jni_version")
+val sprojectSlug = "complexity-analyzer"
 
 version = modVersion
 group = modGroupId
-base.archivesName.set(modId)
+base.archivesName.set(sprojectSlug)
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 java.withSourcesJar()
 idea.module.isDownloadJavadoc = true
@@ -120,7 +121,7 @@ publishMods {
     curseforge {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1377875"
-        projectSlug = "complexity-analyzer"
+        projectSlug = sprojectSlug
         minecraftVersions.add(minecraftVersion)
         server = true
         client = true

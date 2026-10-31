@@ -32,6 +32,7 @@ import java.util.zip.ZipInputStream;
 
 public final class WebPackScanner {
     private static final String ZIP_SUFFIX = ".zip";
+    private static final String JAR_SUFFIX = ".jar";
 
     private WebPackScanner() {
     }
@@ -49,13 +50,15 @@ public final class WebPackScanner {
         try {
             var modList = ModList.get();
             if (modList == null) return;
-            var isDev = WebPackPaths.getDevRoot() != null;
 
             for (var mod : modList.getMods()) {
-                if (isDev && mod.getModId().equals(ComplexityAnalyzer.MODID)) continue;
+                var modFile = mod.getOwningFile().getFile();
+                if (mod.getModId().equals(ComplexityAnalyzer.MODID)) {
+                    var modPath = modFile.getFilePath();
+                    if (!(modPath != null && modPath.toString().endsWith(JAR_SUFFIX))) continue;
+                }
 
                 try {
-                    var modFile = mod.getOwningFile().getFile();
                     var packsRoot = modFile.findResource(WebPackPaths.PACKS_DIR_NAME);
                     if (!FileManager.isDirectory(packsRoot)) continue;
 

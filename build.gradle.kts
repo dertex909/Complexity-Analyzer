@@ -51,6 +51,8 @@ neoForge {
         create("client-second") {
             client()
             gameDirectory.set(file("run/client-second"))
+            programArgument("--username")
+            programArgument("Dev2")
         }
 
         create("server") {

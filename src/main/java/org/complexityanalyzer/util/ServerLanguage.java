@@ -105,8 +105,8 @@ public class ServerLanguage {
         return false;
     }
 
-    public static Component translate(Component component, String locale) {
-        if (!needsTranslation(component)) return component;
+    public static MutableComponent translate(Component component, String locale) {
+        if (!needsTranslation(component)) return component.copy();
         MutableComponent result;
 
         if (component.getContents() instanceof TranslatableContents translatable) {
@@ -140,7 +140,7 @@ public class ServerLanguage {
         return result;
     }
 
-    public static Component translateForPlayer(Component component, ServerPlayer player) {
+    public static MutableComponent translateForPlayer(Component component, ServerPlayer player) {
         if (player == null) return translate(component, DEFAULT_LOCALE);
         return translate(component, player.clientInformation().language().toLowerCase(ROOT));
     }

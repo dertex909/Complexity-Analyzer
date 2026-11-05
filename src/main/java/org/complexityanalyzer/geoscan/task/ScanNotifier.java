@@ -18,6 +18,7 @@
 
 package org.complexityanalyzer.geoscan.task;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -37,9 +38,11 @@ public class ScanNotifier {
         server.execute(() -> {
             for (var player : server.getPlayerList().getPlayers()) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
-                player.sendSystemMessage(Component.literal("§e[CA] §f").append(translated));
+                player.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.YELLOW)
+                        .append(translated.withStyle(ChatFormatting.WHITE)));
             }
-            server.sendSystemMessage(Component.literal("§e[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
+            server.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.YELLOW)
+                    .append(ServerLanguage.translateForPlayer(message, null).withStyle(ChatFormatting.WHITE)));
         });
     }
 
@@ -48,10 +51,16 @@ public class ScanNotifier {
             for (var player : server.getPlayerList().getPlayers()) {
                 var warningTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), player);
                 var translated = ServerLanguage.translateForPlayer(message, player);
-                player.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTag).append(" §f").append(translated));
+                player.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.YELLOW)
+                        .append(warningTag.withStyle(ChatFormatting.GOLD))
+                        .append(" ")
+                        .append(translated.withStyle(ChatFormatting.WHITE)));
             }
             var warningTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.warning_tag"), null);
-            server.sendSystemMessage(Component.literal("§e[CA] §6").append(warningTagConsole).append(" §f").append(ServerLanguage.translateForPlayer(message, null)));
+            server.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.YELLOW)
+                    .append(warningTagConsole.withStyle(ChatFormatting.GOLD))
+                    .append(" ")
+                    .append(ServerLanguage.translateForPlayer(message, null).withStyle(ChatFormatting.WHITE)));
         });
     }
 
@@ -59,9 +68,11 @@ public class ScanNotifier {
         server.execute(() -> {
             for (var player : server.getPlayerList().getPlayers()) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
-                player.sendSystemMessage(Component.literal("§c[CA] §l").append(translated));
+                player.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.RED)
+                        .append(translated.withStyle(ChatFormatting.BOLD)));
             }
-            server.sendSystemMessage(Component.literal("§c[CA] §l").append(ServerLanguage.translateForPlayer(message, null)));
+            server.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.RED)
+                    .append(ServerLanguage.translateForPlayer(message, null).withStyle(ChatFormatting.BOLD)));
         });
     }
 
@@ -69,41 +80,50 @@ public class ScanNotifier {
         server.execute(() -> {
             for (var player : server.getPlayerList().getPlayers()) {
                 var translated = ServerLanguage.translateForPlayer(message, player);
-                player.sendSystemMessage(Component.literal("§a[CA] §f").append(translated));
+                player.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.GREEN)
+                        .append(translated.withStyle(ChatFormatting.WHITE)));
             }
-            server.sendSystemMessage(Component.literal("§a[CA] §f").append(ServerLanguage.translateForPlayer(message, null)));
+            server.sendSystemMessage(Component.literal("[CA] ").withStyle(ChatFormatting.GREEN)
+                    .append(ServerLanguage.translateForPlayer(message, null).withStyle(ChatFormatting.WHITE)));
         });
     }
 
     public void sendSuccess(@Nullable CommandSourceStack source, Component message) {
-        if (source != null) {
-            server.execute(() -> {
-                var player = source.getPlayer();
-                var translated = ServerLanguage.translateForPlayer(message, player);
-                var component = Component.literal("§a[CA] §f").append(translated);
-                source.sendSuccess(() -> component, false);
-            });
-        } else {
+        if (source == null) {
             logInfo(message);
+            return;
         }
+
+        server.execute(() -> {
+            var player = source.getPlayer();
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            var component = Component.literal("[CA] ").withStyle(ChatFormatting.GREEN)
+                    .append(translated.withStyle(ChatFormatting.WHITE));
+            source.sendSuccess(() -> component, false);
+        });
     }
 
     public void sendFailure(@Nullable CommandSourceStack source, Component message) {
-        if (source != null) {
-            server.execute(() -> {
-                var player = source.getPlayer();
-                var errorTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), player);
-                var translated = ServerLanguage.translateForPlayer(message, player);
-                var component = Component.literal("§c[CA] ").append(errorTag).append(": ").append(translated);
-                source.sendFailure(component);
-            });
-        } else {
-            server.execute(() -> {
-                var errorTagConsole = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), null);
-                var translatedConsole = ServerLanguage.translateForPlayer(message, null);
-                logError(Component.literal("").append(errorTagConsole).append(": ").append(translatedConsole).getString());
-            });
+        if (source == null) {
+            var errorTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), null);
+            var translated = ServerLanguage.translateForPlayer(message, null);
+            logError(Component.empty()
+                    .append(errorTag)
+                    .append(": ")
+                    .append(translated).getString());
+            return;
         }
+
+        server.execute(() -> {
+            var player = source.getPlayer();
+            var errorTag = ServerLanguage.translateForPlayer(Component.translatable("complexityanalyzer.notifier.error_tag"), player);
+            var translated = ServerLanguage.translateForPlayer(message, player);
+            var component = Component.literal("[CA] ").withStyle(ChatFormatting.RED)
+                    .append(errorTag)
+                    .append(": ")
+                    .append(translated);
+            source.sendFailure(component);
+        });
     }
 
     public void logInfo(Component message) {
@@ -141,9 +161,9 @@ public class ScanNotifier {
     public void notifyReconnaissanceFinished(boolean wasStopped) {
         if (wasStopped) {
             broadcastInfo(Component.translatable("complexityanalyzer.notifier.stopped"));
-        } else {
-            broadcastSuccess(Component.translatable("complexityanalyzer.notifier.recon_complete"));
+            return;
         }
+        broadcastSuccess(Component.translatable("complexityanalyzer.notifier.recon_complete"));
     }
 
     public void notifyRefinementFinished() {

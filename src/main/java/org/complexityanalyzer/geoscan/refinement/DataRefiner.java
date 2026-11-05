@@ -19,12 +19,13 @@
 package org.complexityanalyzer.geoscan.refinement;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
-import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.util.Scope;
 
 import java.io.IOException;
@@ -35,23 +36,22 @@ import java.util.concurrent.RejectedExecutionException;
 public class DataRefiner {
 
     private final GeoDatabase database;
-    private final ScanNotifier notifier;
+    private final OutputManager output;
 
     private final ConcurrentHashMap<Thread, Boolean> activeThreads = new ConcurrentHashMap<>();
     private final ExecutorService refinementExecutor = ThreadPoolManager.getInstance().getComputePool();
 
-    public DataRefiner(GeoDatabase database, ScanNotifier notifier) {
+    public DataRefiner(GeoDatabase database, OutputManager output) {
         this.database = database;
-        this.notifier = notifier;
+        this.output = output;
     }
 
     public void refine(Runnable onComplete) {
         database.setScanPhase(ScanMetadata.ScanPhase.REFINING);
-        notifier.sendSuccess(null, Component.translatable("complexityanalyzer.log.refiner.starting"));
-
-        ComplexityAnalyzer.LOGGER.info("[Refiner] Submitting refinement task...");
+        ComplexityAnalyzer.LOGGER.info("Reconnaissance complete. Starting refinement...");
 
         try {
+            ComplexityAnalyzer.LOGGER.info("[Refiner] Submitting refinement task...");
             refinementExecutor.execute(() -> {
                 ComplexityAnalyzer.LOGGER.info("[Refiner] Task STARTED on thread: {}", Thread.currentThread().getName());
                 var currentThread = Thread.currentThread();
@@ -65,7 +65,7 @@ public class DataRefiner {
                     ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine", reconPaths.size());
 
                     if (reconPaths.isEmpty()) {
-                        notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data"));
+                        ComplexityAnalyzer.LOGGER.warn("No reconnaissance data found.");
                         finishRefinement(onComplete);
                         return;
                     }
@@ -75,7 +75,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.heuristics"));
+                    ComplexityAnalyzer.LOGGER.info("Building heuristics from reconnaissance data...");
                     database.buildHeuristicFromFiles(reconPaths);
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -83,7 +83,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.clearing"));
+                    ComplexityAnalyzer.LOGGER.info("Clearing old final data...");
                     database.clearFinalData();
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -96,7 +96,7 @@ public class DataRefiner {
 
                     int processedBiomes = 0;
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimensions_count", reconPaths.size()));
+                    ComplexityAnalyzer.LOGGER.info("Refining data for {} dimensions...", reconPaths.size());
 
                     for (var dimEntry : Object2ObjectMaps.fastIterable(reconPaths)) {
 
@@ -107,7 +107,7 @@ public class DataRefiner {
 
                         var dimension = dimEntry.getKey();
                         var biomesMap = dimEntry.getValue();
-                        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.dimension_stat", dimension.toString(), biomesMap.size()));
+                        ComplexityAnalyzer.LOGGER.info("Refining dimension: {} ({} biomes)", dimension, biomesMap.size());
 
                         for (var biomeEntry : Object2ObjectMaps.fastIterable(biomesMap)) {
 
@@ -131,11 +131,11 @@ public class DataRefiner {
                         }
                     }
 
-                    notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.success", totalBiomes));
+                    ComplexityAnalyzer.LOGGER.info("All {} biomes refined successfully.", totalBiomes);
                     finishRefinement(onComplete);
 
                 } catch (IOException e) {
-                    notifier.logError(Component.translatable("complexityanalyzer.log.refiner.error"), e);
+                    ComplexityAnalyzer.LOGGER.error("Critical error during refinement.", e);
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 } catch (Exception e) {
                     ComplexityAnalyzer.LOGGER.error("[Refiner] Unexpected error!", e);
@@ -152,10 +152,11 @@ public class DataRefiner {
     }
 
     private void finishRefinement(Runnable onComplete) {
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.refiner.finalizing"));
+        ComplexityAnalyzer.LOGGER.info("Finalizing refinement...");
         database.setScanPhase(ScanMetadata.ScanPhase.COMPLETE);
         database.loadAll();
-        notifier.notifyRefinementFinished();
+        output.broadcast(Component.translatable("complexityanalyzer.notifier.complete").withStyle(ChatFormatting.GREEN));
+        ComplexityAnalyzer.LOGGER.info("Global refinement complete. GeoDatabase is now fully operational.");
 
         if (onComplete != null) try {
             onComplete.run();

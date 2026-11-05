@@ -22,6 +22,7 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -29,10 +30,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
-import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
 
@@ -44,7 +45,7 @@ public class ScanCoordinator {
     private final MinecraftServer server;
     private final GeoDatabase database;
     private final WorldScanner worldScanner;
-    private final ScanNotifier notifier;
+    private final OutputManager output;
 
     private final AtomicLong sessionIdGenerator = new AtomicLong(0);
 
@@ -54,12 +55,12 @@ public class ScanCoordinator {
             MinecraftServer server,
             GeoDatabase database,
             WorldScanner worldScanner,
-            ScanNotifier notifier
+            OutputManager output
     ) {
         this.server = server;
         this.database = database;
         this.worldScanner = worldScanner;
-        this.notifier = notifier;
+        this.output = output;
     }
 
     public ScanSession createSession(int chunksPerBiome, ScanProfile profile) {
@@ -162,7 +163,7 @@ public class ScanCoordinator {
         }
 
         session.loadAttemptedChunks(existingCoordinates);
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.starting_stats", tasks.size(), totalChunks));
+        ComplexityAnalyzer.LOGGER.info("Starting scan: {} biomes, {} chunks needed", tasks.size(), totalChunks);
         return true;
     }
 
@@ -170,7 +171,7 @@ public class ScanCoordinator {
         session.setPhase(ScanMetadata.ScanPhase.IDLE);
         session.clear();
         worldScanner.clearStopRequest();
-        notifier.notifyReconnaissanceFinished(false);
+        output.broadcast(Component.translatable("complexityanalyzer.notifier.recon_complete").withStyle(ChatFormatting.GREEN));
     }
 
     public void stopScan() {

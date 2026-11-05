@@ -21,6 +21,7 @@ package org.complexityanalyzer.geoscan;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -29,6 +30,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
+import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.config.ScanConfig;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
@@ -38,7 +40,6 @@ import org.complexityanalyzer.geoscan.scan.ScanCoordinator;
 import org.complexityanalyzer.geoscan.scan.ScanExecutor;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
-import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
 import org.complexityanalyzer.util.Scope;
@@ -54,7 +55,7 @@ public class GeoAnalysisManager {
     private final AnalysisEngine analysisEngine;
 
     private final ChunkBatchProcessor batchProcessor;
-    private final ScanNotifier notifier;
+    private final OutputManager output;
     private final ScanCoordinator coordinator;
     private final ScanExecutor scanExecutor;
     private final DataRefiner dataRefiner;
@@ -74,10 +75,10 @@ public class GeoAnalysisManager {
 
         var worldScanner = new WorldScanner(server);
         this.batchProcessor = new ChunkBatchProcessor(server);
-        this.notifier = new ScanNotifier(server);
-        this.coordinator = new ScanCoordinator(server, database, worldScanner, notifier);
-        this.scanExecutor = new ScanExecutor(server, database, worldScanner, batchProcessor, notifier);
-        this.dataRefiner = new DataRefiner(database, notifier);
+        this.output = new OutputManager(server);
+        this.coordinator = new ScanCoordinator(server, database, worldScanner, output);
+        this.scanExecutor = new ScanExecutor(server, database, worldScanner, batchProcessor);
+        this.dataRefiner = new DataRefiner(database, output);
 
         NeoForge.EVENT_BUS.register(this);
 
@@ -112,19 +113,19 @@ public class GeoAnalysisManager {
                 var phase = database.getScanPhase();
 
                 if (phase == ScanMetadata.ScanPhase.COMPLETE) {
-                    notifier.logInfo(Component.translatable("complexityanalyzer.notifier.complete"));
+                    ComplexityAnalyzer.LOGGER.info("Geo-scan complete. Database is fully optimized.");
                     database.loadAll();
                     return;
                 }
 
                 if (phase == ScanMetadata.ScanPhase.REFINING) {
-                    notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.error"));
+                    ComplexityAnalyzer.LOGGER.warn("Previous refinement did not finish; resuming from saved scan data.");
                     dataRefiner.refine(analysisEngine::onGeoScanFinished);
                     return;
                 }
 
                 if (phase == ScanMetadata.ScanPhase.RECONNAISSANCE) {
-                    notifier.logWarn(Component.translatable("complexityanalyzer.log.refiner.no_data"));
+                    ComplexityAnalyzer.LOGGER.warn("Previous reconnaissance was incomplete; resetting the scan phase.");
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 }
 
@@ -139,7 +140,7 @@ public class GeoAnalysisManager {
         if (isShutdown.get()) return;
 
         if (isScanning() || isCountdownActive() || scanStarting.get()) {
-            notifier.sendFailure(null, Component.translatable("complexityanalyzer.geoscan.error.already_running"));
+            ComplexityAnalyzer.LOGGER.error("Cannot schedule geo-scan: a scan is already running or scheduled.");
             return;
         }
 
@@ -148,7 +149,7 @@ public class GeoAnalysisManager {
         this.scheduledProfile = profile;
         this.countdownTicks.set(ScanConfig.COUNTDOWN_SECONDS * 20);
 
-        notifier.broadcastWarning(Component.translatable("complexityanalyzer.geoscan.notification.scheduled",
+        output.broadcastWarning(Component.translatable("complexityanalyzer.geoscan.notification.scheduled",
                 Component.translatable("complexityanalyzer.geoscan.profile." + profile.commandName),
                 ScanConfig.COUNTDOWN_SECONDS));
     }
@@ -161,7 +162,7 @@ public class GeoAnalysisManager {
                 if (isShutdown.get()) return;
 
                 if (!scanStarting.compareAndSet(false, true)) {
-                    notifier.sendFailure(null, Component.translatable("complexityanalyzer.geoscan.error.starting"));
+                    ComplexityAnalyzer.LOGGER.error("Cannot start geo-scan: another scan is starting.");
                     return;
                 }
 
@@ -194,25 +195,25 @@ public class GeoAnalysisManager {
                 Component.translatable("complexityanalyzer.geoscan.profile." + profile.commandName))
                 : Component.translatable("complexityanalyzer.geoscan.notification.forced_lag");
 
-        notifier.broadcastSevere(message);
+        output.broadcastSever(message);
     }
 
     public void stopScan(CommandSourceStack source) {
         if (isScanning()) {
             scanExecutor.stop();
             coordinator.stopScan();
-            notifier.sendSuccess(source, Component.translatable("complexityanalyzer.geoscan.notification.stopped"));
-            notifier.notifyReconnaissanceFinished(true);
+            output.sendSuccess(source, Component.translatable("complexityanalyzer.geoscan.notification.stopped"));
+            output.broadcast(Component.translatable("complexityanalyzer.notifier.stopped"));
             return;
         }
 
         if (isCountdownActive()) {
             cancelScheduledScan();
-            notifier.sendSuccess(source, Component.translatable("complexityanalyzer.geoscan.notification.cancelled"));
+            output.sendSuccess(source, Component.translatable("complexityanalyzer.geoscan.notification.cancelled"));
             return;
         }
 
-        notifier.sendFailure(source, Component.translatable("complexityanalyzer.geoscan.error.no_scan"));
+        output.sendFailure(source, Component.translatable("complexityanalyzer.geoscan.error.no_scan"));
     }
 
     public void cancelScheduledScan() {
@@ -221,7 +222,7 @@ public class GeoAnalysisManager {
             scheduledChunksPerBiome = 0;
             scheduledInitiator = "";
             scheduledProfile = ScanProfile.NORMAL;
-            notifier.broadcastInfo(Component.translatable("complexityanalyzer.geoscan.notification.scheduled_cancelled"));
+            output.broadcast(Component.translatable("complexityanalyzer.geoscan.notification.scheduled_cancelled"));
         }
     }
 
@@ -270,7 +271,7 @@ public class GeoAnalysisManager {
 
         countdownTicks.set(-1);
         var session = coordinator.createSession(chunksPerBiome, profile);
-        notifyScanStarting(chunksPerBiome, initiatorName, profile);
+        logScanStarting(chunksPerBiome, initiatorName, profile);
 
         var executor = analysisEngine.getBackgroundExecutor();
         if (executor == null) {
@@ -285,11 +286,9 @@ public class GeoAnalysisManager {
         }
     }
 
-    private void notifyScanStarting(int chunksPerBiome, String initiatorName, ScanProfile profile) {
-        var info = Component.translatable("complexityanalyzer.geoscan.initiator_format", initiatorName,
-                Component.translatable("complexityanalyzer.geoscan.profile." + profile.commandName),
-                Component.translatable("complexityanalyzer.unit.general.mode"));
-        notifier.notifyScanStarting(chunksPerBiome, info);
+    private void logScanStarting(int chunksPerBiome, String initiatorName, ScanProfile profile) {
+        ComplexityAnalyzer.LOGGER.info("[SCAN] Countdown finished. Starting scan requested by {} ({} mode) for {} chunks per biome.",
+                initiatorName, profile.displayName, chunksPerBiome);
     }
 
     private void runBackgroundScanSetup(ScanSession session) {
@@ -310,7 +309,7 @@ public class GeoAnalysisManager {
     private void finalizeUpToDateSession() {
         try {
             server.execute(() -> {
-                notifier.notifyDatabaseIsUpToDate();
+                output.broadcast(Component.translatable("complexityanalyzer.notifier.up_to_date").withStyle(ChatFormatting.GREEN));
                 coordinator.invalidateCurrentSession();
             });
         } catch (RejectedExecutionException ignored) {
@@ -357,7 +356,11 @@ public class GeoAnalysisManager {
 
         if (ticks % 20 == 0) {
             int secondsLeft = ticks / 20;
-            notifier.notifyScanCountdown(secondsLeft);
+            if (secondsLeft > 0 && (secondsLeft <= 10 || secondsLeft % 15 == 0)) {
+                output.broadcast(Component.translatable("complexityanalyzer.notifier.countdown", secondsLeft));
+            } else if (secondsLeft == 0) {
+                output.broadcastSever(Component.translatable("complexityanalyzer.notifier.started"));
+            }
             if (secondsLeft == 0) startScanInternal(scheduledChunksPerBiome, scheduledInitiator, scheduledProfile);
         }
     }

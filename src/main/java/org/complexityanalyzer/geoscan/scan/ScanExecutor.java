@@ -23,7 +23,6 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -35,7 +34,6 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.complexityanalyzer.geoscan.task.ChunkBatchProcessor;
-import org.complexityanalyzer.geoscan.task.ScanNotifier;
 import org.complexityanalyzer.geoscan.task.SpiralChunkSearcher;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
 import org.complexityanalyzer.util.Scope;
@@ -56,7 +54,6 @@ public class ScanExecutor {
     private final GeoDatabase database;
     private final WorldScanner worldScanner;
     private final ChunkBatchProcessor batchProcessor;
-    private final ScanNotifier notifier;
 
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final AtomicInteger activeWorkerCount = new AtomicInteger(0);
@@ -76,14 +73,12 @@ public class ScanExecutor {
             MinecraftServer server,
             GeoDatabase database,
             WorldScanner worldScanner,
-            ChunkBatchProcessor batchProcessor,
-            ScanNotifier notifier
+            ChunkBatchProcessor batchProcessor
     ) {
         this.server = server;
         this.database = database;
         this.worldScanner = worldScanner;
         this.batchProcessor = batchProcessor;
-        this.notifier = notifier;
     }
 
     public void execute(ScanSession newSession, Runnable onComplete) {
@@ -123,12 +118,11 @@ public class ScanExecutor {
         var newCtx = new SessionContext(newSession, onComplete, monitor);
         sessionRef.set(newCtx);
 
-        Component msptInfo = monitor.hasLimit()
-                ? Component.translatable("complexityanalyzer.log.scan.mspt_limit", monitor.getMsptLimit())
-                : Component.translatable("complexityanalyzer.log.scan.no_mspt_limit");
-
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.profile_info",
-                newSession.getProfile().displayName.toUpperCase(ROOT), msptInfo));
+        if (monitor.hasLimit()) {
+            ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} — vanilla generation, MSPT limit: {}", newSession.getProfile().displayName.toUpperCase(ROOT), Math.round(monitor.getMsptLimit()));
+        } else {
+            ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} — vanilla generation, no MSPT limit", newSession.getProfile().displayName.toUpperCase(ROOT));
+        }
 
         startWorker(newCtx);
     }
@@ -445,7 +439,7 @@ public class ScanExecutor {
         flushAllBuffers();
         logThrottleStats();
 
-        notifier.logInfo(Component.translatable("complexityanalyzer.log.scan.complete"));
+        ComplexityAnalyzer.LOGGER.info("[SCAN] ✅ Complete!");
 
         var callback = myCtx.onComplete();
         if (callback != null && !isShutdown.get()) try {
@@ -457,8 +451,8 @@ public class ScanExecutor {
 
     private void logThrottleStats() {
         int pauses = throttlePauseCount.get();
-        if (pauses > 0) notifier.logInfo(
-                Component.translatable("complexityanalyzer.log.scan.throttle_stats", pauses, totalThrottleTimeMs.get()));
+        if (pauses > 0) ComplexityAnalyzer.LOGGER.info(
+                "[SCAN] Throttle stats: {} pauses, total pause time: {}ms", pauses, totalThrottleTimeMs.get());
     }
 
     private void saveToBuffer(ResourceLocation dim, ResourceLocation biome, ChunkSnapshot snapshot) {

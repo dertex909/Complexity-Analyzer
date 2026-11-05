@@ -179,8 +179,8 @@ public class MachineRegistry {
         for (var block : blocks) {
             if (block.asItem() == AIR) continue;
 
-            if (block instanceof EntityBlock entityBlock) try {
-                var be = entityBlock.newBlockEntity(ZERO, block.defaultBlockState());
+            if (block instanceof EntityBlock eb) try {
+                var be = eb.newBlockEntity(ZERO, block.defaultBlockState());
                 if (be != null) {
                     beCache.put(block, be);
                     uniqueClasses.add(be.getClass());

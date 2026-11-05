@@ -34,6 +34,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -54,8 +55,13 @@ import java.util.UUID;
 
 public class PlantSimulator {
 
+    private static final GroundResult NO_GROUND = new GroundResult(Blocks.AIR, Direction.DOWN);
+    private static final String AGE_PROPERTY_NAME = BlockStateProperties.AGE_1.getName();
+    private static final IntegerProperty NO_AGE = IntegerProperty.create("ca_no_age", 0, 1);
+    private static final SimulationResult EMPTY_SIMULATION = new SimulationResult(Reference2DoubleMaps.emptyMap(), 0);
     private static final GameProfile PLANT_SIM_PROFILE = new GameProfile(new UUID(0L, 1L), "[PlantSim]");
     private static final BlockPos SIM_ORIGIN = new BlockPos(20_000_000, 200, 20_000_000);
+
     private static final int BARRIER_RADIUS = 16;
     private static final int SEARCH_RADIUS = 32;
     private static final int DEPTH_BELOW = 30;
@@ -63,17 +69,19 @@ public class PlantSimulator {
     private static final int MAX_TICKS = 50;
     private static final int MAX_BONEMEAL = 8;
     private static final int FLAG_NO_UPDATE = 2 | 16;
+
     private static final ObjectList<Block> PRIORITY_GROUNDS = ObjectArrayList.of(
             Blocks.FARMLAND, Blocks.PODZOL, Blocks.MYCELIUM, Blocks.DIRT,
             Blocks.GRASS_BLOCK, Blocks.SAND, Blocks.RED_SAND, Blocks.GRAVEL,
             Blocks.NETHERRACK, Blocks.SOUL_SAND, Blocks.SOUL_SOIL, Blocks.END_STONE, Blocks.WATER
     );
 
-    private final Object2ObjectMap<Block, SimulationResult> cache = new Object2ObjectOpenHashMap<>();
     private final BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-    private final Object2ObjectMap<Block, GroundResult> groundCache = new Object2ObjectOpenHashMap<>();
+
+    private final Reference2ObjectMap<Block, SimulationResult> cache = new Reference2ObjectOpenHashMap<>();
+    private final Reference2ObjectMap<Block, IntegerProperty> agePropCache = new Reference2ObjectOpenHashMap<>();
     private final Reference2IntMap<Block> ageMaxCache = new Reference2IntOpenHashMap<>();
-    private final Object2ObjectMap<Block, IntegerProperty> agePropCache = new Object2ObjectOpenHashMap<>();
+    private final Reference2ObjectMap<Block, GroundResult> groundCache = new Reference2ObjectOpenHashMap<>();
 
     private final int simOriginX = SIM_ORIGIN.getX();
     private final int simOriginY = SIM_ORIGIN.getY();
@@ -83,13 +91,6 @@ public class PlantSimulator {
 
     private Player fakePlayer;
     private boolean platformReady = false;
-
-    public SimulationResult simulate(Block plantBlock, ServerLevel level) {
-        if (cache.containsKey(plantBlock)) return cache.get(plantBlock);
-        var result = runSimulation(plantBlock, level);
-        cache.put(plantBlock, result);
-        return result;
-    }
 
     public Object2ObjectMap<Block, SimulationResult> simulateAll(ObjectList<Block> blocks, ServerLevel level) {
         if (blocks == null || blocks.isEmpty()) return null;
@@ -269,10 +270,18 @@ public class PlantSimulator {
         return drops;
     }
 
+    public SimulationResult simulate(Block plantBlock, ServerLevel level) {
+        var cached = cache.get(plantBlock);
+        if (cached != null) return cached == EMPTY_SIMULATION ? null : cached;
+        var result = runSimulation(plantBlock, level);
+        cache.put(plantBlock, result != null ? result : EMPTY_SIMULATION);
+        return result;
+    }
+
     @Nullable
     private GroundResult findSuitableGround(Block plantBlock, ServerLevel level) {
-        if (groundCache.containsKey(plantBlock)) return groundCache.get(plantBlock);
-
+        var cached = groundCache.get(plantBlock);
+        if (cached != null) return cached == NO_GROUND ? null : cached;
         var plantPos = SIM_ORIGIN;
         var plantState = plantBlock.defaultBlockState();
         var result = tryFindGround(plantPos, plantState, level, PRIORITY_GROUNDS);
@@ -282,7 +291,7 @@ public class PlantSimulator {
         }
 
         result = tryFindGround(plantPos, plantState, level, GameRegistryManager.getAllBlocks());
-        groundCache.put(plantBlock, result);
+        groundCache.put(plantBlock, result != null ? result : NO_GROUND);
         return result;
     }
 
@@ -291,7 +300,7 @@ public class PlantSimulator {
         for (var dir : Direction.values()) {
             mutablePos.setWithOffset(plantPos, dir);
             for (var b : blocks) {
-                if (b instanceof EntityBlock || b.defaultBlockState().hasBlockEntity()) continue;
+                if (b instanceof EntityBlock) continue;
                 if (tryGroundWithSetBlock(b.defaultBlockState(), plantState, level, mutablePos, plantPos)) {
                     return new GroundResult(b, dir);
                 }
@@ -501,14 +510,16 @@ public class PlantSimulator {
 
     private IntegerProperty findAgeProperty(Block b) {
         var cached = agePropCache.get(b);
-        if (cached != null) return cached;
+        if (cached != null) return cached == NO_AGE ? null : cached;
 
         for (var prop : b.defaultBlockState().getProperties()) {
-            if (prop instanceof IntegerProperty ip && (prop.getName().equals("age") || prop.getName().equals("growth"))) {
+            if (prop instanceof IntegerProperty ip && ip.getName().equals(AGE_PROPERTY_NAME)) {
                 agePropCache.put(b, ip);
                 return ip;
             }
         }
+
+        agePropCache.put(b, NO_AGE);
         return null;
     }
 

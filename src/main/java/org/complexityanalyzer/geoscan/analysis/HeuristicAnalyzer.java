@@ -38,7 +38,6 @@ public class HeuristicAnalyzer {
     private static final double NATURAL_BLOCK_RARITY_THRESHOLD = 0.00005;
 
     private final ConcurrentHashMap<ResourceLocation, ReferenceSet<Block>> dimensionalHeuristics = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Block> blockCache = new ConcurrentHashMap<>();
 
     public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) {
         int uniqueBlockTypes = snapshot.blockCounts().size();
@@ -67,7 +66,7 @@ public class HeuristicAnalyzer {
                 var snapshots = storage.readReconFile(path);
                 for (var snapshot : snapshots) {
                     for (var bcEntry : Object2IntMaps.fastIterable(snapshot.blockCounts())) {
-                        var block = getBlockCached(bcEntry.getKey());
+                        var block = GameRegistryManager.getBlock(bcEntry.getKey());
                         if (block == null) continue;
                         int count = bcEntry.getIntValue();
                         totalCounts.addTo(block, count);
@@ -94,9 +93,7 @@ public class HeuristicAnalyzer {
 
     public BiomeScanData refineRawData(ObjectArrayList<ChunkSnapshot> snapshots, ResourceLocation dimensionId) {
         var finalCleanData = new BiomeScanData();
-        for (var snapshot : snapshots) {
-            processSnapshotForRefine(snapshot, dimensionId, finalCleanData);
-        }
+        for (var snapshot : snapshots) processSnapshotForRefine(snapshot, dimensionId, finalCleanData);
         return finalCleanData;
     }
 
@@ -105,7 +102,7 @@ public class HeuristicAnalyzer {
         finalCleanData.addScannedChunk(snapshot.chunkX(), snapshot.chunkZ());
 
         for (var entry : Object2IntMaps.fastIterable(snapshot.blockCounts())) {
-            var block = getBlockCached(entry.getKey());
+            var block = GameRegistryManager.getBlock(entry.getKey());
             if (block != null && block != Blocks.AIR && block != Blocks.BEDROCK) {
                 finalCleanData.addBlock(block, entry.getIntValue());
             }
@@ -114,7 +111,6 @@ public class HeuristicAnalyzer {
 
     public void clear() {
         dimensionalHeuristics.clear();
-        blockCache.clear();
     }
 
     private boolean isChunkCleanByHeuristic(ChunkSnapshot snapshot, ResourceLocation dimensionId) {
@@ -129,24 +125,12 @@ public class HeuristicAnalyzer {
 
         int unnaturalBlockCount = 0;
         for (var entry : Object2IntMaps.fastIterable(snapshot.blockCounts())) {
-            var block = getBlockCached(entry.getKey());
+            var block = GameRegistryManager.getBlock(entry.getKey());
             if (block != null && block != Blocks.AIR && !heuristic.contains(block)) {
                 unnaturalBlockCount += entry.getIntValue();
             }
             if (unnaturalBlockCount > REFINE_UNNATURAL_THRESHOLD) return false;
         }
         return true;
-    }
-
-    private Block getBlockCached(String key) {
-        var block = blockCache.get(key);
-        if (block == null) {
-            var rl = ResourceLocation.tryParse(key);
-            if (rl != null) {
-                block = GameRegistryManager.getBlock(rl);
-                if (block != null) blockCache.put(key, block);
-            }
-        }
-        return block;
     }
 }

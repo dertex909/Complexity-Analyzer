@@ -20,36 +20,30 @@ package org.complexityanalyzer.geoscan.task;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.geoscan.data.ChunkSnapshot;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.ConcurrentHashMap;
+import static net.minecraft.world.level.block.Blocks.*;
 
 public class ChunkAnalyzer {
-    private final ConcurrentHashMap<Block, String> blockIdCache = new ConcurrentHashMap<>();
-
     public @Nullable ChunkSnapshot createSnapshot(ChunkAccess chunk) {
         var blockCounts = new Reference2IntOpenHashMap<Block>();
         blockCounts.defaultReturnValue(0);
-        LevelChunkSection[] sections = chunk.getSections();
+        var sections = chunk.getSections();
 
         for (var section : sections) {
             if (section == null || section.hasOnlyAir()) continue;
-
             section.getStates().count((state, count) -> {
                 var block = state.getBlock();
-                if (block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR) {
-                    blockCounts.addTo(block, count);
-                }
+                if (block != AIR && block != CAVE_AIR && block != VOID_AIR) blockCounts.addTo(block, count);
             });
         }
 
-        var finalCounts = new Object2IntOpenHashMap<String>(blockCounts.size());
+        var finalCounts = new Object2IntOpenHashMap<ResourceLocation>(blockCounts.size());
         finalCounts.defaultReturnValue(0);
 
         var it = blockCounts.reference2IntEntrySet().fastIterator();
@@ -59,8 +53,7 @@ public class ChunkAnalyzer {
             if (block == null) continue;
             var resourceLoc = GameRegistryManager.getBlockId(block);
             if (resourceLoc == null) continue;
-            String blockId = blockIdCache.computeIfAbsent(block, b -> resourceLoc.toString());
-            finalCounts.put(blockId, entry.getIntValue());
+            finalCounts.put(resourceLoc, entry.getIntValue());
         }
 
         return new ChunkSnapshot(chunk.getPos().x, chunk.getPos().z, finalCounts);

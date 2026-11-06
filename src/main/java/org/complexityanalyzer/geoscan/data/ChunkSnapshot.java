@@ -19,10 +19,11 @@
 package org.complexityanalyzer.geoscan.data;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.minecraft.resources.ResourceLocation;
 
 public record ChunkSnapshot(
         int chunkX,
         int chunkZ,
-        Object2IntOpenHashMap<String> blockCounts
+        Object2IntOpenHashMap<ResourceLocation> blockCounts
 ) {
 }

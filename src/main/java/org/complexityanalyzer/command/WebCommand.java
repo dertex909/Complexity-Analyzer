@@ -102,7 +102,7 @@ public final class WebCommand {
 
         if (snap != null) {
             long ageMs = System.currentTimeMillis() - snap.generatedAtMs();
-            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", FormatUtils.formatDurationMs(ageMs)), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", FormatUtils.formatDurationSeconds(ageMs / 1000)), ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", snap.itemCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", snap.mobCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
             output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", snap.recipeCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);

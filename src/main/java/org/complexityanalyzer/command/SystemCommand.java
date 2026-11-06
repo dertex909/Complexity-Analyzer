@@ -238,7 +238,7 @@ public final class SystemCommand {
         try {
             long size = FileManager.getSize(file);
             var modified = FileManager.getLastModifiedTime(file).toInstant();
-            String age = FormatUtils.formatAge(Duration.between(modified, Instant.now()));
+            String age = FormatUtils.formatDurationSeconds(Duration.between(modified, Instant.now()).getSeconds());
 
             var status = Component.translatable("complexityanalyzer.command.system.cache.status.present").withStyle(ChatFormatting.GREEN);
             var details = Component.translatable("complexityanalyzer.command.system.cache.status.details", FormatUtils.humanBytes(size), age)

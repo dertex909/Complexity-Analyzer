@@ -23,8 +23,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import org.complexityanalyzer.core.GameRegistryManager;
 
-import java.time.Duration;
-
 public final class FormatUtils {
 
     private FormatUtils() {
@@ -88,13 +86,5 @@ public final class FormatUtils {
 
         var dSuffix = Component.translatable("complexityanalyzer.unit.time.days_short").getString();
         return (hours / 24) + dSuffix + " " + (hours % 24) + hSuffix;
-    }
-
-    public static String formatDurationMs(long ms) {
-        return formatDurationSeconds(ms / 1000);
-    }
-
-    public static String formatAge(Duration d) {
-        return formatDurationSeconds(d.getSeconds());
     }
 }

@@ -31,6 +31,10 @@ import org.complexityanalyzer.export.format.ExportData.MobData;
 import java.io.IOException;
 
 public class JsonExportFormat implements IExportFormat {
+    private static final String JSON = "json";
+    private static final String POSITIVE_INFINITY = "Infinity";
+    private static final String NEGATIVE_INFINITY = "-Infinity";
+    private static final String NAN = "NaN";
 
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
@@ -41,12 +45,12 @@ public class JsonExportFormat implements IExportFormat {
 
     @Override
     public String getId() {
-        return "json";
+        return JSON;
     }
 
     @Override
     public String getFileExtension() {
-        return "json";
+        return JSON;
     }
 
     @Override
@@ -75,9 +79,9 @@ public class JsonExportFormat implements IExportFormat {
             if (value == null) {
                 out.nullValue();
             } else if (Double.isInfinite(value)) {
-                out.value(value > 0 ? "Infinity" : "-Infinity");
+                out.value(value > 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY);
             } else if (Double.isNaN(value)) {
-                out.value("NaN");
+                out.value(NAN);
             } else {
                 out.value(value);
             }
@@ -89,9 +93,9 @@ public class JsonExportFormat implements IExportFormat {
                 case STRING -> {
                     String str = in.nextString();
                     yield switch (str) {
-                        case "Infinity" -> Double.POSITIVE_INFINITY;
-                        case "-Infinity" -> Double.NEGATIVE_INFINITY;
-                        case "NaN" -> Double.NaN;
+                        case POSITIVE_INFINITY -> Double.POSITIVE_INFINITY;
+                        case NEGATIVE_INFINITY -> Double.NEGATIVE_INFINITY;
+                        case NAN -> Double.NaN;
                         default -> Double.parseDouble(str);
                     };
                 }

@@ -18,23 +18,24 @@
 
 package org.complexityanalyzer.export.format;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import org.complexityanalyzer.export.format.ExportData.ItemData;
 import org.complexityanalyzer.export.format.ExportData.MobData;
 
 import java.util.StringJoiner;
 
 public class CsvExportFormat implements IExportFormat {
+    private static final String CSV = "csv";
 
     @Override
     public String getId() {
-        return "csv";
+        return CSV;
     }
 
     @Override
     public String getFileExtension() {
-        return "csv";
+        return CSV;
     }
 
     @Override
@@ -44,9 +45,7 @@ public class CsvExportFormat implements IExportFormat {
 
     @Override
     public String formatSingleItem(ItemData item) {
-        var list = new ObjectArrayList<ItemData>(1);
-        list.add(item);
-        return buildItemsCsv(list);
+        return buildItemsCsv(ObjectLists.singleton(item));
     }
 
     @Override
@@ -56,9 +55,7 @@ public class CsvExportFormat implements IExportFormat {
 
     @Override
     public String formatSingleMob(MobData mob) {
-        var list = new ObjectArrayList<MobData>(1);
-        list.add(mob);
-        return buildMobsCsv(list);
+        return buildMobsCsv(ObjectLists.singleton(mob));
     }
 
     private String buildItemsCsv(ObjectList<ItemData> items) {

@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
@@ -39,9 +40,9 @@ import java.util.function.Supplier;
 public final class MachineReflectionScanner {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final MethodInfo[] EMPTY_METHOD_INFOS = new MethodInfo[0];
-    private static final FieldInfo[] EMPTY_FIELD_INFOS = new FieldInfo[0];
-    private static final ClassInfo EMPTY_INFO = new ClassInfo(EMPTY_METHOD_INFOS, EMPTY_FIELD_INFOS, EMPTY_FIELD_INFOS);
+    private static final MemberInfo[] EMPTY_MEMBERS = new MemberInfo[0];
+    private static final ClassInfo EMPTY_INFO = new ClassInfo(EMPTY_MEMBERS, EMPTY_MEMBERS, EMPTY_MEMBERS, EMPTY_MEMBERS);
+
     private final Object2ObjectMap<Class<?>, ClassInfo> classInfoCache = new Object2ObjectOpenHashMap<>();
     private final BiPredicate<RecipeType<?>, Item> registrar;
 
@@ -60,23 +61,25 @@ public final class MachineReflectionScanner {
         return name.startsWith("get") || name.startsWith("recipe") || name.startsWith("type");
     }
 
-    private int scanBeMember(MethodHandle handle, Object member, BlockEntity be, Item machineItem, MachineRegistryDebugLogger logger, boolean isMethod) {
+    private static void logScan(MachineRegistryDebugLogger logger, Member member, @Nullable Object raw, @Nullable RecipeType<?> rt, boolean matched, @Nullable Throwable t) {
+        if (member instanceof Method m) logger.logBeMethod(m, raw, rt, matched, t);
+        else if (member instanceof Field f) logger.logBeField(f, raw, rt, matched, t);
+    }
+
+    private static void logDeep(MachineRegistryDebugLogger logger, Member member, @Nullable Object val, @Nullable RecipeType<?> rt, boolean isComplex, int depth, @Nullable Throwable t) {
+        if (member instanceof Method m) logger.logDeepMethod(m, val, rt, t, isComplex, depth);
+        else if (member instanceof Field f) logger.logDeepField(f, val, rt, t, isComplex, depth);
+    }
+
+    private int scanBeMember(MemberInfo info, BlockEntity be, Item machineItem, MachineRegistryDebugLogger logger) {
         try {
-            var raw = handle.invoke(be);
+            var raw = info.extract(be);
             var recipeType = MachineTypeUnwrapper.unwrapRecipeType(raw);
             boolean matched = recipeType != null && registrar.test(recipeType, machineItem);
-            if (isMethod) {
-                logger.logBeMethod((Method) member, raw, recipeType, matched, null);
-            } else {
-                logger.logBeField((Field) member, raw, recipeType, matched, null);
-            }
+            logScan(logger, info.member(), raw, recipeType, matched, null);
             return matched ? 1 : 0;
         } catch (Throwable t) {
-            if (isMethod) {
-                logger.logBeMethod((Method) member, null, null, false, t);
-            } else {
-                logger.logBeField((Field) member, null, null, false, t);
-            }
+            logScan(logger, info.member(), null, null, false, t);
             return 0;
         }
     }
@@ -87,14 +90,10 @@ public final class MachineReflectionScanner {
         var info = classInfo(beClass);
 
         logger.logBeMethodScanStart(beClass);
-        for (var mInfo : info.recipeMethods()) {
-            count += scanBeMember(mInfo.handle(), mInfo.method(), be, machineItem, logger, true);
-        }
+        for (var m : info.recipeMethods()) count += scanBeMember(m, be, machineItem, logger);
 
         logger.logBeHierarchyClass(beClass);
-        for (var fInfo : info.instanceFields()) {
-            count += scanBeMember(fInfo.handle(), fInfo.field(), be, machineItem, logger, false);
-        }
+        for (var f : info.instanceFields()) count += scanBeMember(f, be, machineItem, logger);
 
         return count;
     }
@@ -107,7 +106,7 @@ public final class MachineReflectionScanner {
             var info = classInfo(clazz);
             for (var fInfo : info.staticFields()) {
                 try {
-                    var val = fInfo.handle().invoke();
+                    var val = fInfo.extractStatic();
                     var recipeType = MachineTypeUnwrapper.unwrapRecipeType(val);
                     if (recipeType != null && !recipeTypes.contains(recipeType)) recipeTypes.add(recipeType);
                 } catch (Throwable ignored) {
@@ -158,15 +157,14 @@ public final class MachineReflectionScanner {
 
         var info = classInfo(obj.getClass());
 
-        for (var mInfo : info.recipeMethods()) {
+        for (var accessor : info.allDeepAccessors()) {
             try {
-                var val = mInfo.handle().invoke(obj);
+                var val = accessor.extract(obj);
                 if (val == null || val == obj) continue;
 
                 var rt = MachineTypeUnwrapper.unwrapRecipeType(val);
                 boolean isComplex = isComplexObject(val);
-                logger.logDeepMethod(mInfo.method(), val, rt, null, isComplex, depth);
-
+                logDeep(logger, accessor.member(), val, rt, isComplex, depth, null);
                 if (rt != null) return rt;
 
                 if (isComplex) {
@@ -174,33 +172,13 @@ public final class MachineReflectionScanner {
                     if (deep != null) return deep;
                 }
             } catch (Throwable t) {
-                logger.logDeepMethod(mInfo.method(), null, null, t, false, depth);
-            }
-        }
-
-        for (var fInfo : info.instanceFields()) {
-            try {
-                var val = fInfo.handle().invoke(obj);
-                if (val == null || val == obj) continue;
-
-                var rt = MachineTypeUnwrapper.unwrapRecipeType(val);
-                boolean isComplex = isComplexObject(val);
-                logger.logDeepField(fInfo.field(), val, rt, null, isComplex, depth);
-
-                if (rt != null) return rt;
-
-                if (isComplex) {
-                    var deep = findRecipeTypeDeep(val, depth + 1, visited, logger);
-                    if (deep != null) return deep;
-                }
-            } catch (Throwable t) {
-                logger.logDeepField(fInfo.field(), null, null, t, false, depth);
+                logDeep(logger, accessor.member(), null, null, false, depth, t);
             }
         }
         return null;
     }
 
-    public ClassInfo classInfo(Class<?> clazz) {
+    private ClassInfo classInfo(Class<?> clazz) {
         var info = classInfoCache.get(clazz);
         if (info == null) {
             info = buildClassInfo(clazz);
@@ -212,7 +190,7 @@ public final class MachineReflectionScanner {
     private ClassInfo buildClassInfo(Class<?> clazz) {
         if (!MachineTypeUnwrapper.curClsValid(clazz)) return EMPTY_INFO;
 
-        var methods = new ObjectArrayList<MethodInfo>();
+        var methods = new ObjectArrayList<MemberInfo>();
         for (var method : clazz.getMethods()) {
             if (method.getParameterCount() != 0) continue;
 
@@ -225,13 +203,13 @@ public final class MachineReflectionScanner {
             if (isValidType || isCandidateMethodName(method.getName())) try {
                 method.setAccessible(true);
                 var mh = LOOKUP.unreflect(method);
-                methods.add(new MethodInfo(mh, method));
+                methods.add(new MemberInfo(mh, method));
             } catch (Throwable ignored) {
             }
         }
 
-        var instanceFields = new ObjectArrayList<FieldInfo>();
-        var staticFields = new ObjectArrayList<FieldInfo>();
+        var instanceFields = new ObjectArrayList<MemberInfo>();
+        var staticFields = new ObjectArrayList<MemberInfo>();
         var current = clazz;
 
         while (MachineTypeUnwrapper.curClsValid(current)) {
@@ -241,9 +219,9 @@ public final class MachineReflectionScanner {
                     field.setAccessible(true);
                     var mh = LOOKUP.unreflectGetter(field);
                     if (Modifier.isStatic(field.getModifiers())) {
-                        staticFields.add(new FieldInfo(mh, field));
+                        staticFields.add(new MemberInfo(mh, field));
                     } else {
-                        instanceFields.add(new FieldInfo(mh, field));
+                        instanceFields.add(new MemberInfo(mh, field));
                     }
                 } catch (Throwable ignored) {
                 }
@@ -251,19 +229,28 @@ public final class MachineReflectionScanner {
             current = current.getSuperclass();
         }
 
-        var methodArray = methods.isEmpty() ? EMPTY_METHOD_INFOS : methods.toArray(new MethodInfo[0]);
-        var instFieldArray = instanceFields.isEmpty() ? EMPTY_FIELD_INFOS : instanceFields.toArray(new FieldInfo[0]);
-        var staticFieldArray = staticFields.isEmpty() ? EMPTY_FIELD_INFOS : staticFields.toArray(new FieldInfo[0]);
+        var methodArray = methods.isEmpty() ? EMPTY_MEMBERS : methods.toArray(new MemberInfo[0]);
+        var instFieldArray = instanceFields.isEmpty() ? EMPTY_MEMBERS : instanceFields.toArray(new MemberInfo[0]);
+        var staticFieldArray = staticFields.isEmpty() ? EMPTY_MEMBERS : staticFields.toArray(new MemberInfo[0]);
 
-        return new ClassInfo(methodArray, instFieldArray, staticFieldArray);
+        var allDeep = new MemberInfo[methodArray.length + instFieldArray.length];
+        System.arraycopy(methodArray, 0, allDeep, 0, methodArray.length);
+        System.arraycopy(instFieldArray, 0, allDeep, methodArray.length, instFieldArray.length);
+
+        return new ClassInfo(methodArray, instFieldArray, staticFieldArray, allDeep);
     }
 
-    public record MethodInfo(MethodHandle handle, Method method) {
+    private record MemberInfo(MethodHandle handle, Member member) {
+        @Nullable Object extract(Object target) throws Throwable {
+            return handle.invoke(target);
+        }
+
+        @Nullable Object extractStatic() throws Throwable {
+            return handle.invoke();
+        }
     }
 
-    public record FieldInfo(MethodHandle handle, Field field) {
-    }
-
-    public record ClassInfo(MethodInfo[] recipeMethods, FieldInfo[] instanceFields, FieldInfo[] staticFields) {
+    private record ClassInfo(MemberInfo[] recipeMethods, MemberInfo[] instanceFields,
+                             MemberInfo[] staticFields, MemberInfo[] allDeepAccessors) {
     }
 }

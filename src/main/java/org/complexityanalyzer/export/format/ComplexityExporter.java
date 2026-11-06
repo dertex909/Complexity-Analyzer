@@ -18,9 +18,7 @@
 
 package org.complexityanalyzer.export.format;
 
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.Reference2DoubleMaps;
+import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.EntityType;
@@ -149,10 +147,6 @@ public class ComplexityExporter {
         return exportPath;
     }
 
-    private static boolean checkIfHardcoded(Item item) {
-        return HardcodedSource.isInitialized() && HardcodedSource.getRegistry().isRegistered(item);
-    }
-
     private static ItemData buildItemData(Item item, ResourceLocation itemId, ItemComplexity complexity,
                                           AnalysisEngine engine) {
         var sourcesRaw = engine.findAllSourcesForItem(item);
@@ -160,7 +154,7 @@ public class ComplexityExporter {
         for (var data : sourcesRaw) sources.add(buildSourceData(data, engine));
         sources.sort(SOURCE_DATA_COMPARATOR);
 
-        boolean isHardcoded = checkIfHardcoded(item);
+        boolean isHardcoded = HardcodedSource.isInitialized() && HardcodedSource.getRegistry().isRegistered(item);
 
         return new ItemData(
                 itemId.toString(),
@@ -201,15 +195,16 @@ public class ComplexityExporter {
         if (mobProvider == null) return null;
         var props = mobProvider.getProperties(type);
         if (props == null) return null;
-
-        var drops = new ObjectArrayList<ExportData.MobDropData>();
         var source = engine.getSourceByType(MobDropSource.class);
-        if (source != null) for (var d : source.getDropsForEntity(type)) {
-            drops.add(new ExportData.MobDropData(
-                    GameRegistryManager.getItemId(d.item()).toString(),
-                    d.item().getDescription().getString(),
-                    d.averageYield()
-            ));
+
+        ObjectList<ExportData.MobDropData> drops;
+        if (source == null) {
+            drops = ObjectLists.emptyList();
+        } else {
+            drops = new ObjectArrayList<>();
+            for (var d : source.getDropsForEntity(type)) {
+                drops.add(new ExportData.MobDropData(GameRegistryManager.getItemId(d.item()).toString(), d.item().getDescription().getString(), d.averageYield()));
+            }
         }
 
         return new MobData(type.getDescription().getString(), GameRegistryManager.getEntityTypeId(type).toString(),

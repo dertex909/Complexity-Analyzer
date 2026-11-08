@@ -30,21 +30,14 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.ServerLanguage;
 
-import java.util.Locale;
-
 @EventBusSubscriber
 public class AnalysisBootstrap {
-
-    static {
-        Locale.setDefault(Locale.ROOT);
-    }
 
     private AnalysisBootstrap() {
     }
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
-        Locale.setDefault(Locale.ROOT);
         ServerLanguage.init();
         var server = event.getServer();
         GameRegistryManager.initialize();

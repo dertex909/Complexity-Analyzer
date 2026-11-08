@@ -32,6 +32,6 @@ public final class JvmDictatorEvents {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
-        if (Locale.getDefault() != Locale.ROOT) Locale.setDefault(Locale.ROOT);
+        if (Locale.getDefault(Locale.Category.FORMAT) != Locale.ROOT) Locale.setDefault(Locale.ROOT);
     }
 }

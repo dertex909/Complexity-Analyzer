@@ -104,7 +104,7 @@ public class JsonExportFormat implements IExportFormat {
                     in.nextNull();
                     yield null;
                 }
-                default -> throw new JsonSyntaxException("Expected number or string");
+                default -> throw new JsonSyntaxException("Expected number or string, got " + in.peek());
             };
         }
     }

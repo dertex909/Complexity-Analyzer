@@ -310,15 +310,16 @@ public class PlantSimulator {
     }
 
     private boolean tryGroundWithSetBlock(BlockState candidateState, BlockState plantState, ServerLevel level, BlockPos groundPos, BlockPos plantPos) {
-        try {
-            var oldGround = level.getBlockState(groundPos);
-            level.setBlock(groundPos, candidateState, FLAG_NO_UPDATE);
-            boolean survives = plantState.canSurvive(level, plantPos);
-            level.setBlock(groundPos, oldGround, FLAG_NO_UPDATE);
-            return survives;
-        } catch (Exception ignored) {
-            return false;
-        }
+        var chunk = level.getChunkAt(groundPos);
+        var section = chunk.getSection(chunk.getSectionIndex(groundPos.getY()));
+        int x = groundPos.getX() & 15;
+        int y = groundPos.getY() & 15;
+        int z = groundPos.getZ() & 15;
+
+        var oldState = section.setBlockState(x, y, z, candidateState, false);
+        boolean survives = plantState.canSurvive(level, plantPos);
+        section.setBlockState(x, y, z, oldState, false);
+        return survives;
     }
 
     private int growPlant(Block plantBlock, ServerLevel level, BlockPos plantPos, RandomSource random, long blockSeed) {

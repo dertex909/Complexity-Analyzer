@@ -25,10 +25,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
-import io.netty.handler.stream.ChunkedWriteHandler;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -61,12 +57,7 @@ public final class StandaloneWebServer {
             b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class).childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 protected void initChannel(SocketChannel ch) {
-                    String wsPath = "/" + CabinNettyHandler.getToken() + "/ws";
-                    ch.pipeline().addLast("http_codec", new HttpServerCodec());
-                    ch.pipeline().addLast("http_aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
-                    ch.pipeline().addLast("http_chunked", new ChunkedWriteHandler());
-                    ch.pipeline().addLast("ws_protocol", new WebSocketServerProtocolHandler(wsPath, null, true));
-                    ch.pipeline().addLast("cabin_handler", new CabinNettyHandler());
+                    WebPipeline.setup(ch.pipeline(), null);
                 }
             });
 

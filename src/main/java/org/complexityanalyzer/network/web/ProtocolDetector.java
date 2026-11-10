@@ -21,10 +21,6 @@ package org.complexityanalyzer.network.web;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
-import io.netty.handler.stream.ChunkedWriteHandler;
 import org.complexityanalyzer.config.ComplexityConfig;
 
 import java.util.List;
@@ -63,14 +59,8 @@ public class ProtocolDetector extends ByteToMessageDecoder {
             } catch (Throwable ignored) {
             }
         }
-        String wsPath = "/" + CabinNettyHandler.getToken() + "/ws";
 
-        ctx.pipeline().addAfter(ctx.name(), "http_codec", new HttpServerCodec());
-        ctx.pipeline().addAfter("http_codec", "http_aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
-        ctx.pipeline().addAfter("http_aggregator", "http_chunked", new ChunkedWriteHandler());
-        ctx.pipeline().addAfter("http_chunked", "ws_protocol", new WebSocketServerProtocolHandler(wsPath, null, true));
-        ctx.pipeline().addAfter("ws_protocol", "cabin_handler", new CabinNettyHandler());
-
+        WebPipeline.setup(ctx.pipeline(), ctx.name());
         ctx.pipeline().remove(this);
     }
 }

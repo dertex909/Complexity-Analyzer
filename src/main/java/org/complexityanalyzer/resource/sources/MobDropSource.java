@@ -63,7 +63,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.complexityanalyzer.cache.ResourceCache.MOB_DROP;
-import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 
 public class MobDropSource implements IResourceSource {
     private static final int SIMULATION_COUNT = 500;
@@ -103,7 +102,7 @@ public class MobDropSource implements IResourceSource {
         var server = serverLevel.getServer();
         var localDropMap = new Reference2ObjectOpenHashMap<Item, ObjectList<MobDropData>>();
 
-        boolean cacheEnabled = ENABLE_CACHE.get();
+        boolean cacheEnabled = ComplexityConfig.ENABLE_CACHE.get();
         var cacheFile = cacheEnabled ? MOB_DROP.file(server) : null;
         long[] fingerprint = cacheFile != null ? computeFingerprint() : null;
         if (cacheFile != null) {
@@ -133,7 +132,11 @@ public class MobDropSource implements IResourceSource {
             return;
         }
 
-        processMobDrops(serverLevel, entityTypes, localDropMap);
+        if (server.isSameThread()) {
+            processMobDrops(serverLevel, entityTypes, localDropMap);
+        } else {
+            CompletableFuture.runAsync(() -> processMobDrops(serverLevel, entityTypes, localDropMap), server).join();
+        }
 
         if (cacheFile != null) MOB_DROP.save(cacheFile, fingerprint, MobDropSource::writeData, localDropMap);
 
@@ -145,77 +148,78 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        var server = serverLevel.getServer();
-
         ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();
         registerSpecialDrops(targetMap);
 
-        try (var ignoredLog = LogFilter.open()) {
-            Runnable simulationRunnable = () -> {
-                try (var ignoredProbe = ProbeScope.open()) {
-                    var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
-                    var fakePlayer = new ServerPlayer(server, serverLevel, fakePlayerProfile, ClientInformation.createDefault());
-                    var damageSources = createDamageSources(serverLevel, fakePlayer);
-
-                    try (var ignoredScope = Scope.of(() -> {
-                        fakePlayer.discard();
-                        for (var ds : damageSources) {
-                            var e = ds.getEntity();
-                            if (e != null && e != fakePlayer) e.discard();
-                            var d = ds.getDirectEntity();
-                            if (d != null && d != fakePlayer) d.discard();
-                        }
-                    })) {
-                        int processedEntities = 0;
-
-                        for (var entityType : entityTypes) {
-                            var lootTableKey = entityType.getDefaultLootTable();
-                            var lootTable = server.reloadableRegistries().getLootTable(lootTableKey);
-                            if (lootTable == LootTable.EMPTY) continue;
-                            if (entityType.getCategory() == MobCategory.MISC) continue;
-
-                            Entity entityInstance;
-                            try {
-                                entityInstance = entityType.create(serverLevel);
-                                if (entityInstance != null) {
-                                    var spawnPos = serverLevel.getSharedSpawnPos();
-                                    entityInstance.setPos(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
-                                }
-                            } catch (Exception e) {
-                                ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}",
-                                        GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
-                                continue;
-                            }
-
-                            if (entityInstance == null) {
-                                ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.",
-                                        GameRegistryManager.getEntityTypeId(entityType));
-                                continue;
-                            }
-
-                            var v = new Victim(entityType, entityInstance, lootTable);
-                            mergeDrops(entityType, sampleVictim(serverLevel, v, damageSources), targetMap);
-                            processedEntities++;
-
-                            if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
-                            entityInstance.discard();
-                        }
-
-                        long duration = System.currentTimeMillis() - startTime;
-                        ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms", processedEntities, targetMap.size(), duration);
-                    }
-                }
-            };
-
-            if (server.isSameThread()) {
-                simulationRunnable.run();
-            } else {
-                CompletableFuture.runAsync(simulationRunnable, server).join();
-            }
-
+        try (var ignoredLog = LogFilter.open(); var ignoredProbe = ProbeScope.open()) {
+            int processedEntities = runSimulation(serverLevel, entityTypes, targetMap);
+            long duration = System.currentTimeMillis() - startTime;
+            ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms",
+                    processedEntities, targetMap.size(), duration);
         } catch (Exception e) {
             ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
+        }
+    }
+
+    private int runSimulation(ServerLevel level, ObjectList<EntityType<?>> entityTypes, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
+        var server = level.getServer();
+        var fakePlayerProfile = new GameProfile(UUID.randomUUID(), "[ComplexityAnalyzer]");
+        var fakePlayer = new ServerPlayer(server, level, fakePlayerProfile, ClientInformation.createDefault());
+        var damageSources = createDamageSources(level, fakePlayer);
+
+        try {
+            int processed = 0;
+            for (var entityType : entityTypes) {
+                if (processSingleEntityType(level, entityType, damageSources, targetMap)) processed++;
+            }
+            return processed;
+        } finally {
+            fakePlayer.discard();
+            for (var ds : damageSources) {
+                var e = ds.getEntity();
+                if (e != null && e != fakePlayer) e.discard();
+                var d = ds.getDirectEntity();
+                if (d != null && d != fakePlayer) d.discard();
+            }
+        }
+    }
+
+    private boolean processSingleEntityType(ServerLevel level, EntityType<?> entityType, ObjectList<DamageSource> damageSources,
+                                            Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
+        if (entityType.getCategory() == MobCategory.MISC) return false;
+
+        var lootTable = level.getServer().reloadableRegistries().getLootTable(entityType.getDefaultLootTable());
+        if (lootTable == LootTable.EMPTY) return false;
+
+        var entityInstance = tryCreateEntity(level, entityType);
+        if (entityInstance == null) return false;
+
+        try {
+            var victim = new Victim(entityType, entityInstance, lootTable);
+            mergeDrops(entityType, sampleVictim(level, victim, damageSources), targetMap);
+            if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
+            return true;
+        } finally {
+            entityInstance.discard();
+        }
+    }
+
+    @Nullable
+    private Entity tryCreateEntity(ServerLevel level, EntityType<?> entityType) {
+        try {
+            var entity = entityType.create(level);
+            if (entity == null) {
+                ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.", GameRegistryManager.getEntityTypeId(entityType));
+                return null;
+            }
+
+            var spawnPos = level.getSharedSpawnPos();
+            entity.setPos(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
+            return entity;
+        } catch (Exception e) {
+            ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}", GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
+            return null;
         }
     }
 

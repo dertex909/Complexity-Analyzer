@@ -168,13 +168,7 @@ public class MobDropSource implements IResourceSource {
         var fakePlayer = new ServerPlayer(server, level, fakePlayerProfile, ClientInformation.createDefault());
         var damageSources = createDamageSources(level, fakePlayer);
 
-        try {
-            int processed = 0;
-            for (var entityType : entityTypes) {
-                if (processSingleEntityType(level, entityType, damageSources, targetMap)) processed++;
-            }
-            return processed;
-        } finally {
+        try (var ignoredScope = Scope.of(() -> {
             fakePlayer.discard();
             for (var ds : damageSources) {
                 var e = ds.getEntity();
@@ -182,6 +176,12 @@ public class MobDropSource implements IResourceSource {
                 var d = ds.getDirectEntity();
                 if (d != null && d != fakePlayer) d.discard();
             }
+        })) {
+            int processed = 0;
+            for (var entityType : entityTypes) {
+                if (processSingleEntityType(level, entityType, damageSources, targetMap)) processed++;
+            }
+            return processed;
         }
     }
 
@@ -195,13 +195,11 @@ public class MobDropSource implements IResourceSource {
         var entityInstance = tryCreateEntity(level, entityType);
         if (entityInstance == null) return false;
 
-        try {
+        try (var ignoredEntityScope = Scope.of(entityInstance::discard)) {
             var victim = new Victim(entityType, entityInstance, lootTable);
             mergeDrops(entityType, sampleVictim(level, victim, damageSources), targetMap);
             if (entityInstance instanceof Animal) mobProvider.markRenewable(entityType);
             return true;
-        } finally {
-            entityInstance.discard();
         }
     }
 

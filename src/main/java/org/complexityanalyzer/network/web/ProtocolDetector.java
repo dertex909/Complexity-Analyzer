@@ -37,13 +37,12 @@ public class ProtocolDetector extends ByteToMessageDecoder {
             ctx.pipeline().remove(this);
             return;
         }
-
         if (in.readableBytes() < 4) return;
         if (isHttp(in)) {
             setupHttpPipeline(ctx);
-        } else {
-            ctx.pipeline().remove(this);
+            return;
         }
+        ctx.pipeline().remove(this);
     }
 
     private boolean isHttp(ByteBuf in) {
@@ -52,10 +51,9 @@ public class ProtocolDetector extends ByteToMessageDecoder {
     }
 
     private void setupHttpPipeline(ChannelHandlerContext ctx) {
-        var names = ctx.pipeline().names();
-        for (var name : names) {
-            if (!name.equals(ctx.name()) && !isPreserved(name)) try {
-                ctx.pipeline().remove(name);
+        for (var name : ctx.pipeline().names()) {
+            try {
+                if (!name.equals(ctx.name()) && !isPreserved(name)) ctx.pipeline().remove(name);
             } catch (Throwable ignored) {
             }
         }

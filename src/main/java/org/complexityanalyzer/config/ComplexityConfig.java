@@ -30,7 +30,7 @@ public class ComplexityConfig {
     public static final ModConfigSpec.IntValue MAX_ITERATIONS;
     public static final ModConfigSpec.DoubleValue CONVERGENCE_THRESHOLD;
     public static final ModConfigSpec.IntValue MAX_INGREDIENT_VARIANTS;
-    public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
+    @Deprecated(forRemoval = true) public static final ModConfigSpec.IntValue DETECTION_SAMPLE_SIZE;
 
     public static final ModConfigSpec.DoubleValue MOB_DIFFICULTY_SCALER;
     public static final ModConfigSpec.DoubleValue BOSS_RARITY_MULTIPLIER;
@@ -91,6 +91,7 @@ public class ComplexityConfig {
         ).defineInRange("maxIngredientVariants", 100, 1, 1000);
 
         DETECTION_SAMPLE_SIZE = builder.comment(
+                " [DEPRECATED] This option is scheduled for removal in future updates.",
                 " Items probed per recipe type when detecting dynamically generated recipes,",
                 " spread evenly across the item registry. Higher = better chance to catch generators",
                 " that fire on only a few items, at slightly more startup cost."

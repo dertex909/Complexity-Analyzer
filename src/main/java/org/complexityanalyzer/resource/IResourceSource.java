@@ -21,7 +21,6 @@ package org.complexityanalyzer.resource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-
 import org.jetbrains.annotations.Nullable;
 
 /**

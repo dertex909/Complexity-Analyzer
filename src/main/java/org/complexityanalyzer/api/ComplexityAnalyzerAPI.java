@@ -129,8 +129,7 @@ public interface ComplexityAnalyzerAPI {
      * Internal holder for the singleton. Set by the Complexity Analyzer core; addons must not call
      * {@link #install}/{@link #uninstall}.
      */
-    @ApiStatus.Internal
-    final class Holder {
+    @ApiStatus.Internal final class Holder {
         private static volatile ComplexityAnalyzerAPI instance;
 
         private Holder() {

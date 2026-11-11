@@ -1,6 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
+issueTrackerURL = "https://github.com/dertex909/Complexity-Analyzer/issues"
 
 [[mixins]]
 config = "${mod_id}.mixins.json"
@@ -10,26 +11,19 @@ modId = "${mod_id}"
 version = "${mod_version}"
 displayName = "${mod_name}"
 logoFile = "icon.png"
+displayURL = "https://modrinth.com/project/complexity-analyzer"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
 [[dependencies."${mod_id}"]]
 modId = "neoforge"
-type = "required"
 versionRange = "${neo_version_range}"
-ordering = "NONE"
-side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "minecraft"
-type = "required"
 versionRange = "${minecraft_version_range}"
-ordering = "NONE"
-side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "alltheleaks"
 type = "incompatible"
-ordering = "NONE"
-side = "BOTH"
 reason = "Incompatible with AllTheLeaks due to multithreaded recipe harvesting conflicts."

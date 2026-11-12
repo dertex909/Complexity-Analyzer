@@ -21,9 +21,6 @@ package org.complexityanalyzer.util;
 import io.netty.util.ReferenceCounted;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 
 @FunctionalInterface
@@ -33,29 +30,9 @@ public interface Scope extends AutoCloseable {
         return onClose::run;
     }
 
-    static Scope empty() {
-        return () -> {
-        };
-    }
-
     static Scope lock(Lock lock) {
         lock.lock();
         return lock::unlock;
-    }
-
-    static <T> Scope inProgress(Collection<T> collection, T element) {
-        collection.add(element);
-        return () -> collection.remove(element);
-    }
-
-    static Scope counter(AtomicInteger counter) {
-        counter.incrementAndGet();
-        return counter::decrementAndGet;
-    }
-
-    static Scope flag(AtomicBoolean flag) {
-        flag.set(true);
-        return () -> flag.set(false);
     }
 
     static Scope release(@Nullable ReferenceCounted rc) {

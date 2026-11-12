@@ -154,24 +154,24 @@ public class ScanExecutor {
     private void startWorker(SessionContext ctx) {
         if (isShutdown.get()) return;
         activeWorkerCount.incrementAndGet();
+        var workerCount = Scope.of(activeWorkerCount::decrementAndGet);
 
         try {
-            workerExecutor.execute(() -> workerLoop(ctx));
+            workerExecutor.execute(() -> workerLoop(ctx, workerCount));
         } catch (RejectedExecutionException e) {
-            activeWorkerCount.decrementAndGet();
+            workerCount.close();
         }
     }
 
-    private void workerLoop(SessionContext myCtx) {
+    private void workerLoop(SessionContext myCtx, Scope workerCount) {
         var self = Thread.currentThread();
         workerThreads.put(self, Boolean.TRUE);
         ComplexityAnalyzer.LOGGER.info("[SCAN] Worker started");
 
         final var mySession = myCtx.session();
 
-        try (var ignored = Scope.of(() -> {
+        try (workerCount; var ignored = Scope.of(() -> {
             workerThreads.remove(self);
-            activeWorkerCount.decrementAndGet();
             ComplexityAnalyzer.LOGGER.info("[SCAN] Worker stopped");
         })) {
             while (!isShutdown.get() && !self.isInterrupted()) {

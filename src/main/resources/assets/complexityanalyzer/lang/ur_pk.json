@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "مشورہ: %s",
   "complexityanalyzer.output.admin_prefix" : "[ایڈمن] ",
   "complexityanalyzer.command.web.active" : "ویب ڈیش بورڈ فعال نہیں ہے۔",
-  "complexityanalyzer.command.web.lan_tip" : "اسے سنگل پلیئر میں استعمال کرنے کے لیے، آپ کو Escape مینو میں 'Open to LAN' پر کلک کرنا چاہیے۔",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port کی ترتیب کو چیک کریں: -1 ویب ڈیش بورڈ کو غیر فعال کر دیتا ہے۔ پورٹ کے ساتھ سنگل پلیئر میں، Escape مینو میں 'Open to LAN' پر کلک کریں۔",
   "complexityanalyzer.command.web.header" : "ویب ڈیش بورڈ",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[براؤزر میں کھولیں]",

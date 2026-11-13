@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tip: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Web Dashboard is not active.",
-  "complexityanalyzer.command.web.lan_tip" : "To use it in singleplayer, you must click 'Open to LAN' in the Escape menu.",
+  "complexityanalyzer.command.web.lan_tip" : "Check the web_server.port setting: -1 disables the web dashboard. In singleplayer with port set to 0, click 'Open to LAN' in the Escape menu.",
   "complexityanalyzer.command.web.header" : "Web Dashboard",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Open in Browser]",

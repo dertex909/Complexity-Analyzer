@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tip: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Dashboard web ora aktif.",
-  "complexityanalyzer.command.web.lan_tip" : "Kanggo nggunakake ing singleplayer, sampeyan kudu klik 'Bukak kanggo LAN' ing menu Uwal.",
+  "complexityanalyzer.command.web.lan_tip" : "Priksa setelan web_server.port: -1 mateni dashboard web. Ing singleplayer karo port disetel kanggo 0, klik 'Bukak kanggo LAN' ing menu Uwal.",
   "complexityanalyzer.command.web.header" : "Dasbor Web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Bukak ing Browser]",

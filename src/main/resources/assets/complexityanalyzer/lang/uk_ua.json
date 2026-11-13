@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Порада: %s",
   "complexityanalyzer.output.admin_prefix" : "[АДМІНІСТРАТОР] ",
   "complexityanalyzer.command.web.active" : "Веб-панель не активна.",
-  "complexityanalyzer.command.web.lan_tip" : "Щоб використовувати його в одиночній грі, потрібно натиснути «Відкрити в локальну мережу» в меню виходу.",
+  "complexityanalyzer.command.web.lan_tip" : "Перевірте налаштування web_server.port: -1 вимикає веб-панель. У одиночній грі з портом, встановленим на 0, натисніть «Відкрити в локальну мережу» в меню виходу.",
   "complexityanalyzer.command.web.header" : "Веб-панель",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Відкрити в браузері]",

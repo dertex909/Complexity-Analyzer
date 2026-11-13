@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Suggerimento: %s",
   "complexityanalyzer.output.admin_prefix" : "[AMMINISTRATORE] ",
   "complexityanalyzer.command.web.active" : "Il dashboard Web non è attivo.",
-  "complexityanalyzer.command.web.lan_tip" : "Per usarlo in modalità giocatore singolo, devi fare clic su \"Apri su LAN\" nel menu Esci.",
+  "complexityanalyzer.command.web.lan_tip" : "Controlla l'impostazione web_server.port: -1 disabilita il dashboard web. In giocatore singolo con la porta impostata su 0, fai clic su \"Apri su LAN\" nel menu Esci.",
   "complexityanalyzer.command.web.header" : "Cruscotto Web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Apri nel browser]",

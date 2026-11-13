@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ಸಲಹೆ: %s",
   "complexityanalyzer.output.admin_prefix" : "[ನಿರ್ವಾಹಕ] ",
   "complexityanalyzer.command.web.active" : "ವೆಬ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಸಕ್ರಿಯವಾಗಿಲ್ಲ.",
-  "complexityanalyzer.command.web.lan_tip" : "ಸಿಂಗಲ್‌ಪ್ಲೇಯರ್‌ನಲ್ಲಿ ಇದನ್ನು ಬಳಸಲು, ನೀವು ಎಸ್ಕೇಪ್ ಮೆನುವಿನಲ್ಲಿ 'LAN ಗೆ ತೆರೆಯಿರಿ' ಅನ್ನು ಕ್ಲಿಕ್ ಮಾಡಬೇಕು.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port ಸೆಟ್ಟಿಂಗ್ ಅನ್ನು ಪರಿಶೀಲಿಸಿ: -1 ವೆಬ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಅನ್ನು ನಿಷ್ಕ್ರಿಯಗೊಳಿಸುತ್ತದೆ. ಪೋರ್ಟ್ ಅನ್ನು 0 ಗೆ ಹೊಂದಿಸಿರುವ ಸಿಂಗಲ್‌ಪ್ಲೇಯರ್‌ನಲ್ಲಿ, ಎಸ್ಕೇಪ್ ಮೆನುವಿನಲ್ಲಿ 'LAN ಗೆ ತೆರೆಯಿರಿ' ಅನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ.",
   "complexityanalyzer.command.web.header" : "ವೆಬ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ಬ್ರೌಸರ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ]",

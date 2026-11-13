@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "உதவிக்குறிப்பு: %s",
   "complexityanalyzer.output.admin_prefix" : "[நிர்வாகி] ",
   "complexityanalyzer.command.web.active" : "இணைய டாஷ்போர்டு செயலில் இல்லை.",
-  "complexityanalyzer.command.web.lan_tip" : "சிங்கிள் பிளேயரில் இதைப் பயன்படுத்த, எஸ்கேப் மெனுவில் உள்ள 'LANக்கு திற' என்பதைக் கிளிக் செய்ய வேண்டும்.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port அமைப்பைச் சரிபார்க்கவும்: -1 இணைய டாஷ்போர்டை முடக்குகிறது. போர்ட் 0 ஆக அமைக்கப்பட்ட சிங்கிள் பிளேயரில், எஸ்கேப் மெனுவில் 'LAN க்கு திற' என்பதைக் கிளிக் செய்யவும்.",
   "complexityanalyzer.command.web.header" : "வலை டாஷ்போர்டு",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[உலாவியில் திற]",

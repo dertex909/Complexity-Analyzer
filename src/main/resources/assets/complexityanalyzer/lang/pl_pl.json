@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Wskazówka: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Panel internetowy nie jest aktywny.",
-  "complexityanalyzer.command.web.lan_tip" : "Aby użyć go w trybie dla jednego gracza, musisz kliknąć opcję „Otwórz na LAN” w menu Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Sprawdź ustawienie web_server.port: -1 wyłącza panel WWW. W trybie dla jednego gracza z portem ustawionym na 0 kliknij opcję „Otwórz na LAN” w menu Escape.",
   "complexityanalyzer.command.web.header" : "Panel internetowy",
   "complexityanalyzer.command.web.url_label" : "Adres URL",
   "complexityanalyzer.command.web.open_browser" : "[Otwórz w przeglądarce]",

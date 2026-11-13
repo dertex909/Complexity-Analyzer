@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tipp: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "A webes irányítópult nem aktív.",
-  "complexityanalyzer.command.web.lan_tip" : "Ha egyjátékos játékban szeretné használni, kattintson a „Nyitás LAN-ra” lehetőségre az Escape menüben.",
+  "complexityanalyzer.command.web.lan_tip" : "Ellenőrizze a web_server.port beállítást: -1 letiltja a webes irányítópultot. Egyjátékos játékban, ahol a port 0-ra van állítva, kattintson a „Nyitás LAN-ra” lehetőségre az Escape menüben.",
   "complexityanalyzer.command.web.header" : "Web irányítópult",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Megnyitás a böngészőben]",

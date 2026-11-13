@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Ithiphu: %s",
   "complexityanalyzer.output.admin_prefix" : "[UMPHATHI] ",
   "complexityanalyzer.command.web.active" : "Ideshibhodi Yewebhu ayisebenzi.",
-  "complexityanalyzer.command.web.lan_tip" : "Ukuze uyisebenzise kusidlali esisodwa, kufanele uchofoze okuthi 'Vula ku-LAN' kumenyu ye-Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Hlola isilungiselelo se-web_server.port: -1 ikhubaza ideshibhodi yewebhu. Kusidlali esisodwa esinembobo esethwe ku-0, chofoza okuthi 'Vula ku-LAN' kumenyu ye-Escape.",
   "complexityanalyzer.command.web.header" : "Ideshibhodi Yewebhu",
   "complexityanalyzer.command.web.url_label" : "I-URL",
   "complexityanalyzer.command.web.open_browser" : "[Vula Kusiphequluli]",

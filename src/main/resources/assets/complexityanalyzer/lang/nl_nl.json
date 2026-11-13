@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tip: %s",
   "complexityanalyzer.output.admin_prefix" : "[BEHEERDER] ",
   "complexityanalyzer.command.web.active" : "Webdashboard is niet actief.",
-  "complexityanalyzer.command.web.lan_tip" : "Om het in singleplayer te gebruiken, moet je op 'Open to LAN' klikken in het Escape-menu.",
+  "complexityanalyzer.command.web.lan_tip" : "Controleer de instelling web_server.port: -1 schakelt het webdashboard uit. In singleplayer met poort ingesteld op 0, klik je op 'Open to LAN' in het Escape-menu.",
   "complexityanalyzer.command.web.header" : "Webdashboard",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Openen in browser]",

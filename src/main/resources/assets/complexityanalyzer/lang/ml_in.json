@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "നുറുങ്ങ്: %s",
   "complexityanalyzer.output.admin_prefix" : "[അഡ്മിൻ] ",
   "complexityanalyzer.command.web.active" : "വെബ് ഡാഷ്‌ബോർഡ് സജീവമല്ല.",
-  "complexityanalyzer.command.web.lan_tip" : "സിംഗിൾ പ്ലേയറിൽ ഇത് ഉപയോഗിക്കാൻ, നിങ്ങൾ Escape മെനുവിലെ 'LAN-ലേക്ക് തുറക്കുക' ക്ലിക്ക് ചെയ്യണം.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port ക്രമീകരണം പരിശോധിക്കുക: -1 വെബ് ഡാഷ്‌ബോർഡ് പ്രവർത്തനരഹിതമാക്കുന്നു. പോർട്ട് 0 ആയി സജ്ജീകരിച്ച സിംഗിൾ പ്ലേയറിൽ, Escape മെനുവിലെ 'LAN-ലേക്ക് തുറക്കുക' ക്ലിക്ക് ചെയ്യുക.",
   "complexityanalyzer.command.web.header" : "വെബ് ഡാഷ്ബോർഡ്",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ബ്രൗസറിൽ തുറക്കുക]",

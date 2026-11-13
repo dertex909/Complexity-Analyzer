@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ਸੁਝਾਅ: %s",
   "complexityanalyzer.output.admin_prefix" : "[ਪ੍ਰਸ਼ਾਸਕ] ",
   "complexityanalyzer.command.web.active" : "ਵੈੱਬ ਡੈਸ਼ਬੋਰਡ ਕਿਰਿਆਸ਼ੀਲ ਨਹੀਂ ਹੈ।",
-  "complexityanalyzer.command.web.lan_tip" : "ਸਿੰਗਲ ਪਲੇਅਰ ਵਿੱਚ ਇਸਨੂੰ ਵਰਤਣ ਲਈ, ਤੁਹਾਨੂੰ Escape ਮੀਨੂ ਵਿੱਚ 'LAN ਲਈ ਖੋਲ੍ਹੋ' 'ਤੇ ਕਲਿੱਕ ਕਰਨਾ ਪਵੇਗਾ।",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port ਸੈਟਿੰਗ ਦੀ ਜਾਂਚ ਕਰੋ: -1 ਵੈੱਬ ਡੈਸ਼ਬੋਰਡ ਨੂੰ ਅਸਮਰੱਥ ਬਣਾਉਂਦਾ ਹੈ। 0 'ਤੇ ਪੋਰਟ ਸੈੱਟ ਵਾਲੇ ਸਿੰਗਲ ਪਲੇਅਰ ਵਿੱਚ, Escape ਮੀਨੂ ਵਿੱਚ 'LAN ਲਈ ਖੋਲ੍ਹੋ' 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
   "complexityanalyzer.command.web.header" : "ਵੈੱਬ ਡੈਸ਼ਬੋਰਡ",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਖੋਲ੍ਹੋ]",

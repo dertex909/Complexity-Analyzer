@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ଟିପ୍ପଣୀ: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "ୱେବ୍ ଡ୍ୟାସବୋର୍ଡ ସକ୍ରିୟ ନୁହେଁ |",
-  "complexityanalyzer.command.web.lan_tip" : "ଏହାକୁ ସିଙ୍ଗଲ୍ ପ୍ଲେୟାରରେ ବ୍ୟବହାର କରିବାକୁ, ଆପଣଙ୍କୁ ଏସ୍କେପ୍ ମେନୁରେ 'ଓପନ୍ ଟୁ LAN' କ୍ଲିକ୍ କରିବାକୁ ପଡିବ |",
+  "complexityanalyzer.command.web.lan_tip" : "Web_server.port ସେଟିଂ ଯାଞ୍ଚ କରନ୍ତୁ: -1 ୱେବ୍ ଡ୍ୟାସବୋର୍ଡକୁ ଅକ୍ଷମ କରିଥାଏ | ପୋର୍ଟ ସେଟ୍ 0 ସହିତ ସିଙ୍ଗଲ୍ ପ୍ଲେୟାରରେ, ଏସ୍କେପ୍ ମେନୁରେ 'ଓପନ୍ ଟୁ LAN' କ୍ଲିକ୍ କରନ୍ତୁ |",
   "complexityanalyzer.command.web.header" : "ୱେବ୍ ଡ୍ୟାସବୋର୍ଡ |",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ବ୍ରାଉଜରରେ ଖୋଲନ୍ତୁ]",

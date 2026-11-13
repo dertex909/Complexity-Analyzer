@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Kiat: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Dasbor Web tidak aktif.",
-  "complexityanalyzer.command.web.lan_tip" : "Untuk menggunakannya dalam singleplayer, Anda harus mengklik 'Open to LAN' di menu Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Periksa pengaturan web_server.port: -1 menonaktifkan dasbor web. Dalam singleplayer dengan port diatur ke 0, klik 'Open to LAN' di menu Escape.",
   "complexityanalyzer.command.web.header" : "Dasbor Web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Buka di Peramban]",

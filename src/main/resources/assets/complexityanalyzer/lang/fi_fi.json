@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Vinkki: %s",
   "complexityanalyzer.output.admin_prefix" : "[JÄRJESTELMÄNVALVOJA] ",
   "complexityanalyzer.command.web.active" : "Web Dashboard ei ole aktiivinen.",
-  "complexityanalyzer.command.web.lan_tip" : "Jos haluat käyttää sitä yksinpelissä, sinun on napsautettava 'Avaa lähiverkkoon' Escape-valikosta.",
+  "complexityanalyzer.command.web.lan_tip" : "Tarkista web_server.port-asetus: -1 poistaa web-hallintapaneelin käytöstä. Yksinpelissä, jonka portti on asetettu 0:ksi, napsauta Escape-valikosta Avaa lähiverkkoon.",
   "complexityanalyzer.command.web.header" : "Web-hallintapaneeli",
   "complexityanalyzer.command.web.url_label" : "URL-osoite",
   "complexityanalyzer.command.web.open_browser" : "[Avaa selaimessa]",

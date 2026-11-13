@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Dica: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN.] ",
   "complexityanalyzer.command.web.active" : "O Painel da Web não está ativo.",
-  "complexityanalyzer.command.web.lan_tip" : "Para usá-lo no modo singleplayer, você deve clicar em ‘Abrir para LAN’ no menu Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Verifique a configuração web_server.port: -1 desativa o painel da web. No modo singleplayer com porta definida como 0, clique em 'Abrir para LAN' no menu Escape.",
   "complexityanalyzer.command.web.header" : "Painel da Web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Abrir no navegador]",

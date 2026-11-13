@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "نصيحة: %s",
   "complexityanalyzer.output.admin_prefix" : "[المسؤول] ",
   "complexityanalyzer.command.web.active" : "لوحة تحكم الويب غير نشطة.",
-  "complexityanalyzer.command.web.lan_tip" : "لاستخدامها في وضع اللعب الفردي، يجب عليك النقر فوق \"فتح إلى LAN\" في قائمة الهروب.",
+  "complexityanalyzer.command.web.lan_tip" : "تحقق من إعداد web_server.port: -1 يعطل لوحة تحكم الويب. في وضع اللعب الفردي مع ضبط المنفذ على 0، انقر فوق \"فتح إلى LAN\" في قائمة \"Escape\".",
   "complexityanalyzer.command.web.header" : "لوحة تحكم الويب",
   "complexityanalyzer.command.web.url_label" : "عنوان URL",
   "complexityanalyzer.command.web.open_browser" : "[فتح في المتصفح]",

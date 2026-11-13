@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "نکته: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "داشبورد وب فعال نیست.",
-  "complexityanalyzer.command.web.lan_tip" : "برای استفاده از آن در تک‌نفره، باید روی «Open to LAN» در منوی Escape کلیک کنید.",
+  "complexityanalyzer.command.web.lan_tip" : "تنظیمات web_server.port را بررسی کنید: -1 داشبورد وب را غیرفعال می کند. در حالت تک نفره با پورت تنظیم شده روی 0، در منوی Escape روی «Open to LAN» کلیک کنید.",
   "complexityanalyzer.command.web.header" : "داشبورد وب",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[باز کردن در مرورگر]",

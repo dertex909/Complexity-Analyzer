@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "เคล็ดลับ: %s",
   "complexityanalyzer.output.admin_prefix" : "[ผู้ดูแลระบบ] ",
   "complexityanalyzer.command.web.active" : "เว็บแดชบอร์ดไม่ทำงาน",
-  "complexityanalyzer.command.web.lan_tip" : "หากต้องการใช้ในผู้เล่นคนเดียว คุณต้องคลิก 'เปิดไปยัง LAN' ในเมนู Escape",
+  "complexityanalyzer.command.web.lan_tip" : "ตรวจสอบการตั้งค่า web_server.port: -1 ปิดใช้งานแดชบอร์ดเว็บ ใน singleplayer ที่ตั้งค่าพอร์ตเป็น 0 ให้คลิก 'Open to LAN' ในเมนู Escape",
   "complexityanalyzer.command.web.header" : "เว็บแดชบอร์ด",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[เปิดในเบราว์เซอร์]",

@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "İpucu: %s",
   "complexityanalyzer.output.admin_prefix" : "[YÖNETİCİ] ",
   "complexityanalyzer.command.web.active" : "Web Kontrol Paneli etkin değil.",
-  "complexityanalyzer.command.web.lan_tip" : "Tek oyunculu olarak kullanmak için Escape menüsünde 'LAN'a Aç'a tıklamanız gerekir.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port ayarını kontrol edin: -1, web kontrol panelini devre dışı bırakır. Bağlantı noktası 0 olarak ayarlanmış tek oyunculu modda, Kaçış menüsünde 'LAN'a Aç'ı tıklayın.",
   "complexityanalyzer.command.web.header" : "Web Kontrol Paneli",
   "complexityanalyzer.command.web.url_label" : "URL'si",
   "complexityanalyzer.command.web.open_browser" : "[Tarayıcıda Aç]",

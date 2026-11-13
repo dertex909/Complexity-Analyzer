@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "İpucu: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Veb İdarə Paneli aktiv deyil.",
-  "complexityanalyzer.command.web.lan_tip" : "Onu tək oyunçuda istifadə etmək üçün Escape menyusunda \"LAN şəbəkəsinə aç\" düyməsini sıxmalısınız.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port parametrini yoxlayın: -1 veb idarəetmə panelini söndürür. Port 0-a təyin edilmiş tək oyunçuda Escape menyusunda \"LAN şəbəkəsinə aç\" düyməsini klikləyin.",
   "complexityanalyzer.command.web.header" : "Veb İdarə Paneli",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Brauzerdə açın]",

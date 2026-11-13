@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ટીપ: %s",
   "complexityanalyzer.output.admin_prefix" : "[એડમિન] ",
   "complexityanalyzer.command.web.active" : "વેબ ડેશબોર્ડ સક્રિય નથી.",
-  "complexityanalyzer.command.web.lan_tip" : "સિંગલપ્લેયરમાં તેનો ઉપયોગ કરવા માટે, તમારે Escape મેનૂમાં 'Open to LAN' પર ક્લિક કરવું આવશ્યક છે.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port સેટિંગ તપાસો: -1 વેબ ડેશબોર્ડને અક્ષમ કરે છે. 0 પર સેટ કરેલ પોર્ટ સાથે સિંગલપ્લેયરમાં, Escape મેનુમાં 'LAN પર ખોલો' પર ક્લિક કરો.",
   "complexityanalyzer.command.web.header" : "વેબ ડેશબોર્ડ",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[બ્રાઉઝરમાં ખોલો]",

@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tipp: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Web Dashboard ist nicht aktiv.",
-  "complexityanalyzer.command.web.lan_tip" : "Um es im Einzelspielermodus zu verwenden, müssen Sie im Escape-Menü auf „Für LAN öffnen“ klicken.",
+  "complexityanalyzer.command.web.lan_tip" : "Überprüfen Sie die Einstellung web_server.port: -1 deaktiviert das Web-Dashboard. Klicken Sie im Einzelspielermodus mit Port auf 0 im Escape-Menü auf „Für LAN öffnen“.",
   "complexityanalyzer.command.web.header" : "Web-Dashboard",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Im Browser öffnen]",

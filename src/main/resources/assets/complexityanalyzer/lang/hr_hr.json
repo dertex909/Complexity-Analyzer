@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Savjet: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMINISTAR] ",
   "complexityanalyzer.command.web.active" : "Web nadzorna ploča nije aktivna.",
-  "complexityanalyzer.command.web.lan_tip" : "Da biste ga koristili u singleplayeru, morate kliknuti 'Open to LAN' u Escape izborniku.",
+  "complexityanalyzer.command.web.lan_tip" : "Provjerite postavku web_server.port: -1 onemogućuje web nadzornu ploču. U igri za jednog igrača s priključkom postavljenim na 0, kliknite 'Otvori u LAN' u izborniku Escape.",
   "complexityanalyzer.command.web.header" : "Web nadzorna ploča",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Otvori u pregledniku]",

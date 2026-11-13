@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Ndụmọdụ: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Dashboard Weebụ anaghị arụ ọrụ.",
-  "complexityanalyzer.command.web.lan_tip" : "Iji jiri ya na otu ọkpụkpọ, ị ga-pịa 'Open to LAN' na menu mgbapụ.",
+  "complexityanalyzer.command.web.lan_tip" : "Lelee ntọala web_server.port: -1 gbanyụọ dashboard weebụ. Na otu ọkpụkpọ nwere ọdụ ụgbọ mmiri setịpụrụ na 0, pịa 'Mepee LAN' na menu mgbapụ.",
   "complexityanalyzer.command.web.header" : "Dashboard webụ",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Mepee na ihe nchọgharị]",

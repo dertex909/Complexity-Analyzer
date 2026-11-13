@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Consejo: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMINISTRADOR] ",
   "complexityanalyzer.command.web.active" : "El panel web no está activo.",
-  "complexityanalyzer.command.web.lan_tip" : "Para usarlo en un jugador, debes hacer clic en \"Abrir en LAN\" en el menú Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Verifique la configuración de web_server.port: -1 deshabilita el panel web. En un jugador con el puerto configurado en 0, haz clic en \"Abrir en LAN\" en el menú Escape.",
   "complexityanalyzer.command.web.header" : "Panel web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Abrir en el navegador]",

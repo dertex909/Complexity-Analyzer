@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "提示：%s",
   "complexityanalyzer.output.admin_prefix" : "[管理员] ",
   "complexityanalyzer.command.web.active" : "Web 仪表板未激活。",
-  "complexityanalyzer.command.web.lan_tip" : "要在单人游戏中使用它，您必须单击 Escape 菜单中的“打开到 LAN”。",
+  "complexityanalyzer.command.web.lan_tip" : "检查 web_server.port 设置：-1 禁用 Web 仪表板。在端口设置为 0 的单人游戏中，单击 Escape 菜单中的“打开至 LAN”。",
   "complexityanalyzer.command.web.header" : "网页仪表板",
   "complexityanalyzer.command.web.url_label" : "网址",
   "complexityanalyzer.command.web.open_browser" : "[在浏览器中打开]",

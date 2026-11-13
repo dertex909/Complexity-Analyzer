@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Imọran: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Dasibodu wẹẹbu ko ṣiṣẹ.",
-  "complexityanalyzer.command.web.lan_tip" : "Lati lo ninu ẹrọ orin ẹyọkan, o gbọdọ tẹ 'Ṣii si LAN' ni akojọ aṣayan abayo.",
+  "complexityanalyzer.command.web.lan_tip" : "Ṣayẹwo eto ibudo web_server.port: -1 mu dasibodu wẹẹbu kuro. Ni ẹyọkan pẹlu ibudo ti a ṣeto si 0, tẹ 'Ṣii si LAN' ni akojọ abayo.",
   "complexityanalyzer.command.web.header" : "Dasibodu wẹẹbu",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Ṣí ni Aṣàwákiri]",

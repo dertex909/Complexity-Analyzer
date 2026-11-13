@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "युक्ति: %s",
   "complexityanalyzer.output.admin_prefix" : "[व्यवस्थापक] ",
   "complexityanalyzer.command.web.active" : "वेब डैशबोर्ड सक्रिय नहीं है.",
-  "complexityanalyzer.command.web.lan_tip" : "सिंगलप्लेयर में इसका उपयोग करने के लिए, आपको एस्केप मेनू में 'ओपन टू लैन' पर क्लिक करना होगा।",
+  "complexityanalyzer.command.web.lan_tip" : "Web_server.port सेटिंग जांचें: -1 वेब डैशबोर्ड को अक्षम कर देता है। 0 पर सेट पोर्ट वाले सिंगलप्लेयर में, एस्केप मेनू में 'LAN पर खोलें' पर क्लिक करें।",
   "complexityanalyzer.command.web.header" : "वेब डैशबोर्ड",
   "complexityanalyzer.command.web.url_label" : "यूआरएल",
   "complexityanalyzer.command.web.open_browser" : "[ब्राउज़र में खोलें]",

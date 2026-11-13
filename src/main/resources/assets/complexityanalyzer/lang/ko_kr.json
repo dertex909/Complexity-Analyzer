@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "팁: %s",
   "complexityanalyzer.output.admin_prefix" : "[관리자] ",
   "complexityanalyzer.command.web.active" : "웹 대시보드가 활성화되지 않았습니다.",
-  "complexityanalyzer.command.web.lan_tip" : "싱글플레이에서 사용하려면 Escape 메뉴에서 'Open to LAN'을 클릭해야 합니다.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port 설정을 확인하십시오. -1은 웹 대시보드를 비활성화합니다. 포트가 0으로 설정된 싱글플레이어에서는 Escape 메뉴에서 'Open to LAN'을 클릭하세요.",
   "complexityanalyzer.command.web.header" : "웹 대시보드",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[브라우저에서 열기]",

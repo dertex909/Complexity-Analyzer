@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tip: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Web Dashboard není aktivní.",
-  "complexityanalyzer.command.web.lan_tip" : "Chcete-li jej použít v singleplayeru, musíte kliknout na 'Open to LAN' v nabídce Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Zkontrolujte nastavení web_server.port: -1 deaktivuje webový řídicí panel. V singleplayeru s portem nastaveným na 0 klikněte na 'Open to LAN' v nabídce Escape.",
   "complexityanalyzer.command.web.header" : "Webový panel",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Otevřít v prohlížeči]",

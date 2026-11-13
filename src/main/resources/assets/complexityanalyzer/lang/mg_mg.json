@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Soso-kevitra: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Web Dashboard dia tsy mavitrika.",
-  "complexityanalyzer.command.web.lan_tip" : "Raha hampiasa azy amin'ny mpilalao tokana ianao dia tsy maintsy manindry ny 'Open to LAN' ao amin'ny menio mandositra.",
+  "complexityanalyzer.command.web.lan_tip" : "Jereo ny firafitry ny web_server.port: -1 manakana ny dashboard tranonkala. Ao amin'ny mpilalao tokana misy seranana napetraka amin'ny 0, tsindrio ny 'Open to LAN' ao amin'ny menio mandositra.",
   "complexityanalyzer.command.web.header" : "Web Dashboard",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Misokatra amin'ny navigateur]",

@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tukwici: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Dashboard na Yanar Gizo ba ya aiki.",
-  "complexityanalyzer.command.web.lan_tip" : "Don amfani da shi a cikin ɗan wasa ɗaya, dole ne ku danna 'Buɗe zuwa LAN' a cikin menu na Tserewa.",
+  "complexityanalyzer.command.web.lan_tip" : "Duba saitin tashar port_server.: -1 yana kashe dashboard ɗin gidan yanar gizo. A cikin ƴan wasa ɗaya tare da saita tashar jiragen ruwa zuwa 0, danna 'Buɗe zuwa LAN' a cikin menu na Tserewa.",
   "complexityanalyzer.command.web.header" : "Dashboard na Yanar Gizo",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Bude a cikin Browser]",

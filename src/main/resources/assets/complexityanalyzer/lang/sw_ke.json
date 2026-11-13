@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Kidokezo: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Dashibodi ya Wavuti haitumiki.",
-  "complexityanalyzer.command.web.lan_tip" : "Ili kuitumia katika kichezaji kimoja, lazima ubofye 'Fungua kwa LAN' kwenye menyu ya Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Angalia mpangilio wa web_server.port: -1 huzima dashibodi ya wavuti. Katika kichezaji kimoja chenye mlango uliowekwa kuwa 0, bofya 'Fungua kwa LAN' katika menyu ya Escape.",
   "complexityanalyzer.command.web.header" : "Dashibodi ya Wavuti",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Fungua katika Kivinjari]",

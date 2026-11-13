@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Συμβουλή: %s",
   "complexityanalyzer.output.admin_prefix" : "[ΔΙΑΧΕΙΡΙΣΤΗΣ] ",
   "complexityanalyzer.command.web.active" : "Ο Πίνακας ελέγχου Ιστού δεν είναι ενεργός.",
-  "complexityanalyzer.command.web.lan_tip" : "Για να το χρησιμοποιήσετε σε single player, πρέπει να κάνετε κλικ στο 'Open to LAN' στο μενού Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Ελέγξτε τη ρύθμιση web_server.port: -1 απενεργοποιεί τον πίνακα ελέγχου ιστού. Σε single player με θύρα 0, κάντε κλικ στο 'Open to LAN' στο μενού Escape.",
   "complexityanalyzer.command.web.header" : "Πίνακας ελέγχου Ιστού",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Άνοιγμα στο πρόγραμμα περιήγησης]",

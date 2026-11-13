@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "చిట్కా: %s",
   "complexityanalyzer.output.admin_prefix" : "[అడ్మిన్] ",
   "complexityanalyzer.command.web.active" : "వెబ్ డ్యాష్‌బోర్డ్ సక్రియంగా లేదు.",
-  "complexityanalyzer.command.web.lan_tip" : "సింగిల్ ప్లేయర్‌లో దీన్ని ఉపయోగించడానికి, మీరు తప్పనిసరిగా ఎస్కేప్ మెనులో 'LANకు తెరవండి'ని క్లిక్ చేయాలి.",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port సెట్టింగ్‌ని తనిఖీ చేయండి: -1 వెబ్ డ్యాష్‌బోర్డ్‌ను నిలిపివేస్తుంది. పోర్ట్ 0కి సెట్ చేయబడిన సింగిల్ ప్లేయర్‌లో, ఎస్కేప్ మెనులో 'LANకి తెరవండి'ని క్లిక్ చేయండి.",
   "complexityanalyzer.command.web.header" : "వెబ్ డ్యాష్‌బోర్డ్",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[బ్రౌజర్‌లో తెరవండి]",

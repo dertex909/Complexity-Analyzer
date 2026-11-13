@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Mẹo: %s",
   "complexityanalyzer.output.admin_prefix" : "[Quản trị viên] ",
   "complexityanalyzer.command.web.active" : "Bảng điều khiển web không hoạt động.",
-  "complexityanalyzer.command.web.lan_tip" : "Để sử dụng nó trong phần chơi đơn, bạn phải nhấp vào 'Mở sang mạng LAN' trong menu Thoát.",
+  "complexityanalyzer.command.web.lan_tip" : "Kiểm tra cài đặt web_server.port: -1 tắt bảng điều khiển web. Trong phần chơi đơn có cổng được đặt thành 0, hãy nhấp vào 'Mở sang mạng LAN' trong menu Thoát.",
   "complexityanalyzer.command.web.header" : "Trang tổng quan web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Mở trong trình duyệt]",

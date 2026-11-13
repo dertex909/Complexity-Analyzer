@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ھدايت: %s",
   "complexityanalyzer.output.admin_prefix" : "[ايڊمن] ",
   "complexityanalyzer.command.web.active" : "ويب ڊيش بورڊ فعال نه آهي.",
-  "complexityanalyzer.command.web.lan_tip" : "ان کي سنگل پليئر ۾ استعمال ڪرڻ لاءِ، توھان کي لازمي طور تي ڪلڪ ڪرڻ گھرجي 'LAN ڏانھن کوليو' فرار مينيو ۾.",
+  "complexityanalyzer.command.web.lan_tip" : "چيڪ ڪريو web_server.port سيٽنگ: -1 ويب ڊيش بورڊ کي غير فعال ڪري ٿو. سنگل پليئر ۾ پورٽ سيٽ سان 0 تي، ڪلڪ ڪريو 'LAN ڏانهن کوليو' فرار مينيو ۾.",
   "complexityanalyzer.command.web.header" : "ويب ڊيش بورڊ",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[براؤزر ۾ کوليو]",

@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tip: Û",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Tabloya Webê ne çalak e.",
-  "complexityanalyzer.command.web.lan_tip" : "Ji bo ku hûn wê di lîstikvanek yekane de bikar bînin, divê hûn di menuya Escape de 'Li LAN-ê veke' bikirtînin.",
+  "complexityanalyzer.command.web.lan_tip" : "Vebijêrk web_server.port kontrol bikin: -1 dashboarda malperê asteng dike. Di lîstikvanek yekane de ku porta 0-yê hatî danîn, di menuya Escape de 'Li LAN'ê veke' bikirtînin.",
   "complexityanalyzer.command.web.header" : "Web Dashboard",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Di gerokê de veke]",

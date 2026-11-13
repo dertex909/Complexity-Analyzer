@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "सुझाव: %s",
   "complexityanalyzer.output.admin_prefix" : "[व्यवस्थापक] ",
   "complexityanalyzer.command.web.active" : "वेब ड्यासबोर्ड सक्रिय छैन।",
-  "complexityanalyzer.command.web.lan_tip" : "यसलाई सिंगल प्लेयरमा प्रयोग गर्न, तपाईंले एस्केप मेनुमा 'ल्यानमा खोल्नुहोस्' मा क्लिक गर्नुपर्छ।",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port सेटिङ जाँच गर्नुहोस्: -1 वेब ड्यासबोर्ड असक्षम गर्दछ। 0 मा पोर्ट सेट भएको एकल प्लेयरमा, Escape मेनुमा 'LAN खोल्नुहोस्' मा क्लिक गर्नुहोस्।",
   "complexityanalyzer.command.web.header" : "वेब ड्यासबोर्ड",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ब्राउजरमा खोल्नुहोस्]",

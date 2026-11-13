@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "टिप: %s के बा",
   "complexityanalyzer.output.admin_prefix" : "[एडीमिन] के बा। ",
   "complexityanalyzer.command.web.active" : "वेब डैशबोर्ड सक्रिय नइखे.",
-  "complexityanalyzer.command.web.lan_tip" : "एकरा के सिंगलप्लेयर में इस्तेमाल करे खातिर एस्केप मेनू में 'ओपन टू लैन' प क्लिक करे के होई।",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port सेटिंग के जांच करीं: -1 वेब डैशबोर्ड के अक्षम कर देला। पोर्ट 0 प सेट कईल सिंगलप्लेयर में एस्केप मेनू में 'ओपन टू लैन' प क्लिक करीं।",
   "complexityanalyzer.command.web.header" : "वेब डैशबोर्ड के बा",
   "complexityanalyzer.command.web.url_label" : "यूआरएल के बा",
   "complexityanalyzer.command.web.open_browser" : "[ब्राउजर में खुलल बा]।",

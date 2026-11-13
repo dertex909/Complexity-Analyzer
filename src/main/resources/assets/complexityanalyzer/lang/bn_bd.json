@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "পরামর্শ: %s",
   "complexityanalyzer.output.admin_prefix" : "[প্রশাসক] ",
   "complexityanalyzer.command.web.active" : "ওয়েব ড্যাশবোর্ড সক্রিয় নেই।",
-  "complexityanalyzer.command.web.lan_tip" : "এটিকে একক প্লেয়ারে ব্যবহার করতে, আপনাকে অবশ্যই Escape মেনুতে 'Open to LAN' এ ক্লিক করতে হবে।",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port সেটিংস পরীক্ষা করুন: -1 ওয়েব ড্যাশবোর্ড নিষ্ক্রিয় করে। পোর্ট সেট করা একক প্লেয়ারে, Escape মেনুতে 'Open to LAN' এ ক্লিক করুন।",
   "complexityanalyzer.command.web.header" : "ওয়েব ড্যাশবোর্ড",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ব্রাউজারে খুলুন]",

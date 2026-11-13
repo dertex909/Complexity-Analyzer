@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Astuce : %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMINISTRATEUR] ",
   "complexityanalyzer.command.web.active" : "Le tableau de bord Web n'est pas actif.",
-  "complexityanalyzer.command.web.lan_tip" : "Pour l'utiliser en mode solo, vous devez cliquer sur \"Ouvrir sur LAN\" dans le menu Échap.",
+  "complexityanalyzer.command.web.lan_tip" : "Vérifiez le paramètre web_server.port : -1 désactive le tableau de bord Web. En mode solo avec le port défini sur 0, cliquez sur « Ouvrir sur LAN » dans le menu Échap.",
   "complexityanalyzer.command.web.header" : "Tableau de bord Web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Ouvrir dans le navigateur]",

@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ጠቃሚ ምክር፡ %s",
   "complexityanalyzer.output.admin_prefix" : "[አድሚን] ",
   "complexityanalyzer.command.web.active" : "የድር ዳሽቦርድ ገቢር አይደለም።",
-  "complexityanalyzer.command.web.lan_tip" : "በነጠላ ተጫዋች ለመጠቀም በ Escape ሜኑ ውስጥ 'ወደ LAN ክፈት' የሚለውን ጠቅ ማድረግ አለቦት።",
+  "complexityanalyzer.command.web.lan_tip" : "የweb_server.port ቅንብርን ይመልከቱ፡-1 የድር ዳሽቦርዱን ያሰናክላል። በነጠላ ተጫዋች ወደብ 0 ተቀናብሯል፣ በምሽት ሜኑ ውስጥ 'ወደ LAN ክፈት' የሚለውን ይጫኑ።",
   "complexityanalyzer.command.web.header" : "የድር ዳሽቦርድ",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[በአሳሽ ክፈት]",

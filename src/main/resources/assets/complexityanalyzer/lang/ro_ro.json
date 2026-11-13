@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Sfat: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN.] ",
   "complexityanalyzer.command.web.active" : "Tabloul de bord web nu este activ.",
-  "complexityanalyzer.command.web.lan_tip" : "Pentru a-l folosi în modul singleplayer, trebuie să faceți clic pe „Open to LAN” în meniul Escape.",
+  "complexityanalyzer.command.web.lan_tip" : "Verificați setarea web_server.port: -1 dezactivează tabloul de bord web. În modul singleplayer cu portul setat la 0, faceți clic pe „Open to LAN” în meniul Escape.",
   "complexityanalyzer.command.web.header" : "Tabloul de bord web",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Deschide în browser]",

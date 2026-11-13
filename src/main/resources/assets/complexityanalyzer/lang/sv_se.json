@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "Tips: %s",
   "complexityanalyzer.output.admin_prefix" : "[ADMIN] ",
   "complexityanalyzer.command.web.active" : "Web Dashboard är inte aktiv.",
-  "complexityanalyzer.command.web.lan_tip" : "För att använda det i singleplayer, måste du klicka på 'Öppna till LAN' i Escape-menyn.",
+  "complexityanalyzer.command.web.lan_tip" : "Kontrollera web_server.port-inställningen: -1 inaktiverar webbinstrumentpanelen. I singleplayer med port inställd på 0, klicka på 'Öppna till LAN' i Escape-menyn.",
   "complexityanalyzer.command.web.header" : "Webb Dashboard",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[Öppna i webbläsare]",

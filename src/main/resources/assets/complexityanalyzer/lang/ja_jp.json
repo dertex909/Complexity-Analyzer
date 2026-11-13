@@ -2,7 +2,7 @@
   "complexityanalyzer.output.tip" : "ヒント: %s",
   "complexityanalyzer.output.admin_prefix" : "[管理者] ",
   "complexityanalyzer.command.web.active" : "Web ダッシュボードがアクティブではありません。",
-  "complexityanalyzer.command.web.lan_tip" : "シングルプレイヤーで使用するには、エスケープメニューの「LAN に開く」をクリックする必要があります。",
+  "complexityanalyzer.command.web.lan_tip" : "web_server.port 設定を確認します。 -1 は Web ダッシュボードを無効にします。シングルプレイヤーでポートを 0 に設定し、Escape メニューの「Open to LAN」をクリックします。",
   "complexityanalyzer.command.web.header" : "ウェブダッシュボード",
   "complexityanalyzer.command.web.url_label" : "URL",
   "complexityanalyzer.command.web.open_browser" : "[ブラウザで開く]",

@@ -127,8 +127,11 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         if (server == null) return null;
 
         int configuredPort = ComplexityConfig.WEB_SERVER_PORT.get();
-        if (configuredPort > 0 && !StandaloneWebServer.isRunning()) return null;
-        int port = configuredPort > 0 ? configuredPort : server.getPort();
+        int port = switch (configuredPort) {
+            case -1 -> Integer.MIN_VALUE;
+            case 0 -> server.getPort();
+            default -> StandaloneWebServer.isRunning() ? configuredPort : Integer.MIN_VALUE;
+        };
         if (port <= 0) return null;
 
         String hostname = server.getLocalIp();
@@ -154,6 +157,12 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
             if (mime != null) return mime;
         }
         return HttpHeaderValues.APPLICATION_OCTET_STREAM.toString();
+    }
+
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+        if (ComplexityConfig.WEB_SERVER_PORT.get() == 0) StandaloneWebServer.trackMultiplexedWebChannel(ctx.channel());
+        super.handlerAdded(ctx);
     }
 
     private static boolean isSafePath(String path) {

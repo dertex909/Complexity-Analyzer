@@ -33,7 +33,7 @@ public class ProtocolDetector extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
-        if (ComplexityConfig.WEB_SERVER_PORT.get() > 0) {
+        if (ComplexityConfig.WEB_SERVER_PORT.get() != 0) {
             ctx.pipeline().remove(this);
             return;
         }

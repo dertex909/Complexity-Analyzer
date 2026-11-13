@@ -142,12 +142,13 @@ public class ComplexityConfig {
 
         WEB_SERVER_PORT = builder.comment(
                 " Dedicated port for the web dashboard server.",
+                " -1 = disable the web dashboard server.",
                 " 0 = multiplex on the main Minecraft server port (default).",
                 " 1024-65535 = bind a separate standalone HTTP/WebSocket server to this port."
         ).define("port", 0, obj -> {
             if (obj instanceof Number num) {
                 int port = num.intValue();
-                return port == 0 || (port >= 1024 && port <= 65535);
+                return port == -1 || port == 0 || (port >= 1024 && port <= 65535);
             }
             return false;
         });

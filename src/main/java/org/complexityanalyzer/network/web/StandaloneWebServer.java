@@ -22,9 +22,12 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.config.ComplexityConfig;
@@ -36,6 +39,7 @@ public final class StandaloneWebServer {
     private static volatile EventLoopGroup bossGroup;
     private static volatile EventLoopGroup workerGroup;
     private static volatile Channel serverChannel;
+    private static final ChannelGroup multiplexedWebChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     private StandaloneWebServer() {
     }
@@ -78,6 +82,8 @@ public final class StandaloneWebServer {
             serverChannel = null;
         }
 
+        multiplexedWebChannels.close();
+
         if (bossGroup != null) {
             bossGroup.shutdownGracefully();
             bossGroup = null;
@@ -91,5 +97,9 @@ public final class StandaloneWebServer {
 
     public static boolean isRunning() {
         return serverChannel != null && serverChannel.isActive();
+    }
+
+    static void trackMultiplexedWebChannel(Channel channel) {
+        multiplexedWebChannels.add(channel);
     }
 }

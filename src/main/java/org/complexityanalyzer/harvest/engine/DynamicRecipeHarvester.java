@@ -18,35 +18,50 @@
 
 package org.complexityanalyzer.harvest.engine;
 
+import com.google.common.collect.ImmutableCollection;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeInput;
-import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.GameRegistryManager;
+import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.harvest.inspector.StandardRecipeMethods;
 import org.complexityanalyzer.util.ParallelUtils;
 import org.complexityanalyzer.util.ProbeScope;
+import org.complexityanalyzer.util.Scope;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static org.complexityanalyzer.util.LogMarkers.DYNAMIC_RECIPE_HARVESTER;
 
 public final class DynamicRecipeHarvester {
 
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+    private static final ThreadLocal<ActiveProbe> ACTIVE_PROBE = new ThreadLocal<>();
+
     private DynamicRecipeHarvester() {
+    }
+
+    @Nullable
+    public static ActiveProbe getActiveProbe() {
+        return ACTIVE_PROBE.get();
     }
 
     public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
@@ -63,66 +78,83 @@ public final class DynamicRecipeHarvester {
                 return;
             }
 
-            int detectionSampleSize = ComplexityConfig.DETECTION_SAMPLE_SIZE.get();
-
-            var ctx = new ProbeContext(
-                    recipeManager, level, graph, new FastHarvester(), allItems,
-                    knownRecipeIds, ConcurrentHashMap.newKeySet(), new AtomicInteger(), new AtomicInteger(), detectionSampleSize
-            );
-
-            var types = new ObjectArrayList<RecipeType<?>>(inputTypeMap.size());
-            var classesList = new ObjectArrayList<ObjectSet<Class<?>>>(inputTypeMap.size());
+            var byInputClass = new Object2ObjectLinkedOpenHashMap<Class<?>, ObjectArrayList<RecipeType<?>>>();
             for (var entry : inputTypeMap.object2ObjectEntrySet()) {
-                types.add(entry.getKey());
-                classesList.add(entry.getValue());
+                var type = entry.getKey();
+                for (var inputClass : entry.getValue()) {
+                    byInputClass.computeIfAbsent(inputClass, k -> new ObjectArrayList<>()).add(type);
+                }
             }
 
-            int typeCount = types.size();
-            if (typeCount == 1) {
-                probeType(types.getFirst(), classesList.getFirst(), ctx);
-            } else if (typeCount > 1) {
-                ParallelUtils.forRange(0, typeCount, 1, i -> probeType(types.get(i), classesList.get(i), ctx));
+            var pendingNodes = new ConcurrentHashMap<ResourceLocation, RecipeNode>();
+            var ctx = new ProbeContext(recipeManager, level, new FastHarvester(), allItems, knownRecipeIds,
+                    ConcurrentHashMap.newKeySet(), pendingNodes, new AtomicInteger(), new AtomicInteger());
+
+            for (var entry : byInputClass.object2ObjectEntrySet()) {
+                var creator = resolveCreator(entry.getKey());
+                if (creator == null) continue;
+                probeInputGroup(creator, entry.getValue().toArray(new RecipeType<?>[0]), ctx, new ActiveProbe(knownRecipeIds));
             }
 
+            for (var node : pendingNodes.values()) graph.addRecipe(node);
             ComplexityAnalyzer.LOGGER.info(DYNAMIC_RECIPE_HARVESTER, "Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
                     ctx.addedCount().get(), ctx.dynamicTypes().get());
         }
     }
 
-    private static void probeType(RecipeType<?> type, ObjectSet<Class<?>> inputClasses, ProbeContext ctx) {
-        for (var inputClass : inputClasses) probeInputClass(type, inputClass, ctx);
-    }
+    private static void probeInputGroup(InputCreator creator, RecipeType<?>[] types, ProbeContext ctx, ActiveProbe activeProbe) {
+        int typeCount = types.length;
+        var foundByType = new AtomicIntegerArray(typeCount);
 
-    private static void probeInputClass(RecipeType<?> type, Class<?> inputClass, ProbeContext ctx) {
-        var creator = resolveCreator(inputClass);
-        if (creator == null) return;
-
-        int detectedAt = detectDynamic(type, creator, ctx);
-        if (detectedAt < 0) return;
-
-        fullScan(type, creator, ctx);
-        ctx.dynamicTypes().incrementAndGet();
-    }
-
-    private static int detectDynamic(RecipeType<?> type, InputCreator creator, ProbeContext ctx) {
-        int n = ctx.allItems().size();
-        int detectLimit = Math.min(n, ctx.detectionSampleSize());
-        for (int d = 0; d < detectLimit; d++) {
-            int idx = (int) ((long) d * n / detectLimit);
-            var recipes = getRecipesFor(ctx.allItems().get(idx), creator, type, ctx);
-            for (var holder : recipes) {
-                if (!ctx.known().contains(holder.id())) return idx;
-            }
-        }
-        return -1;
-    }
-
-    private static void fullScan(RecipeType<?> type, InputCreator creator, ProbeContext ctx) {
         var allItems = ctx.allItems();
-        for (var allItem : allItems) {
-            var recipes = getRecipesFor(allItem, creator, type, ctx);
-            for (var holder : recipes) if (!ctx.known().contains(holder.id())) harvestAndAdd(holder, ctx);
+        int totalItems = allItems.size();
+        int threads = Math.max(1, ThreadPoolManager.getInstance().getParallelism());
+        int chunkSize = Math.clamp((long) totalItems / (threads * 4L), 32, 256);
+        int chunkCount = (totalItems + chunkSize - 1) / chunkSize;
+
+        ParallelUtils.forRange(0, chunkCount, 1, chunkIdx -> {
+            int start = chunkIdx * chunkSize;
+            int end = Math.min(start + chunkSize, totalItems);
+
+            ACTIVE_PROBE.set(activeProbe);
+            try (var ignored = Scope.of(ACTIVE_PROBE::remove)) {
+                for (int i = start; i < end; i++) {
+                    RecipeInput input;
+                    try {
+                        var stack = allItems.get(i).getDefaultInstance();
+                        if (stack.isEmpty()) continue;
+                        var rawInput = creator.create(stack);
+                        if (!(rawInput instanceof RecipeInput ri) || ri.isEmpty()) continue;
+                        input = ri;
+                    } catch (Throwable ignoredErr) {
+                        continue;
+                    }
+
+                    for (int t = 0; t < typeCount; t++) {
+                        try {
+                            var recipes = queryRecipes(ctx.recipeManager(), types[t], input, ctx.level());
+                            if (recipes.isEmpty()) continue;
+
+                            for (var holder : recipes) {
+                                if (ctx.known().contains(holder.id())) continue;
+                                if (foundByType.get(t) == 0) foundByType.set(t, 1);
+                                harvestAndAdd(holder, ctx);
+                            }
+                        } catch (Throwable ignoredErr) {
+                        }
+                    }
+                }
+            }
+        });
+
+        for (int t = 0; t < typeCount; t++) {
+            if (foundByType.get(t) != 0) ctx.dynamicTypes().incrementAndGet();
         }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static List<RecipeHolder<?>> queryRecipes(RecipeManager manager, RecipeType<?> type, RecipeInput input, Level level) {
+        return (List<RecipeHolder<?>>) (List<?>) manager.getRecipesFor((RecipeType) type, input, level);
     }
 
     private static void harvestAndAdd(RecipeHolder<?> holder, ProbeContext ctx) {
@@ -131,28 +163,11 @@ public final class DynamicRecipeHarvester {
             var items = ctx.harvester().harvest(holder.value(), ctx.level());
             var node = HarvestedRecipeConverter.convert(items, ctx.level());
             if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty())) {
-                ctx.graph().addRecipe(node);
+                ctx.pendingNodes().put(holder.id(), node);
                 ctx.addedCount().incrementAndGet();
             }
         } catch (Throwable t) {
             ComplexityAnalyzer.LOGGER.error(DYNAMIC_RECIPE_HARVESTER, "Error harvesting recipe ID={}", holder.id(), t);
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static ObjectList<RecipeHolder<?>> getRecipesFor(Item item, InputCreator creator, RecipeType<?> type, ProbeContext ctx) {
-        try {
-            var stack = item.getDefaultInstance();
-            if (stack.isEmpty()) return ObjectLists.emptyList();
-            var rawInput = creator.create(stack);
-            if (rawInput instanceof RecipeInput input) {
-                var recipes = ctx.recipeManager().getRecipesFor((RecipeType) type, input, ctx.level());
-                if (recipes.isEmpty()) return ObjectLists.emptyList();
-                return new ObjectArrayList<>(recipes);
-            }
-            return ObjectLists.emptyList();
-        } catch (Throwable ignored) {
-            return ObjectLists.emptyList();
         }
     }
 
@@ -187,16 +202,23 @@ public final class DynamicRecipeHarvester {
     }
 
     private static InputCreator resolveCreator(Class<?> inputClass) {
+        if (inputClass == CraftingInput.class) return stack -> CraftingInput.of(1, 1, ObjectLists.singleton(stack));
+        if (inputClass == SingleRecipeInput.class) return SingleRecipeInput::new;
+
         var methods = inputClass.getMethods();
         for (var m : methods) {
             if (!Modifier.isStatic(m.getModifiers()) || !m.getName().equals("of")
                     || !inputClass.isAssignableFrom(m.getReturnType())) continue;
             try {
                 int pc = m.getParameterCount();
-                Class<?>[] pt = m.getParameterTypes();
-                if (pc == 1 && pt[0].isAssignableFrom(ItemStack.class)) return stack -> m.invoke(null, stack);
+                var pt = m.getParameterTypes();
+                if (pc == 1 && pt[0].isAssignableFrom(ItemStack.class)) {
+                    var mh = unreflect(m).asType(MethodType.methodType(Object.class, ItemStack.class));
+                    return mh::invokeExact;
+                }
                 if (pc == 3 && pt[0] == int.class && pt[1] == int.class && List.class.isAssignableFrom(pt[2])) {
-                    return stack -> m.invoke(null, 1, 1, List.of(stack));
+                    var mh = unreflect(m).asType(MethodType.methodType(Object.class, int.class, int.class, List.class));
+                    return stack -> mh.invokeExact(1, 1, (List<ItemStack>) ObjectLists.singleton(stack));
                 }
             } catch (Throwable ignored) {
             }
@@ -206,18 +228,18 @@ public final class DynamicRecipeHarvester {
         for (var c : constructors) {
             try {
                 int pc = c.getParameterCount();
-                Class<?>[] pt = c.getParameterTypes();
+                var pt = c.getParameterTypes();
                 if (pc == 1 && pt[0].isAssignableFrom(ItemStack.class)) {
-                    c.setAccessible(true);
-                    return c::newInstance;
+                    var mh = unreflectConstructor(c).asType(MethodType.methodType(Object.class, ItemStack.class));
+                    return mh::invokeExact;
                 }
                 if (pc == 3 && pt[0] == int.class && pt[1] == int.class && List.class.isAssignableFrom(pt[2])) {
-                    c.setAccessible(true);
-                    return stack -> c.newInstance(1, 1, List.of(stack));
+                    var mh = unreflectConstructor(c).asType(MethodType.methodType(Object.class, int.class, int.class, List.class));
+                    return stack -> mh.invokeExact(1, 1, (List<ItemStack>) ObjectLists.singleton(stack));
                 }
                 if (pc == 1 && List.class.isAssignableFrom(pt[0])) {
-                    c.setAccessible(true);
-                    return stack -> c.newInstance(List.of(stack));
+                    var mh = unreflectConstructor(c).asType(MethodType.methodType(Object.class, List.class));
+                    return stack -> mh.invokeExact((List<ItemStack>) ObjectLists.singleton(stack));
                 }
             } catch (Throwable ignored) {
             }
@@ -225,21 +247,71 @@ public final class DynamicRecipeHarvester {
         return null;
     }
 
+    private static MethodHandle unreflect(Method m) throws IllegalAccessException {
+        m.setAccessible(true);
+        try {
+            return MethodHandles.privateLookupIn(m.getDeclaringClass(), LOOKUP).unreflect(m);
+        } catch (IllegalAccessException e) {
+            return LOOKUP.unreflect(m);
+        }
+    }
+
+    private static MethodHandle unreflectConstructor(Constructor<?> c) throws IllegalAccessException {
+        c.setAccessible(true);
+        try {
+            return MethodHandles.privateLookupIn(c.getDeclaringClass(), LOOKUP).unreflectConstructor(c);
+        } catch (IllegalAccessException e) {
+            return LOOKUP.unreflectConstructor(c);
+        }
+    }
+
     @FunctionalInterface
     private interface InputCreator {
         Object create(ItemStack stack) throws Throwable;
     }
 
+    public static final class ActiveProbe {
+        private final ObjectSet<ResourceLocation> known;
+        private final ConcurrentHashMap<RecipeType<?>, FilteredEntry> cache = new ConcurrentHashMap<>();
+
+        private ActiveProbe(ObjectSet<ResourceLocation> known) {
+            this.known = known;
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T extends Recipe<?>> Collection<RecipeHolder<T>> filterKnown(RecipeType<?> type, Collection<RecipeHolder<T>> raw) {
+            var entry = cache.get(type);
+            if (entry != null && entry.rawRef() == raw) return (Collection<RecipeHolder<T>>) entry.filtered();
+            var filtered = filterList(raw);
+            if (raw instanceof ImmutableCollection<?> || raw instanceof ObjectImmutableList<?>)
+                cache.put(type, new FilteredEntry(raw, filtered));
+            return filtered;
+        }
+
+        private <T extends Recipe<?>> ObjectList<RecipeHolder<T>> filterList(Collection<RecipeHolder<T>> raw) {
+            ObjectArrayList<RecipeHolder<T>> out = null;
+            for (var holder : raw) {
+                if (!known.contains(holder.id())) {
+                    if (out == null) out = new ObjectArrayList<>(4);
+                    out.add(holder);
+                }
+            }
+            return out != null ? out : ObjectLists.emptyList();
+        }
+
+        private record FilteredEntry(Collection<?> rawRef, Collection<?> filtered) {
+        }
+    }
+
     private record ProbeContext(
             RecipeManager recipeManager,
             Level level,
-            RecipeGraph graph,
             FastHarvester harvester,
             ObjectList<Item> allItems,
             ObjectSet<ResourceLocation> known,
-            Set<ResourceLocation> discovered,
+            ConcurrentHashMap.KeySetView<ResourceLocation, Boolean> discovered,
+            ConcurrentHashMap<ResourceLocation, RecipeNode> pendingNodes,
             AtomicInteger addedCount,
-            AtomicInteger dynamicTypes,
-            int detectionSampleSize) {
+            AtomicInteger dynamicTypes) {
     }
 }

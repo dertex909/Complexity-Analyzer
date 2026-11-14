@@ -70,7 +70,7 @@ neoForge {
 
 val http = "io.netty:netty-codec-http:$nettyCodecHttpVersion"
 val zstd = "com.github.luben:zstd-jni:$zstdJniVersion"
-val jei = "mezz.jei:jei-$minecraftVersion-neoforge:19.25.0.325"
+val jei = "mezz.jei:jei-$minecraftVersion-neoforge:19.25.1.328"
 
 dependencies {
     implementation(http)

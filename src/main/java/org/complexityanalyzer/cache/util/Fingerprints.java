@@ -24,6 +24,8 @@ import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
 
+import static org.complexityanalyzer.util.LogMarkers.CACHE_FINGERPRINTS;
+
 public final class Fingerprints {
 
     public static final long FNV_OFFSET = 0xcbf29ce484222325L;
@@ -110,7 +112,7 @@ public final class Fingerprints {
                 }
             }
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Cache] Failed to hash geo data: {}", t.toString());
+            ComplexityAnalyzer.LOGGER.warn(CACHE_FINGERPRINTS, "Failed to hash geo data: {}", t.toString());
             return 0L;
         }
         return acc;

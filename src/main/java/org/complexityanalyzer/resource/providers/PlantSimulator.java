@@ -53,6 +53,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.complexityanalyzer.util.LogMarkers.PLANT_SIMULATOR;
+
 public class PlantSimulator {
 
     private static final GroundResult NO_GROUND = new GroundResult(Blocks.AIR, Direction.DOWN);
@@ -106,7 +108,7 @@ public class PlantSimulator {
                     var result = simulate(block, level);
                     if (result != null) results.put(block, result);
                 } catch (Throwable t) {
-                    ComplexityAnalyzer.LOGGER.warn("[PlantSim] Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
+                    ComplexityAnalyzer.LOGGER.warn(PLANT_SIMULATOR, "Skipping {} due to error: {}", GameRegistryManager.getBlockId(block), t.toString());
                 }
             }
 
@@ -265,7 +267,7 @@ public class PlantSimulator {
             }
 
         } catch (Throwable e) {
-            ComplexityAnalyzer.LOGGER.error("[PlantSim] Loot error for {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
+            ComplexityAnalyzer.LOGGER.error(PLANT_SIMULATOR, "Loot error for {}: {}", GameRegistryManager.getBlockId(block), e.getMessage());
         }
         return drops;
     }

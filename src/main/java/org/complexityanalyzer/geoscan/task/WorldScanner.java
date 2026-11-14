@@ -40,6 +40,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_WORLD_SCANNER;
+
 public class WorldScanner {
     private static final int MAX_CACHED_LOCATIONS_PER_BIOME = 96;
     private static final int MIN_CACHED_LOCATION_DISTANCE_BLOCKS = 768;
@@ -96,7 +98,7 @@ public class WorldScanner {
         if (!level.registryAccess().registryOrThrow(Registries.BIOME).containsKey(biomeKey)) return null;
 
         if (!canBiomeGenerateInDimension(level, biomeKey)) {
-            ComplexityAnalyzer.LOGGER.debug("[WorldScanner] Skipping {} - cannot generate in {}",
+            ComplexityAnalyzer.LOGGER.debug(GEO_WORLD_SCANNER, "Skipping {} - cannot generate in {}",
                     biomeKey.location(), dimension.location());
             return null;
         }
@@ -106,7 +108,7 @@ public class WorldScanner {
         if (allowCachedLocation) {
             var cachedPos = getCachedLocation(cacheKey, isRelocation);
             if (cachedPos != null) {
-                ComplexityAnalyzer.LOGGER.trace("Using cached location for {}: [{}, {}]",
+                ComplexityAnalyzer.LOGGER.trace(GEO_WORLD_SCANNER, "Using cached location for {}: [{}, {}]",
                         biomeKey.location().getPath(), cachedPos.getX(), cachedPos.getZ());
                 return new ChunkPos(cachedPos);
             }
@@ -131,7 +133,7 @@ public class WorldScanner {
 
                 return biomes;
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Failed to get biomes for {}: {}", dimensionId, e.getMessage());
+                ComplexityAnalyzer.LOGGER.warn(GEO_WORLD_SCANNER, "Failed to get biomes for {}: {}", dimensionId, e.getMessage());
                 return ObjectSets.emptySet();
             }
         });
@@ -163,7 +165,7 @@ public class WorldScanner {
             return new ChunkPos(result);
         }
 
-        ComplexityAnalyzer.LOGGER.warn("[WorldScanner] Could not find {} within {} blocks", biomeKey.location(), radius);
+        ComplexityAnalyzer.LOGGER.warn(GEO_WORLD_SCANNER, "Could not find {} within {} blocks", biomeKey.location(), radius);
         return null;
     }
 

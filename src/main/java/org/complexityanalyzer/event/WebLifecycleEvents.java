@@ -33,6 +33,7 @@ import org.complexityanalyzer.network.web.StandaloneWebServer;
 import org.complexityanalyzer.network.web.dev.ViewerWatcher;
 
 import static org.complexityanalyzer.config.ComplexityConfig.SPEC;
+import static org.complexityanalyzer.util.LogMarkers.WEB_LIFECYCLE;
 
 @EventBusSubscriber
 public final class WebLifecycleEvents {
@@ -67,7 +68,7 @@ public final class WebLifecycleEvents {
     @SubscribeEvent
     public static void onConfigReload(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == SPEC) {
-            ComplexityAnalyzer.LOGGER.info("[Web] Config reloaded, updating token & restarting web server...");
+            ComplexityAnalyzer.LOGGER.info(WEB_LIFECYCLE, "Config reloaded, updating token & restarting web server...");
             CabinNettyHandler.resetToken();
             StandaloneWebServer.start();
         }

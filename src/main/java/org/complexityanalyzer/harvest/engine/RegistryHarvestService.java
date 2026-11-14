@@ -28,6 +28,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
 
+import static org.complexityanalyzer.util.LogMarkers.REGISTRY_HARVEST_SERVICE;
+
 public final class RegistryHarvestService {
     private final FastHarvester harvester;
 
@@ -60,7 +62,7 @@ public final class RegistryHarvestService {
         var knownRecipeIds = new ObjectOpenHashSet<ResourceLocation>(totalRecipes);
         var debugTrace = new FullDebugTracePipeline(worldDir);
 
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Starting runtime recipe scan (Total: {} recipes)...", totalRecipes);
+        ComplexityAnalyzer.LOGGER.info(REGISTRY_HARVEST_SERVICE, "Starting runtime recipe scan (Total: {} recipes)...", totalRecipes);
         long startTime = System.currentTimeMillis();
 
         for (var holder : recipes) {
@@ -83,7 +85,7 @@ public final class RegistryHarvestService {
             } catch (Throwable t) {
                 failed++;
                 debugTrace.traceFailed(recipeId, holder.value().getClass().getName(), t);
-                ComplexityAnalyzer.LOGGER.debug("[Harvest] Failed to scan recipe {}: {}", recipeId, t.getMessage());
+                ComplexityAnalyzer.LOGGER.debug(REGISTRY_HARVEST_SERVICE, "Failed to scan recipe {}: {}", recipeId, t.getMessage());
             }
 
             if (scanned % 1000 == 0 || scanned == totalRecipes) {
@@ -91,7 +93,7 @@ public final class RegistryHarvestService {
                 String remainingStr = getRemaining(elapsed, scanned, totalRecipes);
                 String percent = "%.1f".formatted((scanned * 100.0) / totalRecipes);
 
-                ComplexityAnalyzer.LOGGER.debug("[Harvest] Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
+                ComplexityAnalyzer.LOGGER.debug(REGISTRY_HARVEST_SERVICE, "Progress: {}/{} ({}%). Estimated remaining time: {}. Status: harvested={}, rejected={}, failed={}",
                         scanned, totalRecipes, percent, remainingStr, harvested, rejected, failed);
             }
         }
@@ -100,7 +102,7 @@ public final class RegistryHarvestService {
         DynamicRecipeHarvester.harvest(graph, level, knownRecipeIds);
         harvester.clearCaches();
 
-        ComplexityAnalyzer.LOGGER.info("[Harvest] Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
+        ComplexityAnalyzer.LOGGER.info(REGISTRY_HARVEST_SERVICE, "Runtime scan complete: {} scanned, {} harvested, {} rejected, {} failed",
                 scanned, harvested, rejected, failed);
     }
 }

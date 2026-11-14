@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
 import static org.complexityanalyzer.util.FluidNormalizer.normalize;
+import static org.complexityanalyzer.util.LogMarkers.RECIPE_GRAPH;
 
 public class RecipeGraph {
     private final Reference2ObjectOpenHashMap<Item, ObjectList<RecipeNode>> recipesByItem;
@@ -119,7 +120,7 @@ public class RecipeGraph {
                     list.add(node);
                 }
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.warn("Invalid placeholder ID: {}", node.getPlaceholderId());
+                ComplexityAnalyzer.LOGGER.warn(RECIPE_GRAPH, "Invalid placeholder ID: {}", node.getPlaceholderId());
             }
         }
 
@@ -237,7 +238,7 @@ public class RecipeGraph {
         IngredientSlot.clearCache();
         FluidIngredientSlot.clearCache();
         ItemStackCanonicalizer.clear();
-        ComplexityAnalyzer.LOGGER.info("Recipe graph cleared");
+        ComplexityAnalyzer.LOGGER.info(RECIPE_GRAPH, "Recipe graph cleared");
     }
 
     public GraphStats getStats() {

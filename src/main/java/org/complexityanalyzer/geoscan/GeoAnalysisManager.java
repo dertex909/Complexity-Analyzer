@@ -48,6 +48,8 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_ANALYSIS_MANAGER;
+
 public class GeoAnalysisManager {
 
     private final MinecraftServer server;
@@ -82,7 +84,7 @@ public class GeoAnalysisManager {
 
         NeoForge.EVENT_BUS.register(this);
 
-        ComplexityAnalyzer.LOGGER.info("GeoAnalysisManager initialized");
+        ComplexityAnalyzer.LOGGER.info(GEO_ANALYSIS_MANAGER, "GeoAnalysisManager initialized");
     }
 
     public ScanSession getCurrentSession() {
@@ -102,7 +104,7 @@ public class GeoAnalysisManager {
 
         var executor = analysisEngine.getBackgroundExecutor();
         if (executor == null) {
-            ComplexityAnalyzer.LOGGER.error("Cannot start initial scan, executor not ready!");
+            ComplexityAnalyzer.LOGGER.error(GEO_ANALYSIS_MANAGER, "Cannot start initial scan, executor not ready!");
             return;
         }
 
@@ -113,26 +115,26 @@ public class GeoAnalysisManager {
                 var phase = database.getScanPhase();
 
                 if (phase == ScanMetadata.ScanPhase.COMPLETE) {
-                    ComplexityAnalyzer.LOGGER.info("Geo-scan complete. Database is fully optimized.");
+                    ComplexityAnalyzer.LOGGER.info(GEO_ANALYSIS_MANAGER, "Geo-scan complete. Database is fully optimized.");
                     database.loadAll();
                     return;
                 }
 
                 if (phase == ScanMetadata.ScanPhase.REFINING) {
-                    ComplexityAnalyzer.LOGGER.warn("Previous refinement did not finish; resuming from saved scan data.");
+                    ComplexityAnalyzer.LOGGER.warn(GEO_ANALYSIS_MANAGER, "Previous refinement did not finish; resuming from saved scan data.");
                     dataRefiner.refine(analysisEngine::onGeoScanFinished);
                     return;
                 }
 
                 if (phase == ScanMetadata.ScanPhase.RECONNAISSANCE) {
-                    ComplexityAnalyzer.LOGGER.warn("Previous reconnaissance was incomplete; resetting the scan phase.");
+                    ComplexityAnalyzer.LOGGER.warn(GEO_ANALYSIS_MANAGER, "Previous reconnaissance was incomplete; resetting the scan phase.");
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 }
 
                 startScanImmediately(32, "Server", ScanProfile.NORMAL);
             });
         } catch (RejectedExecutionException e) {
-            ComplexityAnalyzer.LOGGER.warn("Cannot start initial scan — executor already shut down.");
+            ComplexityAnalyzer.LOGGER.warn(GEO_ANALYSIS_MANAGER, "Cannot start initial scan — executor already shut down.");
         }
     }
 
@@ -140,7 +142,7 @@ public class GeoAnalysisManager {
         if (isShutdown.get()) return;
 
         if (isScanning() || isCountdownActive() || scanStarting.get()) {
-            ComplexityAnalyzer.LOGGER.error("Cannot schedule geo-scan: a scan is already running or scheduled.");
+            ComplexityAnalyzer.LOGGER.error(GEO_ANALYSIS_MANAGER, "Cannot schedule geo-scan: a scan is already running or scheduled.");
             return;
         }
 
@@ -162,7 +164,7 @@ public class GeoAnalysisManager {
                 if (isShutdown.get()) return;
 
                 if (!scanStarting.compareAndSet(false, true)) {
-                    ComplexityAnalyzer.LOGGER.error("Cannot start geo-scan: another scan is starting.");
+                    ComplexityAnalyzer.LOGGER.error(GEO_ANALYSIS_MANAGER, "Cannot start geo-scan: another scan is starting.");
                     return;
                 }
 
@@ -173,14 +175,14 @@ public class GeoAnalysisManager {
                 }
             });
         } catch (RejectedExecutionException e) {
-            ComplexityAnalyzer.LOGGER.warn("Cannot start scan — server executor already shut down.");
+            ComplexityAnalyzer.LOGGER.warn(GEO_ANALYSIS_MANAGER, "Cannot start scan — server executor already shut down.");
             scanStarting.set(false);
         }
     }
 
     private void prepareForNewScan() {
         if (isScanning()) {
-            ComplexityAnalyzer.LOGGER.info("[GeoAnalysisManager] Stopping current scan to start new one");
+            ComplexityAnalyzer.LOGGER.info(GEO_ANALYSIS_MANAGER, "Stopping current scan to start new one");
             scanExecutor.stop();
             coordinator.stopScan();
         }
@@ -275,19 +277,19 @@ public class GeoAnalysisManager {
 
         var executor = analysisEngine.getBackgroundExecutor();
         if (executor == null) {
-            ComplexityAnalyzer.LOGGER.error("Cannot start scan, background executor not available!");
+            ComplexityAnalyzer.LOGGER.error(GEO_ANALYSIS_MANAGER, "Cannot start scan, background executor not available!");
             return;
         }
 
         try {
             executor.execute(() -> runBackgroundScanSetup(session));
         } catch (RejectedExecutionException e) {
-            ComplexityAnalyzer.LOGGER.warn("Background executor rejected scan task.");
+            ComplexityAnalyzer.LOGGER.warn(GEO_ANALYSIS_MANAGER, "Background executor rejected scan task.");
         }
     }
 
     private void logScanStarting(int chunksPerBiome, String initiatorName, ScanProfile profile) {
-        ComplexityAnalyzer.LOGGER.info("[SCAN] Countdown finished. Starting scan requested by {} ({} mode) for {} chunks per biome.",
+        ComplexityAnalyzer.LOGGER.info(GEO_ANALYSIS_MANAGER, "Countdown finished. Starting scan requested by {} ({} mode) for {} chunks per biome.",
                 initiatorName, profile.displayName, chunksPerBiome);
     }
 
@@ -329,17 +331,17 @@ public class GeoAnalysisManager {
                 scanExecutor.execute(session, () -> onReconnaissanceComplete(session));
             });
         } catch (RejectedExecutionException e) {
-            ComplexityAnalyzer.LOGGER.warn("Server executor rejected scan initialization.");
+            ComplexityAnalyzer.LOGGER.warn(GEO_ANALYSIS_MANAGER, "Server executor rejected scan initialization.");
         }
     }
 
     private void onReconnaissanceComplete(ScanSession session) {
         if (isShutdown.get()) return;
-        ComplexityAnalyzer.LOGGER.info("[GeoAnalysisManager] Reconnaissance complete! Starting refinement...");
+        ComplexityAnalyzer.LOGGER.info(GEO_ANALYSIS_MANAGER, "Reconnaissance complete! Starting refinement...");
         coordinator.finishReconnaissance(session);
         dataRefiner.refine(() -> {
             if (!isShutdown.get()) {
-                ComplexityAnalyzer.LOGGER.info("[GeoAnalysisManager] Refinement complete! Invalidating session.");
+                ComplexityAnalyzer.LOGGER.info(GEO_ANALYSIS_MANAGER, "Refinement complete! Invalidating session.");
                 coordinator.invalidateCurrentSession();
                 analysisEngine.onGeoScanFinished();
             }
@@ -369,7 +371,7 @@ public class GeoAnalysisManager {
         if (!isShutdown.compareAndSet(false, true)) return;
 
         long startTime = System.currentTimeMillis();
-        ComplexityAnalyzer.LOGGER.debug("[Shutdown] GeoAnalysisManager shutting down...");
+        ComplexityAnalyzer.LOGGER.debug(GEO_ANALYSIS_MANAGER, "GeoAnalysisManager shutting down...");
 
         countdownTicks.set(-1);
         scanStarting.set(false);
@@ -381,10 +383,10 @@ public class GeoAnalysisManager {
         try {
             NeoForge.EVENT_BUS.unregister(this);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("Error unregistering from event bus: {}", e.getMessage());
+            ComplexityAnalyzer.LOGGER.debug(GEO_ANALYSIS_MANAGER, "Error unregistering from event bus: {}", e.getMessage());
         }
 
         long elapsed = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.debug("[Shutdown] GeoAnalysisManager shut down in {}ms.", elapsed);
+        ComplexityAnalyzer.LOGGER.debug(GEO_ANALYSIS_MANAGER, "GeoAnalysisManager shut down in {}ms.", elapsed);
     }
 }

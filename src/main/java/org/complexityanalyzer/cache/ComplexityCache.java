@@ -28,6 +28,8 @@ import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.complexityanalyzer.util.LogMarkers.COMPLEXITY_CACHE;
+
 public class ComplexityCache {
 
     private final ConcurrentHashMap<Item, SoftReference<ItemComplexity>> cache = new ConcurrentHashMap<>(4096);
@@ -86,7 +88,7 @@ public class ComplexityCache {
         categoryCache.clear();
         hits.set(0);
         misses.set(0);
-        ComplexityAnalyzer.LOGGER.debug("ComplexityCache cleared ({} entries removed)", size);
+        ComplexityAnalyzer.LOGGER.debug(COMPLEXITY_CACHE, "ComplexityCache cleared ({} entries removed)", size);
     }
 
     public int size() {

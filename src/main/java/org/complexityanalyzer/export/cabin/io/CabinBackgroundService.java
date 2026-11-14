@@ -36,6 +36,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.complexityanalyzer.util.LogMarkers.CABIN_DATA_SERVICE;
+
 public final class CabinBackgroundService {
 
     private static final CabinBackgroundService INSTANCE = new CabinBackgroundService();
@@ -125,7 +127,7 @@ public final class CabinBackgroundService {
             } catch (Throwable t) {
                 status.set(Status.FAILED);
                 lastError.set(t);
-                ComplexityAnalyzer.LOGGER.error("[Cabin] Background build failed", t);
+                ComplexityAnalyzer.LOGGER.error(CABIN_DATA_SERVICE, "Background build failed", t);
                 future.completeExceptionally(t);
             }
         });
@@ -146,7 +148,7 @@ public final class CabinBackgroundService {
 
         long elapsed = System.currentTimeMillis() - t0;
         var snap = parseHeader(bytes, hash);
-        ComplexityAnalyzer.LOGGER.info("[Cabin] Wrote {} bytes (hash={}) in {} ms", bytes.length, Long.toHexString(hash), elapsed);
+        ComplexityAnalyzer.LOGGER.info(CABIN_DATA_SERVICE, "Wrote {} bytes (hash={}) in {} ms", bytes.length, Long.toHexString(hash), elapsed);
         return snap;
     }
 
@@ -170,7 +172,7 @@ public final class CabinBackgroundService {
 
             FileManager.move(latest, cabinPath(server, "history_1.cabin"));
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Cabin] Failed to rotate history backups: {}", t.getMessage());
+            ComplexityAnalyzer.LOGGER.warn(CABIN_DATA_SERVICE, "Failed to rotate history backups: {}", t.getMessage());
         }
     }
 

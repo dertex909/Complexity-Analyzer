@@ -35,6 +35,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.complexityanalyzer.util.LogMarkers.MOB_PROPERTY_PROVIDER;
+
 public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     public static final double DEFAULT_MAX_HEALTH = 20.0;
     public static final double ARMOR_COEFFICIENT = 0.05;
@@ -67,7 +69,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     }
 
     public void initialize() {
-        ComplexityAnalyzer.LOGGER.info("Initializing MobPropertyProvider...");
+        ComplexityAnalyzer.LOGGER.info(MOB_PROPERTY_PROVIDER, "Initializing MobPropertyProvider...");
         int failedCount = 0;
 
         for (var type : GameRegistryManager.getAllEntityTypes()) {
@@ -76,9 +78,9 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
             if (props == null) failedCount++;
         }
 
-        ComplexityAnalyzer.LOGGER.debug("MobPropertyProvider initialized:");
-        ComplexityAnalyzer.LOGGER.debug("  ✓ Total entities: {}", propertiesCache.size());
-        ComplexityAnalyzer.LOGGER.debug("  ⚠ Failed/Skipped: {}", failedCount);
+        ComplexityAnalyzer.LOGGER.debug(MOB_PROPERTY_PROVIDER, "MobPropertyProvider initialized:");
+        ComplexityAnalyzer.LOGGER.debug(MOB_PROPERTY_PROVIDER, "  ✓ Total entities: {}", propertiesCache.size());
+        ComplexityAnalyzer.LOGGER.debug(MOB_PROPERTY_PROVIDER, "  ⚠ Failed/Skipped: {}", failedCount);
     }
 
     @Nullable
@@ -121,7 +123,7 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
     public void registerBoss(String entityId, BossType type) {
         var id = ResourceLocation.tryParse(entityId);
         if (id == null) {
-            ComplexityAnalyzer.LOGGER.warn("[BossRegistry] Invalid entity ID: {}", entityId);
+            ComplexityAnalyzer.LOGGER.warn(MOB_PROPERTY_PROVIDER, "Invalid entity ID: {}", entityId);
             return;
         }
         var entityType = GameRegistryManager.getEntityType(id);
@@ -161,6 +163,6 @@ public class MobPropertyProvider implements IBossRegistry, IRenewableRegistry {
 
     public void clearCache() {
         propertiesCache.clear();
-        ComplexityAnalyzer.LOGGER.info("MobPropertyProvider cache cleared");
+        ComplexityAnalyzer.LOGGER.info(MOB_PROPERTY_PROVIDER, "MobPropertyProvider cache cleared");
     }
 }

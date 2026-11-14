@@ -28,6 +28,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.complexityanalyzer.util.LogMarkers.THREAD_POOL_MANAGER;
+
 public final class ThreadPoolManager implements AutoCloseable {
 
     private static final int QUEUE_CAPACITY = 10_000;
@@ -47,7 +49,7 @@ public final class ThreadPoolManager implements AutoCloseable {
                 if (current != null) current.shutdown();
             }, "Complexity-JVM-Shutdown-Hook"));
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to register JVM shutdown hook! Graceful cleanup on exit might fail", e);
+            ComplexityAnalyzer.LOGGER.error(THREAD_POOL_MANAGER, "Failed to register JVM shutdown hook! Graceful cleanup on exit might fail", e);
         }
     }
 
@@ -58,7 +60,7 @@ public final class ThreadPoolManager implements AutoCloseable {
 
     private ThreadPoolManager() {
         this.parallelism = ComplexityConfig.getMaxThreads();
-        ComplexityAnalyzer.LOGGER.info("Initializing ThreadPoolManager with parallelism = {}", parallelism);
+        ComplexityAnalyzer.LOGGER.info(THREAD_POOL_MANAGER, "Initializing ThreadPoolManager with parallelism = {}", parallelism);
 
         var pluginClassLoader = getClass().getClassLoader();
         var threadCounter = new AtomicInteger();
@@ -86,7 +88,7 @@ public final class ThreadPoolManager implements AutoCloseable {
                     thread.setDaemon(true);
                     return thread;
                 },
-                (t, e) -> ComplexityAnalyzer.LOGGER.error(
+                (t, e) -> ComplexityAnalyzer.LOGGER.error(THREAD_POOL_MANAGER,
                         "Uncaught exception in ForkJoinPool thread {}", t.getName(), e),
                 true
         );
@@ -125,7 +127,7 @@ public final class ThreadPoolManager implements AutoCloseable {
             asyncShutdown.start();
         }
 
-        ComplexityAnalyzer.LOGGER.info("ThreadPoolManager reinitialized with {} threads", freshManager.parallelism);
+        ComplexityAnalyzer.LOGGER.info(THREAD_POOL_MANAGER, "ThreadPoolManager reinitialized with {} threads", freshManager.parallelism);
     }
 
     public static boolean isComplexityThread() {
@@ -184,7 +186,7 @@ public final class ThreadPoolManager implements AutoCloseable {
         if (!state.compareAndSet(State.RUNNING, State.SHUTTING_DOWN)) return;
 
         long startTime = System.currentTimeMillis();
-        ComplexityAnalyzer.LOGGER.debug("Shutting down ThreadPoolManager...");
+        ComplexityAnalyzer.LOGGER.debug(THREAD_POOL_MANAGER, "Shutting down ThreadPoolManager...");
         boolean wasInterrupted = false;
         int totalCancelledTasks = 0;
 
@@ -192,7 +194,7 @@ public final class ThreadPoolManager implements AutoCloseable {
         forkJoinPool.shutdown();
 
         if (isWorkerOfThisManager()) {
-            ComplexityAnalyzer.LOGGER.debug("Self-shutdown detected from owner worker thread. Bypassing graceful wait.");
+            ComplexityAnalyzer.LOGGER.debug(THREAD_POOL_MANAGER, "Self-shutdown detected from owner worker thread. Bypassing graceful wait.");
             totalCancelledTasks += computePool.shutdownNow().size();
             totalCancelledTasks += forkJoinPool.shutdownNow().size();
         } else {
@@ -205,12 +207,12 @@ public final class ThreadPoolManager implements AutoCloseable {
             totalCancelledTasks += fjResult.cancelledCount();
 
             if (!computeResult.terminated()) {
-                ComplexityAnalyzer.LOGGER.warn("ComputePool did not terminate gracefully. Forcing shutdownNow...");
+                ComplexityAnalyzer.LOGGER.warn(THREAD_POOL_MANAGER, "ComputePool did not terminate gracefully. Forcing shutdownNow...");
                 totalCancelledTasks += computePool.shutdownNow().size();
             }
 
             if (!fjResult.terminated()) {
-                ComplexityAnalyzer.LOGGER.warn("ForkJoinPool did not terminate gracefully. Forcing shutdownNow...");
+                ComplexityAnalyzer.LOGGER.warn(THREAD_POOL_MANAGER, "ForkJoinPool did not terminate gracefully. Forcing shutdownNow...");
                 totalCancelledTasks += forkJoinPool.shutdownNow().size();
             }
 
@@ -223,7 +225,7 @@ public final class ThreadPoolManager implements AutoCloseable {
         }
 
         if (totalCancelledTasks > 0) {
-            ComplexityAnalyzer.LOGGER.info("ThreadPoolManager: Total {} pending tasks cancelled during shutdown", totalCancelledTasks);
+            ComplexityAnalyzer.LOGGER.info(THREAD_POOL_MANAGER, "ThreadPoolManager: Total {} pending tasks cancelled during shutdown", totalCancelledTasks);
         }
 
         state.set(State.SHUTDOWN);
@@ -234,17 +236,18 @@ public final class ThreadPoolManager implements AutoCloseable {
 
         if (wasInterrupted) Thread.currentThread().interrupt();
         long totalTime = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.debug("ThreadPoolManager shutdown complete in {}ms.", totalTime);
+        ComplexityAnalyzer.LOGGER.debug(THREAD_POOL_MANAGER, "ThreadPoolManager shutdown complete in {}ms.", totalTime);
     }
 
     private TerminationResult awaitPoolTermination(ExecutorService pool, String poolName, long timeoutMs) {
         if (pool.isTerminated()) return new TerminationResult(true, false, 0);
         try {
             boolean terminated = pool.awaitTermination(timeoutMs, TimeUnit.MILLISECONDS);
-            if (terminated) ComplexityAnalyzer.LOGGER.debug("{} terminated successfully.", poolName);
+            if (terminated)
+                ComplexityAnalyzer.LOGGER.debug(THREAD_POOL_MANAGER, "{} terminated successfully.", poolName);
             return new TerminationResult(terminated, false, 0);
         } catch (InterruptedException e) {
-            ComplexityAnalyzer.LOGGER.warn("Interrupted while waiting for {} termination", poolName);
+            ComplexityAnalyzer.LOGGER.warn(THREAD_POOL_MANAGER, "Interrupted while waiting for {} termination", poolName);
             int cancelled = pool.shutdownNow().size();
             return new TerminationResult(pool.isTerminated(), true, cancelled);
         }
@@ -255,7 +258,7 @@ public final class ThreadPoolManager implements AutoCloseable {
         int fjActive = forkJoinPool.isTerminated() ? 0 : forkJoinPool.getActiveThreadCount();
         int total = computeActive + fjActive;
 
-        if (total > 0) ComplexityAnalyzer.LOGGER.warn(
+        if (total > 0) ComplexityAnalyzer.LOGGER.warn(THREAD_POOL_MANAGER,
                 "{} worker threads still active after shutdown (Compute: {}, ForkJoin: {}) — will terminate with JVM", total, computeActive, fjActive);
     }
 

@@ -33,6 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_DATA_REFINER;
+
 public class DataRefiner {
 
     private final GeoDatabase database;
@@ -48,24 +50,24 @@ public class DataRefiner {
 
     public void refine(Runnable onComplete) {
         database.setScanPhase(ScanMetadata.ScanPhase.REFINING);
-        ComplexityAnalyzer.LOGGER.info("Reconnaissance complete. Starting refinement...");
+        ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Reconnaissance complete. Starting refinement...");
 
         try {
-            ComplexityAnalyzer.LOGGER.info("[Refiner] Submitting refinement task...");
+            ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Submitting refinement task...");
             refinementExecutor.execute(() -> {
-                ComplexityAnalyzer.LOGGER.info("[Refiner] Task STARTED on thread: {}", Thread.currentThread().getName());
+                ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Task STARTED on thread: {}", Thread.currentThread().getName());
                 var currentThread = Thread.currentThread();
                 activeThreads.put(currentThread, Boolean.TRUE);
 
                 try (var ignored = Scope.of(() -> {
                     activeThreads.remove(currentThread);
-                    ComplexityAnalyzer.LOGGER.info("[Refiner] Task FINISHED");
+                    ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Task FINISHED");
                 })) {
                     var reconPaths = database.getAllReconFilePaths();
-                    ComplexityAnalyzer.LOGGER.info("[Refiner] Found {} dimensions to refine", reconPaths.size());
+                    ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Found {} dimensions to refine", reconPaths.size());
 
                     if (reconPaths.isEmpty()) {
-                        ComplexityAnalyzer.LOGGER.warn("No reconnaissance data found.");
+                        ComplexityAnalyzer.LOGGER.warn(GEO_DATA_REFINER, "No reconnaissance data found.");
                         finishRefinement(onComplete);
                         return;
                     }
@@ -75,7 +77,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    ComplexityAnalyzer.LOGGER.info("Building heuristics from reconnaissance data...");
+                    ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Building heuristics from reconnaissance data...");
                     database.buildHeuristicFromFiles(reconPaths);
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -83,7 +85,7 @@ public class DataRefiner {
                         return;
                     }
 
-                    ComplexityAnalyzer.LOGGER.info("Clearing old final data...");
+                    ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Clearing old final data...");
                     database.clearFinalData();
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -96,7 +98,7 @@ public class DataRefiner {
 
                     int processedBiomes = 0;
 
-                    ComplexityAnalyzer.LOGGER.info("Refining data for {} dimensions...", reconPaths.size());
+                    ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Refining data for {} dimensions...", reconPaths.size());
 
                     for (var dimEntry : Object2ObjectMaps.fastIterable(reconPaths)) {
 
@@ -107,7 +109,7 @@ public class DataRefiner {
 
                         var dimension = dimEntry.getKey();
                         var biomesMap = dimEntry.getValue();
-                        ComplexityAnalyzer.LOGGER.info("Refining dimension: {} ({} biomes)", dimension, biomesMap.size());
+                        ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Refining dimension: {} ({} biomes)", dimension, biomesMap.size());
 
                         for (var biomeEntry : Object2ObjectMaps.fastIterable(biomesMap)) {
 
@@ -124,54 +126,54 @@ public class DataRefiner {
                                 var snapshots = database.readReconFile(path);
                                 var finData = database.refineRawData(snapshots, dimension);
                                 if (finData.getChunksScanned() > 0) database.saveBiomeData(dimension, biome, finData);
-                                ComplexityAnalyzer.LOGGER.debug("[Refiner] Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finData.getChunksScanned());
+                                ComplexityAnalyzer.LOGGER.debug(GEO_DATA_REFINER, "Refined {}/{}: {} in {} ({} chunks)", processedBiomes, totalBiomes, biome, dimension, finData.getChunksScanned());
                             } catch (Exception e) {
-                                ComplexityAnalyzer.LOGGER.error("[Refiner] Error refining {} in {}", biome, dimension, e);
+                                ComplexityAnalyzer.LOGGER.error(GEO_DATA_REFINER, "Error refining {} in {}", biome, dimension, e);
                             }
                         }
                     }
 
-                    ComplexityAnalyzer.LOGGER.info("All {} biomes refined successfully.", totalBiomes);
+                    ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "All {} biomes refined successfully.", totalBiomes);
                     finishRefinement(onComplete);
 
                 } catch (IOException e) {
-                    ComplexityAnalyzer.LOGGER.error("Critical error during refinement.", e);
+                    ComplexityAnalyzer.LOGGER.error(GEO_DATA_REFINER, "Critical error during refinement.", e);
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.error("[Refiner] Unexpected error!", e);
+                    ComplexityAnalyzer.LOGGER.error(GEO_DATA_REFINER, "Unexpected error!", e);
                     database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
                 }
             });
 
-            ComplexityAnalyzer.LOGGER.info("[Refiner] Task submitted successfully");
+            ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Task submitted successfully");
 
         } catch (RejectedExecutionException e) {
-            ComplexityAnalyzer.LOGGER.error("[Refiner] Executor REJECTED the task!", e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_REFINER, "Executor REJECTED the task!", e);
             database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
         }
     }
 
     private void finishRefinement(Runnable onComplete) {
-        ComplexityAnalyzer.LOGGER.info("Finalizing refinement...");
+        ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Finalizing refinement...");
         database.setScanPhase(ScanMetadata.ScanPhase.COMPLETE);
         database.loadAll();
         output.broadcast(Component.translatable("complexityanalyzer.notifier.complete").withStyle(ChatFormatting.GREEN));
-        ComplexityAnalyzer.LOGGER.info("Global refinement complete. GeoDatabase is now fully operational.");
+        ComplexityAnalyzer.LOGGER.info(GEO_DATA_REFINER, "Global refinement complete. GeoDatabase is now fully operational.");
 
         if (onComplete != null) try {
             onComplete.run();
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[Refiner] Error in onComplete callback!", e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_REFINER, "Error in onComplete callback!", e);
         }
     }
 
     private void handleCancellation(String stage) {
-        ComplexityAnalyzer.LOGGER.warn("[Refiner] Cancelled at stage: {}", stage);
+        ComplexityAnalyzer.LOGGER.warn(GEO_DATA_REFINER, "Cancelled at stage: {}", stage);
         database.setScanPhase(ScanMetadata.ScanPhase.IDLE);
     }
 
     public void shutdown() {
-        ComplexityAnalyzer.LOGGER.debug("[Refiner] Shutting down, interrupting {} threads", activeThreads.size());
+        ComplexityAnalyzer.LOGGER.debug(GEO_DATA_REFINER, "Shutting down, interrupting {} threads", activeThreads.size());
         for (var thread : activeThreads.keySet()) thread.interrupt();
         activeThreads.clear();
     }

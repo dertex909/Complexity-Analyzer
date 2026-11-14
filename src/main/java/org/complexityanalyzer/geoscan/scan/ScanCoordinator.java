@@ -40,6 +40,8 @@ import org.complexityanalyzer.geoscan.task.WorldScanner;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_SCAN_COORDINATOR;
+
 public class ScanCoordinator {
 
     private final MinecraftServer server;
@@ -73,7 +75,7 @@ public class ScanCoordinator {
         worldScanner.clearStopRequest();
         worldScanner.configureForScan(chunksPerBiome);
 
-        ComplexityAnalyzer.LOGGER.info("Created scan session {} with profile {} for {} chunks/biome",
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_COORDINATOR, "Created scan session {} with profile {} for {} chunks/biome",
                 sessionId, profile.name(), chunksPerBiome);
 
         return session;
@@ -83,7 +85,7 @@ public class ScanCoordinator {
         var session = currentSession.getAndSet(null);
         if (session != null) {
             session.invalidate();
-            ComplexityAnalyzer.LOGGER.debug("Invalidated session {}", session.getSessionId());
+            ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_COORDINATOR, "Invalidated session {}", session.getSessionId());
         }
     }
 
@@ -98,16 +100,16 @@ public class ScanCoordinator {
         var tasks = new ObjectArrayList<ScanTask>();
         int chunksPerBiome = session.getChunksPerBiome();
 
-        ComplexityAnalyzer.LOGGER.debug("[Prepare] Building scan tasks for {} chunks/biome", chunksPerBiome);
+        ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_COORDINATOR, "Building scan tasks for {} chunks/biome", chunksPerBiome);
 
         for (var level : server.getAllLevels()) {
             if (!session.isValid()) break;
 
             var dimension = level.dimension();
-            ComplexityAnalyzer.LOGGER.info("Scanning dimension: {}", dimension.location());
+            ComplexityAnalyzer.LOGGER.info(GEO_SCAN_COORDINATOR, "Scanning dimension: {}", dimension.location());
 
             var biomes = getBiomesForDimension(level);
-            ComplexityAnalyzer.LOGGER.debug("Found {} biomes in {}", biomes.size(), dimension.location());
+            ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_COORDINATOR, "Found {} biomes in {}", biomes.size(), dimension.location());
 
             for (var biomeKey : biomes) {
                 if (!session.isValid()) break;
@@ -119,7 +121,7 @@ public class ScanCoordinator {
             }
         }
 
-        ComplexityAnalyzer.LOGGER.debug("[Prepare] Created {} scan tasks", tasks.size());
+        ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_COORDINATOR, "Created {} scan tasks", tasks.size());
         tasks.sort(null);
         return tasks;
     }
@@ -128,18 +130,18 @@ public class ScanCoordinator {
         var biomes = new ObjectOpenHashSet<ResourceKey<Biome>>();
         var biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
 
-        ComplexityAnalyzer.LOGGER.info("[Prepare] Dimension {} biomeSource: {}",
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_COORDINATOR, "Dimension {} biomeSource: {}",
                 level.dimension().location(), biomeSource.getClass().getSimpleName());
 
         for (var holder : biomeSource.possibleBiomes()) {
             var key = holder.unwrapKey().orElse(null);
             if (key != null) {
-                ComplexityAnalyzer.LOGGER.debug("[Prepare] {} -> {}", level.dimension().location(), key.location());
+                ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_COORDINATOR, "{} -> {}", level.dimension().location(), key.location());
                 biomes.add(key);
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("[Prepare] {} has {} biomes", level.dimension().location(), biomes.size());
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_COORDINATOR, "{} has {} biomes", level.dimension().location(), biomes.size());
 
         return biomes;
     }
@@ -163,7 +165,7 @@ public class ScanCoordinator {
         }
 
         session.loadAttemptedChunks(existingCoordinates);
-        ComplexityAnalyzer.LOGGER.info("Starting scan: {} biomes, {} chunks needed", tasks.size(), totalChunks);
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_COORDINATOR, "Starting scan: {} biomes, {} chunks needed", tasks.size(), totalChunks);
         return true;
     }
 

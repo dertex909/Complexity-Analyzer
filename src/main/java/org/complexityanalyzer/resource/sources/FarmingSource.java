@@ -37,6 +37,7 @@ import org.complexityanalyzer.resource.providers.PlantSimulator;
 import org.jetbrains.annotations.Nullable;
 
 import static org.complexityanalyzer.cache.ResourceCache.FARMING;
+import static org.complexityanalyzer.util.LogMarkers.FARMING_SOURCE;
 
 public class FarmingSource implements IResourceSource, IMultiSourceProvider {
 
@@ -129,12 +130,12 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
     @Override
     public void initialize(Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
-            ComplexityAnalyzer.LOGGER.warn("[FarmingSource] requires a ServerLevel. Skipping.");
+            ComplexityAnalyzer.LOGGER.warn(FARMING_SOURCE, "requires a ServerLevel. Skipping.");
             return;
         }
 
         productionMap.clear();
-        ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initializing...");
+        ComplexityAnalyzer.LOGGER.info(FARMING_SOURCE, "Initializing...");
         long startTime = System.currentTimeMillis();
         int found = 0;
 
@@ -145,7 +146,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
         if (cacheFile != null) {
             int restored = FARMING.load(cacheFile, fingerprint, FarmingSource::readData, productionMap);
             if (restored >= 0) {
-                ComplexityAnalyzer.LOGGER.info("[FarmingSource] Loaded {} products from cache (plant simulation skipped).", restored);
+                ComplexityAnalyzer.LOGGER.info(FARMING_SOURCE, "Loaded {} products from cache (plant simulation skipped).", restored);
                 return;
             }
         }
@@ -191,7 +192,7 @@ public class FarmingSource implements IResourceSource, IMultiSourceProvider {
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("[FarmingSource] Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
+        ComplexityAnalyzer.LOGGER.info(FARMING_SOURCE, "Initialized in {}ms. Found {} products.", System.currentTimeMillis() - startTime, found);
         if (cacheFile != null) FARMING.save(cacheFile, fingerprint, FarmingSource::writeData, productionMap);
     }
 

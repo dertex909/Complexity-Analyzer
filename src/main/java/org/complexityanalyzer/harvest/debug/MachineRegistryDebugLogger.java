@@ -36,15 +36,17 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import static org.complexityanalyzer.util.LogMarkers.MACHINE_REGISTRY_DEBUG;
+
 public final class MachineRegistryDebugLogger {
 
     private static final boolean DEBUG_ENABLED = false;
 
     static {
         if (DEBUG_ENABLED) {
-            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Debug logging is ENABLED");
+            ComplexityAnalyzer.LOGGER.info(MACHINE_REGISTRY_DEBUG, "Debug logging is ENABLED");
         } else {
-            ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Debug logging is DISABLED");
+            ComplexityAnalyzer.LOGGER.debug(MACHINE_REGISTRY_DEBUG, "Debug logging is DISABLED");
         }
     }
 
@@ -374,9 +376,9 @@ public final class MachineRegistryDebugLogger {
         try {
             var dumpFile = FileManager.resolve(server, "machine_scan_debug.txt");
             FileManager.writeStringAtomic(dumpFile, content);
-            ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Saved full scan debug file to: {}", dumpFile.toAbsolutePath());
+            ComplexityAnalyzer.LOGGER.info(MACHINE_REGISTRY_DEBUG, "Saved full scan debug file to: {}", dumpFile.toAbsolutePath());
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("[MachineRegistry] Failed to write debug dump file: {}", t.getMessage());
+            ComplexityAnalyzer.LOGGER.error(MACHINE_REGISTRY_DEBUG, "Failed to write debug dump file: {}", t.getMessage());
         }
     }
 }

@@ -33,6 +33,7 @@ import net.minecraft.world.level.material.Fluids;
 import org.complexityanalyzer.ComplexityAnalyzer;
 
 import static net.minecraft.world.item.Items.AIR;
+import static org.complexityanalyzer.util.LogMarkers.GAME_REGISTRY_MANAGER;
 
 public class GameRegistryManager {
 
@@ -63,7 +64,7 @@ public class GameRegistryManager {
 
     public static void initialize() {
         if (initialized) {
-            ComplexityAnalyzer.LOGGER.warn("[GameRegistryManager] Already initialized, skipping");
+            ComplexityAnalyzer.LOGGER.warn(GAME_REGISTRY_MANAGER, "Already initialized, skipping");
             return;
         }
 
@@ -113,7 +114,7 @@ public class GameRegistryManager {
 
         initialized = true;
         long duration = System.currentTimeMillis() - startTime;
-        ComplexityAnalyzer.LOGGER.info("[GameRegistryManager] Initialized in {}ms. Blocks: {}, Items: {}, Fluids: {}, RecipeTypes: {}, EntityTypes: {}, Professions: {}",
+        ComplexityAnalyzer.LOGGER.info(GAME_REGISTRY_MANAGER, "Initialized in {}ms. Blocks: {}, Items: {}, Fluids: {}, RecipeTypes: {}, EntityTypes: {}, Professions: {}",
                 duration, ALL_BLOCKS.size(), ALL_ITEMS.size(), ALL_FLUIDS.size(), ALL_RECIPE_TYPES.size(), ALL_ENTITY_TYPES.size(), ALL_PROFESSIONS.size());
     }
 
@@ -139,7 +140,7 @@ public class GameRegistryManager {
         ALL_PROFESSIONS.clear();
         ALL_ITEM_IDS.clear();
         initialized = false;
-        ComplexityAnalyzer.LOGGER.debug("[GameRegistryManager] Registry cache cleared.");
+        ComplexityAnalyzer.LOGGER.debug(GAME_REGISTRY_MANAGER, "Registry cache cleared.");
     }
 
     public static Item getFirstItemByTag(TagKey<?> tagKey) {

@@ -33,6 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.complexityanalyzer.util.LogMarkers.RESOURCE_SOURCE_MANAGER;
+
 public class SourceManager {
     private static final Object NULL_SENTINEL = new Object();
     private final ObjectList<IResourceSource> sources;
@@ -50,14 +52,14 @@ public class SourceManager {
         var sourceSnapshot = this.sources;
 
         if (!(level instanceof ServerLevel serverLevel) || serverLevel.getServer().isSameThread()) {
-            ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources sequentially...", sources.size());
+            ComplexityAnalyzer.LOGGER.info(RESOURCE_SOURCE_MANAGER, "Initializing {} resource sources sequentially...", sources.size());
             for (var source : sourceSnapshot) initOne(source, level, successCount, failCount);
-            ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed", successCount.get(), failCount.get());
+            ComplexityAnalyzer.LOGGER.info(RESOURCE_SOURCE_MANAGER, "Resource sources initialized: {} success, {} failed", successCount.get(), failCount.get());
             return;
         }
 
         var server = serverLevel.getServer();
-        ComplexityAnalyzer.LOGGER.info("Initializing {} resource sources concurrently...", sources.size());
+        ComplexityAnalyzer.LOGGER.info(RESOURCE_SOURCE_MANAGER, "Initializing {} resource sources concurrently...", sources.size());
 
         var serverFutures = new ObjectArrayList<Future<?>>();
         var offThreadSources = new ObjectArrayList<IResourceSource>();
@@ -75,11 +77,11 @@ public class SourceManager {
             try {
                 f.get();
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Server-thread source init failed", e);
+                ComplexityAnalyzer.LOGGER.error(RESOURCE_SOURCE_MANAGER, "Server-thread source init failed", e);
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("Resource sources initialized: {} success, {} failed", successCount.get(), failCount.get());
+        ComplexityAnalyzer.LOGGER.info(RESOURCE_SOURCE_MANAGER, "Resource sources initialized: {} success, {} failed", successCount.get(), failCount.get());
     }
 
     private void initOne(IResourceSource source, Level level, AtomicInteger successCount, AtomicInteger failCount) {
@@ -87,10 +89,10 @@ public class SourceManager {
             long start = System.currentTimeMillis();
             source.initialize(level);
             successCount.incrementAndGet();
-            ComplexityAnalyzer.LOGGER.info("Initialized resource source: {} in {}ms", source.getName(), System.currentTimeMillis() - start);
+            ComplexityAnalyzer.LOGGER.info(RESOURCE_SOURCE_MANAGER, "Initialized resource source: {} in {}ms", source.getName(), System.currentTimeMillis() - start);
         } catch (Exception e) {
             failCount.incrementAndGet();
-            ComplexityAnalyzer.LOGGER.error("Failed to initialize source: {}", source.getName(), e);
+            ComplexityAnalyzer.LOGGER.error(RESOURCE_SOURCE_MANAGER, "Failed to initialize source: {}", source.getName(), e);
         }
     }
 

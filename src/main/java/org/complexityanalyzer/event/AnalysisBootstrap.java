@@ -30,6 +30,8 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.util.LootOptimizer;
 import org.complexityanalyzer.util.ServerLanguage;
 
+import static org.complexityanalyzer.util.LogMarkers.ANALYSIS_BOOTSTRAP;
+
 @EventBusSubscriber
 public class AnalysisBootstrap {
 
@@ -44,14 +46,14 @@ public class AnalysisBootstrap {
         var engine = AnalysisEngine.getInstance();
         ComplexityAnalyzerAPI.Holder.install(new ComplexityAnalyzerAPIImpl(engine));
 
-        ComplexityAnalyzer.LOGGER.info("Server started, initializing Complexity Analyzer...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_BOOTSTRAP, "Server started, initializing Complexity Analyzer...");
         // Я ни дня не проживу. Не сказавши пу-пу-пу.
-        engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info("✅ Analysis engine initialization complete."));
+        engine.initializeAsync(server.overworld(), () -> ComplexityAnalyzer.LOGGER.info(ANALYSIS_BOOTSTRAP, "✅ Analysis engine initialization complete."));
     }
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
-        ComplexityAnalyzer.LOGGER.info("Server stopping, shutting down Complexity Analyzer...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_BOOTSTRAP, "Server stopping, shutting down Complexity Analyzer...");
         AnalysisEngine.getInstance().shutdownCompletely();
         GameRegistryManager.clear();
         LootOptimizer.clear();

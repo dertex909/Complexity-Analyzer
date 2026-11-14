@@ -63,6 +63,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.complexityanalyzer.cache.ResourceCache.MOB_DROP;
+import static org.complexityanalyzer.util.LogMarkers.MOB_DROP_SOURCE;
 
 public class MobDropSource implements IResourceSource {
     private static final int SIMULATION_COUNT = 500;
@@ -95,7 +96,7 @@ public class MobDropSource implements IResourceSource {
     @Override
     public void initialize(Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
-            ComplexityAnalyzer.LOGGER.error("[MobDropSource] Initialize called with non-server level. Aborting.");
+            ComplexityAnalyzer.LOGGER.error(MOB_DROP_SOURCE, "Initialize called with non-server level. Aborting.");
             return;
         }
 
@@ -108,7 +109,7 @@ public class MobDropSource implements IResourceSource {
         if (cacheFile != null) {
             int restored = MOB_DROP.load(cacheFile, fingerprint, MobDropSource::readData, localDropMap);
             if (restored >= 0) {
-                ComplexityAnalyzer.LOGGER.info("[MobDropSource] Loaded {} drop entries from cache (loot simulation skipped).", restored);
+                ComplexityAnalyzer.LOGGER.info(MOB_DROP_SOURCE, "Loaded {} drop entries from cache (loot simulation skipped).", restored);
                 this.dropMap = localDropMap;
                 return;
             }
@@ -128,7 +129,7 @@ public class MobDropSource implements IResourceSource {
                 }, server).join();
             }
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[MobDropSource] Failed to get entity types from server thread. Aborting.", e);
+            ComplexityAnalyzer.LOGGER.error(MOB_DROP_SOURCE, "Failed to get entity types from server thread. Aborting.", e);
             return;
         }
 
@@ -148,17 +149,17 @@ public class MobDropSource implements IResourceSource {
     }
 
     private void processMobDrops(ServerLevel serverLevel, ObjectList<EntityType<?>> entityTypes, Reference2ObjectMap<Item, ObjectList<MobDropData>> targetMap) {
-        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Initializing MobDropSource by simulating mob loot tables on the server thread...");
+        ComplexityAnalyzer.LOGGER.debug(MOB_DROP_SOURCE, "Initializing MobDropSource by simulating mob loot tables on the server thread...");
         long startTime = System.currentTimeMillis();
         registerSpecialDrops(targetMap);
 
         try (var ignoredLog = LogFilter.open(); var ignoredProbe = ProbeScope.open()) {
             int processedEntities = runSimulation(serverLevel, entityTypes, targetMap);
             long duration = System.currentTimeMillis() - startTime;
-            ComplexityAnalyzer.LOGGER.info("MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms",
+            ComplexityAnalyzer.LOGGER.info(MOB_DROP_SOURCE, "MobDropSource initialized. Processed {} valid entities. Found drop info for {} unique items. Time: {}ms",
                     processedEntities, targetMap.size(), duration);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[MobDropSource] A critical error occurred during simulation.", e);
+            ComplexityAnalyzer.LOGGER.error(MOB_DROP_SOURCE, "A critical error occurred during simulation.", e);
         }
     }
 
@@ -208,7 +209,7 @@ public class MobDropSource implements IResourceSource {
         try {
             var entity = entityType.create(level);
             if (entity == null) {
-                ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Creating entity {} returned null, skipping.", GameRegistryManager.getEntityTypeId(entityType));
+                ComplexityAnalyzer.LOGGER.debug(MOB_DROP_SOURCE, "Creating entity {} returned null, skipping.", GameRegistryManager.getEntityTypeId(entityType));
                 return null;
             }
 
@@ -216,7 +217,7 @@ public class MobDropSource implements IResourceSource {
             entity.setPos(spawnPos.getX() + 0.5, spawnPos.getY() + 0.5, spawnPos.getZ() + 0.5);
             return entity;
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Failed to create entity {} for simulation: {}", GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
+            ComplexityAnalyzer.LOGGER.debug(MOB_DROP_SOURCE, "Failed to create entity {} for simulation: {}", GameRegistryManager.getEntityTypeId(entityType), e.getMessage());
             return null;
         }
     }
@@ -298,7 +299,7 @@ public class MobDropSource implements IResourceSource {
                     combinedDrops.computeIfAbsent(stack.getItem(), k -> new DropStatistics()).addDrop(condition, stack.getCount());
                 }
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("[MobDropSource] Exception during loot simulation for {} with damage source {}",
+                ComplexityAnalyzer.LOGGER.error(MOB_DROP_SOURCE, "Exception during loot simulation for {} with damage source {}",
                         entityInstance.getType().getDescriptionId(), ds.getMsgId(), e);
             }
         }
@@ -406,7 +407,7 @@ public class MobDropSource implements IResourceSource {
         addSpecialDrop(targetMap, Items.PIGLIN_HEAD, EntityType.PIGLIN, KillCondition.CHARGED_CREEPER);
         addSpecialDrop(targetMap, Items.WITHER_SKELETON_SKULL, EntityType.WITHER_SKELETON, KillCondition.CHARGED_CREEPER);
 
-        ComplexityAnalyzer.LOGGER.debug("[MobDropSource] Registered special hardcoded drops (bosses & mob heads).");
+        ComplexityAnalyzer.LOGGER.debug(MOB_DROP_SOURCE, "Registered special hardcoded drops (bosses & mob heads).");
     }
 
     private void addSpecialDrop(Reference2ObjectMap<Item, ObjectList<MobDropData>> map, Item item, EntityType<?> type, KillCondition condition) {

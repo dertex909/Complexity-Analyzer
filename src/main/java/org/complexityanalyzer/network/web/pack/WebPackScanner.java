@@ -30,6 +30,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.ZipInputStream;
 
+import static org.complexityanalyzer.util.LogMarkers.WEB_PACK_SCANNER;
+
 public final class WebPackScanner {
     private static final String ZIP_SUFFIX = ".zip";
     private static final String JAR_SUFFIX = ".jar";
@@ -42,7 +44,7 @@ public final class WebPackScanner {
         try {
             scanPacksInDir(dir, ctx);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[WebPacks] Error scanning packs directory: {}", dir, e);
+            ComplexityAnalyzer.LOGGER.error(WEB_PACK_SCANNER, "Error scanning packs directory: {}", dir, e);
         }
     }
 
@@ -62,10 +64,10 @@ public final class WebPackScanner {
                     var packsRoot = modFile.findResource(WebPackPaths.PACKS_DIR_NAME);
                     if (!FileManager.isDirectory(packsRoot)) continue;
 
-                    ComplexityAnalyzer.LOGGER.debug("[WebPacks] Found mod pack resources for '{}': {}", mod.getModId(), packsRoot);
+                    ComplexityAnalyzer.LOGGER.debug(WEB_PACK_SCANNER, "Found mod pack resources for '{}': {}", mod.getModId(), packsRoot);
                     scanPacksInDir(packsRoot, ctx);
                 } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.warn("[WebPacks] Failed to scan mod resources for mod: {}", mod.getModId(), e);
+                    ComplexityAnalyzer.LOGGER.warn(WEB_PACK_SCANNER, "Failed to scan mod resources for mod: {}", mod.getModId(), e);
                 }
             }
         } catch (Throwable ignored) {
@@ -98,7 +100,7 @@ public final class WebPackScanner {
                 }
             }
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[WebPacks] Error scanning directory pack: {}", packDir, e);
+            ComplexityAnalyzer.LOGGER.warn(WEB_PACK_SCANNER, "Error scanning directory pack: {}", packDir, e);
         }
     }
 
@@ -123,7 +125,7 @@ public final class WebPackScanner {
                 }
             }
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[WebPacks] Failed to read pack zip: {}", zipPath, e);
+            ComplexityAnalyzer.LOGGER.warn(WEB_PACK_SCANNER, "Failed to read pack zip: {}", zipPath, e);
         }
     }
 
@@ -139,7 +141,7 @@ public final class WebPackScanner {
             ctx.sources.compute(ns, (key, existing) -> {
                 if (existing == null) return source;
                 if (existing.equals(source)) return existing;
-                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Namespace collision for '{}'! Merging sources to prevent 404s.", ns);
+                ComplexityAnalyzer.LOGGER.warn(WEB_PACK_SCANNER, "Namespace collision for '{}'! Merging sources to prevent 404s.", ns);
                 if (existing instanceof WebResourceSource.CompositeSource composite) return composite.with(source);
                 return new WebResourceSource.CompositeSource(existing, source);
             });
@@ -156,7 +158,7 @@ public final class WebPackScanner {
         for (var entry : declaredMimeTypes.object2ObjectEntrySet()) {
             var previous = namespaceMimeTypes.putIfAbsent(entry.getKey(), entry.getValue());
             if (previous != null && !previous.equals(entry.getValue())) {
-                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Conflicting MIME types for namespace '{}' and extension '{}'; keeping '{}'",
+                ComplexityAnalyzer.LOGGER.warn(WEB_PACK_SCANNER, "Conflicting MIME types for namespace '{}' and extension '{}'; keeping '{}'",
                         namespace, entry.getKey(), previous);
             }
         }

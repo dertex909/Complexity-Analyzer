@@ -61,6 +61,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static org.complexityanalyzer.util.LogMarkers.ANALYSIS_ENGINE;
+
 public class AnalysisEngine {
     private final AtomicReference<State> currentState = new AtomicReference<>(State.IDLE);
     private final AtomicReference<Future<?>> currentAnalysisTask = new AtomicReference<>(null);
@@ -97,7 +99,7 @@ public class AnalysisEngine {
 
     public void initializeAsync(Level level, Runnable onComplete) {
         if (isShuttingDown.get()) {
-            ComplexityAnalyzer.LOGGER.warn("Cannot initialize: engine is shutting down");
+            ComplexityAnalyzer.LOGGER.warn(ANALYSIS_ENGINE, "Cannot initialize: engine is shutting down");
             return;
         }
 
@@ -107,14 +109,14 @@ public class AnalysisEngine {
             if (isReady()) {
                 safeRunCallback(onComplete);
             } else if (currentState.get() == State.ANALYZING) {
-                ComplexityAnalyzer.LOGGER.debug("Analysis already in progress, ignoring duplicate request");
+                ComplexityAnalyzer.LOGGER.debug(ANALYSIS_ENGINE, "Analysis already in progress, ignoring duplicate request");
             }
             return;
         }
 
         if (!(level instanceof ServerLevel serverLevel)) {
             currentState.set(State.FAILED);
-            ComplexityAnalyzer.LOGGER.error("Cannot initialize: not a ServerLevel");
+            ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "Cannot initialize: not a ServerLevel");
             return;
         }
 
@@ -128,14 +130,14 @@ public class AnalysisEngine {
         try (var ignored = Scope.lock(stateLock)) {
             if (currentState.get() == State.FAILED) {
                 currentState.set(State.IDLE);
-                ComplexityAnalyzer.LOGGER.info("Reset from FAILED state to IDLE for retry");
+                ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Reset from FAILED state to IDLE for retry");
             }
         }
     }
 
     private void submitBuild(ServerLevel level, boolean fullRebuild, Runnable onComplete) {
         final long gen = analysisGeneration.incrementAndGet();
-        ComplexityAnalyzer.LOGGER.info("Starting {} on {} threads...", fullRebuild ? "full build" : "geo refresh",
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Starting {} on {} threads...", fullRebuild ? "full build" : "geo refresh",
                 ThreadPoolManager.getInstance().getParallelism());
         var task = ThreadPoolManager.getInstance().getComputePool().submit(() -> runBuild(level, fullRebuild, gen, onComplete));
         currentAnalysisTask.set(task);
@@ -161,7 +163,7 @@ public class AnalysisEngine {
             if (fullRebuild) startGeoScanIfNeeded();
 
             if (setStateIfCurrent(gen, State.READY, false)) {
-                ComplexityAnalyzer.LOGGER.info("=== [State: READY] Analysis complete. Mod is operational. ===");
+                ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "=== Analysis complete. Mod is operational. ===");
                 safeRunCallback(onComplete);
                 fireAnalysisComplete(!fullRebuild);
             }
@@ -169,7 +171,7 @@ public class AnalysisEngine {
             if (isInterrupted() || isSuperseded(gen)) {
                 restoreIdleState(gen);
             } else {
-                ComplexityAnalyzer.LOGGER.error("Critical error during analysis", e);
+                ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "Critical error during analysis", e);
                 setStateIfCurrent(gen, State.FAILED, false);
             }
         }
@@ -182,7 +184,7 @@ public class AnalysisEngine {
             try {
                 NeoForge.EVENT_BUS.post(new ComplexityAnalysisCompleteEvent(api, reload));
             } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.error("An addon threw during ComplexityAnalysisCompleteEvent.", t);
+                ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "An addon threw during ComplexityAnalysisCompleteEvent.", t);
             }
         });
     }
@@ -198,11 +200,11 @@ public class AnalysisEngine {
     }
 
     private void buildGraph(ServerLevel level) {
-        ComplexityAnalyzer.LOGGER.info("Initializing MachineRegistry...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Initializing MachineRegistry...");
         this.machineRegistry = new MachineRegistry();
         this.machineRegistry.initialize(level.getServer());
 
-        ComplexityAnalyzer.LOGGER.info("Building recipe graph...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Building recipe graph...");
         this.graph = RecipeGraphLoader.buildFromWorld(level);
     }
 
@@ -214,7 +216,7 @@ public class AnalysisEngine {
             var geoMgr = getGeoManager();
             if (geoMgr != null && !isInterrupted()) geoMgr.startInitialScanIfNeeded();
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to create or start GeoAnalysisManager", e);
+            ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "Failed to create or start GeoAnalysisManager", e);
         }
     }
 
@@ -227,7 +229,7 @@ public class AnalysisEngine {
         try {
             callback.run();
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("Error in completion callback", e);
+            ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "Error in completion callback", e);
         }
     }
 
@@ -239,7 +241,7 @@ public class AnalysisEngine {
         try (var ignored = Scope.lock(stateLock)) {
             long active = analysisGeneration.get();
             if (active != generation) {
-                ComplexityAnalyzer.LOGGER.warn("Discarding superseded analysis task (gen {}, active {}); not transitioning to {}.", generation, active, state);
+                ComplexityAnalyzer.LOGGER.warn(ANALYSIS_ENGINE, "Discarding superseded analysis task (gen {}, active {}); not transitioning to {}.", generation, active, state);
                 return false;
             }
             if (clearData) clearDataInternal();
@@ -273,23 +275,23 @@ public class AnalysisEngine {
         try {
             NeoForge.EVENT_BUS.post(new ComplexityRegistrationEvent(this.mobPropProvider, hardcoded, this.mobPropProvider, addonSources::add));
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("An addon threw during ComplexityRegistrationEvent; continuing without it.", t);
+            ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "An addon threw during ComplexityRegistrationEvent; continuing without it.", t);
         }
         if (!addonSources.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.info("Registered {} custom resource source(s) from addons.", addonSources.size());
+            ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Registered {} custom resource source(s) from addons.", addonSources.size());
             initialSources.addAll(addonSources);
         }
 
         this.sourceManager = new SourceManager(initialSources);
 
-        ComplexityAnalyzer.LOGGER.info("Resource sources configured with {} providers. Initializing all...", initialSources.size());
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Resource sources configured with {} providers. Initializing all...", initialSources.size());
         this.sourceManager.initialize(serverLevel);
 
         if (ComplexityAnalyzer.LOGGER.isDebugEnabled()) for (var source : initialSources) {
-            ComplexityAnalyzer.LOGGER.debug("  - {} (priority: {})", source.getName(), source.getPriority());
+            ComplexityAnalyzer.LOGGER.debug(ANALYSIS_ENGINE, "  - {} (priority: {})", source.getName(), source.getPriority());
         }
 
-        ComplexityAnalyzer.LOGGER.info("All resource sources initialized successfully.");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "All resource sources initialized successfully.");
     }
 
     public void recalculateComplexity() {
@@ -298,7 +300,7 @@ public class AnalysisEngine {
 
         if (isInterrupted() || currentGraph == null || currentSourceManager == null) return;
 
-        ComplexityAnalyzer.LOGGER.info("Recalculating all complexity data...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Recalculating all complexity data...");
 
         this.complexityCache.clear();
 
@@ -308,7 +310,7 @@ public class AnalysisEngine {
         var solverResult = solver.solve();
 
         if (isInterrupted()) {
-            ComplexityAnalyzer.LOGGER.info("Analysis was cancelled after solver finished.");
+            ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Analysis was cancelled after solver finished.");
             return;
         }
 
@@ -318,7 +320,7 @@ public class AnalysisEngine {
         this.calculator = new ComplexityCalculator(currentGraph, this.depthAnalyzer, solverResult, currentSourceManager);
 
         SharedSuggestions.refresh();
-        ComplexityAnalyzer.LOGGER.info("All systems refreshed with new data.");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "All systems refreshed with new data.");
     }
 
     public void onGeoScanFinished() {
@@ -327,12 +329,12 @@ public class AnalysisEngine {
 
     private void refreshGeoData(String reason) {
         if (!isReady() || isShuttingDown.get()) {
-            ComplexityAnalyzer.LOGGER.warn("Ignoring geo refresh ({}): engine not ready.", reason);
+            ComplexityAnalyzer.LOGGER.warn(ANALYSIS_ENGINE, "Ignoring geo refresh ({}): engine not ready.", reason);
             return;
         }
         var srv = this.server;
         if (srv == null) return;
-        ComplexityAnalyzer.LOGGER.info("{} Rebuilding geo-dependent data...", reason);
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "{} Rebuilding geo-dependent data...", reason);
         submitBuild(srv.overworld(), false, null);
     }
 
@@ -372,11 +374,11 @@ public class AnalysisEngine {
     public void clearGeoDatabase() {
         var geoDB = this.geoDatabase;
         if (geoDB == null) {
-            ComplexityAnalyzer.LOGGER.warn("Cannot clear GeoDatabase: not initialized.");
+            ComplexityAnalyzer.LOGGER.warn(ANALYSIS_ENGINE, "Cannot clear GeoDatabase: not initialized.");
             return;
         }
         if (!isReady() || isShuttingDown.get()) {
-            ComplexityAnalyzer.LOGGER.warn("Cannot clear GeoDatabase: engine not ready. Current state: {}", currentState.get());
+            ComplexityAnalyzer.LOGGER.warn(ANALYSIS_ENGINE, "Cannot clear GeoDatabase: engine not ready. Current state: {}", currentState.get());
             return;
         }
         geoDB.clear();
@@ -441,25 +443,25 @@ public class AnalysisEngine {
 
     public void reloadAsync(Level level) {
         if (!isReloading.compareAndSet(false, true)) {
-            ComplexityAnalyzer.LOGGER.warn("Reload already in progress. Ignoring.");
+            ComplexityAnalyzer.LOGGER.warn(ANALYSIS_ENGINE, "Reload already in progress. Ignoring.");
             return;
         }
 
         if (!(level instanceof ServerLevel serverLevel)) {
-            ComplexityAnalyzer.LOGGER.error("Cannot reload: not a ServerLevel");
+            ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "Cannot reload: not a ServerLevel");
             isReloading.set(false);
             return;
         }
 
         var srv = serverLevel.getServer();
 
-        ComplexityAnalyzer.LOGGER.info("Reload requested. Scheduling on server thread...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Reload requested. Scheduling on server thread...");
 
         srv.execute(() -> {
             try {
                 performReloadOnServerThread(serverLevel);
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("Critical error during reload", e);
+                ComplexityAnalyzer.LOGGER.error(ANALYSIS_ENGINE, "Critical error during reload", e);
                 currentState.set(State.FAILED);
                 isReloading.set(false);
             }
@@ -467,7 +469,7 @@ public class AnalysisEngine {
     }
 
     private void performReloadOnServerThread(ServerLevel serverLevel) {
-        ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 1: Shutdown ===");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "=== RELOAD Phase 1: Shutdown ===");
         analysisCancelled.set(true);
         analysisGeneration.incrementAndGet();
         var currentTask = currentAnalysisTask.getAndSet(null);
@@ -489,26 +491,26 @@ public class AnalysisEngine {
         clearAllCaches();
         ComplexityConfig.resetThreadCache();
 
-        ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 2: Shutdown Thread Pools ===");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "=== RELOAD Phase 2: Shutdown Thread Pools ===");
         ThreadPoolManager.getInstance().shutdown();
-        ComplexityAnalyzer.LOGGER.info("=== RELOAD Phase 3: Restart ===");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "=== RELOAD Phase 3: Restart ===");
         ThreadPoolManager.reinitialize();
 
         isShuttingDown.set(false);
         analysisCancelled.set(false);
         isReloading.set(false);
 
-        ComplexityAnalyzer.LOGGER.info("Starting fresh analysis...");
-        initializeAsync(serverLevel, () -> ComplexityAnalyzer.LOGGER.info("✓ Reload complete. System operational."));
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Starting fresh analysis...");
+        initializeAsync(serverLevel, () -> ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "✓ Reload complete. System operational."));
     }
 
     private void shutdownInternal(boolean permanent) {
         if (!isShuttingDown.compareAndSet(false, true)) {
-            ComplexityAnalyzer.LOGGER.debug("Shutdown already in progress");
+            ComplexityAnalyzer.LOGGER.debug(ANALYSIS_ENGINE, "Shutdown already in progress");
             return;
         }
 
-        ComplexityAnalyzer.LOGGER.debug("Shutdown requested for AnalysisEngine.");
+        ComplexityAnalyzer.LOGGER.debug(ANALYSIS_ENGINE, "Shutdown requested for AnalysisEngine.");
 
         analysisCancelled.set(true);
         analysisGeneration.incrementAndGet();
@@ -533,7 +535,7 @@ public class AnalysisEngine {
         try (var ignored = Scope.lock(stateLock)) {
             clearDataInternal();
             currentState.set(State.IDLE);
-            ComplexityAnalyzer.LOGGER.debug("AnalysisEngine state reset to IDLE.");
+            ComplexityAnalyzer.LOGGER.debug(ANALYSIS_ENGINE, "AnalysisEngine state reset to IDLE.");
         }
 
         if (!permanent) isShuttingDown.set(false);
@@ -546,16 +548,16 @@ public class AnalysisEngine {
     public void shutdownCompletely() {
         shutdownInternal(true);
         ThreadPoolManager.getInstance().shutdown();
-        ComplexityAnalyzer.LOGGER.info("AnalysisEngine and ThreadPoolManager fully shutdown.");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "AnalysisEngine and ThreadPoolManager fully shutdown.");
     }
 
     private void clearAllCaches() {
-        ComplexityAnalyzer.LOGGER.info("Clearing all analysis caches...");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "Clearing all analysis caches...");
 
         complexityCache.clear();
 
         if (mobPropProvider != null) mobPropProvider.clearCache();
-        ComplexityAnalyzer.LOGGER.info("All caches cleared.");
+        ComplexityAnalyzer.LOGGER.info(ANALYSIS_ENGINE, "All caches cleared.");
     }
 
     @Nullable

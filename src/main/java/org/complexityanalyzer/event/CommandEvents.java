@@ -24,6 +24,8 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.ComplexityCommand;
 
+import static org.complexityanalyzer.util.LogMarkers.COMMAND_REGISTRATION;
+
 @EventBusSubscriber
 public final class CommandEvents {
 
@@ -33,6 +35,6 @@ public final class CommandEvents {
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(ComplexityCommand.register());
-        ComplexityAnalyzer.LOGGER.info("Registered '{}' command", ComplexityCommand.ROOT);
+        ComplexityAnalyzer.LOGGER.info(COMMAND_REGISTRATION, "Registered '{}' command", ComplexityCommand.ROOT);
     }
 }

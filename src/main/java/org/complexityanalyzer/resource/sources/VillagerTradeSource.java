@@ -43,6 +43,7 @@ import java.util.Comparator;
 
 import static org.complexityanalyzer.cache.util.Fingerprints.FNV_OFFSET;
 import static org.complexityanalyzer.cache.util.Fingerprints.FNV_PRIME;
+import static org.complexityanalyzer.util.LogMarkers.VILLAGER_TRADE_SOURCE;
 
 public class VillagerTradeSource implements IResourceSource, IMultiSourceProvider {
 
@@ -87,7 +88,7 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
     }
 
     private void initializeInProbeScope(Level level) {
-        ComplexityAnalyzer.LOGGER.info("[VTS] Starting VillagerTradeSource initialization...");
+        ComplexityAnalyzer.LOGGER.info(VILLAGER_TRADE_SOURCE, "Starting VillagerTradeSource initialization...");
 
         long totalStartTime = System.currentTimeMillis();
 
@@ -124,7 +125,7 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
                             addTrade(offer, profId, tradeLevel, index, tradeType);
                         } else {
                             failedTrades++;
-                            ComplexityAnalyzer.LOGGER.trace("[VTS] Trade returned no offer without entity ({} {} L{} #{})",
+                            ComplexityAnalyzer.LOGGER.trace(VILLAGER_TRADE_SOURCE, "Trade returned no offer without entity ({} {} L{} #{})",
                                     tradeType, profId, tradeLevel, index + 1);
                         }
 
@@ -138,12 +139,12 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
         }
 
         long phase1Time = System.currentTimeMillis() - totalStartTime;
-        ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 1 complete in {}ms: {} parsed, {} queued for entity, {} failed out of {} trades",
+        ComplexityAnalyzer.LOGGER.debug(VILLAGER_TRADE_SOURCE, "Phase 1 complete in {}ms: {} parsed, {} queued for entity, {} failed out of {} trades",
                 phase1Time, fastParsed, pendingTrades.size(), failedTrades, totalTrades);
 
         if (!pendingTrades.isEmpty()) {
             long phase2Start = System.currentTimeMillis();
-            ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2: Processing {} trades with entity...", pendingTrades.size());
+            ComplexityAnalyzer.LOGGER.debug(VILLAGER_TRADE_SOURCE, "Phase 2: Processing {} trades with entity...", pendingTrades.size());
 
             var villager = new Villager(EntityType.VILLAGER, level) {
                 @Override
@@ -164,28 +165,28 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
                         addTrade(offer, pending.professionId, pending.level, pending.index, pending.type);
                     } else {
                         failedTrades++;
-                        ComplexityAnalyzer.LOGGER.trace("[VTS] Entity trade returned no offer in probe scope ({} {} L{} #{})",
+                        ComplexityAnalyzer.LOGGER.trace(VILLAGER_TRADE_SOURCE, "Entity trade returned no offer in probe scope ({} {} L{} #{})",
                                 pending.type, pending.professionId, pending.level, pending.index + 1);
                     }
 
                 } catch (Exception e) {
                     failedTrades++;
-                    ComplexityAnalyzer.LOGGER.trace("[VTS] Entity trade failed ({}): {}", pending.type, e.getMessage());
+                    ComplexityAnalyzer.LOGGER.trace(VILLAGER_TRADE_SOURCE, "Entity trade failed ({}): {}", pending.type, e.getMessage());
                 }
             }
 
             villager.discard();
 
             long phase2Time = System.currentTimeMillis() - phase2Start;
-            ComplexityAnalyzer.LOGGER.debug("[VTS] Phase 2 complete in {}ms: {}/{} trades", phase2Time, entityParsed, pendingTrades.size());
+            ComplexityAnalyzer.LOGGER.debug(VILLAGER_TRADE_SOURCE, "Phase 2 complete in {}ms: {}/{} trades", phase2Time, entityParsed, pendingTrades.size());
         }
 
         long totalTime = System.currentTimeMillis() - totalStartTime;
         String successPercent = "%.1f".formatted((fastParsed + entityParsed) * 100.0 / totalTrades);
 
-        ComplexityAnalyzer.LOGGER.debug("[VTS] ===== Initialization complete in {}ms =====", totalTime);
-        ComplexityAnalyzer.LOGGER.debug("[VTS] Results: {} items, {}/{} trades ({}% success)", tradesByResult.size(), fastParsed + entityParsed, totalTrades, successPercent);
-        ComplexityAnalyzer.LOGGER.debug("[VTS]   Fast: {}, Entity: {}, Failed: {}", fastParsed, entityParsed, failedTrades);
+        ComplexityAnalyzer.LOGGER.debug(VILLAGER_TRADE_SOURCE, "===== Initialization complete in {}ms =====", totalTime);
+        ComplexityAnalyzer.LOGGER.debug(VILLAGER_TRADE_SOURCE, "Results: {} items, {}/{} trades ({}% success)", tradesByResult.size(), fastParsed + entityParsed, totalTrades, successPercent);
+        ComplexityAnalyzer.LOGGER.debug(VILLAGER_TRADE_SOURCE, "Fast: {}, Entity: {}, Failed: {}", fastParsed, entityParsed, failedTrades);
     }
 
     private void addTrade(MerchantOffer offer, String professionId, int level, int index, String tradeType) {

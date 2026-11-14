@@ -36,6 +36,7 @@ import org.complexityanalyzer.util.Scope;
 import java.nio.file.Path;
 
 import static net.minecraft.world.item.Items.AIR;
+import static org.complexityanalyzer.util.LogMarkers.MACHINE_REGISTRY_CACHE;
 
 public final class MachineRegistryCache implements ManagedCache {
 
@@ -76,11 +77,11 @@ public final class MachineRegistryCache implements ManagedCache {
                 var buf = new FriendlyByteBuf(raw);
 
                 if (buf.readInt() != MAGIC) {
-                    ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Cache has bad header, rebuilding.");
+                    ComplexityAnalyzer.LOGGER.warn(MACHINE_REGISTRY_CACHE, "Cache has bad header, rebuilding.");
                     return -1;
                 }
                 if (buf.readInt() != VERSION) {
-                    ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Cache format outdated, rebuilding.");
+                    ComplexityAnalyzer.LOGGER.info(MACHINE_REGISTRY_CACHE, "Cache format outdated, rebuilding.");
                     return -1;
                 }
 
@@ -88,7 +89,7 @@ public final class MachineRegistryCache implements ManagedCache {
                 if (!stored.equals(expected)) {
                     String diff = (stored.blocks() != expected.blocks() ? "blocks " : "")
                             + (stored.mods() != expected.mods() ? "mods" : "");
-                    ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Block/mod set changed since last run ({}), cache invalidated.", diff.trim());
+                    ComplexityAnalyzer.LOGGER.info(MACHINE_REGISTRY_CACHE, "Block/mod set changed since last run ({}), cache invalidated.", diff.trim());
                     return -1;
                 }
 
@@ -111,7 +112,7 @@ public final class MachineRegistryCache implements ManagedCache {
                 return restored;
             }
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to load cache (rebuilding): {}", t.toString());
+            ComplexityAnalyzer.LOGGER.warn(MACHINE_REGISTRY_CACHE, "Failed to load cache (rebuilding): {}", t.toString());
             return -1;
         }
     }
@@ -140,9 +141,9 @@ public final class MachineRegistryCache implements ManagedCache {
             buf.readBytes(bytes);
 
             FileManager.writeCompressedAtomic(file, bytes, 5);
-            ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
+            ComplexityAnalyzer.LOGGER.debug(MACHINE_REGISTRY_CACHE, "Saved compressed cache: {} recipe types -> {}", mapping.size(), file);
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[MachineRegistry] Failed to save cache: {}", t.toString());
+            ComplexityAnalyzer.LOGGER.warn(MACHINE_REGISTRY_CACHE, "Failed to save cache: {}", t.toString());
         }
     }
 

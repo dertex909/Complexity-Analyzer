@@ -51,6 +51,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import static java.util.Locale.ROOT;
+import static org.complexityanalyzer.util.LogMarkers.EXPORT_COMMAND;
 
 public final class ExportCommand {
 
@@ -232,7 +233,7 @@ public final class ExportCommand {
     private static void sendFailure(OutputManager output, CommandSourceStack source, String exportType, Exception e) {
         output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.failed", exportType, e.getMessage()));
         output.sendFooter(source);
-        ComplexityAnalyzer.LOGGER.error("Error exporting {}", exportType, e);
+        ComplexityAnalyzer.LOGGER.error(EXPORT_COMMAND, "Error exporting {}", exportType, e);
     }
 
     @FunctionalInterface

@@ -24,6 +24,8 @@ import org.complexityanalyzer.geoscan.config.ScanConfig;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_SCAN_EMERGENCY;
+
 public class EmergencyManager {
 
     public static class MsptTracker {
@@ -96,8 +98,10 @@ public class EmergencyManager {
             if (now - lastLogTime < LOG_COOLDOWN_MS) return;
             lastLogTime = now;
 
-            if (throttled) ComplexityAnalyzer.LOGGER.info("[Mspt] Scan PAUSED — {} > limit {}", avgMspt, msptLimit);
-            else ComplexityAnalyzer.LOGGER.info("[Mspt] Scan RESUMED — {} < threshold {}", avgMspt, resumeThreshold);
+            if (throttled)
+                ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EMERGENCY, "Scan PAUSED — {} > limit {}", avgMspt, msptLimit);
+            else
+                ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EMERGENCY, "Scan RESUMED — {} < threshold {}", avgMspt, resumeThreshold);
         }
     }
 }

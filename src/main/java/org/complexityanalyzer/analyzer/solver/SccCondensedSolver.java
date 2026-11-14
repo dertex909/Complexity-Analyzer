@@ -41,6 +41,7 @@ import org.complexityanalyzer.resource.SourceManager;
 import java.util.Arrays;
 
 import static org.complexityanalyzer.util.FluidNormalizer.normalize;
+import static org.complexityanalyzer.util.LogMarkers.SCC_DAG_SOLVER;
 
 public final class SccCondensedSolver {
 
@@ -194,15 +195,15 @@ public final class SccCondensedSolver {
 
     public SolverResult solve() {
         long startTime = System.currentTimeMillis();
-        ComplexityAnalyzer.LOGGER.info("🚀 Starting SCC/DAG solver...");
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "🚀 Starting SCC/DAG solver...");
 
         var compiled = new CompileBuilder(graph, sourceManager, machineRegistry).build();
-        ComplexityAnalyzer.LOGGER.info("📐 IR compiled: {} nodes ({} items, {} fluids), {} formulas, {} edges",
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "📐 IR compiled: {} nodes ({} items, {} fluids), {} formulas, {} edges",
                 compiled.nodeCount, compiled.itemCount, compiled.fluidCount,
                 compiled.formulaCount, compiled.adjNode.length);
 
         var solution = solveCompiled(compiled);
-        ComplexityAnalyzer.LOGGER.info("🌀 Solved {} components ({} cyclic) in {} fixpoint iterations",
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "🌀 Solved {} components ({} cyclic) in {} fixpoint iterations",
                 solution.componentCount, solution.cyclicComponents, solution.fixpointIterations);
 
         var materialized = materialize(compiled, solution);
@@ -228,14 +229,14 @@ public final class SccCondensedSolver {
             else if (m.nodeKind[n] == K_FLUID) finiteFluids++;
         }
 
-        ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("🎯 SOLVER RESULTS");
-        ComplexityAnalyzer.LOGGER.info("════════════════════════════════════════");
-        ComplexityAnalyzer.LOGGER.info("⏱️ Time: {}ms", totalTime);
-        ComplexityAnalyzer.LOGGER.info("📦 Items: {}/{} finite", finiteItems, m.itemCount);
-        ComplexityAnalyzer.LOGGER.info("💧 Fluids: {}/{} finite", finiteFluids, m.fluidCount);
-        ComplexityAnalyzer.LOGGER.info("🌀 Components: {} ({} cyclic)", sol.componentCount, sol.cyclicComponents);
-        ComplexityAnalyzer.LOGGER.info("🔁 Fixpoint iterations: {}", sol.fixpointIterations);
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "════════════════════════════════════════");
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "🎯 SOLVER RESULTS");
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "════════════════════════════════════════");
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "⏱️ Time: {}ms", totalTime);
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "📦 Items: {}/{} finite", finiteItems, m.itemCount);
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "💧 Fluids: {}/{} finite", finiteFluids, m.fluidCount);
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "🌀 Components: {} ({} cyclic)", sol.componentCount, sol.cyclicComponents);
+        ComplexityAnalyzer.LOGGER.info(SCC_DAG_SOLVER, "🔁 Fixpoint iterations: {}", sol.fixpointIterations);
     }
 
     private Solution solveCompiled(CompiledModel m) {

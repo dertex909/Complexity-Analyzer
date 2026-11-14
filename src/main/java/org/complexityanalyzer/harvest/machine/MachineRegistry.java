@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import static net.minecraft.core.BlockPos.ZERO;
 import static net.minecraft.world.item.Items.*;
 import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
+import static org.complexityanalyzer.util.LogMarkers.MACHINE_REGISTRY;
 
 public class MachineRegistry {
 
@@ -60,7 +61,7 @@ public class MachineRegistry {
         }
 
         int dynamic = registerModdedMachines(server);
-        ComplexityAnalyzer.LOGGER.info("[MachineRegistry] Total registered {} machines", dynamic);
+        ComplexityAnalyzer.LOGGER.info(MACHINE_REGISTRY, "Total registered {} machines", dynamic);
 
         if (cacheFile != null) MachineRegistryCache.INSTANCE.save(cacheFile, fingerprint, idMapping);
         initialized = true;
@@ -82,7 +83,7 @@ public class MachineRegistry {
             if (!list.contains(item)) {
                 list.add(item);
                 added = true;
-                ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
+                ComplexityAnalyzer.LOGGER.debug(MACHINE_REGISTRY, "Mapped recipe type '{}' -> Machine item '{}'", typeId, GameRegistryManager.getItemId(item));
             }
         }
         return added;
@@ -122,7 +123,7 @@ public class MachineRegistry {
             for (var item : entry.getValue()) if (!instList.contains(item)) instList.add(item);
         }
 
-        ComplexityAnalyzer.LOGGER.debug("[MachineRegistry] Loaded {} machine mappings from cache (block scan skipped)", restored);
+        ComplexityAnalyzer.LOGGER.debug(MACHINE_REGISTRY, "Loaded {} machine mappings from cache (block scan skipped)", restored);
         return true;
     }
 

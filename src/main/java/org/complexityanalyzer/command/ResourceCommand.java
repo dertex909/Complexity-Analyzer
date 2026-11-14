@@ -36,6 +36,7 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import static net.minecraft.world.item.Items.AIR;
+import static org.complexityanalyzer.util.LogMarkers.RESOURCE_COMMAND;
 
 public final class ResourceCommand {
     private ResourceCommand() {
@@ -76,7 +77,7 @@ public final class ResourceCommand {
             return 1;
         } catch (Exception e) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.resource.failed", itemId.toString(), e.getMessage()));
-            ComplexityAnalyzer.LOGGER.error("Error analyzing resource {}", itemId, e);
+            ComplexityAnalyzer.LOGGER.error(RESOURCE_COMMAND, "Error analyzing resource {}", itemId, e);
             return 0;
         }
     }

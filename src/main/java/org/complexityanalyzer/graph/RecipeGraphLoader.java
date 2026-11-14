@@ -25,6 +25,8 @@ import org.complexityanalyzer.cache.RecipeGraphCache;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.harvest.engine.RegistryHarvestService;
 
+import static org.complexityanalyzer.util.LogMarkers.RECIPE_GRAPH_LOADER;
+
 public final class RecipeGraphLoader {
     private RecipeGraphLoader() {
     }
@@ -37,7 +39,7 @@ public final class RecipeGraphLoader {
         if (file != null) {
             var cached = cache.tryLoad(file, fp, level);
             if (cached != null) {
-                ComplexityAnalyzer.LOGGER.info("Loaded recipe graph from cache: {} recipes (scan skipped).", cached.getTotalRecipeCount());
+                ComplexityAnalyzer.LOGGER.info(RECIPE_GRAPH_LOADER, "Loaded recipe graph from cache: {} recipes (scan skipped).", cached.getTotalRecipeCount());
                 return cached;
             }
         }

@@ -30,6 +30,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
+import static org.complexityanalyzer.util.LogMarkers.WEB_TAB_MANIFEST;
+
 public final class WebTabManifest {
     public static final int DEFAULT_TAB_ORDER = 100;
     public static final String TAB_FILE_SUFFIX = ".tab.json";
@@ -70,12 +72,12 @@ public final class WebTabManifest {
             obj.remove(PROP_MIME_TYPES);
             resolveWebRoutes(obj, token);
 
-            ComplexityAnalyzer.LOGGER.info("[WebPacks] Discovered tab: {} [{}] under namespace: {}",
+            ComplexityAnalyzer.LOGGER.info(WEB_TAB_MANIFEST, "Discovered tab: {} [{}] under namespace: {}",
                     obj.get(PROP_ID).getAsString(), obj.get(PROP_TITLE).getAsString(), obj.get(PROP_NAMESPACE).getAsString());
 
             return new ParsedTab(obj, mimeTypes);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[WebPacks] Malformed {} descriptor encountered", TAB_FILE_SUFFIX, e);
+            ComplexityAnalyzer.LOGGER.warn(WEB_TAB_MANIFEST, "Malformed {} descriptor encountered", TAB_FILE_SUFFIX, e);
             return null;
         }
     }
@@ -85,7 +87,7 @@ public final class WebTabManifest {
         var element = obj.get(PROP_MIME_TYPES);
         if (element == null) return mimeTypes;
         if (!element.isJsonObject()) {
-            ComplexityAnalyzer.LOGGER.warn("[WebPacks] '{}' in {} must be a JSON object", PROP_MIME_TYPES, TAB_FILE_SUFFIX);
+            ComplexityAnalyzer.LOGGER.warn(WEB_TAB_MANIFEST, "'{}' in {} must be a JSON object", PROP_MIME_TYPES, TAB_FILE_SUFFIX);
             return mimeTypes;
         }
 
@@ -93,20 +95,20 @@ public final class WebTabManifest {
             var extension = normalizeExtension(entry.getKey());
             var value = entry.getValue();
             if (extension == null || value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
-                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Ignoring invalid MIME type entry '{}' in {}", entry.getKey(), TAB_FILE_SUFFIX);
+                ComplexityAnalyzer.LOGGER.warn(WEB_TAB_MANIFEST, "Ignoring invalid MIME type entry '{}' in {}", entry.getKey(), TAB_FILE_SUFFIX);
                 continue;
             }
 
             var mimeType = value.getAsString().trim();
             int slash = mimeType.indexOf('/');
             if (slash <= 0 || slash == mimeType.length() - 1 || mimeType.indexOf('\r') >= 0 || mimeType.indexOf('\n') >= 0) {
-                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Ignoring invalid MIME type '{}' for extension '{}'", mimeType, extension);
+                ComplexityAnalyzer.LOGGER.warn(WEB_TAB_MANIFEST, "Ignoring invalid MIME type '{}' for extension '{}'", mimeType, extension);
                 continue;
             }
 
             var previous = mimeTypes.putIfAbsent(extension, mimeType);
             if (previous != null && !previous.equals(mimeType)) {
-                ComplexityAnalyzer.LOGGER.warn("[WebPacks] Conflicting MIME types for extension '{}'; keeping '{}'", extension, previous);
+                ComplexityAnalyzer.LOGGER.warn(WEB_TAB_MANIFEST, "Conflicting MIME types for extension '{}'; keeping '{}'", extension, previous);
             }
         }
 

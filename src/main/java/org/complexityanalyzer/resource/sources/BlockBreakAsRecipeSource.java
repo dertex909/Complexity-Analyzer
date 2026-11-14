@@ -58,6 +58,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.complexityanalyzer.util.LogMarkers.BLOCK_DROP_SOURCE;
+
 public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourceProvider {
 
     private static final int SAMPLE_COUNT = 50;
@@ -112,14 +114,14 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     @Override
     public void initialize(Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
-            ComplexityAnalyzer.LOGGER.warn("[{}] requires a ServerLevel. Skipping.", getName());
+            ComplexityAnalyzer.LOGGER.warn(BLOCK_DROP_SOURCE, "Requires a ServerLevel. Skipping.");
             return;
         }
 
         this.allPaths.clear();
 
         if (this.geoDatabase == null || !this.geoDatabase.isLoaded()) {
-            ComplexityAnalyzer.LOGGER.info("[{}] No geo-data loaded yet — skipping block-drop analysis (will run after a geo-scan).", getName());
+            ComplexityAnalyzer.LOGGER.info(BLOCK_DROP_SOURCE, "No geo-data loaded yet — skipping block-drop analysis (will run after a geo-scan).");
             return;
         }
 
@@ -131,13 +133,13 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             int restored = ResourceCache.BLOCK_BREAK.load(cacheFile, fingerprint, (buf, item) ->
                     ResourceCache.readResourceData(buf, item, this), allPaths);
             if (restored >= 0) {
-                ComplexityAnalyzer.LOGGER.info("[{}] Loaded {} block-drop paths for {} items from cache (block scan skipped).",
-                        getName(), restored, allPaths.size());
+                ComplexityAnalyzer.LOGGER.info(BLOCK_DROP_SOURCE, "Loaded {} block-drop paths for {} items from cache (block scan skipped).",
+                        restored, allPaths.size());
                 return;
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Initializing... Analyzing all block drop recipes concurrently.", getName());
+        ComplexityAnalyzer.LOGGER.info(BLOCK_DROP_SOURCE, "Initializing... Analyzing all block drop recipes concurrently.");
         long startTime = System.currentTimeMillis();
         var pathsFound = new AtomicInteger(0);
         var blocksSkipped = new AtomicInteger(0);
@@ -264,8 +266,8 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
 
         for (var paths : allPaths.values()) paths.sort(PATH_COMPARATOR);
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
-                getName(), (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
+        ComplexityAnalyzer.LOGGER.info(BLOCK_DROP_SOURCE, "Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
+                (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);
         if (cacheFile != null) ResourceCache.BLOCK_BREAK.save(cacheFile, fingerprint,
                 ResourceCache::writeResourceData, allPaths);
     }

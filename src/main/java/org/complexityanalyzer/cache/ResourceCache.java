@@ -39,6 +39,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 
+import static org.complexityanalyzer.util.LogMarkers.RESOURCE_CACHE;
+
 public final class ResourceCache implements ManagedCache {
 
     public static final ResourceCache UNIVERSAL_LOOT = new ResourceCache("universal_loot", "universal_loot.bin");
@@ -149,11 +151,11 @@ public final class ResourceCache implements ManagedCache {
                 var buf = new FriendlyByteBuf(raw);
 
                 if (buf.readInt() != MAGIC || buf.readInt() != VERSION) {
-                    ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Bad/outdated header, rebuilding.", id);
+                    ComplexityAnalyzer.LOGGER.debug(RESOURCE_CACHE, "Cache {}: Bad/outdated header, rebuilding.", id);
                     return -1;
                 }
                 if (!fingerprintMatches(buf, fingerprint)) {
-                    ComplexityAnalyzer.LOGGER.info("[Cache:{}] Fingerprint changed, rebuilding.", id);
+                    ComplexityAnalyzer.LOGGER.info(RESOURCE_CACHE, "Cache {}: Fingerprint changed, rebuilding.", id);
                     return -1;
                 }
 
@@ -177,7 +179,7 @@ public final class ResourceCache implements ManagedCache {
                 return restored;
             }
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to load (rebuilding): {}", id, t.toString());
+            ComplexityAnalyzer.LOGGER.warn(RESOURCE_CACHE, "Cache {}: Failed to load (rebuilding): {}", id, t.toString());
             target.clear();
             return -1;
         }
@@ -205,9 +207,9 @@ public final class ResourceCache implements ManagedCache {
             buf.readBytes(bytes);
 
             FileManager.writeCompressedAtomic(file, bytes, 5);
-            ComplexityAnalyzer.LOGGER.debug("[Cache:{}] Saved compressed {} items -> {}", id, map.size(), file);
+            ComplexityAnalyzer.LOGGER.debug(RESOURCE_CACHE, "Cache {}: Saved compressed {} items -> {}", id, map.size(), file);
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Cache:{}] Failed to save: {}", id, t.toString());
+            ComplexityAnalyzer.LOGGER.warn(RESOURCE_CACHE, "Cache {}: Failed to save: {}", id, t.toString());
         }
     }
 

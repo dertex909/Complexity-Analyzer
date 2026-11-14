@@ -33,9 +33,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.nio.file.StandardWatchEventKinds.*;
+import static org.complexityanalyzer.util.LogMarkers.WEB_VIEWER_WATCHER;
 
 public final class ViewerWatcher {
-
     private static final long RELOAD_QUIET_PERIOD_NANOS = TimeUnit.MILLISECONDS.toNanos(250);
     private static final long WATCH_POLL_INTERVAL_MILLIS = 50;
     private static final WatchEvent.Kind<?>[] WATCH_EVENT_KINDS = {ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE};
@@ -48,12 +48,12 @@ public final class ViewerWatcher {
     public static void start() {
         var roots = WebPackPaths.getWatchDirectories();
         if (roots.isEmpty()) {
-            ComplexityAnalyzer.LOGGER.warn("[WebDev] No filesystem directories are available for hot reload.");
+            ComplexityAnalyzer.LOGGER.warn(WEB_VIEWER_WATCHER, "No filesystem directories are available for hot reload.");
             return;
         }
 
         if (WebPackPaths.getDevDir(WebPackPaths.VIEWER_BASE) == null) {
-            ComplexityAnalyzer.LOGGER.debug("[WebDev] No source viewer directory found; packaged viewer assets are served without a filesystem watcher.");
+            ComplexityAnalyzer.LOGGER.debug(WEB_VIEWER_WATCHER, "No source viewer directory found; packaged viewer assets are served without a filesystem watcher.");
         }
 
         var thread = Thread.ofVirtual().name("Complexity-Viewer-Watcher").unstarted(() -> watch(roots));
@@ -87,7 +87,7 @@ public final class ViewerWatcher {
 
                     if (!key.reset()) {
                         directoryKeys.remove(watchedDirectory);
-                        ComplexityAnalyzer.LOGGER.debug("[WebDev] Directory watch expired: {}", watchedDirectory);
+                        ComplexityAnalyzer.LOGGER.debug(WEB_VIEWER_WATCHER, "Directory watch expired: {}", watchedDirectory);
                     }
 
                     if (result.overflow()) rebuildRegistrations(roots, rootParentPaths, directoryKeys, watchService);
@@ -102,7 +102,7 @@ public final class ViewerWatcher {
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[WebDev] Watcher stopped after an error.", e);
+            ComplexityAnalyzer.LOGGER.error(WEB_VIEWER_WATCHER, "Watcher stopped after an error.", e);
         }
     }
 
@@ -121,7 +121,7 @@ public final class ViewerWatcher {
     private static void registerRoots(ObjectArrayList<Path> roots, ObjectOpenHashSet<Path> rootParentPaths,
                                       Object2ObjectOpenHashMap<Path, WatchKey> directoryKeys, WatchService watchService) {
         for (var root : roots) {
-            ComplexityAnalyzer.LOGGER.info("[WebDev] Watching filesystem root: {}", root);
+            ComplexityAnalyzer.LOGGER.info(WEB_VIEWER_WATCHER, "Watching filesystem root: {}", root);
             var parent = root.getParent();
             if (parent != null && rootParentPaths.add(parent)) registerDirectory(parent, directoryKeys, watchService);
             registerTree(root, directoryKeys, watchService);
@@ -130,7 +130,7 @@ public final class ViewerWatcher {
 
     private static void registerTree(Path root, Object2ObjectOpenHashMap<Path, WatchKey> directoryKeys, WatchService watchService) {
         if (!FileManager.isDirectory(root)) {
-            ComplexityAnalyzer.LOGGER.debug("[WebDev] Watch root is not present yet: {}", root);
+            ComplexityAnalyzer.LOGGER.debug(WEB_VIEWER_WATCHER, "Watch root is not present yet: {}", root);
             return;
         }
 
@@ -146,9 +146,9 @@ public final class ViewerWatcher {
         try {
             var key = normalizedDirectory.register(watchService, WATCH_EVENT_KINDS);
             directoryKeys.put(normalizedDirectory, key);
-            ComplexityAnalyzer.LOGGER.debug("[WebDev] Registered directory: {}", normalizedDirectory);
+            ComplexityAnalyzer.LOGGER.debug(WEB_VIEWER_WATCHER, "Registered directory: {}", normalizedDirectory);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[WebDev] Could not watch directory: {}", normalizedDirectory, e);
+            ComplexityAnalyzer.LOGGER.warn(WEB_VIEWER_WATCHER, "Could not watch directory: {}", normalizedDirectory, e);
         }
     }
 
@@ -161,7 +161,7 @@ public final class ViewerWatcher {
 
         for (var event : key.pollEvents()) {
             if (event.kind() == OVERFLOW) {
-                ComplexityAnalyzer.LOGGER.warn("[WebDev] Filesystem event queue overflowed; rebuilding directory watches.");
+                ComplexityAnalyzer.LOGGER.warn(WEB_VIEWER_WATCHER, "Filesystem event queue overflowed; rebuilding directory watches.");
                 changed = true;
                 overflow = true;
                 continue;
@@ -177,7 +177,7 @@ public final class ViewerWatcher {
                 cancelTree(changedPath, directoryKeys);
             }
 
-            ComplexityAnalyzer.LOGGER.debug("[WebDev] Filesystem event {}: {}", event.kind().name(), changedPath);
+            ComplexityAnalyzer.LOGGER.debug(WEB_VIEWER_WATCHER, "Filesystem event {}: {}", event.kind().name(), changedPath);
             changed = true;
         }
 
@@ -203,12 +203,12 @@ public final class ViewerWatcher {
         for (var key : directoryKeys.values()) key.cancel();
         directoryKeys.clear();
         rootParentPaths.clear();
-        ComplexityAnalyzer.LOGGER.debug("[WebDev] Rebuilding recursive directory watches.");
+        ComplexityAnalyzer.LOGGER.debug(WEB_VIEWER_WATCHER, "Rebuilding recursive directory watches.");
         registerRoots(roots, rootParentPaths, directoryKeys, watchService);
     }
 
     private static void reloadViewer() {
-        ComplexityAnalyzer.LOGGER.info("[WebDev] Resource changes settled; invalidating cache and reloading viewers.");
+        ComplexityAnalyzer.LOGGER.info(WEB_VIEWER_WATCHER, "Resource changes settled; invalidating cache and reloading viewers.");
         CabinResourceResolver.invalidateCache();
         CabinWsHub.broadcastReload();
     }

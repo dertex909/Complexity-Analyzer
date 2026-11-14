@@ -40,6 +40,8 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import java.util.Comparator;
 
+import static org.complexityanalyzer.util.LogMarkers.ANALYZE_COMMAND;
+
 public final class AnalyzeCommand {
     private AnalyzeCommand() {
     }
@@ -86,7 +88,7 @@ public final class AnalyzeCommand {
 
         } catch (Exception e) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.error", e.getMessage()));
-            ComplexityAnalyzer.LOGGER.error("Error analyzing item {}", itemId, e);
+            ComplexityAnalyzer.LOGGER.error(ANALYZE_COMMAND, "Error analyzing item {}", itemId, e);
             return 0;
         }
     }

@@ -47,6 +47,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static net.minecraft.world.item.Items.AIR;
+import static org.complexityanalyzer.util.LogMarkers.HARVEST_DEBUG_TRACE;
 
 public final class FullDebugTracePipeline {
     private static final boolean DEBUG_ENABLED = false;
@@ -55,9 +56,9 @@ public final class FullDebugTracePipeline {
 
     static {
         if (DEBUG_ENABLED) {
-            ComplexityAnalyzer.LOGGER.info("[Harvest] FullDebugTracePipeline is ENABLED");
+            ComplexityAnalyzer.LOGGER.info(HARVEST_DEBUG_TRACE, "FullDebugTracePipeline is ENABLED");
         } else {
-            ComplexityAnalyzer.LOGGER.debug("[Harvest] FullDebugTracePipeline is DISABLED");
+            ComplexityAnalyzer.LOGGER.debug(HARVEST_DEBUG_TRACE, "FullDebugTracePipeline is DISABLED");
         }
     }
 
@@ -209,9 +210,9 @@ public final class FullDebugTracePipeline {
         try {
             var file = FileManager.resolve(worldDir, "runtime_harvest.txt");
             FileManager.writeStringAtomic(file, buffer.toString());
-            ComplexityAnalyzer.LOGGER.info("[Harvest:Debug] Written {} recipes trace to {}", totalRecipes, file);
+            ComplexityAnalyzer.LOGGER.info(HARVEST_DEBUG_TRACE, "Written {} recipes trace to {}", totalRecipes, file);
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest:Debug] Failed to write trace: {}", t.getMessage());
+            ComplexityAnalyzer.LOGGER.warn(HARVEST_DEBUG_TRACE, "Failed to write trace: {}", t.getMessage());
         }
     }
 

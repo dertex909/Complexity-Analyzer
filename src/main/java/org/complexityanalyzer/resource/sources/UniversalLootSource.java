@@ -54,6 +54,7 @@ import java.util.concurrent.Future;
 import static java.util.Locale.ROOT;
 import static net.minecraft.core.registries.Registries.LOOT_TABLE;
 import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
+import static org.complexityanalyzer.util.LogMarkers.UNIVERSAL_LOOT_SOURCE;
 
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
 
@@ -63,7 +64,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     @Override
     public void initialize(Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
-            ComplexityAnalyzer.LOGGER.error("[ULS] Initialize called with non-server level. Aborting.");
+            ComplexityAnalyzer.LOGGER.error(UNIVERSAL_LOOT_SOURCE, "Initialize called with non-server level. Aborting.");
             return;
         }
 
@@ -88,7 +89,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
             this.allLootData = localLootData;
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[ULS] Failed to get loot table keys. Aborting analysis.", e);
+            ComplexityAnalyzer.LOGGER.error(UNIVERSAL_LOOT_SOURCE, "Failed to get loot table keys. Aborting analysis.", e);
         }
     }
 
@@ -120,7 +121,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         });
         int items = 0;
         for (var map : targetMap.values()) items += map.size();
-        ComplexityAnalyzer.LOGGER.info("[ULS] Loaded {} loot paths for {} items from cache (loot-table scan skipped).", restored, items);
+        ComplexityAnalyzer.LOGGER.info(UNIVERSAL_LOOT_SOURCE, "Loaded {} loot paths for {} items from cache (loot-table scan skipped).", restored, items);
         return true;
     }
 
@@ -136,7 +137,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
         try (var ignored = ProbeScope.open(); var ignoredScope = LogFilter.open()) {
             var server = serverLevel.getServer();
 
-            ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scanning ALL loot tables (including mods)...");
+            ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "Auto-scanning ALL loot tables (including mods)...");
             long startTime = System.currentTimeMillis();
             int tablesProcessed = 0;
             int tablesSkipped = 0;
@@ -145,7 +146,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             int threads = pool.getParallelism();
 
             try {
-                ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} total loot tables to analyze.", allLootTableKeys.size());
+                ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "Found {} total loot tables to analyze.", allLootTableKeys.size());
 
                 var sortedKeys = new ObjectArrayList<>(allLootTableKeys);
                 sortedKeys.sort(Comparator.comparing(k -> k.location().toString()));
@@ -179,7 +180,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                         var r = f.get();
                         if (r != null) results.add(r);
                     } catch (Exception e) {
-                        ComplexityAnalyzer.LOGGER.warn("[ULS] Sampling task failed: {}", e.toString());
+                        ComplexityAnalyzer.LOGGER.warn(UNIVERSAL_LOOT_SOURCE, "Sampling task failed: {}", e.toString());
                     }
                 }
                 for (var t : piglinTasks) {
@@ -230,19 +231,19 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                 }
 
             } catch (Exception e) {
-                ComplexityAnalyzer.LOGGER.error("[ULS] Critical error during auto-scan: ", e);
+                ComplexityAnalyzer.LOGGER.error(UNIVERSAL_LOOT_SOURCE, "Critical error during auto-scan: ", e);
             }
 
             long duration = System.currentTimeMillis() - startTime;
             var totalItemsFound = 0;
             for (var map : targetMap.values()) totalItemsFound += map.size();
 
-            ComplexityAnalyzer.LOGGER.debug("[ULS] Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
+            ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "Auto-scan complete in {}ms. Processed {} loot tables ({} skipped), found {} unique items.",
                     duration, tablesProcessed, tablesSkipped, totalItemsFound);
-            ComplexityAnalyzer.LOGGER.debug("[ULS] PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
+            ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "PROFILE: {} tables sampled on {} threads × {} sims = {} rolls; sampling wall {}ms (of {}ms total).",
                     tablesProcessed, threads, SIMULATION_COUNT, (long) tablesProcessed * SIMULATION_COUNT, sampleWallMs, duration);
 
-            targetMap.forEach((sourceType, map) -> ComplexityAnalyzer.LOGGER.debug("[ULS]   {} -> {} items", sourceType.getDisplayName(), map.size()));
+            targetMap.forEach((sourceType, map) -> ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "{} -> {} items", sourceType.getDisplayName(), map.size()));
         }
     }
 
@@ -268,7 +269,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                 for (var stack : items) if (!stack.isEmpty()) counts.addTo(stack.getItem(), stack.getCount());
             } catch (Exception e) {
                 if (!hasLoggedError) {
-                    ComplexityAnalyzer.LOGGER.debug("[ULS] Error processing '{}': {} (suppressing further errors)", task.id(), e.getMessage());
+                    ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "Error processing '{}': {} (suppressing further errors)", task.id(), e.getMessage());
                     hasLoggedError = true;
                 }
             }
@@ -281,10 +282,10 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             var registries = server.reloadableRegistries().get();
             var lootRegistry = registries.registry(LOOT_TABLE).orElseThrow();
             var keys = new ObjectOpenHashSet<>(lootRegistry.registryKeySet());
-            ComplexityAnalyzer.LOGGER.debug("[ULS] Found {} loot tables via reloadableRegistries.", keys.size());
+            ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "Found {} loot tables via reloadableRegistries.", keys.size());
             return keys;
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[ULS] Failed to access loot table registry:", e);
+            ComplexityAnalyzer.LOGGER.error(UNIVERSAL_LOOT_SOURCE, "Failed to access loot table registry:", e);
             return new ObjectOpenHashSet<>();
         }
     }
@@ -431,7 +432,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                         return builder.create(LootContextParamSets.PIGLIN_BARTER);
                     }
                 } catch (Exception e) {
-                    ComplexityAnalyzer.LOGGER.warn("[ULS] Failed to create piglin entity: {}", e.getMessage());
+                    ComplexityAnalyzer.LOGGER.warn(UNIVERSAL_LOOT_SOURCE, "Failed to create piglin entity: {}", e.getMessage());
                 }
                 return null;
             }

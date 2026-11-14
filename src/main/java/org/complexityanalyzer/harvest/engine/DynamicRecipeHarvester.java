@@ -42,6 +42,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.complexityanalyzer.util.LogMarkers.DYNAMIC_RECIPE_HARVESTER;
+
 public final class DynamicRecipeHarvester {
 
     private DynamicRecipeHarvester() {
@@ -49,15 +51,15 @@ public final class DynamicRecipeHarvester {
 
     public static void harvest(RecipeGraph graph, Level level, ObjectSet<ResourceLocation> knownRecipeIds) {
         try (var ignored = ProbeScope.open()) {
-            ComplexityAnalyzer.LOGGER.debug("[Harvest] Starting autonomous dynamic recipe probe...");
+            ComplexityAnalyzer.LOGGER.debug(DYNAMIC_RECIPE_HARVESTER, "Starting autonomous dynamic recipe probe...");
 
             var recipeManager = level.getRecipeManager();
             var inputTypeMap = getTypeMap(recipeManager);
-            ComplexityAnalyzer.LOGGER.debug("[Harvest] Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
+            ComplexityAnalyzer.LOGGER.debug(DYNAMIC_RECIPE_HARVESTER, "Discovered {} recipe type input mappings for dynamic probe.", inputTypeMap.size());
 
             var allItems = GameRegistryManager.getAllItems();
             if (allItems.isEmpty()) {
-                ComplexityAnalyzer.LOGGER.info("[Harvest] No registered items, skipping dynamic probe.");
+                ComplexityAnalyzer.LOGGER.info(DYNAMIC_RECIPE_HARVESTER, "No registered items, skipping dynamic probe.");
                 return;
             }
 
@@ -82,7 +84,7 @@ public final class DynamicRecipeHarvester {
                 ParallelUtils.forRange(0, typeCount, 1, i -> probeType(types.get(i), classesList.get(i), ctx));
             }
 
-            ComplexityAnalyzer.LOGGER.info("[Harvest] Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
+            ComplexityAnalyzer.LOGGER.info(DYNAMIC_RECIPE_HARVESTER, "Autonomous dynamic probe complete: discovered {} new recipes across {} dynamic type(s).",
                     ctx.addedCount().get(), ctx.dynamicTypes().get());
         }
     }
@@ -133,7 +135,7 @@ public final class DynamicRecipeHarvester {
                 ctx.addedCount().incrementAndGet();
             }
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.error("[Harvest:Dynamic] Error harvesting recipe ID={}", holder.id(), t);
+            ComplexityAnalyzer.LOGGER.error(DYNAMIC_RECIPE_HARVESTER, "Error harvesting recipe ID={}", holder.id(), t);
         }
     }
 

@@ -40,6 +40,8 @@ import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_DATA_STORAGE;
+
 public class GeoDataStorage {
     private static final Gson GSON = new GsonBuilder().registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter()).create();
     private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().registerTypeAdapter(ResourceLocation.class, new ResourceLocationAdapter()).create();
@@ -63,7 +65,7 @@ public class GeoDataStorage {
             var meta = PRETTY_GSON.fromJson(json, ScanMetadata.class);
             return meta != null ? meta : new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to read metadata file! Assuming IDLE state.", e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to read metadata file! Assuming IDLE state.", e);
             return new ScanMetadata(ScanMetadata.ScanPhase.IDLE);
         }
     }
@@ -72,7 +74,7 @@ public class GeoDataStorage {
         try {
             FileManager.writeStringAtomic(metadataFile, PRETTY_GSON.toJson(metadata));
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to write metadata file!", e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to write metadata file!", e);
         }
     }
 
@@ -86,7 +88,7 @@ public class GeoDataStorage {
                 for (var newSnapshot : newSnapshots) lines.add(GSON.toJson(newSnapshot));
                 FileManager.appendLines(file, lines);
             } catch (IOException e) {
-                ComplexityAnalyzer.LOGGER.error("Failed to append recon data for biome {}", biome, e);
+                ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to append recon data for biome {}", biome, e);
             }
             return Boolean.TRUE;
         });
@@ -125,7 +127,7 @@ public class GeoDataStorage {
                 }
             }
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to list dimension namespaces in recon directory", e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to list dimension namespaces in recon directory", e);
         }
         return allPaths;
     }
@@ -140,11 +142,11 @@ public class GeoDataStorage {
                     var snapshot = GSON.fromJson(line, ChunkSnapshot.class);
                     if (snapshot != null) snapshots.add(snapshot);
                 } catch (JsonSyntaxException e) {
-                    ComplexityAnalyzer.LOGGER.error("Failed to parse line in recon file {}: {}", path, line, e);
+                    ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to parse line in recon file {}: {}", path, line, e);
                 }
             }
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to read recon file {}", path, e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to read recon file {}", path, e);
         }
         return snapshots;
     }
@@ -182,7 +184,7 @@ public class GeoDataStorage {
         try {
             FileManager.writeStringAtomic(file, GeoDataStorage.PRETTY_GSON.toJson(data));
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to save JSON to file {}", file, e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to save JSON to file {}", file, e);
         }
     }
 
@@ -219,7 +221,7 @@ public class GeoDataStorage {
                                 biomeData.put(biomeId, data);
                             }
                         } catch (Exception e) {
-                            ComplexityAnalyzer.LOGGER.error("Failed to load/parse data from file {}", biomeFile, e);
+                            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to load/parse data from file {}", biomeFile, e);
                         }
                     }
 
@@ -227,7 +229,7 @@ public class GeoDataStorage {
                 }
             }
         } catch (IOException e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to list dimension namespaces in directory {}", rootDir, e);
+            ComplexityAnalyzer.LOGGER.error(GEO_DATA_STORAGE, "Failed to list dimension namespaces in directory {}", rootDir, e);
         }
         return allData;
     }

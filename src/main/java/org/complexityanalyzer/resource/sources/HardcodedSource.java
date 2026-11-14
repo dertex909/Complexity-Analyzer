@@ -32,6 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
+import static org.complexityanalyzer.util.LogMarkers.HARDCODED_RESOURCE_SOURCE;
+
 public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistry {
 
     private static final int NORMAL_PRIORITY = 35;
@@ -75,7 +77,7 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
 
     @Override
     public void initialize(Level level) {
-        ComplexityAnalyzer.LOGGER.info("[{}] Initializing dynamic sources...", getName());
+        ComplexityAnalyzer.LOGGER.info(HARDCODED_RESOURCE_SOURCE, "Initializing dynamic sources...");
         staticSources.clear();
 
         long start = System.currentTimeMillis();
@@ -83,11 +85,11 @@ public class HardcodedSource implements IResourceSource, IHardcodedSourceRegistr
             try {
                 init.accept(level, this);
             } catch (Throwable t) {
-                ComplexityAnalyzer.LOGGER.error("[{}] Error running source initializer", getName(), t);
+                ComplexityAnalyzer.LOGGER.error(HARDCODED_RESOURCE_SOURCE, "Error running source initializer", t);
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("[{}] Initialized in {}ms. Static entries: {}", getName(), System.currentTimeMillis() - start, staticSources.size());
+        ComplexityAnalyzer.LOGGER.info(HARDCODED_RESOURCE_SOURCE, "Initialized in {}ms. Static entries: {}", System.currentTimeMillis() - start, staticSources.size());
     }
 
     @Override

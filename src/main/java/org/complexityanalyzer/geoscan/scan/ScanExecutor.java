@@ -47,6 +47,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import static java.util.Locale.ROOT;
 import static org.complexityanalyzer.geoscan.config.ScanConfig.BATCH_SAVE_THRESHOLD;
+import static org.complexityanalyzer.util.LogMarkers.GEO_SCAN_EXECUTOR;
 
 public class ScanExecutor {
 
@@ -97,7 +98,7 @@ public class ScanExecutor {
         while (activeWorkerCount.get() > 0 && (System.currentTimeMillis() - waitStart) < 2000) Thread.onSpinWait();
 
         if (activeWorkerCount.get() > 0) {
-            ComplexityAnalyzer.LOGGER.warn("[SCAN] {} old scan tasks still running after 2s wait", activeWorkerCount.get());
+            ComplexityAnalyzer.LOGGER.warn(GEO_SCAN_EXECUTOR, "{} old scan tasks still running after 2s wait", activeWorkerCount.get());
         }
 
         batchProcessor.resetForNewSession();
@@ -119,9 +120,9 @@ public class ScanExecutor {
         sessionRef.set(newCtx);
 
         if (monitor.hasLimit()) {
-            ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} — vanilla generation, MSPT limit: {}", newSession.getProfile().displayName.toUpperCase(ROOT), Math.round(monitor.getMsptLimit()));
+            ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR, "🚀 {} — vanilla generation, MSPT limit: {}", newSession.getProfile().displayName.toUpperCase(ROOT), Math.round(monitor.getMsptLimit()));
         } else {
-            ComplexityAnalyzer.LOGGER.info("[SCAN] 🚀 {} — vanilla generation, no MSPT limit", newSession.getProfile().displayName.toUpperCase(ROOT));
+            ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR, "🚀 {} — vanilla generation, no MSPT limit", newSession.getProfile().displayName.toUpperCase(ROOT));
         }
 
         startWorker(newCtx);
@@ -166,24 +167,24 @@ public class ScanExecutor {
     private void workerLoop(SessionContext myCtx, Scope workerCount) {
         var self = Thread.currentThread();
         workerThreads.put(self, Boolean.TRUE);
-        ComplexityAnalyzer.LOGGER.info("[SCAN] Worker started");
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR, "Worker started");
 
         final var mySession = myCtx.session();
 
         try (workerCount; var ignored = Scope.of(() -> {
             workerThreads.remove(self);
-            ComplexityAnalyzer.LOGGER.info("[SCAN] Worker stopped");
+            ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR, "Worker stopped");
         })) {
             while (!isShutdown.get() && !self.isInterrupted()) {
                 var current = sessionRef.get();
                 if (current != myCtx || !mySession.isValid()) {
-                    ComplexityAnalyzer.LOGGER.debug("[SCAN] Stopping — session changed or invalidated");
+                    ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_EXECUTOR, "Stopping — session changed or invalidated");
                     break;
                 }
 
                 if (checkMemoryAndThrottling(myCtx)) {
                     if (sessionRef.get() != myCtx || !mySession.isValid()) {
-                        ComplexityAnalyzer.LOGGER.debug("[SCAN] Stopping — session invalidated during pause");
+                        ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_EXECUTOR, "Stopping — session invalidated during pause");
                         break;
                     }
                     continue;
@@ -211,7 +212,7 @@ public class ScanExecutor {
                 scanArea(myCtx, dimension, biomeKey);
             }
         } catch (Exception e) {
-            if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error("[SCAN] Worker crashed", e);
+            if (!isShutdown.get()) ComplexityAnalyzer.LOGGER.error(GEO_SCAN_EXECUTOR, "Worker crashed", e);
         }
     }
 
@@ -310,7 +311,7 @@ public class ScanExecutor {
                 return;
             } catch (ExecutionException e) {
                 var cause = e.getCause() != null ? e.getCause() : e;
-                ComplexityAnalyzer.LOGGER.warn("[SCAN] Analysis batch failed: {}", cause.getMessage());
+                ComplexityAnalyzer.LOGGER.warn(GEO_SCAN_EXECUTOR, "Analysis batch failed: {}", cause.getMessage());
                 continue;
             }
 
@@ -421,7 +422,7 @@ public class ScanExecutor {
             first = false;
         }
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] Scanned around {}: {} chunks ({})", ctx.biomeId.getPath(), ctx.found, biomeStats);
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR, "Scanned around {}: {} chunks ({})", ctx.biomeId.getPath(), ctx.found, biomeStats);
     }
 
     private int calculateBatchSize() {
@@ -439,20 +440,20 @@ public class ScanExecutor {
         flushAllBuffers();
         logThrottleStats();
 
-        ComplexityAnalyzer.LOGGER.info("[SCAN] ✅ Complete!");
+        ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR, "✅ Complete!");
 
         var callback = myCtx.onComplete();
         if (callback != null && !isShutdown.get()) try {
             server.execute(callback);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.warn("[SCAN] onComplete failed", e);
+            ComplexityAnalyzer.LOGGER.warn(GEO_SCAN_EXECUTOR, "onComplete failed", e);
         }
     }
 
     private void logThrottleStats() {
         int pauses = throttlePauseCount.get();
-        if (pauses > 0) ComplexityAnalyzer.LOGGER.info(
-                "[SCAN] Throttle stats: {} pauses, total pause time: {}ms", pauses, totalThrottleTimeMs.get());
+        if (pauses > 0) ComplexityAnalyzer.LOGGER.info(GEO_SCAN_EXECUTOR,
+                "Throttle stats: {} pauses, total pause time: {}ms", pauses, totalThrottleTimeMs.get());
     }
 
     private void saveToBuffer(ResourceLocation dim, ResourceLocation biome, ChunkSnapshot snapshot) {

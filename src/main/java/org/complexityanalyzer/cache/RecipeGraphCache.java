@@ -47,6 +47,8 @@ import org.complexityanalyzer.util.Scope;
 import java.nio.file.Path;
 import java.util.Comparator;
 
+import static org.complexityanalyzer.util.LogMarkers.RECIPE_GRAPH_CACHE;
+
 public final class RecipeGraphCache implements ManagedCache {
 
     public static final RecipeGraphCache INSTANCE = new RecipeGraphCache();
@@ -154,7 +156,7 @@ public final class RecipeGraphCache implements ManagedCache {
             var stack = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
             return ItemStackCanonicalizer.canonicalize(stack);
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("Failed to load item stack from cache!", t);
+            ComplexityAnalyzer.LOGGER.warn(RECIPE_GRAPH_CACHE, "Failed to load item stack from cache!", t);
             return ItemStack.EMPTY;
         }
     }
@@ -259,9 +261,9 @@ public final class RecipeGraphCache implements ManagedCache {
             buf.readBytes(bytes);
 
             FileManager.writeCompressedAtomic(file, bytes, 5);
-            ComplexityAnalyzer.LOGGER.debug("[Harvest] Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
+            ComplexityAnalyzer.LOGGER.debug(RECIPE_GRAPH_CACHE, "Saved compressed recipe graph cache: {} recipes -> {}", nodes.size(), file);
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to save recipe graph cache: {}", t.toString());
+            ComplexityAnalyzer.LOGGER.warn(RECIPE_GRAPH_CACHE, "Failed to save recipe graph cache: {}", t.toString());
         }
     }
 
@@ -275,11 +277,11 @@ public final class RecipeGraphCache implements ManagedCache {
                 var buf = new RegistryFriendlyByteBuf(raw, level.registryAccess(), ConnectionType.NEOFORGE);
 
                 if (buf.readInt() != MAGIC) {
-                    ComplexityAnalyzer.LOGGER.warn("[Harvest] Recipe graph cache has bad header, rebuilding.");
+                    ComplexityAnalyzer.LOGGER.warn(RECIPE_GRAPH_CACHE, "Recipe graph cache has bad header, rebuilding.");
                     return null;
                 }
                 if (buf.readInt() != VERSION) {
-                    ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe graph cache format outdated, rebuilding.");
+                    ComplexityAnalyzer.LOGGER.info(RECIPE_GRAPH_CACHE, "Recipe graph cache format outdated, rebuilding.");
                     return null;
                 }
 
@@ -288,7 +290,7 @@ public final class RecipeGraphCache implements ManagedCache {
                     String diff = (stored.recipes() != expected.recipes() ? "recipes " : "")
                             + (stored.mods() != expected.mods() ? "mods " : "")
                             + (stored.config() != expected.config() ? "config" : "");
-                    ComplexityAnalyzer.LOGGER.info("[Harvest] Recipe set changed since last run ({}), cache invalidated.", diff.trim());
+                    ComplexityAnalyzer.LOGGER.info(RECIPE_GRAPH_CACHE, "Recipe set changed since last run ({}), cache invalidated.", diff.trim());
                     return null;
                 }
 
@@ -298,7 +300,7 @@ public final class RecipeGraphCache implements ManagedCache {
                 return graph;
             }
         } catch (Throwable t) {
-            ComplexityAnalyzer.LOGGER.warn("[Harvest] Failed to load recipe graph cache (rebuilding): {}", t.toString());
+            ComplexityAnalyzer.LOGGER.warn(RECIPE_GRAPH_CACHE, "Failed to load recipe graph cache (rebuilding): {}", t.toString());
             return null;
         }
     }

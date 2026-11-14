@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Locale.ROOT;
+import static org.complexityanalyzer.util.LogMarkers.SERVER_LANGUAGE;
 
 public class ServerLanguage {
     private static final ConcurrentHashMap<String, Object2ObjectMap<String, String>> LANGUAGES = new ConcurrentHashMap<>(16);
@@ -51,7 +52,7 @@ public class ServerLanguage {
     }
 
     public static void init() {
-        ComplexityAnalyzer.LOGGER.info("[Language] Initializing Server-Side Language Manager...");
+        ComplexityAnalyzer.LOGGER.info(SERVER_LANGUAGE, "Initializing Server-Side Language Manager...");
     }
 
     private static Object2ObjectMap<String, String> loadLanguageInternal(String locale) {
@@ -64,11 +65,11 @@ public class ServerLanguage {
                     return Object2ObjectMaps.unmodifiable(fastMap);
                 }
             } else {
-                ComplexityAnalyzer.LOGGER.warn("[Language] Lang file not found in resources: {}.json", locale);
+                ComplexityAnalyzer.LOGGER.warn(SERVER_LANGUAGE, "Lang file not found in resources: {}.json", locale);
             }
             return Object2ObjectMaps.emptyMap();
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("[Language] Failed to load server-side language: {}", locale, e);
+            ComplexityAnalyzer.LOGGER.error(SERVER_LANGUAGE, "Failed to load server-side language: {}", locale, e);
             return Object2ObjectMaps.emptyMap();
         }
     }

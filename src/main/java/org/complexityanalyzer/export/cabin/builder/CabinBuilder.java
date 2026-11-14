@@ -52,6 +52,7 @@ import java.util.Arrays;
 import static net.minecraft.world.entity.MobCategory.MISC;
 import static net.minecraft.world.item.Items.AIR;
 import static org.complexityanalyzer.util.FluidNormalizer.normalize;
+import static org.complexityanalyzer.util.LogMarkers.CABIN_BUILDER;
 
 public final class CabinBuilder {
 
@@ -150,7 +151,7 @@ public final class CabinBuilder {
         out.add(CabinSection.compressed(CabinFormat.SEC_MOD_SUMMARY, modSummaryBytes));
 
         long elapsed = System.currentTimeMillis() - t0;
-        ComplexityAnalyzer.LOGGER.info("[Cabin] Built {} sections (items={}, recipes={}, mobs={}, strings={}) in {} ms",
+        ComplexityAnalyzer.LOGGER.info(CABIN_BUILDER, "Built {} sections (items={}, recipes={}, mobs={}, strings={}) in {} ms",
                 out.size(), orderedItems.size(), recipes.recipeCount(), orderedMobs.size(), strings.size(), elapsed);
 
         return out;
@@ -433,7 +434,7 @@ public final class CabinBuilder {
         }
 
         void log() {
-            ComplexityAnalyzer.LOGGER.debug("[Cabin] section timings: {}", sb.toString().trim());
+            ComplexityAnalyzer.LOGGER.debug(CABIN_BUILDER, "section timings: {}", sb.toString().trim());
         }
     }
 

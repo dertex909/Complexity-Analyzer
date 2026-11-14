@@ -28,6 +28,8 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.resource.SourceManager;
 import org.jetbrains.annotations.Nullable;
 
+import static org.complexityanalyzer.util.LogMarkers.COMPLEXITY_CALCULATOR;
+
 public class ComplexityCalculator {
     private final RecipeGraph graph;
     private final DepthAnalyzer depthAnalyzer;
@@ -62,7 +64,7 @@ public class ComplexityCalculator {
             cache.put(item, result);
             return result;
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to build complexity result for {}", item, e);
+            ComplexityAnalyzer.LOGGER.error(COMPLEXITY_CALCULATOR, "Failed to build complexity result for {}", item, e);
             return null;
         }
     }

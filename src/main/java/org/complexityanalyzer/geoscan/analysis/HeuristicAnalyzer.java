@@ -31,6 +31,8 @@ import org.complexityanalyzer.geoscan.storage.GeoDataStorage;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_HEURISTIC_ANALYZER;
+
 public class HeuristicAnalyzer {
 
     private static final int RECON_DIVERSITY_THRESHOLD = 200;
@@ -42,7 +44,7 @@ public class HeuristicAnalyzer {
     public boolean analyzeSnapshotForRecon(ChunkSnapshot snapshot) {
         int uniqueBlockTypes = snapshot.blockCounts().size();
         if (uniqueBlockTypes > RECON_DIVERSITY_THRESHOLD) {
-            ComplexityAnalyzer.LOGGER.debug("Recon Pass: Skipping chunk [{}, {}]. Found {} unique block types (Threshold: {})",
+            ComplexityAnalyzer.LOGGER.debug(GEO_HEURISTIC_ANALYZER, "Recon Pass: Skipping chunk [{}, {}]. Found {} unique block types (Threshold: {})",
                     snapshot.chunkX(), snapshot.chunkZ(), uniqueBlockTypes, RECON_DIVERSITY_THRESHOLD);
             return false;
         }
@@ -55,7 +57,7 @@ public class HeuristicAnalyzer {
         for (var dimEntry : Object2ObjectMaps.fastIterable(reconFilePaths)) {
             var dimId = dimEntry.getKey();
             var biomesMap = dimEntry.getValue();
-            ComplexityAnalyzer.LOGGER.debug("Building heuristic for dimension: {}", dimId);
+            ComplexityAnalyzer.LOGGER.debug(GEO_HEURISTIC_ANALYZER, "Building heuristic for dimension: {}", dimId);
 
             var totalCounts = new Object2LongOpenHashMap<Block>();
             totalCounts.defaultReturnValue(0L);
@@ -87,7 +89,7 @@ public class HeuristicAnalyzer {
             }
 
             dimensionalHeuristics.put(dimId, dimensionHeuristic);
-            ComplexityAnalyzer.LOGGER.info("Heuristic for {} built. Found {} common 'natural' blocks.", dimId, dimensionHeuristic.size());
+            ComplexityAnalyzer.LOGGER.info(GEO_HEURISTIC_ANALYZER, "Heuristic for {} built. Found {} common 'natural' blocks.", dimId, dimensionHeuristic.size());
         }
     }
 
@@ -118,7 +120,7 @@ public class HeuristicAnalyzer {
 
         var heuristic = dimensionalHeuristics.get(dimensionId);
         if (heuristic == null) {
-            ComplexityAnalyzer.LOGGER.warn("No heuristic found for dimension {}. Accepting chunk at [{}, {}] " +
+            ComplexityAnalyzer.LOGGER.warn(GEO_HEURISTIC_ANALYZER, "No heuristic found for dimension {}. Accepting chunk at [{}, {}] " +
                     "without filtering.", dimensionId, snapshot.chunkX(), snapshot.chunkZ());
             return true;
         }

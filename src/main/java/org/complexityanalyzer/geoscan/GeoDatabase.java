@@ -40,6 +40,8 @@ import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.complexityanalyzer.util.LogMarkers.GEO_DATABASE;
+
 public class GeoDatabase {
 
     private final GeoDataStorage storage;
@@ -99,7 +101,7 @@ public class GeoDatabase {
 
     public void loadAll() {
         if (isLoaded()) return;
-        ComplexityAnalyzer.LOGGER.info("Loading all final geo-data from disk...");
+        ComplexityAnalyzer.LOGGER.info(GEO_DATABASE, "Loading all final geo-data from disk...");
 
         this.inMemoryData.clear();
         var loadedData = storage.loadAllFinalData(mapper);
@@ -113,7 +115,7 @@ public class GeoDatabase {
         }
 
         rebuildGlobalCache();
-        ComplexityAnalyzer.LOGGER.info("Finished loading geo-data. Found data for {} dimensions.", inMemoryData.size());
+        ComplexityAnalyzer.LOGGER.info(GEO_DATABASE, "Finished loading geo-data. Found data for {} dimensions.", inMemoryData.size());
     }
 
     public void saveBiomeData(ResourceLocation dimension, ResourceLocation biome, BiomeScanData data) {
@@ -139,7 +141,7 @@ public class GeoDatabase {
         inMemoryData.clear();
         analyzer.clear();
         rebuildGlobalCache();
-        ComplexityAnalyzer.LOGGER.info("Cleared all geo-data files and reset in-memory state.");
+        ComplexityAnalyzer.LOGGER.info(GEO_DATABASE, "Cleared all geo-data files and reset in-memory state.");
     }
 
     public void clear() {
@@ -203,11 +205,11 @@ public class GeoDatabase {
         for (var dimMap : inMemoryData.values()) totalItems += dimMap.size();
 
         if (totalItems == 0) {
-            ComplexityAnalyzer.LOGGER.info("Global block rarity cache is empty (no data loaded).");
+            ComplexityAnalyzer.LOGGER.info(GEO_DATABASE, "Global block rarity cache is empty (no data loaded).");
             return;
         }
 
-        ComplexityAnalyzer.LOGGER.debug("Rebuilding global cache from {} biome data entries...", totalItems);
+        ComplexityAnalyzer.LOGGER.debug(GEO_DATABASE, "Rebuilding global cache from {} biome data entries...", totalItems);
 
         long processedItems = 0;
         int nextLogPercentage = 10;
@@ -219,12 +221,12 @@ public class GeoDatabase {
 
                 double currentPercentage = ((double) processedItems / totalItems) * 100.0;
                 if (currentPercentage >= nextLogPercentage) {
-                    ComplexityAnalyzer.LOGGER.debug("Cache rebuild: {}% complete", nextLogPercentage);
+                    ComplexityAnalyzer.LOGGER.debug(GEO_DATABASE, "Cache rebuild: {}% complete", nextLogPercentage);
                     nextLogPercentage += 10;
                 }
             }
         }
 
-        ComplexityAnalyzer.LOGGER.info("Global block rarity cache rebuilt. Total blocks counted: {}", totalBlocksInCache.get());
+        ComplexityAnalyzer.LOGGER.info(GEO_DATABASE, "Global block rarity cache rebuilt. Total blocks counted: {}", totalBlocksInCache.get());
     }
 }

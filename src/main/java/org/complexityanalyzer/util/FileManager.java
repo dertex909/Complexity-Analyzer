@@ -36,6 +36,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.Objects.requireNonNull;
 import static net.minecraft.world.level.storage.LevelResource.ROOT;
+import static org.complexityanalyzer.util.LogMarkers.FILE_MANAGER;
 
 public final class FileManager {
 
@@ -226,7 +227,7 @@ public final class FileManager {
             }
             return Files.deleteIfExists(path);
         } catch (Exception e) {
-            ComplexityAnalyzer.LOGGER.error("Failed to delete path: {}", path, e);
+            ComplexityAnalyzer.LOGGER.error(FILE_MANAGER, "Failed to delete path: {}", path, e);
             return false;
         }
     }
@@ -245,7 +246,7 @@ public final class FileManager {
             return;
         } catch (AtomicMoveNotSupportedException | UnsupportedOperationException e) {
             supportsAtomicMove = false;
-            ComplexityAnalyzer.LOGGER.warn("Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
+            ComplexityAnalyzer.LOGGER.warn(FILE_MANAGER, "Atomic move not supported on this filesystem. Falling back to non-atomic replace.");
         }
         Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
     }

@@ -99,7 +99,8 @@ if (ComplexityAnalyzerAPI.isAvailable()) {
 }
 ```
 
-> 💡 **Lifecycle Note:** Always check `api.isReady()` before querying calculated values. Prior to readiness, read queries return safe default values (e.g. `-1.0` or empty Optionals).
+> 💡 **Lifecycle Note:** Always check `api.isReady()` before querying calculated values. Prior to readiness, read queries
+> return safe default values (e.g. `-1.0` or empty Optionals).
 
 ---
 
@@ -269,7 +270,8 @@ Fired on `NeoForge.EVENT_BUS` **before** every analysis build (at server start a
 `/complexity system reload`). Use this event to register custom bosses, renewable mobs, hardcoded overrides, or custom
 resource sources.
 
-> ⚠️ **Important:** Registrations are rebuilt from scratch on each build pass. Always register inside the event handler rather than caching state across builds.
+> ⚠️ **Important:** Registrations are rebuilt from scratch on each build pass. Always register inside the event handler
+> rather than caching state across builds.
 
 ```java
 import net.neoforged.bus.api.SubscribeEvent;
@@ -325,7 +327,8 @@ public class ComplexityIntegration {
 
 ### 4.2. Implementing a Custom `IResourceSource`
 
-To define custom raw acquisition mechanics (e.g. quest rewards, custom mining machines, specialized gathering professions), implement `IResourceSource`:
+To define custom raw acquisition mechanics (e.g. quest rewards, custom mining machines, specialized gathering
+professions), implement `IResourceSource`:
 
 ```java
 import org.complexityanalyzer.resource.IResourceSource;
@@ -385,7 +388,8 @@ public class CustomGatheringSource implements IResourceSource {
 
 ### 4.3. `ComplexityAnalysisCompleteEvent`
 
-Fired on `NeoForge.EVENT_BUS` immediately after an analysis pass reaches the `READY` state and all queries return fresh data.
+Fired on `NeoForge.EVENT_BUS` immediately after an analysis pass reaches the `READY` state and all queries return fresh
+data.
 
 ```java
 import net.neoforged.bus.api.SubscribeEvent;

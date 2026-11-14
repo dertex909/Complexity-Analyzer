@@ -10,8 +10,8 @@ action — always pick a sub-command below.
 | 👤 **Player**       | Usable by anyone. Read-only analysis/inspection.                                  |
 | 🛡 **OP (level 2)** | Requires operator permission. Changes state, writes files, or can lag the server. |
 
-All command output is **translated to each player's own client language** server-side
-(52 locales shipped). Numbers, item names and icons stay as-is.
+All command output is **translated to each player's own client language** server-side (52 locales shipped). Numbers,
+item names and icons stay as-is.
 
 ---
 
@@ -62,30 +62,41 @@ All command output is **translated to each player's own client language** server
 Deep-dive analysis of game elements. All three sub-commands are available to any player.
 
 ### `analyze item <item_id>`
+
 Full complexity report for an item — the core command of the mod.
+
 - **`item_id`** — item resource location, e.g. `minecraft:netherite_ingot`. Tab-completes.
 - **Output:**
-  - **Complexity score & category** — final cost and human rank (`Trivial` → `Transcendent`, plus `Unobtainable`/`Uncalculable`) with icon and a visual bar.
-  - **Source information** — crafted vs. base resource, crafting depth, and how many recipes use it.
-  - **Alternative sources** — other ways to obtain it (mob drop, loot, etc.) with estimated cost.
+    - **Complexity score & category** — final cost and human rank (`Trivial` → `Transcendent`, plus `Unobtainable`/
+      `Uncalculable`) with icon and a visual bar.
+    - **Source information** — crafted vs. base resource, crafting depth, and how many recipes use it.
+    - **Alternative sources** — other ways to obtain it (mob drop, loot, etc.) with estimated cost.
 
 ### `analyze entity <entity_id>`
+
 Combat/difficulty analysis of a mob.
+
 - **`entity_id`** — entity resource location, e.g. `minecraft:warden`. Tab-completes.
-- **Output:** base stats (health/attack/armor with bars), combat analysis (survivability, threat, combat power), a difficulty rating (`Trivial` → `BOSS`) with a recommendation, and notable drops by average yield.
+- **Output:** base stats (health/attack/armor with bars), combat analysis (survivability, threat, combat power), a
+  difficulty rating (`Trivial` → `BOSS`) with a recommendation, and notable drops by average yield.
 
 ### `analyze loot <loot_table_id>`
+
 Inspect any loot table.
+
 - **`loot_table_id`** — loot-table resource location, e.g. `minecraft:chests/end_city_treasure`. Tab-completes.
-- **Output:** table name and inferred type (Chest, Entity, Fishing, Block, Archaeology…), drop-chance statistics, and all drops grouped by rarity (`Common` → `Legendary`).
+- **Output:** table name and inferred type (Chest, Entity, Fishing, Block, Archaeology…), drop-chance statistics, and
+  all drops grouped by rarity (`Common` → `Legendary`).
 
 ---
 
 ## ⛏ `/complexity resource <item_id>` 👤
 
 Shows the primary, most efficient way to obtain a base (non-craftable) resource.
+
 - **`item_id`** — the base resource. Tab-completes.
-- **Output:** source type with icon (e.g. Ore/Mining, Mob Drop, Farming), a "base factor" difficulty score with a bar and rating, any required source items, and a clickable link to the full analysis.
+- **Output:** source type with icon (e.g. Ore/Mining, Mob Drop, Farming), a "base factor" difficulty score with a bar
+  and rating, any required source items, and a clickable link to the full analysis.
 
 ---
 
@@ -170,10 +181,11 @@ resources actually generate.
 - **`geoscan start`** 🛡 — running `start` with no arguments prints the profile selection menu with MSPT limits and
   clickable start links.
 - **`geoscan start <profile> [chunks] [force]`** 🛡
-  - **`profile`** — scan profile name: `normal`, `fast`, `aggressive`, `unlimited`. Tab-completes.
-  - **`chunks`** *(optional, default 32)* — pristine chunks to find per biome (1 to 2147483647).
-  - **`force`** *(optional, default `false`)* — `true` skips the countdown and starts immediately (broadcasts severe lag
-    warning for heavy profiles).
+    - **`profile`** — scan profile name: `normal`, `fast`, `aggressive`, `unlimited`. Tab-completes.
+    - **`chunks`** *(optional, default 32)* — pristine chunks to find per biome (1 to 2147483647).
+    - **`force`** *(optional, default `false`)* — `true` skips the countdown and starts immediately (broadcasts severe
+      lag
+      warning for heavy profiles).
 - **`geoscan stop`** 🛡 — gracefully stops the running or scheduled scan; progress is saved.
 - **`geoscan status`** 👤 — current scanner state and progress (speed, chunks scanned, MSPT throttle indicator, and an
   interactive hover tooltip with per-biome progress).

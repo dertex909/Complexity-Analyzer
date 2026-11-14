@@ -89,11 +89,12 @@ public final class DynamicRecipeHarvester {
             var pendingNodes = new ConcurrentHashMap<ResourceLocation, RecipeNode>();
             var ctx = new ProbeContext(recipeManager, level, new FastHarvester(), allItems, knownRecipeIds,
                     ConcurrentHashMap.newKeySet(), pendingNodes, new AtomicInteger(), new AtomicInteger());
+            var activeProbe = new ActiveProbe(knownRecipeIds);
 
             for (var entry : byInputClass.object2ObjectEntrySet()) {
                 var creator = resolveCreator(entry.getKey());
                 if (creator == null) continue;
-                probeInputGroup(creator, entry.getValue().toArray(new RecipeType<?>[0]), ctx, new ActiveProbe(knownRecipeIds));
+                probeInputGroup(creator, entry.getValue().toArray(new RecipeType<?>[0]), ctx, activeProbe);
             }
 
             for (var node : pendingNodes.values()) graph.addRecipe(node);

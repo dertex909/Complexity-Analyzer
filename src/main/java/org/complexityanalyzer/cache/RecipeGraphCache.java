@@ -239,7 +239,6 @@ public final class RecipeGraphCache implements ManagedCache {
 
         long hConfig = Fingerprints.FNV_OFFSET;
         hConfig = Fingerprints.fnv(hConfig, "maxIngredientVariants=" + ComplexityConfig.MAX_INGREDIENT_VARIANTS.get());
-        hConfig = Fingerprints.fnv(hConfig, "detectionSampleSize=" + ComplexityConfig.DETECTION_SAMPLE_SIZE.get());
 
         return new Fingerprint(hRecipes, hMods, hConfig);
     }

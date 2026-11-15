@@ -20,16 +20,18 @@ package org.complexityanalyzer.harvest.inspector;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeInput;
+import net.minecraft.world.item.crafting.*;
+import net.minecraft.world.level.Level;
 
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
+import java.util.List;
 
 public final class StandardRecipeMethods {
 
     public static final String GET_TOAST_SYMBOL = extract((RecipeGetToastSymbolRef) Recipe::getToastSymbol);
     public static final String ASSEMBLE = extract((RecipeAssembleRef) Recipe::assemble);
+    public static final String GET_RECIPES_FOR = extract((RecipeManagerGetRecipesForRef) RecipeManager::getRecipesFor);
 
     private StandardRecipeMethods() {
     }
@@ -55,5 +57,11 @@ public final class StandardRecipeMethods {
     @SuppressWarnings("unused")
     private interface RecipeAssembleRef extends Serializable {
         ItemStack ignored(Recipe<RecipeInput> instance, RecipeInput input, HolderLookup.Provider provider);
+    }
+
+    @FunctionalInterface
+    @SuppressWarnings("unused")
+    private interface RecipeManagerGetRecipesForRef extends Serializable {
+        List<RecipeHolder<Recipe<RecipeInput>>> ignored(RecipeManager instance, RecipeType<Recipe<RecipeInput>> type, RecipeInput input, Level level);
     }
 }

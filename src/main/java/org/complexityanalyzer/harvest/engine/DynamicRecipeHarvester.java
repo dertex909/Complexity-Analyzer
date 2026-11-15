@@ -87,7 +87,7 @@ public final class DynamicRecipeHarvester {
             }
 
             var pendingNodes = new ConcurrentHashMap<ResourceLocation, RecipeNode>();
-            var ctx = new ProbeContext(recipeManager, level, new FastHarvester(), allItems, knownRecipeIds,
+            var ctx = new ProbeContext((DirectRecipeLookup) recipeManager, level, new FastHarvester(), allItems, knownRecipeIds,
                     ConcurrentHashMap.newKeySet(), pendingNodes, new AtomicInteger(), new AtomicInteger());
             var activeProbe = new ActiveProbe(knownRecipeIds);
 
@@ -133,7 +133,7 @@ public final class DynamicRecipeHarvester {
 
                     for (int t = 0; t < typeCount; t++) {
                         try {
-                            var recipes = queryRecipes(ctx.recipeManager(), types[t], input, ctx.level());
+                            var recipes = ctx.recipeLookup().complexity$getRecipesForDirect(types[t], input, ctx.level());
                             if (recipes.isEmpty()) continue;
 
                             for (var holder : recipes) {
@@ -148,19 +148,16 @@ public final class DynamicRecipeHarvester {
             }
         });
 
-        for (int t = 0; t < typeCount; t++) {
-            if (foundByType.get(t) != 0) ctx.dynamicTypes().incrementAndGet();
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static List<RecipeHolder<?>> queryRecipes(RecipeManager manager, RecipeType<?> type, RecipeInput input, Level level) {
-        return (List<RecipeHolder<?>>) (List<?>) manager.getRecipesFor((RecipeType) type, input, level);
+        for (int t = 0; t < typeCount; t++) if (foundByType.get(t) != 0) ctx.dynamicTypes().incrementAndGet();
     }
 
     private static void harvestAndAdd(RecipeHolder<?> holder, ProbeContext ctx) {
         if (!ctx.discovered().add(holder.id())) return;
-        try {
+        var prevProbe = ACTIVE_PROBE.get();
+        if (prevProbe != null) ACTIVE_PROBE.remove();
+        try (var ignored = Scope.of(() -> {
+            if (prevProbe != null) ACTIVE_PROBE.set(prevProbe);
+        })) {
             var items = ctx.harvester().harvest(holder.value(), ctx.level());
             var node = HarvestedRecipeConverter.convert(items, ctx.level());
             if (node != null && (!node.getIngredients().isEmpty() || !node.getFluidIngredients().isEmpty())) {
@@ -305,7 +302,7 @@ public final class DynamicRecipeHarvester {
     }
 
     private record ProbeContext(
-            RecipeManager recipeManager,
+            DirectRecipeLookup recipeLookup,
             Level level,
             FastHarvester harvester,
             ObjectList<Item> allItems,

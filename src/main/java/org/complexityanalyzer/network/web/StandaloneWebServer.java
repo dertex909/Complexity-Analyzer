@@ -38,10 +38,10 @@ import static org.complexityanalyzer.util.LogMarkers.WEB_SERVER;
 
 public final class StandaloneWebServer {
 
+    private static final ChannelGroup multiplexedWebChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     private static volatile EventLoopGroup bossGroup;
     private static volatile EventLoopGroup workerGroup;
     private static volatile Channel serverChannel;
-    private static final ChannelGroup multiplexedWebChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     private StandaloneWebServer() {
     }

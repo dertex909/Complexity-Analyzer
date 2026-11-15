@@ -159,12 +159,6 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
         return HttpHeaderValues.APPLICATION_OCTET_STREAM.toString();
     }
 
-    @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        if (ComplexityConfig.WEB_SERVER_PORT.get() == 0) StandaloneWebServer.trackMultiplexedWebChannel(ctx.channel());
-        super.handlerAdded(ctx);
-    }
-
     private static boolean isSafePath(String path) {
         if (path == null) return false;
         return !path.contains("..")
@@ -172,6 +166,12 @@ public class CabinNettyHandler extends SimpleChannelInboundHandler<FullHttpReque
                 && !path.contains("\\")
                 && !path.contains(":")
                 && !path.contains("\0");
+    }
+
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+        if (ComplexityConfig.WEB_SERVER_PORT.get() == 0) StandaloneWebServer.trackMultiplexedWebChannel(ctx.channel());
+        super.handlerAdded(ctx);
     }
 
     @Override

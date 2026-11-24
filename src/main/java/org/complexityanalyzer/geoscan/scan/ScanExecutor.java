@@ -115,7 +115,7 @@ public class ScanExecutor {
         flushAllBuffers();
         resultBuffers.clear();
 
-        var monitor = new EmergencyManager.MsptTracker(server, newSession.getProfile());
+        var monitor = new MsptTracker(server, newSession.getProfile());
         var newCtx = new SessionContext(newSession, onComplete, monitor);
         sessionRef.set(newCtx);
 
@@ -483,7 +483,7 @@ public class ScanExecutor {
         flushAllBuffers();
     }
 
-    private record SessionContext(ScanSession session, Runnable onComplete, EmergencyManager.MsptTracker monitor) {
+    private record SessionContext(ScanSession session, Runnable onComplete, MsptTracker monitor) {
     }
 
     private static final class BufferedSnapshots {

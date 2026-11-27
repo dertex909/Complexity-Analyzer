@@ -112,12 +112,14 @@ publishMods {
     modLoaders.add("neoforge")
 
     val fullChangelog = providers.fileContents(layout.projectDirectory.file("CHANGELOG.md")).asText
+    val slugATL = "alltheleaks"
 
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         projectId = "RQjlpUyI"
         minecraftVersions.add(minecraftVersion)
         changelog = fullChangelog
+        incompatible(slugATL)
     }
 
     curseforge {
@@ -128,6 +130,7 @@ publishMods {
         server = true
         client = true
         changelog = fullChangelog
+        incompatible(slugATL)
     }
 
     discord {

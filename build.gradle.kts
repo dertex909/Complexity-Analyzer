@@ -5,8 +5,8 @@ plugins {
     `java-library`
     `maven-publish`
     idea
-    id("net.neoforged.moddev") version "2.0.144"
-    id("me.modmuss50.mod-publish-plugin") version "2.2.0"
+    id("net.neoforged.moddev") version "2.0.149"
+    id("me.modmuss50.mod-publish-plugin") version "2.2.1"
 }
 
 repositories {
@@ -70,7 +70,7 @@ neoForge {
 
 val http = "io.netty:netty-codec-http:$nettyCodecHttpVersion"
 val zstd = "com.github.luben:zstd-jni:$zstdJniVersion"
-val jei = "mezz.jei:jei-$minecraftVersion-neoforge:19.25.1.328"
+val jei = "mezz.jei:jei-$minecraftVersion-neoforge:19.76.1.482"
 
 dependencies {
     implementation(http)

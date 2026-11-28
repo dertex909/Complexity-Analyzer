@@ -23,12 +23,12 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
@@ -37,12 +37,16 @@ import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.util.FormatUtils;
-import org.complexityanalyzer.util.ServerLanguage;
+import org.jetbrains.annotations.Nullable;
 
 import static java.util.Locale.ROOT;
-import static net.minecraft.network.chat.Style.EMPTY;
+import static net.minecraft.ChatFormatting.*;
+import static net.minecraft.world.level.Level.*;
 
-public class GeoScanCommands {
+public final class GeoScanCommands {
+    private static final int DEFAULT_CHUNKS = 32;
+    private static final int MAX_BIOMES_IN_TOOLTIP = 25;
+
     private GeoScanCommands() {
     }
 
@@ -56,17 +60,24 @@ public class GeoScanCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildStartCommand() {
         var forceArg = Commands.argument("force", BoolArgumentType.bool())
-                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"),
-                        StringArgumentType.getString(ctx, "profile"), BoolArgumentType.getBool(ctx, "force")));
+                .executes(ctx -> executeScan(ctx,
+                        IntegerArgumentType.getInteger(ctx, "chunks"),
+                        StringArgumentType.getString(ctx, "profile"),
+                        BoolArgumentType.getBool(ctx, "force")));
 
         var chunksArg = Commands.argument("chunks", IntegerArgumentType.integer(1, Integer.MAX_VALUE))
-                .executes(ctx -> executeScan(ctx, IntegerArgumentType.getInteger(ctx, "chunks"),
-                        StringArgumentType.getString(ctx, "profile"), false))
+                .executes(ctx -> executeScan(ctx,
+                        IntegerArgumentType.getInteger(ctx, "chunks"),
+                        StringArgumentType.getString(ctx, "profile"),
+                        false))
                 .then(forceArg);
 
         var profileArg = Commands.argument("profile", StringArgumentType.word())
                 .suggests(SharedSuggestions.GEOSCAN_PROFILE)
-                .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
+                .executes(ctx -> executeScan(ctx,
+                        DEFAULT_CHUNKS,
+                        StringArgumentType.getString(ctx, "profile"),
+                        false))
                 .then(chunksArg);
 
         return Commands.literal("start")
@@ -78,12 +89,12 @@ public class GeoScanCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> buildStopCommand() {
         return Commands.literal("stop")
                 .requires(source -> source.hasPermission(2))
-                .executes(GeoScanCommands::executeStop);
+                .executes(ctx -> withManager(ctx, GeoScanCommands::executeStop));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildStatusCommand() {
         return Commands.literal("status")
-                .executes(GeoScanCommands::executeStatus);
+                .executes(ctx -> withManager(ctx, GeoScanCommands::executeStatus));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildClearCommand() {
@@ -97,23 +108,24 @@ public class GeoScanCommands {
         var output = new OutputManager(source.getServer());
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.profile_header", ChatFormatting.GOLD);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.profile_header", GOLD);
         output.sendEmptyLine(source);
 
         for (var profile : ScanProfile.values()) {
-            String icon = profile.icon;
-            var msptInfo = profile.hasMsptLimit() ?
-                    Component.translatable("complexityanalyzer.command.geoscan.profile.limit_mspt", (int) profile.msptLimit) :
-                    Component.translatable("complexityanalyzer.command.geoscan.profile.no_limit");
+            var msptInfo = profile.hasMsptLimit()
+                    ? Component.translatable("complexityanalyzer.command.geoscan.profile.limit_mspt", (int) profile.msptLimit)
+                    : "complexityanalyzer.command.geoscan.profile.no_limit";
 
-            output.sendClickableTip(source, icon + " ", profile.displayName, msptInfo.getString(),
+            output.sendClickableTip(source,
+                    profile.icon + " ",
+                    profile.displayName,
+                    msptInfo,
                     ComplexityCommand.ROOT + " geoscan start " + profile.commandName,
-                    Component.translatable("complexityanalyzer.command.geoscan.profile.hover", profile.displayName).getString());
+                    Component.translatable("complexityanalyzer.command.geoscan.profile.hover", profile.displayName));
         }
 
         output.sendEmptyLine(source);
         output.sendFooter(source);
-
         output.sendTip(source, "complexityanalyzer.command.geoscan.usage", ComplexityCommand.ROOT);
         output.sendTip(source, "complexityanalyzer.command.geoscan.example", ComplexityCommand.ROOT);
         output.sendEmptyLine(source);
@@ -121,8 +133,7 @@ public class GeoScanCommands {
         return 1;
     }
 
-    private static int executeScan(CommandContext<CommandSourceStack> context,
-                                   int chunks, String profileName, boolean force) {
+    private static int executeScan(CommandContext<CommandSourceStack> context, int chunks, String profileName, boolean force) {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
 
@@ -135,143 +146,124 @@ public class GeoScanCommands {
             return 0;
         }
 
-        var manager = AnalysisEngine.getInstance().getGeoManager();
-        if (manager != null) {
-            if (manager.isScanning() || manager.isCountdownActive()) {
-                output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.already_running"));
-                output.sendTip(source, "complexityanalyzer.command.geoscan.stop_tip", ComplexityCommand.ROOT);
-                return 1;
-            }
+        var manager = requireManager(source, output);
+        if (manager == null) return 0;
 
-            String initiatorName = source.getTextName();
-            String icon = profile.icon;
-            var color = profile.color;
-
-            output.sendEmptyLine(source);
-            output.sendHeader(source, force ? "⚡" : "📊", force ? "complexityanalyzer.command.geoscan.force_header" : "complexityanalyzer.command.geoscan.scheduled_header", force ? ChatFormatting.RED : ChatFormatting.AQUA);
-            output.sendEmptyLine(source);
-
-            output.sendEntry(source, icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, ChatFormatting.GRAY, color);
-            output.sendEntry(source, "🌍", "complexityanalyzer.command.geoscan.chunks_label", chunks, ChatFormatting.GRAY, ChatFormatting.AQUA);
-
-            if (profile.hasMsptLimit()) {
-                output.sendSubEntry(source, "complexityanalyzer.command.geoscan.auto_pause", (int) profile.msptLimit, ChatFormatting.GRAY, ChatFormatting.GREEN);
-            } else {
-                output.sendSubEntry(source, "complexityanalyzer.command.geoscan.no_mspt_limit", "", ChatFormatting.GRAY, ChatFormatting.RED);
-            }
-
-            output.sendSubEntry(source, "complexityanalyzer.command.geoscan.vanilla_gen", "", ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "👤", "complexityanalyzer.command.geoscan.initiator_label", initiatorName, ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendFooter(source);
-
-            if (force) {
-                if (profile == ScanProfile.UNLIMITED || profile == ScanProfile.AGGRESSIVE) {
-                    output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.force_broadcast"));
-                    output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.lag_expected", profile.displayName));
-                } else {
-                    output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.started_broadcast", profile.displayName.toLowerCase(ROOT)));
-                }
-                manager.startScanImmediately(chunks, initiatorName, profile);
-            } else {
-                if (profile == ScanProfile.UNLIMITED || profile == ScanProfile.AGGRESSIVE) {
-                    output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.scheduled_broadcast", profile.displayName));
-                } else {
-                    output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.starting_soon", profile.displayName.toLowerCase(ROOT)));
-                }
-                manager.scheduleScan(chunks, initiatorName, profile);
-            }
-
-            output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.admin_log",
-                    force ? "Force started" : "Scheduled", initiatorName, profile.displayName, chunks));
-        } else {
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.not_initialized"));
+        if (manager.isScanning() || manager.isCountdownActive()) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.already_running"));
+            output.sendTip(source, "complexityanalyzer.command.geoscan.stop_tip", ComplexityCommand.ROOT);
+            return 0;
         }
+
+        String initiatorName = source.getTextName();
+
+        output.sendEmptyLine(source);
+        output.sendHeader(source,
+                force ? "⚡" : "📊",
+                force ? "complexityanalyzer.command.geoscan.force_header" : "complexityanalyzer.command.geoscan.scheduled_header",
+                force ? RED : AQUA);
+        output.sendEmptyLine(source);
+        output.sendEntry(source, profile.icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, GRAY, profile.color);
+        output.sendEntry(source, "🌍", "complexityanalyzer.command.geoscan.chunks_label", chunks, GRAY, AQUA);
+
+        if (profile.hasMsptLimit()) {
+            output.sendSubEntry(source, "complexityanalyzer.command.geoscan.auto_pause", (int) profile.msptLimit, GRAY, GREEN);
+        } else {
+            output.sendSubEntry(source, "complexityanalyzer.command.geoscan.no_mspt_limit", "", GRAY, RED);
+        }
+
+        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.vanilla_gen", "", GRAY, WHITE);
+        output.sendEntry(source, "👤", "complexityanalyzer.command.geoscan.initiator_label", initiatorName, GRAY, WHITE);
+        output.sendFooter(source);
+
+        boolean heavyProfile = profile == ScanProfile.UNLIMITED || profile == ScanProfile.AGGRESSIVE;
+        if (force) {
+            if (heavyProfile) {
+                output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.force_broadcast"));
+                output.broadcastSever(Component.translatable("complexityanalyzer.command.geoscan.lag_expected", profile.displayName));
+            } else {
+                output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.started_broadcast", profile.displayName.toLowerCase(ROOT)));
+            }
+            manager.startScanImmediately(chunks, initiatorName, profile);
+        } else {
+            if (heavyProfile) {
+                output.broadcastWarning(Component.translatable("complexityanalyzer.command.geoscan.scheduled_broadcast", profile.displayName));
+            } else {
+                output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.starting_soon", profile.displayName.toLowerCase(ROOT)));
+            }
+            manager.scheduleScan(chunks, initiatorName, profile);
+        }
+
+        output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.admin_log",
+                force ? "Force started" : "Scheduled", initiatorName, profile.displayName, chunks));
         return 1;
     }
 
-    private static int executeStop(CommandContext<CommandSourceStack> context) {
-        var source = context.getSource();
-        var output = new OutputManager(source.getServer());
-
-        var manager = AnalysisEngine.getInstance().getGeoManager();
-        if (manager != null) {
-            if (!manager.isScanning() && !manager.isCountdownActive()) {
-                output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.no_scan_running"));
-                return 0;
-            }
-
-            output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.stopping"));
-            manager.stopScan(source);
-            output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.stopped_broadcast").withStyle(ChatFormatting.GREEN));
-            output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.stopped_admin", source.getTextName()));
-        } else {
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.not_initialized"));
+    private static int executeStop(CommandSourceStack source, OutputManager output, GeoAnalysisManager manager) {
+        if (!manager.isScanning() && !manager.isCountdownActive()) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.no_scan_running"));
+            return 0;
         }
+
+        output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.stopping"));
+        manager.stopScan(source);
+        output.broadcast(Component.translatable("complexityanalyzer.command.geoscan.stopped_broadcast").withStyle(GREEN));
+        output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.stopped_admin", source.getTextName()));
         return 1;
     }
 
-    private static int executeStatus(CommandContext<CommandSourceStack> context) {
-        var source = context.getSource();
-        var output = new OutputManager(source.getServer());
+    @Deprecated // TODO: replace key check with manager.isComplete()
+    private static int executeStatus(CommandSourceStack source, OutputManager output, GeoAnalysisManager manager) {
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.status_header", GOLD);
+        output.sendEmptyLine(source);
 
-        var manager = AnalysisEngine.getInstance().getGeoManager();
-        if (manager != null) {
-            output.sendEmptyLine(source);
-            output.sendHeader(source, "📊", "complexityanalyzer.command.geoscan.status_header", ChatFormatting.GOLD);
-            output.sendEmptyLine(source);
-
-            var session = manager.getCurrentSession();
-
-            if (session != null && session.isValid()) {
-                renderActiveStatus(output, source, manager, session);
-            } else if (manager.isCountdownActive()) {
-                output.sendStatusLine(source, "⏳", manager.getStatus(), ChatFormatting.YELLOW);
-            } else {
-                var statusComponent = manager.getStatus();
-                String status = ServerLanguage.translateForPlayer(statusComponent, null).getString();
-                var color = status.toLowerCase(ROOT).contains("complete") ? ChatFormatting.GREEN : ChatFormatting.GRAY;
-                String statusIcon = status.toLowerCase(ROOT).contains("complete") ? "✓" : "💤";
-                output.sendStatusLine(source, statusIcon, statusComponent, color);
-            }
-
-            output.sendEmptyLine(source);
-            output.sendFooter(source);
+        var session = manager.getCurrentSession();
+        if (session != null && session.isValid()) {
+            renderActiveStatus(output, source, manager, session);
+        } else if (manager.isCountdownActive()) {
+            output.sendStatusLine(source, "⏳", manager.getStatus(), YELLOW);
         } else {
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.not_initialized"));
+            var statusComponent = manager.getStatus();
+            boolean isComplete = statusComponent.getContents() instanceof TranslatableContents tc && "complexityanalyzer.geoscan.status.complete".equals(tc.getKey());
+            output.sendStatusLine(source, isComplete ? "✓" : "💤", statusComponent, isComplete ? GREEN : GRAY);
         }
+
+        output.sendEmptyLine(source);
+        output.sendFooter(source);
         return 1;
     }
 
     private static void renderActiveStatus(OutputManager output, CommandSourceStack source,
                                            GeoAnalysisManager manager, ScanSession session) {
         var profile = session.getProfile();
-        String icon = profile.icon;
-        var color = profile.color;
-
-        output.sendSubEntry(source, icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, ChatFormatting.GRAY, color);
-        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.background_gen", "", ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendSubEntry(source, profile.icon, "complexityanalyzer.command.geoscan.profile_label", profile.displayName, GRAY, profile.color);
+        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.background_gen", "", GRAY, AQUA);
 
         long scanned = session.getTotalChunksScanned();
         int total = session.getTotalChunksNeeded();
         int percent = session.getProgressPercent();
 
-        output.sendProgressBar(source, "complexityanalyzer.command.geoscan.progress_label", percent, percent + "%", ChatFormatting.GRAY, percent >= 100 ? ChatFormatting.GREEN : ChatFormatting.AQUA);
-        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.chunks_label_short", scanned + " / " + total, ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.speed_label", Component.translatable("complexityanalyzer.command.geoscan.speed_value", session.getScanSpeed()).getString(), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendProgressBar(source, "complexityanalyzer.command.geoscan.progress_label", percent, percent + "%", GRAY, percent >= 100 ? GREEN : AQUA);
+        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.chunks_label_short", scanned + " / " + total, GRAY, WHITE);
+        output.sendSubEntry(source, "complexityanalyzer.command.geoscan.speed_label",
+                Component.translatable("complexityanalyzer.command.geoscan.speed_value", session.getScanSpeed()), GRAY, AQUA);
 
-        long elapsed = session.getElapsedSeconds();
-        output.sendSubEntry(source, "⌛", "complexityanalyzer.command.geoscan.elapsed_label", FormatUtils.formatDurationSeconds(elapsed), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendSubEntry(source, "⌛", "complexityanalyzer.command.geoscan.elapsed_label",
+                FormatUtils.formatDurationSeconds(session.getElapsedSeconds()), GRAY, WHITE);
 
         if (profile.hasMsptLimit()) {
-            float mspt = manager.getCurrentMspt();
-
-            var msptLine = Component.literal("  MSPT: ").withStyle(ChatFormatting.GRAY);
+            var mspt = manager.getCurrentMspt();
+            var msptText = "%.1f".formatted(mspt);
+            var msptLine = Component.literal("  MSPT: ").withStyle(GRAY);
 
             if (manager.isThrottled()) {
-                msptLine.append(Component.literal("%.1f".formatted(mspt)).withStyle(ChatFormatting.RED)).append(Component.translatable("complexityanalyzer.command.geoscan.throttled").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+                msptLine.append(Component.literal(msptText).withStyle(RED))
+                        .append(Component.translatable("complexityanalyzer.command.geoscan.throttled").withStyle(RED, BOLD));
             } else {
-                var msptColor = mspt < profile.msptLimit * 0.7f ? ChatFormatting.GREEN : mspt < profile.msptLimit ? ChatFormatting.YELLOW : ChatFormatting.RED;
-                msptLine.append(Component.literal("%.1f".formatted(mspt)).withStyle(msptColor)).append(Component.literal("/" + (int) profile.msptLimit).withStyle(ChatFormatting.DARK_GRAY));
+                var msptColor = mspt < profile.msptLimit * 0.7f ? GREEN : mspt < profile.msptLimit ? YELLOW : RED;
+                msptLine.append(Component.literal(msptText).withStyle(msptColor))
+                        .append(Component.literal("/" + (int) profile.msptLimit).withStyle(DARK_GRAY));
             }
 
             output.sendInfo(source, msptLine);
@@ -281,17 +273,20 @@ public class GeoScanCommands {
         if (tooltip != null) {
             output.sendEmptyLine(source);
 
-            var biomeStatus = Component.translatable("complexityanalyzer.command.geoscan.biome_details").withStyle(ChatFormatting.AQUA);
-            biomeStatus.append(Component.literal(" "));
+            var hoverText = Component.translatable("complexityanalyzer.command.geoscan.hover_details").withStyle(style -> style
+                    .withColor(DARK_AQUA)
+                    .withItalic(true)
+                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip)));
 
-            biomeStatus.append(Component.translatable("complexityanalyzer.command.geoscan.hover_details")
-                    .withStyle(EMPTY.withColor(ChatFormatting.DARK_AQUA).withItalic(true).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))));
+            var biomeStatus = Component.translatable("complexityanalyzer.command.geoscan.biome_details")
+                    .withStyle(AQUA)
+                    .append(" ").append(hoverText);
 
             output.sendInfo(source, biomeStatus);
         }
     }
 
-    private static MutableComponent buildBiomeTooltip(ScanSession session) {
+    private static @Nullable MutableComponent buildBiomeTooltip(ScanSession session) {
         var progress = session.getBiomeProgress();
 
         int totalIncomplete = 0;
@@ -300,44 +295,37 @@ public class GeoScanCommands {
         }
 
         if (totalIncomplete == 0) return null;
-
-        var tooltip = Component.empty();
-        tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
-
+        var tooltip = Component.empty().append(Component.translatable("complexityanalyzer.command.geoscan.biome_progress_header").withStyle(GOLD, BOLD));
         int biomesShown = 0;
-        final int maxBiomes = 25;
 
         for (var dimEntry : progress.object2ObjectEntrySet()) {
             var dimId = dimEntry.getKey();
             var biomeMap = dimEntry.getValue();
-
             boolean dimHeaderAdded = false;
 
             for (var biomeEntry : biomeMap.object2ObjectEntrySet()) {
                 int[] stats = biomeEntry.getValue();
-                int scanned = stats[0];
-                int needed = stats[1];
+                int scanned = stats[0], needed = stats[1];
 
                 if (scanned >= needed) continue;
-
-                if (biomesShown >= maxBiomes) {
+                if (biomesShown >= MAX_BIOMES_IN_TOOLTIP) {
                     int remaining = totalIncomplete - biomesShown;
-                    if (remaining > 0) {
-                        tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.more_biomes", remaining).withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-                    }
+                    tooltip.append(Component.translatable("complexityanalyzer.command.geoscan.more_biomes", remaining).withStyle(DARK_GRAY, ITALIC));
                     return tooltip;
                 }
 
                 if (!dimHeaderAdded) {
-                    tooltip.append(Component.literal("\n")).append(Component.literal("▸ ").append(formatDimensionName(dimId)).append("\n").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+                    tooltip.append("\n").append(Component.literal("▸ ").append(formatDimensionName(dimId)).append("\n").withStyle(YELLOW, BOLD));
                     dimHeaderAdded = true;
                 }
 
                 var biomeId = biomeEntry.getKey();
                 int biomePercent = needed > 0 ? (scanned * 100 / needed) : 0;
-                var biomeColor = biomePercent >= 75 ? ChatFormatting.YELLOW : biomePercent >= 50 ? ChatFormatting.GOLD : ChatFormatting.WHITE;
+                var biomeColor = biomePercent >= 75 ? YELLOW : biomePercent >= 50 ? GOLD : WHITE;
 
-                tooltip.append(Component.literal("  ○ ").withStyle(ChatFormatting.GRAY)).append(Component.literal(biomeId.getPath()).withStyle(biomeColor)).append(Component.literal(" (%d/%d)\n".formatted(scanned, needed)).withStyle(ChatFormatting.GRAY));
+                tooltip.append(Component.literal("  ○ ").withStyle(GRAY))
+                        .append(Component.literal(biomeId.getPath()).withStyle(biomeColor))
+                        .append(Component.literal(" (%d/%d)\n".formatted(scanned, needed)).withStyle(GRAY));
 
                 biomesShown++;
             }
@@ -350,36 +338,57 @@ public class GeoScanCommands {
         var source = context.getSource();
         var output = new OutputManager(source.getServer());
         var engine = AnalysisEngine.getInstance();
-
         var manager = engine.getGeoManager();
-        if (manager != null) {
-            if (manager.isScanning() || manager.isCountdownActive()) {
-                output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.cannot_clear"));
-                output.sendTip(source, "complexityanalyzer.command.geoscan.clear_tip", ComplexityCommand.ROOT);
-                return 0;
-            } else {
-                output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.clearing"));
-                engine.clearGeoDatabase();
-                output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.cleared_broadcast"));
-                output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.cleared_admin", source.getTextName()));
-            }
-        } else {
+
+        if (manager == null) {
             engine.clearGeoDatabase();
             output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.cleared_broadcast"));
+            return 1;
         }
+
+        if (manager.isScanning() || manager.isCountdownActive()) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.cannot_clear"));
+            output.sendTip(source, "complexityanalyzer.command.geoscan.clear_tip", ComplexityCommand.ROOT);
+            return 0;
+        }
+
+        output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.clearing"));
+        engine.clearGeoDatabase();
+        output.sendSuccess(source, Component.translatable("complexityanalyzer.command.geoscan.cleared_broadcast"));
+        output.sendToAdmins(Component.translatable("complexityanalyzer.command.geoscan.cleared_admin", source.getTextName()));
         return 1;
     }
 
+    private static int withManager(CommandContext<CommandSourceStack> context, GeoAction action) {
+        var source = context.getSource();
+        var output = new OutputManager(source.getServer());
+        var manager = requireManager(source, output);
+        return manager == null ? 0 : action.run(source, output, manager);
+    }
+
+    private static @Nullable GeoAnalysisManager requireManager(CommandSourceStack source, OutputManager output) {
+        var manager = AnalysisEngine.getInstance().getGeoManager();
+        if (manager == null) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.geoscan.not_initialized"));
+        }
+        return manager;
+    }
+
     private static Component formatDimensionName(ResourceLocation dimId) {
-        String path = dimId.getPath();
-        return switch (path) {
-            case "overworld" -> Component.literal("🌍 ")
-                    .append(Component.translatable("complexityanalyzer.dimension.overworld"));
-            case "the_nether" -> Component.literal("🔥 ")
-                    .append(Component.translatable("complexityanalyzer.dimension.nether"));
-            case "the_end" -> Component.literal("🌌 ")
-                    .append(Component.translatable("complexityanalyzer.dimension.the_end"));
-            default -> Component.literal(dimId.toString());
-        };
+        if (dimId.equals(OVERWORLD.location())) {
+            return Component.literal("🌍 ").append(Component.translatable("complexityanalyzer.dimension.overworld"));
+        }
+        if (dimId.equals(NETHER.location())) {
+            return Component.literal("🔥 ").append(Component.translatable("complexityanalyzer.dimension.nether"));
+        }
+        if (dimId.equals(END.location())) {
+            return Component.literal("🌌 ").append(Component.translatable("complexityanalyzer.dimension.the_end"));
+        }
+        return Component.literal(dimId.toString());
+    }
+
+    @FunctionalInterface
+    private interface GeoAction {
+        int run(CommandSourceStack source, OutputManager output, GeoAnalysisManager manager);
     }
 }

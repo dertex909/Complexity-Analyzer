@@ -68,7 +68,7 @@ public final class AnalyzeCommand {
 
         if (!engine.isReady()) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.analyze.not_ready"));
-            output.sendTipLiteral(source, Component.translatable("complexityanalyzer.command.analyze.current_state", engine.getCurrentState()));
+            output.sendTipLiteral(source, Component.translatable("complexityanalyzer.command.analyze.current_state", engine.getCurrentState().toString()));
             return 0;
         }
 

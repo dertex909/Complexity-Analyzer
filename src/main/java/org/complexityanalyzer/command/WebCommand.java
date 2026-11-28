@@ -24,7 +24,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.export.cabin.io.CabinBackgroundService;
@@ -32,6 +31,9 @@ import org.complexityanalyzer.network.web.CabinNettyHandler;
 import org.complexityanalyzer.network.web.WebManager;
 import org.complexityanalyzer.util.FormatUtils;
 
+import java.util.concurrent.CompletionException;
+
+import static net.minecraft.ChatFormatting.*;
 import static org.complexityanalyzer.config.ComplexityConfig.WEB_SERVER_IP;
 
 public final class WebCommand {
@@ -41,23 +43,15 @@ public final class WebCommand {
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("web")
-                .then(Commands.literal("url").executes(WebCommand::executeUrl)
-                        .then(Commands.literal("link").executes(WebCommand::executeUrlLink)))
+                .then(Commands.literal("url").executes(ctx -> executeUrl(ctx.getSource(), false))
+                        .then(Commands.literal("link").executes(ctx -> executeUrl(ctx.getSource(), true))))
                 .then(Commands.literal("status").executes(WebCommand::executeStatus))
                 .then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(WebCommand::executeReload));
     }
 
-    public static int executeUrl(CommandContext<CommandSourceStack> ctx) {
-        return executeUrlInternal(ctx.getSource(), false);
-    }
-
-    public static int executeUrlLink(CommandContext<CommandSourceStack> ctx) {
-        return executeUrlInternal(ctx.getSource(), true);
-    }
-
-    private static int executeUrlInternal(CommandSourceStack source, boolean rawLink) {
+    private static int executeUrl(CommandSourceStack source, boolean rawLink) {
         var output = new OutputManager(source.getServer());
-        String url = CabinNettyHandler.getUrl();
+        var url = CabinNettyHandler.getUrl();
 
         if (url == null) {
             output.sendEmptyLine(source);
@@ -67,15 +61,15 @@ public final class WebCommand {
             return 0;
         }
 
-        String publicIp = WEB_SERVER_IP.get().trim();
-        String finalUrl = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp).replace("0.0.0.0", publicIp);
+        var publicIp = WEB_SERVER_IP.get().trim();
+        var finalUrl = url.replace("127.0.0.1", publicIp).replace("localhost", publicIp).replace("0.0.0.0", publicIp);
 
         output.sendEmptyLine(source);
-        output.sendHeader(source, "🌐", "complexityanalyzer.command.web.header", ChatFormatting.GOLD);
+        output.sendHeader(source, "🌐", "complexityanalyzer.command.web.header", GOLD);
         output.sendEmptyLine(source);
 
         var urlLabel = rawLink ? finalUrl : "complexityanalyzer.command.web.open_browser";
-        output.sendLink(source, "complexityanalyzer.command.web.url_label", urlLabel, finalUrl, ChatFormatting.AQUA, "complexityanalyzer.command.web.click_to_open", finalUrl);
+        output.sendLink(source, "complexityanalyzer.command.web.url_label", urlLabel, finalUrl, AQUA, "complexityanalyzer.command.web.click_to_open", finalUrl);
 
         if ("127.0.0.1".equals(publicIp)) {
             output.sendEmptyLine(source);
@@ -93,19 +87,19 @@ public final class WebCommand {
         var svc = CabinBackgroundService.getInstance();
         var snap = svc.getSnapshot();
         var status = svc.getStatus();
-        output.sendEmptyLine(source);
-        output.sendHeader(source, "📊", "complexityanalyzer.command.web.status_header", ChatFormatting.GOLD);
-        output.sendEmptyLine(source);
 
-        output.sendEntry(source, "⚙", "complexityanalyzer.command.web.status_label", status.name(), ChatFormatting.GRAY, statusColor(status));
-        output.sendEntry(source, "👥", "complexityanalyzer.command.web.visitors", CabinNettyHandler.getVisitorCount(), ChatFormatting.GRAY, ChatFormatting.AQUA);
+        output.sendEmptyLine(source);
+        output.sendHeader(source, "📊", "complexityanalyzer.command.web.status_header", GOLD);
+        output.sendEmptyLine(source);
+        output.sendEntry(source, "⚙", "complexityanalyzer.command.web.status_label", status.name(), GRAY, statusColor(status));
+        output.sendEntry(source, "👥", "complexityanalyzer.command.web.visitors", CabinNettyHandler.getVisitorCount(), GRAY, AQUA);
 
         if (snap != null) {
-            long ageMs = System.currentTimeMillis() - snap.generatedAtMs();
-            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", FormatUtils.formatDurationSeconds(ageMs / 1000)), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", snap.itemCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", snap.mobCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
-            output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", snap.recipeCount(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+            var ageSeconds = FormatUtils.formatDurationSeconds(Math.max(0L, (System.currentTimeMillis() - snap.generatedAtMs()) / 1000L));
+            output.sendEntry(source, "🕒", "complexityanalyzer.command.web.file_age", Component.translatable("complexityanalyzer.unit.time.ago", ageSeconds), GRAY, WHITE);
+            output.sendEntry(source, "📂", "complexityanalyzer.command.web.items", snap.itemCount(), GRAY, WHITE);
+            output.sendEntry(source, "👾", "complexityanalyzer.command.web.mobs", snap.mobCount(), GRAY, WHITE);
+            output.sendEntry(source, "📜", "complexityanalyzer.command.web.recipes", snap.recipeCount(), GRAY, WHITE);
         } else {
             output.sendTip(source, "complexityanalyzer.command.web.no_data");
         }
@@ -113,7 +107,7 @@ public final class WebCommand {
         var err = svc.getLastError();
         if (err != null) {
             output.sendEmptyLine(source);
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.last_error", err.getMessage()));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.last_error", extractErrorMessage(err)));
         }
 
         output.sendEmptyLine(source);
@@ -123,37 +117,44 @@ public final class WebCommand {
 
     public static int executeReload(CommandContext<CommandSourceStack> ctx) {
         var source = ctx.getSource();
-        var output = new OutputManager(source.getServer());
+        var server = source.getServer();
+        var output = new OutputManager(server);
         var engine = AnalysisEngine.getInstance();
+
         if (!engine.isReady()) {
-            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState()));
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.engine_not_ready", engine.getCurrentState().toString()));
             return 0;
         }
 
-        var server = source.getServer();
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reloading"));
 
-        WebManager.reload(server, engine).whenComplete((snap, err) -> {
-            MutableComponent done;
+        WebManager.reload(server, engine).whenComplete((snap, err) -> server.execute(() -> {
             if (err != null) {
-                done = Component.translatable("complexityanalyzer.command.web.reload_failed", err.getMessage()).withStyle(ChatFormatting.RED);
-            } else if (snap != null) {
-                done = Component.translatable("complexityanalyzer.command.web.reload_success", FormatUtils.humanBytes(snap.bytes().length)).withStyle(ChatFormatting.GREEN);
-            } else {
-                done = Component.translatable("complexityanalyzer.command.web.reload_no_data").withStyle(ChatFormatting.YELLOW);
+                output.sendFailure(source, Component.translatable("complexityanalyzer.command.web.reload_failed", extractErrorMessage(err)));
+                return;
             }
-            server.execute(() -> source.sendSuccess(() -> done, true));
-        });
+
+            if (snap != null) {
+                output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reload_success", FormatUtils.humanBytes(snap.bytes().length)).withStyle(GREEN));
+            } else {
+                output.sendSuccess(source, Component.translatable("complexityanalyzer.command.web.reload_no_data").withStyle(YELLOW));
+            }
+        }));
 
         return 1;
     }
 
-    private static ChatFormatting statusColor(CabinBackgroundService.Status s) {
-        return switch (s) {
-            case READY -> ChatFormatting.GREEN;
-            case BUILDING -> ChatFormatting.AQUA;
-            case FAILED -> ChatFormatting.RED;
-            case IDLE -> ChatFormatting.GRAY;
+    private static String extractErrorMessage(Throwable err) {
+        var cause = (err instanceof CompletionException && err.getCause() != null) ? err.getCause() : err;
+        return cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+    }
+
+    private static ChatFormatting statusColor(CabinBackgroundService.Status status) {
+        return switch (status) {
+            case READY -> GREEN;
+            case BUILDING -> AQUA;
+            case FAILED -> RED;
+            case IDLE -> GRAY;
         };
     }
 }

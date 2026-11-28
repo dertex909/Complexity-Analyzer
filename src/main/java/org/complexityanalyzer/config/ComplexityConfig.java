@@ -130,7 +130,7 @@ public class ComplexityConfig {
         WEB_SERVER_IP = builder.comment(
                 " IP address or domain of the server for the web dashboard.",
                 " If set to 127.0.0.1, players will see a tip suggesting to change it to a public IP for remote connections."
-        ).define("ip", "127.0.0.1");
+        ).define("ip", "127.0.0.1", obj -> obj instanceof String s && !s.isBlank());
 
         WEB_SERVER_PORT = builder.comment(
                 " Dedicated port for the web dashboard server.",

@@ -18,16 +18,19 @@
 
 package org.complexityanalyzer.command;
 
+import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
@@ -39,9 +42,9 @@ import org.complexityanalyzer.export.format.IExportFormat;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
-import java.util.function.Consumer;
 
 import static java.util.Locale.ROOT;
+import static net.minecraft.ChatFormatting.*;
 import static org.complexityanalyzer.util.LogMarkers.EXPORT_COMMAND;
 
 public final class ExportCommand {
@@ -50,64 +53,129 @@ public final class ExportCommand {
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return Commands.literal("export").requires(source -> source.hasPermission(2))
-                .then(buildItemsBranch())
-                .then(buildMobsBranch());
+        return Commands.literal("export")
+                .requires(source -> source.hasPermission(2))
+                .then(buildBranch("items", SharedSuggestions.EXPORT_CATEGORY, "item_id", SharedSuggestions.ITEM,
+                        ExportCommand::executeAllItems,
+                        ExportCommand::executeItemsByCategory,
+                        ExportCommand::executeTopItems,
+                        ExportCommand::executeSingleItem))
+                .then(buildBranch("mobs", SharedSuggestions.EXPORT_MOB_CATEGORY, "mob_id", SharedSuggestions.ENTITY,
+                        ExportCommand::executeAllMobs,
+                        ExportCommand::executeMobsByCategory,
+                        ExportCommand::executeTopMobs,
+                        ExportCommand::executeSingleMob));
     }
 
-    private static ArgumentBuilder<CommandSourceStack, ?> buildItemsBranch() {
-        return Commands.literal("items")
-                .then(Commands.argument("format", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_FORMAT)
-                        .then(Commands.literal("all").executes(ExportCommand::executeAllItems))
-                        .then(Commands.literal("category")
-                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_CATEGORY).executes(ctx -> executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
-                        .then(Commands.literal("top")
-                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000)).executes(ctx -> executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
-                        .then(Commands.literal("single")
-                                .then(Commands.argument("item_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ITEM).executes(ctx -> executeSingleItem(ctx, ResourceLocationArgument.getId(ctx, "item_id").toString())))));
+    private static ArgumentBuilder<CommandSourceStack, ?> buildBranch(String name, SuggestionProvider<CommandSourceStack> categorySuggestions,
+                                                                      String idArg, SuggestionProvider<CommandSourceStack> idSuggestions,
+                                                                      Command<CommandSourceStack> onAll, ArgCommand<String> onCategory,
+                                                                      ArgCommand<Integer> onTop, ArgCommand<String> onSingle) {
+        var category = Commands.argument("category_name", StringArgumentType.word()).suggests(categorySuggestions)
+                .executes(ctx -> onCategory.run(ctx, StringArgumentType.getString(ctx, "category_name")));
+
+        var top = Commands.argument("count", IntegerArgumentType.integer(1, 1000))
+                .executes(ctx -> onTop.run(ctx, IntegerArgumentType.getInteger(ctx, "count")));
+
+        var single = Commands.argument(idArg, ResourceLocationArgument.id()).suggests(idSuggestions)
+                .executes(ctx -> onSingle.run(ctx, ResourceLocationArgument.getId(ctx, idArg).toString()));
+
+        var format = Commands.argument("format", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_FORMAT)
+                .then(Commands.literal("all").executes(onAll))
+                .then(Commands.literal("category").then(category))
+                .then(Commands.literal("top").then(top))
+                .then(Commands.literal("single").then(single));
+
+        return Commands.literal(name).then(format);
     }
 
-    private static ArgumentBuilder<CommandSourceStack, ?> buildMobsBranch() {
-        return Commands.literal("mobs")
-                .then(Commands.argument("format", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_FORMAT)
-                        .then(Commands.literal("all").executes(ExportCommand::executeAllMobs))
-                        .then(Commands.literal("category")
-                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_MOB_CATEGORY).executes(ctx -> executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
-                        .then(Commands.literal("top")
-                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000)).executes(ctx -> executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
-                        .then(Commands.literal("single")
-                                .then(Commands.argument("mob_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY).executes(ctx -> executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString())))));
+    public static int executeAllItems(CommandContext<CommandSourceStack> context) {
+        return runAsyncExport(context, "💾", "complexityanalyzer.command.export.full_item_header", AQUA,
+                null, "Full item export", ComplexityExporter::exportAllItems);
     }
 
-    private static IExportFormat getFormatOrReport(CommandContext<CommandSourceStack> context, OutputManager output) {
-        String formatId = StringArgumentType.getString(context, "format");
-        var format = ExportFormats.get(formatId);
-        if (format == null) output.sendFailure(context.getSource(),
-                Component.translatable("complexityanalyzer.command.export.invalid_format", formatId));
-        return format;
+    public static int executeItemsByCategory(CommandContext<CommandSourceStack> context, String categoryName) {
+        return runAsyncExport(context, "📦", "complexityanalyzer.command.export.item_category_header", GOLD,
+                new ExportDetail("📋", "complexityanalyzer.command.export.category_label", categoryName, YELLOW),
+                "Item category export", ComplexityExporter::exportItemsByCategory, categoryName);
+    }
+
+    public static int executeTopItems(CommandContext<CommandSourceStack> context, int count) {
+        return runAsyncExport(context, "🏆", "complexityanalyzer.command.export.top_items_header", GOLD,
+                new ExportDetail("🔢", "complexityanalyzer.command.export.count_label", count, AQUA),
+                "Top items export", ComplexityExporter::exportTopItems, count);
+    }
+
+    public static int executeSingleItem(CommandContext<CommandSourceStack> context, String itemId) {
+        return runAsyncExport(context, "📄", "complexityanalyzer.command.export.single_item_header", AQUA,
+                new ExportDetail("🏷", "complexityanalyzer.command.export.item_label", itemId, WHITE),
+                "Single item export", ComplexityExporter::exportSingleItem, itemId);
+    }
+
+    public static int executeAllMobs(CommandContext<CommandSourceStack> context) {
+        var formatName = StringArgumentType.getString(context, "format").toUpperCase(ROOT);
+        return runAsyncExport(context, "🧟", "complexityanalyzer.command.export.all_mobs_header", RED,
+                new ExportDetail("📋", "complexityanalyzer.command.export.format_label", formatName, AQUA),
+                "All mobs export", ComplexityExporter::exportAllMobs);
+    }
+
+    public static int executeMobsByCategory(CommandContext<CommandSourceStack> context, String categoryName) {
+        return runAsyncExport(context, "📦", "complexityanalyzer.command.export.mob_category_header", GOLD,
+                new ExportDetail("📋", "complexityanalyzer.command.export.category_label", categoryName, YELLOW),
+                "Mob category export", ComplexityExporter::exportMobsByCategory, categoryName);
+    }
+
+    public static int executeTopMobs(CommandContext<CommandSourceStack> context, int count) {
+        return runAsyncExport(context, "🏆", "complexityanalyzer.command.export.top_mobs_header", GOLD,
+                new ExportDetail("🔢", "complexityanalyzer.command.export.count_label", count, AQUA),
+                "Top mobs export", ComplexityExporter::exportTopMobs, count);
+    }
+
+    public static int executeSingleMob(CommandContext<CommandSourceStack> context, String mobId) {
+        return runAsyncExport(context, "📄", "complexityanalyzer.command.export.single_mob_header", AQUA,
+                new ExportDetail("🧟", "complexityanalyzer.command.export.mob_label", mobId, WHITE),
+                "Single mob export", ComplexityExporter::exportSingleMob, mobId);
+    }
+
+    private static <T> int runAsyncExport(CommandContext<CommandSourceStack> context, String icon, String headerKey,
+                                          ChatFormatting headerColor, @Nullable ExportDetail detail,
+                                          String exportType, ParameterizedExportAction<T> action, T arg) {
+        return runAsyncExport(context, icon, headerKey, headerColor, detail, exportType,
+                (server, engine, fmt) -> action.run(server, engine, fmt, arg));
     }
 
     private static int runAsyncExport(CommandContext<CommandSourceStack> context, String icon, String headerKey,
-                                      ChatFormatting headerColor, @Nullable Consumer<OutputManager> extraDetails,
+                                      ChatFormatting headerColor, @Nullable ExportDetail detail,
                                       String exportType, ExportAction action) {
         var source = context.getSource();
         var server = source.getServer();
         var output = new OutputManager(server);
         var engine = AnalysisEngine.getInstance();
         if (!engine.isReady()) return sendEngineNotReady(output, source, engine);
-        var format = getFormatOrReport(context, output);
-        if (format == null) return 0;
+
+        var formatId = StringArgumentType.getString(context, "format");
+        var format = ExportFormats.get(formatId);
+        if (format == null) {
+            output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.invalid_format", formatId));
+            return 0;
+        }
+
         output.sendEmptyLine(source);
         output.sendHeader(source, icon, headerKey, headerColor);
         output.sendEmptyLine(source);
-        if (extraDetails != null) extraDetails.accept(output);
-        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.starting", ChatFormatting.YELLOW);
+
+        if (detail != null) {
+            output.sendEntry(source, detail.icon(), detail.labelKey(), detail.value(), GRAY, detail.color());
+        }
+
+        output.sendStatusLine(source, "🔄", "complexityanalyzer.command.export.starting", YELLOW);
         output.sendEmptyLine(source);
-        String fullTypeDesc = "%s (%s)".formatted(exportType, format.getId().toUpperCase(ROOT));
+
+        var fullTypeDesc = "%s (%s)".formatted(exportType, format.getId().toUpperCase(ROOT));
 
         ThreadPoolManager.getInstance().getComputePool().execute(() -> {
             try {
-                var exportPath = action.run(format);
+                var exportPath = action.run(server, engine, format);
                 server.execute(() -> sendSuccess(output, source, fullTypeDesc, exportPath));
             } catch (Exception e) {
                 server.execute(() -> sendFailure(output, source, exportType, e));
@@ -115,71 +183,6 @@ public final class ExportCommand {
         });
 
         return 1;
-    }
-
-    public static int executeAllItems(CommandContext<CommandSourceStack> context) {
-        return runAsyncExport(context, "💾", "complexityanalyzer.command.export.full_item_header", ChatFormatting.AQUA,
-                null, "Full item export",
-                format -> ComplexityExporter.exportAllItems(context.getSource().getServer(), AnalysisEngine.getInstance(), format));
-    }
-
-    public static int executeItemsByCategory(CommandContext<CommandSourceStack> context, String categoryName) {
-        var source = context.getSource();
-        return runAsyncExport(context, "📦", "complexityanalyzer.command.export.item_category_header", ChatFormatting.GOLD,
-                out -> out.sendEntry(source, "📋", "complexityanalyzer.command.export.category_label", categoryName, ChatFormatting.GRAY, ChatFormatting.YELLOW),
-                "Item category export",
-                format -> ComplexityExporter.exportItemsByCategory(source.getServer(), AnalysisEngine.getInstance(), format, categoryName));
-    }
-
-    public static int executeTopItems(CommandContext<CommandSourceStack> context, int count) {
-        var source = context.getSource();
-        return runAsyncExport(context, "🏆", "complexityanalyzer.command.export.top_items_header", ChatFormatting.GOLD,
-                out -> out.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", count, ChatFormatting.GRAY, ChatFormatting.AQUA),
-                "Top items export",
-                format -> ComplexityExporter.exportTopItems(source.getServer(), AnalysisEngine.getInstance(), format, count));
-    }
-
-    public static int executeSingleItem(CommandContext<CommandSourceStack> context, String itemId) {
-        var source = context.getSource();
-        return runAsyncExport(context, "📄", "complexityanalyzer.command.export.single_item_header", ChatFormatting.AQUA,
-                out -> out.sendEntry(source, "🏷", "complexityanalyzer.command.export.item_label", itemId, ChatFormatting.GRAY, ChatFormatting.WHITE),
-                "Single item export",
-                format -> ComplexityExporter.exportSingleItem(source.getServer(), AnalysisEngine.getInstance(), format, itemId));
-    }
-
-    public static int executeAllMobs(CommandContext<CommandSourceStack> context) {
-        var source = context.getSource();
-        return runAsyncExport(context, "🧟", "complexityanalyzer.command.export.all_mobs_header", ChatFormatting.RED,
-                out -> {
-                    String formatId = StringArgumentType.getString(context, "format");
-                    out.sendEntry(source, "📋", "complexityanalyzer.command.export.format_label", formatId.toUpperCase(ROOT), ChatFormatting.GRAY, ChatFormatting.AQUA);
-                },
-                "All mobs export",
-                format -> ComplexityExporter.exportAllMobs(source.getServer(), AnalysisEngine.getInstance(), format));
-    }
-
-    public static int executeMobsByCategory(CommandContext<CommandSourceStack> context, String categoryName) {
-        var source = context.getSource();
-        return runAsyncExport(context, "📦", "complexityanalyzer.command.export.mob_category_header", ChatFormatting.GOLD,
-                out -> out.sendEntry(source, "📋", "complexityanalyzer.command.export.category_label", categoryName, ChatFormatting.GRAY, ChatFormatting.YELLOW),
-                "Mob category export",
-                format -> ComplexityExporter.exportMobsByCategory(source.getServer(), AnalysisEngine.getInstance(), format, categoryName));
-    }
-
-    public static int executeTopMobs(CommandContext<CommandSourceStack> context, int count) {
-        var source = context.getSource();
-        return runAsyncExport(context, "🏆", "complexityanalyzer.command.export.top_mobs_header", ChatFormatting.GOLD,
-                out -> out.sendEntry(source, "🔢", "complexityanalyzer.command.export.count_label", count, ChatFormatting.GRAY, ChatFormatting.AQUA),
-                "Top mobs export",
-                format -> ComplexityExporter.exportTopMobs(source.getServer(), AnalysisEngine.getInstance(), format, count));
-    }
-
-    public static int executeSingleMob(CommandContext<CommandSourceStack> context, String mobId) {
-        var source = context.getSource();
-        return runAsyncExport(context, "📄", "complexityanalyzer.command.export.single_mob_header", ChatFormatting.AQUA,
-                out -> out.sendEntry(source, "🧟", "complexityanalyzer.command.export.mob_label", mobId, ChatFormatting.GRAY, ChatFormatting.WHITE),
-                "Single mob export",
-                format -> ComplexityExporter.exportSingleMob(source.getServer(), AnalysisEngine.getInstance(), format, mobId));
     }
 
     private static int sendEngineNotReady(OutputManager output, CommandSourceStack source, AnalysisEngine engine) {
@@ -191,19 +194,33 @@ public final class ExportCommand {
     private static void sendSuccess(OutputManager output, CommandSourceStack source, String exportType, Path exportPath) {
         output.sendSuccess(source, Component.translatable("complexityanalyzer.command.export.success"));
         output.sendEmptyLine(source);
-        output.sendEntry(source, "📁", "complexityanalyzer.command.export.file_label", exportPath.getFileName().toString(), ChatFormatting.GRAY, ChatFormatting.WHITE);
+        output.sendEntry(source, "📁", "complexityanalyzer.command.export.file_label", exportPath.getFileName().toString(), GRAY, WHITE);
         output.sendFooter(source);
         output.sendToAdmins(Component.translatable("complexityanalyzer.command.export.completed_admin", exportType));
     }
 
     private static void sendFailure(OutputManager output, CommandSourceStack source, String exportType, Exception e) {
-        output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.failed", exportType, e.getMessage()));
+        var reason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        output.sendFailure(source, Component.translatable("complexityanalyzer.command.export.failed", exportType, reason));
         output.sendFooter(source);
         ComplexityAnalyzer.LOGGER.error(EXPORT_COMMAND, "Error exporting {}", exportType, e);
     }
 
     @FunctionalInterface
+    private interface ArgCommand<T> {
+        int run(CommandContext<CommandSourceStack> context, T arg);
+    }
+
+    @FunctionalInterface
     private interface ExportAction {
-        Path run(IExportFormat format) throws Exception;
+        Path run(MinecraftServer server, AnalysisEngine engine, IExportFormat format) throws Exception;
+    }
+
+    @FunctionalInterface
+    private interface ParameterizedExportAction<T> {
+        Path run(MinecraftServer server, AnalysisEngine engine, IExportFormat format, T arg) throws Exception;
+    }
+
+    private record ExportDetail(String icon, String labelKey, Object value, ChatFormatting color) {
     }
 }

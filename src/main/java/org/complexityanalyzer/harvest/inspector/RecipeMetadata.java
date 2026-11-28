@@ -25,6 +25,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -33,7 +34,10 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class RecipeMetadata {
@@ -270,10 +274,7 @@ public final class RecipeMetadata {
                 if (current == null || current == Object.class) continue;
                 if (TerminalTypeRegistry.isTerminalType(current)) continue;
                 var methods = current.getDeclaredMethods();
-                Arrays.sort(methods, Comparator.comparing(Method::getName)
-                        .thenComparingInt(Method::getParameterCount)
-                        .thenComparing(m -> Arrays.toString(m.getParameterTypes()))
-                        .thenComparing(m -> m.getReturnType().getName()));
+                Arrays.sort(methods, ComplexityComparators.REFLECTION_METHOD_ORDER);
 
                 for (var m : methods) {
                     if (m.getParameterCount() > 1) continue;
@@ -290,7 +291,7 @@ public final class RecipeMetadata {
                 var sup = current.getSuperclass();
                 if (sup != null && sup != Object.class) queue.add(sup);
                 var ifaces = current.getInterfaces();
-                Arrays.sort(ifaces, Comparator.comparing(Class::getName));
+                Arrays.sort(ifaces, ComplexityComparators.CLASS_BY_NAME);
                 Collections.addAll(queue, ifaces);
             }
             this.allMethods = mList.toArray(new Method[0]);
@@ -300,7 +301,7 @@ public final class RecipeMetadata {
             var curCls = clazz;
             while (curCls != null && curCls != Object.class) {
                 var curFields = curCls.getDeclaredFields();
-                Arrays.sort(curFields, Comparator.comparing(Field::getName));
+                Arrays.sort(curFields, ComplexityComparators.FIELD_BY_NAME);
                 for (var f : curFields) {
                     if (Modifier.isStatic(f.getModifiers())) continue;
                     boolean duplicate = false;

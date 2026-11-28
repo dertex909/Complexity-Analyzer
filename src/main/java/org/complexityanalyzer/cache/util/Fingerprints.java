@@ -23,6 +23,7 @@ import net.neoforged.fml.ModList;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.geoscan.GeoDatabase;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import static org.complexityanalyzer.util.LogMarkers.CACHE_FINGERPRINTS;
 
@@ -83,7 +84,7 @@ public final class Fingerprints {
     }
 
     private static long hashSortedIds(ObjectArrayList<String> ids) {
-        ids.sort(null);
+        ids.sort(ComplexityComparators.naturalOrder());
         long h = FNV_OFFSET;
         for (var id : ids) h = fnv(h, id);
         return h;

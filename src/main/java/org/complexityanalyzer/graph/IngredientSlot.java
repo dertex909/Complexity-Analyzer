@@ -22,11 +22,10 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.item.ItemStack;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.ItemStackIdentity;
 
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.complexityanalyzer.util.ComplexityComparators.ITEM_STACK_BY_ID;
 
 public class IngredientSlot {
 
@@ -49,7 +48,7 @@ public class IngredientSlot {
         } else if (processed.size() == 1) {
             this.variants = ObjectLists.singleton(processed.getFirst());
         } else {
-            processed.sort(ITEM_STACK_BY_ID);
+            processed.sort(ComplexityComparators.ITEM_STACK_BY_ID);
             this.variants = ObjectLists.unmodifiable(processed);
         }
     }

@@ -107,7 +107,6 @@ public class GeoScanCommands {
                 .executes(GeoScanCommands::executeClear);
     }
 
-
     private static CompletableFuture<Suggestions> suggestOrderedProfiles(SuggestionsBuilder builder) {
         var remaining = builder.getRemaining().toLowerCase(ROOT);
         var range = StringRange.between(builder.getStart(), builder.getInput().length());

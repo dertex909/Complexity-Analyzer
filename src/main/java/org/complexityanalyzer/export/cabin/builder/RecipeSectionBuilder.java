@@ -29,6 +29,7 @@ import org.complexityanalyzer.graph.IngredientSlot;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.harvest.machine.MachineRegistry;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.ItemStackIdentity;
 
 import java.util.Arrays;
@@ -74,7 +75,7 @@ public final class RecipeSectionBuilder {
 
     public static void sortOptimalFirst(ObjectList<RecipeNode> recipes, RecipeNode optimal) {
         if (optimal == null || recipes.size() <= 1) return;
-        recipes.sort((a, b) -> a.equals(optimal) ? -1 : (b.equals(optimal) ? 1 : 0));
+        recipes.sort(ComplexityComparators.equalValueFirst(optimal));
     }
 
     public static int writeRecipeGroup(LeBuf buf, SectionBuilderContext ctx, MachineRegistry registry, int outputIndex, ObjectList<RecipeNode> recipes) {

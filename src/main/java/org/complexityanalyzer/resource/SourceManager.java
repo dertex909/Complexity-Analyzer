@@ -27,6 +27,7 @@ import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +43,7 @@ public class SourceManager {
 
     public SourceManager(ObjectList<IResourceSource> initialSources) {
         var sorted = new ObjectArrayList<>(initialSources);
-        sorted.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
+        sorted.sort(ComplexityComparators.RESOURCE_SOURCE_BY_PRIORITY_DESCENDING);
         this.sources = ObjectLists.unmodifiable(sorted);
     }
 

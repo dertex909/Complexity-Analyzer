@@ -24,22 +24,20 @@ import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
 import org.complexityanalyzer.ComplexityAnalyzer;
-import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
-import java.util.Comparator;
 
 import static org.complexityanalyzer.cache.util.Fingerprints.FNV_OFFSET;
 import static org.complexityanalyzer.cache.util.Fingerprints.FNV_PRIME;
@@ -58,11 +56,6 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
     }
 
     private final Reference2ObjectMap<Item, ObjectList<TradeInfo>> tradesByResult = new Reference2ObjectOpenHashMap<>();
-
-    private static String professionId(VillagerProfession profession) {
-        var id = GameRegistryManager.getProfessionId(profession);
-        return id != null ? id.toString() : "minecraft:none";
-    }
 
     private static long stableSeed(String professionId, int level, int index) {
         long h = FNV_OFFSET;
@@ -100,10 +93,10 @@ public class VillagerTradeSource implements IResourceSource, IMultiSourceProvide
         var pendingTrades = new ObjectArrayList<PendingTrade>();
 
         var professions = new ObjectArrayList<>(VillagerTrades.TRADES.entrySet());
-        professions.sort(Comparator.comparing(e -> professionId(e.getKey())));
+        professions.sort(ComplexityComparators.villagerProfessionEntryById());
 
         for (var professionEntry : professions) {
-            String profId = professionId(professionEntry.getKey());
+            String profId = ComplexityComparators.villagerProfessionId(professionEntry.getKey());
             var professionTrades = professionEntry.getValue();
 
             int[] levels = professionTrades.keySet().toIntArray();

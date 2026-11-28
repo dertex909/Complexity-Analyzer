@@ -32,10 +32,9 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.harvest.inspector.RecipeMetadata;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.ItemStackIdentity;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.Comparator;
 
 import static net.minecraft.world.item.Items.AIR;
 import static net.minecraft.world.level.material.Fluids.EMPTY;
@@ -43,9 +42,6 @@ import static org.complexityanalyzer.config.ComplexityConfig.MAX_INGREDIENT_VARI
 import static org.complexityanalyzer.util.FluidNormalizer.normalize;
 
 public final class HarvestedRecipeConverter {
-
-    private static final ItemStackComparator ITEM_COMPARATOR = new ItemStackComparator();
-
     private HarvestedRecipeConverter() {
     }
 
@@ -118,7 +114,7 @@ public final class HarvestedRecipeConverter {
             }
 
             if (!variants.isEmpty()) {
-                if (variants.size() > 1) variants.sort(ITEM_COMPARATOR);
+                if (variants.size() > 1) variants.sort(ComplexityComparators.ITEM_STACK_BY_ID_AND_DATA);
                 if (variants.size() > limit) variants.removeElements(limit, variants.size());
                 if (isSeqAss) {
                     mergedIngredients.put(variants, ingredientCount);
@@ -135,14 +131,14 @@ public final class HarvestedRecipeConverter {
                 if (isUniqueStackData(firstKey, transStack))
                     firstKey.add(ItemStackCanonicalizer.canonicalize(transStack));
             }
-            if (firstKey.size() > 1) firstKey.sort(ITEM_COMPARATOR);
+            if (firstKey.size() > 1) firstKey.sort(ComplexityComparators.ITEM_STACK_BY_ID_AND_DATA);
         }
 
         for (var stack : inputStacks) {
             if (!isValid(stack)) continue;
             var item = stack.getItem();
             if (!transitionalItems.isEmpty() && transitionalItems.contains(item)) continue;
-            if (!sameStackIdentity(stack, output)) {
+            if (!ItemStackIdentity.sameItemDataAndCount(stack, output)) {
                 var variants = new ObjectArrayList<ItemStack>();
                 variants.add(ItemStackCanonicalizer.canonicalize(stack));
                 mergedIngredients.addTo(variants, Math.max(1, stack.getCount()));
@@ -305,23 +301,9 @@ public final class HarvestedRecipeConverter {
         return ItemStackCanonicalizer.canonicalize(best);
     }
 
-    private static boolean sameStackIdentity(ItemStack a, ItemStack b) {
-        return ItemStackIdentity.sameItemDataAndCount(a, b);
-    }
-
     private static boolean isUniqueStackData(ObjectList<ItemStack> stacks, ItemStack candidate) {
         for (var stack : stacks) if (ItemStackIdentity.sameItemData(stack, candidate)) return false;
         return true;
     }
 
-    private static final class ItemStackComparator implements Comparator<ItemStack> {
-        @Override
-        public int compare(ItemStack a, ItemStack b) {
-            var idA = GameRegistryManager.getItemId(a.getItem());
-            var idB = GameRegistryManager.getItemId(b.getItem());
-            int byId = idA.compareTo(idB);
-            if (byId != 0) return byId;
-            return ItemStackIdentity.dataKey(a).compareTo(ItemStackIdentity.dataKey(b));
-        }
-    }
 }

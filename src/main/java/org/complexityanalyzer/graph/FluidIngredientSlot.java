@@ -22,10 +22,9 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.world.level.material.Fluid;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.complexityanalyzer.util.ComplexityComparators.FLUID_BY_ID;
 
 public record FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
 
@@ -39,7 +38,7 @@ public record FluidIngredientSlot(ObjectList<Fluid> fluidVariants, int amount) {
             finalVariants = ObjectLists.singleton(fluidVariants.getFirst());
         } else {
             var sorted = new ObjectArrayList<>(fluidVariants);
-            sorted.sort(FLUID_BY_ID);
+            sorted.sort(ComplexityComparators.FLUID_BY_ID);
             finalVariants = ObjectLists.unmodifiable(sorted);
         }
         this.fluidVariants = finalVariants;

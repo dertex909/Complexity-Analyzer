@@ -27,7 +27,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
@@ -41,11 +40,11 @@ import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.graph.ItemStackCanonicalizer;
 import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.FileManager;
 import org.complexityanalyzer.util.Scope;
 
 import java.nio.file.Path;
-import java.util.Comparator;
 
 import static org.complexityanalyzer.util.LogMarkers.RECIPE_GRAPH_CACHE;
 
@@ -207,7 +206,7 @@ public final class RecipeGraphCache implements ManagedCache {
 
     public Fingerprint computeFingerprint(RecipeManager recipeManager, RegistryAccess registryAccess) {
         var holders = new ObjectArrayList<>(recipeManager.getRecipes());
-        holders.sort(Comparator.comparing(RecipeHolder::id));
+        holders.sort(ComplexityComparators.RECIPE_HOLDER_BY_ID);
 
         long hRecipes = Fingerprints.FNV_OFFSET;
         for (var holder : holders) {
@@ -226,7 +225,7 @@ public final class RecipeGraphCache implements ManagedCache {
                         if (stack.isEmpty()) continue;
                         itemKeys.add(itemId(stack.getItem()).toString() + "x" + stack.getCount());
                     }
-                    itemKeys.sort(null);
+                    itemKeys.sort(ComplexityComparators.naturalOrder());
                     for (var key : itemKeys) hRecipes = Fingerprints.fnv(hRecipes, key);
                     hRecipes = Fingerprints.fnv(hRecipes, "]");
                 }

@@ -22,8 +22,8 @@ import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import org.complexityanalyzer.util.ComplexityComparators;
 
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class WebPackScanContext {
@@ -38,8 +38,7 @@ public final class WebPackScanContext {
     }
 
     CabinResourceResolver.TabRegistry buildRegistry() {
-        tabs.sort(Comparator.comparingInt(tab -> tab.has(WebTabManifest.PROP_ORDER)
-                ? tab.get(WebTabManifest.PROP_ORDER).getAsInt() : WebTabManifest.DEFAULT_TAB_ORDER));
+        tabs.sort(ComplexityComparators.WEB_TAB_BY_ORDER);
         return new CabinResourceResolver.TabRegistry(tabs, sources, mimeTypesByNamespace);
     }
 }

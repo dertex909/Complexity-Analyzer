@@ -49,10 +49,10 @@ import org.complexityanalyzer.geoscan.GeoDatabase;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.ParallelUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -68,37 +68,11 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
     private static final int EMPTY_HAND_HASH = "empty_hand".hashCode();
     private static final RarityInfo DEFAULT_RARITY = new RarityInfo(Double.POSITIVE_INFINITY, "");
 
-    private static final Comparator<BaseResourceData> PATH_COMPARATOR = (a, b) -> {
-        int typeCompare = Double.compare(a.getSourceType().getBaseMultiplier(), b.getSourceType().getBaseMultiplier());
-        if (typeCompare != 0) return typeCompare;
-
-        int factorCompare = Double.compare(a.getBaseFactor(), b.getBaseFactor());
-        if (factorCompare != 0) return factorCompare;
-
-        int sizeCompare = Integer.compare(a.getSourceItems().size(), b.getSourceItems().size());
-        if (sizeCompare != 0) return sizeCompare;
-
-        double sumA = sumValues(a.getSourceItems());
-        double sumB = sumValues(b.getSourceItems());
-        int sumCompare = Double.compare(sumA, sumB);
-        if (sumCompare != 0) return sumCompare;
-
-        return a.getDetails().compareTo(b.getDetails());
-    };
-
     private final Reference2ObjectMap<Item, ObjectList<BaseResourceData>> allPaths = new Reference2ObjectOpenHashMap<>();
     private final GeoDatabase geoDatabase;
 
     public BlockBreakAsRecipeSource(GeoDatabase geoDatabase) {
         this.geoDatabase = geoDatabase;
-    }
-
-    private static double sumValues(Reference2DoubleMap<Item> map) {
-        if (map.isEmpty()) return 0;
-        double sum = 0;
-        var it = map.values().iterator();
-        while (it.hasNext()) sum += it.nextDouble();
-        return sum;
     }
 
     @Nullable
@@ -264,7 +238,7 @@ public class BlockBreakAsRecipeSource implements IResourceSource, IMultiSourcePr
             this.allPaths.put(entry.getKey(), new ObjectArrayList<>(entry.getValue()));
         }
 
-        for (var paths : allPaths.values()) paths.sort(PATH_COMPARATOR);
+        for (var paths : allPaths.values()) paths.sort(ComplexityComparators.BLOCK_BREAK_PATH);
 
         ComplexityAnalyzer.LOGGER.info(BLOCK_DROP_SOURCE, "Initialization complete in {}ms. Found {} block drop paths for {} unique items. Skipped {} indestructible blocks.",
                 (System.currentTimeMillis() - startTime), pathsFound, allPaths.size(), blocksSkipped);

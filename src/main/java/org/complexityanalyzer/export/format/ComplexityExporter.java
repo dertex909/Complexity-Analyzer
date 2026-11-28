@@ -34,13 +34,13 @@ import org.complexityanalyzer.export.format.ExportData.SourceData;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.HardcodedSource;
 import org.complexityanalyzer.resource.sources.MobDropSource;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.FileManager;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.Objects;
 
 import static java.util.Locale.ROOT;
@@ -49,9 +49,6 @@ public class ComplexityExporter {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
     private static final ResourceLocation AIR_LOCATION = ResourceLocation.parse("minecraft:air");
-    private static final Comparator<ItemData> ITEM_DATA_COMPARATOR = (a, b) -> Double.compare(b.complexity(), a.complexity());
-    private static final Comparator<SourceData> SOURCE_DATA_COMPARATOR = Comparator.comparingDouble(SourceData::estimatedCost);
-    private static final Comparator<MobData> MOB_DATA_COMPARATOR = (a, b) -> Double.compare(b.combatPower(), a.combatPower());
 
     public static Path exportAllItems(MinecraftServer server, AnalysisEngine engine, IExportFormat format) throws IOException {
         return exportItemsAs(server, engine, format, null, -1, "all");
@@ -110,7 +107,7 @@ public class ComplexityExporter {
             if (categoryFilter != null && !c.getCategory().getDisplayName().equalsIgnoreCase(categoryFilter)) continue;
             items.add(buildItemData(item, GameRegistryManager.getItemId(item), c, engine));
         }
-        items.sort(ITEM_DATA_COMPARATOR);
+        items.sort(ComplexityComparators.ITEM_DATA_BY_COMPLEXITY_DESCENDING);
 
         if (topN > 0 && items.size() > topN) {
             var trimmed = new ObjectArrayList<ItemData>(topN);
@@ -133,7 +130,7 @@ public class ComplexityExporter {
             var data = buildMobData(type, engine);
             if (data != null && !Double.isInfinite(data.combatPower())) mobDataList.add(data);
         }
-        mobDataList.sort(MOB_DATA_COMPARATOR);
+        mobDataList.sort(ComplexityComparators.MOB_DATA_BY_COMBAT_POWER_DESCENDING);
 
         if (topN > 0 && mobDataList.size() > topN) {
             var trimmed = new ObjectArrayList<MobData>(topN);
@@ -152,7 +149,7 @@ public class ComplexityExporter {
         var sourcesRaw = engine.findAllSourcesForItem(item);
         var sources = new ObjectArrayList<SourceData>();
         for (var data : sourcesRaw) sources.add(buildSourceData(data, engine));
-        sources.sort(SOURCE_DATA_COMPARATOR);
+        sources.sort(ComplexityComparators.SOURCE_DATA_BY_ESTIMATED_COST);
 
         boolean isHardcoded = HardcodedSource.isInitialized() && HardcodedSource.getRegistry().isRegistered(item);
 

@@ -36,6 +36,7 @@ import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
 import org.complexityanalyzer.geoscan.data.ScanMetadata;
 import org.complexityanalyzer.geoscan.task.ScanTask;
 import org.complexityanalyzer.geoscan.task.WorldScanner;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -122,7 +123,7 @@ public class ScanCoordinator {
         }
 
         ComplexityAnalyzer.LOGGER.debug(GEO_SCAN_COORDINATOR, "Created {} scan tasks", tasks.size());
-        tasks.sort(null);
+        tasks.sort(ComplexityComparators.naturalOrder());
         return tasks;
     }
 

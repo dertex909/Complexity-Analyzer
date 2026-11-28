@@ -23,7 +23,6 @@ import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
-import it.unimi.dsi.fastutil.ints.IntComparator;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -37,6 +36,7 @@ import org.complexityanalyzer.graph.RecipeGraph;
 import org.complexityanalyzer.graph.RecipeNode;
 import org.complexityanalyzer.harvest.machine.MachineRegistry;
 import org.complexityanalyzer.resource.SourceManager;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import java.util.Arrays;
 
@@ -265,11 +265,7 @@ public final class SccCondensedSolver {
             }
         }
 
-        IntComparator formulaOrder = (a, b) -> {
-            int ta = m.formulaTarget[a], tb = m.formulaTarget[b];
-            if (ta != tb) return Integer.compare(ta, tb);
-            return Integer.compare(m.formulaType[a], m.formulaType[b]);
-        };
+        var formulaOrder = ComplexityComparators.formulaOrder(m.formulaTarget, m.formulaType);
         for (int c = 0; c < componentCount; c++) {
             IntArrays.mergeSort(componentFormulas, componentFormulasStart[c], componentFormulasStart[c + 1], formulaOrder);
         }
@@ -440,14 +436,7 @@ public final class SccCondensedSolver {
 
         private static ObjectList<Item> sortedByItemId(ReferenceSet<Item> items) {
             var list = new ObjectArrayList<>(items);
-            list.sort((a, b) -> {
-                var idA = GameRegistryManager.getItemId(a);
-                var idB = GameRegistryManager.getItemId(b);
-                if (idA == idB) return 0;
-                if (idA == null) return -1;
-                if (idB == null) return 1;
-                return idA.compareTo(idB);
-            });
+            list.sort(ComplexityComparators.ITEM_BY_ID);
             return list;
         }
 

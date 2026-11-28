@@ -42,12 +42,12 @@ import org.complexityanalyzer.core.ThreadPoolManager;
 import org.complexityanalyzer.resource.IMultiSourceProvider;
 import org.complexityanalyzer.resource.IResourceSource;
 import org.complexityanalyzer.resource.data.BaseResourceData;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.complexityanalyzer.util.LogFilter;
 import org.complexityanalyzer.util.ProbeScope;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.Future;
 
@@ -57,7 +57,7 @@ import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 import static org.complexityanalyzer.util.LogMarkers.UNIVERSAL_LOOT_SOURCE;
 
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
-
+    public static final String CHANCE_METADATA = "chance";
     private static final int SIMULATION_COUNT = 500;
     private volatile Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.emptyMap();
 
@@ -96,7 +96,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     private long[] computeFingerprint(ObjectSet<ResourceKey<LootTable>> keys) {
         var ids = new ObjectArrayList<String>(keys.size());
         for (var k : keys) ids.add(k.location().toString());
-        ids.sort(null);
+        ids.sort(ComplexityComparators.naturalOrder());
         long tables = Fingerprints.FNV_OFFSET;
         for (var id : ids) tables = Fingerprints.fnv(tables, id);
         return new long[]{
@@ -149,7 +149,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                 ComplexityAnalyzer.LOGGER.debug(UNIVERSAL_LOOT_SOURCE, "Found {} total loot tables to analyze.", allLootTableKeys.size());
 
                 var sortedKeys = new ObjectArrayList<>(allLootTableKeys);
-                sortedKeys.sort(Comparator.comparing(k -> k.location().toString()));
+                sortedKeys.sort(ComplexityComparators.comparingKeyNaturalOrder(k -> k.location().toString()));
 
                 var parallelTasks = new ObjectArrayList<TableTask>();
                 var piglinTasks = new ObjectArrayList<TableTask>();
@@ -212,7 +212,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                                 .baseFactor(baseFactor)
                                 .sourceSpecifier(lootTableId.toString())
                                 .details(details)
-                                .addMetadata("chance", "%.6f".formatted(itemsPerAttempt * 100));
+                                .addMetadata(CHANCE_METADATA, "%.6f".formatted(itemsPerAttempt * 100));
 
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
                             builder.baseFactor(contextDef.baseActionCost);
@@ -321,7 +321,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             var data = map.get(item);
             if (data != null) results.add(data);
         }
-        results.sort(Comparator.comparingDouble(BaseResourceData::getBaseFactor).thenComparing(BaseResourceData::getSourceType));
+        results.sort(ComplexityComparators.SOURCE_DATA_BY_BASE_FACTOR_THEN_TYPE);
         return results;
     }
 

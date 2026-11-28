@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.harvest.debug.MachineRegistryDebugLogger;
+import org.complexityanalyzer.util.ComplexityComparators;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Handle;
@@ -32,7 +33,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
 
 import java.util.ArrayDeque;
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 
@@ -179,7 +179,7 @@ public final class MachineControllerGraphScanner {
         }
 
         if (candidates.isEmpty()) return null;
-        candidates.sort(Comparator.comparingInt(CandidateResult::score).reversed().thenComparingInt(CandidateResult::depth));
+        candidates.sort(ComplexityComparators.comparingIntDescendingThenAscending(CandidateResult::score, CandidateResult::depth));
         var best = candidates.getFirst();
         logger.logControllerBfsMatch(rootClass, best.targetClass, best.item, best.path, best.depth, best.score);
 

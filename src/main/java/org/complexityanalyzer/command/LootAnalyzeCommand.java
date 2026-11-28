@@ -30,6 +30,7 @@ import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.resource.data.BaseResourceData;
 import org.complexityanalyzer.resource.sources.UniversalLootSource;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 public class LootAnalyzeCommand {
     private LootAnalyzeCommand() {
@@ -68,8 +69,7 @@ public class LootAnalyzeCommand {
             return 0;
         }
 
-        itemsFromTable.sort((a, b) -> Double.compare(extractChance(b), extractChance(a)));
-
+        itemsFromTable.sort(ComplexityComparators.BASE_RESOURCE_BY_LOOT_CHANCE_DESCENDING);
         displayLootAnalysis(source, lootTableId, itemsFromTable, output);
         return 1;
     }
@@ -99,7 +99,7 @@ public class LootAnalyzeCommand {
         double lowestChance = 100.0;
 
         for (var data : items) {
-            double chance = extractChance(data);
+            double chance = ComplexityComparators.lootChance(data);
             totalChance += chance;
             highestChance = Math.max(highestChance, chance);
             lowestChance = Math.min(lowestChance, chance);
@@ -118,7 +118,7 @@ public class LootAnalyzeCommand {
         @SuppressWarnings("unchecked")
         ObjectArrayList<BaseResourceData>[] groups = new ObjectArrayList[Rarity.VALUES.length];
         for (int i = 0; i < groups.length; i++) groups[i] = new ObjectArrayList<>();
-        for (var data : items) groups[Rarity.fromChance(extractChance(data)).ordinal()].add(data);
+        for (var data : items) groups[Rarity.fromChance(ComplexityComparators.lootChance(data)).ordinal()].add(data);
 
         output.sendStatusLine(source, "💎", "complexityanalyzer.command.loot.rarity_section", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
@@ -137,19 +137,9 @@ public class LootAnalyzeCommand {
 
     private static void displayItem(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         var itemComponent = data.getItem().getDescription();
-        double chance = extractChance(data);
+        double chance = ComplexityComparators.lootChance(data);
         output.sendSubEntry(source, itemComponent, "%.2f%%".formatted(chance), ChatFormatting.WHITE, Rarity.fromChance(chance).color);
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-    }
-
-    private static double extractChance(BaseResourceData data) {
-        String chanceMeta = data.getMetadata().get("chance");
-        if (chanceMeta == null) return 0.0;
-        try {
-            return Double.parseDouble(chanceMeta);
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
     }
 
     private enum Rarity {

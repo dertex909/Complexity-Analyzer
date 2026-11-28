@@ -33,8 +33,7 @@ import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.data.MobDifficultyCategory;
 import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.sources.MobDropSource;
-
-import java.util.Comparator;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 public class EntityAnalyzeCommand {
     private EntityAnalyzeCommand() {
@@ -146,7 +145,7 @@ public class EntityAnalyzeCommand {
         if (drops.isEmpty()) {
             output.sendTip(source, "complexityanalyzer.command.entity.no_drops");
         } else {
-            drops.sort(Comparator.comparingDouble(MobDropData::averageYield).reversed());
+            drops.sort(ComplexityComparators.MOB_DROP_BY_AVERAGE_YIELD_DESCENDING);
             var engine = AnalysisEngine.getInstance();
 
             for (var drop : drops) {

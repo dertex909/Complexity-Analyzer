@@ -30,6 +30,7 @@ import net.minecraft.world.entity.MobCategory;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.resource.sources.UniversalLootSource;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 public final class SharedSuggestions {
     public static final SuggestionProvider<CommandSourceStack> ITEM = (context, builder) -> SharedSuggestionProvider.suggestResource(GameRegistryManager.getItemIds(), builder);
@@ -75,7 +76,7 @@ public final class SharedSuggestions {
         }
 
         var temp = new ObjectArrayList<>(unique);
-        temp.sort(null);
+        temp.sort(ComplexityComparators.naturalOrder());
         CACHED_LOOT_TABLES = temp;
     }
 }

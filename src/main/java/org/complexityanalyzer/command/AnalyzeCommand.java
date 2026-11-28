@@ -37,8 +37,7 @@ import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.GameRegistryManager;
 import org.complexityanalyzer.data.ItemComplexity;
 import org.complexityanalyzer.resource.data.BaseResourceData;
-
-import java.util.Comparator;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import static org.complexityanalyzer.util.LogMarkers.ANALYZE_COMMAND;
 
@@ -173,7 +172,7 @@ public final class AnalyzeCommand {
                 sortedSources.add(new SourceWithCost(data, fullEstimatedCost));
             }
 
-            sortedSources.sort(Comparator.comparingDouble(SourceWithCost::fullCost));
+            sortedSources.sort(ComplexityComparators.comparingDoubleAscending(SourceWithCost::fullCost));
             for (var swc : sortedSources) {
                 String icon = swc.data().getSourceType().getIcon();
                 String costString = Double.isInfinite(swc.fullCost()) ? "∞" : "%.2f".formatted(swc.fullCost());

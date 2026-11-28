@@ -25,6 +25,7 @@ import org.complexityanalyzer.export.cabin.api.CabinFormat;
 import org.complexityanalyzer.export.cabin.api.LeBuf;
 import org.complexityanalyzer.export.cabin.api.XxHash64;
 import org.complexityanalyzer.graph.RecipeGraph;
+import org.complexityanalyzer.util.ComplexityComparators;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -56,7 +57,7 @@ public final class CabinIndexUtils {
         }
         var order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
-        Arrays.sort(order, (a, b) -> Long.compareUnsigned(hashes[a], hashes[b]));
+        Arrays.sort(order, ComplexityComparators.unsignedLongIndex(hashes));
 
         var out = new LeBuf(4 + n * 12);
         out.i32(n);

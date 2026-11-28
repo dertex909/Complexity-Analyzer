@@ -21,7 +21,7 @@ package org.complexityanalyzer.command;
 import com.mojang.brigadier.context.CommandContext;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraft.ChatFormatting;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -35,7 +35,11 @@ import org.complexityanalyzer.resource.data.MobDropData;
 import org.complexityanalyzer.resource.sources.MobDropSource;
 import org.complexityanalyzer.util.ComplexityComparators;
 
-public class EntityAnalyzeCommand {
+import static net.minecraft.ChatFormatting.*;
+
+public final class EntityAnalyzeCommand {
+    private static final ResourceLocation PIG_ID = ResourceLocation.withDefaultNamespace("pig");
+
     private EntityAnalyzeCommand() {
     }
 
@@ -50,7 +54,7 @@ public class EntityAnalyzeCommand {
         }
 
         var entityType = GameRegistryManager.getEntityType(entityId);
-        if (entityType == EntityType.PIG && !entityId.equals(ResourceLocation.parse("minecraft:pig"))) {
+        if (entityType == null || (entityType == EntityType.PIG && !entityId.equals(PIG_ID))) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.not_found", entityId.toString()));
             return 0;
         }
@@ -69,86 +73,86 @@ public class EntityAnalyzeCommand {
         }
 
         var mobDropSource = engine.getSourceByType(MobDropSource.class);
-        var drops = (mobDropSource != null) ? mobDropSource.getDropsForEntity(entityType) : new ObjectArrayList<MobDropData>();
+        var drops = (mobDropSource != null) ? mobDropSource.getDropsForEntity(entityType) : ObjectLists.<MobDropData>emptyList();
 
-        displayAnalysis(source, entityType, props, drops, output);
+        displayAnalysis(source, entityType, props, drops, engine, output);
         return 1;
     }
 
-    private static void displayAnalysis(CommandSourceStack source, EntityType<?> type, MobDifficultyCategory.MobProperties props, ObjectList<MobDropData> drops, OutputManager output) {
-        var entityName = type.getDescription();
-        double survivability = props.calculateSurvivability(), threat = props.calculateThreat(), combatPower = props.calculateCombatPower();
-
+    private static void displayAnalysis(CommandSourceStack source, EntityType<?> type, MobDifficultyCategory.MobProperties props,
+                                        ObjectList<MobDropData> drops, AnalysisEngine engine, OutputManager output) {
         output.sendEmptyLine(source);
-        output.sendHeader(source, props.getMobIcon(), "complexityanalyzer.command.entity.header", ChatFormatting.RED);
+        output.sendHeader(source, props.getMobIcon(), "complexityanalyzer.command.entity.header", RED);
         output.sendEmptyLine(source);
-        output.sendEntry(source, "👤", "complexityanalyzer.command.entity.entity_label", entityName, ChatFormatting.GRAY, ChatFormatting.WHITE);
-        output.sendEntry(source, "🗂", "complexityanalyzer.command.entity.category_label", props.classification().getName(), ChatFormatting.GRAY, props.getCategoryColor());
+        output.sendEntry(source, "👤", "complexityanalyzer.command.entity.entity_label", type.getDescription(), GRAY, WHITE);
+        output.sendEntry(source, "🗂", "complexityanalyzer.command.entity.category_label", props.classification().getName(), GRAY, props.getCategoryColor());
         output.sendEmptyLine(source);
 
         displayBaseStats(source, props, output);
-        displayCalculatedFactors(source, props, survivability, threat, combatPower, output);
+        displayCalculatedFactors(source, props, output);
         displayDifficultyRating(source, props, output);
-        displayDrops(source, drops, output);
+        displayDrops(source, drops, engine, output);
 
         output.sendEmptyLine(source);
         output.sendFooter(source);
     }
 
     private static void displayBaseStats(CommandSourceStack source, MobDifficultyCategory.MobProperties props, OutputManager output) {
-        double health = props.maxHealth(), attack = props.attackDamage(), armor = props.armor();
+        double health = props.maxHealth();
+        double attack = props.attackDamage();
+        double armor = props.armor();
 
-        output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", ChatFormatting.RED);
-        output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", "%.1f".formatted(health), ChatFormatting.GRAY, props.getHealthColor());
-        output.sendValueBar(source, (int) Math.min(100, health), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", "%.1f".formatted(attack), ChatFormatting.GRAY, props.getAttackColor());
-        output.sendValueBar(source, (int) Math.min(100, attack * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", "%.1f".formatted(armor), ChatFormatting.GRAY, props.getArmorColor());
-        if (armor > 0) {
-            output.sendValueBar(source, (int) Math.min(100, armor * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-        }
+        output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", RED);
+        output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", "%.1f".formatted(health), GRAY, props.getHealthColor());
+        output.sendValueBar(source, (int) Math.clamp(health, 0.0, 100.0), DARK_GRAY, "", WHITE);
+        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", "%.1f".formatted(attack), GRAY, props.getAttackColor());
+        output.sendValueBar(source, (int) Math.clamp(attack * 5, 0.0, 100.0), DARK_GRAY, "", WHITE);
+        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", "%.1f".formatted(armor), GRAY, props.getArmorColor());
+        if (armor > 0) output.sendValueBar(source, (int) Math.clamp(armor * 5, 0.0, 100.0), DARK_GRAY, "", WHITE);
         output.sendEmptyLine(source);
     }
 
-    private static void displayCalculatedFactors(CommandSourceStack source, MobDifficultyCategory.MobProperties props, double survivability, double threat, double combatPower, OutputManager output) {
-        output.sendStatusLine(source, "⚡", "complexityanalyzer.command.entity.combat_section", ChatFormatting.GOLD);
-        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", "%.2f".formatted(survivability), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(survivability, 50.0));
-        output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", "%.2f".formatted(threat), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(threat, 5.0));
-        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", "%.2f".formatted(combatPower), ChatFormatting.GRAY, props.getCombatPowerColor());
-        output.sendValueBar(source, (int) Math.min(100, combatPower * 0.5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
+    private static void displayCalculatedFactors(CommandSourceStack source, MobDifficultyCategory.MobProperties props, OutputManager output) {
+        double survivability = props.calculateSurvivability();
+        double threat = props.calculateThreat();
+        double combatPower = props.calculateCombatPower();
+
+        output.sendStatusLine(source, "⚡", "complexityanalyzer.command.entity.combat_section", GOLD);
+        output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", "%.2f".formatted(survivability), GRAY, MobDifficultyCategory.MobProperties.factorColor(survivability, 50.0));
+        output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", "%.2f".formatted(threat), GRAY, MobDifficultyCategory.MobProperties.factorColor(threat, 5.0));
+        output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", "%.2f".formatted(combatPower), GRAY, props.getCombatPowerColor());
+        output.sendValueBar(source, (int) Math.clamp(combatPower * 0.5, 0.0, 100.0), DARK_GRAY, "", WHITE);
         output.sendEmptyLine(source);
     }
 
     private static void displayDifficultyRating(CommandSourceStack source, MobDifficultyCategory.MobProperties props, OutputManager output) {
         var tier = props.difficultyCategory();
+        var ratingText = Component.literal(tier.getIcon() + " ").append(Component.translatable("complexityanalyzer.command.entity.rating." + tier.getKey()));
 
-        output.sendEntry(source, "📊", "complexityanalyzer.command.entity.rating_label", Component.literal(tier.getIcon() + " ")
-                .append(Component.translatable("complexityanalyzer.command.entity.rating." + tier.getKey())), ChatFormatting.AQUA, tier.getColor());
-
+        output.sendEntry(source, "📊", "complexityanalyzer.command.entity.rating_label", ratingText, AQUA, tier.getColor());
         output.sendTip(source, "complexityanalyzer.command.entity.recommendation." + tier.getKey());
         output.sendEmptyLine(source);
     }
 
-    private static void displayDrops(CommandSourceStack source, ObjectList<MobDropData> drops, OutputManager output) {
-        output.sendStatusLine(source, "💎", "complexityanalyzer.command.entity.drops_section", ChatFormatting.GREEN);
+    private static void displayDrops(CommandSourceStack source, ObjectList<MobDropData> drops, AnalysisEngine engine, OutputManager output) {
+        output.sendStatusLine(source, "💎", "complexityanalyzer.command.entity.drops_section", GREEN);
 
         if (drops.isEmpty()) {
             output.sendTip(source, "complexityanalyzer.command.entity.no_drops");
-        } else {
-            drops.sort(ComplexityComparators.MOB_DROP_BY_AVERAGE_YIELD_DESCENDING);
-            var engine = AnalysisEngine.getInstance();
-
-            for (var drop : drops) {
-                var itemName = drop.item().getDescription();
-                double yield = drop.averageYield();
-                var result = engine.getComplexityResult(drop.item());
-                var category = (result != null && result.isValid()) ? result.getCategory() : ComplexityCategory.UNCALCULABLE;
-                var perKill = Component.translatable("complexityanalyzer.command.entity.per_kill", "%.2f".formatted(yield));
-                output.sendSubEntry(source, category.getIcon(), itemName, perKill, ChatFormatting.WHITE, category.getColor());
-            }
-
-            output.sendEmptyLine(source);
-            output.sendTip(source, "complexityanalyzer.command.entity.yield_tip");
+            return;
         }
+
+        var sortedDrops = new ObjectArrayList<>(drops);
+        sortedDrops.sort(ComplexityComparators.MOB_DROP_BY_AVERAGE_YIELD_DESCENDING);
+
+        for (var drop : sortedDrops) {
+            var result = engine.getComplexityResult(drop.item());
+            var category = (result != null && result.isValid()) ? result.getCategory() : ComplexityCategory.UNCALCULABLE;
+            var perKill = Component.translatable("complexityanalyzer.command.entity.per_kill", "%.2f".formatted(drop.averageYield()));
+            output.sendSubEntry(source, category.getIcon(), drop.item().getDescription(), perKill, WHITE, category.getColor());
+        }
+
+        output.sendEmptyLine(source);
+        output.sendTip(source, "complexityanalyzer.command.entity.yield_tip");
     }
 }

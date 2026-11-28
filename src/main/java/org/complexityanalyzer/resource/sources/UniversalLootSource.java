@@ -18,6 +18,8 @@
 
 package org.complexityanalyzer.resource.sources;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.*;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -57,7 +59,6 @@ import static org.complexityanalyzer.config.ComplexityConfig.ENABLE_CACHE;
 import static org.complexityanalyzer.util.LogMarkers.UNIVERSAL_LOOT_SOURCE;
 
 public class UniversalLootSource implements IResourceSource, IMultiSourceProvider {
-    public static final String CHANCE_METADATA = "chance";
     private static final int SIMULATION_COUNT = 500;
     private volatile Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> allLootData = Reference2ObjectMaps.emptyMap();
 
@@ -85,7 +86,9 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
             processLootTables(serverLevel, allLootTableKeys, localLootData);
 
             if (cacheFile != null) ResourceCache.UNIVERSAL_LOOT.save(
-                    cacheFile, fingerprint, ResourceCache::writeResourceData, flattenLootData(localLootData));
+                    cacheFile, fingerprint,
+                    (buf, data) -> ResourceCache.writeResourceData(buf, data, LootChance.class, LootChance.CODEC),
+                    flattenLootData(localLootData));
 
             this.allLootData = localLootData;
         } catch (Exception e) {
@@ -110,7 +113,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
     private boolean tryLoadCache(Path cacheFile, long[] fingerprint, Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> targetMap) {
         var flat = new Reference2ObjectOpenHashMap<Item, ObjectList<BaseResourceData>>();
         int restored = ResourceCache.UNIVERSAL_LOOT.load(cacheFile, fingerprint, (buf, item) ->
-                ResourceCache.readResourceData(buf, item, this), flat);
+                ResourceCache.readResourceData(buf, item, this, LootChance.class, LootChance.CODEC), flat);
         if (restored < 0) return false;
 
         targetMap.clear();
@@ -212,7 +215,7 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
                                 .baseFactor(baseFactor)
                                 .sourceSpecifier(lootTableId.toString())
                                 .details(details)
-                                .addMetadata(CHANCE_METADATA, "%.6f".formatted(itemsPerAttempt * 100));
+                                .put(new LootChance(itemsPerAttempt * 100));
 
                         if (contextDef.sourceType == BaseResourceData.ResourceSourceType.PIGLIN_BARTERING) {
                             builder.baseFactor(contextDef.baseActionCost);
@@ -399,6 +402,11 @@ public class UniversalLootSource implements IResourceSource, IMultiSourceProvide
 
     public Reference2ObjectMap<BaseResourceData.ResourceSourceType, Reference2ObjectMap<Item, BaseResourceData>> getAllLootData() {
         return allLootData;
+    }
+
+    public record LootChance(double percent) {
+        public static final Codec<LootChance> CODEC = RecordCodecBuilder.create(instance ->
+                instance.group(Codec.DOUBLE.fieldOf("percent").forGetter(LootChance::percent)).apply(instance, LootChance::new));
     }
 
     private record TableTask(ResourceKey<LootTable> key, ResourceLocation id, LootContextDefinition def) {

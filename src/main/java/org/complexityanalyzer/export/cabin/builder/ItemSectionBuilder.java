@@ -150,17 +150,6 @@ public final class ItemSectionBuilder {
             buf.i32(idx >= 0 ? idx : -1);
             buf.f64(entry.getValue());
         }
-        var meta = d.getMetadata();
-        int metaSize = meta.size();
-        if (metaSize > 0xFF) metaSize = 0xFF;
-        buf.u8(metaSize);
-        int written = 0;
-        for (var entry : meta.entrySet()) {
-            if (written >= metaSize) break;
-            buf.i32(ctx.strings().intern(entry.getKey()));
-            buf.i32(ctx.strings().intern(String.valueOf(entry.getValue())));
-            written++;
-        }
     }
 
     public SourcesAccumulator buildSources(SourceManager sourceManager) {

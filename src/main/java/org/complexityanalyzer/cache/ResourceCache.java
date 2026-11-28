@@ -18,6 +18,9 @@
 
 package org.complexityanalyzer.cache;
 
+import com.google.gson.JsonParser;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -49,7 +52,7 @@ public final class ResourceCache implements ManagedCache {
     public static final ResourceCache BLOCK_BREAK = new ResourceCache("block_break", "block_break.bin");
 
     private static final int MAGIC = 0x43414331;
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     private final String id;
     private final String fileName;
@@ -71,6 +74,22 @@ public final class ResourceCache implements ManagedCache {
     }
 
     public static void writeResourceData(FriendlyByteBuf buf, BaseResourceData data) {
+        writeResourceDataFields(buf, data);
+    }
+
+    public static <T> void writeResourceData(FriendlyByteBuf buf, BaseResourceData data, Class<T> attachmentType, Codec<T> codec) {
+        writeResourceDataFields(buf, data);
+        boolean hasAttachment = data.hasAttachment(attachmentType);
+        buf.writeBoolean(hasAttachment);
+        if (hasAttachment) {
+            var value = data.get(attachmentType);
+            var encoded = codec.encodeStart(JsonOps.INSTANCE, value).result().orElseThrow(() ->
+                    new IllegalStateException("Could not encode resource attachment " + attachmentType.getName()));
+            buf.writeUtf(encoded.toString());
+        }
+    }
+
+    private static void writeResourceDataFields(FriendlyByteBuf buf, BaseResourceData data) {
         buf.writeUtf(data.getSourceType().name());
         buf.writeDouble(data.getBaseFactor());
         buf.writeUtf(data.getSourceSpecifier());
@@ -83,17 +102,30 @@ public final class ResourceCache implements ManagedCache {
             buf.writeResourceLocation(id != null ? id : ResourceLocation.withDefaultNamespace("air"));
             buf.writeDouble(e.getDoubleValue());
         }
-
-        var metadata = data.getMetadata();
-        buf.writeVarInt(metadata.size());
-        for (var e : metadata.object2ObjectEntrySet()) {
-            buf.writeUtf(e.getKey());
-            buf.writeUtf(e.getValue());
-        }
     }
 
     @Nullable
     public static BaseResourceData readResourceData(FriendlyByteBuf buf, Item item, IResourceSource source) {
+        var builder = readResourceDataFields(buf, item, source);
+        return builder != null ? builder.build() : null;
+    }
+
+    @Nullable
+    public static <T> BaseResourceData readResourceData(FriendlyByteBuf buf, Item item, IResourceSource source, Class<T> attachmentType, Codec<T> codec) {
+        var builder = readResourceDataFields(buf, item, source);
+        if (buf.readBoolean()) {
+            var encoded = buf.readUtf();
+            if (builder != null) {
+                var decoded = codec.parse(JsonOps.INSTANCE, JsonParser.parseString(encoded)).result().orElseThrow(() ->
+                        new IllegalStateException("Could not decode resource attachment " + attachmentType.getName()));
+                builder.put(attachmentType, decoded);
+            }
+        }
+        return builder != null ? builder.build() : null;
+    }
+
+    @Nullable
+    private static BaseResourceData.Builder readResourceDataFields(FriendlyByteBuf buf, Item item, IResourceSource source) {
         var typeName = buf.readUtf();
         double baseFactor = buf.readDouble();
         var specifier = buf.readUtf();
@@ -109,13 +141,6 @@ public final class ResourceCache implements ManagedCache {
         }
 
         var builder = item != null ? new BaseResourceData.Builder(item, source) : null;
-        int mdCount = buf.readVarInt();
-        for (int k = 0; k < mdCount; k++) {
-            var key = buf.readUtf();
-            var value = buf.readUtf();
-            if (builder != null) builder.addMetadata(key, value);
-        }
-
         if (builder == null) return null;
         BaseResourceData.ResourceSourceType type;
         try {
@@ -123,7 +148,7 @@ public final class ResourceCache implements ManagedCache {
         } catch (IllegalArgumentException e) {
             type = BaseResourceData.ResourceSourceType.UNKNOWN;
         }
-        return builder.sourceType(type).baseFactor(baseFactor).sourceSpecifier(specifier).details(details).sourceItems(sourceItems).build();
+        return builder.sourceType(type).baseFactor(baseFactor).sourceSpecifier(specifier).details(details).sourceItems(sourceItems);
     }
 
     @Override

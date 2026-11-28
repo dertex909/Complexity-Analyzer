@@ -79,7 +79,7 @@ Ensure your `neoforge.mods.toml` declares the dependency for correct NeoForge lo
 ## 🔑 2. Accessing the API
 
 The primary entry point is `ComplexityAnalyzerAPI`. It becomes available once the server starts and remains valid for
-the lifetime of the server. Current `API_VERSION` is `"1.0.0"`.
+the lifetime of the server.
 
 ```java
 import org.complexityanalyzer.api.ComplexityAnalyzerAPI;

@@ -49,11 +49,6 @@ import java.util.Optional;
 public interface ComplexityAnalyzerAPI {
 
     /**
-     * Semantic version of this API surface. Bumped on breaking changes.
-     */
-    String API_VERSION = "1.0.0";
-
-    /**
      * @return the live API instance.
      * @throws IllegalStateException if accessed before the mod has installed it (i.e. before server start).
      *                               Prefer {@link #getOptional()} from contexts where availability is unsure.

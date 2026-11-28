@@ -53,7 +53,7 @@ public final class ComplexityComparators {
     public static final Comparator<RecipeHolder<?>> RECIPE_HOLDER_BY_ID = Comparator.comparing(RecipeHolder::id);
     public static final Comparator<IResourceSource> RESOURCE_SOURCE_BY_PRIORITY_DESCENDING = Comparator.comparingInt(IResourceSource::getPriority).reversed();
     public static final Comparator<BaseResourceData> SOURCE_DATA_BY_BASE_FACTOR_THEN_TYPE = Comparator.comparingDouble(BaseResourceData::getBaseFactor).thenComparing(BaseResourceData::getSourceType);
-    public static final Comparator<BaseResourceData> BASE_RESOURCE_BY_LOOT_CHANCE_DESCENDING = Comparator.comparingDouble(ComplexityComparators::lootChance).reversed();
+    public static final Comparator<BaseResourceData> BASE_RESOURCE_BY_LOOT_CHANCE_DESCENDING = Comparator.comparingDouble((BaseResourceData data) -> data.get(UniversalLootSource.LootChance.class).percent()).reversed();
     public static final Comparator<BaseResourceData> BLOCK_BREAK_PATH = Comparator.comparingDouble((BaseResourceData data) -> data.getSourceType().getBaseMultiplier()).thenComparingDouble(BaseResourceData::getBaseFactor).thenComparingInt(data -> data.getSourceItems().size()).thenComparingDouble(data -> sumValues(data.getSourceItems())).thenComparing(BaseResourceData::getDetails);
     public static final Comparator<MobDropData> MOB_DROP_BY_AVERAGE_YIELD_DESCENDING = Comparator.comparingDouble(MobDropData::averageYield).reversed();
     public static final Comparator<ItemData> ITEM_DATA_BY_COMPLEXITY_DESCENDING = Comparator.comparingDouble(ItemData::complexity).reversed();
@@ -112,16 +112,6 @@ public final class ComplexityComparators {
     public static String villagerProfessionId(VillagerProfession profession) {
         var id = GameRegistryManager.getProfessionId(profession);
         return id != null ? id.toString() : "minecraft:none";
-    }
-
-    public static double lootChance(BaseResourceData data) {
-        String chanceMeta = data.getMetadata().get(UniversalLootSource.CHANCE_METADATA);
-        if (chanceMeta == null) return 0.0;
-        try {
-            return Double.parseDouble(chanceMeta);
-        } catch (NumberFormatException ignored) {
-            return 0.0;
-        }
     }
 
     private static double sumValues(Reference2DoubleMap<Item> map) {

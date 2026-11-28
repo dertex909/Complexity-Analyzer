@@ -99,7 +99,7 @@ public class LootAnalyzeCommand {
         double lowestChance = 100.0;
 
         for (var data : items) {
-            double chance = ComplexityComparators.lootChance(data);
+            double chance = data.get(UniversalLootSource.LootChance.class).percent();
             totalChance += chance;
             highestChance = Math.max(highestChance, chance);
             lowestChance = Math.min(lowestChance, chance);
@@ -118,7 +118,8 @@ public class LootAnalyzeCommand {
         @SuppressWarnings("unchecked")
         ObjectArrayList<BaseResourceData>[] groups = new ObjectArrayList[Rarity.VALUES.length];
         for (int i = 0; i < groups.length; i++) groups[i] = new ObjectArrayList<>();
-        for (var data : items) groups[Rarity.fromChance(ComplexityComparators.lootChance(data)).ordinal()].add(data);
+        for (var data : items)
+            groups[Rarity.fromChance(data.get(UniversalLootSource.LootChance.class).percent()).ordinal()].add(data);
 
         output.sendStatusLine(source, "💎", "complexityanalyzer.command.loot.rarity_section", ChatFormatting.YELLOW);
         output.sendEmptyLine(source);
@@ -137,7 +138,7 @@ public class LootAnalyzeCommand {
 
     private static void displayItem(CommandSourceStack source, BaseResourceData data, OutputManager output) {
         var itemComponent = data.getItem().getDescription();
-        double chance = ComplexityComparators.lootChance(data);
+        double chance = data.get(UniversalLootSource.LootChance.class).percent();
         output.sendSubEntry(source, itemComponent, "%.2f%%".formatted(chance), ChatFormatting.WHITE, Rarity.fromChance(chance).color);
         output.sendValueBar(source, (int) Math.min(100, chance), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
     }

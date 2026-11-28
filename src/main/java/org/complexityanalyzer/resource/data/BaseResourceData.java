@@ -23,16 +23,17 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.world.item.Item;
 import org.complexityanalyzer.resource.IResourceSource;
 
-import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 
 /**
  * Immutable description of one raw (non-crafted) way to obtain an item, produced by an
  * {@link IResourceSource}. It pairs a base cost ({@link #getBaseFactor()}) with the items consumed to realize
  * that path ({@link #getSourceItems()}, e.g. tool wear or trade inputs) plus human-readable details and
- * free-form metadata.
+ * optional typed attachments.
  *
- * <p>Instances are built via {@link Builder} and are safe to share across threads. The collections returned by
- * {@link #getSourceItems()} and {@link #getMetadata()} are unmodifiable.
+ * <p>Instances are built via {@link Builder} and are safe to share across threads. Their collections are
+ * unmodifiable; attached values are indexed by their Java type.
  */
 public class BaseResourceData {
     private final Item item;
@@ -41,7 +42,7 @@ public class BaseResourceData {
     private final String details;
     private final String sourceName;
     private final Reference2DoubleMap<Item> sourceItems;
-    private final Object2ObjectMap<String, String> metadata;
+    private final Object2ObjectMap<Class<?>, Object> attachments;
     private final String sourceSpecifier;
 
     private BaseResourceData(Builder builder) {
@@ -51,7 +52,7 @@ public class BaseResourceData {
         this.details = builder.details;
         this.sourceName = builder.sourceName;
         this.sourceItems = Reference2DoubleMaps.unmodifiable(new Reference2DoubleOpenHashMap<>(builder.sourceItems));
-        this.metadata = Object2ObjectMaps.unmodifiable(new Object2ObjectOpenHashMap<>(builder.metadata));
+        this.attachments = Object2ObjectMaps.unmodifiable(new Object2ObjectOpenHashMap<>(builder.attachments));
         this.sourceSpecifier = builder.sourceSpecifier;
     }
 
@@ -98,10 +99,21 @@ public class BaseResourceData {
     }
 
     /**
-     * @return free-form key/value metadata attached by the source; unmodifiable.
+     * Returns a required attached value by type. Throws if the attachment is absent.
      */
-    public Object2ObjectMap<String, String> getMetadata() {
-        return metadata;
+    public <T> T get(Class<T> type) {
+        Objects.requireNonNull(type, "type");
+        Object attachment = attachments.get(type);
+        if (attachment == null) throw new NoSuchElementException("No attachment of type " + type.getName());
+        return type.cast(attachment);
+    }
+
+    /**
+     * Checks whether an attachment of this type is present.
+     */
+    public boolean hasAttachment(Class<?> type) {
+        Objects.requireNonNull(type, "type");
+        return attachments.containsKey(type);
     }
 
     /**
@@ -220,7 +232,7 @@ public class BaseResourceData {
         private final Item item;
         private final String sourceName;
         private final Reference2DoubleMap<Item> sourceItems = new Reference2DoubleOpenHashMap<>();
-        private final Object2ObjectMap<String, String> metadata = new Object2ObjectOpenHashMap<>();
+        private final Object2ObjectMap<Class<?>, Object> attachments = new Object2ObjectOpenHashMap<>();
         private ResourceSourceType sourceType = ResourceSourceType.UNKNOWN;
         private double baseFactor = 1.0;
         private String details = "";
@@ -272,7 +284,7 @@ public class BaseResourceData {
         /**
          * Replaces the consumed-items map (per produced unit). {@code null} is ignored.
          */
-        public Builder sourceItems(Map<Item, Double> items) {
+        public Builder sourceItems(Reference2DoubleMap<Item> items) {
             if (items != null) this.sourceItems.putAll(items);
             return this;
         }
@@ -286,18 +298,20 @@ public class BaseResourceData {
         }
 
         /**
-         * Adds one metadata key/value pair.
+         * Adds or replaces an attachment indexed by its concrete type. Use immutable attachment values.
          */
-        public Builder addMetadata(String key, String value) {
-            this.metadata.put(key, value);
+        public Builder put(Object attachment) {
+            Objects.requireNonNull(attachment, "attachment");
+            this.attachments.put(attachment.getClass(), attachment);
             return this;
         }
 
         /**
-         * Merges the given metadata map. {@code null} is ignored.
+         * Adds or replaces an attachment under an explicit type, such as an interface it implements.
          */
-        public Builder metadata(Map<String, String> meta) {
-            if (meta != null) this.metadata.putAll(meta);
+        public <T> Builder put(Class<T> type, T attachment) {
+            Objects.requireNonNull(type, "type");
+            this.attachments.put(type, type.cast(Objects.requireNonNull(attachment, "attachment")));
             return this;
         }
 

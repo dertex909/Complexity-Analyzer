@@ -308,9 +308,6 @@ export function readBaseDataForItem(bytes, strings, offset) {
     };
     const ingCount = b.u16();
     res.ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));
-    const metaCount = b.u8(), meta = {};
-    for (let j = 0; j < metaCount; j++) meta[strings.get(b.i32())] = strings.get(b.i32());
-    res.metadata = meta;
     return res;
 }
 

@@ -23,50 +23,28 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.MobCategory;
 import org.complexityanalyzer.ComplexityAnalyzer;
 import org.complexityanalyzer.command.util.OutputManager;
 import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
-import org.complexityanalyzer.data.ComplexityCategory;
 import org.complexityanalyzer.export.format.ComplexityExporter;
 import org.complexityanalyzer.export.format.ExportFormats;
 import org.complexityanalyzer.export.format.IExportFormat;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import static java.util.Locale.ROOT;
 import static org.complexityanalyzer.util.LogMarkers.EXPORT_COMMAND;
 
 public final class ExportCommand {
-
-    private static final ObjectList<String> CATEGORY_SUGGESTIONS;
-    private static final ObjectList<String> MOB_CATEGORY_SUGGESTIONS;
-
-    static {
-        var catList = new ObjectArrayList<String>();
-        for (var category : ComplexityCategory.values()) catList.add(category.getDisplayName());
-        CATEGORY_SUGGESTIONS = ObjectLists.unmodifiable(catList);
-        var mobCategories = MobCategory.values();
-        var mobList = new ObjectArrayList<String>(mobCategories.length);
-        for (var mobCategory : mobCategories) mobList.add(mobCategory.getName());
-        MOB_CATEGORY_SUGGESTIONS = ObjectLists.unmodifiable(mobList);
-    }
 
     private ExportCommand() {
     }
@@ -79,10 +57,10 @@ public final class ExportCommand {
 
     private static ArgumentBuilder<CommandSourceStack, ?> buildItemsBranch() {
         return Commands.literal("items")
-                .then(Commands.argument("format", StringArgumentType.word()).suggests(ExportCommand::suggestFormats)
+                .then(Commands.argument("format", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_FORMAT)
                         .then(Commands.literal("all").executes(ExportCommand::executeAllItems))
                         .then(Commands.literal("category")
-                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(ExportCommand::suggestCategories).executes(ctx -> executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
+                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_CATEGORY).executes(ctx -> executeItemsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
                         .then(Commands.literal("top")
                                 .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000)).executes(ctx -> executeTopItems(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
                         .then(Commands.literal("single")
@@ -91,26 +69,14 @@ public final class ExportCommand {
 
     private static ArgumentBuilder<CommandSourceStack, ?> buildMobsBranch() {
         return Commands.literal("mobs")
-                .then(Commands.argument("format", StringArgumentType.word()).suggests(ExportCommand::suggestFormats)
+                .then(Commands.argument("format", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_FORMAT)
                         .then(Commands.literal("all").executes(ExportCommand::executeAllMobs))
                         .then(Commands.literal("category")
-                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(ExportCommand::suggestMobCategories).executes(ctx -> executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
+                                .then(Commands.argument("category_name", StringArgumentType.word()).suggests(SharedSuggestions.EXPORT_MOB_CATEGORY).executes(ctx -> executeMobsByCategory(ctx, StringArgumentType.getString(ctx, "category_name")))))
                         .then(Commands.literal("top")
                                 .then(Commands.argument("count", IntegerArgumentType.integer(1, 1000)).executes(ctx -> executeTopMobs(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
                         .then(Commands.literal("single")
                                 .then(Commands.argument("mob_id", ResourceLocationArgument.id()).suggests(SharedSuggestions.ENTITY).executes(ctx -> executeSingleMob(ctx, ResourceLocationArgument.getId(ctx, "mob_id").toString())))));
-    }
-
-    private static CompletableFuture<Suggestions> suggestFormats(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(ExportFormats.getAvailableFormatIds(), builder);
-    }
-
-    private static CompletableFuture<Suggestions> suggestCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(CATEGORY_SUGGESTIONS, builder);
-    }
-
-    private static CompletableFuture<Suggestions> suggestMobCategories(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(MOB_CATEGORY_SUGGESTIONS, builder);
     }
 
     private static IExportFormat getFormatOrReport(CommandContext<CommandSourceStack> context, OutputManager output) {

@@ -23,20 +23,15 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.context.StringRange;
-import com.mojang.brigadier.suggestion.Suggestion;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import org.complexityanalyzer.command.util.OutputManager;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.geoscan.GeoAnalysisManager;
 import org.complexityanalyzer.geoscan.config.ScanConfig.ScanProfile;
@@ -44,20 +39,10 @@ import org.complexityanalyzer.geoscan.scan.ScanSession;
 import org.complexityanalyzer.util.FormatUtils;
 import org.complexityanalyzer.util.ServerLanguage;
 
-import java.util.concurrent.CompletableFuture;
-
 import static java.util.Locale.ROOT;
 import static net.minecraft.network.chat.Style.EMPTY;
 
 public class GeoScanCommands {
-    private static final String[] PROFILE_NAMES;
-
-    static {
-        var profiles = ScanProfile.values();
-        PROFILE_NAMES = new String[profiles.length];
-        for (int i = 0; i < profiles.length; i++) PROFILE_NAMES[i] = profiles[i].commandName;
-    }
-
     private GeoScanCommands() {
     }
 
@@ -80,7 +65,7 @@ public class GeoScanCommands {
                 .then(forceArg);
 
         var profileArg = Commands.argument("profile", StringArgumentType.word())
-                .suggests((ctx, builder) -> suggestOrderedProfiles(builder))
+                .suggests(SharedSuggestions.GEOSCAN_PROFILE)
                 .executes(ctx -> executeScan(ctx, 32, StringArgumentType.getString(ctx, "profile"), false))
                 .then(chunksArg);
 
@@ -105,18 +90,6 @@ public class GeoScanCommands {
         return Commands.literal("clear")
                 .requires(source -> source.hasPermission(2))
                 .executes(GeoScanCommands::executeClear);
-    }
-
-    private static CompletableFuture<Suggestions> suggestOrderedProfiles(SuggestionsBuilder builder) {
-        var remaining = builder.getRemaining().toLowerCase(ROOT);
-        var range = StringRange.between(builder.getStart(), builder.getInput().length());
-        var list = new ObjectArrayList<Suggestion>(PROFILE_NAMES.length);
-
-        for (var name : PROFILE_NAMES) {
-            if (SharedSuggestionProvider.matchesSubStr(remaining, name)) list.add(new Suggestion(range, name));
-        }
-
-        return list.isEmpty() ? Suggestions.empty() : CompletableFuture.completedFuture(new Suggestions(range, list));
     }
 
     private static int showProfileHelp(CommandContext<CommandSourceStack> context) {

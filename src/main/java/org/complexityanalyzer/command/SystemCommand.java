@@ -21,14 +21,13 @@ package org.complexityanalyzer.command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import org.complexityanalyzer.cache.util.ManagedCache;
 import org.complexityanalyzer.command.util.OutputManager;
+import org.complexityanalyzer.command.util.SharedSuggestions;
 import org.complexityanalyzer.config.ComplexityConfig;
 import org.complexityanalyzer.core.AnalysisEngine;
 import org.complexityanalyzer.core.ThreadPoolManager;
@@ -40,9 +39,6 @@ import java.time.Duration;
 import java.time.Instant;
 
 public final class SystemCommand {
-    private static final SuggestionProvider<CommandSourceStack> CACHE_SUGGESTIONS =
-            (ctx, builder) -> SharedSuggestionProvider.suggest(ManagedCache.ids(), builder);
-
     private SystemCommand() {
     }
 
@@ -56,7 +52,7 @@ public final class SystemCommand {
                 .then(Commands.literal("cache")
                         .then(Commands.literal("info").executes(SystemCommand::executeCacheInfo))
                         .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(SystemCommand::executeCacheClearAll)
-                                .then(Commands.argument("cache", StringArgumentType.word()).suggests(CACHE_SUGGESTIONS).executes(SystemCommand::executeCacheClearOne))));
+                                .then(Commands.argument("cache", StringArgumentType.word()).suggests(SharedSuggestions.CACHE_ID).executes(SystemCommand::executeCacheClearOne))));
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> context) {

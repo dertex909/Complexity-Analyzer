@@ -60,9 +60,7 @@ public final class CabinBackgroundService {
     }
 
     private static Snapshot parseHeader(byte[] bytes, long hash) {
-        int itemCount = 0;
-        int mobCount = 0;
-        int recipeCount = 0;
+        int itemCount = 0, mobCount = 0, recipeCount = 0;
         try {
             var reader = new CabinReader(bytes);
             byte[] meta = reader.readSection(CabinFormat.SEC_META);

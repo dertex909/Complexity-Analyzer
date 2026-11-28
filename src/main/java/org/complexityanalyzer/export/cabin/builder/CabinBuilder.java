@@ -48,6 +48,7 @@ import org.complexityanalyzer.resource.sources.MobDropSource;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.function.Supplier;
 
 import static net.minecraft.world.entity.MobCategory.MISC;
 import static net.minecraft.world.item.Items.AIR;
@@ -315,7 +316,7 @@ public final class CabinBuilder {
             return empty.toByteArray();
         }
         int sourceTypeCount = BaseResourceData.ResourceSourceType.values().length;
-        IntArrayList[] buckets = new IntArrayList[sourceTypeCount];
+        var buckets = new IntArrayList[sourceTypeCount];
         for (int i = 0; i < sourceTypeCount; i++) buckets[i] = new IntArrayList();
         int n = orderedItems.size();
         for (int i = 0; i < n; i++) {
@@ -425,7 +426,7 @@ public final class CabinBuilder {
     private static final class TimingLog {
         private final StringBuilder sb = new StringBuilder();
 
-        <T> T run(String name, java.util.function.Supplier<T> step) {
+        <T> T run(String name, Supplier<T> step) {
             long s = System.nanoTime();
             var result = step.get();
             long ms = (System.nanoTime() - s) / 1_000_000L;

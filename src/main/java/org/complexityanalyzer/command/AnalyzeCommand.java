@@ -92,21 +92,13 @@ public final class AnalyzeCommand {
         }
     }
 
-    private static void displayAnalysis(
-            CommandSourceStack source,
-            Item item,
-            ItemComplexity optimal,
-            AnalysisEngine engine,
-            OutputManager output,
-            ResourceLocation itemId
-    ) {
+    private static void displayAnalysis(CommandSourceStack source, Item item, ItemComplexity optimal,
+                                        AnalysisEngine engine, OutputManager output, ResourceLocation itemId) {
         var itemName = (item != null) ? item.getDescription() : Component.literal(itemId.toString());
 
         output.sendEmptyLine(source);
         output.sendHeader(source, "📊", "complexityanalyzer.command.analyze.header", ChatFormatting.GOLD);
-
         output.sendEntry(source, "🏷", "complexityanalyzer.command.analyze.item_label", itemName, ChatFormatting.GRAY, ChatFormatting.WHITE);
-
         output.sendEmptyLine(source);
 
         displayMainInfo(source, optimal, output);
@@ -177,8 +169,8 @@ public final class AnalyzeCommand {
                 String icon = swc.data().getSourceType().getIcon();
                 String costString = Double.isInfinite(swc.fullCost()) ? "∞" : "%.2f".formatted(swc.fullCost());
 
-                var costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED
-                        : swc.fullCost() < 10 ? ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+                var costColor = Double.isInfinite(swc.fullCost()) ? ChatFormatting.RED : swc.fullCost() < 10 ?
+                        ChatFormatting.GREEN : swc.fullCost() < 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
 
                 output.sendSubEntry(source, icon, swc.data().getSourceType().getDisplayName(), Component.translatable("complexityanalyzer.command.analyze.cost", costString), ChatFormatting.WHITE, costColor);
                 output.sendTipLiteral(source, swc.data().getDetails());
@@ -192,7 +184,8 @@ public final class AnalyzeCommand {
         output.sendStatusLine(source, "ℹ", "complexityanalyzer.command.analyze.status_section", ChatFormatting.AQUA);
 
         boolean isValid = optimal.isValid();
-        output.sendSubEntry(source, "complexityanalyzer.command.analyze.valid_label", isValid ? "complexityanalyzer.command.analyze.yes" : "complexityanalyzer.command.analyze.no", ChatFormatting.GRAY, isValid ? ChatFormatting.GREEN : ChatFormatting.RED);
+        output.sendSubEntry(source, "complexityanalyzer.command.analyze.valid_label", isValid ? "complexityanalyzer.command.analyze.yes" :
+                "complexityanalyzer.command.analyze.no", ChatFormatting.GRAY, isValid ? ChatFormatting.GREEN : ChatFormatting.RED);
 
         if (optimal.getErrorMessage() != null)
             output.sendSubEntry(source, "complexityanalyzer.command.analyze.error_label", optimal.getErrorMessage(), ChatFormatting.RED, ChatFormatting.RED);

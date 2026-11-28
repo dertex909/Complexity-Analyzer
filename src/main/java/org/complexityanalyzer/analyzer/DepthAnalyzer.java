@@ -55,13 +55,13 @@ public class DepthAnalyzer {
     }
 
     public int getDepth(Item item) {
-        Integer cachedDepth = cache.get(item);
+        var cachedDepth = cache.get(item);
         if (cachedDepth != null) return cachedDepth;
         return calculateDepth(item);
     }
 
     private int calculateDepth(Item item) {
-        Integer cached = cache.get(item);
+        var cached = cache.get(item);
         if (cached != null) return cached;
 
         var visiting = inProgress.get();
@@ -150,8 +150,7 @@ public class DepthAnalyzer {
     }
 
     private boolean isUnobtainable(BaseResourceData data) {
-        if (data == null) return true;
-        if (Double.isInfinite(data.getBaseFactor())) return true;
+        if (data == null || Double.isInfinite(data.getBaseFactor())) return true;
         return data.getSourceType() == BaseResourceData.ResourceSourceType.UNOBTAINABLE;
     }
 }

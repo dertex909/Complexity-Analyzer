@@ -56,8 +56,6 @@ public class EntityAnalyzeCommand {
         }
 
         var mobProvider = engine.getMobPropertyProvider();
-        var mobDropSource = engine.getSourceByType(MobDropSource.class);
-
         if (mobProvider == null) {
             output.sendFailure(source, Component.translatable("complexityanalyzer.command.entity.provider_not_initialized"));
             return 0;
@@ -70,6 +68,7 @@ public class EntityAnalyzeCommand {
             return 0;
         }
 
+        var mobDropSource = engine.getSourceByType(MobDropSource.class);
         var drops = (mobDropSource != null) ? mobDropSource.getDropsForEntity(entityType) : new ObjectArrayList<MobDropData>();
 
         displayAnalysis(source, entityType, props, drops, output);
@@ -78,10 +77,7 @@ public class EntityAnalyzeCommand {
 
     private static void displayAnalysis(CommandSourceStack source, EntityType<?> type, MobDifficultyCategory.MobProperties props, ObjectList<MobDropData> drops, OutputManager output) {
         var entityName = type.getDescription();
-
-        double survivability = props.calculateSurvivability();
-        double threat = props.calculateThreat();
-        double combatPower = props.calculateCombatPower();
+        double survivability = props.calculateSurvivability(), threat = props.calculateThreat(), combatPower = props.calculateCombatPower();
 
         output.sendEmptyLine(source);
         output.sendHeader(source, props.getMobIcon(), "complexityanalyzer.command.entity.header", ChatFormatting.RED);
@@ -100,17 +96,13 @@ public class EntityAnalyzeCommand {
     }
 
     private static void displayBaseStats(CommandSourceStack source, MobDifficultyCategory.MobProperties props, OutputManager output) {
-        output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", ChatFormatting.RED);
+        double health = props.maxHealth(), attack = props.attackDamage(), armor = props.armor();
 
-        double health = props.maxHealth();
+        output.sendStatusLine(source, "❤", "complexityanalyzer.command.entity.stats_section", ChatFormatting.RED);
         output.sendSubEntry(source, "❤", "complexityanalyzer.command.entity.health", "%.1f".formatted(health), ChatFormatting.GRAY, props.getHealthColor());
         output.sendValueBar(source, (int) Math.min(100, health), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-
-        double attack = props.attackDamage();
         output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.attack", "%.1f".formatted(attack), ChatFormatting.GRAY, props.getAttackColor());
         output.sendValueBar(source, (int) Math.min(100, attack * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
-
-        double armor = props.armor();
         output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.armor", "%.1f".formatted(armor), ChatFormatting.GRAY, props.getArmorColor());
         if (armor > 0) {
             output.sendValueBar(source, (int) Math.min(100, armor * 5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
@@ -120,11 +112,9 @@ public class EntityAnalyzeCommand {
 
     private static void displayCalculatedFactors(CommandSourceStack source, MobDifficultyCategory.MobProperties props, double survivability, double threat, double combatPower, OutputManager output) {
         output.sendStatusLine(source, "⚡", "complexityanalyzer.command.entity.combat_section", ChatFormatting.GOLD);
-
         output.sendSubEntry(source, "🛡", "complexityanalyzer.command.entity.survivability", "%.2f".formatted(survivability), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(survivability, 50.0));
         output.sendSubEntry(source, "⚠", "complexityanalyzer.command.entity.threat", "%.2f".formatted(threat), ChatFormatting.GRAY, MobDifficultyCategory.MobProperties.factorColor(threat, 5.0));
         output.sendSubEntry(source, "⚔", "complexityanalyzer.command.entity.combat_power", "%.2f".formatted(combatPower), ChatFormatting.GRAY, props.getCombatPowerColor());
-
         output.sendValueBar(source, (int) Math.min(100, combatPower * 0.5), ChatFormatting.DARK_GRAY, "", ChatFormatting.WHITE);
         output.sendEmptyLine(source);
     }

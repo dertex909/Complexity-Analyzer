@@ -79,9 +79,7 @@ public final class SccCondensedSolver {
             int vStart = m.itemSlotVariantStart[s];
             int vEnd = vStart + m.itemSlotVariantCount[s];
             double minCost = Double.POSITIVE_INFINITY;
-            for (int v = vStart; v < vEnd; v++) {
-                minCost = Math.min(minCost, costs[m.itemVariantNode[v]]);
-            }
+            for (int v = vStart; v < vEnd; v++) minCost = Math.min(minCost, costs[m.itemVariantNode[v]]);
             if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
             sum += minCost * m.itemSlotAmount[s];
         }
@@ -92,15 +90,12 @@ public final class SccCondensedSolver {
             int vStart = m.fluidSlotVariantStart[s];
             int vEnd = vStart + m.fluidSlotVariantCount[s];
             double minCost = Double.POSITIVE_INFINITY;
-            for (int v = vStart; v < vEnd; v++) {
-                minCost = Math.min(minCost, costs[m.fluidVariantNode[v]]);
-            }
+            for (int v = vStart; v < vEnd; v++) minCost = Math.min(minCost, costs[m.fluidVariantNode[v]]);
             if (Double.isInfinite(minCost)) return Double.POSITIVE_INFINITY;
             sum += minCost * m.fluidSlotAmount[s];
         }
 
-        int mStart = m.formulaMachineNode[f];
-        int mCount = m.formulaMachineCount[f];
+        int mStart = m.formulaMachineNode[f], mCount = m.formulaMachineCount[f];
         if (mCount > 0) {
             double minMachineCost = Double.POSITIVE_INFINITY;
             for (int i = mStart; i < mStart + mCount; i++) {
@@ -119,14 +114,10 @@ public final class SccCondensedSolver {
     }
 
     private static TarjanResult tarjanScc(int n, int[] adjStart, int[] adjNode) {
-        int[] index = new int[n];
-        int[] lowlink = new int[n];
+        int[] index = new int[n], lowlink = new int[n], sccStack = new int[n], componentOf = new int[n],
+                callStack = new int[n], callIter = new int[n];
         boolean[] onStack = new boolean[n];
-        int[] sccStack = new int[n];
         int sccTop = 0;
-        int[] componentOf = new int[n];
-        int[] callStack = new int[n];
-        int[] callIter = new int[n];
 
         Arrays.fill(index, -1);
         Arrays.fill(componentOf, -1);
@@ -144,9 +135,7 @@ public final class SccCondensedSolver {
             onStack[start] = true;
 
             while (callTop >= 0) {
-                int v = callStack[callTop];
-                int it = callIter[v];
-                int end = adjStart[v + 1];
+                int v = callStack[callTop], it = callIter[v], end = adjStart[v + 1];
 
                 if (it < end) {
                     int w = adjNode[it];
@@ -713,8 +702,7 @@ public final class SccCondensedSolver {
         }
 
         private SharedInputs appendSharedInputs(RecipeNode recipe, double fluidNorm) {
-            int itemStart = itemSlotVariantStart.size();
-            int fluidStart = fluidSlotVariantStart.size();
+            int itemStart = itemSlotVariantStart.size(), fluidStart = fluidSlotVariantStart.size();
             int itemCount = 0, fluidCount = 0;
             boolean valid = true;
 

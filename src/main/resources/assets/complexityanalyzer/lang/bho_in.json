@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "टोही (सक्रिय सत्र ना) 1.1.",
   "complexityanalyzer.geoscan.status.phase2" : "चरण 2: एकट्ठा कइल गइल सगरी डेटा के परिष्कृत कइल...",
   "complexityanalyzer.geoscan.status.complete" : "पूरा हो गइल बा",
-  "complexityanalyzer.source_type.override" : "ओवरराइड कर दिहल जाव",
   "complexityanalyzer.source_type.ore" : "अयस्क/खनन के काम होला",
   "complexityanalyzer.source_type.empirical_block" : "अनुभवजन्य ब्लॉक के बा",
   "complexityanalyzer.source_type.block" : "ब्लॉक के बा",

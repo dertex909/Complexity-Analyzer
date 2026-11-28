@@ -27,7 +27,7 @@ import org.complexityanalyzer.api.IResourceSourceRegistry;
 /**
  * Fired on the NeoForge game bus ({@code NeoForge.EVENT_BUS}) immediately before the analyzer builds its
  * resource-source pipeline — once per analysis build (server start and every reload). Subscribe to contribute
- * data: bosses, renewable mobs, hardcoded sources/overrides, and fully custom resource sources.
+ * data: bosses, renewable mobs, hardcoded sources, and fully custom resource sources.
  *
  * <pre>{@code
  * @SubscribeEvent
@@ -72,7 +72,7 @@ public class ComplexityRegistrationEvent extends Event {
     }
 
     /**
-     * Register hardcoded acquisition sources, value overrides, and custom acquisition metadata.
+     * Register hardcoded acquisition sources and custom acquisition metadata.
      */
     public IHardcodedSourceRegistry hardcodedSources() {
         return hardcodedSources;

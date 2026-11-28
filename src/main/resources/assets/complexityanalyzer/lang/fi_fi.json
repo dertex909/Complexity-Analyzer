@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Tiedustelu (ei aktiivista istuntoa)",
   "complexityanalyzer.geoscan.status.phase2" : "Vaihe 2: Kaikkien kerättyjen tietojen tarkentaminen...",
   "complexityanalyzer.geoscan.status.complete" : "Täydellinen",
-  "complexityanalyzer.source_type.override" : "Ohita",
   "complexityanalyzer.source_type.ore" : "Malmi/kaivostoiminta",
   "complexityanalyzer.source_type.empirical_block" : "Empiirinen lohko",
   "complexityanalyzer.source_type.block" : "Estä",

@@ -26,24 +26,24 @@ import org.complexityanalyzer.resource.data.BaseResourceData;
 
 import static org.complexityanalyzer.resource.data.BaseResourceData.ResourceSourceType.*;
 
-public final class ManualOverridesModule {
+public final class ManualAcquisitionPathsModule {
 
-    private ManualOverridesModule() {
+    private ManualAcquisitionPathsModule() {
     }
 
-    public static void register(Level ignored, IHardcodedSourceRegistry registry) {
-        rule(registry, Items.ELYTRA, 1000.0, SPECIAL_LOOT, "End Ship item frame treasure");
-        rule(registry, Items.OMINOUS_TRIAL_KEY, 200.0, SPECIAL_LOOT, "Ominous Vault drop", Items.TRIAL_KEY, 1.0);
+    public static void register(Level ignored, IHardcodedSourceRegistry rg) {
+        rule(rg, Items.ELYTRA, 1000.0, SPECIAL_LOOT, "End Ship item frame treasure");
+        rule(rg, Items.OMINOUS_TRIAL_KEY, 200.0, SPECIAL_LOOT, "Ominous Vault drop", Items.TRIAL_KEY, 1.0);
 
-        rule(registry, Items.BUNDLE, 1.0, CRAFTING, "Bundle crafting", Items.STRING, 2.0, Items.RABBIT_HIDE, 1.0);
-        rule(registry, Items.WRITTEN_BOOK, 1.0, CRAFTING, "Signing a book", Items.WRITABLE_BOOK, 1.0);
-        rule(registry, Items.FIREWORK_STAR, 1.0, CRAFTING, "Basic firework star", Items.GUNPOWDER, 1.0, Items.YELLOW_DYE, 1.0);
+        rule(rg, Items.BUNDLE, 1.0, CRAFTING, "Bundle crafting", Items.STRING, 2.0, Items.RABBIT_HIDE, 1.0);
+        rule(rg, Items.WRITTEN_BOOK, 1.0, CRAFTING, "Signing a book", Items.WRITABLE_BOOK, 1.0);
+        rule(rg, Items.FIREWORK_STAR, 1.0, CRAFTING, "Basic firework star", Items.GUNPOWDER, 1.0, Items.YELLOW_DYE, 1.0);
 
-        rule(registry, Items.DRAGON_BREATH, 100.0, SPECIAL_ACTION, "Collecting dragon breath with bottle", Items.GLASS_BOTTLE, 1.0);
-        rule(registry, Items.LINGERING_POTION, 1.0, CRAFTING, "Lingering potion brewing", Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0);
+        rule(rg, Items.DRAGON_BREATH, 100.0, SPECIAL_ACTION, "Collecting dragon breath with bottle", Items.GLASS_BOTTLE, 1.0);
+        rule(rg, Items.LINGERING_POTION, 1.0, CRAFTING, "Lingering potion brewing", Items.DRAGON_BREATH, 1.0, Items.SPLASH_POTION, 1.0);
 
-        rule(registry, Items.CARVED_PUMPKIN, 1.0, BLOCK_TRANSFORMATION, "Carving pumpkin with shears", Items.PUMPKIN, 1.0, Items.SHEARS, 0.01);
-        rule(registry, Items.PUMPKIN_SEEDS, 0.25, BLOCK_TRANSFORMATION, "Seeds from carving pumpkin", Items.PUMPKIN, 0.25);
+        rule(rg, Items.CARVED_PUMPKIN, 1.0, BLOCK_TRANSFORMATION, "Carving pumpkin with shears", Items.PUMPKIN, 1.0, Items.SHEARS, 0.01);
+        rule(rg, Items.PUMPKIN_SEEDS, 0.25, BLOCK_TRANSFORMATION, "Seeds from carving pumpkin", Items.PUMPKIN, 0.25);
     }
 
     private static void rule(IHardcodedSourceRegistry registry, Item result, double baseCost, BaseResourceData.ResourceSourceType type, String details) {

@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Pengintaian (tidak ada sesi aktif)",
   "complexityanalyzer.geoscan.status.phase2" : "Fase 2: Menyempurnakan semua data yang dikumpulkan...",
   "complexityanalyzer.geoscan.status.complete" : "Lengkap",
-  "complexityanalyzer.source_type.override" : "Timpa",
   "complexityanalyzer.source_type.ore" : "Bijih/Penambangan",
   "complexityanalyzer.source_type.empirical_block" : "Blok Empiris",
   "complexityanalyzer.source_type.block" : "Blokir",

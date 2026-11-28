@@ -304,8 +304,7 @@ export function readBaseDataForItem(bytes, strings, offset) {
     const b = new Buf(bytes, offset);
     const res = {
         sourceType: strings.get(b.i32()), sourceTypeEnum: b.u8(), details: strings.get(b.i32()),
-        sourceName: strings.get(b.i32()), sourceSpecifier: strings.get(b.i32()), baseFactor: b.f64(),
-        isOverride: b.u8() !== 0, overrideModId: strings.get(b.i32())
+        sourceName: strings.get(b.i32()), sourceSpecifier: strings.get(b.i32()), baseFactor: b.f64()
     };
     const ingCount = b.u16();
     res.ingredients = Array.from({length: ingCount}, () => ({itemIndex: b.i32(), amount: b.f64()}));

@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Reconnaissance (tsy misy session active)",
   "complexityanalyzer.geoscan.status.phase2" : "Dingana 2: Fanadiovana ny angona voaangona rehetra...",
   "complexityanalyzer.geoscan.status.complete" : "feno",
-  "complexityanalyzer.source_type.override" : "Override",
   "complexityanalyzer.source_type.ore" : "Ore/Mining",
   "complexityanalyzer.source_type.empirical_block" : "Empirical Block",
   "complexityanalyzer.source_type.block" : "Block",

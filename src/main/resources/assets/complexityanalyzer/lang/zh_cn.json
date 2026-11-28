@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "侦察（无活动会话）",
   "complexityanalyzer.geoscan.status.phase2" : "第 2 阶段：完善所有收集的数据...",
   "complexityanalyzer.geoscan.status.complete" : "完成",
-  "complexityanalyzer.source_type.override" : "覆盖",
   "complexityanalyzer.source_type.ore" : "矿石/采矿",
   "complexityanalyzer.source_type.empirical_block" : "经验块",
   "complexityanalyzer.source_type.block" : "块",

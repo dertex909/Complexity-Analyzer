@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Izviđanje (nema aktivne sesije)",
   "complexityanalyzer.geoscan.status.phase2" : "Faza 2: Pročišćavanje svih prikupljenih podataka...",
   "complexityanalyzer.geoscan.status.complete" : "Kompletan",
-  "complexityanalyzer.source_type.override" : "Nadjačavanje",
   "complexityanalyzer.source_type.ore" : "Ruda/Rudarstvo",
   "complexityanalyzer.source_type.empirical_block" : "Empirijski blok",
   "complexityanalyzer.source_type.block" : "Blokiraj",

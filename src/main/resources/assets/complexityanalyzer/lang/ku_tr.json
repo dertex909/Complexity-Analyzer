@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Keşif (bê danişîna çalak)",
   "complexityanalyzer.geoscan.status.phase2" : "Qonaxa 2: Paqijkirina hemî daneyên berhevkirî ...",
   "complexityanalyzer.geoscan.status.complete" : "Temam",
-  "complexityanalyzer.source_type.override" : "Override",
   "complexityanalyzer.source_type.ore" : "Ore / Maden",
   "complexityanalyzer.source_type.empirical_block" : "Block Empirical",
   "complexityanalyzer.source_type.block" : "Block",

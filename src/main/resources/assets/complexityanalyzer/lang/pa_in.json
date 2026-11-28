@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "ਪੁਨਰ ਖੋਜ (ਕੋਈ ਕਿਰਿਆਸ਼ੀਲ ਸੈਸ਼ਨ ਨਹੀਂ)",
   "complexityanalyzer.geoscan.status.phase2" : "ਪੜਾਅ 2: ਸਾਰੇ ਇਕੱਤਰ ਕੀਤੇ ਡੇਟਾ ਨੂੰ ਸ਼ੁੱਧ ਕਰਨਾ...",
   "complexityanalyzer.geoscan.status.complete" : "ਸੰਪੂਰਨ",
-  "complexityanalyzer.source_type.override" : "ਓਵਰਰਾਈਡ ਕਰੋ",
   "complexityanalyzer.source_type.ore" : "ਧਾਤੂ/ਮਾਈਨਿੰਗ",
   "complexityanalyzer.source_type.empirical_block" : "ਅਨੁਭਵੀ ਬਲਾਕ",
   "complexityanalyzer.source_type.block" : "ਬਲਾਕ",

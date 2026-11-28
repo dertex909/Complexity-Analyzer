@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Trinh sát (không có phiên hoạt động)",
   "complexityanalyzer.geoscan.status.phase2" : "Giai đoạn 2: Tinh chỉnh tất cả dữ liệu được thu thập...",
   "complexityanalyzer.geoscan.status.complete" : "Hoàn thành",
-  "complexityanalyzer.source_type.override" : "ghi đè",
   "complexityanalyzer.source_type.ore" : "Quặng/Khai thác",
   "complexityanalyzer.source_type.empirical_block" : "Khối thực nghiệm",
   "complexityanalyzer.source_type.block" : "Chặn",

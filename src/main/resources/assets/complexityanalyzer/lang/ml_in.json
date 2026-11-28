@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "രഹസ്യാന്വേഷണം (സജീവമായ സെഷനില്ല)",
   "complexityanalyzer.geoscan.status.phase2" : "ഘട്ടം 2: ശേഖരിച്ച എല്ലാ ഡാറ്റയും ശുദ്ധീകരിക്കുന്നു...",
   "complexityanalyzer.geoscan.status.complete" : "പൂർത്തിയാക്കുക",
-  "complexityanalyzer.source_type.override" : "അസാധുവാക്കുക",
   "complexityanalyzer.source_type.ore" : "അയിര്/ഖനനം",
   "complexityanalyzer.source_type.empirical_block" : "അനുഭവപരമായ ബ്ലോക്ക്",
   "complexityanalyzer.source_type.block" : "തടയുക",

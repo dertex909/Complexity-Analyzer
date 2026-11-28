@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "偵察 (アクティブなセッションなし)",
   "complexityanalyzer.geoscan.status.phase2" : "フェーズ 2: 収集されたすべてのデータを調整します...",
   "complexityanalyzer.geoscan.status.complete" : "完了",
-  "complexityanalyzer.source_type.override" : "オーバーライド",
   "complexityanalyzer.source_type.ore" : "鉱石・採掘",
   "complexityanalyzer.source_type.empirical_block" : "経験的ブロック",
   "complexityanalyzer.source_type.block" : "ブロック",

@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "నిఘా (యాక్టివ్ సెషన్ లేదు)",
   "complexityanalyzer.geoscan.status.phase2" : "దశ 2: సేకరించిన మొత్తం డేటాను శుద్ధి చేస్తోంది...",
   "complexityanalyzer.geoscan.status.complete" : "పూర్తి",
-  "complexityanalyzer.source_type.override" : "భర్తీ చేయండి",
   "complexityanalyzer.source_type.ore" : "ధాతువు/మైనింగ్",
   "complexityanalyzer.source_type.empirical_block" : "అనుభావిక బ్లాక్",
   "complexityanalyzer.source_type.block" : "నిరోధించు",

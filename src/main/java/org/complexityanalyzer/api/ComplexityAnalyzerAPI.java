@@ -116,7 +116,7 @@ public interface ComplexityAnalyzerAPI {
     IBossRegistry bosses();
 
     /**
-     * Register hardcoded sources / overrides. Changes take effect on the next analysis build.
+     * Register hardcoded sources. Changes take effect on the next analysis build.
      */
     IHardcodedSourceRegistry hardcodedSources();
 

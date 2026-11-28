@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Розвідка (немає активного сеансу)",
   "complexityanalyzer.geoscan.status.phase2" : "Етап 2: уточнення всіх зібраних даних...",
   "complexityanalyzer.geoscan.status.complete" : "Повний",
-  "complexityanalyzer.source_type.override" : "Перевизначити",
   "complexityanalyzer.source_type.ore" : "Руда/видобуток",
   "complexityanalyzer.source_type.empirical_block" : "Емпіричний блок",
   "complexityanalyzer.source_type.block" : "Блокувати",

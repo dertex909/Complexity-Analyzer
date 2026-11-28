@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Rekonesans (brak aktywnej sesji)",
   "complexityanalyzer.geoscan.status.phase2" : "Faza 2: Udoskonalanie wszystkich zebranych danych...",
   "complexityanalyzer.geoscan.status.complete" : "Kompletny",
-  "complexityanalyzer.source_type.override" : "Zastąp",
   "complexityanalyzer.source_type.ore" : "Ruda/Górnictwo",
   "complexityanalyzer.source_type.empirical_block" : "Blok empiryczny",
   "complexityanalyzer.source_type.block" : "Blok",

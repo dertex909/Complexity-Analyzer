@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Upelelezi (hakuna kipindi kinachoendelea)",
   "complexityanalyzer.geoscan.status.phase2" : "Awamu ya 2: Kuboresha data zote zilizokusanywa...",
   "complexityanalyzer.geoscan.status.complete" : "Kamilisha",
-  "complexityanalyzer.source_type.override" : "Batilisha",
   "complexityanalyzer.source_type.ore" : "Madini/Madini",
   "complexityanalyzer.source_type.empirical_block" : "Kizuizi cha Nguvu",
   "complexityanalyzer.source_type.block" : "Zuia",

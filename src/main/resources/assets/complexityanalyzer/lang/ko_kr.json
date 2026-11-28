@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "정찰(활성 세션 없음)",
   "complexityanalyzer.geoscan.status.phase2" : "2단계: 수집된 모든 데이터를 정제하는 중...",
   "complexityanalyzer.geoscan.status.complete" : "완료",
-  "complexityanalyzer.source_type.override" : "재정의",
   "complexityanalyzer.source_type.ore" : "광석/채광",
   "complexityanalyzer.source_type.empirical_block" : "경험적 블록",
   "complexityanalyzer.source_type.block" : "블록",

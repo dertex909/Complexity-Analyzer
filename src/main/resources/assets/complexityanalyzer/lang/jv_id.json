@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Reconnaissance (ora ana sesi aktif)",
   "complexityanalyzer.geoscan.status.phase2" : "Tahap 2: Nyaring kabeh data sing diklumpukake...",
   "complexityanalyzer.geoscan.status.complete" : "jangkep",
-  "complexityanalyzer.source_type.override" : "Numpa",
   "complexityanalyzer.source_type.ore" : "Bijih/Mining",
   "complexityanalyzer.source_type.empirical_block" : "Blok Empiris",
   "complexityanalyzer.source_type.block" : "Blok",

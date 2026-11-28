@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Reconocimiento (sin sesión activa)",
   "complexityanalyzer.geoscan.status.phase2" : "Fase 2: Refinar todos los datos recopilados...",
   "complexityanalyzer.geoscan.status.complete" : "completo",
-  "complexityanalyzer.source_type.override" : "Anular",
   "complexityanalyzer.source_type.ore" : "Mineral/Minería",
   "complexityanalyzer.source_type.empirical_block" : "Bloque empírico",
   "complexityanalyzer.source_type.block" : "Bloquear",

@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "ପୁନ on ନିର୍ମାଣ (କ active ଣସି ସକ୍ରିୟ ଅଧିବେଶନ ନାହିଁ)",
   "complexityanalyzer.geoscan.status.phase2" : "ଦ୍ୱିତୀୟ ପର୍ଯ୍ୟାୟ: ସମସ୍ତ ସଂଗୃହିତ ତଥ୍ୟକୁ ବିଶୋଧନ ...",
   "complexityanalyzer.geoscan.status.complete" : "ସଂପୂର୍ଣ୍ଣ",
-  "complexityanalyzer.source_type.override" : "ନବଲିଖନ କରନ୍ତୁ |",
   "complexityanalyzer.source_type.ore" : "ଖଣି / ଖଣି",
   "complexityanalyzer.source_type.empirical_block" : "ପରୀକ୍ଷାମୂଳକ ବ୍ଲକ |",
   "complexityanalyzer.source_type.block" : "ଅବରୋଧ କରନ୍ତୁ |",

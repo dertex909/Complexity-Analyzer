@@ -111,24 +111,9 @@ public class BaseResourceData {
         return sourceSpecifier;
     }
 
-    /**
-     * @return {@code true} if this data was registered as a forced override by a mod.
-     */
-    public boolean isOverride() {
-        return Boolean.parseBoolean(metadata.get("override"));
-    }
-
-    /**
-     * @return the mod id that registered the override, or {@code "unknown"}.
-     */
-    public String getOverrideModId() {
-        return metadata.getOrDefault("override_by", "unknown");
-    }
-
     @Override
     public String toString() {
-        String str = "BaseResource{item=%s, source=%s, factor=%.2f}".formatted(item, sourceType, baseFactor);
-        return isOverride() ? str + " [OVERRIDE by " + getOverrideModId() + "]" : str;
+        return "BaseResource{item=%s, source=%s, factor=%.2f}".formatted(item, sourceType, baseFactor);
     }
 
     /**
@@ -137,7 +122,6 @@ public class BaseResourceData {
      * (e.g. a villager trade weighs more than mining the same item).
      */
     public enum ResourceSourceType {
-        OVERRIDE("complexityanalyzer.source_type.override", 0.0, "⚡", ChatFormatting.RED),
         ORE("complexityanalyzer.source_type.ore", 1.0, "⛏", ChatFormatting.DARK_GRAY),
         EMPIRICAL_BLOCK("complexityanalyzer.source_type.empirical_block", 1.0, "🧱", ChatFormatting.GRAY),
         BLOCK("complexityanalyzer.source_type.block", 1.0, "🧱", ChatFormatting.GRAY),

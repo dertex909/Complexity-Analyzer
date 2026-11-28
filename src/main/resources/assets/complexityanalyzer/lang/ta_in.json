@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "உளவுத்துறை (செயலில் அமர்வு இல்லை)",
   "complexityanalyzer.geoscan.status.phase2" : "கட்டம் 2: சேகரிக்கப்பட்ட எல்லா தரவையும் செம்மைப்படுத்துகிறது...",
   "complexityanalyzer.geoscan.status.complete" : "நிறைவு",
-  "complexityanalyzer.source_type.override" : "மேலெழுதவும்",
   "complexityanalyzer.source_type.ore" : "தாது/சுரங்கம்",
   "complexityanalyzer.source_type.empirical_block" : "அனுபவத் தொகுதி",
   "complexityanalyzer.source_type.block" : "தடு",

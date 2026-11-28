@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Ricognizione (nessuna sessione attiva)",
   "complexityanalyzer.geoscan.status.phase2" : "Fase 2: perfezionamento di tutti i dati raccolti...",
   "complexityanalyzer.geoscan.status.complete" : "Completo",
-  "complexityanalyzer.source_type.override" : "Sostituisci",
   "complexityanalyzer.source_type.ore" : "Minerale/Estrazione",
   "complexityanalyzer.source_type.empirical_block" : "Blocco empirico",
   "complexityanalyzer.source_type.block" : "Blocca",

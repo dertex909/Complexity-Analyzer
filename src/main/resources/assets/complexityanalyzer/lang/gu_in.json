@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "રિકોનિસન્સ (કોઈ સક્રિય સત્ર નથી)",
   "complexityanalyzer.geoscan.status.phase2" : "તબક્કો 2: તમામ એકત્રિત ડેટાને રિફાઇનિંગ...",
   "complexityanalyzer.geoscan.status.complete" : "પૂર્ણ",
-  "complexityanalyzer.source_type.override" : "ઓવરરાઇડ કરો",
   "complexityanalyzer.source_type.ore" : "ઓર/માઇનિંગ",
   "complexityanalyzer.source_type.empirical_block" : "પ્રયોગમૂલક બ્લોક",
   "complexityanalyzer.source_type.block" : "બ્લોક",

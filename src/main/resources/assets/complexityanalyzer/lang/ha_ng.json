@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Bincike (babu zama mai aiki)",
   "complexityanalyzer.geoscan.status.phase2" : "Mataki na 2: Tattara duk bayanan da aka tattara...",
   "complexityanalyzer.geoscan.status.complete" : "Cikakkun",
-  "complexityanalyzer.source_type.override" : "Sauke",
   "complexityanalyzer.source_type.ore" : "Ma'adinai/Ma'adinai",
   "complexityanalyzer.source_type.empirical_block" : "Toshe Empirical",
   "complexityanalyzer.source_type.block" : "Toshe",

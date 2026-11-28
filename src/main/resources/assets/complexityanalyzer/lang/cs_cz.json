@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Průzkum (žádná aktivní relace)",
   "complexityanalyzer.geoscan.status.phase2" : "Fáze 2: Zpřesnění všech shromážděných dat...",
   "complexityanalyzer.geoscan.status.complete" : "Dokončeno",
-  "complexityanalyzer.source_type.override" : "Přepsat",
   "complexityanalyzer.source_type.ore" : "Ruda/těžba",
   "complexityanalyzer.source_type.empirical_block" : "Empirický blok",
   "complexityanalyzer.source_type.block" : "Blokovat",

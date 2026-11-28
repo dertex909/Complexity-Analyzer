@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Nlegharị anya (enweghị nnọkọ na-arụ ọrụ)",
   "complexityanalyzer.geoscan.status.phase2" : "Nkeji 2: Nnụcha data niile anakọtara...",
   "complexityanalyzer.geoscan.status.complete" : "Zuru oke",
-  "complexityanalyzer.source_type.override" : "Wepụ",
   "complexityanalyzer.source_type.ore" : "Ore/Ngwuputa ihe",
   "complexityanalyzer.source_type.empirical_block" : "Mgbochi pụtara ìhè",
   "complexityanalyzer.source_type.block" : "Gbochie",

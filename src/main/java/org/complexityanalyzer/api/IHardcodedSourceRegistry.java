@@ -26,7 +26,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.util.function.BiConsumer;
 
 /**
- * Universal registry for custom acquisition sources, dynamic item pricing logic, and manual overrides.
+ * Registry for custom acquisition sources and dynamic item pricing logic.
  *
  * <p>Unlike rigid recipe registrations, this interface allows arbitrary acquisition logic to participate
  * directly in the analysis pipeline without subclassing or bytecode manipulation.

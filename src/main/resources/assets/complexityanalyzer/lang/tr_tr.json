@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Keşif (aktif oturum yok)",
   "complexityanalyzer.geoscan.status.phase2" : "Aşama 2: Toplanan tüm veriler hassaslaştırılıyor...",
   "complexityanalyzer.geoscan.status.complete" : "Tamamlandı",
-  "complexityanalyzer.source_type.override" : "Geçersiz kıl",
   "complexityanalyzer.source_type.ore" : "Cevher/Madencilik",
   "complexityanalyzer.source_type.empirical_block" : "Ampirik Blok",
   "complexityanalyzer.source_type.block" : "Blok",

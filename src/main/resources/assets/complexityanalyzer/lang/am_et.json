@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "ስለላ (ምንም ንቁ ክፍለ ጊዜ የለም)",
   "complexityanalyzer.geoscan.status.phase2" : "ደረጃ 2፡ ሁሉንም የተሰበሰበ መረጃ በማጥራት ላይ...",
   "complexityanalyzer.geoscan.status.complete" : "ሙሉ",
-  "complexityanalyzer.source_type.override" : "መሻር",
   "complexityanalyzer.source_type.ore" : "ማዕድን/ማዕድን",
   "complexityanalyzer.source_type.empirical_block" : "ኢምፔሪካል ብሎክ",
   "complexityanalyzer.source_type.block" : "አግድ",

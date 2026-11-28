@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "टोपण (सक्रिय सत्र नाही)",
   "complexityanalyzer.geoscan.status.phase2" : "फेज 2: सर्व गोळा केलेला डेटा परिष्कृत करणे...",
   "complexityanalyzer.geoscan.status.complete" : "पूर्ण",
-  "complexityanalyzer.source_type.override" : "ओव्हरराइड करा",
   "complexityanalyzer.source_type.ore" : "खनिज / खाण",
   "complexityanalyzer.source_type.empirical_block" : "अनुभवजन्य ब्लॉक",
   "complexityanalyzer.source_type.block" : "ब्लॉक करा",

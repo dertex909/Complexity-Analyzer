@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "الاستطلاع (لا توجد جلسة نشطة)",
   "complexityanalyzer.geoscan.status.phase2" : "المرحلة الثانية: تنقيح جميع البيانات التي تم جمعها...",
   "complexityanalyzer.geoscan.status.complete" : "كامل",
-  "complexityanalyzer.source_type.override" : "تجاوز",
   "complexityanalyzer.source_type.ore" : "خام / التعدين",
   "complexityanalyzer.source_type.empirical_block" : "الكتلة التجريبية",
   "complexityanalyzer.source_type.block" : "كتلة",

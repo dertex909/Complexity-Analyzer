@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Verkenning (geen actieve sessie)",
   "complexityanalyzer.geoscan.status.phase2" : "Fase 2: Verfijning van alle verzamelde gegevens...",
   "complexityanalyzer.geoscan.status.complete" : "Compleet",
-  "complexityanalyzer.source_type.override" : "Overschrijven",
   "complexityanalyzer.source_type.ore" : "Erts/mijnbouw",
   "complexityanalyzer.source_type.empirical_block" : "Empirisch blok",
   "complexityanalyzer.source_type.block" : "Blok",

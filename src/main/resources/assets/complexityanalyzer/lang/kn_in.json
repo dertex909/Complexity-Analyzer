@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "ವಿಚಕ್ಷಣ (ಸಕ್ರಿಯ ಅಧಿವೇಶನವಿಲ್ಲ)",
   "complexityanalyzer.geoscan.status.phase2" : "ಹಂತ 2: ಎಲ್ಲಾ ಸಂಗ್ರಹಿಸಿದ ಡೇಟಾವನ್ನು ಪರಿಷ್ಕರಿಸುವುದು...",
   "complexityanalyzer.geoscan.status.complete" : "ಸಂಪೂರ್ಣ",
-  "complexityanalyzer.source_type.override" : "ಅತಿಕ್ರಮಿಸಿ",
   "complexityanalyzer.source_type.ore" : "ಅದಿರು/ಗಣಿಗಾರಿಕೆ",
   "complexityanalyzer.source_type.empirical_block" : "ಪ್ರಾಯೋಗಿಕ ಬ್ಲಾಕ್",
   "complexityanalyzer.source_type.block" : "ನಿರ್ಬಂಧಿಸಿ",

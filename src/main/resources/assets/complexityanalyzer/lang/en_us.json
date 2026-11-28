@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Reconnaissance (no active session)",
   "complexityanalyzer.geoscan.status.phase2" : "Phase 2: Refining all collected data...",
   "complexityanalyzer.geoscan.status.complete" : "Complete",
-  "complexityanalyzer.source_type.override" : "Override",
   "complexityanalyzer.source_type.ore" : "Ore/Mining",
   "complexityanalyzer.source_type.empirical_block" : "Empirical Block",
   "complexityanalyzer.source_type.block" : "Block",

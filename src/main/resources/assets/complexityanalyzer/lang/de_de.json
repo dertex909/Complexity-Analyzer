@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Aufklärung (keine aktive Sitzung)",
   "complexityanalyzer.geoscan.status.phase2" : "Phase 2: Verfeinerung aller gesammelten Daten...",
   "complexityanalyzer.geoscan.status.complete" : "Komplett",
-  "complexityanalyzer.source_type.override" : "Überschreiben",
   "complexityanalyzer.source_type.ore" : "Erz/Bergbau",
   "complexityanalyzer.source_type.empirical_block" : "Empirischer Block",
   "complexityanalyzer.source_type.block" : "Blockieren",

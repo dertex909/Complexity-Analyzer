@@ -275,7 +275,6 @@
   "complexityanalyzer.geoscan.status.recon_no_session" : "Ayẹwo (ko si igba ti nṣiṣe lọwọ)",
   "complexityanalyzer.geoscan.status.phase2" : "Ipele 2: N ṣatunṣe gbogbo data ti a gba…",
   "complexityanalyzer.geoscan.status.complete" : "Pari",
-  "complexityanalyzer.source_type.override" : "Daju",
   "complexityanalyzer.source_type.ore" : "Irin/Iwakusa",
   "complexityanalyzer.source_type.empirical_block" : "Empirical Block",
   "complexityanalyzer.source_type.block" : "Dina",

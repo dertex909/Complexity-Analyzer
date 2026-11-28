@@ -141,8 +141,6 @@ public final class ItemSectionBuilder {
         buf.i32(ctx.strings().intern(d.getSourceName() != null ? d.getSourceName() : ""));
         buf.i32(ctx.strings().intern(d.getSourceSpecifier() != null ? d.getSourceSpecifier() : ""));
         buf.f64(d.getBaseFactor());
-        buf.u8(d.isOverride() ? 1 : 0);
-        buf.i32(ctx.strings().intern(d.isOverride() ? d.getOverrideModId() : ""));
         var srcItems = d.getSourceItems();
         int siSize = srcItems.size();
         if (siSize > 0xFFFF) throw new IllegalStateException("Too many source items: " + siSize);
